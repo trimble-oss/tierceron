@@ -40,7 +40,7 @@ func main() {
 
 	// Write data written to server
 	fmt.Println("Wrote secret: ")
-	for k, v := range secret.Data {
+	for k, v := range secretData {
 		fmt.Printf("%s : %s\n", k, v)
 	}
 	fmt.Println("To the vault")
