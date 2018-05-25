@@ -23,8 +23,8 @@ func main() {
 	flag.Parse()
 	map1 := map[string]interface{}{"myKey1": "myVal1", "fake": "data"}
 	map2 := map[string]interface{}{"password": "123", "username": "user"}
-	template := "public data: {{.PublicData}} private data: {{.PrivateData}}"
-	target := "/mnt/c/Users/Sara.wille/workspace/example"
+	template := "myKey1: {{.PublicData.myKey1}} fake: {{.PublicData.fake}} username: {{.PrivateData.username}} password: {{.PrivateData.password}}"
+	target := "C:/Users/Sara.wille/workspace/whoville/experiment"
 	populateTemplate(map1, map2, target, template)
 }
 
