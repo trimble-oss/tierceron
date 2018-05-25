@@ -2,50 +2,31 @@ package main
 
 import (
 	"flag"
-	"html/template"
 	"log"
 	"os"
+	"whoville/utils"
 )
 
-//Maps holds a map of public data and private data.
-type Maps struct {
-	PublicData  map[string]interface{}
-	PrivateData map[string]interface{}
-}
-
-//var fakeTemplate = "{{range $index, $element := .}}{{$index}}{{range $element}}{{end}}"
-
-/*
-This Vault configurator app will read and populate templates
-*/
 func main() {
 	flag.String("accesstoken", "", "vault access token")
 	flag.Parse()
-	map1 := map[string]interface{}{"myKey1": "myVal1", "fake": "data"}
+	map1 := map[string]interface{}{"key": "value", "fake": "data"}
 	map2 := map[string]interface{}{"password": "123", "username": "user"}
-	template := "myKey1: {{.PublicData.myKey1}} fake: {{.PublicData.fake}} username: {{.PrivateData.username}} password: {{.PrivateData.password}}"
-	target := "C:/Users/Sara.wille/workspace/whoville/experiment"
-	populateTemplate(map1, map2, target, template)
-}
-
-func populateTemplate(publicMap map[string]interface{}, privateMap map[string]interface{}, targetLocation string, temp string) {
-	myMap := Maps{publicMap, privateMap}
-	t := template.New("practice template")
-	t, err := t.Parse(temp)
-	if err != nil {
-		panic(err)
-	}
-	file, err := os.Create(targetLocation)
+	template := "myKey1: {{.PublicData.key}} fake: {{.PublicData.fake}} username: {{.PrivateData.username}} password: {{.PrivateData.password}}"
+	target := "C:/Users/Sara.wille/workspace/src/whoville/experiment"
+	file, err := os.Create(target)
 	if err != nil {
 		log.Println("create file: ", err)
 		return
 	}
-	//rand := Random{Data: "randy"}
-	err = t.Execute(file, myMap)
-	//return template
-	if err != nil {
-		panic(err)
-	}
-	file.Close()
-	//os.Create might just override an existing file - try importing template file directly and see if that works?
+	utils.PopulateTemplate(map1, map2, file, template)
 }
+
+//libraries for in memory file
+//s3 upload file to bucket
+//do we want to directly import template files? (assuming yes)
+//s3 buckets
+//configinator as a web service -- twitch
+//webservice web call: environment and product name -- protobuffs
+//multiple auth types? user/pass AND tokens?
+//}
