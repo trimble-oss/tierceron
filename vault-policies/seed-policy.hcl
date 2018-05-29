@@ -6,7 +6,7 @@
 path "templates/*" {
   capabilities = ["create", "read", "update"]
   required_parameters =  {
-      "path" = []
+      "outputPath" = []
   }
 }
 path "values/*" {
@@ -24,7 +24,7 @@ path "value-metrics/*" {
 path "data/templates/*" {
   capabilities = ["create", "read", "update"]
   required_parameters  =  {
-      "path" = []
+      "outputPath" = []
   }
 }
 path "data/values/*" {

@@ -4,8 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
-	"strings"
+	"path/filepath"
 	"vault-helper/kv"
 
 	"github.com/smallfish/simpleyaml"
@@ -26,7 +25,7 @@ type writeCollection struct {
 // Simplifies the error checking process
 func checkError(e error) {
 	if e != nil {
-		log.Fatal(e)
+		panic(e)
 	}
 }
 
@@ -37,7 +36,7 @@ func main() {
 	tokenPtr := flag.String("token", "", "Vault access token")
 
 	flag.Parse()
-	fmt.Printf("Seeding vault from templates in: %s\n", *dirPtr)
+	fmt.Printf("Seeding vault from seeds in: %s\n", *dirPtr)
 	fmt.Printf("Token: %s\nAddress: %s\n", *tokenPtr, *addrPtr)
 
 	files, err := ioutil.ReadDir(*dirPtr)
@@ -50,14 +49,11 @@ func main() {
 			continue
 		}
 		// Get and check file extension (last substring after .)
-		ext := func(f string) string {
-			chunks := strings.SplitAfter(f, ".")
-			return chunks[len(chunks)-1]
-		}(file.Name())
-		if ext == "yaml" || ext == "yml" { // Only read YAML config files
+		ext := filepath.Ext(file.Name())
+		if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
 			fmt.Printf("\nSeeding from YAML file: %s\n", file.Name())
-			filepath := *dirPtr + "/" + file.Name()
-			seedVaultFromFile(filepath, *addrPtr, *tokenPtr)
+			path := *dirPtr + "/" + file.Name()
+			seedVaultFromFile(path, *addrPtr, *tokenPtr)
 		}
 
 	}
@@ -116,9 +112,11 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string) {
 		for k, v := range entry.data {
 			fmt.Printf("\t%-30s%v\n", k, v)
 		}
-		warnings, err := mod.Write(entry.path, entry.data)
-		if warnings != nil { // Output any warnings the Vault generates
-			fmt.Println(warnings)
+
+		// Write data and ouput any errors
+		warn, err := mod.Write(entry.path, entry.data)
+		if len(warn) > 0 {
+			fmt.Printf("Warnings %v\n", warn)
 		}
 		checkError(err)
 	}
