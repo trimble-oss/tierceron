@@ -1,10 +1,10 @@
-package main
+package seeder
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"utils"
 	"vault-helper/kv"
 
 	"github.com/smallfish/simpleyaml"
@@ -22,25 +22,14 @@ type writeCollection struct {
 	data map[string]interface{}
 }
 
-// Simplifies the error checking process
-func checkError(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
+// SeedVault seeds the vault with seed files in the given directory
+func SeedVault(dir string, addr string, token string) {
 
-func main() {
-	// Flags needed for connecting and seeding
-	dirPtr := flag.String("dir", "seeds", "Directory containing seed files for vault")
-	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
-	tokenPtr := flag.String("token", "", "Vault access token")
+	fmt.Printf("Seeding vault from seeds in: %s\n", dir)
+	fmt.Printf("Token: %s\nAddress: %s\n", token, addr)
 
-	flag.Parse()
-	fmt.Printf("Seeding vault from seeds in: %s\n", *dirPtr)
-	fmt.Printf("Token: %s\nAddress: %s\n", *tokenPtr, *addrPtr)
-
-	files, err := ioutil.ReadDir(*dirPtr)
-	checkError(err)
+	files, err := ioutil.ReadDir(dir)
+	utils.CheckError(err)
 
 	// Iterate through all services
 	for _, file := range files {
@@ -52,8 +41,8 @@ func main() {
 		ext := filepath.Ext(file.Name())
 		if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
 			fmt.Printf("\nSeeding from YAML file: %s\n", file.Name())
-			path := *dirPtr + "/" + file.Name()
-			seedVaultFromFile(path, *addrPtr, *tokenPtr)
+			path := dir + "/" + file.Name()
+			seedVaultFromFile(path, addr, token)
 		}
 
 	}
@@ -63,7 +52,7 @@ func main() {
 func seedVaultFromFile(filepath string, vaultAddr string, token string) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
-	checkError(err)
+	utils.CheckError(err)
 
 	// Unmarshal
 	yaml, err := simpleyaml.NewYaml(rawFile)
@@ -106,7 +95,7 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string) {
 	// Write values to vault
 	fmt.Println("Writing seed values to paths")
 	mod, err := kv.NewModifier(token, vaultAddr) // Connect to vault
-	checkError(err)
+	utils.CheckError(err)
 	for _, entry := range writeStack {
 		fmt.Println(entry.path) // Output data being written
 		for k, v := range entry.data {
@@ -118,6 +107,6 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string) {
 		if len(warn) > 0 {
 			fmt.Printf("Warnings %v\n", warn)
 		}
-		checkError(err)
+		utils.CheckError(err)
 	}
 }

@@ -16,13 +16,6 @@ import (
 // The file is saved under the data key, and the extension under the ext key
 // Vault automatically encodes the file into base64
 
-// Simplifies the error checking process
-func checkError(e interface{}) {
-	if e != nil {
-		panic(e)
-	}
-}
-
 func main() {
 	dirPtr := flag.String("dir", "seeds", "Directory containing template files for vault")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
@@ -33,7 +26,7 @@ func main() {
 	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 
 	dirs, err := ioutil.ReadDir(*dirPtr)
-	checkError(err)
+	utils.CheckError(err)
 
 	// Parse each subdirectory as a service name
 	for _, dir := range dirs {
@@ -47,7 +40,7 @@ func main() {
 func uploadTemplates(addr string, token string, dirName string) {
 	// Open directory
 	files, err := ioutil.ReadDir(dirName)
-	checkError(err)
+	utils.CheckError(err)
 
 	// Use name of containing directory as the template subdirectory
 	splitDir := strings.SplitAfter(dirName, "/")
@@ -55,7 +48,7 @@ func uploadTemplates(addr string, token string, dirName string) {
 
 	// Create modifier
 	mod, err := kv.NewModifier(token, addr)
-	checkError(err)
+	utils.CheckError(err)
 
 	// Parse through files
 	for _, file := range files {
@@ -69,12 +62,12 @@ func uploadTemplates(addr string, token string, dirName string) {
 
 			// Open file
 			f, err := os.Open(dirName + "/" + file.Name())
-			checkError(err)
+			utils.CheckError(err)
 
 			// Read the file
 			fileBytes := make([]byte, file.Size())
 			_, err = f.Read(fileBytes)
-			checkError(err)
+			utils.CheckError(err)
 
 			// Seperate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
@@ -89,7 +82,7 @@ func uploadTemplates(addr string, token string, dirName string) {
 			if len(warn) > 0 {
 				fmt.Printf("\tWarnings %v\n", warn)
 			}
-			checkError(err)
+			utils.CheckError(err)
 		}
 	}
 }
