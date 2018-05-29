@@ -4,3 +4,10 @@ Max_Vault/bin/
 Max_Vault/pkg/
 Max_Vault/.vscode/
 Max_Vault/
+.idea/workspace.xml
+.idea
+*.iml
+.vscode
+_vendor*
+vendor
+
