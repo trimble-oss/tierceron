@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"utils"
-	"vault-helper/kv"
+
+	"bitbucket.org/dexterchaney/whoville/utils"
+	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 
 	"github.com/smallfish/simpleyaml"
 )

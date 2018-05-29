@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"vault-helper/kv"
+	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 )
 
 // Reads in template files in specified directory
