@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 )
 
@@ -17,7 +19,7 @@ import (
 // Vault automatically encodes the file into base64
 
 func main() {
-	dirPtr := flag.String("dir", "seeds", "Directory containing template files for vault")
+	dirPtr := flag.String("dir", "vault_templates", "Directory containing template files for vault")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 

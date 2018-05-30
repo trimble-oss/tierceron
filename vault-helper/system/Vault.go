@@ -7,6 +7,7 @@ type Vault struct {
 	shard  string      // Shard of master key used to unseal
 }
 
+// NewVault Constructs a new vault at the given address with the given access token
 func NewVault(addr string, token string) (*Vault, error) {
 	client, err := api.NewClient(&api.Config{Address: addr})
 	if err != nil {
@@ -19,21 +20,25 @@ func NewVault(addr string, token string) (*Vault, error) {
 		shard:  ""}, err
 }
 
-func (v *Vault) Logical() *api.Logical {
-	return v.client.Logical()
+// RevokeToken If proper access given, revokes access of a token and all children
+func (v *Vault) RevokeToken(token string) error {
+	return v.client.Auth().Token().RevokeTree(token)
 }
 
-func (v *Vault) RenewToken(increment int) error {
-	_, err := v.client.Auth().Token().RenewSelf(increment)
-	return err
+// RevokeSelf Revokes token of current client
+func (v *Vault) RevokeSelf() error {
+	return v.client.Auth().Token().RevokeSelf("")
 }
 
-func (v *Vault) CreateKVPath(path string) error {
+// CreateKVPath Creates a kv engine with the specified name and description
+func (v *Vault) CreateKVPath(path string, description string) error {
 	return v.client.Sys().Mount(path, &api.MountInput{
-		Type:    "kv",
-		Options: map[string]string{"Version": "1"}})
+		Type:        "kv",
+		Description: description,
+		Options:     map[string]string{"Version": "1"}})
 }
 
+// CreatePolicy Creates a policy with the given name and rules
 func (v *Vault) CreatePolicy(name string, rules string) error {
 	return v.client.Sys().PutPolicy(name, rules)
 }

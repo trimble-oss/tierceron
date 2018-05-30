@@ -19,7 +19,7 @@ path "value-metrics/*" {
   capabilities = ["create", "read", "update"]
 }
 
-# DeFor v2 kv engine if we can implement it
+# For v2 kv engine if we can implement it
 # paths:
 path "data/templates/*" {
   capabilities = ["create", "read", "update"]
