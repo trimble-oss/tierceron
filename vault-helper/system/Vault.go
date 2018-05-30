@@ -35,7 +35,7 @@ func (v *Vault) CreateKVPath(path string, description string) error {
 	return v.client.Sys().Mount(path, &api.MountInput{
 		Type:        "kv",
 		Description: description,
-		Options:     map[string]string{"Version": "1"}})
+		Options:     map[string]string{"Version": "2"}})
 }
 
 // CreatePolicy Creates a policy with the given name and rules
