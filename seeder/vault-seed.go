@@ -3,12 +3,12 @@ package seeder
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"path/filepath"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
-
-	"github.com/smallfish/simpleyaml"
+	"gopkg.in/yaml.v2"
 )
 
 // Used in the decomposition of the seed
@@ -56,8 +56,13 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string) {
 	utils.CheckError(err)
 
 	// Unmarshal
-	yaml, err := simpleyaml.NewYaml(rawFile)
-	seed, _ := yaml.Map()
+	var rawYaml interface{}
+	err = yaml.Unmarshal(rawFile, &rawYaml)
+	utils.CheckError(err)
+	seed, ok := rawYaml.(map[interface{}]interface{})
+	if ok == false {
+		log.Fatal("Count not extract seed from @s. Possibly a formatting issue", filepath)
+	}
 
 	mapStack := make([]seedCollection, 0)    // Working stack of nested maps to decompose
 	writeStack := make([]writeCollection, 0) // List of all values to write to the vault with p

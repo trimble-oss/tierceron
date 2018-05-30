@@ -91,12 +91,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/smallfish/simpleyaml"
-  packages = ["."]
-  revision = "a32031077861b1fbdf988d2c0865e98ec832dd4c"
-
-[[projects]]
-  branch = "master"
   name = "golang.org/x/net"
   packages = [
     "http/httpguts",
@@ -136,6 +130,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8d806fc1619a5dc4c30bb3633bea28915f3a219360013e2c83a678ec6fab9f6f"
+  inputs-digest = "ad4fbe9f3d75c0490f54183eb2d22259a4438d2dfc9355940881b0dcdcdf8483"
   solver-name = "gps-cdcl"
   solver-version = 1
