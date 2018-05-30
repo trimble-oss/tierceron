@@ -9,18 +9,18 @@ import (
 )
 
 func main() {
-	flag.String("accesstoken", "", "vault access token")
+	tokenPtr := flag.String("token", "", "Vault access token")
+	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
+	startDirPtr := flag.String("templateDir", "", "Template directory")
+	endDirPtr := flag.String("endDir", "", "Configured template directory")
+
 	flag.Parse()
 	map1 := map[string]interface{}{"sendGridApiKey": "apikey", "password": "456", "username": "user"}
 	map2 := map[string]interface{}{"keyStorePass": "randomPass", "keyStorePath": "randomPath"}
-	//template := "myKey1: {{.PublicData.key}} fake: {{.PublicData.fake}} username: {{.PrivateData.username}} password: {{.PrivateData.password}}"
-	starter1 := "C:/Users/Sara.wille/workspace/go/src/bitbucket.org/dexterchaney/whoville/vault_templates/ST/hibernate.properties.tmpl"
-	starter2 := "C:/Users/Sara.wille/workspace/go/src/bitbucket.org/dexterchaney/whoville/vault_templates/ST/config.yaml.tmpl"
-	target1 := "C:/Users/Sara.wille/workspace/go/src/bitbucket.org/dexterchaney/whoville/VaultConfig/experimentOutput1.yaml"
-	target2 := "C:/Users/Sara.wille/workspace/go/src/bitbucket.org/dexterchaney/whoville/VaultConfig/experimentOutput2.yaml"
 	//make modifier
-	token := "439d53ec-ad66-37a5-5272-012f9bf1794d"
-	mod, err := kv.NewModifier(token, "")
+	//pass in host, token, target directories?
+	//use policies that max put in
+	mod, err := kv.NewModifier(*tokenPtr, *addrPtr)
 	if err != nil {
 		panic(err)
 	}
@@ -34,11 +34,5 @@ func main() {
 		log.Println("create modifier: ", err)
 		return
 	}
-	utils.ConfigTemplate(mod, starter1, target1, "secret/hibernate")
-	utils.ConfigTemplate(mod, starter2, target2, "secret/config")
-	//if err != nil {
-	//	log.Println("config template: ", err)
-	//	return
-	//}
-	//fmt.Println(str)
+	utils.ConfigTemplates(*startDirPtr, *endDirPtr, mod, "secret/config", "secret/hibernate")
 }
