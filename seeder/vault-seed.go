@@ -27,7 +27,6 @@ type writeCollection struct {
 func SeedVault(dir string, addr string, token string) {
 
 	fmt.Printf("Seeding vault from seeds in: %s\n", dir)
-	fmt.Printf("Token: %s\nAddress: %s\n", token, addr)
 
 	files, err := ioutil.ReadDir(dir)
 	utils.CheckError(err)

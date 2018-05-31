@@ -1,23 +1,42 @@
 package system
 
-import "github.com/hashicorp/vault/api"
+import (
+	"fmt"
+	"github.com/hashicorp/vault/api"
+)
 
+//Vault Represents a vault connection for managing the vault's properties
 type Vault struct {
 	client *api.Client // Client connected to vault
-	shard  string      // Shard of master key used to unseal
+	shards []string    // Master key shards used to unseal vault
+}
+
+// KeyTokenWrapper Contains the unseal keys and root token
+type KeyTokenWrapper struct {
+	Keys  []string // Base 64 encoded keys
+	Token string   // Root token for the vault
 }
 
 // NewVault Constructs a new vault at the given address with the given access token
-func NewVault(addr string, token string) (*Vault, error) {
+func NewVault(addr string) (*Vault, error) {
 	client, err := api.NewClient(&api.Config{Address: addr})
 	if err != nil {
 		return nil, err
 	}
-	client.SetToken(token)
 
 	return &Vault{
 		client: client,
-		shard:  ""}, err
+		shards: nil}, err
+}
+
+// SetToken Stores the access token for this vault
+func (v *Vault) SetToken(token string) {
+	v.client.SetToken(token)
+}
+
+// GetToken Fetches current token from client
+func (v *Vault) GetToken() string {
+	return v.client.Token()
 }
 
 // RevokeToken If proper access given, revokes access of a token and all children
@@ -35,10 +54,55 @@ func (v *Vault) CreateKVPath(path string, description string) error {
 	return v.client.Sys().Mount(path, &api.MountInput{
 		Type:        "kv",
 		Description: description,
-		Options:     map[string]string{"Version": "2"}})
+		Options:     map[string]string{"version": "2"}})
+}
+
+// DeleteKVPath Deletes a KV path at a specified point.
+func (v *Vault) DeleteKVPath(path string) error {
+	return v.client.Sys().Unmount(path)
+}
+
+// InitVault performs vault initialization and f
+func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, error) {
+	request := api.InitRequest{
+		SecretShares:    keyShares,
+		SecretThreshold: keyThreshold}
+
+	response, err := v.client.Sys().Init(&request)
+	if err != nil {
+		return nil, err
+	}
+	// Remove for deployment
+	fmt.Println("Vault succesfully Init'd")
+	fmt.Println("=========================")
+	fmt.Printf("Unseal key: %s\n", response.KeysB64[0])
+	fmt.Printf("Root token: %s\n\n", response.RootToken)
+
+	keyToken := KeyTokenWrapper{
+		Keys:  response.KeysB64,
+		Token: response.RootToken}
+
+	return &keyToken, nil
 }
 
 // CreatePolicy Creates a policy with the given name and rules
 func (v *Vault) CreatePolicy(name string, rules string) error {
 	return v.client.Sys().PutPolicy(name, rules)
+}
+
+// SetShards Sets known shards used by this vault for unsealing
+func (v *Vault) SetShards(shards []string) {
+	v.shards = shards
+}
+
+// Unseal Performs an unseal wuth this vault's shard
+func (v *Vault) Unseal() error {
+	for _, shard := range v.shards {
+		res, err := v.client.Sys().Unseal(shard)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%V\n\n", *res)
+	}
+	return nil
 }
