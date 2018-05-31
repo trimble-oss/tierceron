@@ -2,6 +2,7 @@ package kv
 
 import (
 	"errors"
+
 	"github.com/hashicorp/vault/api"
 )
 
@@ -15,7 +16,7 @@ type Modifier struct {
 	Env     string       // Environment (local/dev/QA; Initialized to secrets)
 }
 
-// Constructs a new modifier struct and connects to the vault
+// NewModifier Constructs a new modifier struct and connects to the vault
 // @param token 	The access token needed to connect to the vault
 // @param address	The address of the API endpoint for the server
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
@@ -80,4 +81,20 @@ func (m *Modifier) ReadMetadata(path string) (map[string]interface{}, error) {
 	} else {
 		return nil, errors.New("Could not get metadata from vault response")
 	}
+}
+
+//List lists the paths underneath this one
+func (m *Modifier) List(path string) (*api.Secret, error) {
+	return m.logical.List(m.Env + "/data/" + path)
+}
+
+//ReadValue takes a path and a key and returns the corresponding value from the vault
+func (m *Modifier) ReadValue(path string, key string) string {
+	valueMap, err := m.ReadData(path)
+	if err != nil {
+		panic(err)
+	}
+	//return value corresponding to the key
+	value := valueMap[key].(string)
+	return value
 }

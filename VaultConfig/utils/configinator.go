@@ -11,7 +11,7 @@ import (
 //ConfigTemplates takes a file directory to read templates from and a directory to write templates to and configures the templates.
 func ConfigTemplates(dir string, endDir string, modifier *kv.Modifier, dataPaths ...string) {
 	//get files from directory
-	fmt.Println(dataPaths)
+	//fmt.Println(dataPaths)
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		panic(err)
