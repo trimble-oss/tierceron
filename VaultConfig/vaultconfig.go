@@ -5,34 +5,16 @@ import (
 	"fmt"
 
 	"bitbucket.org/dexterchaney/whoville/VaultConfig/utils"
-	"bitbucket.org/dexterchaney/whoville/seeder"
-	//"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/system"
 )
 
 func main() {
 
 	tokenPtr := flag.String("token", "", "Vault access token")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
-	startDirPtr := flag.String("templateDir", "vault-templates/ST/", "Template directory")
-	endDirPtr := flag.String("endDir", "VaultConfig/", "Configured template directory")
-	seedPtr := flag.String("seeds", "vault_seeds", "Directory that contains vault seeds")
+	startDirPtr := flag.String("templateDir", "C:/Users/Sara.wille/workspace/go/src/bitbucket.org/dexterchaney/whoville/vault_templates/ST/", "Template directory")
+	endDirPtr := flag.String("endDir", "C:/Users/Sara.wille/workspace/go/src/bitbucket.org/dexterchaney/whoville/VaultConfig/", "Directory to put configured templates into")
 	flag.Parse()
-
-	//map1 := map[string]interface{}{"sendGridApiKey": "apikey", "password": "456", "username": "user"}
-	//map2 := map[string]interface{}{"keyStorePass": "randomPass", "keyStorePath": "randomPath"}
-
-	v, err := system.NewVault(*addrPtr, *tokenPtr)
-	if err != nil {
-		panic(err)
-	}
-
-	v.CreateKVPath("local", "-")
-	v.CreateKVPath("dev", "-")
-	v.CreateKVPath("QA", "-")
-
-	seeder.SeedVault(*seedPtr, *addrPtr, *tokenPtr)
 	//make modifier
 	//pass in host, token, target directories?
 	//use policies that max put in

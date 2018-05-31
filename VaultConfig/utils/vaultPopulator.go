@@ -23,11 +23,9 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, dataPaths ...
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(secrets)
 		//get the keys and values in secrets
 		for key, value := range secrets {
 			if reflect.TypeOf(value) == reflect.TypeOf("") {
-				//fmt.Println("type is string")
 			} else {
 				ogKeys = append(ogKeys, key)
 				newVal := value.([]interface{})
@@ -38,17 +36,14 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, dataPaths ...
 				valuePaths = append(valuePaths, newValues)
 			}
 		}
-		fmt.Println("value paths: ", valuePaths)
 		for i, valuePath := range valuePaths {
 			//first element is the path
 			if len(valuePath) != 2 {
 				fmt.Println("value path length is ", len(valuePath))
 			} else {
 				path := valuePath[0]
-				fmt.Println("path is", path)
 				//second element is the key
 				key := valuePath[1]
-				fmt.Println("key is", key)
 				value := modifier.ReadValue(path, key)
 				fmt.Println(ogKeys[i], value)
 				dataMap[ogKeys[i]] = value
