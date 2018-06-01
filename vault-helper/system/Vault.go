@@ -3,6 +3,8 @@ package system
 import (
 	"fmt"
 	"github.com/hashicorp/vault/api"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 )
 
 //Vault Represents a vault connection for managing the vault's properties
@@ -85,9 +87,13 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 	return &keyToken, nil
 }
 
-// CreatePolicy Creates a policy with the given name and rules
-func (v *Vault) CreatePolicy(name string, rules string) error {
-	return v.client.Sys().PutPolicy(name, rules)
+// CreatePolicyFromFile Creates a policy with the given name and rules
+func (v *Vault) CreatePolicyFromFile(name string, filepath string) error {
+	data, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return err
+	}
+	return v.client.Sys().PutPolicy(name, string(data))
 }
 
 // SetShards Sets known shards used by this vault for unsealing
@@ -98,11 +104,22 @@ func (v *Vault) SetShards(shards []string) {
 // Unseal Performs an unseal wuth this vault's shard
 func (v *Vault) Unseal() error {
 	for _, shard := range v.shards {
-		res, err := v.client.Sys().Unseal(shard)
+		_, err := v.client.Sys().Unseal(shard)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%V\n\n", *res)
 	}
 	return nil
+}
+
+// CreateTokenFromFile Creates a new token from the given file and returns the name
+func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
+	tokenfile, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+	token := api.TokenCreateRequest{}
+	yaml.Unmarshal(tokenfile, &token)
+	response, err := v.client.Auth().Token().Create(&token)
+	return response.Auth.ClientToken, err
 }

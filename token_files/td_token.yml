@@ -1,0 +1,8 @@
+policies: ["td"]
+metadata:
+  user : "TDinator"
+
+# Should be twice as many uses as config files (upload file, upload value)
+numuses: 4
+ttl:  "30m"
+display_name: "TDinator Token"

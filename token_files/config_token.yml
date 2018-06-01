@@ -1,0 +1,8 @@
+policies: ["config"]
+metadata:
+  user : "Configinator"
+
+# One use for each read or wright
+numuses:
+ttl:  "30m"
+display_name: "Configinator Token"

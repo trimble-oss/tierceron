@@ -5,7 +5,7 @@ path "local/data/templates/*" {
   capabilities = ["read"]
 }
 path "local/data/values/*" {
-    capabilities = ["read"]
+  capabilities = ["read"]
 }
 path "local/data/super-secrets/*" {
   capabilities = ["read"]
