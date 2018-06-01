@@ -11,43 +11,55 @@ import (
 //ConfigTemplates takes a file directory to read templates from and a directory to write templates to and configures the templates.
 func ConfigTemplates(dir string, endDir string, modifier *kv.Modifier, dataPaths ...string) {
 	//get files from directory
-	//fmt.Println(dataPaths)
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		panic(err)
+	templatePaths, endPaths := getDirFiles(dir, endDir)
+	//configure each template in directory
+	for i, templatePath := range templatePaths {
+		ConfigTemplate(modifier, templatePath, endPaths[i], dataPaths...)
 	}
-	for _, f := range files {
-		templatePath := dir + f.Name()
-		endPath := endDir + f.Name()
-		ConfigTemplate(modifier, templatePath, endPath, dataPaths...)
-	}
-	fmt.Println("templates configured")
+	fmt.Println("templates configured and written to ", endDir)
 	//config each template in directory
-	//write files to end directory
 }
 
-//yaml config file: what the config template is, path to templates (configTemplates), target path
-//pass host in on command line
+func getDirFiles(dir string, endDir string) ([]string, []string) {
+	files, err := ioutil.ReadDir(dir)
+	filePaths := []string{}
+	endPaths := []string{}
+	if err != nil {
+		//this is a file
+		return []string{dir}, []string{endDir}
+	}
+	for _, file := range files {
+		//add this directory to path names
+		filePath := dir + "/" + file.Name()
+		endPath := endDir + "/" + file.Name()
+		//recurse to next level
+		newPaths, newEndPaths := getDirFiles(filePath, endPath)
+		filePaths = append(filePaths, newPaths...)
+		endPaths = append(endPaths, newEndPaths...)
+		//add endings of path names
+	}
+	return filePaths, endPaths
+}
 
-//ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the ntemplate with
+//ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.
+//It configures the template and writes it to the specified file path.
 func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, dataPaths ...string) {
-	//fmt.Println(dataPaths)
 	emptyTemplate, err := ioutil.ReadFile(emptyFilePath)
 	template := string(emptyTemplate)
 	if err != nil {
 		panic(err)
 	}
-	//populate template and return
-	//get public and private maps directly from vault
-	//we just need to put values in the map that it's looking for?
-	//template populates values with nil if there is no corresponding value. Have to use data from all dataPaths at once
+	//populate template
 	template = PopulateTemplate(template, modifier, dataPaths...)
 	popTemplate := []byte(template)
+	//create new file
 	newFile, err := os.Create(configuredFilePath)
 	if err != nil {
 		panic(err)
 	}
-	newFile.Write(popTemplate)
-	//save file to location
-	//write to specific file type
+	//write to file
+	_, err = newFile.Write(popTemplate)
+	if err != nil {
+		panic(err)
+	}
 }

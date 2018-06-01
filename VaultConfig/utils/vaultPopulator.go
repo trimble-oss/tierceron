@@ -2,23 +2,21 @@ package utils
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"html/template"
 	"reflect"
 
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 )
 
-//make it so it doesn't need the maps, just the vault?
-
-//PopulateTemplate takes a map of public information, a map of private information, a file to write to, and a template string.
+//PopulateTemplate takes an empty template, a modifier, and the template data paths in the vault.
 //It populates the template and returns it in a string.
 func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, dataPaths ...string) string {
 	dataMap := make(map[string]interface{})
 	ogKeys := []string{}
 	valuePaths := [][]string{}
 	for _, path := range dataPaths {
-		//for neach path, read the secrets there
+		//for each path, read the secrets there
 		secrets, err := modifier.ReadData(path)
 		if err != nil {
 			panic(err)
@@ -26,6 +24,7 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, dataPaths ...
 		//get the keys and values in secrets
 		for key, value := range secrets {
 			if reflect.TypeOf(value) == reflect.TypeOf("") {
+				//if it's a string, it's not the data we're looking for
 			} else {
 				ogKeys = append(ogKeys, key)
 				newVal := value.([]interface{})
@@ -37,26 +36,27 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, dataPaths ...
 			}
 		}
 		for i, valuePath := range valuePaths {
-			//first element is the path
 			if len(valuePath) != 2 {
-				fmt.Println("value path length is ", len(valuePath))
+				panic(errors.New("value path is not the correct length"))
 			} else {
+				//first element is the path
 				path := valuePath[0]
 				//second element is the key
 				key := valuePath[1]
 				value := modifier.ReadValue(path, key)
-				fmt.Println(ogKeys[i], value)
+				//put the original key with the correct value
 				dataMap[ogKeys[i]] = value
 			}
 		}
 	}
-
+	//create new template from template string
 	t := template.New("template")
 	t, err := t.Parse(emptyTemplate)
 	if err != nil {
 		panic(err)
 	}
 	var doc bytes.Buffer
+	//configure the template
 	err = t.Execute(&doc, dataMap)
 	str := doc.String()
 	if err != nil {

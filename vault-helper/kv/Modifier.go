@@ -85,7 +85,7 @@ func (m *Modifier) ReadMetadata(path string) (map[string]interface{}, error) {
 
 //List lists the paths underneath this one
 func (m *Modifier) List(path string) (*api.Secret, error) {
-	return m.logical.List(m.Env + "/data/" + path)
+	return m.logical.List(m.Env + "/metadata/" + path)
 }
 
 //ReadValue takes a path and a key and returns the corresponding value from the vault
