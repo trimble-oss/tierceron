@@ -62,6 +62,14 @@ func uploadTemplates(addr string, token string, dirName string) {
 		if ext == ".tmpl" { // Only upload template files
 			fmt.Printf("Found template file %s\n", file.Name())
 
+			// Extract values
+			extractedValues, err := utils.Parse(dirName + "/" + file.Name())
+			utils.CheckError(err)
+			fmt.Println("\tExtracted values:")
+			for k, v := range extractedValues {
+				fmt.Printf("\t\t%-30s%v\n", k, v)
+			}
+
 			// Open file
 			f, err := os.Open(dirName + "/" + file.Name())
 			utils.CheckError(err)
@@ -75,12 +83,23 @@ func uploadTemplates(addr string, token string, dirName string) {
 			ext = filepath.Ext(name)
 			name = name[0 : len(name)-len(ext)]
 
-			// Construct path for writing to vault
-			vaultPath := "templates/" + subDir + "/" + name + "/template-file"
-			fmt.Printf("\tUploading template to path:   %s\n", vaultPath)
+			// Construct template path for vault
+			templatePath := "templates/" + subDir + "/" + name + "/template-file"
+			fmt.Printf("\tUploading template to path:\t%s\n", templatePath)
 
-			// Write to vault and output any errors
-			warn, err := mod.Write(vaultPath, map[string]interface{}{"data": fileBytes, "ext": ext})
+			// Construct value path for vault
+			valuePath := "values/" + subDir + "/" + name
+			fmt.Printf("\tUploading values to path:\t%s\n", valuePath)
+
+			// Write templates to vault and output errors/warnings
+			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext})
+			if len(warn) > 0 {
+				fmt.Printf("\tWarnings %v\n", warn)
+			}
+			utils.CheckError(err)
+
+			// Write values to vault and output any errors/warnings
+			warn, err = mod.Write(valuePath, extractedValues)
 			if len(warn) > 0 {
 				fmt.Printf("\tWarnings %v\n", warn)
 			}
