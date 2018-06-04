@@ -3,8 +3,9 @@ package kv
 import (
 	"errors"
 	"fmt"
-	"github.com/hashicorp/vault/api"
 	"strconv"
+
+	"github.com/hashicorp/vault/api"
 )
 
 // Modifier maintains references to the active client and
@@ -55,9 +56,8 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 	Secret, err := m.logical.Write(m.Env+"/data/"+path, sendData)
 	if Secret == nil { // No warnings
 		return nil, err
-	} else {
-		return Secret.Warnings, err
 	}
+	return Secret.Warnings, err
 }
 
 // ReadData Reads the most recent data from the path referenced by this Modifier
@@ -70,9 +70,9 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	}
 	if data, ok := secret.Data["data"].(map[string]interface{}); ok {
 		return data, err
-	} else {
-		return nil, errors.New("Could not get data from vault response")
 	}
+	return nil, errors.New("Could not get data from vault response")
+
 }
 
 // ReadMetadata Reads the Metadata from the path referenced by this Modifier
@@ -82,9 +82,8 @@ func (m *Modifier) ReadMetadata(path string) (map[string]interface{}, error) {
 	secret, err := m.logical.Read(m.Env + "/data/" + path)
 	if data, ok := secret.Data["metadata"].(map[string]interface{}); ok {
 		return data, err
-	} else {
-		return nil, errors.New("Could not get metadata from vault response")
 	}
+	return nil, errors.New("Could not get metadata from vault response")
 }
 
 //List lists the paths underneath this one
@@ -99,8 +98,12 @@ func (m *Modifier) ReadValue(path string, key string) string {
 		panic(err)
 	}
 	//return value corresponding to the key
-	value := valueMap[key].(string)
-	return value
+	if valueMap[key] != nil {
+		value := valueMap[key].(string)
+		return value
+	}
+	fmt.Println("no keys found at path", path, "key", key)
+	return ""
 }
 
 //AdjustValue adjusts the value at the given path/key by n

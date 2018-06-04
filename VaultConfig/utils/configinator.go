@@ -62,4 +62,5 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 	if err != nil {
 		panic(err)
 	}
+	newFile.Close()
 }

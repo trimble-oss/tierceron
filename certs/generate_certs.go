@@ -51,9 +51,6 @@ func CertTemplate() (*x509.Certificate, error) {
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(time.Hour), // valid for an hour
 		BasicConstraintsValid: true,
-		IsCA:        true,
-		KeyUsage:    x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
 	return &tmpl, nil
 }
@@ -81,7 +78,7 @@ func CreatePrivateKey() (privKey *rsa.PrivateKey, err error) {
 		return privateKey, err
 	}
 	pemPrivateFile.Close()
-	fmt.Println("private key generated and written to private_key.pem")
+	fmt.Println("private key generated and written to certs/cert_files/private_key.pem")
 	return privateKey, nil
 }
 
@@ -104,6 +101,6 @@ func CreateCert(template, parent *x509.Certificate, pub interface{}, parentPriv 
 		return err
 	}
 	pemCertFile.Close()
-	fmt.Println("certificate generated and written to certificate.pem")
+	fmt.Println("certificate generated and written to certs/cert_files/certificate.pem")
 	return nil
 }
