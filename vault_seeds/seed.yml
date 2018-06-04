@@ -2,8 +2,8 @@ templates:
   ST:
     hibernate:
       outputPath: hibernate.config
-      username: [super-secrets/SpectrumDB, hibernate-username]
-      password: [super-secrets/SpectrumDB, hibernate-password]
+      username: [super-secrets/SpectrumDB, username1]
+      password: [super-secrets/SpectrumDB, password1]
       sendGridApiKey: [super-secrets/SendGrid, ApiKey]  
     config:
       outputPath: config.yml

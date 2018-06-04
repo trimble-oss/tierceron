@@ -1,15 +1,23 @@
 package utils
 
+import (
+	"fmt"
+	"os"
+)
+
 // CheckError Simplifies the error checking process
-func CheckError(e error) {
-	if e != nil {
-		panic(e)
+func CheckError(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
 
 // CheckWarnings Checks warnings returned from various vault relation operations
-func CheckWarnings(w []string) {
-	if len(w) > 0 {
-		panic(w)
+func CheckWarnings(warnings []string) {
+	for _, w := range warnings {
+		fmt.Println(w)
+	}
+	if len(warnings) > 0 {
+		os.Exit(1)
 	}
 }

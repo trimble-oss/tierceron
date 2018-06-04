@@ -107,3 +107,9 @@ func uploadTemplates(addr string, token string, dirName string) {
 		}
 	}
 }
+
+// Things to update:
+//		Ports?
+//		URL references?
+// 		Domain headers?
+//		Redirects?

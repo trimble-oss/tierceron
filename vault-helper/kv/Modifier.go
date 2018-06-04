@@ -2,8 +2,9 @@ package kv
 
 import (
 	"errors"
-
+	"fmt"
 	"github.com/hashicorp/vault/api"
+	"strconv"
 )
 
 // Modifier maintains references to the active client and
@@ -64,6 +65,9 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 //			errors generated from reading
 func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	secret, err := m.logical.Read(m.Env + "/data/" + path)
+	if secret == nil {
+		return nil, nil
+	}
 	if data, ok := secret.Data["data"].(map[string]interface{}); ok {
 		return data, err
 	} else {
@@ -97,4 +101,29 @@ func (m *Modifier) ReadValue(path string, key string) string {
 	//return value corresponding to the key
 	value := valueMap[key].(string)
 	return value
+}
+
+//AdjustValue adjusts the value at the given path/key by n
+func (m *Modifier) AdjustValue(path string, key string, n int) ([]string, error) {
+	// Get the existing data at the path
+	oldData, err := m.ReadData(path)
+	if err != nil {
+		return nil, err
+	}
+	if oldData == nil { // Path has not been used yet, create an empty map
+		oldData = make(map[string]interface{})
+	}
+	// Try to fetch the value with the given key, start empty values with 0
+	if oldData[key] == nil {
+		oldData[key] = "0"
+	}
+	// Convert from stored string value to int
+	fmt.Println(oldData)
+	oldValue, err := strconv.Atoi(oldData[key].(string))
+	if err != nil {
+		return []string{"Could not convert value to int at: " + key}, err
+	}
+	newValue := strconv.Itoa(oldValue + n)
+	oldData[key] = newValue
+	return m.Write(path, oldData)
 }
