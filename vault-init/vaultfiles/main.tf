@@ -1,3 +1,9 @@
+provider "aws" {
+  region                  = "us-west-2"
+  shared_credentials_file = "~/.aws/credentials"
+  profile                 = "default"
+}
+
 resource "template_file" "install" {
     template = "${file("${path.module}/scripts/install.sh.tpl")}"
 
