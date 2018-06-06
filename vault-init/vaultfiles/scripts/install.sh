@@ -1,12 +1,11 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/bash -e
 
 # Install packages
 sudo apt-get update -y
 sudo apt-get install -y curl unzip
 
 # Download Vault into some temporary directory
-curl -L "${download_url}" > /tmp/vault.zip
+curl -L "https://releases.hashicorp.com/vault/0.10.1/vault_0.10.1_linux_amd64.zip" > /tmp/vault.zip
 
 # Unzip it
 cd /tmp
@@ -14,12 +13,11 @@ sudo unzip vault.zip
 sudo mv vault /usr/local/bin
 sudo chmod 0755 /usr/local/bin/vault
 sudo chown root:root /usr/local/bin/vault
-
-# Setup the configuration
-cat <<EOF >/tmp/vault-config
-${config}
-EOF
-sudo mv /tmp/vault-config /etc/opt/vault/vault_properties.hcl
+#make directory etc/opt/vault
+sudo mkdir -p /etc/opt/vault/certs/
+#copy everything from /tmp
+sudo mv /tmp/serv_*.pem /etc/opt/vault/certs/
+sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
 
 # Setup the init script
 cat <<EOF >/tmp/upstart
@@ -40,14 +38,10 @@ script
 
   exec /usr/local/bin/vault server \
     -config="/etc/opt/vault/vault_properties.hcl" \
-    \$${VAULT_FLAGS} \
     >>/var/log/vault.log 2>&1
 end script
 EOF
 sudo mv /tmp/upstart /etc/init/vault.conf
-
-# Extra install steps (if any)
-${extra-install}
 
 # Start Vault
 sudo start vault
