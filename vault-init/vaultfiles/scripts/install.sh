@@ -10,8 +10,10 @@ curl -L "https://releases.hashicorp.com/vault/0.10.1/vault_0.10.1_linux_amd64.zi
 # Unzip it
 #/usr/src/app
 cd /tmp
+sudo -- sh -c "echo '127.0.0.1 $(hostname)' >> /etc/hosts"
 sudo unzip vault.zip
-sudo mv vault /usr/src/app
+sudo mkdir -p /usr/src/app/vault
+sudo mv vault /usr/src/app/
 sudo chmod 0755 /usr/src/app/vault
 sudo chown root:root /usr/src/app/vault
 #make directory etc/opt/vault
