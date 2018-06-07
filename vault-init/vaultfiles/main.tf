@@ -8,7 +8,7 @@ resource "aws_instance" "web" {
     ami = "${var.ami}"
     instance_type = "${var.instance_type}"
     key_name = "${var.key-name}"
-    security_groups = ["access-https","access-http","vault-ssh", "vault-egress"]
+    security_groups = ["access-https","vault-ssh", "vault-egress"]
     tags{
         Name = "vault"
     }
@@ -65,27 +65,18 @@ resource "aws_instance" "web" {
     }
 }
 
+// This rule allows Vault HTTPS API access to individual nodes, since each will
+// need to be addressed individually for unsealing.
 resource "aws_security_group" "access-https" {
   name = "access-https"
   ingress {
-    from_port   = 443
-    to_port     = 443
+    from_port   = 8200
+    to_port     = 8200
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
-// This rule allows Vault HTTP API access to individual nodes, since each will
-// need to be addressed individually for unsealing.
-resource "aws_security_group" "access-http" {
-  name = "access-http"
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
+//generic security groups
 
 resource "aws_security_group" "vault-ssh" {
   name = "vault-ssh"

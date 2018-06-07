@@ -27,10 +27,10 @@ func NewModifier(token string, address string) (*Modifier, error) {
 	if len(address) == 0 {
 		address = "http://127.0.0.1:8200" // Default address
 	}
-
+	httpClient, err := CreateHTTPClient()
 	// Create client
 	modClient, err := api.NewClient(&api.Config{
-		Address: address,
+		Address: address, HttpClient: httpClient,
 	})
 
 	// Return errors if found in client creation

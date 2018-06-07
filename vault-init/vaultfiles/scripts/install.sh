@@ -8,11 +8,12 @@ sudo apt-get install -y curl unzip
 curl -L "https://releases.hashicorp.com/vault/0.10.1/vault_0.10.1_linux_amd64.zip" > /tmp/vault.zip
 
 # Unzip it
+#/usr/src/app
 cd /tmp
 sudo unzip vault.zip
-sudo mv vault /usr/local/bin
-sudo chmod 0755 /usr/local/bin/vault
-sudo chown root:root /usr/local/bin/vault
+sudo mv vault /usr/src/app
+sudo chmod 0755 /usr/src/app/vault
+sudo chown root:root /usr/src/app/vault
 #make directory etc/opt/vault
 sudo mkdir -p /etc/opt/vault/certs/
 #copy everything from /tmp
@@ -36,7 +37,7 @@ script
   # Make sure to use all our CPUs, because Vault can block a scheduler thread
   export GOMAXPROCS=`nproc`
 
-  exec /usr/local/bin/vault server \
+  exec /usr/src/app/vault server \
     -config="/etc/opt/vault/vault_properties.hcl" \
     >>/var/log/vault.log 2>&1
 end script

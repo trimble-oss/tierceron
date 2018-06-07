@@ -2,9 +2,11 @@ package system
 
 import (
 	"fmt"
+	"io/ioutil"
+
+	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
 )
 
 //Vault Represents a vault connection for managing the vault's properties
@@ -21,7 +23,8 @@ type KeyTokenWrapper struct {
 
 // NewVault Constructs a new vault at the given address with the given access token
 func NewVault(addr string) (*Vault, error) {
-	client, err := api.NewClient(&api.Config{Address: addr})
+	httpClient, err := kv.CreateHTTPClient()
+	client, err := api.NewClient(&api.Config{Address: addr, HttpClient: httpClient})
 	if err != nil {
 		return nil, err
 	}
