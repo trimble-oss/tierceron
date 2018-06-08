@@ -11,3 +11,4 @@ Max_Vault/
 _vendor*
 vendor
 pkg
+*.pem
