@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 )
@@ -31,7 +32,11 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 	for _, file := range files {
 		//add this directory to path names
 		filePath := dir + "/" + file.Name()
-		endPath := endDir + "/" + file.Name()
+		//take off .tmpl extension
+		filename := file.Name()
+		extension := filepath.Ext(filename)
+		name := filename[0 : len(filename)-len(extension)]
+		endPath := endDir + "/" + name
 		//recurse to next level
 		newPaths, newEndPaths := getDirFiles(filePath, endPath)
 		filePaths = append(filePaths, newPaths...)
