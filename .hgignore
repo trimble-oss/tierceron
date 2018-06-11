@@ -12,3 +12,4 @@ _vendor*
 vendor
 pkg
 *.pem
+real_seed\seed.yml
