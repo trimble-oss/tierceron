@@ -29,7 +29,7 @@ type writeCollection struct {
 var logFile *os.File
 
 // SeedVault seeds the vault with seed files in the given directory
-func SeedVault(dir string, addr string, token string, f *os.File) {
+func SeedVault(dir string, addr string, token string, env string, f *os.File) {
 
 	logFile = f
 	log.SetOutput(logFile)
@@ -50,14 +50,14 @@ func SeedVault(dir string, addr string, token string, f *os.File) {
 		if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
 			log.Printf("\tFound seed file: %s\n", file.Name())
 			path := dir + "/" + file.Name()
-			seedVaultFromFile(path, addr, token)
+			seedVaultFromFile(path, addr, token, env)
 		}
 
 	}
 
 }
 
-func seedVaultFromFile(filepath string, vaultAddr string, token string) {
+func seedVaultFromFile(filepath string, vaultAddr string, token string, env string) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	utils.LogError(err, logFile)
@@ -104,6 +104,7 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string) {
 	log.Println("Writing seed values to paths")
 	mod, err := kv.NewModifier(token, vaultAddr) // Connect to vault
 	utils.LogError(err, logFile)
+	mod.Env = env
 	for _, entry := range writeStack {
 		fmt.Println(entry.path) // Output data being written
 		for k, v := range entry.data {
