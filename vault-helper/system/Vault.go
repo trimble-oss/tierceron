@@ -104,15 +104,22 @@ func (v *Vault) SetShards(shards []string) {
 	v.shards = shards
 }
 
-// Unseal Performs an unseal wuth this vault's shard
-func (v *Vault) Unseal() error {
+// AddShard Adds a single shard to the list of shards
+func (v *Vault) AddShard(shard string) {
+	v.shards = append(v.shards, shard)
+}
+
+// Unseal Performs an unseal wuth this vault's shard. Returns true if unseal is successful
+func (v *Vault) Unseal() (int, int, error) {
+	var status *api.SealStatusResponse
+	var err error
 	for _, shard := range v.shards {
-		_, err := v.client.Sys().Unseal(shard)
+		status, err = v.client.Sys().Unseal(shard)
 		if err != nil {
-			return err
+			return 0, 0, err
 		}
 	}
-	return nil
+	return status.Progress, status.T, nil
 }
 
 // CreateTokenFromFile Creates a new token from the given file and returns the name

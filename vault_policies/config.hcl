@@ -1,64 +1,59 @@
 #----------------------------------------------------#
 #                        Local                       #
 #----------------------------------------------------#
-path "local/data/templates/*" {
+path "local/data/*" {
   capabilities = ["read"]
 }
-path "local/data/values/*" {
+
+path "local/metadata/*" {
   capabilities = ["read"]
 }
-path "local/data/super-secrets/*" {
-  capabilities = ["read"]
-}
+
 path "local/data/value-metrics/*" {
-  capabilities =  ["read", "create", "update"]
+  capabilities = ["read", "create", "update"]
 }
 
 #----------------------------------------------------#
 #                        Dev                         #
 #----------------------------------------------------#
-path "dev/data/templates/*" {
+path "dev/data/*" {
   capabilities = ["read"]
 }
-path "dev/data/values/*" {
-    capabilities = ["read"]
-}
-path "dev/data/super-secrets/*" {
+
+path "dev/metadata/*" {
   capabilities = ["read"]
 }
+
 path "dev/data/value-metrics/*" {
-  capabilities =  ["read", "create", "update"]
+  capabilities = ["read", "create", "update"]
 }
 
 #----------------------------------------------------#
 #                        QA                          #
 #----------------------------------------------------#
-path "QA/data/templates/*" {
+path "QA/data/*" {
   capabilities = ["read"]
 }
-path "QA/data/values/*" {
-    capabilities = ["read"]
-}
-path "QA/data/super-secrets/*" {
+
+path "QA/metadata/*" {
   capabilities = ["read"]
 }
+
 path "QA/data/value-metrics/*" {
-  capabilities =  ["read", "create", "update"]
+  capabilities = ["read", "create", "update"]
 }
 
 #----------------------------------------------------#
 #                 Default (secrets)                  #
 #----------------------------------------------------#
+path "secret/data/*" {
+  capabilities = ["read"]
+}
 
-path "secret/data/templates/*" {
+path "secret/metadata/*" {
   capabilities = ["read"]
 }
-path "secret/data/values/*" {
-    capabilities = ["read"]
-}
-path "secret/data/super-secrets/*" {
-  capabilities = ["read"]
-}
+
 path "secret/data/value-metrics/*" {
-  capabilities =  ["read", "create", "update"]
+  capabilities = ["read", "create", "update"]
 }
