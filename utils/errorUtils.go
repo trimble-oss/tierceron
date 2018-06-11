@@ -14,10 +14,10 @@ func CheckError(err error) {
 
 // CheckWarnings Checks warnings returned from various vault relation operations
 func CheckWarnings(warnings []string) {
-	for _, w := range warnings {
-		fmt.Println(w)
-	}
 	if len(warnings) > 0 {
+		for _, w := range warnings {
+			fmt.Println(w)
+		}
 		os.Exit(1)
 	}
 }

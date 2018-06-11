@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -25,13 +26,18 @@ type writeCollection struct {
 	data map[string]interface{}
 }
 
-// SeedVault seeds the vault with seed files in the given directory
-func SeedVault(dir string, addr string, token string) {
+var logFile *os.File
 
-	fmt.Printf("Seeding vault from seeds in: %s\n", dir)
+// SeedVault seeds the vault with seed files in the given directory
+func SeedVault(dir string, addr string, token string, f *os.File) {
+
+	logFile = f
+	log.SetOutput(logFile)
+	log.SetPrefix("Seeder:   ")
+	log.Printf("Seeding vault from seeds in: %s\n", dir)
 
 	files, err := ioutil.ReadDir(dir)
-	utils.CheckError(err)
+	utils.LogError(err, logFile)
 
 	// Iterate through all services
 	for _, file := range files {
@@ -42,7 +48,7 @@ func SeedVault(dir string, addr string, token string) {
 		// Get and check file extension (last substring after .)
 		ext := filepath.Ext(file.Name())
 		if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
-			fmt.Printf("\nSeeding from YAML file: %s\n", file.Name())
+			log.Printf("\tFound seed file: %s\n", file.Name())
 			path := dir + "/" + file.Name()
 			seedVaultFromFile(path, addr, token)
 		}
@@ -54,24 +60,19 @@ func SeedVault(dir string, addr string, token string) {
 func seedVaultFromFile(filepath string, vaultAddr string, token string) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
-	utils.CheckError(err)
+	utils.LogError(err, logFile)
 
 	// Unmarshal
 	var rawYaml interface{}
 	err = yaml.Unmarshal(rawFile, &rawYaml)
-	utils.CheckError(err)
+	utils.LogError(err, logFile)
 	seed, ok := rawYaml.(map[interface{}]interface{})
 	if ok == false {
 		log.Fatal("Count not extract seed from @s. Possibly a formatting issue", filepath)
 	}
 
-	mapStack := make([]seedCollection, 0)    // Working stack of nested maps to decompose
-	writeStack := make([]writeCollection, 0) // List of all values to write to the vault with p
-	for baseK, baseV := range seed {         // Add base maps to stack to avoid adding the no-key root map
-		if baseV != nil {
-			mapStack = append(mapStack, seedCollection{baseK.(string), baseV.(map[interface{}]interface{})})
-		}
-	}
+	mapStack := []seedCollection{seedCollection{"", seed}} // Begin with root of yaml file
+	writeStack := make([]writeCollection, 0)               // List of all values to write to the vault with p
 
 	// While the stack is not empty
 	for len(mapStack) > 0 {
@@ -83,7 +84,7 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string) {
 		// Convert nested maps into vault writable data
 		for k, v := range current.data {
 			if v == nil { // Don't write empty valus, Vault does not handle them
-				fmt.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
+				log.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
 			} else if newData, ok := v.(map[interface{}]interface{}); ok { // Decompose into submaps, update path
 				decomp := seedCollection{
 					path: current.path + "/" + k.(string),
@@ -100,9 +101,9 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string) {
 	}
 
 	// Write values to vault
-	fmt.Println("Writing seed values to paths")
+	log.Println("Writing seed values to paths")
 	mod, err := kv.NewModifier(token, vaultAddr) // Connect to vault
-	utils.CheckError(err)
+	utils.LogError(err, logFile)
 	for _, entry := range writeStack {
 		fmt.Println(entry.path) // Output data being written
 		for k, v := range entry.data {
@@ -111,10 +112,8 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string) {
 
 		// Write data and ouput any errors
 		warn, err := mod.Write(entry.path, entry.data)
-		if len(warn) > 0 {
-			fmt.Printf("Warnings %v\n", warn)
-		}
-		utils.CheckError(err)
+		utils.LogWarnings(warn, logFile)
+		utils.LogError(err, logFile)
 
 		// Update value metrics to reflect credential use
 		root := strings.Split(entry.path, "/")[0]
