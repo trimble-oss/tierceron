@@ -9,7 +9,7 @@ resource "aws_instance" "web" {
     instance_type = "${var.instance_type}"
     key_name = "${var.key-name}"
     subnet_id = "${var.subnets}"
-    vpc_security_group_ids = ["sg-dc92adb8","sg-5c505b38","sg-306a034b"]
+    vpc_security_group_ids = ["sg-dc92adb8","sg-5c505b38","sg-306a034b","sg-71365900"]
     tags{
         Name = "vault"
     }

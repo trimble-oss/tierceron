@@ -24,6 +24,7 @@ sudo mv /tmp/serv_*.pem /etc/opt/vault/certs/
 privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp/vault_properties.hcl
 #get pem files locally 
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
+sudo chown root:root /etc/opt/vault/vault_properties.hcl
 
 # Setup the init script
 cat <<EOF >/tmp/upstart
