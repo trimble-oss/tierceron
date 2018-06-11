@@ -2,6 +2,22 @@
 
 
 [[projects]]
+  name = "github.com/golang/protobuf"
+  packages = [
+    "jsonpb",
+    "proto",
+    "protoc-gen-go",
+    "protoc-gen-go/descriptor",
+    "protoc-gen-go/generator",
+    "protoc-gen-go/generator/internal/remap",
+    "protoc-gen-go/grpc",
+    "protoc-gen-go/plugin",
+    "ptypes/struct"
+  ]
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/golang/snappy"
   packages = ["."]
@@ -90,6 +106,16 @@
   version = "1.0.0"
 
 [[projects]]
+  name = "github.com/twitchtv/twirp"
+  packages = [
+    ".",
+    "ctxsetters",
+    "internal/contextkeys"
+  ]
+  revision = "1b8455b42110feb46a56aeec1ea0020067f46b11"
+  version = "v5.4.1"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = [
@@ -130,6 +156,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ad4fbe9f3d75c0490f54183eb2d22259a4438d2dfc9355940881b0dcdcdf8483"
+  inputs-digest = "afe16cdf9c3a155e31845cf133a512e11cd128b19612a646fc82e6b5ed2fabf7"
   solver-name = "gps-cdcl"
   solver-version = 1
