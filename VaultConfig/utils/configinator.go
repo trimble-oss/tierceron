@@ -35,8 +35,13 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 		//take off .tmpl extension
 		filename := file.Name()
 		extension := filepath.Ext(filename)
-		name := filename[0 : len(filename)-len(extension)]
-		endPath := endDir + "/" + name
+		endPath := ""
+		if extension == ".tmpl" {
+			name := filename[0 : len(filename)-len(extension)]
+			endPath = endDir + "/" + name
+		} else {
+			endPath = endDir + "/" + filename
+		}
 		//recurse to next level
 		newPaths, newEndPaths := getDirFiles(filePath, endPath)
 		filePaths = append(filePaths, newPaths...)
