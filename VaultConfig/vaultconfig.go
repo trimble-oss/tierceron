@@ -19,10 +19,11 @@ func main() {
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
 	startDirPtr := flag.String("templateDir", "vault_templates/", "Template directory")
 	endDirPtr := flag.String("endDir", "VaultConfig/", "Directory to put configured templates into")
+	certPathPtr := flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")
 	env := flag.String("env", environments[0], "Environment to configure")
 	flag.Parse()
 	//make modifier
-	mod, err := kv.NewModifier(*tokenPtr, *addrPtr)
+	mod, err := kv.NewModifier(*tokenPtr, *addrPtr, *certPathPtr)
 	mod.Env = *env
 	if err != nil {
 		panic(err)
