@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 )
 
@@ -56,21 +57,19 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, dataPaths ...string) {
 	emptyTemplate, err := ioutil.ReadFile(emptyFilePath)
 	template := string(emptyTemplate)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
 	//populate template
 	template = PopulateTemplate(template, modifier, dataPaths...)
 	popTemplate := []byte(template)
+	//Ensure directory has been created
+	dirPath := filepath.Dir(configuredFilePath)
+	err = os.MkdirAll(dirPath, os.ModePerm)
+	utils.CheckError(err)
 	//create new file
 	newFile, err := os.Create(configuredFilePath)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
 	//write to file
 	_, err = newFile.Write(popTemplate)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
 	newFile.Close()
 }
