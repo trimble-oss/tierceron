@@ -20,6 +20,7 @@ import (
 
 func main() {
 	dirPtr := flag.String("dir", "vault_templates", "Directory containing template files for vault")
+	envPtr := flag.String("env", "secret", "Environement in vault")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	certPathPtr := flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")
@@ -35,12 +36,12 @@ func main() {
 	for _, dir := range dirs {
 		if dir.IsDir() {
 			pathName := *dirPtr + "/" + dir.Name()
-			uploadTemplates(*addrPtr, *tokenPtr, pathName, *certPathPtr)
+			uploadTemplates(*addrPtr, *tokenPtr, pathName, *certPathPtr, *envPtr)
 		}
 	}
 }
 
-func uploadTemplates(addr string, token string, dirName string, certPath string) {
+func uploadTemplates(addr string, token string, dirName string, certPath string, env string) {
 	// Open directory
 	files, err := ioutil.ReadDir(dirName)
 	utils.CheckError(err)
@@ -52,6 +53,7 @@ func uploadTemplates(addr string, token string, dirName string, certPath string)
 	// Create modifier
 	mod, err := kv.NewModifier(token, addr, certPath)
 	utils.CheckError(err)
+	mod.Env = env
 
 	// Parse through files
 	for _, file := range files {
