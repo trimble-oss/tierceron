@@ -22,6 +22,7 @@ func main() {
 	dirPtr := flag.String("dir", "vault_templates", "Directory containing template files for vault")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
+	certPathPtr := flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")
 
 	flag.Parse()
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
@@ -34,12 +35,12 @@ func main() {
 	for _, dir := range dirs {
 		if dir.IsDir() {
 			pathName := *dirPtr + "/" + dir.Name()
-			uploadTemplates(*addrPtr, *tokenPtr, pathName)
+			uploadTemplates(*addrPtr, *tokenPtr, pathName, *certPathPtr)
 		}
 	}
 }
 
-func uploadTemplates(addr string, token string, dirName string) {
+func uploadTemplates(addr string, token string, dirName string, certPath string) {
 	// Open directory
 	files, err := ioutil.ReadDir(dirName)
 	utils.CheckError(err)
@@ -49,7 +50,7 @@ func uploadTemplates(addr string, token string, dirName string) {
 	subDir := splitDir[len(splitDir)-1]
 
 	// Create modifier
-	mod, err := kv.NewModifier(token, addr)
+	mod, err := kv.NewModifier(token, addr, certPath)
 	utils.CheckError(err)
 
 	// Parse through files
