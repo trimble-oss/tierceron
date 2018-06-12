@@ -22,8 +22,8 @@ type KeyTokenWrapper struct {
 }
 
 // NewVault Constructs a new vault at the given address with the given access token
-func NewVault(addr string) (*Vault, error) {
-	httpClient, err := kv.CreateHTTPClient()
+func NewVault(addr string, certPath string) (*Vault, error) {
+	httpClient, err := kv.CreateHTTPClient(certPath)
 	client, err := api.NewClient(&api.Config{Address: addr, HttpClient: httpClient})
 	if err != nil {
 		return nil, err

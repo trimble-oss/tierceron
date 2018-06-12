@@ -8,9 +8,9 @@ import (
 )
 
 //CreateHTTPClient reads from several .pem files to get the necessary keys and certs to configure the http client and returns the client.
-func CreateHTTPClient() (client *http.Client, err error) {
+func CreateHTTPClient(certPath string) (client *http.Client, err error) {
 
-	servCertPEM, err := ioutil.ReadFile("certs/cert_files/serv_cert.pem")
+	servCertPEM, err := ioutil.ReadFile(certPath)
 	if err != nil {
 		return nil, err
 	}
