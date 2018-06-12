@@ -17,8 +17,8 @@ var environments = [...]string{
 func main() {
 	tokenPtr := flag.String("token", "", "Vault access token")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
-	startDirPtr := flag.String("templateDir", "vault_templates/", "Template directory")
-	endDirPtr := flag.String("endDir", "VaultConfig/", "Directory to put configured templates into")
+	startDirPtr := flag.String("templateDir", "vault_templates", "Template directory")
+	endDirPtr := flag.String("endDir", "VaultConfig", "Directory to put configured templates into")
 	env := flag.String("env", environments[0], "Environment to configure")
 	flag.Parse()
 	//make modifier

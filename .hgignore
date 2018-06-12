@@ -13,3 +13,5 @@ vendor
 pkg
 *.pem
 real_seed\seed.yml
+VaultConfig/ST/
+*.log
