@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"net/http"
 
-	pb "bitbucket.org/dexterchaney/whoville/twirpapi/rpc/templatesapi"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
+	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/twirpapi"
 )
 
 var vaulttoken *string
@@ -31,22 +32,42 @@ func (s *Server) GetTemplate(ctx context.Context, req *pb.TemplateReq) (*pb.Temp
 		return nil, err
 	}
 
+	if data == nil {
+		return nil, errors.New("No file " + req.File + " under " + req.Service)
+	}
+
 	// Return retrieved data in response
 	return &pb.TemplateResp{
 		Data: data["data"].(string),
 		Ext:  data["ext"].(string)}, nil
 }
 
+// Validate checks the vault to see if the requested credentials are validated
+func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.ValidationResp, error) {
+	mod, err := kv.NewModifier(*vaulttoken, *vaultaddr, *certPath)
+	if err != nil {
+		return nil, err
+	}
+	mod.Env = req.Env
+
+	servicePath := "verification/" + req.Service
+	data, err := mod.ReadData(servicePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.ValidationResp{IsValid: data["verified"].(bool)}, nil
+}
+
 // Simple implementation of server for testing. Can be reworked/replaced
 func main() {
-	vaulttoken = flag.String("token", "", "")
-	vaultaddr = flag.String("addr", "http://127.0.0.1:8200", "")
+	vaulttoken = flag.String("token", "", "Vault acccess token for this server")
+	vaultaddr = flag.String("addr", "http://127.0.0.1:8200", "Vault addres to connect with")
 	certPath = flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")
 
 	flag.Parse()
 
-	server := &Server{}
-	twirpHandler := pb.NewTemplatesServer(server, nil)
+	apiTwirpHandler := pb.NewTwirpAPIServer(&Server{}, nil)
 
-	http.ListenAndServe(":8080", twirpHandler)
+	http.ListenAndServe(":8080", apiTwirpHandler)
 }

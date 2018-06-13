@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package bitbucket.com.dexterchaney.whoville.twirpapi;
+option go_package="twirpapi";
+
+// Templates service that returns templates
+service TwirpAPI {
+    rpc GetTemplate(TemplateReq) returns (TemplateResp);
+    rpc Validate(ValidationReq) returns (ValidationResp);
+}
+
+
+/////////////////////////////////////////////////////////
+// Template Messages                                   //
+/////////////////////////////////////////////////////////
+
+// Request for retrieving a template file from the vault
+message TemplateReq {
+    string service = 1; // Service name i.e. ST, Spectrum, etc.
+    string file = 2; // Template file name (no extension)
+}
+
+// Response containing template and extension as stored in the vault
+message TemplateResp {
+    string data = 1; // Template file encoded in base64
+    string ext = 2; // Template file extension
+}
+
+/////////////////////////////////////////////////////////
+// Validation Messages                                 //
+/////////////////////////////////////////////////////////
+
+// Request for checking the validity of credentials for a service in a given environment
+message ValidationReq {
+    string service = 1; // service name i.e. ServiceTechDB
+    string env = 2; // Environment (local, dev, QA)
+}
+
+message ValidationResp {
+    bool isValid = 1; // Boolean value indicating whether the credentials are valid or not
+}
