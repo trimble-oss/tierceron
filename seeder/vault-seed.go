@@ -30,7 +30,6 @@ var logFile *os.File
 
 // SeedVault seeds the vault with seed files in the given directory
 func SeedVault(dir string, addr string, token string, env string, f *os.File, certPath string) {
-
 	logFile = f
 	log.SetOutput(logFile)
 	log.SetPrefix("Seeder:   ")
@@ -58,6 +57,7 @@ func SeedVault(dir string, addr string, token string, env string, f *os.File, ce
 }
 
 func seedVaultFromFile(filepath string, vaultAddr string, token string, env string, certPath string) {
+	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	utils.LogError(err, logFile)
@@ -85,6 +85,8 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string, env stri
 		for k, v := range current.data {
 			if v == nil { // Don't write empty valus, Vault does not handle them
 				log.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
+			} else if current.path == "" && k.(string) == "verification" { // Found verification on top level, store for later
+				verificationData = v.(map[interface{}]interface{})
 			} else if newData, ok := v.(map[interface{}]interface{}); ok { // Decompose into submaps, update path
 				decomp := seedCollection{
 					path: current.path + "/" + k.(string),
@@ -130,4 +132,9 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string, env stri
 			}
 		}
 	}
+
+	// Run verification after seeds have been written
+	warn, err := verify(mod, verificationData, logFile)
+	utils.LogError(err, logFile)
+	utils.LogWarnings(warn, logFile)
 }

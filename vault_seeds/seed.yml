@@ -2,9 +2,9 @@ templates:
   ST:
     hibernate:
       outputPath: hibernate.config
-      url: [super-secrets/SpectrumDB, hibernate-url]
-      username: [super-secrets/SpectrumDB, hibernate-username]
-      password: [super-secrets/SpectrumDB, hibernate-password]
+      url: [super-secrets/SpectrumDB, url]
+      username: [super-secrets/SpectrumDB, user]
+      password: [super-secrets/SpectrumDB, pass]
       sendGridApiKey: [super-secrets/SendGrid, ApiKey]  
     config:
       outputPath: config.yml
@@ -16,13 +16,22 @@ values:
 
 super-secrets:
   SpectrumDB:
-    hibernate-url: testurl
-    hibernate-username: testuser
-    hibernate-password: testpass
+    url: testURL
+    user: testuser
+    pass: testpass
   SendGrid:
-    ApiKey: Insert API key here
+    ApiKey: SendGrid API Key placeholder
   KeyStore:
-    Path: some cert path
-    Pass: keystorepass
+    Path: Keystore path placeholder
+    Pass: Keystore password placeholder
 
 value-metrics:
+
+verification:
+  SpectrumDB:
+    type: db
+    # connectionVerified:
+  SendGrid:
+    type: SendGridKey
+  KeyStore:
+    type: KeyStore

@@ -2,16 +2,25 @@
 
 
 [[projects]]
+  name = "cloud.google.com/go"
+  packages = ["civil"]
+  revision = "0fd7230b2a7505833d5f69b75cbd6c9582401479"
+  version = "v0.23.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/denisenkom/go-mssqldb"
+  packages = [
+    ".",
+    "internal/cp"
+  ]
+  revision = "fffa5add55b3dfb6132f82414ab423165a360a4f"
+
+[[projects]]
   name = "github.com/golang/protobuf"
   packages = [
     "jsonpb",
     "proto",
-    "protoc-gen-go",
-    "protoc-gen-go/descriptor",
-    "protoc-gen-go/generator",
-    "protoc-gen-go/generator/internal/remap",
-    "protoc-gen-go/grpc",
-    "protoc-gen-go/plugin",
     "ptypes/struct"
   ]
   revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
@@ -100,6 +109,21 @@
   version = "v0.1"
 
 [[projects]]
+  name = "github.com/sendgrid/rest"
+  packages = ["."]
+  revision = "306b9bef57dc36f3435ccfcc08fe6ae2c6920344"
+  version = "v2.4.1"
+
+[[projects]]
+  name = "github.com/sendgrid/sendgrid-go"
+  packages = [
+    ".",
+    "helpers/mail"
+  ]
+  revision = "8caf17aa96b4a98bae8bd216878dd50ff12897b5"
+  version = "v3.4.1"
+
+[[projects]]
   name = "github.com/sethgrid/pester"
   packages = ["."]
   revision = "03e26c9abbbf5accb8349790bf9f41bde09d72c3"
@@ -114,6 +138,12 @@
   ]
   revision = "1b8455b42110feb46a56aeec1ea0020067f46b11"
   version = "v5.4.1"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["md4"]
+  revision = "8ac0e0d97ce45cd83d1d7243c060cb8461dda5e9"
 
 [[projects]]
   branch = "master"
@@ -156,6 +186,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "afe16cdf9c3a155e31845cf133a512e11cd128b19612a646fc82e6b5ed2fabf7"
+  inputs-digest = "a8619d4d647ecc60910b0e3678c4c56f40dd1a34fd4c01c651143c22449b3c5e"
   solver-name = "gps-cdcl"
   solver-version = 1
