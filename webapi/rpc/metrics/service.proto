@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-package bitbucket.com.dexterchaney.whoville.metricsapi;
-option go_package="metricsapi";
+package bitbucket.com.dexterchaney.whoville.metrics;
+option go_package="metrics";
 
 // Value Metrics service used to fetching value metric data
 service ValueMetrics {

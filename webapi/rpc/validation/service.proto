@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package bitbucket.com.dexterchaney.whoville.validator;
+option go_package="validator";
+
+service Validation{
+    rpc Validate(validationReq) returns (validationReq);
+}
+
+message validationReq {
+    string service = 1;
+}
+
+message validationResp {
+    bool isValid = 1;
+}
