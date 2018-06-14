@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package bitbucket.com.dexterchaney.whoville.templatesapi;
+option go_package="templatesapi";
+
+// Templates service that returns templates
+service Templates {
+    rpc GetTemplate(TemplateReq) returns (TemplateResp);
+}
+
+// Request for retrieving a template file from the vault
+message TemplateReq {
+    string service = 1; // Service name i.e. ST, Spectrum, etc.
+    string file = 2; // Template file name (no extension)
+}
+
+// Response containing template and extension as stored in the vault
+message TemplateResp {
+    string data = 1; // Template file encoded in base64
+    string ext = 2; // Template file extension
+}
+
+//TODO: Fetching lists of templates
