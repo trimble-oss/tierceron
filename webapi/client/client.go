@@ -22,7 +22,7 @@ func main() {
 
 	validReq := &pb.ValidationReq{
 		Service: "ServiceTechDB",
-		Env:     "dev",
+		Env:     "QA",
 	}
 
 	templateRes, err := apiClient.GetTemplate(context.Background(), templateReq)
