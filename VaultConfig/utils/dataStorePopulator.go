@@ -3,7 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
@@ -32,7 +31,8 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, servicesWant
 		}
 		//get the keys and values in secrets
 		for key, value := range secrets {
-			if reflect.TypeOf(value) != reflect.TypeOf("") {
+			_, ok := value.(string)
+			if !ok {
 				//if it's a string, it's not the data we're looking for (we want maps)
 				ogKeys = append(ogKeys, key)
 				newVal := value.([]interface{})
@@ -78,7 +78,6 @@ func getPathsFromService(mod *kv.Modifier, services ...string) ([]string, error)
 	//setup for getPaths
 	paths := []string{}
 	secrets, err := mod.List("templates")
-	fmt.Println(secrets.Data)
 	if err != nil {
 		return nil, err
 	} else if secrets != nil {

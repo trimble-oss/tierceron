@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
@@ -18,6 +19,7 @@ func ConfigTemplates(dir string, endDir string, modifier *kv.Modifier, secretMod
 	for i, templatePath := range templatePaths {
 		ConfigTemplate(modifier, templatePath, endPaths[i], secretMode, servicesWanted...)
 	}
+	endDir = strings.Split(endDir, "/")[0]
 	fmt.Println("templates configured and written to ", endDir)
 	//config each template in directory
 }
