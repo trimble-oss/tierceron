@@ -94,7 +94,6 @@ func getPathsFromService(mod *kv.Modifier, services ...string) ([]string, error)
 			}
 			availServices = servicesUsed
 		}
-		//slicey := secrets.Data["keys"].([]interface{})
 		for _, service := range availServices {
 			path := "templates/" + service.(interface{}).(string)
 			paths = getPaths(mod, path, paths)

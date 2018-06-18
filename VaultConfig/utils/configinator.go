@@ -12,12 +12,7 @@ import (
 )
 
 //ConfigFromVault configures the templates in vault_templates and writes them to VaultConfig
-func ConfigFromVault(token string, address string, certPath string, env string, secretMode bool, servicesWanted []string) {
-	startDir := "vault_templates/"
-	endDir := "config_files/"
-	//certPath := "certs/cert_files/serv_cert.pem"
-	//secretMode := true
-	//servicesWanted := []string{}
+func ConfigFromVault(token string, address string, certPath string, env string, secretMode bool, servicesWanted []string, startDir string, endDir string) {
 
 	mod, err := kv.NewModifier(token, address, certPath)
 	mod.Env = env
@@ -48,18 +43,6 @@ func writeToFile(data string, path string) {
 	_, err = newFile.Write(byteData)
 	utils.CheckError(err)
 	newFile.Close()
-}
-
-//ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.
-//It configures the template and writes it to the specified file path.
-func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, servicesWanted ...string) string {
-	//get template
-	emptyTemplate, err := ioutil.ReadFile(emptyFilePath)
-	template := string(emptyTemplate)
-	utils.CheckError(err)
-	//populate template
-	template = PopulateTemplate(template, modifier, secretMode, servicesWanted...)
-	return template
 }
 
 func getDirFiles(dir string, endDir string) ([]string, []string) {
