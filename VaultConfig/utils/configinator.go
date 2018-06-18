@@ -11,39 +11,55 @@ import (
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 )
 
-//ConfigTemplates takes a file directory to read templates from and a directory to write templates to and configures the templates.
-func ConfigTemplates(dir string, endDir string, modifier *kv.Modifier, secretMode bool, servicesWanted ...string) {
+//ConfigFromVault configures the templates in vault_templates and writes them to VaultConfig
+func ConfigFromVault(token string, address string, certPath string, env string, secretMode bool, servicesWanted []string) {
+	startDir := "vault_templates/"
+	endDir := "config_files/"
+	//certPath := "certs/cert_files/serv_cert.pem"
+	//secretMode := true
+	//servicesWanted := []string{}
+
+	mod, err := kv.NewModifier(token, address, certPath)
+	mod.Env = env
+	if err != nil {
+		panic(err)
+	}
 	//get files from directory
-	templatePaths, endPaths := getDirFiles(dir, endDir)
+	templatePaths, endPaths := getDirFiles(startDir, endDir)
 	//configure each template in directory
 	for i, templatePath := range templatePaths {
-		ConfigTemplate(modifier, templatePath, endPaths[i], secretMode, servicesWanted...)
+		configuredTemplate := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, servicesWanted...)
+		writeToFile(configuredTemplate, endPaths[i])
 	}
+	//print that we're done
 	endDir = strings.Split(endDir, "/")[0]
 	fmt.Println("templates configured and written to ", endDir)
-	//config each template in directory
+}
+func writeToFile(data string, path string) {
+	byteData := []byte(data)
+	//Ensure directory has been created
+	dirPath := filepath.Dir(path)
+	err := os.MkdirAll(dirPath, os.ModePerm)
+	utils.CheckError(err)
+	//create new file
+	newFile, err := os.Create(path)
+	utils.CheckError(err)
+	//write to file
+	_, err = newFile.Write(byteData)
+	utils.CheckError(err)
+	newFile.Close()
 }
 
 //ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.
 //It configures the template and writes it to the specified file path.
-func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, servicesWanted ...string) {
+func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, servicesWanted ...string) string {
+	//get template
 	emptyTemplate, err := ioutil.ReadFile(emptyFilePath)
 	template := string(emptyTemplate)
 	utils.CheckError(err)
 	//populate template
 	template = PopulateTemplate(template, modifier, secretMode, servicesWanted...)
-	popTemplate := []byte(template)
-	//Ensure directory has been created
-	dirPath := filepath.Dir(configuredFilePath)
-	err = os.MkdirAll(dirPath, os.ModePerm)
-	utils.CheckError(err)
-	//create new file
-	newFile, err := os.Create(configuredFilePath)
-	utils.CheckError(err)
-	//write to file
-	_, err = newFile.Write(popTemplate)
-	utils.CheckError(err)
-	newFile.Close()
+	return template
 }
 
 func getDirFiles(dir string, endDir string) ([]string, []string) {

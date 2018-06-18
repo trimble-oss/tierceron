@@ -1,11 +1,12 @@
 package main
 
+//import "C"
+
 import (
 	"flag"
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/VaultConfig/utils"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 )
 
 var environments = [...]string{
@@ -17,11 +18,11 @@ var environments = [...]string{
 func main() {
 	tokenPtr := flag.String("token", "", "Vault access token")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
-	startDirPtr := flag.String("templateDir", "vault_templates/", "Template directory")
-	endDirPtr := flag.String("endDir", "VaultConfig/", "Directory to put configured templates into")
+	//startDirPtr := flag.String("templateDir", "vault_templates/", "Template directory")
+	//endDirPtr := flag.String("endDir", "config_files/", "Directory to put configured templates into")
 	certPathPtr := flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")
 	env := flag.String("env", environments[0], "Environment to configure")
-	secretMode := flag.Bool("secretsOnly", true, "Only override secret values in templates?")
+	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	flag.Parse()
 
@@ -33,15 +34,5 @@ func main() {
 	for _, service := range services {
 		service = strings.TrimSpace(service)
 	}
-	//make modifier
-	mod, err := kv.NewModifier(*tokenPtr, *addrPtr, *certPathPtr)
-	mod.Env = *env
-	if err != nil {
-		panic(err)
-	}
-	if err != nil {
-		panic(err)
-	}
-	//configure templates
-	utils.ConfigTemplates(*startDirPtr, *endDirPtr, mod, *secretMode, services...)
+	utils.ConfigFromVault(*tokenPtr, *addrPtr, *certPathPtr, *env, *secretMode, services)
 }

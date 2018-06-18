@@ -10,13 +10,11 @@ import (
 
 //ConfigDataStore stores the data needed to configure the specified template files
 type ConfigDataStore struct {
-	dataMap    map[string]interface{}
-	secretMode bool
+	dataMap map[string]interface{}
 }
 
 func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, servicesWanted ...string) {
 	cds.dataMap = make(map[string]interface{})
-	cds.secretMode = secretMode
 	dataPaths, err := getPathsFromService(mod, servicesWanted...)
 	if err != nil {
 		panic(err)
@@ -70,9 +68,6 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, servicesWant
 		}
 
 	}
-}
-func (cds *ConfigDataStore) get(key string) (interface{}, bool) {
-	return cds.dataMap[key], cds.secretMode
 }
 func getPathsFromService(mod *kv.Modifier, services ...string) ([]string, error) {
 	//setup for getPaths

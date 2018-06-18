@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -73,14 +72,12 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string, env stri
 
 	mapStack := []seedCollection{seedCollection{"", seed}} // Begin with root of yaml file
 	writeStack := make([]writeCollection, 0)               // List of all values to write to the vault with p
-
 	// While the stack is not empty
 	for len(mapStack) > 0 {
 		current := mapStack[0]
 		mapStack = mapStack[1:] // Pop the top value
 		writeVals := writeCollection{path: current.path, data: map[string]interface{}{}}
 		hasLeafNodes := false // Flag to signify this map had values to write
-
 		// Convert nested maps into vault writable data
 		for k, v := range current.data {
 			if v == nil { // Don't write empty valus, Vault does not handle them
@@ -122,7 +119,8 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string, env stri
 		root := strings.Split(entry.path, "/")[0]
 		if root == "templates" {
 			for _, v := range entry.data {
-				if reflect.TypeOf(v) != reflect.TypeOf([]interface{}{}) {
+				_, ok := v.([]interface{})
+				if !ok {
 					continue
 				}
 				if templateKey, ok := v.([]interface{}); ok {
