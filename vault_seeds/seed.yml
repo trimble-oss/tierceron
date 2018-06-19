@@ -36,7 +36,6 @@ verification:
     type: db
   ServiceTechDB:
     type: db
-    # connectionVerified:
   SendGrid:
     type: SendGridKey
   KeyStore:

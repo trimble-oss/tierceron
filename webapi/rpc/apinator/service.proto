@@ -1,12 +1,28 @@
 syntax = "proto3";
 
-package bitbucket.com.dexterchaney.whoville.twirpapi;
-option go_package="twirpapi";
+package viewpoint.whoville.apinator;
+option go_package="apinator";
 
 // Templates service that returns templates
 service TwirpAPI {
+   
+}
+
+service EnterpriseServiceBroker {
     rpc GetTemplate(TemplateReq) returns (TemplateResp);
     rpc Validate(ValidationReq) returns (ValidationResp);
+    rpc ListServiceTemplates(ListReq) returns (ListResp);
+}
+
+/////////////////////////////////////////////////////////
+// Enterprise Messages                                 //
+/////////////////////////////////////////////////////////
+message ListReq {
+    string service = 1;
+}
+
+message ListResp {
+    repeated string templates = 1;
 }
 
 
@@ -18,6 +34,7 @@ service TwirpAPI {
 message TemplateReq {
     string service = 1; // Service name i.e. ST, Spectrum, etc.
     string file = 2; // Template file name (no extension)
+    string authToken = 3;
 }
 
 // Response containing template and extension as stored in the vault
@@ -34,6 +51,7 @@ message TemplateResp {
 message ValidationReq {
     string service = 1; // service name i.e. ServiceTechDB
     string env = 2; // Environment (local, dev, QA)
+    string authToken = 3;
 }
 
 message ValidationResp {
