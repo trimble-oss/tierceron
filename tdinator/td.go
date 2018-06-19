@@ -20,7 +20,7 @@ import (
 
 func main() {
 	dirPtr := flag.String("dir", "vault_templates", "Directory containing template files for vault")
-	envPtr := flag.String("env", "secret", "Environement in vault")
+	envPtr := flag.String("env", "dev", "Environement in vault")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	certPathPtr := flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")

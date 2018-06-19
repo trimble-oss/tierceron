@@ -34,9 +34,6 @@ import url "net/url"
 
 // Templates service that returns templates
 type TwirpAPI interface {
-	GetTemplate(context.Context, *TemplateReq) (*TemplateResp, error)
-
-	Validate(context.Context, *ValidationReq) (*ValidationResp, error)
 }
 
 // ========================
@@ -45,17 +42,14 @@ type TwirpAPI interface {
 
 type twirpAPIProtobufClient struct {
 	client HTTPClient
-	urls   [2]string
+	urls   [0]string
 }
 
 // NewTwirpAPIProtobufClient creates a Protobuf client that implements the TwirpAPI interface.
 // It communicates using Protobuf and can be configured with a custom HTTPClient.
 func NewTwirpAPIProtobufClient(addr string, client HTTPClient) TwirpAPI {
-	prefix := urlBase(addr) + TwirpAPIPathPrefix
-	urls := [2]string{
-		prefix + "GetTemplate",
-		prefix + "Validate",
-	}
+	//prefix := urlBase(addr) + TwirpAPIPathPrefix
+	urls := [0]string{}
 	if httpClient, ok := client.(*http.Client); ok {
 		return &twirpAPIProtobufClient{
 			client: withoutRedirects(httpClient),
@@ -68,47 +62,20 @@ func NewTwirpAPIProtobufClient(addr string, client HTTPClient) TwirpAPI {
 	}
 }
 
-func (c *twirpAPIProtobufClient) GetTemplate(ctx context.Context, in *TemplateReq) (*TemplateResp, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "viewpoint.whoville.apinator")
-	ctx = ctxsetters.WithServiceName(ctx, "TwirpAPI")
-	ctx = ctxsetters.WithMethodName(ctx, "GetTemplate")
-	out := new(TemplateResp)
-	err := doProtobufRequest(ctx, c.client, c.urls[0], in, out)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *twirpAPIProtobufClient) Validate(ctx context.Context, in *ValidationReq) (*ValidationResp, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "viewpoint.whoville.apinator")
-	ctx = ctxsetters.WithServiceName(ctx, "TwirpAPI")
-	ctx = ctxsetters.WithMethodName(ctx, "Validate")
-	out := new(ValidationResp)
-	err := doProtobufRequest(ctx, c.client, c.urls[1], in, out)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // ====================
 // TwirpAPI JSON Client
 // ====================
 
 type twirpAPIJSONClient struct {
 	client HTTPClient
-	urls   [2]string
+	urls   [0]string
 }
 
 // NewTwirpAPIJSONClient creates a JSON client that implements the TwirpAPI interface.
 // It communicates using JSON and can be configured with a custom HTTPClient.
 func NewTwirpAPIJSONClient(addr string, client HTTPClient) TwirpAPI {
-	prefix := urlBase(addr) + TwirpAPIPathPrefix
-	urls := [2]string{
-		prefix + "GetTemplate",
-		prefix + "Validate",
-	}
+	//prefix := urlBase(addr) + TwirpAPIPathPrefix
+	urls := [0]string{}
 	if httpClient, ok := client.(*http.Client); ok {
 		return &twirpAPIJSONClient{
 			client: withoutRedirects(httpClient),
@@ -119,30 +86,6 @@ func NewTwirpAPIJSONClient(addr string, client HTTPClient) TwirpAPI {
 		client: client,
 		urls:   urls,
 	}
-}
-
-func (c *twirpAPIJSONClient) GetTemplate(ctx context.Context, in *TemplateReq) (*TemplateResp, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "viewpoint.whoville.apinator")
-	ctx = ctxsetters.WithServiceName(ctx, "TwirpAPI")
-	ctx = ctxsetters.WithMethodName(ctx, "GetTemplate")
-	out := new(TemplateResp)
-	err := doJSONRequest(ctx, c.client, c.urls[0], in, out)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *twirpAPIJSONClient) Validate(ctx context.Context, in *ValidationReq) (*ValidationResp, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "viewpoint.whoville.apinator")
-	ctx = ctxsetters.WithServiceName(ctx, "TwirpAPI")
-	ctx = ctxsetters.WithMethodName(ctx, "Validate")
-	out := new(ValidationResp)
-	err := doJSONRequest(ctx, c.client, c.urls[1], in, out)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 // =======================
@@ -193,306 +136,12 @@ func (s *twirpAPIServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) 
 	}
 
 	switch req.URL.Path {
-	case "/twirp/viewpoint.whoville.apinator.TwirpAPI/GetTemplate":
-		s.serveGetTemplate(ctx, resp, req)
-		return
-	case "/twirp/viewpoint.whoville.apinator.TwirpAPI/Validate":
-		s.serveValidate(ctx, resp, req)
-		return
 	default:
 		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
 		err = badRouteError(msg, req.Method, req.URL.Path)
 		s.writeError(ctx, resp, err)
 		return
 	}
-}
-
-func (s *twirpAPIServer) serveGetTemplate(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	header := req.Header.Get("Content-Type")
-	i := strings.Index(header, ";")
-	if i == -1 {
-		i = len(header)
-	}
-	switch strings.TrimSpace(strings.ToLower(header[:i])) {
-	case "application/json":
-		s.serveGetTemplateJSON(ctx, resp, req)
-	case "application/protobuf":
-		s.serveGetTemplateProtobuf(ctx, resp, req)
-	default:
-		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
-		twerr := badRouteError(msg, req.Method, req.URL.Path)
-		s.writeError(ctx, resp, twerr)
-	}
-}
-
-func (s *twirpAPIServer) serveGetTemplateJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "GetTemplate")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	reqContent := new(TemplateReq)
-	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
-	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
-		err = wrapErr(err, "failed to parse request json")
-		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
-		return
-	}
-
-	// Call service method
-	var respContent *TemplateResp
-	func() {
-		defer func() {
-			// In case of a panic, serve a 500 error and then panic.
-			if r := recover(); r != nil {
-				s.writeError(ctx, resp, twirp.InternalError("Internal service panic"))
-				panic(r)
-			}
-		}()
-		respContent, err = s.GetTemplate(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *TemplateResp and nil error while calling GetTemplate. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	var buf bytes.Buffer
-	marshaler := &jsonpb.Marshaler{OrigName: true}
-	if err = marshaler.Marshal(&buf, respContent); err != nil {
-		err = wrapErr(err, "failed to marshal json response")
-		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	resp.Header().Set("Content-Type", "application/json")
-	resp.WriteHeader(http.StatusOK)
-
-	respBytes := buf.Bytes()
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *twirpAPIServer) serveGetTemplateProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "GetTemplate")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	buf, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		err = wrapErr(err, "failed to read request body")
-		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
-		return
-	}
-	reqContent := new(TemplateReq)
-	if err = proto.Unmarshal(buf, reqContent); err != nil {
-		err = wrapErr(err, "failed to parse request proto")
-		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
-		return
-	}
-
-	// Call service method
-	var respContent *TemplateResp
-	func() {
-		defer func() {
-			// In case of a panic, serve a 500 error and then panic.
-			if r := recover(); r != nil {
-				s.writeError(ctx, resp, twirp.InternalError("Internal service panic"))
-				panic(r)
-			}
-		}()
-		respContent, err = s.GetTemplate(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *TemplateResp and nil error while calling GetTemplate. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	respBytes, err := proto.Marshal(respContent)
-	if err != nil {
-		err = wrapErr(err, "failed to marshal proto response")
-		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	resp.Header().Set("Content-Type", "application/protobuf")
-	resp.WriteHeader(http.StatusOK)
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *twirpAPIServer) serveValidate(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	header := req.Header.Get("Content-Type")
-	i := strings.Index(header, ";")
-	if i == -1 {
-		i = len(header)
-	}
-	switch strings.TrimSpace(strings.ToLower(header[:i])) {
-	case "application/json":
-		s.serveValidateJSON(ctx, resp, req)
-	case "application/protobuf":
-		s.serveValidateProtobuf(ctx, resp, req)
-	default:
-		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
-		twerr := badRouteError(msg, req.Method, req.URL.Path)
-		s.writeError(ctx, resp, twerr)
-	}
-}
-
-func (s *twirpAPIServer) serveValidateJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "Validate")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	reqContent := new(ValidationReq)
-	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
-	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
-		err = wrapErr(err, "failed to parse request json")
-		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
-		return
-	}
-
-	// Call service method
-	var respContent *ValidationResp
-	func() {
-		defer func() {
-			// In case of a panic, serve a 500 error and then panic.
-			if r := recover(); r != nil {
-				s.writeError(ctx, resp, twirp.InternalError("Internal service panic"))
-				panic(r)
-			}
-		}()
-		respContent, err = s.Validate(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ValidationResp and nil error while calling Validate. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	var buf bytes.Buffer
-	marshaler := &jsonpb.Marshaler{OrigName: true}
-	if err = marshaler.Marshal(&buf, respContent); err != nil {
-		err = wrapErr(err, "failed to marshal json response")
-		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	resp.Header().Set("Content-Type", "application/json")
-	resp.WriteHeader(http.StatusOK)
-
-	respBytes := buf.Bytes()
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *twirpAPIServer) serveValidateProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "Validate")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	buf, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		err = wrapErr(err, "failed to read request body")
-		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
-		return
-	}
-	reqContent := new(ValidationReq)
-	if err = proto.Unmarshal(buf, reqContent); err != nil {
-		err = wrapErr(err, "failed to parse request proto")
-		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
-		return
-	}
-
-	// Call service method
-	var respContent *ValidationResp
-	func() {
-		defer func() {
-			// In case of a panic, serve a 500 error and then panic.
-			if r := recover(); r != nil {
-				s.writeError(ctx, resp, twirp.InternalError("Internal service panic"))
-				panic(r)
-			}
-		}()
-		respContent, err = s.Validate(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ValidationResp and nil error while calling Validate. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	respBytes, err := proto.Marshal(respContent)
-	if err != nil {
-		err = wrapErr(err, "failed to marshal proto response")
-		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	resp.Header().Set("Content-Type", "application/protobuf")
-	resp.WriteHeader(http.StatusOK)
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
 }
 
 func (s *twirpAPIServer) ServiceDescriptor() ([]byte, int) {
@@ -508,6 +157,10 @@ func (s *twirpAPIServer) ProtocGenTwirpVersion() string {
 // =================================
 
 type EnterpriseServiceBroker interface {
+	GetTemplate(context.Context, *TemplateReq) (*TemplateResp, error)
+
+	Validate(context.Context, *ValidationReq) (*ValidationResp, error)
+
 	ListServiceTemplates(context.Context, *ListReq) (*ListResp, error)
 }
 
@@ -517,14 +170,16 @@ type EnterpriseServiceBroker interface {
 
 type enterpriseServiceBrokerProtobufClient struct {
 	client HTTPClient
-	urls   [1]string
+	urls   [3]string
 }
 
 // NewEnterpriseServiceBrokerProtobufClient creates a Protobuf client that implements the EnterpriseServiceBroker interface.
 // It communicates using Protobuf and can be configured with a custom HTTPClient.
 func NewEnterpriseServiceBrokerProtobufClient(addr string, client HTTPClient) EnterpriseServiceBroker {
 	prefix := urlBase(addr) + EnterpriseServiceBrokerPathPrefix
-	urls := [1]string{
+	urls := [3]string{
+		prefix + "GetTemplate",
+		prefix + "Validate",
 		prefix + "ListServiceTemplates",
 	}
 	if httpClient, ok := client.(*http.Client); ok {
@@ -539,12 +194,36 @@ func NewEnterpriseServiceBrokerProtobufClient(addr string, client HTTPClient) En
 	}
 }
 
+func (c *enterpriseServiceBrokerProtobufClient) GetTemplate(ctx context.Context, in *TemplateReq) (*TemplateResp, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "viewpoint.whoville.apinator")
+	ctx = ctxsetters.WithServiceName(ctx, "EnterpriseServiceBroker")
+	ctx = ctxsetters.WithMethodName(ctx, "GetTemplate")
+	out := new(TemplateResp)
+	err := doProtobufRequest(ctx, c.client, c.urls[0], in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *enterpriseServiceBrokerProtobufClient) Validate(ctx context.Context, in *ValidationReq) (*ValidationResp, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "viewpoint.whoville.apinator")
+	ctx = ctxsetters.WithServiceName(ctx, "EnterpriseServiceBroker")
+	ctx = ctxsetters.WithMethodName(ctx, "Validate")
+	out := new(ValidationResp)
+	err := doProtobufRequest(ctx, c.client, c.urls[1], in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *enterpriseServiceBrokerProtobufClient) ListServiceTemplates(ctx context.Context, in *ListReq) (*ListResp, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "viewpoint.whoville.apinator")
 	ctx = ctxsetters.WithServiceName(ctx, "EnterpriseServiceBroker")
 	ctx = ctxsetters.WithMethodName(ctx, "ListServiceTemplates")
 	out := new(ListResp)
-	err := doProtobufRequest(ctx, c.client, c.urls[0], in, out)
+	err := doProtobufRequest(ctx, c.client, c.urls[2], in, out)
 	if err != nil {
 		return nil, err
 	}
@@ -557,14 +236,16 @@ func (c *enterpriseServiceBrokerProtobufClient) ListServiceTemplates(ctx context
 
 type enterpriseServiceBrokerJSONClient struct {
 	client HTTPClient
-	urls   [1]string
+	urls   [3]string
 }
 
 // NewEnterpriseServiceBrokerJSONClient creates a JSON client that implements the EnterpriseServiceBroker interface.
 // It communicates using JSON and can be configured with a custom HTTPClient.
 func NewEnterpriseServiceBrokerJSONClient(addr string, client HTTPClient) EnterpriseServiceBroker {
 	prefix := urlBase(addr) + EnterpriseServiceBrokerPathPrefix
-	urls := [1]string{
+	urls := [3]string{
+		prefix + "GetTemplate",
+		prefix + "Validate",
 		prefix + "ListServiceTemplates",
 	}
 	if httpClient, ok := client.(*http.Client); ok {
@@ -579,12 +260,36 @@ func NewEnterpriseServiceBrokerJSONClient(addr string, client HTTPClient) Enterp
 	}
 }
 
+func (c *enterpriseServiceBrokerJSONClient) GetTemplate(ctx context.Context, in *TemplateReq) (*TemplateResp, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "viewpoint.whoville.apinator")
+	ctx = ctxsetters.WithServiceName(ctx, "EnterpriseServiceBroker")
+	ctx = ctxsetters.WithMethodName(ctx, "GetTemplate")
+	out := new(TemplateResp)
+	err := doJSONRequest(ctx, c.client, c.urls[0], in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *enterpriseServiceBrokerJSONClient) Validate(ctx context.Context, in *ValidationReq) (*ValidationResp, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "viewpoint.whoville.apinator")
+	ctx = ctxsetters.WithServiceName(ctx, "EnterpriseServiceBroker")
+	ctx = ctxsetters.WithMethodName(ctx, "Validate")
+	out := new(ValidationResp)
+	err := doJSONRequest(ctx, c.client, c.urls[1], in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *enterpriseServiceBrokerJSONClient) ListServiceTemplates(ctx context.Context, in *ListReq) (*ListResp, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "viewpoint.whoville.apinator")
 	ctx = ctxsetters.WithServiceName(ctx, "EnterpriseServiceBroker")
 	ctx = ctxsetters.WithMethodName(ctx, "ListServiceTemplates")
 	out := new(ListResp)
-	err := doJSONRequest(ctx, c.client, c.urls[0], in, out)
+	err := doJSONRequest(ctx, c.client, c.urls[2], in, out)
 	if err != nil {
 		return nil, err
 	}
@@ -639,6 +344,12 @@ func (s *enterpriseServiceBrokerServer) ServeHTTP(resp http.ResponseWriter, req 
 	}
 
 	switch req.URL.Path {
+	case "/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetTemplate":
+		s.serveGetTemplate(ctx, resp, req)
+		return
+	case "/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/Validate":
+		s.serveValidate(ctx, resp, req)
+		return
 	case "/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/ListServiceTemplates":
 		s.serveListServiceTemplates(ctx, resp, req)
 		return
@@ -648,6 +359,294 @@ func (s *enterpriseServiceBrokerServer) ServeHTTP(resp http.ResponseWriter, req 
 		s.writeError(ctx, resp, err)
 		return
 	}
+}
+
+func (s *enterpriseServiceBrokerServer) serveGetTemplate(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveGetTemplateJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveGetTemplateProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *enterpriseServiceBrokerServer) serveGetTemplateJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetTemplate")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(TemplateReq)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		err = wrapErr(err, "failed to parse request json")
+		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
+		return
+	}
+
+	// Call service method
+	var respContent *TemplateResp
+	func() {
+		defer func() {
+			// In case of a panic, serve a 500 error and then panic.
+			if r := recover(); r != nil {
+				s.writeError(ctx, resp, twirp.InternalError("Internal service panic"))
+				panic(r)
+			}
+		}()
+		respContent, err = s.GetTemplate(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *TemplateResp and nil error while calling GetTemplate. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		err = wrapErr(err, "failed to marshal json response")
+		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.WriteHeader(http.StatusOK)
+
+	respBytes := buf.Bytes()
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *enterpriseServiceBrokerServer) serveGetTemplateProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetTemplate")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		err = wrapErr(err, "failed to read request body")
+		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
+		return
+	}
+	reqContent := new(TemplateReq)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		err = wrapErr(err, "failed to parse request proto")
+		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
+		return
+	}
+
+	// Call service method
+	var respContent *TemplateResp
+	func() {
+		defer func() {
+			// In case of a panic, serve a 500 error and then panic.
+			if r := recover(); r != nil {
+				s.writeError(ctx, resp, twirp.InternalError("Internal service panic"))
+				panic(r)
+			}
+		}()
+		respContent, err = s.GetTemplate(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *TemplateResp and nil error while calling GetTemplate. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		err = wrapErr(err, "failed to marshal proto response")
+		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *enterpriseServiceBrokerServer) serveValidate(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveValidateJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveValidateProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *enterpriseServiceBrokerServer) serveValidateJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "Validate")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(ValidationReq)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		err = wrapErr(err, "failed to parse request json")
+		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
+		return
+	}
+
+	// Call service method
+	var respContent *ValidationResp
+	func() {
+		defer func() {
+			// In case of a panic, serve a 500 error and then panic.
+			if r := recover(); r != nil {
+				s.writeError(ctx, resp, twirp.InternalError("Internal service panic"))
+				panic(r)
+			}
+		}()
+		respContent, err = s.Validate(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ValidationResp and nil error while calling Validate. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		err = wrapErr(err, "failed to marshal json response")
+		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.WriteHeader(http.StatusOK)
+
+	respBytes := buf.Bytes()
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *enterpriseServiceBrokerServer) serveValidateProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "Validate")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		err = wrapErr(err, "failed to read request body")
+		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
+		return
+	}
+	reqContent := new(ValidationReq)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		err = wrapErr(err, "failed to parse request proto")
+		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
+		return
+	}
+
+	// Call service method
+	var respContent *ValidationResp
+	func() {
+		defer func() {
+			// In case of a panic, serve a 500 error and then panic.
+			if r := recover(); r != nil {
+				s.writeError(ctx, resp, twirp.InternalError("Internal service panic"))
+				panic(r)
+			}
+		}()
+		respContent, err = s.Validate(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ValidationResp and nil error while calling Validate. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		err = wrapErr(err, "failed to marshal proto response")
+		s.writeError(ctx, resp, twirp.InternalErrorWith(err))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
 }
 
 func (s *enterpriseServiceBrokerServer) serveListServiceTemplates(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
@@ -1223,27 +1222,26 @@ func callError(ctx context.Context, h *twirp.ServerHooks, err twirp.Error) conte
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 341 bytes of a gzipped FileDescriptorProto
+	// 322 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x92, 0xc1, 0x4a, 0xc3, 0x40,
-	0x10, 0x86, 0x89, 0x15, 0x9b, 0x4e, 0x55, 0x64, 0x11, 0x0c, 0xd1, 0x43, 0x89, 0x0a, 0xb1, 0x42,
-	0x0a, 0xd5, 0x17, 0xb0, 0x20, 0x22, 0x78, 0x90, 0x58, 0x84, 0x7a, 0xdb, 0xa6, 0x23, 0x5d, 0x1a,
-	0x77, 0xd7, 0xdd, 0x35, 0xf5, 0xe4, 0x4b, 0xfa, 0x42, 0x92, 0xed, 0xc6, 0xd6, 0x4b, 0xcc, 0x6d,
-	0xe6, 0xcf, 0x3f, 0x1f, 0x7f, 0x66, 0x07, 0x42, 0x25, 0xb3, 0x01, 0x95, 0x8c, 0x53, 0x23, 0xd4,
-	0x40, 0xa3, 0x2a, 0x58, 0x86, 0x89, 0x54, 0xc2, 0x08, 0x72, 0x5c, 0x30, 0x5c, 0x4a, 0xc1, 0xb8,
-	0x49, 0x96, 0x73, 0x51, 0xb0, 0x3c, 0xc7, 0xa4, 0xb2, 0x46, 0xa7, 0xd0, 0x7e, 0x60, 0xda, 0xa4,
-	0xf8, 0x4e, 0x02, 0x68, 0xbb, 0xc1, 0xc0, 0xeb, 0x79, 0x71, 0x27, 0xad, 0xda, 0x28, 0x06, 0x7f,
-	0x65, 0xd2, 0x92, 0x9c, 0x40, 0xc7, 0xe0, 0x9b, 0xcc, 0xa9, 0x41, 0x1d, 0x78, 0xbd, 0x56, 0xdc,
-	0x49, 0xd7, 0x42, 0x34, 0x81, 0xee, 0xd8, 0x35, 0xb5, 0x48, 0x42, 0x60, 0xfb, 0x95, 0xe5, 0x18,
-	0x6c, 0x59, 0xd9, 0xd6, 0x25, 0x9a, 0x7e, 0x98, 0xf9, 0x58, 0x2c, 0x90, 0x07, 0x2d, 0xfb, 0x61,
-	0x2d, 0x44, 0xd7, 0xb0, 0xbb, 0x46, 0x6b, 0x59, 0x12, 0x66, 0xd4, 0x50, 0x07, 0xb6, 0x35, 0x39,
-	0x80, 0x16, 0x7e, 0x1a, 0x07, 0x2d, 0xcb, 0x68, 0x02, 0x7b, 0xcf, 0x34, 0x67, 0x33, 0x6a, 0x98,
-	0xe0, 0xf5, 0x91, 0xca, 0x61, 0x5e, 0xfc, 0x0e, 0xf3, 0xe2, 0x9f, 0x40, 0x7d, 0xd8, 0xdf, 0x44,
-	0x6b, 0x59, 0xb2, 0x99, 0xb6, 0x9a, 0x65, 0xfb, 0x69, 0xd5, 0x0e, 0xbf, 0x3d, 0xf0, 0xc7, 0x4b,
-	0xa6, 0xe4, 0xcd, 0xe3, 0x3d, 0x99, 0x42, 0xf7, 0x0e, 0x4d, 0xf5, 0x33, 0x24, 0x4e, 0x6a, 0x1e,
-	0x28, 0xd9, 0x58, 0x67, 0x78, 0xd1, 0xd0, 0xa9, 0x25, 0xc9, 0xc0, 0x77, 0xe1, 0x90, 0xf4, 0x6b,
-	0xc7, 0xfe, 0xac, 0x27, 0xbc, 0x6c, 0xec, 0xd5, 0x72, 0xf8, 0x05, 0x47, 0xb7, 0xdc, 0xa0, 0x92,
-	0x8a, 0x69, 0x7c, 0x5a, 0xad, 0x71, 0xa4, 0xc4, 0x02, 0x15, 0xc9, 0xe0, 0xb0, 0x3c, 0x19, 0x27,
-	0x56, 0xd1, 0x34, 0x39, 0xab, 0xe5, 0xbb, 0x53, 0x0c, 0xcf, 0x1b, 0xb8, 0xb4, 0x1c, 0xc1, 0x8b,
-	0x5f, 0x89, 0xd3, 0x1d, 0x7b, 0xec, 0x57, 0x3f, 0x01, 0x00, 0x00, 0xff, 0xff, 0xaf, 0x02, 0x56,
-	0xdb, 0x0a, 0x03, 0x00, 0x00,
+	0x10, 0x86, 0x69, 0x2b, 0x36, 0x9d, 0xaa, 0xc8, 0x22, 0x18, 0xa2, 0x87, 0x12, 0x15, 0x62, 0x85,
+	0x14, 0xaa, 0xb7, 0x9e, 0x2c, 0x88, 0x08, 0x1e, 0x24, 0x16, 0x0f, 0xde, 0xb6, 0xed, 0x88, 0x8b,
+	0x31, 0x3b, 0xee, 0x2e, 0xa9, 0x6f, 0xe8, 0x6b, 0x49, 0xb6, 0xbb, 0xb6, 0x5e, 0x42, 0x6e, 0x33,
+	0x3f, 0xff, 0x37, 0xb3, 0x33, 0x3b, 0x10, 0x29, 0x5a, 0x8c, 0x38, 0x89, 0x82, 0x1b, 0xa9, 0x46,
+	0x1a, 0x55, 0x29, 0x16, 0x98, 0x92, 0x92, 0x46, 0xb2, 0x93, 0x52, 0xe0, 0x8a, 0xa4, 0x28, 0x4c,
+	0xba, 0x7a, 0x97, 0xa5, 0xc8, 0x73, 0x4c, 0xbd, 0x35, 0x3e, 0x83, 0xee, 0xa3, 0xd0, 0x26, 0xc3,
+	0x2f, 0x16, 0x42, 0xd7, 0x81, 0x61, 0x6b, 0xd0, 0x4a, 0x7a, 0x99, 0x4f, 0xe3, 0x04, 0x82, 0xb5,
+	0x49, 0x13, 0x3b, 0x85, 0x9e, 0xc1, 0x4f, 0xca, 0xb9, 0x41, 0x1d, 0xb6, 0x06, 0x9d, 0xa4, 0x97,
+	0x6d, 0x84, 0x78, 0x02, 0xfd, 0x99, 0x4b, 0x6a, 0x4b, 0x32, 0x06, 0x3b, 0x6f, 0x22, 0xc7, 0xb0,
+	0x6d, 0x65, 0x1b, 0xc7, 0x37, 0xb0, 0xb7, 0x81, 0x35, 0x55, 0x9e, 0x25, 0x37, 0xdc, 0xa1, 0x36,
+	0x66, 0x87, 0xd0, 0xc1, 0x6f, 0xe3, 0xb0, 0x2a, 0x8c, 0x27, 0xb0, 0xff, 0xc2, 0x73, 0xb1, 0xe4,
+	0x46, 0xc8, 0xa2, 0xbe, 0x69, 0x05, 0x17, 0xe5, 0x1f, 0x5c, 0x94, 0xf1, 0x10, 0x0e, 0xb6, 0x61,
+	0x4d, 0x15, 0x2d, 0xb4, 0xd5, 0x2c, 0x1d, 0x64, 0x3e, 0x1d, 0x03, 0x04, 0xb3, 0x95, 0x50, 0x74,
+	0xfb, 0xf4, 0x30, 0xfe, 0x69, 0xc3, 0xf1, 0x5d, 0x61, 0x50, 0x91, 0x12, 0x1a, 0x9f, 0xd7, 0xf5,
+	0xa7, 0x4a, 0x7e, 0xa0, 0x62, 0x73, 0xe8, 0xdf, 0xa3, 0xf1, 0x93, 0xb0, 0x24, 0xad, 0xd9, 0x7f,
+	0xba, 0xb5, 0xad, 0xe8, 0xb2, 0xa1, 0x53, 0x13, 0x5b, 0x40, 0xe0, 0xde, 0x8d, 0x6c, 0x58, 0x8b,
+	0xfd, 0xdb, 0x4d, 0x74, 0xd5, 0xd8, 0x6b, 0x9b, 0x1c, 0x55, 0xdf, 0xee, 0xa6, 0xf3, 0xfd, 0x35,
+	0x3b, 0xaf, 0x2d, 0xe2, 0xce, 0x29, 0xba, 0x68, 0xe0, 0xd2, 0x34, 0x85, 0xd7, 0xc0, 0x8b, 0xf3,
+	0x5d, 0x7b, 0xb0, 0xd7, 0xbf, 0x01, 0x00, 0x00, 0xff, 0xff, 0xad, 0xd5, 0xb8, 0x30, 0xce, 0x02,
+	0x00, 0x00,
 }

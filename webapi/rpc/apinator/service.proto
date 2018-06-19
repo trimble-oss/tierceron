@@ -34,7 +34,6 @@ message ListResp {
 message TemplateReq {
     string service = 1; // Service name i.e. ST, Spectrum, etc.
     string file = 2; // Template file name (no extension)
-    string authToken = 3;
 }
 
 // Response containing template and extension as stored in the vault
@@ -51,7 +50,6 @@ message TemplateResp {
 message ValidationReq {
     string service = 1; // service name i.e. ServiceTechDB
     string env = 2; // Environment (local, dev, QA)
-    string authToken = 3;
 }
 
 message ValidationResp {
