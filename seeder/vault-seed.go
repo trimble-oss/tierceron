@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -126,9 +125,6 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string, env stri
 		root := strings.Split(entry.path, "/")[0]
 		if root == "templates" {
 			for _, v := range entry.data {
-				if reflect.TypeOf(v) != reflect.TypeOf([]interface{}{}) {
-					continue
-				}
 				if templateKey, ok := v.([]interface{}); ok {
 					metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
 					mod.AdjustValue("value-metrics/credentials", metricsKey, 1)
