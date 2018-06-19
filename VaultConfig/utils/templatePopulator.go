@@ -1,4 +1,6 @@
-package utils
+package main
+
+import "C"
 
 import (
 	"bytes"
@@ -21,7 +23,7 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 	return template
 }
 
-//ConfigTemplateLib is the library version of configTemplate, doesn't take a modifier
+//export ConfigTemplateLib
 func ConfigTemplateLib(token string, address string, certPath string, env string, templatePath string, configuredFilePath string, secretMode bool, servicesWanted ...string) string {
 	mod, err := kv.NewModifier(token, address, certPath)
 	mod.Env = env
@@ -51,3 +53,5 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 	}
 	return str
 }
+
+func main() {}
