@@ -127,7 +127,6 @@ func (m *Modifier) List(path string) (*api.Secret, error) {
 		}
 		fullPath += pathBlocks[1]
 	}
-	fmt.Printf("Listing %s\n", fullPath)
 	return m.logical.List(fullPath)
 }
 
