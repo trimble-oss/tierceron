@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"html/template"
 	"io/ioutil"
-	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
@@ -21,25 +20,6 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 	//populate template
 	template = PopulateTemplate(template, modifier, secretMode, servicesWanted...)
 	return template
-}
-
-//export ConfigTemplateLib
-func ConfigTemplateLib(token string, address string, certPath string, env string, templatePath string, configuredFilePath string, secretMode bool, servicesWanted string) string {
-	services := []string{}
-	if servicesWanted != "" {
-		services = strings.Split(servicesWanted, ",")
-	}
-
-	for _, service := range services {
-		service = strings.TrimSpace(service)
-	}
-
-	mod, err := kv.NewModifier(token, address, certPath)
-	mod.Env = env
-	if err != nil {
-		panic(err)
-	}
-	return ConfigTemplate(mod, templatePath, configuredFilePath, secretMode, services...)
 }
 
 //PopulateTemplate takes an empty template and a modifier.
