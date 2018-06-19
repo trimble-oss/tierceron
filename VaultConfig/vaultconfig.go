@@ -16,8 +16,8 @@ var environments = [...]string{
 func main() {
 	tokenPtr := flag.String("token", "", "Vault access token")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
-	startDirPtr := flag.String("templateDir", "vault_templates/ST/hibernate.properties.tmpl", "Template directory")
-	endDirPtr := flag.String("endDir", "config_files/ST/hibernate.properties", "Directory to put configured templates into")
+	startDirPtr := flag.String("templateDir", "vault_templates/ST", "Template directory")
+	endDirPtr := flag.String("endDir", "config_files/ST", "Directory to put configured templates into")
 	certPathPtr := flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")
 	env := flag.String("env", environments[0], "Environment to configure")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
