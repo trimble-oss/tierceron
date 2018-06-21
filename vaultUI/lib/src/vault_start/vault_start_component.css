@@ -1,0 +1,64 @@
+
+#file_list{
+  display: inline-block;
+}
+
+#file_list>button{
+  margin-top:0;
+}
+
+#login_creation{
+  display: inline-block;
+}
+
+#start_button {
+  height: 100px;
+  font-size: xx-large
+}
+
+#no_seed_warn {
+  color: #BF0000;
+}
+
+.box{
+    width: 700px;
+}
+
+.box>div{
+  margin: 2%;
+  width: 46%;
+  vertical-align: text-top;
+}
+
+.cancel {
+  width: auto;
+  float: right;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.error{
+  background-color: #ffcfcf;
+  color: #DF0000;
+  border: 1px solid #BF0000;
+}
+
+added_seed{
+  margin-top: 10px;
+  width: 100%;
+}
+
+label{
+  width: 100%;
+}
+
+input[type="file"] {
+  margin-top: 20px;
+  padding-left: 0;
+  color: #FFFFFF00;
+  width: 25%;
+}
+
+input[placeholder="Username"]{
+  margin-top: 18px;
+}

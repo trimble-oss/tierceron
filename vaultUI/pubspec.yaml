@@ -1,0 +1,19 @@
+name: vaultUI
+description: A web app that uses AngularDart Components
+# version: 1.0.0
+# homepage: https://www.example.com
+# author: Your Name <email@example.com>
+
+environment:
+  sdk: '>=2.0.0-dev.55.0 <2.0.0'
+
+dependencies:
+  angular: ^5.0.0-alpha+13
+  angular_components: ^0.9.0-alpha+13
+
+dev_dependencies:
+  angular_test: ^2.0.0-alpha+11
+  build_runner: ^0.8.9
+  build_test: ^0.10.2
+  build_web_compilers: ^0.4.0
+  test: ^0.12.38

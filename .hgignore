@@ -16,3 +16,9 @@ VaultConfig/ST/
 *.log
 real_seed/
 vault-init/vaultfiles/.terraform/plugins/
+vaultUI\.dart_tool\build\generated\angular\lib\.meta_module.clean
+vaultUI/.dart_tool/
+vaultUI/build/
+vaultUI\.packages
+vaultUI\analysis_options.yaml
+vaultUI\pubspec.lock

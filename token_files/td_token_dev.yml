@@ -1,4 +1,4 @@
-policies: ["td"]
+policies: ["td_dev"]
 metadata:
   user : "TDinator"
 

@@ -1,6 +1,0 @@
-policies: ["config"]
-metadata:
-  user : "Configinator"
-
-ttl: "336h"
-display_name: "Configinator Token"
