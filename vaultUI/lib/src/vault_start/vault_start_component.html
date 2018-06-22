@@ -5,9 +5,9 @@
         <label>Upload Seed Files</label>
         <input type="file" placeholder="Add File" (change)="GetFiles($event)" multiple>
         <label id="no_seed_warn" hidden>Need at least one seed file</label>
-        <div class="added_seed" *ngFor="let seed of Seeds"> 
-            <select>
-                <option *ngFor="let env of Envs" value="env">{{env}}</option>
+        <div *ngFor="let seed of Seeds" class="added_seed"> 
+            <select id="{{seed.name | slice:0:-4}}">
+                <option *ngFor="let env of Envs" value="{{env}}">{{env}}</option>
             </select>
             <label>{{seed.name}}</label>
             <label class="cancel" (click)="RemoveFile(seed)">X</label>

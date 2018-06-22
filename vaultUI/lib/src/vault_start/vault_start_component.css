@@ -1,13 +1,13 @@
 
-#file_list{
+#file_list {
   display: inline-block;
 }
 
-#file_list>button{
+#file_list>button {
   margin-top:0;
 }
 
-#login_creation{
+#login_creation {
   display: inline-block;
 }
 
@@ -20,11 +20,17 @@
   color: #BF0000;
 }
 
-.box{
+.added_seed {
+  background-color: white;
+  padding: 3px 10px 3px 0px;
+  margin-top:5px;
+}
+
+.box {
     width: 700px;
 }
 
-.box>div{
+.box>div {
   margin: 2%;
   width: 46%;
   vertical-align: text-top;
@@ -37,18 +43,18 @@
   font-weight:bold;
 }
 
-.error{
+.error {
   background-color: #ffcfcf;
   color: #DF0000;
   border: 1px solid #BF0000;
 }
 
-added_seed{
+added_seed {
   margin-top: 10px;
   width: 100%;
 }
 
-label{
+label {
   width: 100%;
 }
 
@@ -59,6 +65,11 @@ input[type="file"] {
   width: 25%;
 }
 
-input[placeholder="Username"]{
+input[placeholder="Username"] {
   margin-top: 18px;
+}
+
+select {
+  font-size:medium;
+  margin-right:5px;
 }
