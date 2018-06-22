@@ -12,8 +12,6 @@ service EnterpriseServiceBroker {
     rpc GetTemplate(TemplateReq) returns (TemplateResp);
     rpc Validate(ValidationReq) returns (ValidationResp);
     rpc ListServiceTemplates(ListReq) returns (ListResp);
-    rpc GetPathData(PathDataReq) returns (PathDataResp);
-    rpc GetServicePaths(ServicePathReq) returns (ServicePathResp);
     rpc MakeVault(MakeVaultReq) returns (Vault);
 }
 
@@ -57,34 +55,6 @@ message ValidationReq {
 
 message ValidationResp {
     bool isValid = 1; // Boolean value indicating whether the credentials are valid or not
-}
-
-/////////////////////////////////////////////////////////
-// PathData Messages                                 //
-/////////////////////////////////////////////////////////
-
-// Request for checking the validity of credentials for a service in a given environment
-message PathDataReq {
-    repeated string paths = 1; // service name i.e. ServiceTechDB
-    string env = 2; // Environment (local, dev, QA)
-}
-
-message PathDataResp {
-    repeated string data = 1; // Data file encoded in base64
-}
-
-/////////////////////////////////////////////////////////
-// ServicePath Messages                                 //
-/////////////////////////////////////////////////////////
-
-// Request for checking the validity of credentials for a service in a given environment
-message ServicePathReq {
-    string service = 1; // service name i.e. ServiceTechDB
-    string env = 2; // Environment (local, dev, QA)
-}
-
-message ServicePathResp {
-    repeated string paths = 1; // Data file encoded in base64
 }
 
 /////////////////////////////////////////////////////////
