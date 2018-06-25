@@ -1,11 +1,10 @@
-package seeder
+package initlib
 
 import (
 	"bitbucket.org/dexterchaney/whoville/validator"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	"errors"
 	"log"
-	"os"
 )
 
 // Runs the verification step from data in the seed file
@@ -20,11 +19,10 @@ import (
 // KeyStore:
 // 	type: KeyStore
 
-func verify(mod *kv.Modifier, v map[interface{}]interface{}, logFile *os.File) ([]string, error) {
+func verify(mod *kv.Modifier, v map[interface{}]interface{}, logger *log.Logger) ([]string, error) {
 	var isValid bool
 	var path string
-	log.SetOutput(logFile)
-	log.SetPrefix("Verifier: ")
+	logger.SetPrefix("[VERIFY]")
 
 	for service, info := range v {
 		vType := info.(map[interface{}]interface{})["type"].(string)
@@ -32,7 +30,7 @@ func verify(mod *kv.Modifier, v map[interface{}]interface{}, logFile *os.File) (
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("Verifying %s as type %s\n", service, vType)
+		logger.Printf("Verifying %s as type %s\n", service, vType)
 		switch vType {
 		case "db":
 			url := serviceData["url"].(string)
@@ -57,7 +55,7 @@ func verify(mod *kv.Modifier, v map[interface{}]interface{}, logFile *os.File) (
 		}
 
 		// Log verification status and write to vault
-		log.Printf("\tverified: %v\n", isValid)
+		logger.Printf("\tverified: %v\n", isValid)
 		path = "verification/" + service.(string)
 		warn, err := mod.Write(path, map[string]interface{}{
 			"type":     vType,

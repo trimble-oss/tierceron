@@ -1,10 +1,9 @@
-package seeder
+package initlib
 
 import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -25,17 +24,13 @@ type writeCollection struct {
 	data map[string]interface{}
 }
 
-var logFile *os.File
-
 // SeedVault seeds the vault with seed files in the given directory
-func SeedVault(dir string, addr string, token string, env string, f *os.File, certPath string) {
-	logFile = f
-	log.SetOutput(logFile)
-	log.SetPrefix("Seeder:   ")
-	log.Printf("Seeding vault from seeds in: %s\n", dir)
+func SeedVault(dir string, addr string, token string, env string, logger *log.Logger, certPath string) {
+	logger.SetPrefix("[SEED]")
+	logger.Printf("Seeding vault from seeds in: %s\n", dir)
 
 	files, err := ioutil.ReadDir(dir)
-	utils.LogError(err, logFile)
+	utils.LogErrorObject(err, logger)
 
 	// Iterate through all services
 	for _, file := range files {
@@ -46,28 +41,33 @@ func SeedVault(dir string, addr string, token string, env string, f *os.File, ce
 		// Get and check file extension (last substring after .)
 		ext := filepath.Ext(file.Name())
 		if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
-			log.Printf("\tFound seed file: %s\n", file.Name())
+			logger.Printf("\tFound seed file: %s\n", file.Name())
 			path := dir + "/" + file.Name()
-			seedVaultFromFile(path, addr, token, env, certPath)
+			SeedVaultFromFile(path, addr, token, env, certPath, logger)
 		}
 
 	}
 
 }
 
-func seedVaultFromFile(filepath string, vaultAddr string, token string, env string, certPath string) {
-	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
+//SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
+func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, certPath string, logger *log.Logger) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
-	utils.LogError(err, logFile)
+	utils.LogErrorObject(err, logger)
+	SeedVaultFromData(rawFile, vaultAddr, token, env, certPath, logger)
+}
 
+//SeedVaultFromData takes file bytes and seeds the vault with contained data
+func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, certPath string, logger *log.Logger) {
+	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
 	// Unmarshal
 	var rawYaml interface{}
-	err = yaml.Unmarshal(rawFile, &rawYaml)
-	utils.LogError(err, logFile)
+	err := yaml.Unmarshal(fData, &rawYaml)
+	utils.LogErrorObject(err, logger)
 	seed, ok := rawYaml.(map[interface{}]interface{})
 	if ok == false {
-		log.Fatal("Count not extract seed from @s. Possibly a formatting issue", filepath)
+		logger.Fatal("Count not extract seed. Possibly a formatting issue")
 	}
 
 	mapStack := []seedCollection{seedCollection{"", seed}} // Begin with root of yaml file
@@ -83,7 +83,7 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string, env stri
 		// Convert nested maps into vault writable data
 		for k, v := range current.data {
 			if v == nil { // Don't write empty valus, Vault does not handle them
-				log.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
+				logger.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
 			} else if current.path == "" && k.(string) == "verification" { // Found verification on top level, store for later
 				verificationData = v.(map[interface{}]interface{})
 			} else if newData, ok := v.(map[interface{}]interface{}); ok { // Decompose into submaps, update path
@@ -106,9 +106,9 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string, env stri
 	}
 
 	// Write values to vault
-	log.Println("Writing seed values to paths")
+	logger.Println("Writing seed values to paths")
 	mod, err := kv.NewModifier(token, vaultAddr, certPath) // Connect to vault
-	utils.LogError(err, logFile)
+	utils.LogErrorObject(err, logger)
 	mod.Env = env
 	for _, entry := range writeStack {
 		fmt.Println(entry.path) // Output data being written
@@ -118,8 +118,8 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string, env stri
 
 		// Write data and ouput any errors
 		warn, err := mod.Write(entry.path, entry.data)
-		utils.LogWarnings(warn, logFile)
-		utils.LogError(err, logFile)
+		utils.LogWarningsObject(warn, logger)
+		utils.LogErrorObject(err, logger)
 
 		// Update value metrics to reflect credential use
 		root := strings.Split(entry.path, "/")[0]
@@ -134,7 +134,7 @@ func seedVaultFromFile(filepath string, vaultAddr string, token string, env stri
 	}
 
 	// Run verification after seeds have been written
-	warn, err := verify(mod, verificationData, logFile)
-	utils.LogError(err, logFile)
-	utils.LogWarnings(warn, logFile)
+	warn, err := verify(mod, verificationData, logger)
+	utils.LogErrorObject(err, logger)
+	utils.LogWarningsObject(warn, logger)
 }

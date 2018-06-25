@@ -13,6 +13,7 @@ service EnterpriseServiceBroker {
     rpc Validate(ValidationReq) returns (ValidationResp);
     rpc ListServiceTemplates(ListReq) returns (ListResp);
     rpc MakeVault(MakeVaultReq) returns (Vault);
+    rpc InitVault(InitReq) returns (InitResp);
 }
 
 /////////////////////////////////////////////////////////
@@ -82,3 +83,21 @@ message Vault {
     repeated Env envs = 2;
 }
 message MakeVaultReq {}
+
+/////////////////////////////////////////////////////////
+// Initialization Messages                             //
+/////////////////////////////////////////////////////////
+message InitReq {
+    message SeedFile {
+        string env = 1;
+        string data = 2;
+    }
+    repeated SeedFile files = 1;
+    string username = 2;
+    string password = 3;
+}
+
+message InitResp {
+    bool success = 1;
+    string logfile = 2;
+}
