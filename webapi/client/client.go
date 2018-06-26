@@ -11,8 +11,9 @@ import (
 )
 
 func main() {
-	addrPtr := flag.String("addr", "http://127.0.0.1:8080", "API endpoint for the vault")
+	addrPtr := flag.String("addr", "http://127.0.0.1:8008", "API endpoint for the vault")
 	apiClient := pb.NewEnterpriseServiceBrokerProtobufClient(*addrPtr, &http.Client{})
+	//jsonClient := pb.NewEnterpriseServiceBrokerJSONClient(*addrPtr, &http.Client{})
 
 	//templates := getTemplates("ST")
 	// templateReq := &pb.TemplateReq{
@@ -34,10 +35,14 @@ func main() {
 	// 	Env:     "dev",
 	// }
 
-	makeVaultReq := &pb.MakeVaultReq{}
+	makeVaultReq := &pb.GetValuesReq{}
+	//jsonReq := '{' + '}'
 
-	vault, err := apiClient.MakeVault(context.Background(), makeVaultReq)
+	vault, err := apiClient.GetValues(context.Background(), makeVaultReq)
 	utils.CheckError(err)
+
+	//vault2, err := jsonClient.GetValues(context.Background(), makeVaultReq)
+	//utils.CheckError(err)
 
 	// templateRes, err := apiClient.GetTemplate(context.Background(), templateReq)
 	// utils.CheckError(err)

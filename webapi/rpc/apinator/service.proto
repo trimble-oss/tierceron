@@ -3,6 +3,7 @@ syntax = "proto3";
 package viewpoint.whoville.apinator;
 option go_package="apinator";
 
+
 // Templates service that returns templates
 service TwirpAPI {
    
@@ -12,7 +13,7 @@ service EnterpriseServiceBroker {
     rpc GetTemplate(TemplateReq) returns (TemplateResp);
     rpc Validate(ValidationReq) returns (ValidationResp);
     rpc ListServiceTemplates(ListReq) returns (ListResp);
-    rpc MakeVault(MakeVaultReq) returns (Vault);
+    rpc GetValues(GetValuesReq) returns (ValuesRes);
     rpc InitVault(InitReq) returns (InitResp);
 }
 
@@ -63,7 +64,7 @@ message ValidationResp {
 /////////////////////////////////////////////////////////
 
 // Request for checking the validity of credentials for a service in a given environment
-message Vault {
+message ValuesRes {
     message Env {
         string name = 1;
         message Service {
@@ -82,7 +83,7 @@ message Vault {
     }
     repeated Env envs = 2;
 }
-message MakeVaultReq {}
+message GetValuesReq {}
 
 /////////////////////////////////////////////////////////
 // Initialization Messages                             //

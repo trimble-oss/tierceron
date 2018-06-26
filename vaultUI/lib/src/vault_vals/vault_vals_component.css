@@ -1,0 +1,56 @@
+
+  #value_list {
+    display: inline-block;
+  }
+  #value_list>button {
+    margin-top:0;
+  }
+
+  
+  #value_button {
+    height: 40px;
+    font-size: 20px;
+  }
+  
+  .box {
+      width: 700px;
+  }
+  
+  .box>div {
+    margin: 2%;
+    width: 46%;
+    vertical-align: text-top;
+  }
+  
+  .error {
+    background-color: #ffcfcf;
+    color: #DF0000;
+    border: 1px solid #BF0000;
+  }
+  .column {
+    float: left;
+    width: 50%;
+}
+
+/* Clear floats after the columns */
+  .row:after {
+    content: "";
+    display: table;
+    clear: both;
+  }
+  
+  label {
+    width: 100%;
+  }
+  
+  select {
+    font-size:medium;
+    margin-right:5px;
+  }
+  ul {
+    background-color: #f0f8ff;
+    padding: 20px;
+    list-style-type: square;
+  }
+
+  
