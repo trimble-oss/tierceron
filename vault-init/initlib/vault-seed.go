@@ -60,6 +60,8 @@ func SeedVaultFromFile(filepath string, vaultAddr string, token string, env stri
 
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
 func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, certPath string, logger *log.Logger) {
+	logger.SetPrefix("[SEED]")
+	logger.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
 	// Unmarshal
 	var rawYaml interface{}

@@ -1,6 +1,12 @@
-<div class="box">
-    <h1>Log in</h1>
-    <input [(ngModel)]="Username" placeholder="Username" type="text">
-    <input [(ngModel)]="Password" placeholder="Password" type="password">
-    <button>Sign In</button>
+<div id="root">
+    <div class="box">
+        <h1>Log in</h1>
+        <input [(ngModel)]="Username" placeholder="Username" type="text">
+        <input [(ngModel)]="Password" placeholder="Password" type="password">
+        <button (click)="SignIn()">Sign In</button>
+    </div>
+    <div class="box" id="sealBox" *ngIf="isSealed">
+        <h1>Vault is Sealed</h1>
+        <input [(ngModel)]="UnsealKey" placeholder="Unseal Key" type="text">
+    </div>
 </div>

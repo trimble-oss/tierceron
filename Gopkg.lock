@@ -121,6 +121,12 @@
   revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
 
 [[projects]]
+  name = "github.com/rs/cors"
+  packages = ["."]
+  revision = "ca016a06a5753f8ba03029c0aa5e54afb1bf713f"
+  version = "v1.4.0"
+
+[[projects]]
   name = "github.com/ryanuber/go-glob"
   packages = ["."]
   revision = "572520ed46dbddaed19ea3d9541bdd0494163693"
@@ -210,6 +216,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2665b44583219b423279c7e707de25c5d32f5cda34d8b04a5b1904da15677415"
+  inputs-digest = "b11e72f6040fab752830547419f394035e79e70848d2698241174a0d00d6d36a"
   solver-name = "gps-cdcl"
   solver-version = 1

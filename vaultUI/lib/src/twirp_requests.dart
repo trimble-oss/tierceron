@@ -1,8 +1,7 @@
 // Put twirp request definitions here
 
-class SeedFile{
+class UISeedFile{
   String name;
   String data;
-  String env;
-  SeedFile(this.name, this.data, this.env);
+  UISeedFile(this.name, this.data);
 }

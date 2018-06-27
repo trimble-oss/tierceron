@@ -1,0 +1,10 @@
+#root{
+    display: flex;
+}
+#sealBox{
+    border-left:1px solid gray;
+    margin-left:10px;
+    padding-left:10px;
+    padding-right: 10px;
+    background-color: #9fd6f9;
+}

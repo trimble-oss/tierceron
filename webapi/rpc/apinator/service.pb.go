@@ -32,7 +32,7 @@ func (m *ListReq) Reset()         { *m = ListReq{} }
 func (m *ListReq) String() string { return proto.CompactTextString(m) }
 func (*ListReq) ProtoMessage()    {}
 func (*ListReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{0}
+	return fileDescriptor_service_1175e72e077c2acf, []int{0}
 }
 func (m *ListReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListReq.Unmarshal(m, b)
@@ -70,7 +70,7 @@ func (m *ListResp) Reset()         { *m = ListResp{} }
 func (m *ListResp) String() string { return proto.CompactTextString(m) }
 func (*ListResp) ProtoMessage()    {}
 func (*ListResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{1}
+	return fileDescriptor_service_1175e72e077c2acf, []int{1}
 }
 func (m *ListResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListResp.Unmarshal(m, b)
@@ -110,7 +110,7 @@ func (m *TemplateReq) Reset()         { *m = TemplateReq{} }
 func (m *TemplateReq) String() string { return proto.CompactTextString(m) }
 func (*TemplateReq) ProtoMessage()    {}
 func (*TemplateReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{2}
+	return fileDescriptor_service_1175e72e077c2acf, []int{2}
 }
 func (m *TemplateReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TemplateReq.Unmarshal(m, b)
@@ -157,7 +157,7 @@ func (m *TemplateResp) Reset()         { *m = TemplateResp{} }
 func (m *TemplateResp) String() string { return proto.CompactTextString(m) }
 func (*TemplateResp) ProtoMessage()    {}
 func (*TemplateResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{3}
+	return fileDescriptor_service_1175e72e077c2acf, []int{3}
 }
 func (m *TemplateResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TemplateResp.Unmarshal(m, b)
@@ -204,7 +204,7 @@ func (m *ValidationReq) Reset()         { *m = ValidationReq{} }
 func (m *ValidationReq) String() string { return proto.CompactTextString(m) }
 func (*ValidationReq) ProtoMessage()    {}
 func (*ValidationReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{4}
+	return fileDescriptor_service_1175e72e077c2acf, []int{4}
 }
 func (m *ValidationReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ValidationReq.Unmarshal(m, b)
@@ -249,7 +249,7 @@ func (m *ValidationResp) Reset()         { *m = ValidationResp{} }
 func (m *ValidationResp) String() string { return proto.CompactTextString(m) }
 func (*ValidationResp) ProtoMessage()    {}
 func (*ValidationResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{5}
+	return fileDescriptor_service_1175e72e077c2acf, []int{5}
 }
 func (m *ValidationResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ValidationResp.Unmarshal(m, b)
@@ -277,183 +277,183 @@ func (m *ValidationResp) GetIsValid() bool {
 }
 
 // Request for checking the validity of credentials for a service in a given environment
-type Vault struct {
-	Envs                 []*Vault_Env `protobuf:"bytes,2,rep,name=envs,proto3" json:"envs,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
-	XXX_unrecognized     []byte       `json:"-"`
-	XXX_sizecache        int32        `json:"-"`
+type ValuesRes struct {
+	Envs                 []*ValuesRes_Env `protobuf:"bytes,2,rep,name=envs,proto3" json:"envs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *Vault) Reset()         { *m = Vault{} }
-func (m *Vault) String() string { return proto.CompactTextString(m) }
-func (*Vault) ProtoMessage()    {}
-func (*Vault) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{6}
+func (m *ValuesRes) Reset()         { *m = ValuesRes{} }
+func (m *ValuesRes) String() string { return proto.CompactTextString(m) }
+func (*ValuesRes) ProtoMessage()    {}
+func (*ValuesRes) Descriptor() ([]byte, []int) {
+	return fileDescriptor_service_1175e72e077c2acf, []int{6}
 }
-func (m *Vault) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Vault.Unmarshal(m, b)
+func (m *ValuesRes) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ValuesRes.Unmarshal(m, b)
 }
-func (m *Vault) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Vault.Marshal(b, m, deterministic)
+func (m *ValuesRes) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ValuesRes.Marshal(b, m, deterministic)
 }
-func (dst *Vault) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Vault.Merge(dst, src)
+func (dst *ValuesRes) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ValuesRes.Merge(dst, src)
 }
-func (m *Vault) XXX_Size() int {
-	return xxx_messageInfo_Vault.Size(m)
+func (m *ValuesRes) XXX_Size() int {
+	return xxx_messageInfo_ValuesRes.Size(m)
 }
-func (m *Vault) XXX_DiscardUnknown() {
-	xxx_messageInfo_Vault.DiscardUnknown(m)
+func (m *ValuesRes) XXX_DiscardUnknown() {
+	xxx_messageInfo_ValuesRes.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Vault proto.InternalMessageInfo
+var xxx_messageInfo_ValuesRes proto.InternalMessageInfo
 
-func (m *Vault) GetEnvs() []*Vault_Env {
+func (m *ValuesRes) GetEnvs() []*ValuesRes_Env {
 	if m != nil {
 		return m.Envs
 	}
 	return nil
 }
 
-type Vault_Env struct {
-	Name                 string               `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Services             []*Vault_Env_Service `protobuf:"bytes,2,rep,name=services,proto3" json:"services,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
+type ValuesRes_Env struct {
+	Name                 string                   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Services             []*ValuesRes_Env_Service `protobuf:"bytes,2,rep,name=services,proto3" json:"services,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
+	XXX_unrecognized     []byte                   `json:"-"`
+	XXX_sizecache        int32                    `json:"-"`
 }
 
-func (m *Vault_Env) Reset()         { *m = Vault_Env{} }
-func (m *Vault_Env) String() string { return proto.CompactTextString(m) }
-func (*Vault_Env) ProtoMessage()    {}
-func (*Vault_Env) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{6, 0}
+func (m *ValuesRes_Env) Reset()         { *m = ValuesRes_Env{} }
+func (m *ValuesRes_Env) String() string { return proto.CompactTextString(m) }
+func (*ValuesRes_Env) ProtoMessage()    {}
+func (*ValuesRes_Env) Descriptor() ([]byte, []int) {
+	return fileDescriptor_service_1175e72e077c2acf, []int{6, 0}
 }
-func (m *Vault_Env) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Vault_Env.Unmarshal(m, b)
+func (m *ValuesRes_Env) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ValuesRes_Env.Unmarshal(m, b)
 }
-func (m *Vault_Env) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Vault_Env.Marshal(b, m, deterministic)
+func (m *ValuesRes_Env) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ValuesRes_Env.Marshal(b, m, deterministic)
 }
-func (dst *Vault_Env) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Vault_Env.Merge(dst, src)
+func (dst *ValuesRes_Env) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ValuesRes_Env.Merge(dst, src)
 }
-func (m *Vault_Env) XXX_Size() int {
-	return xxx_messageInfo_Vault_Env.Size(m)
+func (m *ValuesRes_Env) XXX_Size() int {
+	return xxx_messageInfo_ValuesRes_Env.Size(m)
 }
-func (m *Vault_Env) XXX_DiscardUnknown() {
-	xxx_messageInfo_Vault_Env.DiscardUnknown(m)
+func (m *ValuesRes_Env) XXX_DiscardUnknown() {
+	xxx_messageInfo_ValuesRes_Env.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Vault_Env proto.InternalMessageInfo
+var xxx_messageInfo_ValuesRes_Env proto.InternalMessageInfo
 
-func (m *Vault_Env) GetName() string {
+func (m *ValuesRes_Env) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Vault_Env) GetServices() []*Vault_Env_Service {
+func (m *ValuesRes_Env) GetServices() []*ValuesRes_Env_Service {
 	if m != nil {
 		return m.Services
 	}
 	return nil
 }
 
-type Vault_Env_Service struct {
-	Name                 string                    `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Files                []*Vault_Env_Service_File `protobuf:"bytes,2,rep,name=files,proto3" json:"files,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
-	XXX_unrecognized     []byte                    `json:"-"`
-	XXX_sizecache        int32                     `json:"-"`
+type ValuesRes_Env_Service struct {
+	Name                 string                        `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Files                []*ValuesRes_Env_Service_File `protobuf:"bytes,2,rep,name=files,proto3" json:"files,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                      `json:"-"`
+	XXX_unrecognized     []byte                        `json:"-"`
+	XXX_sizecache        int32                         `json:"-"`
 }
 
-func (m *Vault_Env_Service) Reset()         { *m = Vault_Env_Service{} }
-func (m *Vault_Env_Service) String() string { return proto.CompactTextString(m) }
-func (*Vault_Env_Service) ProtoMessage()    {}
-func (*Vault_Env_Service) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{6, 0, 0}
+func (m *ValuesRes_Env_Service) Reset()         { *m = ValuesRes_Env_Service{} }
+func (m *ValuesRes_Env_Service) String() string { return proto.CompactTextString(m) }
+func (*ValuesRes_Env_Service) ProtoMessage()    {}
+func (*ValuesRes_Env_Service) Descriptor() ([]byte, []int) {
+	return fileDescriptor_service_1175e72e077c2acf, []int{6, 0, 0}
 }
-func (m *Vault_Env_Service) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Vault_Env_Service.Unmarshal(m, b)
+func (m *ValuesRes_Env_Service) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ValuesRes_Env_Service.Unmarshal(m, b)
 }
-func (m *Vault_Env_Service) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Vault_Env_Service.Marshal(b, m, deterministic)
+func (m *ValuesRes_Env_Service) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ValuesRes_Env_Service.Marshal(b, m, deterministic)
 }
-func (dst *Vault_Env_Service) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Vault_Env_Service.Merge(dst, src)
+func (dst *ValuesRes_Env_Service) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ValuesRes_Env_Service.Merge(dst, src)
 }
-func (m *Vault_Env_Service) XXX_Size() int {
-	return xxx_messageInfo_Vault_Env_Service.Size(m)
+func (m *ValuesRes_Env_Service) XXX_Size() int {
+	return xxx_messageInfo_ValuesRes_Env_Service.Size(m)
 }
-func (m *Vault_Env_Service) XXX_DiscardUnknown() {
-	xxx_messageInfo_Vault_Env_Service.DiscardUnknown(m)
+func (m *ValuesRes_Env_Service) XXX_DiscardUnknown() {
+	xxx_messageInfo_ValuesRes_Env_Service.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Vault_Env_Service proto.InternalMessageInfo
+var xxx_messageInfo_ValuesRes_Env_Service proto.InternalMessageInfo
 
-func (m *Vault_Env_Service) GetName() string {
+func (m *ValuesRes_Env_Service) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Vault_Env_Service) GetFiles() []*Vault_Env_Service_File {
+func (m *ValuesRes_Env_Service) GetFiles() []*ValuesRes_Env_Service_File {
 	if m != nil {
 		return m.Files
 	}
 	return nil
 }
 
-type Vault_Env_Service_File struct {
-	Name                 string                          `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Values               []*Vault_Env_Service_File_Value `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
-	XXX_unrecognized     []byte                          `json:"-"`
-	XXX_sizecache        int32                           `json:"-"`
+type ValuesRes_Env_Service_File struct {
+	Name                 string                              `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Values               []*ValuesRes_Env_Service_File_Value `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                            `json:"-"`
+	XXX_unrecognized     []byte                              `json:"-"`
+	XXX_sizecache        int32                               `json:"-"`
 }
 
-func (m *Vault_Env_Service_File) Reset()         { *m = Vault_Env_Service_File{} }
-func (m *Vault_Env_Service_File) String() string { return proto.CompactTextString(m) }
-func (*Vault_Env_Service_File) ProtoMessage()    {}
-func (*Vault_Env_Service_File) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{6, 0, 0, 0}
+func (m *ValuesRes_Env_Service_File) Reset()         { *m = ValuesRes_Env_Service_File{} }
+func (m *ValuesRes_Env_Service_File) String() string { return proto.CompactTextString(m) }
+func (*ValuesRes_Env_Service_File) ProtoMessage()    {}
+func (*ValuesRes_Env_Service_File) Descriptor() ([]byte, []int) {
+	return fileDescriptor_service_1175e72e077c2acf, []int{6, 0, 0, 0}
 }
-func (m *Vault_Env_Service_File) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Vault_Env_Service_File.Unmarshal(m, b)
+func (m *ValuesRes_Env_Service_File) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ValuesRes_Env_Service_File.Unmarshal(m, b)
 }
-func (m *Vault_Env_Service_File) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Vault_Env_Service_File.Marshal(b, m, deterministic)
+func (m *ValuesRes_Env_Service_File) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ValuesRes_Env_Service_File.Marshal(b, m, deterministic)
 }
-func (dst *Vault_Env_Service_File) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Vault_Env_Service_File.Merge(dst, src)
+func (dst *ValuesRes_Env_Service_File) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ValuesRes_Env_Service_File.Merge(dst, src)
 }
-func (m *Vault_Env_Service_File) XXX_Size() int {
-	return xxx_messageInfo_Vault_Env_Service_File.Size(m)
+func (m *ValuesRes_Env_Service_File) XXX_Size() int {
+	return xxx_messageInfo_ValuesRes_Env_Service_File.Size(m)
 }
-func (m *Vault_Env_Service_File) XXX_DiscardUnknown() {
-	xxx_messageInfo_Vault_Env_Service_File.DiscardUnknown(m)
+func (m *ValuesRes_Env_Service_File) XXX_DiscardUnknown() {
+	xxx_messageInfo_ValuesRes_Env_Service_File.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Vault_Env_Service_File proto.InternalMessageInfo
+var xxx_messageInfo_ValuesRes_Env_Service_File proto.InternalMessageInfo
 
-func (m *Vault_Env_Service_File) GetName() string {
+func (m *ValuesRes_Env_Service_File) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Vault_Env_Service_File) GetValues() []*Vault_Env_Service_File_Value {
+func (m *ValuesRes_Env_Service_File) GetValues() []*ValuesRes_Env_Service_File_Value {
 	if m != nil {
 		return m.Values
 	}
 	return nil
 }
 
-type Vault_Env_Service_File_Value struct {
+type ValuesRes_Env_Service_File_Value struct {
 	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Value                string   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -461,73 +461,73 @@ type Vault_Env_Service_File_Value struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Vault_Env_Service_File_Value) Reset()         { *m = Vault_Env_Service_File_Value{} }
-func (m *Vault_Env_Service_File_Value) String() string { return proto.CompactTextString(m) }
-func (*Vault_Env_Service_File_Value) ProtoMessage()    {}
-func (*Vault_Env_Service_File_Value) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{6, 0, 0, 0, 0}
+func (m *ValuesRes_Env_Service_File_Value) Reset()         { *m = ValuesRes_Env_Service_File_Value{} }
+func (m *ValuesRes_Env_Service_File_Value) String() string { return proto.CompactTextString(m) }
+func (*ValuesRes_Env_Service_File_Value) ProtoMessage()    {}
+func (*ValuesRes_Env_Service_File_Value) Descriptor() ([]byte, []int) {
+	return fileDescriptor_service_1175e72e077c2acf, []int{6, 0, 0, 0, 0}
 }
-func (m *Vault_Env_Service_File_Value) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Vault_Env_Service_File_Value.Unmarshal(m, b)
+func (m *ValuesRes_Env_Service_File_Value) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ValuesRes_Env_Service_File_Value.Unmarshal(m, b)
 }
-func (m *Vault_Env_Service_File_Value) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Vault_Env_Service_File_Value.Marshal(b, m, deterministic)
+func (m *ValuesRes_Env_Service_File_Value) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ValuesRes_Env_Service_File_Value.Marshal(b, m, deterministic)
 }
-func (dst *Vault_Env_Service_File_Value) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Vault_Env_Service_File_Value.Merge(dst, src)
+func (dst *ValuesRes_Env_Service_File_Value) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ValuesRes_Env_Service_File_Value.Merge(dst, src)
 }
-func (m *Vault_Env_Service_File_Value) XXX_Size() int {
-	return xxx_messageInfo_Vault_Env_Service_File_Value.Size(m)
+func (m *ValuesRes_Env_Service_File_Value) XXX_Size() int {
+	return xxx_messageInfo_ValuesRes_Env_Service_File_Value.Size(m)
 }
-func (m *Vault_Env_Service_File_Value) XXX_DiscardUnknown() {
-	xxx_messageInfo_Vault_Env_Service_File_Value.DiscardUnknown(m)
+func (m *ValuesRes_Env_Service_File_Value) XXX_DiscardUnknown() {
+	xxx_messageInfo_ValuesRes_Env_Service_File_Value.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Vault_Env_Service_File_Value proto.InternalMessageInfo
+var xxx_messageInfo_ValuesRes_Env_Service_File_Value proto.InternalMessageInfo
 
-func (m *Vault_Env_Service_File_Value) GetKey() string {
+func (m *ValuesRes_Env_Service_File_Value) GetKey() string {
 	if m != nil {
 		return m.Key
 	}
 	return ""
 }
 
-func (m *Vault_Env_Service_File_Value) GetValue() string {
+func (m *ValuesRes_Env_Service_File_Value) GetValue() string {
 	if m != nil {
 		return m.Value
 	}
 	return ""
 }
 
-type MakeVaultReq struct {
+type GetValuesReq struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *MakeVaultReq) Reset()         { *m = MakeVaultReq{} }
-func (m *MakeVaultReq) String() string { return proto.CompactTextString(m) }
-func (*MakeVaultReq) ProtoMessage()    {}
-func (*MakeVaultReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{7}
+func (m *GetValuesReq) Reset()         { *m = GetValuesReq{} }
+func (m *GetValuesReq) String() string { return proto.CompactTextString(m) }
+func (*GetValuesReq) ProtoMessage()    {}
+func (*GetValuesReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_service_1175e72e077c2acf, []int{7}
 }
-func (m *MakeVaultReq) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_MakeVaultReq.Unmarshal(m, b)
+func (m *GetValuesReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetValuesReq.Unmarshal(m, b)
 }
-func (m *MakeVaultReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_MakeVaultReq.Marshal(b, m, deterministic)
+func (m *GetValuesReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetValuesReq.Marshal(b, m, deterministic)
 }
-func (dst *MakeVaultReq) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MakeVaultReq.Merge(dst, src)
+func (dst *GetValuesReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetValuesReq.Merge(dst, src)
 }
-func (m *MakeVaultReq) XXX_Size() int {
-	return xxx_messageInfo_MakeVaultReq.Size(m)
+func (m *GetValuesReq) XXX_Size() int {
+	return xxx_messageInfo_GetValuesReq.Size(m)
 }
-func (m *MakeVaultReq) XXX_DiscardUnknown() {
-	xxx_messageInfo_MakeVaultReq.DiscardUnknown(m)
+func (m *GetValuesReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetValuesReq.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MakeVaultReq proto.InternalMessageInfo
+var xxx_messageInfo_GetValuesReq proto.InternalMessageInfo
 
 // ///////////////////////////////////////////////////////
 // Initialization Messages                             //
@@ -545,7 +545,7 @@ func (m *InitReq) Reset()         { *m = InitReq{} }
 func (m *InitReq) String() string { return proto.CompactTextString(m) }
 func (*InitReq) ProtoMessage()    {}
 func (*InitReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{8}
+	return fileDescriptor_service_1175e72e077c2acf, []int{8}
 }
 func (m *InitReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InitReq.Unmarshal(m, b)
@@ -598,7 +598,7 @@ func (m *InitReq_SeedFile) Reset()         { *m = InitReq_SeedFile{} }
 func (m *InitReq_SeedFile) String() string { return proto.CompactTextString(m) }
 func (*InitReq_SeedFile) ProtoMessage()    {}
 func (*InitReq_SeedFile) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{8, 0}
+	return fileDescriptor_service_1175e72e077c2acf, []int{8, 0}
 }
 func (m *InitReq_SeedFile) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InitReq_SeedFile.Unmarshal(m, b)
@@ -644,7 +644,7 @@ func (m *InitResp) Reset()         { *m = InitResp{} }
 func (m *InitResp) String() string { return proto.CompactTextString(m) }
 func (*InitResp) ProtoMessage()    {}
 func (*InitResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_0f84d64da54adf3c, []int{9}
+	return fileDescriptor_service_1175e72e077c2acf, []int{9}
 }
 func (m *InitResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InitResp.Unmarshal(m, b)
@@ -685,57 +685,57 @@ func init() {
 	proto.RegisterType((*TemplateResp)(nil), "viewpoint.whoville.apinator.TemplateResp")
 	proto.RegisterType((*ValidationReq)(nil), "viewpoint.whoville.apinator.ValidationReq")
 	proto.RegisterType((*ValidationResp)(nil), "viewpoint.whoville.apinator.ValidationResp")
-	proto.RegisterType((*Vault)(nil), "viewpoint.whoville.apinator.Vault")
-	proto.RegisterType((*Vault_Env)(nil), "viewpoint.whoville.apinator.Vault.Env")
-	proto.RegisterType((*Vault_Env_Service)(nil), "viewpoint.whoville.apinator.Vault.Env.Service")
-	proto.RegisterType((*Vault_Env_Service_File)(nil), "viewpoint.whoville.apinator.Vault.Env.Service.File")
-	proto.RegisterType((*Vault_Env_Service_File_Value)(nil), "viewpoint.whoville.apinator.Vault.Env.Service.File.Value")
-	proto.RegisterType((*MakeVaultReq)(nil), "viewpoint.whoville.apinator.MakeVaultReq")
+	proto.RegisterType((*ValuesRes)(nil), "viewpoint.whoville.apinator.ValuesRes")
+	proto.RegisterType((*ValuesRes_Env)(nil), "viewpoint.whoville.apinator.ValuesRes.Env")
+	proto.RegisterType((*ValuesRes_Env_Service)(nil), "viewpoint.whoville.apinator.ValuesRes.Env.Service")
+	proto.RegisterType((*ValuesRes_Env_Service_File)(nil), "viewpoint.whoville.apinator.ValuesRes.Env.Service.File")
+	proto.RegisterType((*ValuesRes_Env_Service_File_Value)(nil), "viewpoint.whoville.apinator.ValuesRes.Env.Service.File.Value")
+	proto.RegisterType((*GetValuesReq)(nil), "viewpoint.whoville.apinator.GetValuesReq")
 	proto.RegisterType((*InitReq)(nil), "viewpoint.whoville.apinator.InitReq")
 	proto.RegisterType((*InitReq_SeedFile)(nil), "viewpoint.whoville.apinator.InitReq.SeedFile")
 	proto.RegisterType((*InitResp)(nil), "viewpoint.whoville.apinator.InitResp")
 }
 
-func init() { proto.RegisterFile("rpc/apinator/service.proto", fileDescriptor_service_0f84d64da54adf3c) }
+func init() { proto.RegisterFile("rpc/apinator/service.proto", fileDescriptor_service_1175e72e077c2acf) }
 
-var fileDescriptor_service_0f84d64da54adf3c = []byte{
-	// 601 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x55, 0xd1, 0x6e, 0xd3, 0x30,
-	0x14, 0x55, 0x9a, 0x6d, 0x4d, 0xef, 0xc6, 0x84, 0xac, 0x49, 0x44, 0x81, 0x87, 0x2a, 0x0c, 0x54,
-	0x86, 0x48, 0x51, 0xc7, 0x0b, 0x4c, 0x42, 0x62, 0xa8, 0xa0, 0x22, 0x90, 0x20, 0x9d, 0x2a, 0xb4,
-	0x37, 0xaf, 0xbd, 0x80, 0xd5, 0x2c, 0xf1, 0x62, 0x37, 0x85, 0x4f, 0xe0, 0x27, 0xf8, 0x0d, 0xf8,
-	0x2d, 0x3e, 0x00, 0x09, 0xd9, 0xb1, 0xd3, 0x48, 0xa0, 0xb4, 0xf0, 0xe6, 0x63, 0xdf, 0x73, 0xcf,
-	0xf5, 0xf5, 0xb9, 0x09, 0x04, 0x39, 0x9f, 0xf6, 0x29, 0x67, 0x29, 0x95, 0x59, 0xde, 0x17, 0x98,
-	0x17, 0x6c, 0x8a, 0x11, 0xcf, 0x33, 0x99, 0x91, 0x9b, 0x05, 0xc3, 0x25, 0xcf, 0x58, 0x2a, 0xa3,
-	0xe5, 0xa7, 0xac, 0x60, 0x49, 0x82, 0x91, 0x0d, 0x0d, 0x6f, 0x43, 0xfb, 0x35, 0x13, 0x32, 0xc6,
-	0x2b, 0xe2, 0x43, 0xdb, 0x10, 0x7d, 0xa7, 0xeb, 0xf4, 0x3a, 0xb1, 0x85, 0x61, 0x0f, 0xbc, 0x32,
-	0x48, 0x70, 0x72, 0x0b, 0x3a, 0x12, 0x2f, 0x79, 0x42, 0x25, 0x0a, 0xdf, 0xe9, 0xba, 0xbd, 0x4e,
-	0xbc, 0xda, 0x08, 0x4f, 0x60, 0xf7, 0xcc, 0x80, 0xc6, 0x94, 0x84, 0xc0, 0xd6, 0x07, 0x96, 0xa0,
-	0xdf, 0xd2, 0xdb, 0x7a, 0x1d, 0x3e, 0x82, 0xbd, 0x15, 0x59, 0x70, 0x15, 0x33, 0xa3, 0x92, 0x1a,
-	0xaa, 0x5e, 0x93, 0xeb, 0xe0, 0xe2, 0x67, 0x69, 0x68, 0x6a, 0x19, 0x9e, 0xc0, 0xb5, 0x09, 0x4d,
-	0xd8, 0x8c, 0x4a, 0x96, 0xa5, 0xcd, 0xa2, 0x8a, 0x9c, 0x16, 0x15, 0x39, 0x2d, 0xc2, 0x23, 0xd8,
-	0xaf, 0x93, 0x05, 0x57, 0x6c, 0x26, 0xf4, 0x9e, 0x66, 0x7b, 0xb1, 0x85, 0xe1, 0x77, 0x17, 0xb6,
-	0x27, 0x74, 0x91, 0x48, 0xf2, 0x04, 0xb6, 0x30, 0x2d, 0x84, 0xdf, 0xea, 0xba, 0xbd, 0xdd, 0xc1,
-	0xdd, 0xa8, 0xa1, 0xc1, 0x91, 0x66, 0x44, 0xc3, 0xb4, 0x88, 0x35, 0x27, 0xf8, 0xd9, 0x02, 0x77,
-	0x98, 0x16, 0xea, 0x72, 0x29, 0xbd, 0xb4, 0x25, 0xea, 0x35, 0x79, 0x05, 0x9e, 0x29, 0xd5, 0xe6,
-	0x8e, 0x36, 0xcb, 0x1d, 0x8d, 0x4b, 0x5a, 0x5c, 0xf1, 0x83, 0xaf, 0x2d, 0x68, 0x8f, 0x57, 0xcd,
-	0xfe, 0x43, 0x6b, 0x04, 0xdb, 0xaa, 0xe9, 0x56, 0xe8, 0xf8, 0xdf, 0x84, 0xa2, 0x17, 0x2c, 0xc1,
-	0xb8, 0xcc, 0x10, 0x7c, 0x73, 0x60, 0x4b, 0xe1, 0xbf, 0xea, 0xbc, 0x83, 0x9d, 0x82, 0x26, 0x8b,
-	0x4a, 0xe8, 0xf1, 0x7f, 0x08, 0x45, 0x13, 0x95, 0x21, 0x36, 0x89, 0x82, 0xbe, 0x7a, 0x87, 0x64,
-	0xa1, 0xdf, 0x73, 0x8e, 0x5f, 0x8c, 0x9c, 0x5a, 0x92, 0x03, 0xd8, 0xd6, 0x41, 0xe6, 0x8d, 0x4b,
-	0x10, 0xee, 0xc3, 0xde, 0x1b, 0x3a, 0x47, 0x9d, 0x3c, 0xc6, 0xab, 0xf0, 0x87, 0x03, 0xed, 0x51,
-	0xca, 0xb4, 0xeb, 0x9f, 0xdb, 0x3e, 0x38, 0xba, 0xbc, 0x07, 0x8d, 0xe5, 0x19, 0x52, 0x34, 0x46,
-	0x9c, 0xd5, 0x3a, 0x40, 0x02, 0xf0, 0x16, 0x02, 0x73, 0x7d, 0xf9, 0x52, 0xb9, 0xc2, 0xea, 0x8c,
-	0x53, 0x21, 0x96, 0x59, 0x3e, 0xf3, 0xdd, 0xf2, 0xcc, 0xe2, 0xe0, 0x21, 0x78, 0x36, 0x95, 0x35,
-	0xa7, 0x53, 0x99, 0xb3, 0xf2, 0x7f, 0x6b, 0xe5, 0xff, 0xf0, 0x29, 0x78, 0x65, 0x11, 0xa5, 0x55,
-	0xc5, 0x62, 0x3a, 0x45, 0x21, 0xac, 0x55, 0x0d, 0x54, 0x27, 0x49, 0xf6, 0xb1, 0x36, 0x60, 0x16,
-	0x0e, 0x00, 0xbc, 0xb3, 0x25, 0xcb, 0xf9, 0xb3, 0xb7, 0xa3, 0xc1, 0x2f, 0x17, 0x6e, 0x0c, 0x53,
-	0x89, 0x39, 0xcf, 0x99, 0x40, 0xd3, 0xf0, 0xd3, 0x3c, 0x9b, 0x63, 0x4e, 0x2e, 0x60, 0xf7, 0x25,
-	0x4a, 0x3b, 0x8e, 0xa4, 0xd7, 0xd8, 0x96, 0xda, 0xc8, 0x07, 0xf7, 0x36, 0x8c, 0x14, 0x9c, 0x4c,
-	0xc1, 0x33, 0xc3, 0x87, 0xe4, 0x68, 0x8d, 0x2d, 0x6a, 0x03, 0x1e, 0xdc, 0xdf, 0x38, 0x56, 0x8b,
-	0x1c, 0xa8, 0x6f, 0x97, 0xb9, 0x9d, 0xd5, 0x17, 0xe4, 0xb0, 0x31, 0x89, 0xf9, 0x26, 0x06, 0x77,
-	0x36, 0x88, 0x12, 0x9c, 0x9c, 0x43, 0xa7, 0x32, 0x18, 0x69, 0xee, 0x40, 0xdd, 0x88, 0x41, 0xb8,
-	0x7e, 0x18, 0xc8, 0x7b, 0xe8, 0xa8, 0x17, 0x2f, 0xc1, 0xe1, 0x26, 0xf6, 0x5c, 0x53, 0xb5, 0xf5,
-	0xcf, 0x29, 0x9c, 0x7b, 0x76, 0xf3, 0x62, 0x47, 0xff, 0x2b, 0x8e, 0x7f, 0x07, 0x00, 0x00, 0xff,
-	0xff, 0x03, 0x73, 0x70, 0x2d, 0x49, 0x06, 0x00, 0x00,
+var fileDescriptor_service_1175e72e077c2acf = []byte{
+	// 605 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x55, 0xef, 0x8a, 0xd3, 0x40,
+	0x10, 0x27, 0x4d, 0xef, 0x9a, 0x4c, 0xcf, 0x43, 0x96, 0x03, 0x43, 0xf4, 0x43, 0x89, 0x7f, 0xa8,
+	0x27, 0xa6, 0x52, 0x05, 0x3f, 0x1c, 0x1e, 0x78, 0x52, 0x8f, 0x03, 0x15, 0x49, 0xcf, 0x22, 0x7e,
+	0x10, 0x72, 0xed, 0xa8, 0xcb, 0xe5, 0x92, 0xbd, 0xdd, 0x6d, 0xaa, 0x1f, 0x7d, 0x04, 0x5f, 0xc1,
+	0xa7, 0xf0, 0x1d, 0x7c, 0x26, 0x41, 0x76, 0xb3, 0x9b, 0x16, 0x94, 0xb4, 0xfa, 0x6d, 0x66, 0x76,
+	0x7e, 0xbf, 0xdf, 0x64, 0x76, 0x66, 0x03, 0x21, 0x67, 0xd3, 0x41, 0xca, 0x68, 0x9e, 0xca, 0x82,
+	0x0f, 0x04, 0xf2, 0x92, 0x4e, 0x31, 0x66, 0xbc, 0x90, 0x05, 0xb9, 0x5e, 0x52, 0x5c, 0xb0, 0x82,
+	0xe6, 0x32, 0x5e, 0x7c, 0x2a, 0x4a, 0x9a, 0x65, 0x18, 0xdb, 0xd4, 0xe8, 0x26, 0x74, 0x5e, 0x50,
+	0x21, 0x13, 0xbc, 0x24, 0x01, 0x74, 0x0c, 0x30, 0x70, 0x7a, 0x4e, 0xdf, 0x4f, 0xac, 0x1b, 0xf5,
+	0xc1, 0xab, 0x92, 0x04, 0x23, 0x37, 0xc0, 0x97, 0x78, 0xc1, 0xb2, 0x54, 0xa2, 0x08, 0x9c, 0x9e,
+	0xdb, 0xf7, 0x93, 0x65, 0x20, 0x3a, 0x80, 0xee, 0xa9, 0x71, 0x1a, 0x29, 0x09, 0x81, 0xf6, 0x07,
+	0x9a, 0x61, 0xd0, 0xd2, 0x61, 0x6d, 0x47, 0x8f, 0x60, 0x67, 0x09, 0x16, 0x4c, 0xe5, 0xcc, 0x52,
+	0x99, 0x1a, 0xa8, 0xb6, 0xc9, 0x55, 0x70, 0xf1, 0xb3, 0x34, 0x30, 0x65, 0x46, 0x07, 0x70, 0x65,
+	0x92, 0x66, 0x74, 0x96, 0x4a, 0x5a, 0xe4, 0xcd, 0xa2, 0x0a, 0x9c, 0x97, 0x35, 0x38, 0x2f, 0xa3,
+	0x7d, 0xd8, 0x5d, 0x05, 0x0b, 0xa6, 0xd0, 0x54, 0xe8, 0x98, 0x46, 0x7b, 0x89, 0x75, 0xa3, 0x9f,
+	0x2e, 0xf8, 0x93, 0x34, 0x9b, 0xa3, 0x48, 0x50, 0x90, 0x43, 0x68, 0x63, 0x5e, 0x8a, 0xa0, 0xd5,
+	0x73, 0xfb, 0xdd, 0xe1, 0x7e, 0xdc, 0xd0, 0xe4, 0xb8, 0x46, 0xc5, 0xa3, 0xbc, 0x4c, 0x34, 0x2e,
+	0xfc, 0xd5, 0x02, 0x77, 0x94, 0x97, 0xea, 0x23, 0xf3, 0xf4, 0xc2, 0x96, 0xaa, 0x6d, 0xf2, 0x0a,
+	0x3c, 0x53, 0xb2, 0xe5, 0x1f, 0x6e, 0xce, 0x1f, 0x8f, 0x2b, 0x68, 0x52, 0x73, 0x84, 0xdf, 0x5a,
+	0xd0, 0x19, 0x2f, 0x1b, 0xff, 0x87, 0xde, 0x4b, 0xd8, 0x52, 0x17, 0x60, 0xc5, 0x1e, 0xff, 0xbb,
+	0x58, 0xfc, 0x9c, 0x66, 0x98, 0x54, 0x2c, 0xe1, 0x77, 0x07, 0xda, 0xca, 0xff, 0xab, 0xd6, 0x1b,
+	0xd8, 0x2e, 0x35, 0x83, 0x11, 0x7b, 0xf2, 0x9f, 0x62, 0xd5, 0x51, 0x62, 0xc8, 0xc2, 0x01, 0x6c,
+	0xe9, 0x80, 0xba, 0xe3, 0x73, 0xfc, 0x62, 0x24, 0x95, 0x49, 0xf6, 0x60, 0x4b, 0x27, 0x99, 0x7b,
+	0xaf, 0x9c, 0x68, 0x17, 0x76, 0x8e, 0x51, 0x5a, 0xfe, 0xcb, 0xe8, 0x87, 0x03, 0x9d, 0x93, 0x9c,
+	0xea, 0x4d, 0x78, 0x66, 0xfb, 0xe1, 0xe8, 0x12, 0xef, 0x37, 0x96, 0x68, 0x40, 0xf1, 0x18, 0x71,
+	0xb6, 0xd2, 0x05, 0x12, 0x82, 0x37, 0x17, 0xc8, 0x75, 0x03, 0x2a, 0xe5, 0xda, 0x57, 0x67, 0x2c,
+	0x15, 0x62, 0x51, 0xf0, 0x59, 0xe0, 0x56, 0x67, 0xd6, 0x0f, 0x1f, 0x80, 0x67, 0xa9, 0xec, 0xc0,
+	0x3a, 0xf5, 0xc0, 0xd6, 0x3b, 0xd1, 0x5a, 0xee, 0x44, 0x74, 0x08, 0x5e, 0x55, 0x44, 0x35, 0xbe,
+	0x62, 0x3e, 0x9d, 0xa2, 0x10, 0x76, 0x7c, 0x8d, 0xab, 0x4e, 0xb2, 0xe2, 0xe3, 0xca, 0xd2, 0x59,
+	0x77, 0x08, 0xe0, 0x9d, 0x2e, 0x28, 0x67, 0x4f, 0x5f, 0x9f, 0x0c, 0xbf, 0xb6, 0xe1, 0xda, 0x28,
+	0x97, 0xc8, 0x19, 0xa7, 0x02, 0x4d, 0xc3, 0x8f, 0x78, 0x71, 0x8e, 0x9c, 0x9c, 0x41, 0xf7, 0x18,
+	0xa5, 0x5d, 0x51, 0xd2, 0x6f, 0x6c, 0xcb, 0xca, 0x33, 0x10, 0xde, 0xdd, 0x30, 0x53, 0x30, 0x32,
+	0x05, 0xcf, 0x2c, 0x24, 0x92, 0xb5, 0x4b, 0xb5, 0x5c, 0xfa, 0xf0, 0xde, 0xc6, 0xb9, 0x5a, 0x64,
+	0x4f, 0xbd, 0x67, 0xe6, 0xeb, 0xac, 0xbe, 0x20, 0xb7, 0x1a, 0x49, 0xcc, 0x3b, 0x19, 0xde, 0xde,
+	0x20, 0x4b, 0x30, 0xf2, 0x1e, 0xfc, 0x7a, 0xc0, 0x48, 0x73, 0x07, 0x56, 0x07, 0x31, 0xbc, 0xb3,
+	0xd9, 0x42, 0x90, 0xb7, 0xe0, 0xab, 0x5b, 0x9f, 0xa4, 0xf3, 0x4c, 0xae, 0xa9, 0xdc, 0x8c, 0xe8,
+	0x9a, 0xca, 0xed, 0x0c, 0x1d, 0xc1, 0x3b, 0xcf, 0x06, 0xcf, 0xb6, 0xf5, 0x3f, 0xe4, 0xe1, 0xef,
+	0x00, 0x00, 0x00, 0xff, 0xff, 0x49, 0xca, 0x09, 0xf6, 0x61, 0x06, 0x00, 0x00,
 }
