@@ -1,2 +1,2 @@
-<vault-start></vault-start>
-<!-- <login-box></login-box> -->
+<vault-start *ngIf="!isInitialized"></vault-start>
+<login-box *ngIf="isInitialized" [IsSealed]="isSealed"></login-box>

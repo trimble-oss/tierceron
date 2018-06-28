@@ -22,7 +22,7 @@ class InitService{
       _request.send(json.encode(request));
       // final response = base64Decode(_log);
       // return utf8.decode(response);
-      _request.onReadyStateChange.listen((_) {
+      _request.onLoadEnd.listen((_) {
         Map<String, dynamic> responseJSON = json.decode(_request.responseText);
         if(responseJSON['success']) {
           response.complete({

@@ -52,9 +52,6 @@ class VaultStartComponent implements OnInit{
     RegExp ext = new RegExp(r'(.+\.yml|.+\.yaml)'); 
     this.SeedBuffer = event.target.files; // Get files from html element
 
-    SeedBuffer.forEach((file) { 
-      print(file);
-    });
     print('===Current File Set==='); // Log files
     SeedBuffer.forEach((bufferfile){
       // Make sure file is yaml
@@ -70,10 +67,6 @@ class VaultStartComponent implements OnInit{
           // Convert to base64, fetch file name and environment
             List<int> fileBytes = utf8.encode(f.result);
             Seeds.add(new UISeedFile(bufferfile.name, base64Encode(fileBytes)));
-
-            // Printing for debugging purposes
-            print(Seeds.last.name);
-            print(Seeds.last.data);
           });
           // Log error events to the console
           f.onError.listen((errorEvent) => print(errorEvent));
