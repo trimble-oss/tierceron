@@ -24,6 +24,9 @@ type KeyTokenWrapper struct {
 // NewVault Constructs a new vault at the given address with the given access token
 func NewVault(addr string, certPath string) (*Vault, error) {
 	httpClient, err := kv.CreateHTTPClient(certPath)
+	if err != nil {
+		return nil, err
+	}
 	client, err := api.NewClient(&api.Config{Address: addr, HttpClient: httpClient})
 	if err != nil {
 		return nil, err
@@ -132,4 +135,17 @@ func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
 	yaml.Unmarshal(tokenfile, &token)
 	response, err := v.client.Auth().Token().Create(&token)
 	return response.Auth.ClientToken, err
+}
+
+//GetStatus checks the health of the vault and retrieves version and status of init/seal
+func (v *Vault) GetStatus() (map[string]interface{}, error) {
+	health, err := v.client.Sys().Health()
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"initialized": health.Initialized,
+		"sealed":      health.Sealed,
+		"version":     health.Version,
+	}, nil
 }

@@ -12,30 +12,34 @@ class InitService{
 
   InitService(this._request);
 
-  Future<String> MakeRequest(Map<String, dynamic> request) async{
-    String url = _host + "/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/InitVault";
-    Completer<String> response = new Completer<String>();
+  Future<Map<String, dynamic>> MakeRequest(Map<String, dynamic> request) async{
+    String url = _host + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/InitVault';
+    Completer<Map<String,dynamic>> response = new Completer<Map<String, dynamic>>();
     try {
       _request.open('POST', url);
-      _request.setRequestHeader("Content-Type", "application/json");
-      _request.setRequestHeader("Authorization", _authToken);
+      _request.setRequestHeader('Content-Type', 'application/json');
+      _request.setRequestHeader('Authorization', _authToken);
       _request.send(json.encode(request));
       // final response = base64Decode(_log);
       // return utf8.decode(response);
       _request.onReadyStateChange.listen((_) {
         Map<String, dynamic> responseJSON = json.decode(_request.responseText);
-        if(responseJSON["success"]) {
-          print("success!");
-          print(responseJSON["logfile"]);
-          response.complete(utf8.decode(base64Decode(responseJSON["logfile"])));
+        if(responseJSON['success']) {
+          response.complete({
+            'log': utf8.decode(base64Decode(responseJSON['logfile'])),
+            'tokens': responseJSON['tokens']
+          });
         } else {
-          print("failure!");
-          response.complete("Init failed");
+          print('failure!');
         }
       });
       return response.future;
     } catch(err) {
       print(err);
     }
+    return response.complete({
+            'log': 'Error in reading logs',
+            'tokens': ''
+          });
   }
 }

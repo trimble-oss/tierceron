@@ -3,11 +3,7 @@ syntax = "proto3";
 package viewpoint.whoville.apinator;
 option go_package="apinator";
 
-
-// Templates service that returns templates
-service TwirpAPI {
-   
-}
+message NoParams{}
 
 service EnterpriseServiceBroker {
     rpc GetTemplate(TemplateReq) returns (TemplateResp);
@@ -15,6 +11,8 @@ service EnterpriseServiceBroker {
     rpc ListServiceTemplates(ListReq) returns (ListResp);
     rpc GetValues(GetValuesReq) returns (ValuesRes);
     rpc InitVault(InitReq) returns (InitResp);
+    rpc GetStatus(NoParams) returns (VaultStatus);
+    rpc APILogin(LoginReq) returns (LoginResp);
 }
 
 /////////////////////////////////////////////////////////
@@ -99,6 +97,31 @@ message InitReq {
 }
 
 message InitResp {
+    message Token {
+        string name = 1;
+        string value = 2;
+    }
     bool success = 1;
     string logfile = 2;
+    repeated Token tokens = 3;
+}
+
+/////////////////////////////////////////////////////////
+// Web App LogIn Messages                              //
+/////////////////////////////////////////////////////////
+message VaultStatus {
+    bool initialized = 1;
+    bool sealed = 2;
+    string version = 3;
+}
+
+message LoginReq {
+    string username = 1;
+    string password = 2;
+}
+
+message LoginResp {
+    bool success = 1;
+    string authToken = 2;
+    repeated string errors = 3;
 }

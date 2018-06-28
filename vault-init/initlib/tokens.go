@@ -3,6 +3,7 @@ package initlib
 import (
 	"bitbucket.org/dexterchaney/whoville/utils"
 	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
+	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -10,7 +11,8 @@ import (
 )
 
 //UploadTokens accepts a file directory and vault object to upload tokens to. Logs to pased logger
-func UploadTokens(dir string, v *sys.Vault, logger *log.Logger) {
+func UploadTokens(dir string, v *sys.Vault, logger *log.Logger) []*pb.InitResp_Token {
+	tokens := []*pb.InitResp_Token{}
 	logger.SetPrefix("[TOKEN]")
 	logger.Printf("Writing tokens from %s\n", dir)
 	files, err := ioutil.ReadDir(dir)
@@ -27,7 +29,12 @@ func UploadTokens(dir string, v *sys.Vault, logger *log.Logger) {
 			tokenName, err := v.CreateTokenFromFile(dir + "/" + file.Name())
 			utils.LogErrorObject(err, logger)
 			fmt.Printf("Created token %-30s %s\n", filename+":", tokenName)
+			tokens = append(tokens, &pb.InitResp_Token{
+				Name:  filename,
+				Value: tokenName,
+			})
 		}
 
 	}
+	return tokens
 }

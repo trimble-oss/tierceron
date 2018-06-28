@@ -2,6 +2,7 @@ package server
 
 import (
 	"bitbucket.org/dexterchaney/whoville/utils"
+	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
 	il "bitbucket.org/dexterchaney/whoville/vault-init/initlib"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
@@ -22,6 +23,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	fmt.Println("Initing vault")
 	logBuffer := new(bytes.Buffer)
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
+
 	v, err := sys.NewVault(s.VaultAddr, s.CertPath)
 	utils.LogErrorObject(err, logger)
 
@@ -55,12 +57,20 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	il.UploadPolicies(policyPath, v, logger)
 
-	il.UploadTokens(tokenPath, v, logger)
+	tokens := il.UploadTokens(tokenPath, v, logger)
 
-	logger.SetPrefix("[INIT]")
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
+	utils.LogErrorObject(err, logger)
+	fmt.Printf("Adding user %s: %s\n", req.Username, req.Password)
+	warns, err := mod.Write("cubbyhole/credentials", map[string]interface{}{
+		req.Username: req.Password,
+	})
+	utils.LogWarningsObject(warns, logger)
+	utils.LogErrorObject(err, logger)
 	return &pb.InitResp{
 		Success: true,
 		Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
+		Tokens:  tokens,
 	}, nil
 }
 
@@ -70,3 +80,49 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 // 		Logfile: logged,
 // 	}, nil
 // }
+
+//APILogin Verifies the user's login with the cubbyhole
+func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp, error) {
+	fmt.Printf("Req: %v\n", req)
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
+	if err != nil {
+		return nil, err
+	}
+	pass, err := mod.ReadValue("cubbyhole/credentials", req.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	success := pass == req.Password
+	fmt.Printf("%s %s == %v\n", pass, req.Password, success)
+	if pass != "" && success {
+		// Generate token
+		return &pb.LoginResp{
+			Success:   true,
+			AuthToken: "TODO",
+		}, nil
+
+	}
+	return &pb.LoginResp{
+		Success:   false,
+		AuthToken: "LOGIN_FAILURE",
+	}, nil
+}
+
+//GetStatus requests version info and whether the vault has been initailized
+func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStatus, error) {
+	v, err := sys.NewVault(s.VaultAddr, s.CertPath)
+	if err != nil {
+		return nil, err
+	}
+
+	status, err := v.GetStatus()
+	if err != nil {
+		return nil, err
+	}
+	return &pb.VaultStatus{
+		Version:     status["version"].(string),
+		Initialized: status["initialized"].(bool),
+		Sealed:      status["sealed"].(bool),
+	}, err
+}

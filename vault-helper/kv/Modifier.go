@@ -12,6 +12,7 @@ import (
 // Set all paths that don't use environments to true
 var noEnvironments = map[string]bool{
 	"templates/": true,
+	"cubbyhole/": true,
 }
 
 // Modifier maintains references to the active client and
@@ -131,19 +132,19 @@ func (m *Modifier) List(path string) (*api.Secret, error) {
 }
 
 //ReadValue takes a path and a key and returns the corresponding value from the vault
-func (m *Modifier) ReadValue(path string, key string) string {
+func (m *Modifier) ReadValue(path string, key string) (string, error) {
 	fmt.Printf("Grabbing secret from %s %s\n", path, key)
 	valueMap, err := m.ReadData(path)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	//return value corresponding to the key
 	if valueMap[key] != nil {
 		value := valueMap[key].(string)
-		return value
+		return value, nil
 	}
 	fmt.Println("no keys found at path", path, "key", key)
-	return ""
+	return "", nil
 }
 
 //AdjustValue adjusts the value at the given path/key by n
