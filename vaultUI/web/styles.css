@@ -72,3 +72,9 @@ label {
   color: #4F4F4F;
   font-size: large;
 }
+
+li{
+  list-style-type: square;
+  color: #55555E;
+  font-size: 10.5pt;
+}

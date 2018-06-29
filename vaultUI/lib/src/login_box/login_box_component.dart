@@ -10,14 +10,14 @@ import 'dart:convert';
   selector: 'login-box',
   styleUrls: ['login_box_component.css'],
   templateUrl: 'login_box_component.html',
-  directives: const [CORE_DIRECTIVES, 
+  directives: const [coreDirectives,
                      formDirectives,
                      ModalComponent],
   providers: const [materialProviders]
 
 )
 
-class LoginBoxComponent{
+class LoginBoxComponent implements OnInit {
   @Input()
   String Username;
   @Input()
@@ -27,8 +27,13 @@ class LoginBoxComponent{
   bool IsSealed;
   @Input()
   String UnsealKey;
+  Set<String> Keys = new Set();
 
-  final String _logInEndpoint = 'http://localhost:8008/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/APILogin';   // Vault addreess
+  Future<Null> ngOnInit() {
+    print("Login loaded!");
+  }
+
+  final String _apiEndpoint = 'http://localhost:8008/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess
 
   SignIn() {
     Map<String, dynamic> body = new Map();
@@ -46,10 +51,26 @@ class LoginBoxComponent{
       }
     }); 
     
-    request.open('POST', _logInEndpoint);
+    request.open('POST', _apiEndpoint + 'APILogin');
     request.setRequestHeader('Content-Type', 'application/json');
-    request.setRequestHeader('Authorization', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMjE2NTQ5ODcwIiwibmFtZSI6IldlYiBBcHAiLCJpYXQiOjE1MTYyMzkwMjIsImlzcyI6IlZpZXdwb2ludCwgSW5jLiIsImF1ZCI6IlZpZXdwb2ludCBWYXVsdCBXZWJBUEkifQ.ls2cxzqIMv3_72BKH9K34uR-gWgeFTGqu-tXGh503Jg');
     request.send(json.encode(body));
   }  
+
+  Future<Null> Unseal() async{
+    // Try to unseal with the key
+    HttpRequest request = new HttpRequest();
+    request.onLoadEnd.listen((_) {
+      Map<String, dynamic> response = json.decode(request.response);
+      if(response['sealed'] != null && response['sealed']) {
+        Keys.add(UnsealKey);
+      } else {
+        IsSealed = false;
+      }
+    });
+
+    request.open('POST', _apiEndpoint + 'Unseal');
+    request.setRequestHeader('Content-Type', 'application/json');
+    request.send(json.encode({"unsealKey" : UnsealKey}));
+  }
 
 }

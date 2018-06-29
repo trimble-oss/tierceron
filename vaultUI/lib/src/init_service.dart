@@ -37,9 +37,10 @@ class InitService{
     } catch(err) {
       print(err);
     }
-    return response.complete({
+    response.complete({
             'log': 'Error in reading logs',
             'tokens': ''
           });
+    return response.future;
   }
 }

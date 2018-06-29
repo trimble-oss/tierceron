@@ -2,11 +2,9 @@ import 'dart:html';
 import 'dart:core';
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart';
 
 import 'package:angular/angular.dart';
 import 'package:angular_forms/angular_forms.dart';
-import 'package:cryptoutils/cryptoutils.dart';
 
 import '../twirp_requests.dart';
 import '../init_service.dart';
@@ -17,8 +15,8 @@ import '../log_dialog/log_dialog_component.dart';
   selector: 'vault-start',
   styleUrls: ['vault_start_component.css'],
   templateUrl: 'vault_start_component.html',
-  directives: const [CORE_DIRECTIVES, 
-                     formDirectives, 
+  directives: const [coreDirectives, 
+                     formDirectives,
                      LogDialogComponent],
   pipes: const [SlicePipe],
   providers: const [InitService]

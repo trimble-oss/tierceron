@@ -1,11 +1,14 @@
-import 'package:angular/angular.dart';
-import 'package:vaultUI/app_component.template.dart' as ng;
 import 'dart:html';
+
+import 'package:angular/angular.dart';
+import 'package:angular_router/angular_router.dart';
+import 'package:vaultUI/app_component.template.dart' as ng;
 
 import 'main.template.dart' as self;
 
 @GenerateInjector([
-  ClassProvider(HttpRequest, useClass: HttpRequest)
+  ClassProvider(HttpRequest, useClass: HttpRequest),
+  routerProvidersHash
 ])
 final InjectorFactory injector = self.injector$Injector;
 

@@ -13,6 +13,7 @@ service EnterpriseServiceBroker {
     rpc InitVault(InitReq) returns (InitResp);
     rpc GetStatus(NoParams) returns (VaultStatus);
     rpc APILogin(LoginReq) returns (LoginResp);
+    rpc Unseal(UnsealReq) returns (UnsealResp);
 }
 
 /////////////////////////////////////////////////////////
@@ -124,4 +125,14 @@ message LoginResp {
     bool success = 1;
     string authToken = 2;
     repeated string errors = 3;
+}
+
+message UnsealReq {
+    string unsealKey = 1;
+}
+
+message UnsealResp {
+    bool sealed = 1;
+    int32 progress = 2;
+    int32 needed = 3;
 }

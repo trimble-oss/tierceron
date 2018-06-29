@@ -113,16 +113,16 @@ func (v *Vault) AddShard(shard string) {
 }
 
 // Unseal Performs an unseal wuth this vault's shard. Returns true if unseal is successful
-func (v *Vault) Unseal() (int, int, error) {
+func (v *Vault) Unseal() (int, int, bool, error) {
 	var status *api.SealStatusResponse
 	var err error
 	for _, shard := range v.shards {
 		status, err = v.client.Sys().Unseal(shard)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, false, err
 		}
 	}
-	return status.Progress, status.T, nil
+	return status.Progress, status.T, status.Sealed, nil
 }
 
 // CreateTokenFromFile Creates a new token from the given file and returns the name

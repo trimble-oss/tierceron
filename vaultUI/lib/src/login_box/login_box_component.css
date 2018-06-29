@@ -5,6 +5,18 @@
     border-left:1px solid gray;
     margin-left:10px;
     padding-left:10px;
-    padding-right: 10px;
-    background-color: #9fd6f9;
+    padding-right:10px;
+    background-color:#9fd6f9;
+    justify-content: flex-end;
+}
+#sealBox>input{
+    display:inline-block;
+    width:75%;
+    margin-top: 0;
+}
+#sealBox>button{
+    display:inline-block;
+    height:43px;
+    width:20%;
+    margin-top: 0;
 }

@@ -100,6 +100,7 @@ func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.Valid
 	return &pb.ValidationResp{IsValid: data["verified"].(bool)}, nil
 }
 
+//GetValues gets values requested from the vault
 func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.ValuesRes, error) {
 
 	environments := []*pb.ValuesRes_Env{}

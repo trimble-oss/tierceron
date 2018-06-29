@@ -1,8 +1,11 @@
-import 'package:angular/angular.dart';
 import 'dart:html';
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:angular/angular.dart';
+import 'package:angular_router/angular_router.dart';
+
+import 'src/routes.dart';
 import 'src/login_box/login_box_component.dart';
 import 'src/vault_start/vault_start_component.dart';
 
@@ -11,14 +14,17 @@ import 'src/vault_start/vault_start_component.dart';
 
 @Component(
   selector: 'my-app',
-  styleUrls: ['app_component.css'],
   templateUrl: 'app_component.html',
-  directives: [CORE_DIRECTIVES, VaultStartComponent, LoginBoxComponent],
+  directives: [coreDirectives, routerDirectives, LoginBoxComponent, VaultStartComponent],
+  providers: [ClassProvider(Routes)]
 )
 class AppComponent implements OnInit{
   // Nothing here yet. All logic is in TodoListComponent.
   bool isSealed;
   bool isInitialized;
+
+  final Routes routes;
+  AppComponent(this.routes);
 
   final  String _logInEndpoint = 'http://localhost:8008/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
 
@@ -26,6 +32,7 @@ class AppComponent implements OnInit{
     isInitialized = true;
     isSealed = false;
     checkSeal();
+    return null;
   }
 
   Future<Null> checkSeal() async {
@@ -44,7 +51,7 @@ class AppComponent implements OnInit{
         isInitialized = response['initialized'];
       }
       print("Initialized: " + isInitialized.toString());
-      print("Sealed: " + isInitialized.toString());
+      print("Sealed: " + isSealed.toString());
     });
 
     request.open('POST', _logInEndpoint);

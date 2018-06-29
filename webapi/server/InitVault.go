@@ -126,3 +126,20 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 		Sealed:      status["sealed"].(bool),
 	}, err
 }
+
+//Unseal passes the unseal key to the vault and tries to unseal the vault
+func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp, error) {
+	v, err := sys.NewVault(s.VaultAddr, s.CertPath)
+	if err != nil {
+		return nil, err
+	}
+
+	v.AddShard(req.UnsealKey)
+	prog, need, sealed, err := v.Unseal()
+
+	return &pb.UnsealResp{
+		Sealed:   sealed,
+		Progress: int32(prog),
+		Needed:   int32(need),
+	}, err
+}
