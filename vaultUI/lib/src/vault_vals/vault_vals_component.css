@@ -13,14 +13,11 @@
   }
   
   .box {
-      width: 700px;
+    float: left;
+    width: 700px;
   }
   
-  .box>div {
-    margin: 2%;
-    width: 46%;
-    vertical-align: text-top;
-  }
+
   
   .error {
     background-color: #ffcfcf;
@@ -29,7 +26,7 @@
   }
   .column {
     float: left;
-    width: 50%;
+    width: 350px;
 }
 
 /* Clear floats after the columns */
@@ -45,7 +42,7 @@
   
   select {
     font-size:medium;
-    margin-right:5px;
+
   }
   ul {
     background-color: #f0f8ff;

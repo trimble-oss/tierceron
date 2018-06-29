@@ -1,22 +1,17 @@
 <div class="box">
     <h1>Vault Values</h1>
-    <button id="value_button" (click)="GetVals()">Get Values</button>
+    
     <input type="search" placeholder="Search..">
     <button id="value_button" (click)="SearchValues()">Search Values</button>
-    <div id="value_list">
-        <label>List of Values</label>
-    </div>
     <div class="row">
         <div class="column">
-            <ul>
-                <li>Key</li>
-                <li>Key2</li>
+            <label>Keys</label>
+            <ul id="keys">
             </ul>
         </div>
         <div class="column">
-            <ul>
-                <li>Value</li>
-                <li>Value2</li>
+            <label>Values</label>
+            <ul id="values">
             </ul>
         </div>
     </div>
