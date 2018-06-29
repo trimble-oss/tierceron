@@ -64,9 +64,12 @@ func uploadTemplates(addr string, token string, dirName string, certPath string,
 
 		if ext == ".tmpl" { // Only upload template files
 			fmt.Printf("Found template file %s\n", file.Name())
+			// Seperate name and extension one more time for saving to vault
+			ext = filepath.Ext(name)
+			name = name[0 : len(name)-len(ext)]
 
 			// Extract values
-			extractedValues, err := utils.Parse(dirName + "/" + file.Name())
+			extractedValues, err := utils.Parse(dirName+"/"+file.Name(), subDir, name)
 			utils.CheckError(err)
 			fmt.Println("\tExtracted values:")
 			for k, v := range extractedValues {
@@ -81,10 +84,6 @@ func uploadTemplates(addr string, token string, dirName string, certPath string,
 			fileBytes := make([]byte, file.Size())
 			_, err = f.Read(fileBytes)
 			utils.CheckError(err)
-
-			// Seperate name and extension one more time for saving to vault
-			ext = filepath.Ext(name)
-			name = name[0 : len(name)-len(ext)]
 
 			// Construct template path for vault
 			templatePath := "templates/" + subDir + "/" + name + "/template-file"
@@ -110,9 +109,3 @@ func uploadTemplates(addr string, token string, dirName string, certPath string,
 		}
 	}
 }
-
-// Things to update:
-//		Ports?
-//		URL references?
-// 		Domain headers?
-//		Redirects?
