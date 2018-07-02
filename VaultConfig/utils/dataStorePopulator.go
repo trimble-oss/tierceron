@@ -53,14 +53,14 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, servicesWant
 					dirs := strings.Split(path, "/")
 					if dirs[0] == "super-secrets" {
 						key := valueMap[1]
-						value := mod.ReadValue(path, key)
+						value, _ := mod.ReadValue(path, key)
 						//put the original key with the correct value
 						cds.dataMap[ogKeys[i]] = value
 					}
 				} else {
 					//second element is the key
 					key := valueMap[1]
-					value := mod.ReadValue(path, key)
+					value, _ := mod.ReadValue(path, key)
 					//put the original key with the correct value
 					cds.dataMap[ogKeys[i]] = value
 				}

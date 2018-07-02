@@ -97,6 +97,22 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 
 }
 
+//ReadValue takes a path and a key and returns the corresponding value from the vault
+func (m *Modifier) ReadValue(path string, key string) (string, error) {
+	//fmt.Printf("Grabbing secret from %s %s\n", path, key)
+	valueMap, err := m.ReadData(path)
+	if err != nil {
+		return "", err
+	}
+	//return value corresponding to the key
+	if valueMap[key] != nil {
+		value := string(valueMap[key].(string))
+		return value, nil
+	}
+	fmt.Println("no keys found at path", path, "key", key)
+	return "", nil
+}
+
 // ReadMetadata Reads the Metadata from the path referenced by this Modifier
 // @return	A Secret pointer that contains key,value pairs and metadata
 //			errors generated from reading
@@ -129,22 +145,6 @@ func (m *Modifier) List(path string) (*api.Secret, error) {
 		fullPath += pathBlocks[1]
 	}
 	return m.logical.List(fullPath)
-}
-
-//ReadValue takes a path and a key and returns the corresponding value from the vault
-func (m *Modifier) ReadValue(path string, key string) (string, error) {
-	fmt.Printf("Grabbing secret from %s %s\n", path, key)
-	valueMap, err := m.ReadData(path)
-	if err != nil {
-		return "", err
-	}
-	//return value corresponding to the key
-	if valueMap[key] != nil {
-		value := valueMap[key].(string)
-		return value, nil
-	}
-	fmt.Println("no keys found at path", path, "key", key)
-	return "", nil
 }
 
 //AdjustValue adjusts the value at the given path/key by n

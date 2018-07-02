@@ -1,13 +1,11 @@
 package utils
 
 import (
-	"fmt"
 	"io/ioutil"
 	"regexp"
-	"strings"
 )
 
-const pattern string = "{{or .+ .+}}"
+const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
 // Parse Extracts default values as key-value pairs from template files
 func Parse(filepath string, service string, filename string) (map[string]interface{}, error) {
@@ -26,15 +24,11 @@ func Parse(filepath string, service string, filename string) (map[string]interfa
 	matched := regex.FindAllString(string(file), -1)
 
 	for _, match := range matched {
-		match = strings.Trim(match, "{}")
-		match = match[4:] // Remove the "or ."
-
-		kv := strings.SplitN(match, " ", 2)
+		kv := regex.FindStringSubmatch(match)
 		// Split and add to map
-		//fmt.Println(match)
-		kv[0] = service + "." + filename + "." + kv[0]
-		workingSet[kv[0]] = strings.Trim(kv[1], "\"")
-		fmt.Printf("%+v\n", kv)
+		// fmt.Println(match)
+		kv[1] = service + "_" + filename + "_" + kv[1]
+		workingSet[kv[1]] = kv[2]
 	}
 
 	return workingSet, nil
