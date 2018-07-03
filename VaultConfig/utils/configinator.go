@@ -23,7 +23,8 @@ func ConfigFromVault(token string, address string, certPath string, env string, 
 	templatePaths, endPaths := getDirFiles(startDir, endDir)
 	//configure each template in directory
 	for i, templatePath := range templatePaths {
-		configuredTemplate := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, servicesWanted...)
+		s := strings.Split(startDir, "/")
+		configuredTemplate := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[1])
 		writeToFile(configuredTemplate, endPaths[i])
 	}
 	//print that we're done

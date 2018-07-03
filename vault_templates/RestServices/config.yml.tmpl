@@ -1,0 +1,102 @@
+database:
+  driverClass: {{or .database_driverClass "com.microsoft.sqlserver.jdbc.SQLServerDriver"}}
+  url: {{.url}}
+  user: "{{.user}}"
+  password: "{{.pass}}"
+
+  properties:
+    charSet: {{or .database_properties_charSet "UTF-8"}}
+
+  # the maximum amount of time to wait on an empty pool before throwing an exception
+  maxWaitForConnection: {{or .database_maxWaitForConnection "1s"}}
+
+  # the SQL query to run when validating a connection's liveness
+  validationQuery: "{{or .database_validationQuery "/* MyService Health Check */ SELECT 1"}}"
+
+  # the timeout before a connection validation queries fail
+  validationQueryTimeout: {{or .database_validationQueryTimeout "3s"}}
+
+  # the minimum number of connections to keep open
+  minSize: {{or .database_minSize "8"}}
+
+  # the maximum number of connections to keep open
+  maxSize: {{or .database_maxSize "32"}}
+
+  # whether or not idle connections should be validated
+  checkConnectionWhileIdle: {{or .database_checkConnectionWhileIdle "true"}}
+
+  # the amount of time to sleep between runs of the idle connection validation, abandoned cleaner and idle pool resizing
+  evictionInterval: {{or .database_evictionInterval "10s"}}
+
+  # the minimum amount of time an connection must sit idle in the pool before it is eligible for eviction
+  minIdleTime: {{or .database_minIdleTime "1 minute"}}
+
+logging:
+  level: {{or .logging_level "INFO"}}
+  loggers:
+    com.dexterchaney.spectrum: {{or .logging_loggers.comdexterchaneyspectrum "DEBUG"}}
+
+_authenticationCachePolicy: maximumSize={{or .authenticationCachePolicy_maximumSize "10000"}}, expireAfterAccess={{or .authenticationCachePolicy_expireAfterAccess "1s"}}
+
+server:
+  applicationConnectors:
+  - type: {{or .server_applicationConnectors_type1 "http"}}
+    port: {{or .server_applicationConnectors_port1 "9010"}}
+  - type: {{or .server_applicationConnectors_type2 "http"}}
+    port: {{or .server_applicationConnectors_port2 "8082"}}
+  - type: {{or .server_applicationConnectors_type3 "https"}}
+    port: {{or .server_applicationConnectors_port3 "9012"}}
+    keyStorePath: {{.keyStorePath}}
+    keyStorePassword: {{.keyStorePassword}}
+    validateCerts: {{or .server_applicationConnectors_validateCerts3 "false"}}
+    validatePeers: {{or .server_applicationConnectors_validatePeers3 "false"}}
+  - type: {{or .server_applicationConnectors_type4 "https"}}
+    port: {{or .server_applicationConnectors_port4 "8482"}}
+    keyStorePath: {{.keyStorePath}}
+    keyStorePassword: {{.keyStorePassword}}
+    validateCerts: {{or .server_applicationConnectors_validateCerts4 "false"}}
+    validatePeers: {{or .server_applicationConnectors_validatePeers4 "false"}}
+  adminConnectors:
+  - type: {{or .server_adminConnectors_type "http"}}
+    port: {{or .server_adminConnectors_port "9011"}}
+
+
+taskServer: {{.taskServer}}
+
+taskPort: {{.taskPort}}
+
+taskUser: "{{.taskUser}}"
+
+taskPassword: "{{.taskPassword}}"
+
+taskTimeoutInMiliseconds: {{or .taskTimeoutInMilliseconds "1800000"}}
+
+taskNames:
+    - taskName: {{or .taskNames_taskName "TK_POBatch"}}
+    
+#legacy proiv api    
+soapUrl: {{.soapUrl}}
+soapPort: {{.soapPort}}
+soapPrefix: {{.soapPrefix}}
+
+#api information
+apiVersion: "{{.apiVersion}}"
+endpointValidationPath: "{{.endpointValidationPath}}"
+validateEndpointUrl: "{{.validateEndpointUrl}}"
+getEnterpriseRegistrationEndpointUrl: "{{.getEnterpriseRegistrationEndpointUrl}}"
+registerEndpointUrl: "{{.registerEndpointUrl}}"
+enterpriseByRegistrationKeyUrl: "{{.enterpriseByRegistrationKeyUrl}}"
+refreshEntityMappingsUrlTemplate: "{{.refreshEntityMappingsUrlTemplate}}"
+
+#spectrum information
+portalUri: "{{.portalUri}}"
+spectrumServiceAuthUrl: "{{.spectrumServiceAuthUrl}}"
+
+#team information
+tokenAudience: "{{.tokenAudience}}"
+serverToServerClientId: "{{.serverToServerClientId}}"
+integrationAccessTokenIssuer: "{{.integrationAccessTokenIssuer}}"
+accessTokenUrl: "{{.accessTokenUrl}}"
+tokenIssuer: "{{.tokenIssuer}}"
+serverToServerPublicKey: "{{.serverToServerPublicKey}}"
+serverToServerClientSecret: "{{.serverToServerClientSecret}}"

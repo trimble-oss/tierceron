@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<License>
+	<LicensedTo>{{.LicensedTo}}</LicensedTo>
+	<LicenseType>{{.LicenseType}}</LicenseType>
+	<OrderNumber>{{or .OrderNumber "00000"}}</OrderNumber>
+	<ExpirationDate>{{or .ExpirationDate "99991231"}}</ExpirationDate>
+	<NumberOfCPUs>{{or .NumberOfCPUs "1"}}</NumberOfCPUs>
+	<Products>
+		<Product>{{or .Products_Product "RasterMaster Java"}}</Product>
+	</Products>
+	<Options>
+		<Option>{{or .Options_Option1 "Annotation"}}</Option>
+		<Option>{{or .Options_Option2 "PDF"}}</Option>
+		<Option>{{or .Options_Option3 "JPEG2000"}}</Option>
+		<Option>{{or .Options_Option4 "SVG"}}</Option>
+	</Options>
+	<Signature>{{.Signature}}</Signature>
+</License>

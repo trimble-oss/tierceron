@@ -1,0 +1,36 @@
+server:
+  applicationConnectors:
+  - type: {{or .server_applicationConnectors_type "http"}}
+    port: {{.applicationPort}}
+  adminConnectors:
+  - type: {{or .server_adminConnectors_type "http"}}
+    port: {{.adminPort}}
+
+reportService:
+  port: {{or .reportService_port "2380"}}
+  threads: {{or .reportService_threads "8"}}
+  reportsBase: {{or .reportService_reportsBase "D:\\Spectrum\\Reports\\"}}
+
+database:
+  server: {{.server}}
+  user: {{.user}}
+  password: {{.password}}
+  database: {{.database}}
+  
+logging:
+   level: {{or .logging_level "INFO"}}
+
+   loggers:
+      "com.crystaldecisions": {{or .logging_loggers_crystaldecisions "ERROR"}}
+      "com.crystaldecisions12": {{or .logging_loggers_crystaldecisions12 "ERROR"}}
+      "com.businessobjects": {{or .logging_loggers_businessobjects "ERROR"}}
+      "org.eclipse.jetty": {{or .logging_loggers_eclipsejetty "INFO"}}
+
+   appenders:
+      - type: {{or .logging_appenders_type1 "console"}}
+        threshold: {{or .logging_appenders_threshold1 "TRACE"}}
+        target: {{or .logging_appenders_target1 "stdout"}}
+
+      - type: {{or .logging_appenders_type2 "console"}}
+        threshold: {{or .logging_appenders_threshold2 "WARN"}}
+        target: {{or .logging_appenders_target2 "stderr"}}

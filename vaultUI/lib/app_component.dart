@@ -15,7 +15,10 @@ import 'src/vault_start/vault_start_component.dart';
 @Component(
   selector: 'my-app',
   templateUrl: 'app_component.html',
-  directives: [coreDirectives, routerDirectives, LoginBoxComponent, VaultStartComponent],
+  directives: [coreDirectives, 
+               routerDirectives, 
+               LoginBoxComponent, 
+               VaultStartComponent],
   providers: [ClassProvider(Routes)]
 )
 class AppComponent implements OnInit{

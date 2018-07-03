@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context sessionCookiePath="{{or .sessionCookiePath "/"}}">
+    <Realm className="{{or .Realm_className "org.apache.catalina.realm.JAASRealm"}}"
+           appName="{{or .Realm_appName "Aurora"}}"
+           userClassNames="{{or .Realm_userClassNames "com.northgatearinso.aurora.authentication.AuroraUserPrincipal"}}"
+           roleClassNames="{{or .Realm_roleClassNames "com.northgatearinso.aurora.authentication.AuroraGroupPrincipal"}}" />
+
+    <resource-ref>
+        <description>{{or .resourceRef_description "Spectrum REST Database Connection Pool"}}</description>
+        <res-ref-name>{{or .resourceRef_resRefName "jdbc/SpectrumPool"}}</res-ref-name>
+        <res-type>{{or .resourceRef_resType "javax.sql.DataSource"}}</res-type>
+        <res-auth>{{or .resourceRef_resAuth "Container"}}</res-auth>
+    </resource-ref>
+
+    <Resource name="{{or .Resource_name "jdbc/SpectrumPool"}}"
+              auth="{{or .Resource_auth "Container"}}"
+              type="{{or .Resource_type "javax.sql.DataSource"}}"
+              factory="{{or .Resource_factory "org.apache.tomcat.jdbc.pool.DataSourceFactory"}}"
+
+              testOnBorrow="{{or .Resource_testOnBorrow "true"}}"
+              testWhileIdle="{{or .Resource_testWhileIdle "true"}}"
+              testOnReturn="{{or .Resource_testOnReturn "false"}}"
+              validationQuery="{{or .Resource_validationQuery "SELECT 1"}}"
+              validationInterval="{{or .Resource_validationInterval "30000"}}"
+
+              timeBetweenEvictionRunsMillis="{{or .Resource_timeBetweenEvictionRunsMillis "30000"}}"
+              minEvictableIdleTimeMillis="{{or .Resource_minEvictableIdleTimeMillis "60000"}}"
+
+              minIdle="{{or .Resource_minIdle "10"}}"
+              maxIdle="{{or .Resource_maxIdle "50"}}"
+              initialSize="{{or .Resource_initialSize "10"}}"
+              maxActive="{{or .Resource_maxActive "100"}}"
+
+              maxWait="{{or .Resource_maxWait "5000"}}"
+              removeAbandonedTimeout="{{or .Resource_removeAbandonedTimeout "90"}}"
+              removeAbandoned="{{or .Resource_removeAbandoned "true"}}"
+              logAbandoned="{{or .Resource_logAbandoned "true"}}"
+              abandonWhenPercentageFull="{{or .Resource_abandonWhenPercentageFull "50"}}"
+
+              jmxEnabled="{{or .Resource_jmxEnabled "true"}}"
+              jdbcInterceptors="{{or .Resource_jdbcInterceptor1 "org.apache.tomcat.jdbc.pool.interceptor.ResetAbandonedTimer"}};
+            				  {{or .Resource_jdbcInterceptor2 "org.apache.tomcat.jdbc.pool.interceptor.ConnectionState"}};
+            				  {{or .Resource_jdbcInterceptor3 "org.apache.tomcat.jdbc.pool.interceptor.StatementFinalizer"}}"
+              username="{{.username}}"
+              password="{{.password}}"
+              driverClassName="{{or .Resource_driverClassName "com.microsoft.sqlserver.jdbc.SQLServerDriver"}}"
+              url="{{.url}};"/>
+</Context>

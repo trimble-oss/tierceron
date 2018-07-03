@@ -71,10 +71,6 @@ func uploadTemplates(addr string, token string, dirName string, certPath string,
 			// Extract values
 			extractedValues, err := utils.Parse(dirName+"/"+file.Name(), subDir, name)
 			utils.CheckError(err)
-			fmt.Println("\tExtracted values:")
-			for k, v := range extractedValues {
-				fmt.Printf("\t\t%-30s%v\n", k, v)
-			}
 
 			// Open file
 			f, err := os.Open(dirName + "/" + file.Name())

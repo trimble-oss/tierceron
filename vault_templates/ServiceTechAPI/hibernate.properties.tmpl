@@ -1,0 +1,12 @@
+hibernate.connection.driver_class = {{or .driver_class "com.mysql.jdbc.Driver"}}
+hibernate.connection.url = {{.url}}
+hibernate.connection.username = {{.username}}
+hibernate.connection.password = {{.password}}
+hibernate.connection.initialPoolSize = {{or .initialPoolSize "35"}}
+hibernate.connection.maxPoolSize = {{or .maxPoolSize "35"}}
+hibernate.connection.acquireRetryDelay = {{or .acquireRetryDelay "3000"}}
+hibernate.connection.retryAttempts = {{or .retryAttempts "5"}}
+hibernate.connection.unreturnedConnectionTimeout = {{or .unreturnedConnectionTimeout "120"}}
+hibernate.connection.checkoutTimeout = {{or .checkoutTimeout "10000"}}
+hibernate.connection.idleConnectionTestPeriod = {{or .idleConnectionTestPeriod "300"}}
+sendGridApiKey = {{.sendGridApiKey}}

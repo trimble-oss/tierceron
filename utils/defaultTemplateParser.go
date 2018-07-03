@@ -3,11 +3,16 @@ package utils
 import (
 	"io/ioutil"
 	"regexp"
+	"strings"
 )
 
+// {{or .<key> "<value>"}}
 const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
-// Parse Extracts default values as key-value pairs from template files
+// Parse Extracts default values as key-value pairs from template files.
+// Before being uploaded, the service and filename will be appended so the uploaded value will be
+// <Service>.<Filename>.<Key>
+// Underscores in key names will be replaced with periods before being uploaded
 func Parse(filepath string, service string, filename string) (map[string]interface{}, error) {
 	workingSet := make(map[string]interface{})
 	file, err := ioutil.ReadFile(filepath)
@@ -27,7 +32,7 @@ func Parse(filepath string, service string, filename string) (map[string]interfa
 		kv := regex.FindStringSubmatch(match)
 		// Split and add to map
 		// fmt.Println(match)
-		kv[1] = service + "_" + filename + "_" + kv[1]
+		kv[1] = service + "." + filename + "." + strings.Replace(kv[1], "_", ".", -1)
 		workingSet[kv[1]] = kv[2]
 	}
 

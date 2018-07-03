@@ -13,7 +13,7 @@ type ConfigDataStore struct {
 	dataMap map[string]interface{}
 }
 
-func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, servicesWanted ...string) {
+func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool, servicesWanted ...string) {
 	cds.dataMap = make(map[string]interface{})
 	dataPaths, err := getPathsFromService(mod, servicesWanted...)
 	if err != nil {
@@ -41,34 +41,58 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, servicesWant
 				valueMaps = append(valueMaps, newValues)
 			}
 		}
-		for i, valueMap := range valueMaps {
-			//these should be [path, key] maps
-			if len(valueMap) != 2 {
-				panic(errors.New("value path is not the correct length"))
-			} else {
-				//first element is the path
-				path := valueMap[0]
-				if secretMode {
-					//get rid of non-secret paths
-					dirs := strings.Split(path, "/")
-					if dirs[0] == "super-secrets" {
+		if useDirs {
+			s := strings.Split(path, "/")
+			serviceDir := s[1]
+			fileDir := s[len(s)-1]
+			if len(fileDir) == 0 || len(serviceDir) == 0 {
+				continue
+			}
+			values, _ := mod.ReadData(path)
+			// Substitute in secrets
+			for k, v := range values {
+				if link, ok := v.([]interface{}); ok {
+					values[k], _ = mod.ReadValue(link[0].(string), link[1].(string))
+				}
+			}
+			if subDir, ok := cds.dataMap[serviceDir].(map[string]interface{}); ok {
+				subDir[fileDir] = values
+			} else if cds.dataMap[serviceDir] == nil {
+				cds.dataMap[serviceDir] = map[string]interface{}{
+					fileDir: values,
+				}
+			}
+		} else {
+			for i, valueMap := range valueMaps {
+				//these should be [path, key] maps
+				if len(valueMap) != 2 {
+					panic(errors.New("value path is not the correct length"))
+				} else {
+					//first element is the path
+					secretPath := valueMap[0]
+					if secretMode {
+						//get rid of non-secret paths
+						dirs := strings.Split(secretPath, "/")
+						if dirs[0] == "super-secrets" {
+							key := valueMap[1]
+							value, _ := mod.ReadValue(secretPath, key)
+							//put the original key with the correct value
+							cds.dataMap[ogKeys[i]] = value
+						}
+					} else {
+						//second element is the key
 						key := valueMap[1]
-						value, _ := mod.ReadValue(path, key)
+						value, _ := mod.ReadValue(secretPath, key)
 						//put the original key with the correct value
 						cds.dataMap[ogKeys[i]] = value
 					}
-				} else {
-					//second element is the key
-					key := valueMap[1]
-					value, _ := mod.ReadValue(path, key)
-					//put the original key with the correct value
-					cds.dataMap[ogKeys[i]] = value
 				}
 			}
 		}
 
 	}
 }
+
 func getPathsFromService(mod *kv.Modifier, services ...string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
@@ -81,6 +105,7 @@ func getPathsFromService(mod *kv.Modifier, services ...string) ([]string, error)
 		if len(services) > 0 {
 			servicesUsed := []interface{}{}
 			for _, service := range services {
+				service = service + "/"
 				serviceAvailable := false
 				for _, availService := range availServices {
 					if service == availService.(string) {
@@ -114,7 +139,7 @@ func getPaths(mod *kv.Modifier, pathName string, pathList []string) []string {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
 		for _, pathEnd := range slicey {
-			path := pathName + "/" + pathEnd.(string)
+			path := pathName + pathEnd.(string)
 			pathList = append(pathList, path)
 			//don't add on to paths until you're sure it's an END path
 		}
