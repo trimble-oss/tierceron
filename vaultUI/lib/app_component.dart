@@ -8,6 +8,7 @@ import 'package:angular_router/angular_router.dart';
 import 'src/routes.dart';
 import 'src/login_box/login_box_component.dart';
 import 'src/vault_start/vault_start_component.dart';
+import 'src/vault_vals/vault_vals_component.dart';
 
 // AngularDart info: https://webdev.dartlang.org/angular
 // Components info: https://webdev.dartlang.org/components
@@ -18,7 +19,8 @@ import 'src/vault_start/vault_start_component.dart';
   directives: [coreDirectives, 
                routerDirectives, 
                LoginBoxComponent, 
-               VaultStartComponent],
+               VaultStartComponent,
+               VaultValsComponent],
   providers: [ClassProvider(Routes)]
 )
 class AppComponent implements OnInit{
