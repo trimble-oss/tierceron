@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -17,121 +18,30 @@ type VaultVals struct {
 	envs []Env  `json:"envs"`
 }
 type Env struct {
-	ID       string    `json:"_id"`
+	ID       int       `json:"_id"`
 	name     string    `json:"name"`
 	services []Service `json:"services"`
 }
 type Service struct {
-	ID    string `json:"_id"`
+	envID int    `json: "envID"`
+	ID    int    `json:"_id"`
 	name  string `json:"name"`
 	files []File `json:"files"`
 }
 type File struct {
-	ID     string  `json:"_id"`
+	envID  int     `json: "envID"`
+	servID int     `json: "servID"`
+	ID     int     `json:"_id"`
 	name   string  `json:"name"`
 	values []Value `json:"values"`
 }
 type Value struct {
-	ID    string `json:"_id"`
-	key   string `json:"name"`
-	value string `json:"value"`
-}
-
-var ValueObject = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "Value",
-		Fields: graphql.Fields{
-			"id": &graphql.Field{
-				Type: graphql.String,
-			},
-			"key": &graphql.Field{
-				Type: graphql.String,
-			},
-			"value": &graphql.Field{
-				Type: graphql.String,
-				//return vaultQL.envs[0].services[0].files[0].values[0], nil
-			},
-		},
-	})
-var FileObject = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "File",
-		Fields: graphql.Fields{
-			"id": &graphql.Field{
-				Type: graphql.String,
-			},
-			"name": &graphql.Field{
-				Type: graphql.String,
-			},
-			"values": &graphql.Field{
-				Type: graphql.NewList(ValueObject),
-			},
-		},
-	})
-var ServiceObject = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "Service",
-		Fields: graphql.Fields{
-			"id": &graphql.Field{
-				Type: graphql.String,
-			},
-			"name": &graphql.Field{
-				Type: graphql.String,
-			},
-			"files": &graphql.Field{
-				Type: graphql.NewList(FileObject),
-			},
-		},
-	})
-var EnvObject = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "Env",
-		Fields: graphql.Fields{
-			"id": &graphql.Field{
-				Type: graphql.String,
-			},
-			"name": &graphql.Field{
-				Type: graphql.String,
-			},
-			"services": &graphql.Field{
-				Type: graphql.NewList(ServiceObject),
-			},
-		},
-	})
-var VaultValObject = graphql.NewObject(
-	graphql.ObjectConfig{
-
-		Name: "VaultVals",
-		Fields: graphql.Fields{
-			"id": &graphql.Field{
-				Type: graphql.String,
-			},
-
-			"envs": &graphql.Field{
-				Type: graphql.NewList(EnvObject),
-			},
-		},
-	})
-
-var fakeVault VaultVals = VaultVals{envs: []Env{Env{ID: "1", name: "fakeEnv", services: []Service{Service{ID: "1", name: "fakeService", files: []File{File{ID: "1", name: "fakeFile", values: []Value{Value{ID: "1", key: "fakeKey", value: "fakeValue"}}}}}}}}}
-
-// var schema, _ = graphql.NewSchema(
-// 	graphql.SchemaConfig{
-// 		Query: VaultValObject,
-// 	},
-// )
-func Filter(envs []Env, f func(Env) bool) []Env {
-	fmt.Println("filtering")
-	vsf := make([]Env, 0)
-	for _, v := range envs {
-		if f(v) {
-			vsf = append(vsf, v)
-		}
-	}
-	if len(vsf) == 0 {
-		fmt.Println("filtered everything out")
-	}
-	return vsf
+	envID  int    `json: "envID"`
+	servID int    `json: "servID"`
+	fileID int    `json: "fileID"`
+	ID     int    `json:"_id"`
+	key    string `json:"name"`
+	value  string `json:"value"`
 }
 
 func main() {
@@ -145,48 +55,67 @@ func main() {
 	utils.CheckError(err)
 
 	envList := []Env{}
-	fmt.Printf("Vault: \n")
+	//fmt.Printf("Vault: \n")
 	for i, env := range vault.Envs {
 		serviceList := []Service{}
-		fmt.Printf("Env: %s\n", env.Name)
+		//fmt.Printf("Env: %s\n", env.Name)
 		for j, service := range env.Services {
 			fileList := []File{}
-			fmt.Printf("\tService: %s\n", service.Name)
+			//fmt.Printf("\tService: %s\n", service.Name)
 			for k, file := range service.Files {
 				valList := []Value{}
-				fmt.Printf("\t\tFile: %s\n", file.Name)
+				//fmt.Printf("\t\tFile: %s\n", file.Name)
 				for l, val := range file.Values {
-					fmt.Printf("\t\t\tkey: %s\tvalue: %s\n", val.Key, val.Value)
-					valQL := Value{ID: string(l), key: val.Key, value: val.Value}
+					//fmt.Printf("\t\t\tkey: %s\tvalue: %s\n", val.Key, val.Value)
+					valQL := Value{ID: l, envID: i, servID: j, fileID: k, key: val.Key, value: val.Value}
 					valList = append(valList, valQL)
 				}
-				fileQL := File{ID: string(k), name: file.Name, values: valList}
+				fileQL := File{ID: k, envID: i, servID: j, name: file.Name, values: valList}
 				fileList = append(fileList, fileQL)
 			}
-			serviceQL := Service{ID: string(j), name: service.Name, files: fileList}
+			serviceQL := Service{ID: j, envID: i, name: service.Name, files: fileList}
 			serviceList = append(serviceList, serviceQL)
 		}
-		envQL := Env{ID: string(i), name: env.Name, services: serviceList}
+		envQL := Env{ID: i, name: env.Name, services: serviceList}
 		envList = append(envList, envQL)
 	}
 	vaultQL := VaultVals{envs: envList}
-	fmt.Println(vaultQL)
 	var ValueObject = graphql.NewObject(
 		graphql.ObjectConfig{
-			Name: "Values",
+			Name: "Value",
 			Fields: graphql.Fields{
+				"id": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"envid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"servid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"fileid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
 				"key": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						return vaultQL.envs[0].services[0].files[0].values[0].key, nil
+						val := params.Source.(Value).ID
+						file := params.Source.(Value).fileID
+						serv := params.Source.(Value).servID
+						env := params.Source.(Value).envID
+						return vaultQL.envs[env].services[serv].files[file].values[val].key, nil
 					},
 				},
 				"value": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						return vaultQL.envs[0].services[0].files[0].values[0].value, nil
+
+						val := params.Source.(Value).ID
+						file := params.Source.(Value).fileID
+						serv := params.Source.(Value).servID
+						env := params.Source.(Value).envID
+						return vaultQL.envs[env].services[serv].files[file].values[val].value, nil
 					},
-					//return vaultQL.envs[0].services[0].files[0].values[0], nil
 				},
 			},
 		})
@@ -194,19 +123,58 @@ func main() {
 		graphql.ObjectConfig{
 			Name: "File",
 			Fields: graphql.Fields{
+				"id": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"envid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"servid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						return vaultQL.envs[0].services[0].files[0].name, nil
+						file := params.Source.(File).ID
+						serv := params.Source.(File).servID
+						env := params.Source.(File).envID
+						return vaultQL.envs[env].services[serv].files[file].name, nil
 					},
 				},
 				"values": &graphql.Field{
 					Type: graphql.NewList(ValueObject),
-					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					Args: graphql.FieldConfigArgument{
+						"keyName": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+						"valName": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+					},
+					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						//get list of values and return
-						// ValueList := []Value{}
-						// return ValueList, nil
-						return vaultQL.envs[0].services[0].files[0].values, nil
+						keyStr, keyOK := params.Args["keyName"].(string)
+						valStr, valOK := params.Args["valName"].(string)
+
+						file := params.Source.(File).ID
+						serv := params.Source.(File).servID
+						env := params.Source.(File).envID
+						if keyOK {
+							for i, v := range vaultQL.envs[env].services[serv].files[file].values {
+								if v.key == keyStr {
+									return []Value{vaultQL.envs[env].services[serv].files[file].values[i]}, nil
+								}
+							}
+							return vaultQL.envs[env].services[serv].files[file].values, errors.New("keyName not found")
+						} else if valOK {
+							for i, v := range vaultQL.envs[env].services[serv].files[file].values {
+								if v.value == valStr {
+									return []Value{vaultQL.envs[env].services[serv].files[file].values[i]}, nil
+								}
+							}
+							return vaultQL.envs[env].services[serv].files[file].values, errors.New("valName not found")
+						}
+						return vaultQL.envs[env].services[serv].files[file].values, nil
 					},
 				},
 			},
@@ -215,19 +183,40 @@ func main() {
 		graphql.ObjectConfig{
 			Name: "Service",
 			Fields: graphql.Fields{
+				"id": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"envid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						return vaultQL.envs[0].services[0].name, nil
+						serv := params.Source.(Service).ID
+						env := params.Source.(Service).envID
+						return vaultQL.envs[env].services[serv].name, nil
 					},
 				},
 				"files": &graphql.Field{
 					Type: graphql.NewList(FileObject),
-					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-						//get list of files and return
-						// FileList := []File{}
-						// return FileList, nil
-						return vaultQL.envs[0].services[0].files, nil
+					Args: graphql.FieldConfigArgument{
+						"fileName": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+					},
+					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+						fileStr, isOK := params.Args["fileName"].(string)
+						serv := params.Source.(Service).ID
+						env := params.Source.(Service).envID
+						if isOK {
+							for i, f := range vaultQL.envs[env].services[serv].files {
+								if f.name == fileStr {
+									return []File{vaultQL.envs[env].services[serv].files[i]}, nil
+								}
+							}
+							return vaultQL.envs[env].services[serv].files, errors.New("fileName not found")
+						}
+						return vaultQL.envs[env].services[serv].files, nil
 					},
 				},
 			},
@@ -236,25 +225,38 @@ func main() {
 		graphql.ObjectConfig{
 			Name: "Env",
 			Fields: graphql.Fields{
+				"id": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						return vaultQL.envs[0].name, nil
+						env := params.Source.(Env).ID
+						return vaultQL.envs[env].name, nil
 					},
 				},
 				"services": &graphql.Field{
 					Type: graphql.NewList(ServiceObject),
+					Args: graphql.FieldConfigArgument{
+						"servName": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+					},
+
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						//get list of services and return
-						//serviceList := []Service{}
-						// serviceName := params.Args["name"].(string)
-						// for _, service := range serviceList {
-						// 	if service.name == serviceName {
-						// 		return service, nil
-						// 	}
-						// }
-						//fmt.Println(fakeVault.envs[0].services)
-						return vaultQL.envs[0].services, nil
+
+						servStr, isOK := params.Args["servName"].(string)
+						env := params.Source.(Env).ID
+						if isOK {
+							for i, s := range vaultQL.envs[env].services {
+								if s.name == servStr {
+									return []Service{vaultQL.envs[env].services[i]}, nil
+								}
+							}
+							return vaultQL.envs[env].services, errors.New("servName not found")
+						}
+						return vaultQL.envs[env].services, nil
+
 					},
 				},
 			},
@@ -262,30 +264,33 @@ func main() {
 	var VaultValObject = graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "VaultVals",
+
 			Fields: graphql.Fields{
 				"envs": &graphql.Field{
 					Type: graphql.NewList(EnvObject),
+					Args: graphql.FieldConfigArgument{
+						"envName": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+					},
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						fmt.Println("resolving")
-						//fmt.Println(vaultQL.envs)
-						//add logic to retrieve list of envs
-						// envName := params.Args["name"].(string)
-						// filtered := Filter(vaultQL.envs, func(v Env) bool {
-						// 	fmt.Println("this one")
-						// 	return strings.Contains(v.name, envName)
-						// })
-						fmt.Println(fakeVault.envs)
+						envStr, isOK := params.Args["envName"].(string)
+						if isOK {
+							for i, e := range vaultQL.envs {
+								if e.name == envStr {
+									return []Env{vaultQL.envs[i]}, nil
+								}
+							}
+							return vaultQL.envs, errors.New("envName not found")
+						}
 						return vaultQL.envs, nil
-						//return envList, nil
+
 					},
 				},
 			},
 		})
 
-	//importJSONData()
-
 	http.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("executing query")
 		schema, _ := graphql.NewSchema(graphql.SchemaConfig{
 			Query: VaultValObject,
 		})
@@ -296,7 +301,7 @@ func main() {
 		json.NewEncoder(w).Encode(result)
 	})
 
-	fmt.Println("Now server is running on port 8080")
-	fmt.Println("Test with Get      : curl -g 'http://localhost:8080/graphql?query={envs{services{files{values{key}}}}}'")
+	fmt.Println("Server is running on port 8080")
+	fmt.Println("Test with: curl -g 'http://localhost:8080/graphql?query={envs{services{files{values{key,value}}}}}'")
 	http.ListenAndServe(":8080", nil)
 }
