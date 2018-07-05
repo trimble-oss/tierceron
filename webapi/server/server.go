@@ -8,13 +8,26 @@ import (
 
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
+	gql "github.com/graphql-go/graphql"
 )
 
 //Server implements the twirp api server endpoints
 type Server struct {
-	VaultToken string
-	VaultAddr  string
-	CertPath   string
+	VaultToken  string
+	VaultAddr   string
+	CertPath    string
+	ValueSchema gql.Schema
+}
+
+//NewServer Creates a new server struct and initializes the GraphQL schema
+func NewServer(VaultAddr string, VaultToken string, CertPath string) *Server {
+	s := Server{}
+	s.VaultToken = VaultToken
+	s.VaultAddr = VaultAddr
+	s.CertPath = CertPath
+
+	s.InitGQL()
+	return &s
 }
 
 //ListServiceTemplates lists the templates under the requested service

@@ -14,6 +14,7 @@ service EnterpriseServiceBroker {
     rpc GetStatus(NoParams) returns (VaultStatus);
     rpc APILogin(LoginReq) returns (LoginResp);
     rpc Unseal(UnsealReq) returns (UnsealResp);
+    rpc GraphQL(GraphQLQuery) returns (GraphQLResp);
 }
 
 /////////////////////////////////////////////////////////
@@ -135,4 +136,43 @@ message UnsealResp {
     bool sealed = 1;
     int32 progress = 2;
     int32 needed = 3;
+}
+
+/////////////////////////////////////////////////////////
+// GraphQL Messages                                    //
+/////////////////////////////////////////////////////////
+message GraphQLQuery {
+    string query = 1;
+}
+
+message GQLError {
+    message Location{
+        int32 line = 1;
+        int32 column = 2;
+    }
+    string message = 1;
+    repeated Location locations = 2;
+
+}
+
+message GraphQLResp {
+    ValuesRes data = 1;
+    repeated GQLError errors = 2;
+}
+
+message TemplateData {
+    message Service {
+        string name = 1;
+        message File {
+            string name = 1;
+            repeated string secrets = 2;
+        }
+        repeated File files = 2;
+    }
+    repeated Service services = 2;
+}
+
+message GQLTemplateResp {
+    TemplateData data = 1;
+    repeated GQLError errors = 2;
 }
