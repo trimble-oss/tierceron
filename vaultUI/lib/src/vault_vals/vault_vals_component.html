@@ -1,8 +1,24 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <div class="box">
     <h1>Vault Values</h1>
-    
-    <input type="search" placeholder="Search..">
-    <button id="value_button" (click)="SearchValues()">Search Values</button>
+
+    <div class="topnav">
+        <select #env id="environments" class="titilium" (change)="SelectEnv(env.value)">
+            <option disabled selected value> -- environment -- </option>
+        </select>
+        <select #serv id="services" class="titilium" (change)="SelectServ(serv.value)">
+            <option disabled selected value> -- service -- </option>
+        </select>
+        <select #file id="files" class="titilium" (change)="SelectFile(file.value)">
+            <option disabled selected value> -- file -- </option>
+        </select>
+        <div class="search-container">
+            
+            <input #query type="text" placeholder="Search.." name="search">
+            <button type="submit" (click)="SelectKey(query.value)"><i class="fa fa-search"></i></button>
+        </div>
+    </div>
+
     <div class="row">
         <div class="column">
             <label>Keys</label>
@@ -14,10 +30,5 @@
             <ul id="values">
             </ul>
         </div>
-    </div>
-    <div class="topnav">
-        <a class="active" href="#home">Home</a>
-        <a href="#about">About</a>
-        <a href="#contact">Contact</a>
     </div>
 </div>

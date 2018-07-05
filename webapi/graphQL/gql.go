@@ -14,24 +14,24 @@ import (
 )
 
 type VaultVals struct {
-	ID   string `json:"_id"`
+	ID   string `json:"id"`
 	envs []Env  `json:"envs"`
 }
 type Env struct {
-	ID       int       `json:"_id"`
+	ID       int       `json:"id"`
 	name     string    `json:"name"`
 	services []Service `json:"services"`
 }
 type Service struct {
 	envID int    `json: "envID"`
-	ID    int    `json:"_id"`
+	ID    int    `json:"id"`
 	name  string `json:"name"`
 	files []File `json:"files"`
 }
 type File struct {
 	envID  int     `json: "envID"`
 	servID int     `json: "servID"`
-	ID     int     `json:"_id"`
+	ID     int     `json:"id"`
 	name   string  `json:"name"`
 	values []Value `json:"values"`
 }
@@ -39,7 +39,7 @@ type Value struct {
 	envID  int    `json: "envID"`
 	servID int    `json: "servID"`
 	fileID int    `json: "fileID"`
-	ID     int    `json:"_id"`
+	ID     int    `json:"id"`
 	key    string `json:"name"`
 	value  string `json:"value"`
 }
@@ -79,6 +79,7 @@ func main() {
 		envQL := Env{ID: i, name: env.Name, services: serviceList}
 		envList = append(envList, envQL)
 	}
+
 	vaultQL := VaultVals{envs: envList}
 	var ValueObject = graphql.NewObject(
 		graphql.ObjectConfig{
@@ -147,14 +148,14 @@ func main() {
 						"keyName": &graphql.ArgumentConfig{
 							Type: graphql.String,
 						},
-						"valName": &graphql.ArgumentConfig{
-							Type: graphql.String,
-						},
+						// "valName": &graphql.ArgumentConfig{
+						// 	Type: graphql.String,
+						// },
 					},
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						//get list of values and return
 						keyStr, keyOK := params.Args["keyName"].(string)
-						valStr, valOK := params.Args["valName"].(string)
+						// valStr, valOK := params.Args["valName"].(string)
 
 						file := params.Source.(File).ID
 						serv := params.Source.(File).servID
@@ -165,16 +166,17 @@ func main() {
 									return []Value{vaultQL.envs[env].services[serv].files[file].values[i]}, nil
 								}
 							}
-							return vaultQL.envs[env].services[serv].files[file].values, errors.New("keyName not found")
-						} else if valOK {
-							for i, v := range vaultQL.envs[env].services[serv].files[file].values {
-								if v.value == valStr {
-									return []Value{vaultQL.envs[env].services[serv].files[file].values[i]}, nil
-								}
-							}
-							return vaultQL.envs[env].services[serv].files[file].values, errors.New("valName not found")
-						}
+							return []Value{}, errors.New("keyName not found")
+						} //else if valOK {
+						// 	for i, v := range vaultQL.envs[env].services[serv].files[file].values {
+						// 		if v.value == valStr {
+						// 			return []Value{vaultQL.envs[env].services[serv].files[file].values[i]}, nil
+						// 		}
+						// 	}
+						// 	return vaultQL.envs[env].services[serv].files[file].values, errors.New("valName not found")
+						// }
 						return vaultQL.envs[env].services[serv].files[file].values, nil
+						//return nil, nil
 					},
 				},
 			},
@@ -291,6 +293,9 @@ func main() {
 		})
 
 	http.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 		schema, _ := graphql.NewSchema(graphql.SchemaConfig{
 			Query: VaultValObject,
 		})
@@ -301,7 +306,7 @@ func main() {
 		json.NewEncoder(w).Encode(result)
 	})
 
-	fmt.Println("Server is running on port 8080")
-	fmt.Println("Test with: curl -g 'http://localhost:8080/graphql?query={envs{services{files{values{key,value}}}}}'")
-	http.ListenAndServe(":8080", nil)
+	fmt.Println("Server is running on port 8090")
+	fmt.Println("Test with: curl -g 'http://localhost:8090/graphql?query={envs{services{files{values{key,value}}}}}'")
+	http.ListenAndServe(":8090", nil)
 }
