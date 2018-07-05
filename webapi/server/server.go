@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	//"bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
-
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 )

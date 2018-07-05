@@ -1,5 +1,5 @@
 templates:
-  ST:
+  ServiceTech:
     hibernate:
       outputPath: hibernate.config
       url: [super-secrets/ServiceTechDB, url]
@@ -10,9 +10,9 @@ templates:
       outputPath: config.yml
       keyStorePath: [super-secrets/KeyStore, Path]
       keyStorePassword: [super-secrets/KeyStore, Pass]
-  Spectrum:
-
-values:
+  Spectrum: # Ignored
+ 
+values: # Ignored
 
 super-secrets:
   SpectrumDB:
@@ -26,10 +26,11 @@ super-secrets:
   SendGrid:
     ApiKey: SendGrid API Key placeholder
   KeyStore:
+    verify-path: Verification path placeholder
     Path: Keystore path placeholder
     Pass: Keystore password placeholder
 
-value-metrics:
+value-metrics: # Ignored
 
 verification:
   SpectrumDB:
