@@ -196,7 +196,7 @@ func (s *Server) InitGQL() {
 							values := []Value{}
 							matchFound := false
 							// Construct a regular expression based on the search
-							regex := regexp.MustCompile(`.*` + keyStr + `.*`)
+							regex := regexp.MustCompile(`(?i).*` + keyStr + `.*`)
 							for i, v := range vaultQL.envs[env].services[serv].files[file].values {
 								if regex.MatchString(v.key) {
 									matchFound = true
