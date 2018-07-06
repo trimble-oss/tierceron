@@ -115,7 +115,7 @@ func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.Valid
 func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.ValuesRes, error) {
 
 	environments := []*pb.ValuesRes_Env{}
-	envStrings := []string{"dev", "QA", "local", "secrets"}
+	envStrings := []string{"dev", "QA", "local"}
 	for _, environment := range envStrings {
 		mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 		mod.Env = environment

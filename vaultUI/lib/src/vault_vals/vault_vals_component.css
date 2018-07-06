@@ -91,7 +91,16 @@
   background-color: #ddd;
   color: black;
 }
-
+.topnav .selection {
+  float: left;
+  width: 20%;
+  padding: 6px;
+  margin-left: 16px;
+  margin-top: 8px;
+  /* margin-bottom: 0px; */
+  font-size: 17px;
+  /* border: none; */
+}
 .topnav .search-container {
   float: right;
 }

@@ -6,8 +6,8 @@ import 'package:angular/angular.dart';
 import 'package:angular_router/angular_router.dart';
 
 import 'src/routes.dart';
-import 'src/login_box/login_box_component.dart';
-import 'src/vault_start/vault_start_component.dart';
+//import 'src/login_box/login_box_component.dart';
+//import 'src/vault_start/vault_start_component.dart';
 import 'src/vault_vals/vault_vals_component.dart';
 
 // AngularDart info: https://webdev.dartlang.org/angular
@@ -16,11 +16,7 @@ import 'src/vault_vals/vault_vals_component.dart';
 @Component(
   selector: 'my-app',
   templateUrl: 'app_component.html',
-  directives: [coreDirectives, 
-               routerDirectives, 
-               LoginBoxComponent, 
-               VaultStartComponent,
-               VaultValsComponent],
+  directives: [coreDirectives, routerDirectives, VaultValsComponent], //LoginBoxComponent, VaultStartComponent],
   providers: [ClassProvider(Routes)]
 )
 class AppComponent implements OnInit{
@@ -34,10 +30,12 @@ class AppComponent implements OnInit{
   final  String _logInEndpoint = 'http://localhost:8008/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
 
   Future<Null> ngOnInit() {
-    isInitialized = true;
-    isSealed = false;
-    checkSeal();
-    return null;
+    // isInitialized = true;
+    // isSealed = false;
+    // checkSeal();
+    // return null;
+    VaultValsComponent vals = new VaultValsComponent();
+    vals.Start();
   }
 
   Future<Null> checkSeal() async {

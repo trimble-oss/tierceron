@@ -3,13 +3,13 @@
     <h1>Vault Values</h1>
 
     <div class="topnav">
-        <select #env id="environments" class="titilium" (change)="SelectEnv(env.value)">
+        <select #env id="environments" class="selection" (change)="SelectEnv(env.value)">
             <option disabled selected value> -- environment -- </option>
         </select>
-        <select #serv id="services" class="titilium" (change)="SelectServ(serv.value)">
+        <select #serv id="services" class="selection" (change)="SelectServ(serv.value)">
             <option disabled selected value> -- service -- </option>
         </select>
-        <select #file id="files" class="titilium" (change)="SelectFile(file.value)">
+        <select #file id="files" class="selection" (change)="SelectFile(file.value)">
             <option disabled selected value> -- file -- </option>
         </select>
         <div class="search-container">

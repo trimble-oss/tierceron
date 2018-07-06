@@ -216,7 +216,7 @@ func main() {
 									return []File{vaultQL.envs[env].services[serv].files[i]}, nil
 								}
 							}
-							return vaultQL.envs[env].services[serv].files, errors.New("fileName not found")
+							return []File{}, errors.New("fileName not found")
 						}
 						return vaultQL.envs[env].services[serv].files, nil
 					},
@@ -255,7 +255,7 @@ func main() {
 									return []Service{vaultQL.envs[env].services[i]}, nil
 								}
 							}
-							return vaultQL.envs[env].services, errors.New("servName not found")
+							return []Service{}, errors.New("servName not found")
 						}
 						return vaultQL.envs[env].services, nil
 
@@ -283,7 +283,7 @@ func main() {
 									return []Env{vaultQL.envs[i]}, nil
 								}
 							}
-							return vaultQL.envs, errors.New("envName not found")
+							return []Env{}, errors.New("envName not found")
 						}
 						return vaultQL.envs, nil
 
