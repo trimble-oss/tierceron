@@ -21,3 +21,4 @@ vaultUI/.dart_tool/
 vaultUI/build/
 vaultUI\.packages
 vaultUI\pubspec.lock
+public/
