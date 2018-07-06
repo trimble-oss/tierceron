@@ -2,26 +2,12 @@
   #value_list {
     display: inline-block;
   }
-  /* #values ul{
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-  }
-  #values li {
-    padding-left: 1em;
-    text-indent: -1em;
-  }
-  
-  #values li:before {
-    content: "=";
-    padding-right: 5px;
-  }
-  #keys ul {
 
+ ul {
     background-color: #f0f8ff;
     padding: 20px;
-    list-style-type: "=";
-  } */
+    
+  }
   
   .box {
     float: left;
@@ -53,20 +39,7 @@
     font-size:medium;
 
   }
-   ul{
-    /* list-style-position: inside; */
-    margin: 0;
-    padding: 0;
-    list-style-type : none;
-    background-color: #f0f8ff;
-     /* padding: 20px;  */
-  }
-  li{
 
-    /* list-style: none; */
-    padding-left: 1em;
-    text-indent: -1em;
-  } 
 
 
 

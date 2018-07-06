@@ -2,7 +2,7 @@
 @import url(https://fonts.googleapis.com/css?family=Material+Icons);
 
 body {
-  max-width: 600px;
+  max-width: 75%;
   margin: 0 auto;
   padding: 10vw;
 }
@@ -78,3 +78,17 @@ li{
   color: #55555E;
   font-size: 10.5pt;
 }
+ #values ul{
+    margin: 0;
+    padding: 0;
+  }
+  #values li {
+    list-style-type: none;
+    padding-left: 0em;
+    text-indent: -1em;
+  }
+  
+  #values li:before {
+    content: "=";
+    padding-right: 5px;
+  }
