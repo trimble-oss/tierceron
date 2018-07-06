@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
@@ -192,12 +193,21 @@ func (s *Server) InitGQL() {
 						serv := params.Source.(File).servID
 						env := params.Source.(File).envID
 						if keyOK {
+							values := []Value{}
+							matchFound := false
+							// Construct a regular expression based on the search
+							regex := regexp.MustCompile(`.*` + keyStr + `.*`)
 							for i, v := range vaultQL.envs[env].services[serv].files[file].values {
-								if v.key == keyStr {
-									return []Value{vaultQL.envs[env].services[serv].files[file].values[i]}, nil
+								if regex.MatchString(v.key) {
+									matchFound = true
+									values = append(values, vaultQL.envs[env].services[serv].files[file].values[i])
 								}
 							}
-							return []Value{}, errors.New("keyName not found")
+							if matchFound {
+								return values, nil
+							} else {
+								return values, errors.New("keyName not found")
+							}
 						} //else if valOK {
 						// 	for i, v := range vaultQL.envs[env].services[serv].files[file].values {
 						// 		if v.value == valStr {
@@ -325,30 +335,30 @@ func (s *Server) InitGQL() {
 		Query: VaultValObject,
 	})
 
-	// Templates Schema
-	templates, err := s.getTemplateData()
-	utils.CheckError(err)
+	// // Templates Schema
+	// templates, err := s.getTemplateData()
+	// utils.CheckError(err)
 
-	// Convert data to a nested structure
-	serviceList := []TemplateService{}
-	for sID, service := range templates.Services {
-		fileList := []TemplateFile{}
-		for fID, file := range service.Files {
-			fileQL := TemplateFile{
-				ID:      fID,
-				servID:  sID,
-				name:    file.Name,
-				secrets: file.Secrets,
-			}
-			fileList = append(fileList, fileQL)
-		}
-		serviceQL := TemplateService{
-			ID:    sID,
-			name:  service.Name,
-			files: fileList,
-		}
-		serviceList = append(serviceList, serviceQL)
-	}
+	// // Convert data to a nested structure
+	// serviceList := []TemplateService{}
+	// for sID, service := range templates.Services {
+	// 	fileList := []TemplateFile{}
+	// 	for fID, file := range service.Files {
+	// 		fileQL := TemplateFile{
+	// 			ID:      fID,
+	// 			servID:  sID,
+	// 			name:    file.Name,
+	// 			secrets: file.Secrets,
+	// 		}
+	// 		fileList = append(fileList, fileQL)
+	// 	}
+	// 	serviceQL := TemplateService{
+	// 		ID:    sID,
+	// 		name:  service.Name,
+	// 		files: fileList,
+	// 	}
+	// 	serviceList = append(serviceList, serviceQL)
+	// }
 
 	fmt.Println("Test with: curl -g 'http://localhost:8008/graphql?query={envs{services{files{values{key,value}}}}}'")
 }
