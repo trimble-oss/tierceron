@@ -32,7 +32,7 @@ func Parse(filepath string, service string, filename string) (map[string]interfa
 		kv := regex.FindStringSubmatch(match)
 		// Split and add to map
 		// fmt.Println(match)
-		kv[1] = service + "." + filename + "." + strings.Replace(kv[1], "_", ".", -1)
+		kv[1] = strings.Replace(kv[1], "_", ".", -1)
 		workingSet[kv[1]] = kv[2]
 	}
 
