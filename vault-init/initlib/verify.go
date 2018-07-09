@@ -1,6 +1,7 @@
 package initlib
 
 import (
+	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/validator"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	"errors"
@@ -37,15 +38,11 @@ func verify(mod *kv.Modifier, v map[interface{}]interface{}, logger *log.Logger)
 			user := serviceData["user"].(string)
 			pass := serviceData["pass"].(string)
 			isValid, err = validator.Heartbeat(url, user, pass)
-			if err != nil {
-				return nil, err
-			}
+			utils.LogErrorObject(err, logger, false)
 		case "SendGridKey":
 			key := serviceData["ApiKey"].(string)
 			isValid, err = validator.ValidateSendGrid(key)
-			if err != nil {
-				return nil, err
-			}
+			utils.LogErrorObject(err, logger, false)
 		case "KeyStore":
 			// path := serviceData["path"].(string)
 			// pass := serviceData["pass"].(string)

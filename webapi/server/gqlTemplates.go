@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 )
@@ -11,10 +12,20 @@ func (s *Server) getTemplateData() (*pb.TemplateData, error) {
 		return nil, err
 	}
 	services := []*pb.TemplateData_Service{}
-	servicePaths := getPaths(mod, "templates/")
+	servicePaths, err := getPaths(mod, "templates/")
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, err
+	}
+
 	for _, servicePath := range servicePaths {
 		files := []*pb.TemplateData_Service_File{}
-		filePaths := getPaths(mod, servicePath)
+		filePaths, err := getPaths(mod, servicePath)
+		if err != nil {
+			utils.LogErrorObject(err, s.Log, false)
+			return nil, err
+		}
+
 		for _, filePath := range filePaths {
 			kvs, err := mod.ReadData(filePath)
 			var secrets []string

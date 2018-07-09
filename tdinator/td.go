@@ -30,7 +30,7 @@ func main() {
 	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 
 	dirs, err := ioutil.ReadDir(*dirPtr)
-	utils.CheckError(err)
+	utils.CheckError(err, true)
 
 	// Parse each subdirectory as a service name
 	for _, dir := range dirs {
@@ -44,7 +44,7 @@ func main() {
 func uploadTemplates(addr string, token string, dirName string, certPath string, env string) {
 	// Open directory
 	files, err := ioutil.ReadDir(dirName)
-	utils.CheckError(err)
+	utils.CheckError(err, true)
 
 	// Use name of containing directory as the template subdirectory
 	splitDir := strings.SplitAfter(dirName, "/")
@@ -52,7 +52,7 @@ func uploadTemplates(addr string, token string, dirName string, certPath string,
 
 	// Create modifier
 	mod, err := kv.NewModifier(token, addr, certPath)
-	utils.CheckError(err)
+	utils.CheckError(err, true)
 	mod.Env = env
 
 	// Parse through files
@@ -70,16 +70,16 @@ func uploadTemplates(addr string, token string, dirName string, certPath string,
 
 			// Extract values
 			extractedValues, err := utils.Parse(dirName+"/"+file.Name(), subDir, name)
-			utils.CheckError(err)
+			utils.CheckError(err, true)
 
 			// Open file
 			f, err := os.Open(dirName + "/" + file.Name())
-			utils.CheckError(err)
+			utils.CheckError(err, true)
 
 			// Read the file
 			fileBytes := make([]byte, file.Size())
 			_, err = f.Read(fileBytes)
-			utils.CheckError(err)
+			utils.CheckError(err, true)
 
 			// Construct template path for vault
 			templatePath := "templates/" + subDir + "/" + name + "/template-file"
@@ -94,14 +94,16 @@ func uploadTemplates(addr string, token string, dirName string, certPath string,
 			if len(warn) > 0 {
 				fmt.Printf("\tWarnings %v\n", warn)
 			}
-			utils.CheckError(err)
+			utils.CheckError(err, false)
+			utils.CheckWarnings(warn, false)
 
 			// Write values to vault and output any errors/warnings
 			warn, err = mod.Write(valuePath, extractedValues)
 			if len(warn) > 0 {
 				fmt.Printf("\tWarnings %v\n", warn)
 			}
-			utils.CheckError(err)
+			utils.CheckError(err, false)
+			utils.CheckWarnings(warn, false)
 		}
 	}
 }

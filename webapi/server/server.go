@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
+	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 	gql "github.com/graphql-go/graphql"
@@ -17,6 +20,7 @@ type Server struct {
 	VaultAddr   string
 	CertPath    string
 	ValueSchema gql.Schema
+	Log         *log.Logger
 }
 
 //NewServer Creates a new server struct and initializes the GraphQL schema
@@ -25,6 +29,7 @@ func NewServer(VaultAddr string, VaultToken string, CertPath string) *Server {
 	s.VaultToken = VaultToken
 	s.VaultAddr = VaultAddr
 	s.CertPath = CertPath
+	s.Log = log.New(os.Stdout, "[INFO]", log.LstdFlags)
 
 	s.InitGQL()
 	return &s
@@ -34,20 +39,22 @@ func NewServer(VaultAddr string, VaultToken string, CertPath string) *Server {
 func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb.ListResp, error) {
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
 
 	listPath := "templates/" + req.Service
 	secret, err := mod.List(listPath)
 	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
 
+	utils.LogWarningsObject(secret.Warnings, s.Log, false)
 	if len(secret.Warnings) > 0 {
-		for _, warning := range secret.Warnings {
-			fmt.Printf("Warning: %s\n", warning)
-		}
-		return nil, errors.New("Warnings generated from vault " + req.Service)
+		err := errors.New("Warnings generated from vault " + req.Service)
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, err
 	}
 
 	fileNames := []string{}
@@ -70,6 +77,7 @@ func (s *Server) GetTemplate(ctx context.Context, req *pb.TemplateReq) (*pb.Temp
 	// Connect to the vault
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
 
@@ -77,11 +85,14 @@ func (s *Server) GetTemplate(ctx context.Context, req *pb.TemplateReq) (*pb.Temp
 	path := "templates/" + req.Service + "/" + req.File + "/template-file"
 	data, err := mod.ReadData(path)
 	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
 
 	if data == nil {
-		return nil, errors.New("No file " + req.File + " under " + req.Service)
+		err := errors.New("No file " + req.File + " under " + req.Service)
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, err
 	}
 
 	// Return retrieved data in response
@@ -94,6 +105,7 @@ func (s *Server) GetTemplate(ctx context.Context, req *pb.TemplateReq) (*pb.Temp
 func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.ValidationResp, error) {
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
 	mod.Env = req.Env
@@ -101,11 +113,14 @@ func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.Valid
 	servicePath := "verification/" + req.Service
 	data, err := mod.ReadData(servicePath)
 	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
 
 	if data == nil {
-		return nil, errors.New("No verification for " + req.Service + " found under " + req.Env + " environment")
+		err := errors.New("No verification for " + req.Service + " found under " + req.Env + " environment")
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, err
 	}
 
 	return &pb.ValidationResp{IsValid: data["verified"].(bool)}, nil
@@ -118,23 +133,36 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 	envStrings := []string{"dev", "QA", "local"}
 	for _, environment := range envStrings {
 		mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
-		mod.Env = environment
 		if err != nil {
+			utils.LogErrorObject(err, s.Log, false)
 			return nil, err
 		}
+		mod.Env = environment
 		services := []*pb.ValuesRes_Env_Service{}
 		//get a list of services under values
-		servicePaths := getPaths(mod, "values/")
+		servicePaths, err := getPaths(mod, "values/")
+		if err != nil {
+			utils.LogErrorObject(err, s.Log, false)
+			return nil, err
+		}
+
 		for _, servicePath := range servicePaths {
 			files := []*pb.ValuesRes_Env_Service_File{}
 			//get a list of files under service
-			filePaths := getPaths(mod, servicePath)
+			filePaths, err := getPaths(mod, servicePath)
+			if err != nil {
+				utils.LogErrorObject(err, s.Log, false)
+				return nil, err
+			}
+
 			for _, filePath := range filePaths {
 				vals := []*pb.ValuesRes_Env_Service_File_Value{}
 				//get a list of values
 				valueMap, err := mod.ReadData(filePath)
 				if err != nil {
-					panic(err)
+					err := fmt.Errorf("Unable to fetch data from %s", filePath)
+					utils.LogErrorObject(err, s.Log, false)
+					return nil, err
 				}
 				if valueMap != nil {
 					//fmt.Println("data at path " + path)
@@ -158,11 +186,11 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		Envs: environments,
 	}, nil
 }
-func getPaths(mod *kv.Modifier, pathName string) []string {
+func getPaths(mod *kv.Modifier, pathName string) ([]string, error) {
 	secrets, err := mod.List(pathName)
 	pathList := []string{}
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("Unable to list paths under %s", pathName)
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
@@ -173,9 +201,9 @@ func getPaths(mod *kv.Modifier, pathName string) []string {
 			path := pathName + pathEnd.(string)
 			pathList = append(pathList, path)
 		}
-		return pathList
+		return pathList, nil
 	}
-	return pathList
+	return pathList, nil
 }
 func getPathEnd(path string) string {
 	strs := strings.Split(path, "/")

@@ -17,7 +17,7 @@ func UploadTokens(dir string, v *sys.Vault, logger *log.Logger) []*pb.InitResp_T
 	logger.Printf("Writing tokens from %s\n", dir)
 	files, err := ioutil.ReadDir(dir)
 
-	utils.LogErrorObject(err, logger)
+	utils.LogErrorObject(err, logger, true)
 	for _, file := range files {
 		// Extract and truncate file name
 		filename := file.Name()
@@ -27,12 +27,15 @@ func UploadTokens(dir string, v *sys.Vault, logger *log.Logger) []*pb.InitResp_T
 		if ext == ".yml" || ext == ".yaml" { // Request token from vault
 			logger.Printf("\tFound token file: %s\n", file.Name())
 			tokenName, err := v.CreateTokenFromFile(dir + "/" + file.Name())
-			utils.LogErrorObject(err, logger)
-			fmt.Printf("Created token %-30s %s\n", filename+":", tokenName)
-			tokens = append(tokens, &pb.InitResp_Token{
-				Name:  filename,
-				Value: tokenName,
-			})
+			utils.LogErrorObject(err, logger, true)
+
+			if err == nil {
+				fmt.Printf("Created token %-30s %s\n", filename+":", tokenName)
+				tokens = append(tokens, &pb.InitResp_Token{
+					Name:  filename,
+					Value: tokenName,
+				})
+			}
 		}
 
 	}

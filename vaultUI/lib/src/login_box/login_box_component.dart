@@ -29,8 +29,9 @@ class LoginBoxComponent implements OnInit {
   String UnsealKey;
   Set<String> Keys = new Set();
 
-  Future<Null> ngOnInit() {
+  Future<Null> ngOnInit() async {
     print("Login loaded!");
+    return Null;
   }
 
   final String _apiEndpoint = 'http://localhost:8008/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess

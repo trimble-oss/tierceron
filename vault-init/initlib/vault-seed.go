@@ -1,7 +1,6 @@
 package initlib
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
@@ -30,7 +29,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 	logger.Printf("Seeding vault from seeds in: %s\n", dir)
 
 	files, err := ioutil.ReadDir(dir)
-	utils.LogErrorObject(err, logger)
+	utils.LogErrorObject(err, logger, true)
 
 	// Iterate through all services
 	for _, file := range files {
@@ -54,7 +53,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, certPath string, logger *log.Logger) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
-	utils.LogErrorObject(err, logger)
+	utils.LogErrorObject(err, logger, true)
 	SeedVaultFromData(rawFile, vaultAddr, token, env, certPath, logger)
 }
 
@@ -66,7 +65,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	// Unmarshal
 	var rawYaml interface{}
 	err := yaml.Unmarshal(fData, &rawYaml)
-	utils.LogErrorObject(err, logger)
+	utils.LogErrorObject(err, logger, true)
 	seed, ok := rawYaml.(map[interface{}]interface{})
 	if ok == false {
 		logger.Fatal("Count not extract seed. Possibly a formatting issue")
@@ -110,18 +109,18 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	// Write values to vault
 	logger.Println("Writing seed values to paths")
 	mod, err := kv.NewModifier(token, vaultAddr, certPath) // Connect to vault
-	utils.LogErrorObject(err, logger)
+	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
 	for _, entry := range writeStack {
-		fmt.Println(entry.path) // Output data being written
-		for k, v := range entry.data {
-			fmt.Printf("\t%-30s%v\n", k, v)
-		}
+		// fmt.Println(entry.path) // Output data being written
+		// for k, v := range entry.data {
+		// 	fmt.Printf("\t%-30s%v\n", k, v)
+		// }
 
 		// Write data and ouput any errors
 		warn, err := mod.Write(entry.path, entry.data)
-		utils.LogWarningsObject(warn, logger)
-		utils.LogErrorObject(err, logger)
+		utils.LogWarningsObject(warn, logger, false)
+		utils.LogErrorObject(err, logger, false)
 
 		// Update value metrics to reflect credential use
 		root := strings.Split(entry.path, "/")[0]
@@ -137,6 +136,6 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 
 	// Run verification after seeds have been written
 	warn, err := verify(mod, verificationData, logger)
-	utils.LogErrorObject(err, logger)
-	utils.LogWarningsObject(warn, logger)
+	utils.LogErrorObject(err, logger, false)
+	utils.LogWarningsObject(warn, logger, false)
 }

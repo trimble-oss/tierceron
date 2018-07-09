@@ -16,8 +16,8 @@ import (
 func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, service string) string {
 	//get template
 	emptyTemplate, err := ioutil.ReadFile(emptyFilePath)
+	utils.CheckError(err, true)
 	template := string(emptyTemplate)
-	utils.CheckError(err)
 
 	// Construct path for vault
 	s := strings.Split(emptyFilePath, "/")

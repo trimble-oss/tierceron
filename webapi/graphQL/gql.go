@@ -52,7 +52,7 @@ func main() {
 	makeVaultReq := &pb.GetValuesReq{}
 
 	vault, err := apiClient.GetValues(context.Background(), makeVaultReq)
-	utils.CheckError(err)
+	utils.CheckError(err, true)
 
 	envList := []Env{}
 	//fmt.Printf("Vault: \n")

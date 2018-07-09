@@ -39,7 +39,7 @@ func main() {
 	//jsonReq := '{' + '}'
 
 	vault, err := apiClient.GetValues(context.Background(), makeVaultReq)
-	utils.CheckError(err)
+	utils.CheckError(err, true)
 
 	//vault2, err := jsonClient.GetValues(context.Background(), makeVaultReq)
 	//utils.CheckError(err)

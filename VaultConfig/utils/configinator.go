@@ -36,13 +36,13 @@ func writeToFile(data string, path string) {
 	//Ensure directory has been created
 	dirPath := filepath.Dir(path)
 	err := os.MkdirAll(dirPath, os.ModePerm)
-	utils.CheckError(err)
+	utils.CheckError(err, true)
 	//create new file
 	newFile, err := os.Create(path)
-	utils.CheckError(err)
+	utils.CheckError(err, true)
 	//write to file
 	_, err = newFile.Write(byteData)
-	utils.CheckError(err)
+	utils.CheckError(err, true)
 	newFile.Close()
 }
 

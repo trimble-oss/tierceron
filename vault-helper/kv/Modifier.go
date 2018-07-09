@@ -35,12 +35,13 @@ func NewModifier(token string, address string, certPath string) (*Modifier, erro
 		address = "http://127.0.0.1:8200" // Default address
 	}
 	httpClient, err := CreateHTTPClient(certPath)
+	if err != nil {
+		return nil, err
+	}
 	// Create client
 	modClient, err := api.NewClient(&api.Config{
 		Address: address, HttpClient: httpClient,
 	})
-
-	// Return errors if found in client creation
 	if err != nil {
 		return nil, err
 	}
@@ -106,11 +107,15 @@ func (m *Modifier) ReadValue(path string, key string) (string, error) {
 	}
 	//return value corresponding to the key
 	if valueMap[key] != nil {
-		value := string(valueMap[key].(string))
-		return value, nil
+		if value, ok := valueMap[key].(string); ok {
+			return value, nil
+		} else if stringer, ok := valueMap[key].(fmt.GoStringer); ok {
+			return stringer.GoString(), nil
+		} else {
+			return "", fmt.Errorf("Cannot convert value at %s to string", key)
+		}
 	}
-	fmt.Println("no keys found at path", path, "key", key)
-	return "", nil
+	return "", fmt.Errorf("Key '%s' not found in '%s'", path, key)
 }
 
 // ReadMetadata Reads the Metadata from the path referenced by this Modifier

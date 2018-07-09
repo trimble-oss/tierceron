@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"regexp"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -84,7 +83,7 @@ func (s *Server) InitGQL() {
 
 	// Values Schema
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
-	utils.CheckError(err)
+	utils.LogErrorObject(err, s.Log, true)
 
 	envList := []Env{}
 	//fmt.Printf("Vault: \n")
@@ -205,9 +204,8 @@ func (s *Server) InitGQL() {
 							}
 							if matchFound {
 								return values, nil
-							} else {
-								return values, errors.New("keyName not found")
 							}
+							return values, errors.New("keyName not found")
 						} //else if valOK {
 						// 	for i, v := range vaultQL.envs[env].services[serv].files[file].values {
 						// 		if v.value == valStr {
@@ -360,5 +358,5 @@ func (s *Server) InitGQL() {
 	// 	serviceList = append(serviceList, serviceQL)
 	// }
 
-	fmt.Println("Test with: curl -g 'http://localhost:8008/graphql?query={envs{services{files{values{key,value}}}}}'")
+	// fmt.Println("Test with: curl -g 'http://localhost:8008/graphql?query={envs{services{files{values{key,value}}}}}'")
 }

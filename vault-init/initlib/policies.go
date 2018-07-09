@@ -14,7 +14,7 @@ func UploadPolicies(dir string, v *sys.Vault, logger *log.Logger) {
 	logger.Printf("Writing policies from %s\n", dir)
 	files, err := ioutil.ReadDir(dir)
 
-	utils.LogErrorObject(err, logger)
+	utils.LogErrorObject(err, logger, true)
 	for _, file := range files {
 		// Extract and truncate file name
 		filename := file.Name()
@@ -24,7 +24,7 @@ func UploadPolicies(dir string, v *sys.Vault, logger *log.Logger) {
 		if ext == ".hcl" { // Write policy to vault
 			logger.Printf("\tFound policy file: %s\n", file.Name())
 			err = v.CreatePolicyFromFile(filename, dir+"/"+file.Name())
-			utils.LogErrorObject(err, logger)
+			utils.LogErrorObject(err, logger, false)
 		}
 
 	}

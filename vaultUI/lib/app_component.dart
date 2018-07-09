@@ -29,13 +29,14 @@ class AppComponent implements OnInit{
 
   final  String _logInEndpoint = 'http://localhost:8008/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
 
-  Future<Null> ngOnInit() {
+  Future<Null> ngOnInit() async {
     // isInitialized = true;
     // isSealed = false;
     // checkSeal();
     // return null;
     VaultValsComponent vals = new VaultValsComponent();
     vals.Start();
+    return Null;
   }
 
   Future<Null> checkSeal() async {
