@@ -5,6 +5,7 @@ import (
 	"bitbucket.org/dexterchaney/whoville/validator"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	"errors"
+	"fmt"
 	"log"
 )
 
@@ -34,11 +35,20 @@ func verify(mod *kv.Modifier, v map[interface{}]interface{}, logger *log.Logger)
 		logger.Printf("Verifying %s as type %s\n", service, vType)
 		switch vType {
 		case "db":
-			url := serviceData["url"].(string)
-			user := serviceData["user"].(string)
-			pass := serviceData["pass"].(string)
-			isValid, err = validator.Heartbeat(url, user, pass)
-			utils.LogErrorObject(err, logger, false)
+			if url, ok := serviceData["url"].(string); ok {
+				if user, ok := serviceData["user"].(string); ok {
+					if pass, ok := serviceData["pass"].(string); ok {
+						isValid, err = validator.Heartbeat(url, user, pass)
+						utils.LogErrorObject(err, logger, false)
+					} else {
+						utils.LogErrorObject(fmt.Errorf("Password field is not a string value"), logger, false)
+					}
+				} else {
+					utils.LogErrorObject(fmt.Errorf("Username field is not a string value"), logger, false)
+				}
+			} else {
+				utils.LogErrorObject(fmt.Errorf("URL field is not a string value"), logger, false)
+			}
 		case "SendGridKey":
 			key := serviceData["ApiKey"].(string)
 			isValid, err = validator.ValidateSendGrid(key)

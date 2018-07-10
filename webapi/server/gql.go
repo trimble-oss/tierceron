@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	//"fmt"
+	// "github.com/davecgh/go-spew/spew"
 	"regexp"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -13,58 +15,41 @@ import (
 )
 
 type VaultVals struct {
-	ID   string `json:"id"`
-	envs []Env  `json:"envs"`
+	ID   string `json: "id"`
+	envs []Env  `json: "envs"`
 }
 type Env struct {
-	ID       int       `json:"id"`
-	name     string    `json:"name"`
-	services []Service `json:"services"`
+	ID       int       `json: "id"`
+	name     string    `json: "name"`
+	services []Service `json: "services"`
 }
 type Service struct {
 	envID int    `json: "envID"`
-	ID    int    `json:"id"`
-	name  string `json:"name"`
-	files []File `json:"files"`
+	ID    int    `json: "id"`
+	name  string `json: "name"`
+	files []File `json: "files"`
 }
 type File struct {
 	envID  int     `json: "envID"`
 	servID int     `json: "servID"`
-	ID     int     `json:"id"`
-	name   string  `json:"name"`
-	values []Value `json:"values"`
+	ID     int     `json: "id"`
+	name   string  `json: "name"`
+	values []Value `json: "values"`
 }
 type Value struct {
 	envID  int    `json: "envID"`
 	servID int    `json: "servID"`
 	fileID int    `json: "fileID"`
-	ID     int    `json:"id"`
-	key    string `json:"name"`
-	value  string `json:"value"`
-}
-
-type VaultTemplates struct {
-	ID       string            `json:"id"`
-	services []TemplateService `json:services`
-}
-
-type TemplateService struct {
-	ID    int            `json:"id"`
-	name  string         `json:"name"`
-	files []TemplateFile `json:"files"`
-}
-
-type TemplateFile struct {
-	servID  int      `json: "servID"`
-	ID      int      `json:"id"`
-	name    string   `json:"name"`
-	secrets []string `json:"values"`
+	ID     int    `json: "id"`
+	key    string `json: "name"`
+	value  string `json: "value"`
+	source string `json: "source"`
 }
 
 //GraphQL Accepts a GraphQL query and creates a response
 func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQLResp, error) {
 	rawResult := graphql.Do(graphql.Params{
-		Schema:        s.ValueSchema,
+		Schema:        s.GQLSchema,
 		RequestString: req.Query,
 	})
 	//
@@ -84,22 +69,35 @@ func (s *Server) InitGQL() {
 	// Values Schema
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
 	utils.LogErrorObject(err, s.Log, true)
+	templates, err := s.getTemplateData()
+	// (&spew.ConfigState{
+	// 	Indent:                  "\t",
+	// 	DisablePointerAddresses: true,
+	// 	DisableCapacities:       true,
+	// 	SortKeys:                true,
+	// }).Dump(templates)
 
 	envList := []Env{}
-	//fmt.Printf("Vault: \n")
 	for i, env := range vault.Envs {
 		serviceList := []Service{}
-		//fmt.Printf("Env: %s\n", env.Name)
 		for j, service := range env.Services {
 			fileList := []File{}
-			//fmt.Printf("\tService: %s\n", service.Name)
 			for k, file := range service.Files {
 				valList := []Value{}
-				//fmt.Printf("\t\tFile: %s\n", file.Name)
-				for l, val := range file.Values {
-					//fmt.Printf("\t\t\tkey: %s\tvalue: %s\n", val.Key, val.Value)
-					valQL := Value{ID: l, envID: i, servID: j, fileID: k, key: val.Key, value: val.Value}
+				l := 0
+				for _, val := range file.Values {
+					valQL := Value{ID: l, envID: i, servID: j, fileID: k, key: val.Key, value: val.Value, source: "value"}
 					valList = append(valList, valQL)
+					l++
+				}
+				// Append template secret keys
+				for _, secret := range templates[env.Name].(map[string]interface{})[service.Name].(map[string][]*Value)[file.Name] {
+					secret.ID = l
+					secret.envID = i
+					secret.servID = j
+					secret.fileID = k
+					valList = append(valList, *secret)
+					l++
 				}
 				fileQL := File{ID: k, envID: i, servID: j, name: file.Name, values: valList}
 				fileList = append(fileList, fileQL)
@@ -110,8 +108,9 @@ func (s *Server) InitGQL() {
 		envQL := Env{ID: i, name: env.Name, services: serviceList}
 		envList = append(envList, envQL)
 	}
-
 	vaultQL := VaultVals{envs: envList}
+
+	// Convert data to a nested structure
 	var ValueObject = graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Value",
@@ -149,6 +148,17 @@ func (s *Server) InitGQL() {
 						return vaultQL.envs[env].services[serv].files[file].values[val].value, nil
 					},
 				},
+				"source": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+
+						val := params.Source.(Value).ID
+						file := params.Source.(Value).fileID
+						serv := params.Source.(Value).servID
+						env := params.Source.(Value).envID
+						return vaultQL.envs[env].services[serv].files[file].values[val].source, nil
+					},
+				},
 			},
 		})
 	var FileObject = graphql.NewObject(
@@ -179,6 +189,9 @@ func (s *Server) InitGQL() {
 						"keyName": &graphql.ArgumentConfig{
 							Type: graphql.String,
 						},
+						"sourceName": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
 						// "valName": &graphql.ArgumentConfig{
 						// 	Type: graphql.String,
 						// },
@@ -187,26 +200,34 @@ func (s *Server) InitGQL() {
 						//get list of values and return
 						keyStr, keyOK := params.Args["keyName"].(string)
 						// valStr, valOK := params.Args["valName"].(string)
+						sourceStr, sourceOK := params.Args["sourceName"].(string)
 
 						file := params.Source.(File).ID
 						serv := params.Source.(File).servID
 						env := params.Source.(File).envID
+						values := []Value{}
 						if keyOK {
-							values := []Value{}
-							matchFound := false
 							// Construct a regular expression based on the search
 							regex := regexp.MustCompile(`(?i).*` + keyStr + `.*`)
 							for i, v := range vaultQL.envs[env].services[serv].files[file].values {
 								if regex.MatchString(v.key) {
-									matchFound = true
 									values = append(values, vaultQL.envs[env].services[serv].files[file].values[i])
 								}
 							}
-							if matchFound {
-								return values, nil
+						} else {
+							values = vaultQL.envs[env].services[serv].files[file].values
+						}
+
+						if sourceOK {
+							filteredValues := []Value{}
+							for _, value := range values {
+								if value.source == sourceStr {
+									filteredValues = append(filteredValues, value)
+								}
 							}
-							return values, errors.New("keyName not found")
-						} //else if valOK {
+							values = filteredValues
+						}
+						//else if valOK {
 						// 	for i, v := range vaultQL.envs[env].services[serv].files[file].values {
 						// 		if v.value == valStr {
 						// 			return []Value{vaultQL.envs[env].services[serv].files[file].values[i]}, nil
@@ -214,7 +235,7 @@ func (s *Server) InitGQL() {
 						// 	}
 						// 	return vaultQL.envs[env].services[serv].files[file].values, errors.New("valName not found")
 						// }
-						return vaultQL.envs[env].services[serv].files[file].values, nil
+						return values, nil
 					},
 				},
 			},
@@ -314,8 +335,7 @@ func (s *Server) InitGQL() {
 						},
 					},
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						envStr, isOK := params.Args["envName"].(string)
-						if isOK {
+						if envStr, isOK := params.Args["envName"].(string); isOK {
 							for i, e := range vaultQL.envs {
 								if e.name == envStr {
 									return []Env{vaultQL.envs[i]}, nil
@@ -329,34 +349,9 @@ func (s *Server) InitGQL() {
 				},
 			},
 		})
-	s.ValueSchema, _ = graphql.NewSchema(graphql.SchemaConfig{
+	s.GQLSchema, _ = graphql.NewSchema(graphql.SchemaConfig{
 		Query: VaultValObject,
 	})
-
-	// // Templates Schema
-	// templates, err := s.getTemplateData()
-	// utils.CheckError(err)
-
-	// // Convert data to a nested structure
-	// serviceList := []TemplateService{}
-	// for sID, service := range templates.Services {
-	// 	fileList := []TemplateFile{}
-	// 	for fID, file := range service.Files {
-	// 		fileQL := TemplateFile{
-	// 			ID:      fID,
-	// 			servID:  sID,
-	// 			name:    file.Name,
-	// 			secrets: file.Secrets,
-	// 		}
-	// 		fileList = append(fileList, fileQL)
-	// 	}
-	// 	serviceQL := TemplateService{
-	// 		ID:    sID,
-	// 		name:  service.Name,
-	// 		files: fileList,
-	// 	}
-	// 	serviceList = append(serviceList, serviceQL)
-	// }
 
 	// fmt.Println("Test with: curl -g 'http://localhost:8008/graphql?query={envs{services{files{values{key,value}}}}}'")
 }

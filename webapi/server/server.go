@@ -16,11 +16,11 @@ import (
 
 //Server implements the twirp api server endpoints
 type Server struct {
-	VaultToken  string
-	VaultAddr   string
-	CertPath    string
-	ValueSchema gql.Schema
-	Log         *log.Logger
+	VaultToken string
+	VaultAddr  string
+	CertPath   string
+	GQLSchema  gql.Schema
+	Log        *log.Logger
 }
 
 //NewServer Creates a new server struct and initializes the GraphQL schema
@@ -31,7 +31,6 @@ func NewServer(VaultAddr string, VaultToken string, CertPath string) *Server {
 	s.CertPath = CertPath
 	s.Log = log.New(os.Stdout, "[INFO]", log.LstdFlags)
 
-	s.InitGQL()
 	return &s
 }
 
@@ -140,7 +139,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		mod.Env = environment
 		services := []*pb.ValuesRes_Env_Service{}
 		//get a list of services under values
-		servicePaths, err := getPaths(mod, "values/")
+		servicePaths, err := s.getPaths(mod, "values/")
 		if err != nil {
 			utils.LogErrorObject(err, s.Log, false)
 			return nil, err
@@ -149,7 +148,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		for _, servicePath := range servicePaths {
 			files := []*pb.ValuesRes_Env_Service_File{}
 			//get a list of files under service
-			filePaths, err := getPaths(mod, servicePath)
+			filePaths, err := s.getPaths(mod, servicePath)
 			if err != nil {
 				utils.LogErrorObject(err, s.Log, false)
 				return nil, err
@@ -186,11 +185,12 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		Envs: environments,
 	}, nil
 }
-func getPaths(mod *kv.Modifier, pathName string) ([]string, error) {
+func (s *Server) getPaths(mod *kv.Modifier, pathName string) ([]string, error) {
 	secrets, err := mod.List(pathName)
 	pathList := []string{}
 	if err != nil {
-		return nil, fmt.Errorf("Unable to list paths under %s", pathName)
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})

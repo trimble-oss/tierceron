@@ -74,6 +74,7 @@ message ValuesRes {
                 message Value {
                     string key = 1;
                     string value = 2;
+                    string source = 3;
                 }
                 repeated Value values = 2;
             }
