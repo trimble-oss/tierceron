@@ -75,6 +75,10 @@
   font-size: 17px;
   /* border: none; */
 }
+
+.topnav .small-selection {
+  width: 11%;
+}
 .topnav .search-container {
   float: right;
   width: 20%
@@ -124,4 +128,23 @@
   }
 }
 
+/* Secret value formatting */
+
+.verifiedGood {
+  color: #32cd32;
+  display: inline-block;
+  margin-left: 15%;
+  font-weight: normal;
+}
+
+.verifiedBad {
+  color: #FF6060;
+  display: inline-block;
+  margin-left: 15%;
+  font-weight: normal;
+}
+
+.secret {
+ font-weight: bold;
+}
   

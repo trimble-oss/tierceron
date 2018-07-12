@@ -12,9 +12,13 @@
         <select #file id="files" class="selection" (change)="SelectFile(file.value)">
             <option disabled selected value> -- file -- </option>
         </select>
-        <div class="search-container">
-            
-            <input #query type="text" placeholder="Search.." name="search" (keyup.enter)="SelectKey(query.value)">
+        <select #source id="source" class="selection small-selection" (change)="SelectSource(source.value)">
+            <option selected value="">All Values</option>
+            <option value="value">Values</option>
+            <option value="templates">Secrets</option>
+        </select>
+        <div class="search-container">           
+            <input #query id="query" type="text" placeholder="Search.." name="search" (keyup.enter)="SelectKey(query.value)">
             <button type="submit" (click)="SelectKey(query.value)"><i class="fa fa-search"></i></button>
         </div>
     </div>

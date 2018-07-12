@@ -57,10 +57,14 @@ func (s *Server) getTemplateData() (map[string]interface{}, error) {
 									if err != nil {
 										return nil, err
 									}
-									if valid, ok := validity["verified"].(bool); ok && valid {
-										secrets = append(secrets, &Value{key: k, value: "true", source: "templates"})
+									if valid, ok := validity["verified"].(bool); ok {
+										if valid {
+											secrets = append(secrets, &Value{key: k, value: "verifiedGood", source: "templates"})
+										} else {
+											secrets = append(secrets, &Value{key: k, value: "verifiedBad", source: "templates"})
+										}
 									} else {
-										secrets = append(secrets, &Value{key: k, value: "false", source: "templates"})
+										secrets = append(secrets, &Value{key: k, value: "unverified", source: "templates"})
 									}
 								}
 							}

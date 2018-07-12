@@ -91,17 +91,11 @@ func uploadTemplates(addr string, token string, dirName string, certPath string,
 
 			// Write templates to vault and output errors/warnings
 			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext})
-			if len(warn) > 0 {
-				fmt.Printf("\tWarnings %v\n", warn)
-			}
 			utils.CheckError(err, false)
 			utils.CheckWarnings(warn, false)
 
 			// Write values to vault and output any errors/warnings
 			warn, err = mod.Write(valuePath, extractedValues)
-			if len(warn) > 0 {
-				fmt.Printf("\tWarnings %v\n", warn)
-			}
 			utils.CheckError(err, false)
 			utils.CheckWarnings(warn, false)
 		}

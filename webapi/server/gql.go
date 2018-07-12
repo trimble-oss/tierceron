@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	//"fmt"
-	// "github.com/davecgh/go-spew/spew"
 	"regexp"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -353,5 +352,4 @@ func (s *Server) InitGQL() {
 		Query: VaultValObject,
 	})
 
-	// fmt.Println("Test with: curl -g 'http://localhost:8008/graphql?query={envs{services{files{values{key,value}}}}}'")
 }
