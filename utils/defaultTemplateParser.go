@@ -31,7 +31,6 @@ func Parse(filepath string, service string, filename string) (map[string]interfa
 	for _, match := range matched {
 		kv := regex.FindStringSubmatch(match)
 		// Split and add to map
-		// fmt.Println(match)
 		kv[1] = strings.Replace(kv[1], "_", ".", -1)
 		workingSet[kv[1]] = kv[2]
 	}

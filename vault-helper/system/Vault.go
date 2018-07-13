@@ -78,6 +78,7 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 
 	response, err := v.client.Sys().Init(&request)
 	if err != nil {
+		fmt.Println("there was an error")
 		return nil, err
 	}
 	// Remove for deployment

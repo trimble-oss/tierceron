@@ -55,18 +55,13 @@ func main() {
 	utils.CheckError(err, true)
 
 	envList := []Env{}
-	//fmt.Printf("Vault: \n")
 	for i, env := range vault.Envs {
 		serviceList := []Service{}
-		//fmt.Printf("Env: %s\n", env.Name)
 		for j, service := range env.Services {
 			fileList := []File{}
-			//fmt.Printf("\tService: %s\n", service.Name)
 			for k, file := range service.Files {
 				valList := []Value{}
-				//fmt.Printf("\t\tFile: %s\n", file.Name)
 				for l, val := range file.Values {
-					//fmt.Printf("\t\t\tkey: %s\tvalue: %s\n", val.Key, val.Value)
 					valQL := Value{ID: l, envID: i, servID: j, fileID: k, key: val.Key, value: val.Value}
 					valList = append(valList, valQL)
 				}

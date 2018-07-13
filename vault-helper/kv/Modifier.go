@@ -100,7 +100,6 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 
 //ReadValue takes a path and a key and returns the corresponding value from the vault
 func (m *Modifier) ReadValue(path string, key string) (string, error) {
-	//fmt.Printf("Grabbing secret from %s %s\n", path, key)
 	valueMap, err := m.ReadData(path)
 	if err != nil {
 		return "", err

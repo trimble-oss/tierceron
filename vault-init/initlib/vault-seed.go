@@ -112,16 +112,11 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
 	for _, entry := range writeStack {
-		// fmt.Println(entry.path) // Output data being written
-		// for k, v := range entry.data {
-		// 	fmt.Printf("\t%-30s%v\n", k, v)
-		// }
-
+		// Output data being written
 		// Write data and ouput any errors
 		warn, err := mod.Write(entry.path, entry.data)
 		utils.LogWarningsObject(warn, logger, false)
 		utils.LogErrorObject(err, logger, false)
-
 		// Update value metrics to reflect credential use
 		root := strings.Split(entry.path, "/")[0]
 		if root == "templates" {

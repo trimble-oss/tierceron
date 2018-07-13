@@ -29,7 +29,6 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 
 	//populate template
 	template = PopulateTemplate(template, modifier, secretMode, service, filename)
-	//fmt.Println(template)
 	return template
 }
 
@@ -59,23 +58,3 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 	}
 	return str
 }
-
-// func printMap(data map[string]interface{}, level int) {
-// 	var keys []string
-// 	for k := range data {
-// 		keys = append(keys, k)
-// 	}
-// 	sort.Strings(keys)
-// 	for _, k := range keys {
-// 		for i := 0; i < level; i++ {
-// 			fmt.Print("\t")
-// 		}
-// 		fmt.Printf("%-50s", k)
-// 		if next, ok := data[k].(map[string]interface{}); ok {
-// 			fmt.Println()
-// 			printMap(next, level+1)
-// 		} else {
-// 			fmt.Println(data[k])
-// 		}
-// 	}
-// }
