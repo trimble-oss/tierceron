@@ -6,7 +6,6 @@ sudo apt-get install -y curl unzip
 
 # Download Vault into some temporary directory
 curl -L "https://releases.hashicorp.com/vault/0.10.1/vault_0.10.1_linux_amd64.zip" > /tmp/vault.zip
-
 # Unzip it
 #/usr/src/app
 cd /tmp
@@ -26,7 +25,12 @@ privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp
 #get pem files locally 
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
 sudo chown root:root /etc/opt/vault/vault_properties.hcl
-
+#put API files up
+sudo mkdir -p /etc/opt/vaultAPI
+sudo mv /tmp/public /etc/opt/vaultAPI
+sudo touch /etc/opt/vaultAPI/server.log
+sudo unzip /tmp/apirouter.zip
+sudo mv /tmp/apiRouter /etc/opt/vaultAPI/apiRouter
 # Setup the init script
 cat <<EOF >/tmp/upstart
 description "Vault server"

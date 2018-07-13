@@ -51,6 +51,37 @@ resource "aws_instance" "web" {
         source      = "${path.module}/scripts/install.sh"
         destination = "/tmp/install.sh"
     }
+    provisioner "remote-exec" {
+        inline = [
+            "sudo mkdir /tmp/public",
+            "sudo chown ubuntu /tmp/public"
+        ]
+        connection {
+            type        = "ssh"
+            agent       = false
+            user        = "ubuntu"
+            private_key = "${file("${var.deploy-pem-path}")}"
+        }
+    }
+    provisioner "file" {
+        connection {
+            private_key = "${file("${var.deploy-pem-path}")}"
+            user="ubuntu"
+            //agent = true
+        }
+        source      = "../../public/"
+        destination = "/tmp/public"
+    }
+
+    provisioner "file" {
+        connection {
+            private_key = "${file("${var.deploy-pem-path}")}"
+            user="ubuntu"
+            //agent = true
+        }
+        source      = "../../webapi/apiRouter/apirouter.zip"
+        destination = "/tmp/apirouter.zip"
+    }
 
    provisioner "remote-exec" {
        inline = [
