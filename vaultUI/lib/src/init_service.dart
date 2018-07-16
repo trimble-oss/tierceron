@@ -23,6 +23,9 @@ class InitService{
       // final response = base64Decode(_log);
       // return utf8.decode(response);
       _request.onLoadEnd.listen((_) {
+        if (_request.status == 401) { // Unauthorized, return error to caller
+
+        }
         Map<String, dynamic> responseJSON = json.decode(_request.responseText);
         if(responseJSON['success']) {
           response.complete({

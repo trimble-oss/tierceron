@@ -7,7 +7,7 @@
     </div>
     <div class="box" id="sealBox" *ngIf="IsSealed">
         <h1>Vault is Sealed</h1>
-        <input [(ngModel)]="UnsealKey" placeholder="Unseal Key" type="text"><button (click)="Unseal()">Add</button>
+        <input [(ngModel)]="UnsealKey" placeholder="Unseal Key" type="text" (keyup.enter)="Unseal()"><button (click)="Unseal()">Add</button>
         <ul *ngFor="let key of Keys">
             <li>{{key}}</li>
         </ul>

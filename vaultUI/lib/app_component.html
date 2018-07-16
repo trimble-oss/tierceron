@@ -3,4 +3,9 @@
 <login-box *ngIf="isInitialized" [IsSealed]="isSealed"></login-box>
 <vault-start *ngIf="!isInitialized"></vault-start>
 -->
-<vault-vals></vault-vals>
+<!-- <nav>
+    <a [routerLink]="routes.values.toUrl()"
+        routerLinkActive="active">Values</a>
+</nav> -->
+
+<router-outlet [routes]="routes.all"></router-outlet>

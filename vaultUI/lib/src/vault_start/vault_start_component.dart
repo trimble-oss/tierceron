@@ -120,11 +120,15 @@ class VaultStartComponent implements OnInit{
 
       print(initRequest);
       // MaKe request
-      _initService.MakeRequest(initRequest).then((log){
-        LogData = '<p>' + log['log'].replaceAll('\n', '<br />') +'</p>';
-        for (var token in log['tokens']) {
+      _initService.MakeRequest(initRequest).then((resp){
+        if (resp['err'] == true){
+          // Reroute
+        }
+        LogData = '<p>' + resp['log'].replaceAll('\n', '<br />') +'</p>';
+        for (var token in resp['tokens']) {
           print(token['name'] + ": " + token['value']);
         }
+        
       });
       DialogVisible = true;
 

@@ -8,7 +8,8 @@ import 'main.template.dart' as self;
 
 @GenerateInjector([
   ClassProvider(HttpRequest, useClass: HttpRequest),
-  routerProvidersHash
+  // routerProvidersHash  // Use in webdev serve
+  routerProviders
 ])
 final InjectorFactory injector = self.injector$Injector;
 

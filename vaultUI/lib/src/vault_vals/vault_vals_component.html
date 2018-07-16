@@ -4,13 +4,13 @@
 
     <div class="topnav">
         <select #env id="environments" class="selection" (change)="SelectEnv(env.value)">
-            <option disabled selected value> -- environment -- </option>
+            <option disabled selected value>All Environments</option>
         </select>
         <select #serv id="services" class="selection" (change)="SelectServ(serv.value)">
-            <option disabled selected value> -- service -- </option>
+            <option disabled selected value>All Services</option>
         </select>
         <select #file id="files" class="selection" (change)="SelectFile(file.value)">
-            <option disabled selected value> -- file -- </option>
+            <option disabled selected value>All Files</option>
         </select>
         <select #source id="source" class="selection small-selection" (change)="SelectSource(source.value)">
             <option selected value="">All Values</option>

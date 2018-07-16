@@ -1,7 +1,9 @@
 import 'package:angular/angular.dart';
 import 'package:angular_forms/angular_forms.dart';
 import 'package:angular_components/angular_components.dart';
+import 'package:angular_router/angular_router.dart';
 
+import '../routes.dart';
 import 'dart:async';
 import 'dart:html';
 import 'dart:convert';
@@ -12,8 +14,9 @@ import 'dart:convert';
   templateUrl: 'login_box_component.html',
   directives: const [coreDirectives,
                      formDirectives,
+                     routerDirectives,
                      ModalComponent],
-  providers: const [materialProviders]
+  providers: const [materialProviders, ClassProvider(Routes)]
 
 )
 
@@ -29,12 +32,15 @@ class LoginBoxComponent implements OnInit {
   String UnsealKey;
   Set<String> Keys = new Set();
 
+  final Routes routes;
+  LoginBoxComponent(this.routes);
+
   Future<Null> ngOnInit() async {
     print("Login loaded!");
     return Null;
   }
 
-  final String _apiEndpoint = 'http://localhost:8008/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess
+  final String _apiEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess
 
   SignIn() {
     Map<String, dynamic> body = new Map();
@@ -46,6 +52,8 @@ class LoginBoxComponent implements OnInit {
       Map<String, dynamic> response = json.decode(request.responseText);
       if(response['success'] != null && response['success']){
         print('login successful');
+        window.localStorage['Token'] = response['authToken'];
+        window.location.href = routes.values.toUrl();
         // Log in valid, proceed
       } else {
         print('login failed');

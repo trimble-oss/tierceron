@@ -18,8 +18,9 @@ service EnterpriseServiceBroker {
 }
 
 /////////////////////////////////////////////////////////
-// Enterprise Messages                                 //
+// Template Messages                                   //
 /////////////////////////////////////////////////////////
+
 message ListReq {
     string service = 1;
 }
@@ -27,11 +28,6 @@ message ListReq {
 message ListResp {
     repeated string templates = 1;
 }
-
-
-/////////////////////////////////////////////////////////
-// Template Messages                                   //
-/////////////////////////////////////////////////////////
 
 // Request for retrieving a template file from the vault
 message TemplateReq {

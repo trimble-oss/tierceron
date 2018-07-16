@@ -27,15 +27,21 @@ class AppComponent implements OnInit{
   final Routes routes;
   AppComponent(this.routes);
 
-  final  String _logInEndpoint = 'http://localhost:8008/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
+  final  String _logInEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
 
   Future<Null> ngOnInit() async {
     // isInitialized = true;
     // isSealed = false;
     // checkSeal();
     // return null;
-    VaultValsComponent vals = new VaultValsComponent();
-    vals.Start();
+    if (window.localStorage.containsKey('Token') == false) {
+      // Route to login
+    } else {
+      // Route to values page
+    }
+
+    // VaultValsComponent vals = new VaultValsComponent();
+    // vals.Start();
     return Null;
   }
 

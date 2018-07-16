@@ -48,6 +48,11 @@ func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
+	if secret == nil {
+		err := fmt.Errorf("Could not find any templates under %s", req.Service)
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, err
+	}
 
 	utils.LogWarningsObject(secret.Warnings, s.Log, false)
 	if len(secret.Warnings) > 0 {
@@ -164,9 +169,11 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 					return nil, err
 				}
 				if valueMap != nil {
+					//fmt.Println("data at path " + path)
 					for key, value := range valueMap {
 						kv := &pb.ValuesRes_Env_Service_File_Value{Key: key, Value: value.(string)}
 						vals = append(vals, kv)
+						//data = append(data, value.(string))
 					}
 
 				}
@@ -192,6 +199,8 @@ func (s *Server) getPaths(mod *kv.Modifier, pathName string) ([]string, error) {
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
+		//fmt.Println("secrets are")
+		//fmt.Println(slicey)
 		for _, pathEnd := range slicey {
 			//List is returning both pathEnd and pathEnd/
 			path := pathName + pathEnd.(string)

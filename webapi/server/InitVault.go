@@ -118,31 +118,37 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 //APILogin Verifies the user's login with the cubbyhole
 func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp, error) {
 	fmt.Printf("Req: %v\n", req)
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
+	// mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
+	// if err != nil {
+	// 	utils.LogErrorObject(err, s.Log, false)
+	// 	return nil, err
+	// }
+	// pass, err := mod.ReadValue("cubbyhole/credentials", req.Username)
+	// if err != nil {
+	// 	utils.LogErrorObject(err, s.Log, false)
+	// 	return nil, err
+	// }
+
+	// success := pass == req.Password
+	// fmt.Printf("%s %s == %v\n", pass, req.Password, success)
+
+	//if pass != "" && success {
+	// Generate token
+	token, err := generateJWT(req.Username)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
-	}
-	pass, err := mod.ReadValue("cubbyhole/credentials", req.Username)
-	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		return nil, err
-	}
-
-	success := pass == req.Password
-	fmt.Printf("%s %s == %v\n", pass, req.Password, success)
-	if pass != "" && success {
-		// Generate token
-		return &pb.LoginResp{
-			Success:   true,
-			AuthToken: "TODO",
-		}, nil
-
 	}
 	return &pb.LoginResp{
-		Success:   false,
-		AuthToken: "LOGIN_FAILURE",
+		Success:   true,
+		AuthToken: token,
 	}, nil
+
+	//}
+	// return &pb.LoginResp{
+	// 	Success:   true,
+	// 	AuthToken: "LOGIN_FAILURE",
+	// }, nil
 }
 
 //GetStatus requests version info and whether the vault has been initailized
