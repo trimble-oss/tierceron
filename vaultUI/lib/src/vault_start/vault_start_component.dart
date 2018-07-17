@@ -27,7 +27,7 @@ class VaultStartComponent implements OnInit{
 
   String LogData;
   bool DialogVisible;
-  final List<String> Envs = ['local', 'dev', 'QA'];  // Valid environment options
+  final List<String> Envs = ['dev', 'QA', 'local'];  // Valid environment options
   Set<UISeedFile> Seeds;               // Seed files passed to vault
   //int 
   @Input()
@@ -38,6 +38,7 @@ class VaultStartComponent implements OnInit{
   String Password;      // MODEL: <input> for new password under login_creation
 
   VaultStartComponent(this._initService);
+  
   Future<Null> ngOnInit() async {
     Seeds = Set.identity();
   }

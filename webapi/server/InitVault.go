@@ -2,7 +2,6 @@ package server
 
 import (
 	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
 	il "bitbucket.org/dexterchaney/whoville/vault-init/initlib"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
@@ -18,9 +17,30 @@ const policyPath string = "policy_files"
 
 //InitVault Takes init request and inits/seeds vault with contained file data
 func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, error) {
-	fmt.Println("Initing vault")
 	logBuffer := new(bytes.Buffer)
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
+
+	res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password})
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(err, logger, false)
+		return &pb.InitResp{
+			Success: false,
+			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
+			Tokens:  nil,
+		}, err
+	}
+	if !res.Success {
+		s.Log.Printf("Invalid login for user: %s\n", req.Username)
+		logger.Printf("Invalid login for user: %s\n", req.Username)
+		return &pb.InitResp{
+			Success: false,
+			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
+			Tokens:  nil,
+		}, nil
+	}
+
+	fmt.Println("Initing vault")
 
 	v, err := sys.NewVault(s.VaultAddr, s.CertPath)
 	if err != nil {
@@ -83,31 +103,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	tokens := il.UploadTokens(tokenPath, v, logger)
 
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
-	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		utils.LogErrorObject(err, logger, false)
-		return &pb.InitResp{
-			Success: false,
-			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
-			Tokens:  nil,
-		}, err
-	}
-	fmt.Printf("Adding user %s: %s\n", req.Username, req.Password)
-	warns, err := mod.Write("cubbyhole/credentials", map[string]interface{}{
-		req.Username: req.Password,
-	})
-	utils.LogWarningsObject(warns, logger, false)
-	utils.LogWarningsObject(warns, s.Log, false)
-	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		utils.LogErrorObject(err, logger, false)
-		return &pb.InitResp{
-			Success: false,
-			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
-			Tokens:  nil,
-		}, err
-	}
+	s.InitGQL()
 	return &pb.InitResp{
 		Success: true,
 		Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),

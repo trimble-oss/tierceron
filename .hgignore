@@ -22,3 +22,4 @@ vaultUI/build/
 vaultUI\.packages
 vaultUI\pubspec.lock
 public/
+vault_seeds/

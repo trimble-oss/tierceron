@@ -20,14 +20,14 @@ import 'dart:convert';
 
 )
 
-class LoginBoxComponent implements OnInit {
+class LoginBoxComponent implements OnActivate {
   @Input()
   String Username;
   @Input()
   String Password;
 
   @Input()
-  bool IsSealed;
+  bool IsSealed = true;
   @Input()
   String UnsealKey;
   Set<String> Keys = new Set();
@@ -35,9 +35,9 @@ class LoginBoxComponent implements OnInit {
   final Routes routes;
   LoginBoxComponent(this.routes);
 
-  Future<Null> ngOnInit() async {
-    print("Login loaded!");
-    return Null;
+  Future<Null> onActivate(_, RouterState current) async {
+    IsSealed = current.parameters['sealed'].toLowerCase() == 'true';
+    print(IsSealed);
   }
 
   final String _apiEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess

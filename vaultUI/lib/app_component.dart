@@ -21,51 +21,46 @@ import 'src/vault_vals/vault_vals_component.dart';
 )
 class AppComponent implements OnInit{
   // Nothing here yet. All logic is in TodoListComponent.
-  bool isSealed;
-  bool isInitialized;
-
   final Routes routes;
-  AppComponent(this.routes);
+  final Router _router;
+  AppComponent(this.routes, this._router);
 
   final  String _logInEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
 
   Future<Null> ngOnInit() async {
-    // isInitialized = true;
-    // isSealed = false;
-    // checkSeal();
-    // return null;
-    if (window.localStorage.containsKey('Token') == false) {
-      // Route to login
-    } else {
-      // Route to values page
-    }
+    bool isSealed, isInitialized;
 
-    // VaultValsComponent vals = new VaultValsComponent();
-    // vals.Start();
-    return Null;
-  }
-
-  Future<Null> checkSeal() async {
     HttpRequest request = new HttpRequest();
     request.onLoadEnd.listen((_) {
       Map<String, dynamic> response = json.decode(request.responseText);
+      
       if(response['sealed'] == null) {
         isSealed = false;
       } else {
-        isSealed = response['sealed'];
+        isSealed = response['sealed'] as bool;
       }
       
       if(response['initialized']==null){
         isInitialized = false;
       } else {
-        isInitialized = response['initialized'];
+        isInitialized = response['initialized'] as bool;
       }
-      print("Initialized: " + isInitialized.toString());
-      print("Sealed: " + isSealed.toString());
+
+      if (!isInitialized) {
+        _router.navigate(routes.sealed.toUrl(), NavigationParams(reload: true));
+      } else if (!window.localStorage.containsKey('Token') || isSealed) {
+        _router.navigate(routes.login.toUrl(), NavigationParams(queryParameters: {'sealed': isSealed.toString()}, reload: true));
+      } else {
+        _router.navigate(routes.values.toUrl(), NavigationParams(reload: true));
+      }
     });
 
     request.open('POST', _logInEndpoint);
     request.setRequestHeader('Content-Type', 'application/json');
-    request.send('{}');
+    await request.send('{}');
+  }
+
+  Future<Null> checkSeal() async {
+    
   }
 }

@@ -1,5 +1,8 @@
 import 'package:angular/angular.dart';
 import 'package:angular_components/angular_components.dart';
+import 'package:angular_router/angular_router.dart';
+
+import '../routes.dart';
 
 @Component(
   selector: 'log-dialog',
@@ -8,7 +11,7 @@ import 'package:angular_components/angular_components.dart';
   directives: const [coreDirectives,  
                      MaterialDialogComponent, 
                      ModalComponent],
-  providers: const [materialProviders]
+  providers: const [materialProviders, ClassProvider(Routes)]
 )
 
 class LogDialogComponent{
@@ -16,4 +19,12 @@ class LogDialogComponent{
   bool DialogVisible;
   @Input()
   String LogData;
+  final Router _router;
+  final Routes _routes;
+
+  LogDialogComponent(this._router, this._routes);
+
+  goToValues() {
+    _router.navigate(_routes.values.toUrl());
+  }
 }

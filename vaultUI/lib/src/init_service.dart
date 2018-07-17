@@ -7,10 +7,13 @@ import 'package:angular/angular.dart';
 class InitService{
   //String _log;
   final HttpRequest _request;
-  final String _host = 'http://localhost:8008';   // Vault addreess
-  final String _authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMjE2NTQ5ODcwIiwibmFtZSI6IldlYiBBcHAiLCJpYXQiOjE1MTYyMzkwMjIsImlzcyI6IlZpZXdwb2ludCwgSW5jLiIsImF1ZCI6IlZpZXdwb2ludCBWYXVsdCBXZWJBUEkifQ.ls2cxzqIMv3_72BKH9K34uR-gWgeFTGqu-tXGh503Jg';
+  String _host;   // Vault addreess
+  String _authToken;
 
-  InitService(this._request);
+  InitService(this._request) {
+    _host = window.location.origin;
+    _authToken = window.localStorage['Token'] == null ? '' : window.localStorage['Token'];
+  }
 
   Future<Map<String, dynamic>> MakeRequest(Map<String, dynamic> request) async{
     String url = _host + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/InitVault';

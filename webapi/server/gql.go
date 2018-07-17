@@ -61,20 +61,16 @@ func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQL
 
 //InitGQL Initializes the GQL schema
 func (s *Server) InitGQL() {
-	//apiClient := pb.NewEnterpriseServiceBrokerProtobufClient("https://localhost:8008", &http.Client{})
-
 	makeVaultReq := &pb.GetValuesReq{}
 
 	// Values Schema
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
-	utils.LogErrorObject(err, s.Log, true)
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		utils.LogWarningsObject([]string{"GraphQL not initialized"}, s.Log, false)
+		return
+	}
 	templates, err := s.getTemplateData()
-	// (&spew.ConfigState{
-	// 	Indent:                  "\t",
-	// 	DisablePointerAddresses: true,
-	// 	DisableCapacities:       true,
-	// 	SortKeys:                true,
-	// }).Dump(templates)
 
 	envList := []Env{}
 	for i, env := range vault.Envs {
