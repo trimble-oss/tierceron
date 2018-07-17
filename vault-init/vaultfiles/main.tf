@@ -54,7 +54,11 @@ resource "aws_instance" "web" {
     provisioner "remote-exec" {
         inline = [
             "sudo mkdir /tmp/public",
-            "sudo chown ubuntu /tmp/public"
+            "sudo chown ubuntu /tmp/public",
+            "sudo mkdir /tmp/policy_files",
+            "sudo chown ubuntu /tmp/policy_files",
+            "sudo mkdir /tmp/token_files",
+            "sudo chown ubuntu /tmp/token_files"
         ]
         connection {
             type        = "ssh"
@@ -71,6 +75,24 @@ resource "aws_instance" "web" {
         }
         source      = "../../public/"
         destination = "/tmp/public"
+    }
+    provisioner "file" {
+        connection {
+            private_key = "${file("${var.deploy-pem-path}")}"
+            user="ubuntu"
+            //agent = true
+        }
+        source      = "../../policy_files/"
+        destination = "/tmp/policy_files"
+    }
+    provisioner "file" {
+        connection {
+            private_key = "${file("${var.deploy-pem-path}")}"
+            user="ubuntu"
+            //agent = true
+        }
+        source      = "../../token_files/"
+        destination = "/tmp/token_files"
     }
 
     provisioner "file" {

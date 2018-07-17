@@ -27,10 +27,22 @@ sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
 sudo chown root:root /etc/opt/vault/vault_properties.hcl
 #put API files up
 sudo mkdir -p /etc/opt/vaultAPI
+#add build files
 sudo mv /tmp/public /etc/opt/vaultAPI
+#make server log file
 sudo touch /etc/opt/vaultAPI/server.log
+sudo chmod 0777 /etc/opt/vaultAPI/server.log
+sudo chown root:root /etc/opt/vaultAPI/server.log
+#add apiRouter executable
 sudo unzip /tmp/apirouter.zip
 sudo mv /tmp/apiRouter /etc/opt/vaultAPI/apiRouter
+sudo chmod 0755 /etc/opt/vaultAPI/apiRouter
+sudo chown root:root /etc/opt/vaultAPI/apiRouter
+#add policy files
+sudo mv /tmp/policy_files /etc/opt/vaultAPI
+#add token files
+sudo mv /tmp/token_files /etc/opt/vaultAPI
+
 # Setup the init script
 cat <<EOF >/tmp/upstart
 description "Vault server"

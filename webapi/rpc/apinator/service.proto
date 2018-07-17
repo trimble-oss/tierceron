@@ -15,6 +15,7 @@ service EnterpriseServiceBroker {
     rpc APILogin(LoginReq) returns (LoginResp);
     rpc Unseal(UnsealReq) returns (UnsealResp);
     rpc GraphQL(GraphQLQuery) returns (GraphQLResp);
+    rpc UpdateAPI(UpdateAPIReq) returns (UpdateAPIResp);
 }
 
 /////////////////////////////////////////////////////////
@@ -173,3 +174,11 @@ message GQLTemplateResp {
     TemplateData data = 1;
     repeated GQLError errors = 2;
 }
+/////////////////////////////////////////////////////////
+// Update API Messages                                    //
+/////////////////////////////////////////////////////////
+message UpdateAPIReq {
+    repeated string urls = 1;
+}
+
+message UpdateAPIResp {}

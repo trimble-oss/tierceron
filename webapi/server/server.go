@@ -1,10 +1,15 @@
 package server
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
@@ -216,4 +221,75 @@ func getPathEnd(path string) string {
 		strs = strs[:len(strs)-1]
 	}
 	return strs[len(strs)-1]
+}
+func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.UpdateAPIResp, error) {
+	if len(req.Urls) == 2 {
+		apiRouterURL := req.Urls[0]
+		vaultUIURL := req.Urls[1]
+		err := DownloadFile("/etc/opt/vaultAPI/apiRouter", apiRouterURL)
+		if err != nil {
+			return nil, err
+		}
+		err = DownloadFile("/etc/opt/vaultAPI/public.zip", vaultUIURL)
+		if err != nil {
+			return nil, err
+		}
+		err = Unzip("/etc/opt/vaultAPI/public.zip", "/etc/opt/vaultAPI/public")
+
+		return nil, nil
+		return &pb.UpdateAPIResp{}, nil
+	}
+	return nil, errors.New("Invalid request")
+}
+func DownloadFile(filepath string, url string) error {
+	//remove the old file
+	err := os.RemoveAll(filepath)
+	// Create the file
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+func Unzip(src string, dest string) error {
+	err := os.RemoveAll(dest)
+	body, err := ioutil.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	r, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		return err
+	}
+	for _, zipfile := range r.File {
+		dst, err := os.Create(zipfile.Name)
+		if err != nil {
+			return err
+		}
+		defer dst.Close()
+		src, err := zipfile.Open()
+		if err != nil {
+			return err
+		}
+		defer src.Close()
+
+		io.Copy(dst, src)
+	}
+	return nil
 }
