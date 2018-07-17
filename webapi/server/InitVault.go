@@ -2,6 +2,7 @@ package server
 
 import (
 	"bitbucket.org/dexterchaney/whoville/utils"
+	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
 	il "bitbucket.org/dexterchaney/whoville/vault-init/initlib"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
@@ -14,6 +15,7 @@ import (
 
 const tokenPath string = "token_files"
 const policyPath string = "policy_files"
+const templatePath string = "template_files"
 
 //InitVault Takes init request and inits/seeds vault with contained file data
 func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, error) {
@@ -22,7 +24,6 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password})
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
 		utils.LogErrorObject(err, logger, false)
 		return &pb.InitResp{
 			Success: false,
@@ -56,7 +57,6 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	// Init and unseal vault
 	keyToken, err := v.InitVault(1, 1)
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
 		utils.LogErrorObject(err, logger, false)
 		return &pb.InitResp{
 			Success: false,
@@ -71,7 +71,6 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	//check error returned by unseal
 	v.Unseal()
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
 		utils.LogErrorObject(err, logger, false)
 		return &pb.InitResp{
 			Success: false,
@@ -88,7 +87,6 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	for _, seed := range req.Files {
 		fBytes, err := b64.StdEncoding.DecodeString(seed.Data)
 		if err != nil {
-			utils.LogErrorObject(err, s.Log, false)
 			utils.LogErrorObject(err, logger, false)
 			return &pb.InitResp{
 				Success: false,
@@ -103,6 +101,20 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	tokens := il.UploadTokens(tokenPath, v, logger)
 
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
+	utils.LogErrorObject(err, logger, false)
+
+	mod.Env = "dev"
+	err, warn := il.UploadTemplateDirectory(mod, templatePath)
+	utils.LogErrorObject(err, logger, false)
+	utils.LogWarningsObject(warn, logger, false)
+
+	mod.Env = "QA"
+	err, warn = il.UploadTemplateDirectory(mod, templatePath)
+	utils.LogErrorObject(err, logger, false)
+	utils.LogWarningsObject(warn, logger, false)
+
+	s.Log.Println("Init Log \n" + b64.StdEncoding.EncodeToString(logBuffer.Bytes()))
 	s.InitGQL()
 	return &pb.InitResp{
 		Success: true,

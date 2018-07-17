@@ -236,7 +236,6 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.Updat
 		}
 		err = Unzip("/etc/opt/vaultAPI/public.zip", "/etc/opt/vaultAPI/public")
 
-		return nil, nil
 		return &pb.UpdateAPIResp{}, nil
 	}
 	return nil, errors.New("Invalid request")
