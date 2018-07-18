@@ -3,11 +3,12 @@ package server
 import (
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
+	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 	"fmt"
 	"strings"
 )
 
-func (s *Server) getTemplateData() (map[string]interface{}, error) {
+func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
@@ -21,17 +22,17 @@ func (s *Server) getTemplateData() (map[string]interface{}, error) {
 	}
 
 	if envs, ok := envList.Data["keys"].([]interface{}); ok {
-		environments := map[string]interface{}{}
+		environments := []*pb.ValuesRes_Env{}
 		for _, env := range envs {
 			if mod.Env, ok = env.(string); ok {
-				services := map[string]interface{}{}
+				services := []*pb.ValuesRes_Env_Service{}
 				servicePaths, err := s.getPaths(mod, "templates/")
 				if err != nil {
 					utils.LogErrorObject(err, s.Log, false)
 					return nil, err
 				}
 				for _, servicePath := range servicePaths {
-					files := map[string][]*Value{}
+					files := []*pb.ValuesRes_Env_Service_File{}
 					filePaths, err := s.getPaths(mod, servicePath)
 					if err != nil {
 						utils.LogErrorObject(err, s.Log, false)
@@ -44,7 +45,7 @@ func (s *Server) getTemplateData() (map[string]interface{}, error) {
 							continue
 						}
 						kvs, err := mod.ReadData(filePath)
-						secrets := []*Value{}
+						secrets := []*pb.ValuesRes_Env_Service_File_Value{}
 						if err != nil {
 							return nil, err
 						}
@@ -59,25 +60,25 @@ func (s *Server) getTemplateData() (map[string]interface{}, error) {
 									}
 									if valid, ok := validity["verified"].(bool); ok {
 										if valid {
-											secrets = append(secrets, &Value{key: k, value: "verifiedGood", source: "templates"})
+											secrets = append(secrets, &pb.ValuesRes_Env_Service_File_Value{Key: k, Value: "verifiedGood", Source: "templates"})
 										} else {
-											secrets = append(secrets, &Value{key: k, value: "verifiedBad", source: "templates"})
+											secrets = append(secrets, &pb.ValuesRes_Env_Service_File_Value{Key: k, Value: "verifiedBad", Source: "templates"})
 										}
 									} else {
-										secrets = append(secrets, &Value{key: k, value: "unverified", source: "templates"})
+										secrets = append(secrets, &pb.ValuesRes_Env_Service_File_Value{Key: k, Value: "unverified", Source: "templates"})
 									}
 								}
 							}
 						}
-						files[getPathEnd(filePath)] = secrets
+						files = append(files, &pb.ValuesRes_Env_Service_File{Name: getPathEnd(filePath), Values: secrets})
 					}
-					services[getPathEnd(servicePath)] = files
+					services = append(services, &pb.ValuesRes_Env_Service{Name: getPathEnd(servicePath), Files: files})
 				}
 				envName := mod.Env[:len(mod.Env)-1]
-				environments[string(envName)] = services
+				environments = append(environments, &pb.ValuesRes_Env{Name: string(envName), Services: services})
 			}
 		}
-		return environments, nil
+		return &pb.ValuesRes{Envs: environments}, nil
 	}
 
 	return nil, fmt.Errorf("Error getting paths")

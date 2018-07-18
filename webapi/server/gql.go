@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	//"fmt"
 	"regexp"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -45,6 +44,11 @@ type Value struct {
 	source string `json: "source"`
 }
 
+type VisitedNode struct {
+	index    int
+	children map[string]*VisitedNode
+}
+
 //GraphQL Accepts a GraphQL query and creates a response
 func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQLResp, error) {
 	rawResult := graphql.Do(graphql.Params{
@@ -67,41 +71,69 @@ func (s *Server) InitGQL() {
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
-		utils.LogWarningsObject([]string{"GraphQL not initialized"}, s.Log, false)
+		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (values not added)"}, s.Log, false)
 		return
 	}
 	templates, err := s.getTemplateData()
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (secrets not added)"}, s.Log, false)
+		return
+	}
 
+	envIndices := map[string]*VisitedNode{}
 	envList := []Env{}
-	for i, env := range vault.Envs {
-		serviceList := []Service{}
-		for j, service := range env.Services {
-			fileList := []File{}
-			for k, file := range service.Files {
-				valList := []Value{}
-				l := 0
+	for _, env := range append(vault.Envs, templates.Envs...) {
+		var envQL *Env
+		if envIndices[env.Name] != nil {
+			index := envIndices[env.Name].index
+			envQL = &envList[index]
+		} else {
+			envIndices[env.Name] = &VisitedNode{index: len(envList), children: map[string]*VisitedNode{}}
+			envList = append(envList, Env{ID: len(envList), name: env.Name, services: []Service{}})
+			envQL = &envList[len(envList)-1]
+		}
+
+		serviceIndices := envIndices[env.Name].children
+		serviceList := append([]Service{}, envQL.services...)
+
+		for _, service := range env.Services {
+			var serviceQL *Service
+			if serviceIndices[service.Name] != nil {
+				index := serviceIndices[service.Name].index
+				serviceQL = &serviceList[index]
+			} else {
+				serviceIndices[service.Name] = &VisitedNode{index: len(serviceList), children: map[string]*VisitedNode{}}
+				serviceList = append(serviceList, Service{ID: len(serviceList), envID: envQL.ID, name: service.Name, files: []File{}})
+				serviceQL = &serviceList[len(serviceList)-1]
+			}
+
+			fileIndices := serviceIndices[service.Name].children
+			fileList := append([]File{}, serviceQL.files...)
+			for _, file := range service.Files {
+				var fileQL *File
+				if fileIndices[file.Name] != nil {
+					index := fileIndices[file.Name].index
+					fileQL = &fileList[index]
+				} else {
+					fileIndices[file.Name] = &VisitedNode{index: len(fileList), children: map[string]*VisitedNode{}}
+					fileList = append(fileList, File{ID: len(fileList), envID: envQL.ID, servID: serviceQL.ID, name: file.Name, values: []Value{}})
+					fileQL = &fileList[len(fileList)-1]
+				}
+
+				valList := fileQL.values
+				l := len(fileQL.values)
 				for _, val := range file.Values {
-					valQL := Value{ID: l, envID: i, servID: j, fileID: k, key: val.Key, value: val.Value, source: "value"}
+					valQL := Value{ID: len(valList), envID: envQL.ID, servID: serviceQL.ID, fileID: fileQL.ID, key: val.Key, value: val.Value, source: val.Source}
 					valList = append(valList, valQL)
 					l++
 				}
-				// Append template secret keys
-				for _, secret := range templates[env.Name].(map[string]interface{})[service.Name].(map[string][]*Value)[file.Name] {
-					secret.ID = l
-					secret.envID = i
-					secret.servID = j
-					secret.fileID = k
-					valList = append(valList, *secret)
-					l++
-				}
-				fileQL := File{ID: k, envID: i, servID: j, name: file.Name, values: valList}
-				fileList = append(fileList, fileQL)
+				(*fileQL).values = valList
 			}
-			serviceQL := Service{ID: j, envID: i, name: service.Name, files: fileList}
-			serviceList = append(serviceList, serviceQL)
+			(*serviceQL).files = fileList
 		}
-		envQL := Env{ID: i, name: env.Name, services: serviceList}
-		envList = append(envList, envQL)
+		(*envQL).services = serviceList
+
 	}
 	vaultQL := VaultVals{envs: envList}
 

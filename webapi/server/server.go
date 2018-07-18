@@ -176,7 +176,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 				if valueMap != nil {
 					//fmt.Println("data at path " + path)
 					for key, value := range valueMap {
-						kv := &pb.ValuesRes_Env_Service_File_Value{Key: key, Value: value.(string)}
+						kv := &pb.ValuesRes_Env_Service_File_Value{Key: key, Value: value.(string), Source: "value"}
 						vals = append(vals, kv)
 						//data = append(data, value.(string))
 					}
