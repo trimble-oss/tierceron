@@ -194,6 +194,11 @@ func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp,
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
+	if sealed {
+		s.Log.Printf("%d/%d unseal shards\n", prog, need)
+	} else {
+		s.Log.Println("Vault successfully unsealed")
+	}
 	return &pb.UnsealResp{
 		Sealed:   sealed,
 		Progress: int32(prog),

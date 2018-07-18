@@ -78,17 +78,25 @@ li{
   color: #55555E;
   font-size: 10.5pt;
 }
- #values ul{
+
+#values ul{
     margin: 0;
     padding: 0;
   }
-  #values li {
-    list-style-type: none;
-    padding-left: 0em;
-    text-indent: -1em;
-  }
   
-  #values li:before {
-    content: "=";
-    padding-right: 5px;
-  }
+#values li {
+  list-style-type: none;
+  padding-left: 0em;
+  text-indent: -1em;
+}
+  
+#values li:before {
+  content: "=";
+  padding-right: 5px;
+}
+
+.input-error {
+  background-color: #ffcfcf;
+  color: #DF0000;
+  border: 1px solid #BF0000;
+}

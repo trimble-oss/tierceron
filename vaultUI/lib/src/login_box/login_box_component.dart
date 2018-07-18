@@ -36,19 +36,25 @@ class LoginBoxComponent implements OnActivate {
   LoginBoxComponent(this.routes);
 
   Future<Null> onActivate(_, RouterState current) async {
-    IsSealed = current.parameters['sealed'].toLowerCase() == 'true';
+    IsSealed = current.queryParameters['sealed'].toLowerCase() == 'true';
     print(IsSealed);
   }
 
   final String _apiEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess
 
-  SignIn() {
+  Future<Null> SignIn() async{
+    if (IsSealed) return;
+    // Fetch input username/password for making the request.
     Map<String, dynamic> body = new Map();
     body['username'] = Username;
     body['password'] = Password;
     
+
+    // Construct request to twirp server
     HttpRequest request = new HttpRequest();
     request.onLoadEnd.listen((_) {
+      body.remove('password'); // Clear password
+      Password = '';
       Map<String, dynamic> response = json.decode(request.responseText);
       if(response['success'] != null && response['success']){
         print('login successful');
@@ -56,6 +62,8 @@ class LoginBoxComponent implements OnActivate {
         window.location.href = routes.values.toUrl();
         // Log in valid, proceed
       } else {
+        querySelector('#username').classes.addAll(['input_error', 'error_text']);
+        querySelector('#password').classes.addAll(['input_error', 'error_text']);
         print('login failed');
       }
     }); 
@@ -66,12 +74,23 @@ class LoginBoxComponent implements OnActivate {
   }  
 
   Future<Null> Unseal() async{
+    if(UnsealKey == null || UnsealKey.length == 0){ // Check username exists
+      querySelector('#unseal').classes.addAll(['input_error', 'error_text']);
+      return;
+    } 
+
     // Try to unseal with the key
     HttpRequest request = new HttpRequest();
     request.onLoadEnd.listen((_) {
       Map<String, dynamic> response = json.decode(request.response);
+      if(request.status != 200) { // Unsucessful key
+        Keys.add('UNSUCESSFUL: ' + UnsealKey);
+        return;
+      }
       if(response['sealed'] != null && response['sealed']) {
-        Keys.add(UnsealKey);
+        int prog = response['progress'] == null ? 0 : response['progress'];
+        int need = response['needed'] == null ? 0 : response['needed'];
+        Keys.add(prog.toString() + '/' + need.toString() + ': ' +  UnsealKey);
       } else {
         IsSealed = false;
       }
@@ -80,6 +99,12 @@ class LoginBoxComponent implements OnActivate {
     request.open('POST', _apiEndpoint + 'Unseal');
     request.setRequestHeader('Content-Type', 'application/json');
     request.send(json.encode({"unsealKey" : UnsealKey}));
+  }
+
+  // Remove error formatting from username/password box
+  Future<Null> UnRedify(event) async {
+    List<String> removals  = ['error', 'error_text'];
+    (event.target as Element).classes.removeAll(removals);
   }
 
 }

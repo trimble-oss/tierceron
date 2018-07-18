@@ -1,47 +1,44 @@
+#value_list {
+  display: inline-block;
+}
 
-  #value_list {
-    display: inline-block;
-  }
+ul {
+  background-color: #f0f8ff;
+  padding: 5px 20px 5px 20px;
+  margin-top: 5px;
+}
 
- ul {
-    background-color: #f0f8ff;
-    padding: 20px;
-    
-  }
-  
-  .box {
-    float: center;
-    width: 1000px;
-  }
-  
-  .error {
-    background-color: #ffcfcf;
-    color: #DF0000;
-    border: 1px solid #BF0000;
-  }
-  .column {
-    float: left;
-    width: 50%;
+.box {
+  float: center;
+  width: 1000px;
+}
+
+.error {
+  background-color: #ffcfcf;
+  color: #DF0000;
+  border: 1px solid #BF0000;
+}
+.column {
+  float: left;
+  width: 50%;
+  padding-top: 10px;
 }
 
 /* Clear floats after the columns */
-  .row:after {
-    content: "";
-    display: table;
-    clear: both;
-  }
-  
-  label {
-    width: 100%;
-  }
-  
-  select {
-    font-size:medium;
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
 
-  }
+label {
+  width: 100%;
+}
 
+select {
+  font-size:medium;
 
-
+}
 
 * {box-sizing: border-box;}
 
@@ -85,13 +82,12 @@
 }
 
 .topnav .search-container input[type=text] {
-  float: left;
-  width: 72%;
-  /* padding: 6px; */
-  margin-top: 8px;
-  margin-bottom: 8px;
-  font-size: 17px;
-  border: none;
+  float:left;
+  width:20%;
+  height: 40px;
+  padding:6px;
+  margin: 8px;
+  font-size:17px;
 }
 
 .topnav .search-container button {
@@ -101,14 +97,14 @@
   margin-top: 8px;
   margin-bottom: 8px;
   margin-right: 16px;
-  background: #ddd;
+  background: #bbb;
   font-size: 17px;
   border: none;
   cursor: pointer;
 }
 
 .topnav .search-container button:hover {
-  background: #ccc;
+  background: #aaa;
 }
 
 @media screen and (max-width: 600px) {

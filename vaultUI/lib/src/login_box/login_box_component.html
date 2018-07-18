@@ -1,13 +1,13 @@
 <div id="root">
     <div class="box">
         <h1>Log In</h1>
-        <input [(ngModel)]="Username" placeholder="Username" type="text">
-        <input [(ngModel)]="Password" placeholder="Password" type="password">
+        <input id="#username" [(ngModel)]="Username" placeholder="Username" type="text" (keyup)="UnRedify($event)">
+        <input id="#password" [(ngModel)]="Password" placeholder="Password" type="password"  (keyup)="UnRedify($event)" (keyup.enter)="SignIn()">
         <button (click)="SignIn()">Submit</button>
     </div>
     <div class="box" id="sealBox" *ngIf="IsSealed">
         <h1>Vault is Sealed</h1>
-        <input [(ngModel)]="UnsealKey" placeholder="Unseal Key" type="text" (keyup.enter)="Unseal()"><button (click)="Unseal()">Add</button>
+        <input id="#unseal" [(ngModel)]="UnsealKey" placeholder="Unseal Key" type="text" (keyup)="UnRedify($event)" (keyup.enter)="Unseal()"><button (click)="Unseal()">Add</button>
         <ul *ngFor="let key of Keys">
             <li>{{key}}</li>
         </ul>

@@ -1,5 +1,8 @@
 #root{
     display: flex;
+    width: 50%;
+    margin-left: auto;
+    margin-right: auto;
 }
 #sealBox{
     border-left:1px solid gray;

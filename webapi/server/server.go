@@ -222,6 +222,8 @@ func getPathEnd(path string) string {
 	}
 	return strs[len(strs)-1]
 }
+
+// UpdateAPI takes the passed URL and downloads the given build of the UI
 func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.UpdateAPIResp, error) {
 	if len(req.Urls) == 2 {
 		apiRouterURL := req.Urls[0]
@@ -240,6 +242,8 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.Updat
 	}
 	return nil, errors.New("Invalid request")
 }
+
+// DownloadFile handles downloading and moving the file to the expected folder for the server
 func DownloadFile(filepath string, url string) error {
 	//remove the old file
 	err := os.RemoveAll(filepath)
@@ -265,6 +269,8 @@ func DownloadFile(filepath string, url string) error {
 
 	return nil
 }
+
+// Unzip takes the zipped file at 'src' and unzips it into 'dest'
 func Unzip(src string, dest string) error {
 	err := os.RemoveAll(dest)
 	body, err := ioutil.ReadFile(src)

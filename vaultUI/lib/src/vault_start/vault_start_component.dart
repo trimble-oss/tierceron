@@ -88,11 +88,11 @@ class VaultStartComponent implements OnInit{
     bool valid = true;
     if(Username == null || Username.length == 0){ // Check username exists
       valid = false;
-      querySelector('#username').classes.addAll(['error', 'error_text']);
+      querySelector('#username').classes.addAll(['input_error', 'error_text']);
     } 
     if(Password == null || Password.length == 0) { // Check password exists
       valid = false;
-      querySelector('#password').classes.addAll(['error', 'error_text']);
+      querySelector('#password').classes.addAll(['input_error', 'error_text']);
     }
     if(Seeds == null || Seeds.length == 0) { // Check at least one seed file given
       valid = false;
