@@ -48,7 +48,7 @@ class AppComponent implements OnInit{
 
       if (!isInitialized) {
         _router.navigate(routes.sealed.toUrl(), NavigationParams(reload: true));
-      } else if (!window.localStorage.containsKey('Token') || isSealed) {
+      } else if (isSealed) {  
         _router.navigate(routes.login.toUrl(), NavigationParams(queryParameters: {'sealed': isSealed.toString()}, reload: true));
       } else {
         _router.navigate(routes.values.toUrl(), NavigationParams(reload: true));
@@ -58,9 +58,5 @@ class AppComponent implements OnInit{
     request.open('POST', _logInEndpoint);
     request.setRequestHeader('Content-Type', 'application/json');
     await request.send('{}');
-  }
-
-  Future<Null> checkSeal() async {
-    
   }
 }

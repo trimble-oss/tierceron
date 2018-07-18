@@ -23,8 +23,6 @@ class InitService{
       _request.setRequestHeader('Content-Type', 'application/json');
       _request.setRequestHeader('Authorization', _authToken);
       _request.send(json.encode(request));
-      // final response = base64Decode(_log);
-      // return utf8.decode(response);
       _request.onLoadEnd.listen((_) {
         if (_request.status == 401) { // Unauthorized, return error to caller
 
