@@ -88,11 +88,11 @@ class VaultStartComponent implements OnInit{
     bool valid = true;
     if(Username == null || Username.length == 0){ // Check username exists
       valid = false;
-      querySelector('#username').classes.addAll(['input_error', 'error_text']);
+      querySelector('#username').classes.add('input-error');
     } 
     if(Password == null || Password.length == 0) { // Check password exists
       valid = false;
-      querySelector('#password').classes.addAll(['input_error', 'error_text']);
+      querySelector('#password').classes.add('input-error');
     }
     if(Seeds == null || Seeds.length == 0) { // Check at least one seed file given
       valid = false;
@@ -139,8 +139,7 @@ class VaultStartComponent implements OnInit{
 
   // Remove error formatting from username/password box
   Future<Null> UnRedify(event) async{
-    List<String> removals  = ['error', 'error_text'];
-    (event.target as Element).classes.removeAll(removals);
+    (event.target as Element).classes.remove('input-error');
   }
 
 }

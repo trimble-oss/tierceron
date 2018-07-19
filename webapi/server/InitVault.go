@@ -67,7 +67,6 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	v.SetToken(keyToken.Token)
 	v.SetShards(keyToken.Keys)
 	s.VaultToken = keyToken.Token
-	fmt.Printf("Root token: %s\n", s.VaultToken)
 	//check error returned by unseal
 	v.Unseal()
 	if err != nil {
@@ -125,7 +124,6 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 //APILogin Verifies the user's login with the cubbyhole
 func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp, error) {
-	fmt.Printf("Req: %v\n", req)
 	// mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 	// if err != nil {
 	// 	utils.LogErrorObject(err, s.Log, false)

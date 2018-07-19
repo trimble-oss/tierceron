@@ -37,7 +37,6 @@ class LoginBoxComponent implements OnActivate {
 
   Future<Null> onActivate(_, RouterState current) async {
     IsSealed = current.queryParameters['sealed'].toLowerCase() == 'true';
-    print(IsSealed);
   }
 
   final String _apiEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess
@@ -62,8 +61,9 @@ class LoginBoxComponent implements OnActivate {
         window.location.href = routes.values.toUrl();
         // Log in valid, proceed
       } else {
-        querySelector('#username').classes.addAll(['input_error', 'error_text']);
-        querySelector('#password').classes.addAll(['input_error', 'error_text']);
+        querySelector('#username').classes.addAll(['input-error', 'error-text']);
+        querySelector('#password').classes.addAll(['input-error', 'error-text']);
+        querySelector("#warning").hidden=false;
         print('login failed');
       }
     }); 
@@ -74,19 +74,19 @@ class LoginBoxComponent implements OnActivate {
   }  
 
   Future<Null> Unseal() async{
-    if(UnsealKey == null || UnsealKey.length == 0){ // Check username exists
-      querySelector('#unseal').classes.addAll(['input_error', 'error_text']);
+    if(UnsealKey == null || UnsealKey.length == 0){ // Check unseal exists
+      querySelector('#unseal').classes.addAll(['input-error', 'error-text']);
       return;
     } 
 
     // Try to unseal with the key
     HttpRequest request = new HttpRequest();
     request.onLoadEnd.listen((_) {
-      Map<String, dynamic> response = json.decode(request.response);
       if(request.status != 200) { // Unsucessful key
         Keys.add('UNSUCESSFUL: ' + UnsealKey);
         return;
       }
+      Map<String, dynamic> response = json.decode(request.response);
       if(response['sealed'] != null && response['sealed']) {
         int prog = response['progress'] == null ? 0 : response['progress'];
         int need = response['needed'] == null ? 0 : response['needed'];
@@ -103,8 +103,9 @@ class LoginBoxComponent implements OnActivate {
 
   // Remove error formatting from username/password box
   Future<Null> UnRedify(event) async {
-    List<String> removals  = ['error', 'error_text'];
+    List<String> removals  = ['input-error', 'error-text'];
     (event.target as Element).classes.removeAll(removals);
+    querySelector("warning").hidden=true;
   }
 
 }

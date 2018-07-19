@@ -63,14 +63,12 @@ select {
   color: black;
 }
 .topnav .selection {
-  float: left;
-  width: 20%;
-  padding: 6px;
-  margin-left: 16px;
-  margin-top: 8px;
-  /* margin-bottom: 0px; */
-  font-size: 17px;
-  /* border: none; */
+  float:left;
+  width:20%;
+  height: 40px;
+  padding:6px;
+  margin: 8px;
+  font-size:17px;
 }
 
 .topnav .small-selection {
@@ -82,12 +80,13 @@ select {
 }
 
 .topnav .search-container input[type=text] {
-  float:left;
-  width:20%;
-  height: 40px;
-  padding:6px;
-  margin: 8px;
-  font-size:17px;
+  float: left;
+  width: 72%;
+  /* padding: 6px; */
+  margin-top: 8px;
+  margin-bottom: 8px;
+  font-size: 17px;
+  border: none;
 }
 
 .topnav .search-container button {

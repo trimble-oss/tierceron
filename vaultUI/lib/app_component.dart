@@ -39,7 +39,7 @@ class AppComponent implements OnInit{
       if (!isInitialized) { // Vault needs to be seeded
         _router.navigate(routes.sealed.toUrl(), NavigationParams(reload: true));
       } else if (isSealed) {  // Vault seeded, user needs to login and recieve token. Vault possibly needs to be unsealed
-        _router.navigate(routes.login.toUrl(), NavigationParams(queryParameters: {'sealed': isSealed.toString()}, reload: true)).then((result) => print(result));
+        _router.navigate(routes.login.toUrl(), NavigationParams(queryParameters: {'sealed': isSealed.toString()}, reload: true));
       } else { // User has auth token and vault is unsealed. Forward to values. May be redirected back to login if token is rejected
         _router.navigate(routes.values.toUrl(), NavigationParams(reload: true));
       }
