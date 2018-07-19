@@ -8,6 +8,12 @@ sudo apt-get install -y curl unzip
 curl -L "https://releases.hashicorp.com/vault/0.10.1/vault_0.10.1_linux_amd64.zip" > /tmp/vault.zip
 # Unzip it
 #/usr/src/app
+#download aws cli
+curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+sudo unzip awscli-bundle.zip
+sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+#sudo aws configure --profile default
+
 cd /tmp
 sudo -- sh -c "echo '127.0.0.1 $(hostname)' >> /etc/hosts"
 sudo unzip vault.zip
@@ -42,6 +48,8 @@ sudo chown root:root /etc/opt/vaultAPI/apiRouter
 sudo mv /tmp/policy_files /etc/opt/vaultAPI
 #add token files
 sudo mv /tmp/token_files /etc/opt/vaultAPI
+sudo mv /tmp/getArtifacts.sh /etc/opt/vaultAPI
+sudo chmod 0777 /etc/opt/vaultAPI/getArtifacts.sh
 
 # Setup the init script
 cat <<EOF >/tmp/upstart

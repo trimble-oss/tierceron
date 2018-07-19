@@ -1,16 +1,12 @@
 package server
 
 import (
-	"archive/zip"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -225,76 +221,18 @@ func getPathEnd(path string) string {
 
 // UpdateAPI takes the passed URL and downloads the given build of the UI
 func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.UpdateAPIResp, error) {
-	if len(req.Urls) == 2 {
-		apiRouterURL := req.Urls[0]
-		vaultUIURL := req.Urls[1]
-		err := DownloadFile("/etc/opt/vaultAPI/apiRouter", apiRouterURL)
-		if err != nil {
-			return nil, err
-		}
-		err = DownloadFile("/etc/opt/vaultAPI/public.zip", vaultUIURL)
-		if err != nil {
-			return nil, err
-		}
-		err = Unzip("/etc/opt/vaultAPI/public.zip", "/etc/opt/vaultAPI/public")
-
-		return &pb.UpdateAPIResp{}, nil
-	}
-	return nil, errors.New("Invalid request")
-}
-
-// DownloadFile handles downloading and moving the file to the expected folder for the server
-func DownloadFile(filepath string, url string) error {
-	//remove the old file
-	err := os.RemoveAll(filepath)
-	// Create the file
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	// Get the data
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
+	scriptPath := "./getArtifacts.sh"
+	fmt.Println(req.Build)
+	//buildNum := strconv.FormatInt(int64(req.Build), 10)
+	buildNum := req.Build
+	//fmt.Println(buildNum)
+	for len(buildNum) < 5 {
+		buildNum = "0" + buildNum
 	}
 
-	return nil
-}
-
-// Unzip takes the zipped file at 'src' and unzips it into 'dest'
-func Unzip(src string, dest string) error {
-	err := os.RemoveAll(dest)
-	body, err := ioutil.ReadFile(src)
-	if err != nil {
-		return err
-	}
-
-	r, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
-	if err != nil {
-		return err
-	}
-	for _, zipfile := range r.File {
-		dst, err := os.Create(zipfile.Name)
-		if err != nil {
-			return err
-		}
-		defer dst.Close()
-		src, err := zipfile.Open()
-		if err != nil {
-			return err
-		}
-		defer src.Close()
-
-		io.Copy(dst, src)
-	}
-	return nil
+	fmt.Println(buildNum)
+	cmd := exec.Command(scriptPath, buildNum)
+	cmd.Dir = "/etc/opt/vaultAPI"
+	err := cmd.Run()
+	return &pb.UpdateAPIResp{}, err
 }

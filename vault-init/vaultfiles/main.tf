@@ -51,6 +51,15 @@ resource "aws_instance" "web" {
         source      = "${path.module}/scripts/install.sh"
         destination = "/tmp/install.sh"
     }
+    provisioner "file" {
+        source      = "../../getArtifacts.sh"
+        destination = "/tmp/getArtifacts.sh"
+        connection {
+            private_key = "${file("${var.deploy-pem-path}")}"
+            user = "ubuntu"
+            //agent = true
+        }
+    }
     provisioner "remote-exec" {
         inline = [
             "sudo mkdir /tmp/public",
