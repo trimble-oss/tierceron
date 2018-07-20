@@ -1,21 +1,22 @@
 package server
 
 import (
-	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
-	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
-	il "bitbucket.org/dexterchaney/whoville/vault-init/initlib"
-	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 	"bytes"
 	"context"
 	b64 "encoding/base64"
 	"fmt"
 	"log"
+
+	"bitbucket.org/dexterchaney/whoville/utils"
+	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
+	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
+	il "bitbucket.org/dexterchaney/whoville/vault-init/initlib"
+	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 )
 
 const tokenPath string = "token_files"
 const policyPath string = "policy_files"
-const templatePath string = "template_files"
+const templatePath string = "vault_templates"
 
 //InitVault Takes init request and inits/seeds vault with contained file data
 func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, error) {
