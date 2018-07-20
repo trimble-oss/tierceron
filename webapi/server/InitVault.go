@@ -16,7 +16,7 @@ import (
 
 const tokenPath string = "token_files"
 const policyPath string = "policy_files"
-const templatePath string = "vault_templates"
+const templatePath string = "template_files"
 
 //InitVault Takes init request and inits/seeds vault with contained file data
 func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, error) {
