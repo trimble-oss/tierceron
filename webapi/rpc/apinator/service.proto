@@ -16,6 +16,7 @@ service EnterpriseServiceBroker {
     rpc Unseal(UnsealReq) returns (UnsealResp);
     rpc GraphQL(GraphQLQuery) returns (GraphQLResp);
     rpc UpdateAPI(UpdateAPIReq) returns (UpdateAPIResp);
+    rpc GetVaultTokens(TokensReq) returns (TokensResp);
 }
 
 /////////////////////////////////////////////////////////
@@ -175,10 +176,27 @@ message GQLTemplateResp {
     repeated GQLError errors = 2;
 }
 /////////////////////////////////////////////////////////
-// Update API Messages                                    //
+// Update API Messages                                 //
 /////////////////////////////////////////////////////////
 message UpdateAPIReq {
-    string build = 1;
+    repeated string urls = 1;
 }
 
 message UpdateAPIResp {}
+
+////////////////////////////////////////////////////////
+// Token Messages                                     //
+////////////////////////////////////////////////////////
+message TokensReq {
+    string appRoleID = 1;
+    string appRoleSecretID = 2;
+    repeated string tokenNames = 3;
+}
+
+message TokensResp {
+    message Token {
+        string name = 1;
+        string value = 2;
+    }
+    repeated Token tokens = 1;
+}
