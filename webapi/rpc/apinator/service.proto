@@ -179,7 +179,7 @@ message GQLTemplateResp {
 // Update API Messages                                 //
 /////////////////////////////////////////////////////////
 message UpdateAPIReq {
-    repeated string urls = 1;
+    string build = 1;
 }
 
 message UpdateAPIResp {}
