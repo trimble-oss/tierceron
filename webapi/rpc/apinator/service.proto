@@ -15,8 +15,9 @@ service EnterpriseServiceBroker {
     rpc APILogin(LoginReq) returns (LoginResp);
     rpc Unseal(UnsealReq) returns (UnsealResp);
     rpc GraphQL(GraphQLQuery) returns (GraphQLResp);
-    rpc UpdateAPI(UpdateAPIReq) returns (UpdateAPIResp);
+    rpc UpdateAPI(UpdateAPIReq) returns (NoParams);
     rpc GetVaultTokens(TokensReq) returns (TokensResp);
+    rpc RollTokens(NoParams) returns (NoParams);
 }
 
 /////////////////////////////////////////////////////////
@@ -181,8 +182,6 @@ message GQLTemplateResp {
 message UpdateAPIReq {
     string build = 1;
 }
-
-message UpdateAPIResp {}
 
 ////////////////////////////////////////////////////////
 // Token Messages                                     //

@@ -220,7 +220,7 @@ func getPathEnd(path string) string {
 }
 
 // UpdateAPI takes the passed URL and downloads the given build of the UI
-func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.UpdateAPIResp, error) {
+func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoParams, error) {
 	scriptPath := "./getArtifacts.sh"
 	//buildNum := strconv.FormatInt(int64(req.Build), 10)
 	buildNum := req.Build
@@ -231,5 +231,5 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.Updat
 	cmd := exec.Command(scriptPath, buildNum)
 	cmd.Dir = "/etc/opt/vaultAPI"
 	err := cmd.Run()
-	return &pb.UpdateAPIResp{}, err
+	return &pb.NoParams{}, err
 }

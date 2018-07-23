@@ -84,3 +84,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 
 	return &pb.TokensResp{Tokens: tokens}, nil
 }
+
+func (s *Server) RollTokens(ctx context.Context, req *pb.NoParams) (*pb.NoParams, error) {
+	return &pb.NoParams{}, nil
+}

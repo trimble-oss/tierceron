@@ -100,12 +100,21 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	il.UploadPolicies(policyPath, v, logger)
 
 	tokens := il.UploadTokens(tokenPath, v, logger)
+	tokenMap := map[string]interface{}{}
+	for _, token := range tokens {
+		tokenMap[token.Name] = token.Value
+	}
 
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 	utils.LogErrorObject(err, logger, false)
 
+	mod.Env = "bamboo"
+	warn, err := mod.Write("super-secrets/tokens", tokenMap)
+	utils.LogErrorObject(err, logger, false)
+	utils.LogWarningsObject(warn, logger, false)
+
 	mod.Env = "dev"
-	err, warn := il.UploadTemplateDirectory(mod, templatePath)
+	err, warn = il.UploadTemplateDirectory(mod, templatePath)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
 
@@ -113,6 +122,26 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	err, warn = il.UploadTemplateDirectory(mod, templatePath)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
+
+	err = v.EnableAppRole()
+	utils.LogErrorObject(err, logger, false)
+
+	err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
+		TokenTTL:    "10m",
+		TokenMaxTTL: "15m",
+		Policies:    []string{"bamboo"},
+	})
+	utils.LogErrorObject(err, logger, false)
+
+	roleID, err := v.GetRoleID("bamboo")
+	utils.LogErrorObject(err, logger, false)
+
+	secretID, err := v.GetSecretID("bamboo")
+	utils.LogErrorObject(err, logger, false)
+
+	logger.SetPrefix("[AUTH]")
+	logger.Printf("Role ID: %s\n", roleID)
+	logger.Printf("Secret ID: %s\n", secretID)
 
 	s.Log.Println("Init Log \n" + b64.StdEncoding.EncodeToString(logBuffer.Bytes()))
 	s.InitGQL()
