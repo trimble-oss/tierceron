@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	pkcs "bitbucket.org/crypto/pkcs12"
+	pkcs "bitbucket.org/sarawille7/crypto/pkcs12"
 )
 
 //ValidateSendGrid validates the sendgrid API key.
