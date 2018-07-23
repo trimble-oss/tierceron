@@ -26,6 +26,17 @@ class AppComponent implements OnInit{
 
   Future<Null> ngOnInit() async {
     bool isSealed, isInitialized;
+    bool isAuthorized = false;
+    if (window.localStorage["Token"] != null) {
+      HttpRequest authRequest = new HttpRequest();
+      authRequest.onLoadEnd.listen((_) {
+        isAuthorized = authRequest.status != 401;
+      });
+      authRequest.open('GET', window.location.origin + '/auth');
+      authRequest.setRequestHeader("Authorization", window.localStorage["Token"]);
+      await authRequest.send();
+    }
+
 
     // Check status of vault and route to proper view
     HttpRequest request = new HttpRequest();
@@ -36,11 +47,14 @@ class AppComponent implements OnInit{
       isSealed = response['sealed'] == null ? false : response['sealed'] as bool;
       isInitialized = response['initialized']==null ? false : response['initialized'] as bool;
 
+      print(isAuthorized);
       if (!isInitialized) { // Vault needs to be seeded
         _router.navigate(routes.sealed.toUrl(), NavigationParams(reload: true));
-      } else if (!window.localStorage.containsKey("Token") || isSealed) {  // Vault seeded, user needs to login and recieve token. Vault possibly needs to be unsealed
+      } else if (!isAuthorized || isSealed) {  // Vault seeded, user needs to login and recieve token. Vault possibly needs to be unsealed
+        print("login");
         _router.navigate(routes.login.toUrl(), NavigationParams(queryParameters: {'sealed': isSealed.toString()}, reload: true));
       } else { // User has auth token and vault is unsealed. Forward to values. May be redirected back to login if token is rejected
+        print("values");
         _router.navigate(routes.values.toUrl(), NavigationParams(reload: true));
       }
     });

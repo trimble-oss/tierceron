@@ -143,7 +143,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	logger.Printf("Role ID: %s\n", roleID)
 	logger.Printf("Secret ID: %s\n", secretID)
 
-	s.Log.Println("Init Log \n" + b64.StdEncoding.EncodeToString(logBuffer.Bytes()))
+	s.Log.Println("Init Log \n" + logBuffer.String())
 	s.InitGQL()
 	return &pb.InitResp{
 		Success: true,
