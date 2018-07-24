@@ -67,7 +67,9 @@ resource "aws_instance" "web" {
             "sudo mkdir /tmp/policy_files",
             "sudo chown ubuntu /tmp/policy_files",
             "sudo mkdir /tmp/token_files",
-            "sudo chown ubuntu /tmp/token_files"
+            "sudo chown ubuntu /tmp/token_files",
+            "sudo mkdir /tmp/template_files",
+            "sudo chown ubuntu /tmp/template_files"
         ]
         connection {
             type        = "ssh"
@@ -102,6 +104,15 @@ resource "aws_instance" "web" {
         }
         source      = "../../token_files/"
         destination = "/tmp/token_files"
+    }
+    provisioner "file" {
+        connection {
+            private_key = "${file("${var.deploy-pem-path}")}"
+            user="ubuntu"
+            //agent = true
+        }
+        source      = "../../template_files/"
+        destination = "/tmp/template_files"
     }
 
     provisioner "file" {

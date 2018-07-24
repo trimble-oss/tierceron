@@ -48,6 +48,8 @@ sudo chown root:root /etc/opt/vaultAPI/apiRouter
 sudo mv /tmp/policy_files /etc/opt/vaultAPI
 #add token files
 sudo mv /tmp/token_files /etc/opt/vaultAPI
+#add template files
+sudo mv /tmp/template_files /etc/opt/vaultAPI
 sudo mv /tmp/getArtifacts.sh /etc/opt/vaultAPI
 sudo chmod 0777 /etc/opt/vaultAPI/getArtifacts.sh
 
