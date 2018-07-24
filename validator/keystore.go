@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	pkcs "github.com/ereOn/crypto/pkcs12"
+	pkcs "bitbucket.org/sarawille7/crypto"
 )
 
 //ValidateSendGrid validates the sendgrid API key.
