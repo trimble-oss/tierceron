@@ -1,23 +1,23 @@
 package server
 
 import (
+	"context"
+	"fmt"
+	jwt "github.com/dgrijalva/jwt-go"
+	"time"
+
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
-	"context"
-	b32 "encoding/base32"
-	"fmt"
-	jwt "github.com/dgrijalva/jwt-go"
-	"time"
 )
 
-func generateJWT(user string) (string, error) {
+func generateJWT(user string, id string) (string, error) {
 	tokenSecret := []byte("V2hvVmlsbDMhVjR1N1Q9UHIwajNjVA==")
 	currentTime := time.Now().Unix()
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":  b32.StdEncoding.EncodeToString([]byte(user)),
+		"sub":  id,
 		"name": user,
 		"iss":  "Viewpoint, Inc.",
 		"aud":  "Viewpoint Vault WebAPI",
@@ -85,6 +85,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	return &pb.TokensResp{Tokens: tokens}, nil
 }
 
+// RollTokens checks the validity of tokens in super-secrets/bamboo/tokens and rerolls them
 func (s *Server) RollTokens(ctx context.Context, req *pb.NoParams) (*pb.NoParams, error) {
 	return &pb.NoParams{}, nil
 }

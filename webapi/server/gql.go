@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -313,8 +314,10 @@ func (s *Server) InitGQL() {
 						serv := params.Source.(Service).ID
 						env := params.Source.(Service).EnvID
 						if isOK {
+							fmt.Printf("Searching under %s\n", params.Source.(Service).Name)
 							for i, f := range vaultQL.Envs[env].Services[serv].Files {
 								if f.Name == fileStr {
+									fmt.Printf("%d\n", i)
 									return []File{vaultQL.Envs[env].Services[serv].Files[i]}, nil
 								}
 							}

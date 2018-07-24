@@ -33,7 +33,7 @@ class AppComponent implements OnInit{
         isAuthorized = authRequest.status != 401;
       });
       authRequest.open('GET', window.location.origin + '/auth');
-      authRequest.setRequestHeader("Authorization", window.localStorage["Token"]);
+      authRequest.setRequestHeader("Authorization", "Bearer " + window.localStorage["Token"]);
       await authRequest.send();
     }
 

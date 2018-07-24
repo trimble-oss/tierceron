@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	b64 "encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
@@ -23,24 +26,24 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	logBuffer := new(bytes.Buffer)
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
 
-	res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password})
-	if err != nil {
-		utils.LogErrorObject(err, logger, false)
-		return &pb.InitResp{
-			Success: false,
-			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
-			Tokens:  nil,
-		}, err
-	}
-	if !res.Success {
-		s.Log.Printf("Invalid login for user: %s\n", req.Username)
-		logger.Printf("Invalid login for user: %s\n", req.Username)
-		return &pb.InitResp{
-			Success: false,
-			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
-			Tokens:  nil,
-		}, nil
-	}
+	// res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password})
+	// if err != nil {
+	// 	utils.LogErrorObject(err, logger, false)
+	// 	return &pb.InitResp{
+	// 		Success: false,
+	// 		Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
+	// 		Tokens:  nil,
+	// 	}, err
+	// }
+	// if !res.Success {
+	// 	s.Log.Printf("Invalid login for user: %s\n", req.Username)
+	// 	logger.Printf("Invalid login for user: %s\n", req.Username)
+	// 	return &pb.InitResp{
+	// 		Success: false,
+	// 		Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
+	// 		Tokens:  nil,
+	// 	}, nil
+	// }
 
 	fmt.Println("Initing vault")
 
@@ -154,37 +157,86 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 //APILogin Verifies the user's login with the cubbyhole
 func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp, error) {
-	// mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
-	// if err != nil {
-	// 	utils.LogErrorObject(err, s.Log, false)
-	// 	return nil, err
-	// }
-	// pass, err := mod.ReadValue("cubbyhole/credentials", req.Username)
-	// if err != nil {
-	// 	utils.LogErrorObject(err, s.Log, false)
-	// 	return nil, err
-	// }
-
-	// success := pass == req.Password
-	// fmt.Printf("%s %s == %v\n", pass, req.Password, success)
-
-	//if pass != "" && success {
-	// Generate token
-	token, err := generateJWT(req.Username)
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
-	return &pb.LoginResp{
-		Success:   true,
-		AuthToken: token,
-	}, nil
 
-	//}
-	// return &pb.LoginResp{
-	// 	Success:   true,
-	// 	AuthToken: "LOGIN_FAILURE",
-	// }, nil
+	connectionURL, err := mod.ReadValue("apiLogins/meta", "authEndpoint")
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, err
+	}
+
+	credentials := bytes.NewBuffer([]byte{})
+	err = json.NewEncoder(credentials).Encode(map[string]string{
+		"username": req.Username,
+		"password": req.Password,
+	})
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, err
+	}
+
+	client := &http.Client{}
+	res, err := client.Post(connectionURL, "application/json", credentials)
+
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, err
+	}
+
+	if res.StatusCode == 401 {
+		return &pb.LoginResp{
+			Success:   false,
+			AuthToken: "",
+		}, nil
+	} else if res.StatusCode == 200 || res.StatusCode == 204 {
+		var response map[string]interface{}
+		bodyBytes, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			utils.LogErrorObject(err, s.Log, false)
+			return nil, err
+		}
+
+		err = json.Unmarshal([]byte(bodyBytes), &response)
+		if err != nil {
+			utils.LogErrorObject(err, s.Log, false)
+			return nil, err
+		}
+
+		if name, ok := response["firstName"].(string); ok {
+			if id, ok := response["operatorCode"].(string); ok {
+				token, err := generateJWT(name, id)
+				if err != nil {
+					utils.LogErrorObject(err, s.Log, false)
+					return nil, err
+				}
+
+				return &pb.LoginResp{
+					Success:   true,
+					AuthToken: token,
+				}, nil
+			}
+			err = fmt.Errorf("Unable to parse operatorCode in auth response")
+			utils.LogErrorObject(err, s.Log, false)
+		} else {
+			err = fmt.Errorf("Unable to parse firstName in auth response")
+			utils.LogErrorObject(err, s.Log, false)
+		}
+
+		return &pb.LoginResp{
+			Success:   false,
+			AuthToken: "",
+		}, err
+	}
+	err = fmt.Errorf("Unexpected response code from auth endpoint: %d", res.StatusCode)
+	utils.LogErrorObject(err, s.Log, false)
+	return &pb.LoginResp{
+		Success:   false,
+		AuthToken: "",
+	}, nil
 }
 
 //GetStatus requests version info and whether the vault has been initailized

@@ -1,7 +1,7 @@
 <log-dialog [DialogVisible]="DialogVisible" [LogData]="LogData"></log-dialog>
-<div class="box">
+<div class="box" (keyup.enter)="StartVault()">
     <h1>Vault Initialization</h1>
-    <button id="start_button" (click)="StartVault()" (keyup.enter)="StartVault()">Start Vault</button>
+    <button id="start_button" (click)="StartVault()" >Start Vault</button>
     <div id="file_list">
         <label>Upload Seed Files</label>
         <input type="file" placeholder="Add File" (change)="GetFiles($event)" multiple>

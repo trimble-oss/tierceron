@@ -13,6 +13,7 @@ import (
 var noEnvironments = map[string]bool{
 	"templates/": true,
 	"cubbyhole/": true,
+	"apiLogins/": true,
 }
 
 // Modifier maintains references to the active client and
@@ -64,11 +65,16 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 	sendData := map[string]interface{}{"data": data}
 	// Create full path
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	if len(pathBlocks) == 1 {
+		pathBlocks[0] += "/"
+	}
 	fullPath := pathBlocks[0] + "data/"
 	if !noEnvironments[pathBlocks[0]] {
 		fullPath += m.Env + "/"
 	}
-	fullPath += pathBlocks[1]
+	if len(pathBlocks) > 1 {
+		fullPath += pathBlocks[1]
+	}
 	Secret, err := m.logical.Write(fullPath, sendData)
 	if Secret == nil { // No warnings
 		return nil, err
@@ -114,7 +120,7 @@ func (m *Modifier) ReadValue(path string, key string) (string, error) {
 			return "", fmt.Errorf("Cannot convert value at %s to string", key)
 		}
 	}
-	return "", fmt.Errorf("Key '%s' not found in '%s'", path, key)
+	return "", fmt.Errorf("Key '%s' not found in '%s'", key, path)
 }
 
 // ReadMetadata Reads the Metadata from the path referenced by this Modifier
