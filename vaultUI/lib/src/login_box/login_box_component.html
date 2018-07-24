@@ -3,6 +3,12 @@
         <h1>Log In</h1>
         <input id="username" [(ngModel)]="Username" placeholder="Username" type="text" (keyup)="UnRedify($event)">
         <input id="password" [(ngModel)]="Password" placeholder="Password" type="password"  (keyup)="UnRedify($event)" (keyup.enter)="SignIn()">
+        <label>Environment:
+            <select [(ngModel)]="Environment"> 
+                <option>dev</option>
+                <option>QA</option>
+            </select>
+        </label>
         <div id="warning" [hidden]="true">Invalid Username or Password</div>
         <button (click)="SignIn()">Submit</button>
     </div>

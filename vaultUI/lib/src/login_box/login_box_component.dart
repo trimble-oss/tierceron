@@ -25,6 +25,8 @@ class LoginBoxComponent implements OnActivate {
   String Username;
   @Input()
   String Password;
+  @Input()
+  String Environment;
 
   @Input()
   bool IsSealed = true;
@@ -47,7 +49,7 @@ class LoginBoxComponent implements OnActivate {
     Map<String, dynamic> body = new Map();
     body['username'] = Username;
     body['password'] = Password;
-    
+    body['environment'] = Environment;
 
     // Construct request to twirp server
     HttpRequest request = new HttpRequest();

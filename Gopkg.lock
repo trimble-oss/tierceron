@@ -2,6 +2,16 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "bitbucket.org/sarawille7/crypto"
+  packages = [
+    "pkcs12",
+    "pkcs12/internal/rc2"
+  ]
+  revision = "acdfe2da89e82baff635a31dac4f97456324af70"
+  source = "https://sarawille7@bitbucket.org/sarawille7/crypto.git"
+
+[[projects]]
   name = "cloud.google.com/go"
   packages = ["civil"]
   revision = "777200caa7fb8936aed0f12b1fd79af64cc83ec9"
@@ -234,6 +244,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e9a4b5a24047123f680d87b9a6365193a77ede0d29f11e50cb424c63d3d915f6"
+  inputs-digest = "881eed85106310e0a4274fec163e59ef0cd327c4fba8bca0cbd50b9250745ddb"
   solver-name = "gps-cdcl"
   solver-version = 1

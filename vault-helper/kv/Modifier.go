@@ -13,7 +13,6 @@ import (
 var noEnvironments = map[string]bool{
 	"templates/": true,
 	"cubbyhole/": true,
-	"apiLogins/": true,
 }
 
 // Modifier maintains references to the active client and

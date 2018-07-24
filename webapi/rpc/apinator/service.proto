@@ -120,6 +120,7 @@ message VaultStatus {
 message LoginReq {
     string username = 1;
     string password = 2;
+    string environment = 3;
 }
 
 message LoginResp {

@@ -1,3 +1,22 @@
+.box>label{
+    margin-top:10px;
+    height:40px;
+    width: 60%;
+    display:inline-block;
+    margin-bottom: -8px;
+    padding-left: 10px;
+}
+
+.box>label>select{
+    height:40px;
+    font-size:17px;
+    width: 30%;
+    padding-left: 5px;
+    margin-left: 5px;
+    display:inline-block;
+    border:none;
+}
+
 #root{
     display: flex;
     width: 50%;

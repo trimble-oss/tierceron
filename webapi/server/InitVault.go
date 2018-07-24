@@ -162,18 +162,21 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
+	mod.Env = req.Environment
 
 	connectionURL, err := mod.ReadValue("apiLogins/meta", "authEndpoint")
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
+	fmt.Printf("Connection url: %s\n", connectionURL)
 
 	credentials := bytes.NewBuffer([]byte{})
 	err = json.NewEncoder(credentials).Encode(map[string]string{
 		"username": req.Username,
 		"password": req.Password,
 	})
+
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
@@ -208,7 +211,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 
 		if name, ok := response["firstName"].(string); ok {
 			if id, ok := response["operatorCode"].(string); ok {
-				token, err := generateJWT(name, id)
+				token, err := s.generateJWT(name, id, mod)
 				if err != nil {
 					utils.LogErrorObject(err, s.Log, false)
 					return nil, err

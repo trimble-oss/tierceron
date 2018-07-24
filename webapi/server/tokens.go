@@ -12,9 +12,10 @@ import (
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 )
 
-func generateJWT(user string, id string) (string, error) {
+func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, error) {
 	tokenSecret := []byte("V2hvVmlsbDMhVjR1N1Q9UHIwajNjVA==")
 	currentTime := time.Now().Unix()
+	expTime := currentTime + 24*60*60
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  id,
@@ -22,8 +23,22 @@ func generateJWT(user string, id string) (string, error) {
 		"iss":  "Viewpoint, Inc.",
 		"aud":  "Viewpoint Vault WebAPI",
 		"iat":  currentTime,
-		"exp":  currentTime + 24*60*60,
+		"exp":  expTime,
 	})
+
+	// Upload token information to vault
+	if mod != nil {
+		defer func() {
+			tokenData := map[string]interface{}{
+				"ID":      id,
+				"Issued":  currentTime,
+				"Expires": expTime,
+			}
+			warn, err := mod.Write("apiLogins/"+user, tokenData)
+			utils.LogWarningsObject(warn, s.Log, false)
+			utils.LogErrorObject(err, s.Log, false)
+		}()
+	}
 
 	return token.SignedString(tokenSecret)
 }
