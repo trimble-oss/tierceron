@@ -49,18 +49,32 @@ class ActiveSessionsComponent implements OnInit{
     _token = "Bearer " + window.localStorage['Token'];
     Start();
   }
-  SignOut(){
+  SignOut()async{
     //sign out and redirect to login page
-     print("logout");
-     window.localStorage.clear();
-    _router.navigate(routes.login.toUrl(), NavigationParams(reload: true));
+    bool isSealed;
+    final  String _logInEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
+    HttpRequest request = new HttpRequest();
+    request.onLoadEnd.listen((_) {
+      Map<String, dynamic> response = json.decode(request.responseText);
+      // Convert null values to false; Extract vault status
+      isSealed = response['sealed'] == null ? false : response['sealed'] as bool;
+    
+      //print("sealed: " + isSealed.toString());
+      // Vault seeded, user needs to login and recieve token. Vault possibly needs to be unsealed
+      print("logout");
+      window.localStorage.clear();
+      _router.navigate(routes.login.toUrl(), NavigationParams(queryParameters: {'sealed': isSealed.toString()}, reload: true));
+    });
+    request.open('POST', _logInEndpoint);
+    request.setRequestHeader('Content-Type', 'application/json');
+    await request.send('{}');
   }
+  
   ConfigBrowser(){
     //redirect to configuration browser
     print("values");
     _router.navigate(routes.values.toUrl(), NavigationParams(reload: true));
   }
-  //String testQuery = "http://127.0.0.1:8008/graphql?query={envs{name, services{name, files{name, values{key,value,source}}}}}";
   GetSessions() async {
     var client = new BrowserClient();
     var response =
