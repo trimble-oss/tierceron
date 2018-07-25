@@ -1,0 +1,27 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<div class="box">
+    <h1>Active Sessions</h1>
+    <button class="redirect-button" (click)="SignOut()">Sign Out</button>
+    <button class="redirect-button" (click)="ConfigBrowser()">Configuration Browser</button>
+    <div class="topnav">
+        <select #env id="environments" class="selection" (change)="SelectEnv(env.value)">
+            <option disabled selected value>All Environments</option>
+        </select>
+        <select #serv id="services" class="selection" (change)="SelectServ(serv.value)">
+            <option disabled selected value>All Services</option>
+        </select>
+        <div class="search-container">     
+            <button type="submit" (click)="SelectKey(query.value)"><i class="fa fa-search"></i></button>      
+            <input #query id="query" type="text" placeholder="Search.." name="search" (keyup.enter)="SelectKey(query.value)">
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="column">
+            <label>Users</label>
+            <ul id="users">
+                <li>Hugh Mann</li>
+            </ul>
+        </div>
+    </div>
+</div>

@@ -1,6 +1,9 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <div class="box">
+
     <h1>Configuration Browser</h1>
+    <button class="redirect-button" (click)="SignOut()">Sign Out</button>
+    <button class="redirect-button" (click)="ActiveSessions()">Active Sessions</button>
 
     <div class="topnav">
         <select #env id="environments" class="selection" (change)="SelectEnv(env.value)">
