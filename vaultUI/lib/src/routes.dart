@@ -6,6 +6,7 @@ import 'vault_vals/vault_vals_component.template.dart' as vvct;
 import 'login_box/login_box_component.template.dart' as lbct;
 import 'vault_start/vault_start_component.template.dart' as vsct;
 import 'active_sessions/active_sessions_component.template.dart' as asct;
+import 'server_reset/server_reset_component.template.dart' as srct;
 
 @Injectable()
 class Routes {
@@ -15,6 +16,7 @@ class Routes {
   RoutePath get login => paths.login;
   RoutePath get sealed => paths.sealed;
   RoutePath get sessions => paths.sessions;
+  RoutePath get reset => paths.reset;
 
   // Don't put default routes in here, it should all get handled through AppComponent
   // Also the page will get stuck in an infinite loop sometimes if we put a default route here
@@ -34,6 +36,10 @@ class Routes {
     RouteDefinition(
       path: paths.sessions.path,
       component: asct.ActiveSessionsComponentNgFactory,
+    ),
+    RouteDefinition(
+      path: paths.reset.path,
+      component: srct.ServerResetComponentNgFactory,
     )
   ];
 }

@@ -18,6 +18,7 @@ service EnterpriseServiceBroker {
     rpc UpdateAPI(UpdateAPIReq) returns (NoParams);
     rpc GetVaultTokens(TokensReq) returns (TokensResp);
     rpc RollTokens(NoParams) returns (NoParams);
+    rpc ResetServer(ResetReq) returns (NoParams);
 }
 
 /////////////////////////////////////////////////////////
@@ -199,4 +200,10 @@ message TokensResp {
         string value = 2;
     }
     repeated Token tokens = 1;
+}
+////////////////////////////////////////////////////////
+// Reset Server Messages                                     //
+////////////////////////////////////////////////////////
+message ResetReq {
+    string token = 1;
 }
