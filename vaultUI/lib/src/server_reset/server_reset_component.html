@@ -1,0 +1,6 @@
+
+    <div class="box">
+        <h1>Enter Token</h1>
+        <input id="token" [(ngModel)]="Token" placeholder="Token" type="token" (keyup.enter)="RestartServer()">
+        <button (click)="RestartServer()">Submit</button>
+    </div>
