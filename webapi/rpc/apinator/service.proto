@@ -80,7 +80,16 @@ message ValuesRes {
             }
             repeated File files = 2;
         }
+        message Provider {
+            string name = 1;
+            message Session {
+                string user = 1;
+                int64  lastLogIn = 2;
+            }
+            repeated Session sessions = 2;
+        }
         repeated Service services = 2;
+        repeated Provider providers = 3;
     }
     repeated Env envs = 2;
 }

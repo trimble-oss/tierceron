@@ -5,7 +5,7 @@
         <input id="password" [(ngModel)]="Password" placeholder="Password" type="password"  (keyup)="UnRedify($event)" (keyup.enter)="SignIn()">
         <label>Environment:
             <select [(ngModel)]="Environment"> 
-                <option>dev</option>
+                <option selected>dev</option>
                 <option>QA</option>
             </select>
         </label>

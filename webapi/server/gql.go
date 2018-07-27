@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"regexp"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -21,9 +20,10 @@ type VaultVals struct {
 
 //Env represents an environment containing multiple services
 type Env struct {
-	ID       int       `json:"id"`
-	Name     string    `json:"name"`
-	Services []Service `json:"services"`
+	ID        int        `json:"id"`
+	Name      string     `json:"name"`
+	Services  []Service  `json:"services"`
+	Providers []Provider `json:"providers"`
 }
 
 //Service represents an service that contains multiple files
@@ -59,6 +59,23 @@ type visitedNode struct {
 	children map[string]*visitedNode
 }
 
+//Provider represents a login session provider
+type Provider struct {
+	EnvID    int
+	ID       int
+	Name     string
+	Sessions []Session
+}
+
+//Session represents an active session under a provider
+type Session struct {
+	EnvID     int
+	ProvID    int
+	ID        int
+	User      string
+	LastLogIn int64
+}
+
 //GraphQL Accepts a GraphQL query and creates a response
 func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQLResp, error) {
 	rawResult := graphql.Do(graphql.Params{
@@ -76,6 +93,8 @@ func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQL
 //InitGQL Initializes the GQL schema
 func (s *Server) InitGQL() {
 	makeVaultReq := &pb.GetValuesReq{}
+	spctmSessions := map[string][]Session{} // Spectrum sessions
+	vaultSessions := map[string][]Session{} // Vault sessions
 
 	// Fetch template keys and values
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
@@ -90,6 +109,36 @@ func (s *Server) InitGQL() {
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (secrets not added)"}, s.Log, false)
+		return
+	}
+
+	// Get spectrum sessions
+	spctmSessions["dev"], err = s.getActiveSessions("dev")
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (Spectrum dev sessions not added)"}, s.Log, false)
+		return
+	}
+
+	spctmSessions["QA"], err = s.getActiveSessions("QA")
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (Spectrum QA sessions not added)"}, s.Log, false)
+		return
+	}
+
+	// Get vault sessions
+	vaultSessions["dev"], err = s.getVaultSessions("dev")
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (Vault dev sessions not added)"}, s.Log, false)
+		return
+	}
+
+	vaultSessions["QA"], err = s.getVaultSessions("QA")
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (Vault QA sessions not added)"}, s.Log, false)
 		return
 	}
 
@@ -150,6 +199,31 @@ func (s *Server) InitGQL() {
 			(*serviceQL).Files = fileList
 		}
 		(*envQL).Services = serviceList
+
+		if len(envQL.Providers) == 0 {
+			for i := 0; i < len(spctmSessions[env.Name]); i++ {
+				spctmSessions[env.Name][i].EnvID = (*envQL).ID
+				spctmSessions[env.Name][i].ProvID = 0
+			}
+			for i := 0; i < len(vaultSessions[env.Name]); i++ {
+				vaultSessions[env.Name][i].EnvID = (*envQL).ID
+				vaultSessions[env.Name][i].ProvID = 1
+			}
+
+			(*envQL).Providers = append((*envQL).Providers, Provider{
+				EnvID:    (*envQL).ID,
+				ID:       0,
+				Name:     "Spectrum",
+				Sessions: spctmSessions[env.Name],
+			})
+
+			(*envQL).Providers = append((*envQL).Providers, Provider{
+				EnvID:    (*envQL).ID,
+				ID:       1,
+				Name:     "Vault",
+				Sessions: vaultSessions[env.Name],
+			})
+		}
 
 	}
 	vaultQL := VaultVals{Envs: envList}
@@ -314,10 +388,8 @@ func (s *Server) InitGQL() {
 						serv := params.Source.(Service).ID
 						env := params.Source.(Service).EnvID
 						if isOK {
-							fmt.Printf("Searching under %s\n", params.Source.(Service).Name)
 							for i, f := range vaultQL.Envs[env].Services[serv].Files {
 								if f.Name == fileStr {
-									fmt.Printf("%d\n", i)
 									return []File{vaultQL.Envs[env].Services[serv].Files[i]}, nil
 								}
 							}
@@ -328,6 +400,72 @@ func (s *Server) InitGQL() {
 				},
 			},
 		})
+
+	var SessionObject = graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "Session",
+			Fields: graphql.Fields{
+				"envid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"provvid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"id": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"User": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+						eID := params.Source.(Session).EnvID
+						pID := params.Source.(Session).ProvID
+						sID := params.Source.(Session).ID
+						return vaultQL.Envs[eID].Providers[pID].Sessions[sID].User, nil
+					},
+				},
+				"LastLogIn": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.Int),
+					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+						eID := params.Source.(Session).EnvID
+						pID := params.Source.(Session).ProvID
+						sID := params.Source.(Session).ID
+						return vaultQL.Envs[eID].Providers[pID].Sessions[sID].LastLogIn, nil
+					},
+				},
+			},
+		},
+	)
+
+	var ProviderObject = graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "Provider",
+			Fields: graphql.Fields{
+				"envid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"id": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"name": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+						eid := params.Source.(Provider).EnvID
+						pid := params.Source.(Provider).ID
+						return vaultQL.Envs[eid].Providers[pid].Name, nil
+					},
+				},
+				"sessions": &graphql.Field{
+					Type: graphql.NewList(SessionObject),
+					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+						eid := params.Source.(Provider).EnvID
+						pid := params.Source.(Provider).ID
+						return vaultQL.Envs[eid].Providers[pid].Sessions, nil
+					},
+				},
+			},
+		},
+	)
+
 	var EnvObject = graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Env",
@@ -364,6 +502,13 @@ func (s *Server) InitGQL() {
 						}
 						return vaultQL.Envs[env].Services, nil
 
+					},
+				},
+				"providers": &graphql.Field{
+					Type: graphql.NewList(ProviderObject),
+					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+						eid := params.Source.(Env).ID
+						return vaultQL.Envs[eid].Providers, nil
 					},
 				},
 			},

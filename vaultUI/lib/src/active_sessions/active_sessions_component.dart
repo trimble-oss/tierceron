@@ -24,7 +24,7 @@ import '../routes.dart';
   templateUrl: 'active_sessions_component.html',
   directives: [coreDirectives, routerDirectives,formDirectives],
   pipes: const [SlicePipe],
-  providers: const [ClassProvider(Routes)]
+  providers: const [ClassProvider(Routes), commonPipes]
 )
 
 @Injectable()
@@ -35,13 +35,13 @@ class ActiveSessionsComponent implements OnInit{
 
   String _baseHref;
   String _token;
-  String valQuery = '/graphql?query={envs{name, services{name, users{name}}}}';
+  String valQuery = '/graphql?query={envs{name, providers{name, sessions{User, LastLogIn}}}}';
   String envNameQuery = '/graphql?query={envs{name}}';
-  String servNameQuery = '/graphql?query={envs{services{name}}}';
+  String provNameQuery = '/graphql?query={envs{providers{name}}}';
   Start()async {
     await GetSessions();
     GetEnvNames();
-    GetServNames();
+    GetProvNames();
   }
 
   Future<void> ngOnInit() async {
@@ -86,27 +86,30 @@ class ActiveSessionsComponent implements OnInit{
       Map activeSessions = json.decode(response.body);
 
       List users = [];
+      List logins = [];
       Map data = activeSessions['data'];
       List envs = data['envs'];
       if(envs != null){
 
         for(var i = 0; i < envs.length; i++){
         Map envMap = envs[i];
-        List services = envMap['services'];
-        if(services != null){
+        List providers = envMap['providers'];
+        if(providers != null){
 
-          for(var i = 0; i < services.length; i++){
-            Map serviceMap = services[i];
-            List sessionList = serviceMap['users'];
+          for(var i = 0; i < providers.length; i++){
+            Map providerMap = providers[i];
+            List sessionList = providerMap['sessions'];
             if(sessionList != null){
               // Add header
               for(var i = 0; i < sessionList.length; i++){
                 Map userMap = sessionList[i];
 
-                String name = userMap['name'];
+                String name = userMap['user'];
+                int loginTime = userMap['lastLogIn'];
                 if(name != null){
                   //only adds values if they have a corresponding key
                   users.add(name);
+                  logins.add(loginTime);
                 }
                 else{
                   print("name is null");
@@ -127,6 +130,15 @@ class ActiveSessionsComponent implements OnInit{
         newUser.text = users[i];
         newUser.classes.add(userList.classes.last);
         userList.children.insert(userList.children.length, newUser);
+      }
+
+      var loginList = querySelector('#logins');
+      loginList.children.clear();
+      for(var i = 0; i < logins.length; i++){
+        var newLogin = new LIElement();
+        newLogin.text = logins[i];
+        newLogin.classes.add(loginList.classes.last);
+        loginList.children.insert(loginList.children.length, newLogin);
       }
 
 
@@ -163,11 +175,11 @@ class ActiveSessionsComponent implements OnInit{
       envList.children.add(newEnv);
     }
   }
-  GetServNames()async{
+  GetProvNames()async{
 
     var client = new BrowserClient();
     var response =
-      await client.get(servNameQuery, headers: {'Authorization': _token});
+      await client.get(provNameQuery, headers: {'Authorization': _token});
     if (response.statusCode == 401) { // Unauthorized, redirect to login page
         window.localStorage.remove("Token");        
         window.location.href = routes.login.toUrl();
@@ -176,29 +188,29 @@ class ActiveSessionsComponent implements OnInit{
     Map vaultVals = json.decode(response.body);
     Map data = vaultVals['data'];
     List envList = data['envs'];
-    Set servNames = Set();
+    Set provNames = Set();
 
     for(var i=0; i<envList.length; i++){
       var envMap = envList[i];
-      var servList = envMap['services'];
-      for(var i=0;i<servList.length; i++){
-        var servMap = servList[i];
-        var servName = servMap['name'];
-        servNames.add(servName);
+      var provList = envMap['providers'];
+      for(var i=0;i<provList.length; i++){
+        var provMap = provList[i];
+        var provName = provMap['name'];
+        provNames.add(provName);
       }
     }
 
-    var servList = querySelector('#services');
-    servList.children.clear();
-    var newServ = new OptionElement();
-    newServ.text = 'All Services';
-    newServ.value = '';
-    servList.children.add(newServ);
-    for(var i = 0; i < servNames.length; i++){
-      var newServ = new OptionElement();
-      newServ.text = servNames.elementAt(i);
-      newServ.value = servNames.elementAt(i);
-      servList.children.add(newServ);
+    var provList = querySelector('#providers');
+    provList.children.clear();
+    var newProv = new OptionElement();
+    newProv.text = 'All Auth Providers';
+    newProv.value = '';
+    provList.children.add(newProv);
+    for(var i = 0; i < provNames.length; i++){
+      var newProv = new OptionElement();
+      newProv.text = provNames.elementAt(i);
+      newProv.value = provNames.elementAt(i);
+      provList.children.add(newProv);
       
     }
 
@@ -254,27 +266,27 @@ class ActiveSessionsComponent implements OnInit{
 
       ResetValQuery();
       ResetEnvNameQuery();
-      ResetServNameQuery();
+      ResetProvNameQuery();
 
     if(env != ''){
       valQuery = EditQuery(env, 'envs', 'envName', valQuery);
-      servNameQuery = EditQuery(env, 'envs', 'envName', servNameQuery);
+      provNameQuery = EditQuery(env, 'envs', 'envName', provNameQuery);
     }
 
     GetSessions();
-    GetServNames();
+    GetProvNames();
 
     (querySelector('#source') as SelectElement).selectedIndex = 0;
     (querySelector('#query') as InputElement).value = '';    
   }
-  SelectServ(String serv){
+  SelectProv(String prov){
 
 
-      valQuery = RemoveQueryElement(valQuery, 'servName');
+      valQuery = RemoveQueryElement(valQuery, 'provName');
       valQuery = RemoveQueryElement(valQuery, 'fileName');
 
-    if(serv != ''){
-      valQuery = EditQuery(serv, 'services', 'servName', valQuery);
+    if(prov != ''){
+      valQuery = EditQuery(prov, 'providers', 'provName', valQuery);
     }
     GetSessions();
 
@@ -303,13 +315,13 @@ class ActiveSessionsComponent implements OnInit{
     GetSessions();
   }
   ResetValQuery(){
-    valQuery = _baseHref + '/graphql?query={envs{name, services{name, files{name, values{key,value,source}}}}}';
+    valQuery = _baseHref + '/graphql?query={envs{name, providers{name, sessions{User, LastLogIn}}}}';
   }
   ResetEnvNameQuery(){
     envNameQuery =  _baseHref + '/graphql?query={envs{name}}';
   }
-  ResetServNameQuery(){
-    servNameQuery =  _baseHref + '/graphql?query={envs{services{name}}}';
+  ResetProvNameQuery(){
+    provNameQuery =  _baseHref + '/graphql?query={envs{providers{name}}}';
   }
   RemoveQueryElement(String query, String nameKey){
     var isFilled = query.contains(nameKey);

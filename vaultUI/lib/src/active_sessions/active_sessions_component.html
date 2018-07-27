@@ -7,8 +7,8 @@
         <select #env id="environments" class="selection" (change)="SelectEnv(env.value)">
             <option disabled selected value>All Environments</option>
         </select>
-        <select #serv id="services" class="selection" (change)="SelectServ(serv.value)">
-            <option disabled selected value>All Services</option>
+        <select #prov id="providers" class="selection" (change)="SelectProv(prov.value)">
+            <option disabled selected value>All Auth Providers</option>
         </select>
         <div class="search-container">     
             <button type="submit" (click)="SelectKey(query.value)"><i class="fa fa-search"></i></button>      
@@ -20,7 +20,11 @@
         <div class="column">
             <label>Users</label>
             <ul id="users">
-                <li>Hugh Mann</li>
+            </ul>
+        </div>
+        <div class="column">
+            <label>Last Logged in</label>
+            <ul id="logins">
             </ul>
         </div>
     </div>

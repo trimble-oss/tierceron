@@ -91,7 +91,9 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	if !noEnvironments[pathBlocks[0]] {
 		fullPath += m.Env + "/"
 	}
-	fullPath += pathBlocks[1]
+	if len(pathBlocks) > 1 {
+		fullPath += pathBlocks[1]
+	}
 	secret, err := m.logical.Read(fullPath)
 	if secret == nil {
 		return nil, nil
