@@ -44,15 +44,18 @@ class ServerResetComponent {
 
     // Construct request to twirp server
     HttpRequest request = new HttpRequest();
-    request.onLoadEnd.listen((_) {
-      body.remove('token'); // Clear token
-      Token = '';
-      RouteToLogin();
-    }); 
+    // request.onLoadEnd.listen((_) {
+    //   body.remove('token'); // Clear token
+    //   Token = '';
+    //   RouteToLogin();
+    // }); 
     
     request.open('POST', _apiEndpoint + 'ResetServer');
     request.setRequestHeader('Content-Type', 'application/json');
     request.send(json.encode(body));
+    body.remove('token'); // Clear token
+      Token = '';
+      RouteToLogin();
   }  
   RouteToLogin()async{
     //sign out and redirect to login page
