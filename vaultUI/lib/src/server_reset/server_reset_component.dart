@@ -54,8 +54,8 @@ class ServerResetComponent {
     request.setRequestHeader('Content-Type', 'application/json');
     request.send(json.encode(body));
     body.remove('token'); // Clear token
-      Token = '';
-      RouteToLogin();
+    Token = '';
+    RouteToLogin();
   }  
   RouteToLogin()async{
     //sign out and redirect to login page

@@ -41,11 +41,11 @@ class AppComponent implements OnInit{
     var token = "Bearer " + window.localStorage['Token'];
     var client = new BrowserClient();
     var response =
-        await client.get(window.location.origin + '/graphql?query={envs{name}}', headers: {'Authorization': token});
+        await client.get(window.location.origin + '/graphql?query={envs{name}}');//, headers: {'Authorization': token});
       if (response.statusCode == 401) { // Unauthorized, redirect to login page
         print("unauthorized");
-        //window.localStorage.remove("Token");
-        //window.location.href = routes.login.toUrl();
+        window.localStorage.remove("Token");
+        window.location.href = routes.login.toUrl();
       }
       Map vaultVals = json.decode(response.body);
       Map data = vaultVals['data'];
