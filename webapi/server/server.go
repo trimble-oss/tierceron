@@ -234,11 +234,6 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoPar
 	return &pb.NoParams{}, err
 }
 func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParams, error) {
-	scriptPath := "./restart_server.sh"
-	//buildNum := strconv.FormatInt(int64(req.Build), 10)
-	//token := req.Token
-	cmd := exec.Command(scriptPath, req.Token)
-	cmd.Dir = "/etc/opt/vaultAPI"
-	err := cmd.Run()
-	return &pb.NoParams{}, err
+	s.VaultToken = req.Token
+	return &pb.NoParams{}, nil
 }
