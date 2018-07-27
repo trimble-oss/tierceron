@@ -25,7 +25,7 @@ class AppComponent implements OnInit{
   final  String _logInEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
   
   Future<Null> ngOnInit() async {
-    bool isSealed, isInitialized, isConnected;
+    bool isSealed, isInitialized;//, isConnected;
     bool isAuthorized = false;
     if (window.localStorage["Token"] != null) {
       HttpRequest authRequest = new HttpRequest();
@@ -37,28 +37,28 @@ class AppComponent implements OnInit{
       await authRequest.send();
     }
 
-    print("checking vault");
-    var token = "Bearer " + window.localStorage['Token'];
-    var client = new BrowserClient();
-    var response =
-        await client.get(window.location.origin + '/graphql?query={envs{name}}');//, headers: {'Authorization': token});
-      if (response.statusCode == 401) { // Unauthorized, redirect to login page
-        print("unauthorized");
-        window.localStorage.remove("Token");
-        window.location.href = routes.login.toUrl();
-      }
-      Map vaultVals = json.decode(response.body);
-      Map data = vaultVals['data'];
-      List envs = data['envs'];
-      if (envs == null){
-        print("envs is null");
-        isConnected = false;
-        //print(isConnected);
-      } else {
-        print("envs isn't null");
-        isConnected = true;
-        //print(isConnected);
-      }
+    // print("checking vault");
+    // var token = "Bearer " + window.localStorage['Token'];
+    // var client = new BrowserClient();
+    // var response =
+    //     await client.get(window.location.origin + '/graphql?query={envs{name}}');//, headers: {'Authorization': token});
+    //   if (response.statusCode == 401) { // Unauthorized, redirect to login page
+    //     print("unauthorized");
+    //     window.localStorage.remove("Token");
+    //     window.location.href = routes.login.toUrl();
+    //   }
+    //   Map vaultVals = json.decode(response.body);
+    //   Map data = vaultVals['data'];
+    //   List envs = data['envs'];
+    //   if (envs == null){
+    //     print("envs is null");
+    //     isConnected = false;
+    //     //print(isConnected);
+    //   } else {
+    //     print("envs isn't null");
+    //     isConnected = true;
+    //     //print(isConnected);
+    //   }
 
     // Check status of vault and route to proper view
     HttpRequest request = new HttpRequest();
@@ -71,9 +71,10 @@ class AppComponent implements OnInit{
       //print(isConnected);
       
       //print(isAuthorized);
-      if(!isConnected) {
-        _router.navigate(routes.reset.toUrl(), NavigationParams(reload: true));
-      } else if (!isInitialized) { // Vault needs to be seeded
+      //if(!isConnected) {
+        //_router.navigate(routes.reset.toUrl(), NavigationParams(reload: true));
+      //} else 
+      if (!isInitialized) { // Vault needs to be seeded
         _router.navigate(routes.sealed.toUrl(), NavigationParams(reload: true));
       } else if (!isAuthorized || isSealed) {  // Vault seeded, user needs to login and recieve token. Vault possibly needs to be unsealed
         print("login");
