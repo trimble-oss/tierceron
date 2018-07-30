@@ -18,5 +18,11 @@
         <label>Login</label>
         <input [(ngModel)]="Username" id="username" placeholder="Username" type="text" (keyup)="UnRedify($event)">
         <input [(ngModel)]="Password" id="password" placeholder="Password" type="password" (keyup)="UnRedify($event)">
+        <label>Environment:
+            <select [(ngModel)]="Environment"> 
+                <option >dev</option>
+                <option>QA</option>
+            </select>
+        </label>
     </div>
 </div>

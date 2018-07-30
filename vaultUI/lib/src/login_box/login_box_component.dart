@@ -26,7 +26,7 @@ class LoginBoxComponent implements OnActivate {
   @Input()
   String Password;
   @Input()
-  String Environment;
+  String Environment = 'dev';
 
   @Input()
   bool IsSealed = true;
@@ -65,7 +65,7 @@ class LoginBoxComponent implements OnActivate {
       } else {
         querySelector('#username').classes.addAll(['input-error', 'error-text']);
         querySelector('#password').classes.addAll(['input-error', 'error-text']);
-        querySelector("#warning").hidden=false;
+        querySelector('#warning').hidden=false;
         print('login failed');
       }
     }); 
@@ -100,14 +100,14 @@ class LoginBoxComponent implements OnActivate {
 
     request.open('POST', _apiEndpoint + 'Unseal');
     request.setRequestHeader('Content-Type', 'application/json');
-    request.send(json.encode({"unsealKey" : UnsealKey}));
+    request.send(json.encode({'unsealKey' : UnsealKey}));
   }
 
   // Remove error formatting from username/password box
   Future<Null> UnRedify(event) async {
     List<String> removals  = ['input-error', 'error-text'];
     (event.target as Element).classes.removeAll(removals);
-    querySelector("warning").hidden=true;
+    querySelector('warning').hidden=true;
   }
 
 }

@@ -33,10 +33,10 @@ class AppComponent implements OnInit{
       //print(connResponse);
       print(isConnected);
       if(!isConnected) {
-        print("reset");
+        print('reset');
         _router.navigate(routes.reset.toUrl(), NavigationParams(reload: true));
       } else {
-        print("login");
+        print('login');
         _router.navigate(routes.login.toUrl(), NavigationParams(queryParameters: {'sealed': isSealed.toString()}, reload: true));
 
       }
@@ -51,13 +51,13 @@ class AppComponent implements OnInit{
     bool isSealed, isInitialized;//, isConnected;
     //bool isConnected = false;
     bool isAuthorized = false;
-    if (window.localStorage["Token"] != null) {
+    if (window.localStorage['Token'] != null) {
       HttpRequest authRequest = new HttpRequest();
       authRequest.onLoadEnd.listen((_) {
         isAuthorized = authRequest.status != 401;
       });
       authRequest.open('GET', window.location.origin + '/auth');
-      authRequest.setRequestHeader("Authorization", "Bearer " + window.localStorage["Token"]);
+      authRequest.setRequestHeader('Authorization', 'Bearer ' + window.localStorage['Token']);
       await authRequest.send();
     }
 
@@ -65,7 +65,6 @@ class AppComponent implements OnInit{
     HttpRequest request = new HttpRequest();
     request.onLoadEnd.listen((_) {
       Map<String, dynamic> response = json.decode(request.responseText);
-      print(response);
       // Convert null values to false; Extract vault status
       isSealed = response['sealed'] == null ? false : response['sealed'] as bool;
       isInitialized = response['initialized']==null ? false : response['initialized'] as bool;
@@ -76,7 +75,7 @@ class AppComponent implements OnInit{
         checkConn(isSealed);
         
       } else { // User has auth token and vault is unsealed. Forward to values. May be redirected back to login if token is rejected
-        print("values");
+        print('values');
         _router.navigate(routes.values.toUrl(), NavigationParams(reload: true));
       }
     });

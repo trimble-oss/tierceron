@@ -30,6 +30,6 @@ class LogDialogComponent{
   LogDialogComponent(this._router, this._routes);
 
   goToValues() {
-    _router.navigate(_routes.values.toUrl());
+    _router.navigate(_routes.values.toUrl(), NavigationParams(reload: true));
   }
 }

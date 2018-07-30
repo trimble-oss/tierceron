@@ -456,9 +456,26 @@ func (s *Server) InitGQL() {
 				},
 				"sessions": &graphql.Field{
 					Type: graphql.NewList(SessionObject),
+					Args: graphql.FieldConfigArgument{
+						"userName": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+					},
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						eid := params.Source.(Provider).EnvID
 						pid := params.Source.(Provider).ID
+
+						if userName, ok := params.Args["userName"].(string); ok {
+							regex := regexp.MustCompile(`(?i).*` + userName + `.*`)
+							sessions := []Session{}
+							for _, s := range vaultQL.Envs[eid].Providers[pid].Sessions {
+								if regex.MatchString(s.User) {
+									sessions = append(sessions, s)
+								}
+							}
+							return sessions, nil
+						}
+
 						return vaultQL.Envs[eid].Providers[pid].Sessions, nil
 					},
 				},
@@ -490,9 +507,8 @@ func (s *Server) InitGQL() {
 
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 
-						servStr, isOK := params.Args["servName"].(string)
 						env := params.Source.(Env).ID
-						if isOK {
+						if servStr, ok := params.Args["servName"].(string); ok {
 							for i, s := range vaultQL.Envs[env].Services {
 								if s.Name == servStr {
 									return []Service{vaultQL.Envs[env].Services[i]}, nil
@@ -506,8 +522,21 @@ func (s *Server) InitGQL() {
 				},
 				"providers": &graphql.Field{
 					Type: graphql.NewList(ProviderObject),
+					Args: graphql.FieldConfigArgument{
+						"provName": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+					},
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						eid := params.Source.(Env).ID
+						if provName, ok := params.Args["provName"].(string); ok {
+							for _, p := range vaultQL.Envs[eid].Providers {
+								if p.Name == provName {
+									return []Provider{p}, nil
+								}
+							}
+							return vaultQL.Envs[eid].Providers, errors.New("provName not found")
+						}
 						return vaultQL.Envs[eid].Providers, nil
 					},
 				},

@@ -107,6 +107,7 @@ message InitReq {
     repeated SeedFile files = 1;
     string username = 2;
     string password = 3;
+    string env = 4;
 }
 
 message InitResp {

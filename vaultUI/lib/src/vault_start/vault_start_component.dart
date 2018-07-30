@@ -36,6 +36,8 @@ class VaultStartComponent implements OnInit{
   String Username;      // MODEL: <input> for new username under login_creation
   @Input()
   String Password;      // MODEL: <input> for new password under login_creation
+  @Input()
+  String Environment = 'dev';
 
   VaultStartComponent(this._initService);
   
@@ -51,7 +53,6 @@ class VaultStartComponent implements OnInit{
     RegExp ext = new RegExp(r'(.+\.yml|.+\.yaml)'); 
     this.SeedBuffer = event.target.files; // Get files from html element
 
-    print('===Current File Set==='); // Log files
     SeedBuffer.forEach((bufferfile){
       // Make sure file is yaml
       if (ext.hasMatch(bufferfile.name)) {;
@@ -74,7 +75,6 @@ class VaultStartComponent implements OnInit{
       }
     });
 
-    Seeds.forEach((seedfile) => (print(seedfile.name)));
   }
 
   // Used for remove file button
@@ -83,8 +83,7 @@ class VaultStartComponent implements OnInit{
   }
 
   // Used to send seed files and start vault
-  StartVault() {
-    print('Starting vault');
+  StartVault() async{
     bool valid = true;
     if(Username == null || Username.length == 0){ // Check username exists
       valid = false;
@@ -96,10 +95,10 @@ class VaultStartComponent implements OnInit{
     }
     if(Seeds == null || Seeds.length == 0) { // Check at least one seed file given
       valid = false;
-      print('No Seeds');
       querySelector('#no_seed_warn').hidden = false;
     }
     if(valid){ // Username, Password, files given; Begin init
+
       // Proceed to seed vault and change layout
       // Iterate through files, converting to base 64
 
@@ -118,8 +117,8 @@ class VaultStartComponent implements OnInit{
       initRequest['files'] = files;
       initRequest['username'] = Username;
       initRequest['password'] = Password;
+      initRequest['env'] = Environment;
 
-      print(initRequest);
       // MaKe request
       _initService.MakeRequest(initRequest).then((resp){
         if (resp['err'] == true){
@@ -127,8 +126,13 @@ class VaultStartComponent implements OnInit{
         }
         LogData = '<p>' + resp['log'].replaceAll('\n', '<br />') +'</p>';
         for (var token in resp['tokens']) {
-          print(token['name'] + ": " + token['value']);
+          if (token['name'] == 'Auth'){
+            window.localStorage['Token'] = token['value'];
+            continue;
+          }
+          print(token['name'] + ': ' + token['value']);
         }
+
         
       });
       DialogVisible = true;

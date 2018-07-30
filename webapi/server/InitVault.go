@@ -26,25 +26,6 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	logBuffer := new(bytes.Buffer)
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
 
-	// res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password})
-	// if err != nil {
-	// 	utils.LogErrorObject(err, logger, false)
-	// 	return &pb.InitResp{
-	// 		Success: false,
-	// 		Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
-	// 		Tokens:  nil,
-	// 	}, err
-	// }
-	// if !res.Success {
-	// 	s.Log.Printf("Invalid login for user: %s\n", req.Username)
-	// 	logger.Printf("Invalid login for user: %s\n", req.Username)
-	// 	return &pb.InitResp{
-	// 		Success: false,
-	// 		Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
-	// 		Tokens:  nil,
-	// 	}, nil
-	// }
-
 	fmt.Println("Initing vault")
 
 	v, err := sys.NewVault(s.VaultAddr, s.CertPath)
@@ -148,6 +129,26 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	s.Log.Println("Init Log \n" + logBuffer.String())
 	s.InitGQL()
+
+	res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password, Environment: req.Env})
+	if err != nil {
+		utils.LogErrorObject(err, logger, false)
+		tokens = append(tokens, &pb.InitResp_Token{
+			Name:  "Auth",
+			Value: "invalid",
+		})
+	} else if !res.Success {
+		tokens = append(tokens, &pb.InitResp_Token{
+			Name:  "Auth",
+			Value: "invalid",
+		})
+	} else {
+		tokens = append(tokens, &pb.InitResp_Token{
+			Name:  "Auth",
+			Value: res.AuthToken,
+		})
+	}
+
 	return &pb.InitResp{
 		Success: true,
 		Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),

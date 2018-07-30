@@ -11,8 +11,8 @@
             <option disabled selected value>All Auth Providers</option>
         </select>
         <div class="search-container">     
-            <button type="submit" (click)="SelectKey(query.value)"><i class="fa fa-search"></i></button>      
-            <input #query id="query" type="text" placeholder="Search.." name="search" (keyup.enter)="SelectKey(query.value)">
+            <button type="submit" (click)="SelectUser(query.value)"><i class="fa fa-search"></i></button>      
+            <input #query id="query" type="text" placeholder="Search.." name="search" (keyup.enter)="SelectUser(query.value)">
         </div>
     </div>
 
@@ -20,11 +20,13 @@
         <div class="column">
             <label>Users</label>
             <ul id="users">
+                <li *ngFor="let user of Users">{{user}}</li>
             </ul>
         </div>
         <div class="column">
             <label>Last Logged in</label>
             <ul id="logins">
+                <li *ngFor="let login of Logins">{{login.millisecondsSinceEpoch | date:'short'}}</li>
             </ul>
         </div>
     </div>

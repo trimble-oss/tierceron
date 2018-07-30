@@ -23,19 +23,19 @@ import '../routes.dart';
   styleUrls: ['active_sessions_component.css'],
   templateUrl: 'active_sessions_component.html',
   directives: [coreDirectives, routerDirectives,formDirectives],
-  pipes: const [SlicePipe],
-  providers: const [ClassProvider(Routes), commonPipes]
+  pipes: const [SlicePipe, commonPipes],
+  providers: const [ClassProvider(Routes)]
 )
 
 @Injectable()
-class ActiveSessionsComponent implements OnInit{
+class ActiveSessionsComponent implements OnActivate{
   final Routes routes;
   final Router _router;
   ActiveSessionsComponent(this.routes, this._router);
 
   String _baseHref;
   String _token;
-  String valQuery = '/graphql?query={envs{name, providers{name, sessions{User, LastLogIn}}}}';
+  String sessQuery = '/graphql?query={envs{name, providers{name, sessions{User, LastLogIn}}}}';
   String envNameQuery = '/graphql?query={envs{name}}';
   String provNameQuery = '/graphql?query={envs{providers{name}}}';
   Start()async {
@@ -44,9 +44,12 @@ class ActiveSessionsComponent implements OnInit{
     GetProvNames();
   }
 
-  Future<void> ngOnInit() async {
+  List<String> Users = new List();
+  List<DateTime> Logins = new List();
+
+  Future<void> onActivate(_, __) async {
     _baseHref = window.location.origin;
-    _token = "Bearer " + window.localStorage['Token'];
+    _token = 'Bearer ' + window.localStorage['Token'];
     Start();
   }
   SignOut()async{
@@ -59,9 +62,8 @@ class ActiveSessionsComponent implements OnInit{
       // Convert null values to false; Extract vault status
       isSealed = response['sealed'] == null ? false : response['sealed'] as bool;
     
-      //print("sealed: " + isSealed.toString());
       // Vault seeded, user needs to login and recieve token. Vault possibly needs to be unsealed
-      print("logout");
+      print('logout');
       window.localStorage.clear();
       _router.navigate(routes.login.toUrl(), NavigationParams(queryParameters: {'sealed': isSealed.toString()}, reload: true));
     });
@@ -72,83 +74,60 @@ class ActiveSessionsComponent implements OnInit{
   
   ConfigBrowser(){
     //redirect to configuration browser
-    print("values");
+    print('values');
     _router.navigate(routes.values.toUrl(), NavigationParams(reload: true));
   }
   GetSessions() async {
+
     var client = new BrowserClient();
     var response =
-        await client.get(valQuery, headers: {'Authorization': _token});
-      if (response.statusCode == 401) { // Unauthorized, redirect to login page
-        window.localStorage.remove("Token");
-        window.location.href = routes.login.toUrl();
-      }
-      Map activeSessions = json.decode(response.body);
+        await client.get(sessQuery, headers: {'Authorization': _token});
+    if (response.statusCode == 401) { // Unauthorized, redirect to login page
+      window.localStorage.remove('Token');
+      window.location.href = routes.login.toUrl();
+    }
+    Map activeSessions = json.decode(response.body);
 
-      List users = [];
-      List logins = [];
-      Map data = activeSessions['data'];
-      List envs = data['envs'];
-      if(envs != null){
+    Users.clear();
+    Logins.clear();
+    Map data = activeSessions['data'];
+    List envs = data['envs'];
 
-        for(var i = 0; i < envs.length; i++){
-        Map envMap = envs[i];
-        List providers = envMap['providers'];
-        if(providers != null){
+    if(envs != null){
+      for(var e = 0; e < envs.length; e++){
+      Map envMap = envs[e];
+      List providers = envMap['providers'];
 
-          for(var i = 0; i < providers.length; i++){
-            Map providerMap = providers[i];
-            List sessionList = providerMap['sessions'];
-            if(sessionList != null){
-              // Add header
-              for(var i = 0; i < sessionList.length; i++){
-                Map userMap = sessionList[i];
+      if(providers != null){
+        for(var p = 0; p < providers.length; p++){
+          Map providerMap = providers[p];
+          List sessionList = providerMap['sessions'];
 
-                String name = userMap['user'];
-                int loginTime = userMap['lastLogIn'];
-                if(name != null){
-                  //only adds values if they have a corresponding key
-                  users.add(name);
-                  logins.add(loginTime);
-                }
-                else{
-                  print("name is null");
-                }
+          if(sessionList != null){
+            for(var s = 0; s < sessionList.length; s++){
+              Map userMap = sessionList[s];
+              String name = userMap['user'];
+              DateTime loginTime = DateTime.fromMillisecondsSinceEpoch(int.parse(userMap['lastLogIn'])*1000);
+              if(name != null){
+                //only adds values if they have a corresponding key
+                Users.add(name);
+                Logins.add(loginTime);
+              }
+              else{
+                print('name is null');
               }
             }
-          
-            }
-          }
+          }     
         }
       }
-    
-      // Add a header
-      var userList = querySelector('#users');
-      userList.children.clear();
-      for(var i = 0; i < users.length; i++){
-        var newUser = new LIElement();
-        newUser.text = users[i];
-        newUser.classes.add(userList.classes.last);
-        userList.children.insert(userList.children.length, newUser);
-      }
-
-      var loginList = querySelector('#logins');
-      loginList.children.clear();
-      for(var i = 0; i < logins.length; i++){
-        var newLogin = new LIElement();
-        newLogin.text = logins[i];
-        newLogin.classes.add(loginList.classes.last);
-        loginList.children.insert(loginList.children.length, newLogin);
-      }
-
-
+    }
+    }
   }
   GetEnvNames() async{
     var client = new BrowserClient();
-    var response =
-      await client.get(envNameQuery, headers: {'Authorization': _token});
+    var response =await client.get(envNameQuery, headers: {'Authorization': _token});
     if (response.statusCode == 401) { // Unauthorized, redirect to login page
-        window.localStorage.remove("Token");
+        window.localStorage.remove('Token');
         window.location.href = routes.login.toUrl();
     }
     Map vaultVals = json.decode(response.body);
@@ -176,19 +155,19 @@ class ActiveSessionsComponent implements OnInit{
     }
   }
   GetProvNames()async{
-
     var client = new BrowserClient();
-    var response =
-      await client.get(provNameQuery, headers: {'Authorization': _token});
+
+    var response = await client.get(provNameQuery, headers: {'Authorization': _token});
+
     if (response.statusCode == 401) { // Unauthorized, redirect to login page
-        window.localStorage.remove("Token");        
+        window.localStorage.remove('Token');        
         window.location.href = routes.login.toUrl();
     }
 
     Map vaultVals = json.decode(response.body);
     Map data = vaultVals['data'];
     List envList = data['envs'];
-    Set provNames = Set();
+    Set<String> provNames = new Set();
 
     for(var i=0; i<envList.length; i++){
       var envMap = envList[i];
@@ -200,13 +179,17 @@ class ActiveSessionsComponent implements OnInit{
       }
     }
 
-    var provList = querySelector('#providers');
-    provList.children.clear();
+    var provList = querySelector('#providers') as SelectElement;
+    if (provList.children != null) provList.children.clear();
     var newProv = new OptionElement();
+
+
     newProv.text = 'All Auth Providers';
     newProv.value = '';
     provList.children.add(newProv);
     for(var i = 0; i < provNames.length; i++){
+
+
       var newProv = new OptionElement();
       newProv.text = provNames.elementAt(i);
       newProv.value = provNames.elementAt(i);
@@ -215,7 +198,7 @@ class ActiveSessionsComponent implements OnInit{
     }
 
   }
-  EditQuery(String selected, String structName, String nameKey, String query){
+  EditQuery(String selected, String structName, String nameKey, String query) {
     var isFilled = query.contains(nameKey);
     if(isFilled){
       var startIndex = query.indexOf(nameKey);
@@ -248,6 +231,7 @@ class ActiveSessionsComponent implements OnInit{
     var index = query.indexOf(structName) + structName.length;
     var startString = query.substring(0, index);
     var endString = query.substring(index, query.length);
+
     if(selected.length > 0) {
       if (otherArguments.length > 0){
         query = startString + '(' + otherArguments + ', ' + nameKey+':\"'+ selected +'\")' + endString;
@@ -263,13 +247,12 @@ class ActiveSessionsComponent implements OnInit{
     return query;
   }
   SelectEnv(String env){
-
-      ResetValQuery();
-      ResetEnvNameQuery();
-      ResetProvNameQuery();
+    ResetSessionQuery();
+    ResetEnvQuery();
+    ResetProvQuery();
 
     if(env != ''){
-      valQuery = EditQuery(env, 'envs', 'envName', valQuery);
+      sessQuery = EditQuery(env, 'envs', 'envName', sessQuery);
       provNameQuery = EditQuery(env, 'envs', 'envName', provNameQuery);
     }
 
@@ -280,55 +263,36 @@ class ActiveSessionsComponent implements OnInit{
     (querySelector('#query') as InputElement).value = '';    
   }
   SelectProv(String prov){
-
-
-      valQuery = RemoveQueryElement(valQuery, 'provName');
-      valQuery = RemoveQueryElement(valQuery, 'fileName');
+    sessQuery = RemoveQueryElement(sessQuery, 'provName');
+    sessQuery = RemoveQueryElement(sessQuery, 'fileName');
 
     if(prov != ''){
-      valQuery = EditQuery(prov, 'providers', 'provName', valQuery);
+      sessQuery = EditQuery(prov, 'providers', 'provName', sessQuery);
     }
     GetSessions();
 
     (querySelector('#source') as SelectElement).selectedIndex = 0;
     (querySelector('#query') as InputElement).value = '';    
   }
-  SelectFile(String file){
-
-      valQuery = RemoveQueryElement(valQuery, 'fileName');
-
-    if(file != ''){
-      valQuery = EditQuery(file, 'files', 'fileName', valQuery);
-    }
-
-    GetSessions();
-
-    (querySelector('#source') as SelectElement).selectedIndex = 0;
-    (querySelector('#query') as InputElement).value = '';
-  }
-  SelectKey(String key){
-    valQuery = EditQuery(key, 'values', 'keyName', valQuery);
+  SelectUser(String user){
+    sessQuery = EditQuery(user, 'sessions', 'userName', sessQuery);
     GetSessions();
   }
-  SelectSource(String source) {
-    valQuery = EditQuery(source, 'values', 'sourceName', valQuery);
-    GetSessions();
+  ResetSessionQuery(){
+    sessQuery = _baseHref + '/graphql?query={envs{name, providers{name, sessions{User, LastLogIn}}}}';
   }
-  ResetValQuery(){
-    valQuery = _baseHref + '/graphql?query={envs{name, providers{name, sessions{User, LastLogIn}}}}';
-  }
-  ResetEnvNameQuery(){
+  ResetEnvQuery(){
     envNameQuery =  _baseHref + '/graphql?query={envs{name}}';
   }
-  ResetProvNameQuery(){
+  ResetProvQuery(){
     provNameQuery =  _baseHref + '/graphql?query={envs{providers{name}}}';
   }
   RemoveQueryElement(String query, String nameKey){
     var isFilled = query.contains(nameKey);
 
     if(isFilled){
-      var startIndex = query.indexOf("(" + nameKey);
-      var endIndex = query.indexOf(")", startIndex) + 1;
+      var startIndex = query.indexOf('(' + nameKey);
+      var endIndex = query.indexOf(')', startIndex) + 1;
       var startString = query.substring(0, startIndex);
       var endString = query.substring(endIndex, query.length);
       query = startString + endString;
