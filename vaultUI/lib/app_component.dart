@@ -23,9 +23,30 @@ class AppComponent implements OnInit{
   AppComponent(this.routes, this._router);
 
   final  String _logInEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
-  
+  checkConn() async {
+    // Construct request to twirp server
+    var completer = new Completer<bool>();
+    HttpRequest connRequest = new HttpRequest();
+     connRequest.onLoadEnd.listen((_) {
+      Map<String, dynamic> connResponse = json.decode(connRequest.responseText);
+      bool isConnected = connResponse['connected'] == null ? false : connResponse['connected'] as bool;
+      //print(connResponse);
+      print(isConnected);
+      if(!isConnected) {
+        _router.navigate(routes.reset.toUrl(), NavigationParams(reload: true));
+      }
+      // Convert null values to false; Extract vault status
+      //completer.complete(isConnected);
+      //isConnected = connResponse['connected'] == null ? false : connResponse['connected'] as bool;
+     });
+    connRequest.open('POST', window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/CheckConnection');
+    connRequest.setRequestHeader('Content-Type', 'application/json');
+    await connRequest.send('{}');
+    //return completer.future;
+  }
   Future<Null> ngOnInit() async {
-    bool isSealed, isInitialized;//, isConnected;
+    bool isSealed, isInitialized, isConnected;
+    //bool isConnected = false;
     bool isAuthorized = false;
     if (window.localStorage["Token"] != null) {
       HttpRequest authRequest = new HttpRequest();
@@ -37,43 +58,40 @@ class AppComponent implements OnInit{
       await authRequest.send();
     }
 
-    // print("checking vault");
-    // var token = "Bearer " + window.localStorage['Token'];
-    // var client = new BrowserClient();
-    // var response =
-    //     await client.get(window.location.origin + '/graphql?query={envs{name}}');//, headers: {'Authorization': token});
-    //   if (response.statusCode == 401) { // Unauthorized, redirect to login page
-    //     print("unauthorized");
-    //     window.localStorage.remove("Token");
-    //     window.location.href = routes.login.toUrl();
-    //   }
-    //   Map vaultVals = json.decode(response.body);
-    //   Map data = vaultVals['data'];
-    //   List envs = data['envs'];
-    //   if (envs == null){
-    //     print("envs is null");
-    //     isConnected = false;
-    //     //print(isConnected);
-    //   } else {
-    //     print("envs isn't null");
-    //     isConnected = true;
-    //     //print(isConnected);
-    //   }
+     HttpRequest connRequest = new HttpRequest();
+     connRequest.onLoadEnd.listen((_) {
+      Map<String, dynamic> connResponse = json.decode(connRequest.responseText);
+      bool isConnected = connResponse['connected'] == null ? false : connResponse['connected'] as bool;
+      print(connResponse);
+      print(isConnected);
+      if(!isConnected) {
+        _router.navigate(routes.reset.toUrl(), NavigationParams(reload: true));
+      }
+     });
+    connRequest.open('POST', window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/CheckConnection');
+    connRequest.setRequestHeader('Content-Type', 'application/json');
+    await connRequest.send('{}');
+    print("isconnected");
+    print(isConnected);
+    print("isauth");
+    print(isAuthorized);
 
     // Check status of vault and route to proper view
     HttpRequest request = new HttpRequest();
     request.onLoadEnd.listen((_) {
       Map<String, dynamic> response = json.decode(request.responseText);
-      //print(response);
+      print(response);
       // Convert null values to false; Extract vault status
       isSealed = response['sealed'] == null ? false : response['sealed'] as bool;
       isInitialized = response['initialized']==null ? false : response['initialized'] as bool;
-      //print(isConnected);
-      
+      checkConn().then(
+        (e) {
+        // result = e;
+          isConnected = e;
+      });
+      print("isConnected2");
+      print(isConnected);
       //print(isAuthorized);
-      //if(!isConnected) {
-        //_router.navigate(routes.reset.toUrl(), NavigationParams(reload: true));
-      //} else 
       if (!isInitialized) { // Vault needs to be seeded
         _router.navigate(routes.sealed.toUrl(), NavigationParams(reload: true));
       } else if (!isAuthorized || isSealed) {  // Vault seeded, user needs to login and recieve token. Vault possibly needs to be unsealed

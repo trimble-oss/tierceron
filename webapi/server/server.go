@@ -237,3 +237,23 @@ func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParam
 	s.VaultToken = req.Token
 	return &pb.NoParams{}, nil
 }
+func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.CheckConnResp, error) {
+	utils.LogWarningsObject([]string{"getting values"}, s.Log, false)
+	makeVaultReq := &pb.GetValuesReq{}
+	utils.LogWarningsObject([]string{"got values"}, s.Log, false)
+	// Fetch template keys and values
+	vault, err := s.GetValues(context.Background(), makeVaultReq)
+	if err != nil || vault.Envs == nil {
+		utils.LogErrorObject(err, s.Log, false)
+		utils.LogWarningsObject([]string{"returning false"}, s.Log, false)
+		return &pb.CheckConnResp{
+			Connected: false,
+		}, err
+	} else {
+		utils.LogWarningsObject([]string{vault.Envs[0].Services[0].Name}, s.Log, false)
+		utils.LogWarningsObject([]string{"returning true"}, s.Log, false)
+		return &pb.CheckConnResp{
+			Connected: true,
+		}, err
+	}
+}

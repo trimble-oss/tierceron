@@ -19,6 +19,7 @@ service EnterpriseServiceBroker {
     rpc GetVaultTokens(TokensReq) returns (TokensResp);
     rpc RollTokens(NoParams) returns (NoParams);
     rpc ResetServer(ResetReq) returns (NoParams);
+    rpc CheckConnection(NoParams) returns (CheckConnResp);
 }
 
 /////////////////////////////////////////////////////////
@@ -211,8 +212,11 @@ message TokensResp {
     repeated Token tokens = 1;
 }
 ////////////////////////////////////////////////////////
-// Reset Server Messages                                     //
+// Reset Server Messages                              //
 ////////////////////////////////////////////////////////
+message CheckConnResp {
+    bool connected = 1;
+}
 message ResetReq {
     string token = 1;
 }
