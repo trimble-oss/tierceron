@@ -37,7 +37,7 @@ class ServerResetComponent {
   //   IsSealed = current.queryParameters['sealed'].toLowerCase() == 'true';
   // }
 
-  final String _apiEndpoint = 'http://127.0.0.1:8008/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess
+  final String _apiEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess
 
   Future<Null> RestartServer() async{
     // Fetch input token for making the request.
@@ -63,7 +63,7 @@ class ServerResetComponent {
   RouteToLogin()async{
     //sign out and redirect to login page
     bool isSealed;
-    final  String _logInEndpoint = 'http://127.0.0.1:8008/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
+    final  String _logInEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GetStatus'; 
     HttpRequest request = new HttpRequest();
     request.onLoadEnd.listen((_) {
       Map<String, dynamic> response = json.decode(request.responseText);
