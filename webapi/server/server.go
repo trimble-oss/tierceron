@@ -240,29 +240,30 @@ func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParam
 }
 func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.CheckConnResp, error) {
 	envStrings := []string{"dev", "QA"}
-	for _, environment := range envStrings {
-		mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
+	utils.LogErrorObject(errors.New(s.VaultToken), s.Log, false)
+	for _, _ = range envStrings {
+		_, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 		if err != nil {
 			utils.LogErrorObject(err, s.Log, false)
 			return &pb.CheckConnResp{
 				Connected: false,
 			}, nil
 		}
-		mod.Env = environment
-		//get a list of services under values
-		servicePaths, err := s.getPaths(mod, "values/")
-		if err != nil {
-			utils.LogErrorObject(err, s.Log, false)
-			return &pb.CheckConnResp{
-				Connected: false,
-			}, nil
-		}
-		if servicePaths == nil {
-			utils.LogErrorObject(errors.New("no services found"), s.Log, false)
-			return &pb.CheckConnResp{
-				Connected: false,
-			}, nil
-		}
+		// mod.Env = environment
+		// //get a list of services under values
+		// servicePaths, err := s.getPaths(mod, "values/")
+		// if err != nil {
+		// 	utils.LogErrorObject(err, s.Log, false)
+		// 	return &pb.CheckConnResp{
+		// 		Connected: false,
+		// 	}, nil
+		// }
+		// if servicePaths == nil {
+		// 	utils.LogErrorObject(errors.New("no services found"), s.Log, false)
+		// 	return &pb.CheckConnResp{
+		// 		Connected: false,
+		// 	}, nil
+		// }
 	}
 	return &pb.CheckConnResp{
 		Connected: true,
