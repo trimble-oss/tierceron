@@ -218,5 +218,6 @@ message CheckConnResp {
     bool connected = 1;
 }
 message ResetReq {
-    string token = 1;
+    string pubToken = 1;
+    string privToken = 2;
 }

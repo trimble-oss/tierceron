@@ -233,14 +233,13 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoPar
 	err := cmd.Run()
 	return &pb.NoParams{}, err
 }
+
 func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParams, error) {
-	s.VaultToken = req.Token
+	s.VaultToken = req.PrivToken
 	return &pb.NoParams{}, nil
 }
 func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.CheckConnResp, error) {
-	utils.LogWarningsObject([]string{"getting values"}, s.Log, false)
 	makeVaultReq := &pb.GetValuesReq{}
-	utils.LogWarningsObject([]string{"got values"}, s.Log, false)
 	// Fetch template keys and values
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
 	if err != nil || vault.Envs == nil {
@@ -250,7 +249,6 @@ func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.Che
 			Connected: false,
 		}, err
 	} else {
-		utils.LogWarningsObject([]string{vault.Envs[0].Services[0].Name}, s.Log, false)
 		utils.LogWarningsObject([]string{"returning true"}, s.Log, false)
 		return &pb.CheckConnResp{
 			Connected: true,

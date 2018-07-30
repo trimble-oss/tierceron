@@ -23,7 +23,9 @@ import 'dart:convert';
 class ServerResetComponent {
 
   @Input()
-  String Token;
+  String PubToken;
+  @Input()
+  String PrivToken;
 
   Set<String> Keys = new Set();
 
@@ -40,7 +42,8 @@ class ServerResetComponent {
   Future<Null> RestartServer() async{
     // Fetch input token for making the request.
     Map<String, dynamic> body = new Map();
-    body['token'] = Token;
+    body['pubToken'] = PubToken;
+    body['privToken'] = PrivToken;
 
     // Construct request to twirp server
     HttpRequest request = new HttpRequest();
@@ -53,8 +56,8 @@ class ServerResetComponent {
     request.open('POST', _apiEndpoint + 'ResetServer');
     request.setRequestHeader('Content-Type', 'application/json');
     request.send(json.encode(body));
-    body.remove('token'); // Clear token
-    Token = '';
+    body.remove('privToken'); // Clear token
+    PrivToken = '';
     RouteToLogin();
   }  
   RouteToLogin()async{
