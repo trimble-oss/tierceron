@@ -247,11 +247,11 @@ func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.Che
 		utils.LogWarningsObject([]string{"returning false"}, s.Log, false)
 		return &pb.CheckConnResp{
 			Connected: false,
-		}, err
+		}, nil
 	} else {
 		utils.LogWarningsObject([]string{"returning true"}, s.Log, false)
 		return &pb.CheckConnResp{
 			Connected: true,
-		}, err
+		}, nil
 	}
 }
