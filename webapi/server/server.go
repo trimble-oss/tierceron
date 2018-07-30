@@ -135,7 +135,7 @@ func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.Valid
 func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.ValuesRes, error) {
 
 	environments := []*pb.ValuesRes_Env{}
-	envStrings := []string{"dev", "QA", "local"}
+	envStrings := []string{"dev", "QA"}
 	for _, environment := range envStrings {
 		mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 		if err != nil {
@@ -239,19 +239,33 @@ func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParam
 	return &pb.NoParams{}, nil
 }
 func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.CheckConnResp, error) {
-	makeVaultReq := &pb.GetValuesReq{}
-	// Fetch template keys and values
-	vault, err := s.GetValues(context.Background(), makeVaultReq)
-	if err != nil || vault.Envs == nil {
-		utils.LogErrorObject(err, s.Log, false)
-		utils.LogWarningsObject([]string{"returning false"}, s.Log, false)
-		return &pb.CheckConnResp{
-			Connected: false,
-		}, nil
-	} else {
-		utils.LogWarningsObject([]string{"returning true"}, s.Log, false)
-		return &pb.CheckConnResp{
-			Connected: true,
-		}, nil
+	envStrings := []string{"dev", "QA"}
+	for _, environment := range envStrings {
+		mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
+		if err != nil {
+			utils.LogErrorObject(err, s.Log, false)
+			return &pb.CheckConnResp{
+				Connected: false,
+			}, err
+		}
+		mod.Env = environment
+		//get a list of services under values
+		servicePaths, err := s.getPaths(mod, "values/")
+		if err != nil {
+			utils.LogErrorObject(err, s.Log, false)
+			return &pb.CheckConnResp{
+				Connected: false,
+			}, err
+		}
+		if servicePaths == nil {
+			utils.LogErrorObject(errors.New("no services found"), s.Log, false)
+			return &pb.CheckConnResp{
+				Connected: false,
+			}, err
+		}
 	}
+	return &pb.CheckConnResp{
+		Connected: true,
+	}, nil
+
 }
