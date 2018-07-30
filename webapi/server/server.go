@@ -246,7 +246,7 @@ func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.Che
 			utils.LogErrorObject(err, s.Log, false)
 			return &pb.CheckConnResp{
 				Connected: false,
-			}, err
+			}, nil
 		}
 		mod.Env = environment
 		//get a list of services under values
@@ -255,13 +255,13 @@ func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.Che
 			utils.LogErrorObject(err, s.Log, false)
 			return &pb.CheckConnResp{
 				Connected: false,
-			}, err
+			}, nil
 		}
 		if servicePaths == nil {
 			utils.LogErrorObject(errors.New("no services found"), s.Log, false)
 			return &pb.CheckConnResp{
 				Connected: false,
-			}, err
+			}, nil
 		}
 	}
 	return &pb.CheckConnResp{
