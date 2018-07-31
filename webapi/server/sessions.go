@@ -118,8 +118,8 @@ func (s *Server) getVaultSessions(env string) ([]Session, error) {
 
 	// Pass through all registered users
 	var id int = 0
-	if _, ok := paths.Data["keys"].([]interface{}); ok {
-		for id, user := range users {
+	if users, ok := paths.Data["keys"].([]interface{}); ok {
+		for _, user := range users {
 			if user == "meta" {
 				continue
 			}
