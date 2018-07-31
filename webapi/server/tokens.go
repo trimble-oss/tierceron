@@ -78,14 +78,23 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 		return nil, err
 	}
 
+	reqTokens := make(map[string]bool, len(req.Tokens))
+	for _, k := range req.Tokens {
+		reqTokens[k] = true
+	}
+
 	tokens := []*pb.TokensResp_Token{}
 
 	for k, v := range data {
 		if token, ok := v.(string); ok {
-			tokens = append(tokens, &pb.TokensResp_Token{
-				Name:  k,
-				Value: token,
-			})
+			if len(reqTokens) == 0 || reqTokens[k] {
+				tokens = append(tokens, &pb.TokensResp_Token{
+					Name:  k,
+					Value: token,
+				})
+			}
+		} else {
+			utils.LogWarningsObject([]string{fmt.Sprintf("Failed to convert token %s to string", k)}, s.Log, false)
 		}
 	}
 	// AWS

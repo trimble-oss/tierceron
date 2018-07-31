@@ -202,7 +202,7 @@ message UpdateAPIReq {
 message TokensReq {
     string appRoleID = 1;
     string appRoleSecretID = 2;
-    repeated string tokenNames = 3;
+    repeated string tokens = 3;
 }
 
 message TokensResp {
