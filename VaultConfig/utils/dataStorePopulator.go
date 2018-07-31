@@ -15,6 +15,7 @@ type ConfigDataStore struct {
 
 func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool, servicesWanted ...string) {
 	cds.dataMap = make(map[string]interface{})
+	//get paths where the data is stored
 	dataPaths, err := getPathsFromService(mod, servicesWanted...)
 	if err != nil {
 		panic(err)
@@ -39,6 +40,9 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 					newValues = append(newValues, val.(string))
 				}
 				valueMaps = append(valueMaps, newValues)
+			} else if secretMode == false {
+				//add value straight to template
+				cds.dataMap[key] = value.(string)
 			}
 		}
 		if useDirs {
