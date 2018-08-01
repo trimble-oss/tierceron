@@ -33,7 +33,7 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 			_, ok := value.(string)
 			if !ok {
 				//if it's a string, it's not the data we're looking for (we want maps)
-				ogKeys = append(ogKeys, key)
+				ogKeys = append(ogKeys, strings.Replace(key, ".", "_", -1))
 				newVal := value.([]interface{})
 				newValues := []string{}
 				for _, val := range newVal {
@@ -48,11 +48,27 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 		if useDirs {
 			s := strings.Split(path, "/")
 			serviceDir := s[1]
-			fileDir := s[len(s)-1]
+			fileDir := ""
+			if len(s) > 3 {
+				i := 2
+				for i < len(s) {
+					fileDir = fileDir + "/" + s[i]
+					i = i + 1
+				}
+			} else {
+				fileDir = s[len(s)-1]
+			}
 			if len(fileDir) == 0 || len(serviceDir) == 0 {
 				continue
 			}
 			values, _ := mod.ReadData(path)
+			valuesScrubbed := map[string]interface{}{}
+			// Scrub keys.  Ugly, but does the trick.  Would like to do this differently in the future.
+			for k, v := range values {
+				valuesScrubbed[strings.Replace(k, ".", "_", -1)] = v
+			}
+			values = valuesScrubbed
+
 			// Substitute in secrets
 			for k, v := range values {
 				if link, ok := v.([]interface{}); ok {
@@ -144,8 +160,13 @@ func getPaths(mod *kv.Modifier, pathName string, pathList []string) []string {
 		slicey := secrets.Data["keys"].([]interface{})
 		for _, pathEnd := range slicey {
 			path := pathName + pathEnd.(string)
-			pathList = append(pathList, path)
-			//don't add on to paths until you're sure it's an END path
+			lookAhead, err2 := mod.List(path)
+			if err2 != nil || lookAhead == nil {
+				//don't add on to paths until you're sure it's an END path
+				pathList = append(pathList, path)
+			} else {
+				pathList = getPaths(mod, path, pathList)
+			}
 		}
 		return pathList
 	}

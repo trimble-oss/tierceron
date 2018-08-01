@@ -12,28 +12,29 @@ import (
 )
 
 //ConfigFromVault configures the templates in vault_templates and writes them to VaultConfig
-func ConfigFromVault(token string, address string, certPath string, env string, secretMode bool, servicesWanted []string, startDir string, endDir string) {
+func ConfigFromVault(token string, address string, certPath string, env string, secretMode bool, servicesWanted []string, startDir string, templateDir string, endDir string) {
 
 	mod, err := kv.NewModifier(token, address, certPath)
-	mod.Env = env
 	if err != nil {
 		panic(err)
 	}
-	//get files from directory
-	templatePaths, endPaths := getDirFiles(startDir, endDir)
-	// fmt.Println("templatePaths")
-	// fmt.Println(len(templatePaths))
+	mod.Env = env
 
-	// fmt.Println(templatePaths)
-	// fmt.Println("endPaths")
-	// fmt.Println(len(endPaths))
-	// fmt.Println(endPaths)
+	templateFileDir := templateDir
+
+	if startDir != "" {
+		templateFileDir = startDir + templateDir
+	}
+	//get files from directory
+	templateFilePaths, endPaths := getDirFiles(templateFileDir, endDir)
 	//configure each template in directory
-	for i, templatePath := range templatePaths {
-		fmt.Println(templatePath)
+	for i, templateFilePath := range templateFilePaths {
+		templatePath := templateFilePath
+		if startDir != "" {
+			templatePath = strings.Replace(templateFilePath, startDir, "", 1)
+		}
 		s := strings.Split(templatePath, "/")
-		fmt.Println(s)
-		configuredTemplate := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[len(s)-3])
+		configuredTemplate := ConfigTemplate(mod, templateFilePath, templatePath, secretMode, s[1])
 		writeToFile(configuredTemplate, endPaths[i])
 	}
 	//print that we're done

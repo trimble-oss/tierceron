@@ -20,15 +20,27 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 	template := string(emptyTemplate)
 
 	// Construct path for vault
-	s := strings.Split(emptyFilePath, "/")
+	s := strings.Split(configuredFilePath, "/")
 	// Remove file extensions
 	filename := s[len(s)-1][0:strings.LastIndex(s[len(s)-1], ".")]
+	extra := ""
+	// Please rework... Urg...
+	for i, component := range s {
+		if component == "vault_templates" || component == service || component == "" || i == (len(s)-1) {
+			continue
+		}
+		if extra == "" {
+			extra = "/" + component
+		} else {
+			extra = extra + "/" + component
+		}
+	}
 	filename = filename[0:strings.LastIndex(filename, ".")]
-	vaultPath := service + "/" + filename
+	vaultPath := service + extra + "/" + filename
 	fmt.Printf("Vault path %s\n", vaultPath)
 
 	//populate template
-	template = PopulateTemplate(template, modifier, secretMode, service, filename)
+	template = PopulateTemplate(template, modifier, secretMode, service, extra+"/"+filename)
 	return template
 }
 
