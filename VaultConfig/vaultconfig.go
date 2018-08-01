@@ -23,7 +23,7 @@ func main() {
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this tdinator to access the vault")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this VaultConfig to access the vault")
 
 	flag.Parse()
 
