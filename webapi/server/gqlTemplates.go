@@ -1,11 +1,12 @@
 package server
 
 import (
+	"fmt"
+	"strings"
+
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
-	"fmt"
-	"strings"
 )
 
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
@@ -20,7 +21,6 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
 	}
-
 	if envs, ok := envList.Data["keys"].([]interface{}); ok {
 		environments := []*pb.ValuesRes_Env{}
 		for _, env := range envs {
@@ -33,7 +33,9 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 				}
 				for _, servicePath := range servicePaths {
 					files := []*pb.ValuesRes_Env_Service_File{}
-					filePaths, err := s.getPaths(mod, servicePath)
+					filePaths, err := s.getTemplateFilePaths(mod, servicePath)
+					//fmt.Println("template paths")
+					//fmt.Println(filePaths)
 					if err != nil {
 						utils.LogErrorObject(err, s.Log, false)
 						return nil, err

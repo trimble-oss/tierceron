@@ -146,6 +146,8 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		services := []*pb.ValuesRes_Env_Service{}
 		//get a list of services under values
 		servicePaths, err := s.getPaths(mod, "values/")
+		//fmt.Println("servicePaths")
+		//fmt.Println(servicePaths)
 		if err != nil {
 			utils.LogErrorObject(err, s.Log, false)
 			return nil, err
@@ -155,6 +157,8 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 			files := []*pb.ValuesRes_Env_Service_File{}
 			//get a list of files under service
 			filePaths, err := s.getPaths(mod, servicePath)
+			//fmt.Println("filePaths")
+			//fmt.Println(filePaths)
 			if err != nil {
 				utils.LogErrorObject(err, s.Log, false)
 				return nil, err
@@ -193,6 +197,8 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 }
 func (s *Server) getPaths(mod *kv.Modifier, pathName string) ([]string, error) {
 	secrets, err := mod.List(pathName)
+	//fmt.Println("secrets " + pathName)
+	//fmt.Println(secrets)
 	pathList := []string{}
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
@@ -207,10 +213,69 @@ func (s *Server) getPaths(mod *kv.Modifier, pathName string) ([]string, error) {
 			path := pathName + pathEnd.(string)
 			pathList = append(pathList, path)
 		}
+		//fmt.Println("pathList")
+		//fmt.Println(pathList)
 		return pathList, nil
 	}
 	return pathList, nil
 }
+func (s *Server) getTemplateFilePaths(mod *kv.Modifier, pathName string) ([]string, error) {
+	secrets, err := mod.List(pathName)
+
+	pathList := []string{}
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, mod.Env)
+	} else if secrets != nil {
+		//add paths
+		slicey := secrets.Data["keys"].([]interface{})
+
+		for _, pathEnd := range slicey {
+			//List is returning both pathEnd and pathEnd/
+			path := pathName + pathEnd.(string)
+			pathList = append(pathList, path)
+		}
+
+		subPathList := []string{}
+		for _, path := range pathList {
+			subsubList, _ := s.templateFileRecurse(mod, path)
+			for _, subsub := range subsubList {
+				//List is returning both pathEnd and pathEnd/
+				subPathList = append(subPathList, subsub)
+			}
+		}
+		return subPathList, nil
+	}
+	return pathList, nil
+}
+func (s *Server) templateFileRecurse(mod *kv.Modifier, pathName string) ([]string, error) {
+	subPathList := []string{}
+	subsecrets, err := mod.List(pathName)
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, err
+	} else if subsecrets != nil {
+		subslice := subsecrets.Data["keys"].([]interface{})
+		if subslice[0] != "template-file" {
+			for _, pathEnd := range subslice {
+				//List is returning both pathEnd and pathEnd/
+				subpath := pathName + pathEnd.(string)
+				subsublist, _ := s.templateFileRecurse(mod, subpath)
+				if len(subsublist) != 0 {
+					for _, subsub := range subsublist {
+						//List is returning both pathEnd and pathEnd/
+						subPathList = append(subPathList, subsub)
+					}
+				}
+				subPathList = append(subPathList, subpath)
+			}
+		} else {
+			subPathList = append(subPathList, pathName)
+		}
+	}
+	return subPathList, nil
+}
+
 func getPathEnd(path string) string {
 	strs := strings.Split(path, "/")
 	for strs[len(strs)-1] == "" {
