@@ -34,9 +34,9 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 				for _, servicePath := range servicePaths {
 					files := []*pb.ValuesRes_Env_Service_File{}
 					filePaths, err := s.getTemplateFilePaths(mod, servicePath)
-					//fmt.Println("template paths")
-					//fmt.Println(filePaths)
-					if err != nil {
+					fmt.Println("template paths")
+					fmt.Println(filePaths)
+					if err != nil || len(filePaths) == 0 {
 						utils.LogErrorObject(err, s.Log, false)
 						return nil, err
 					}

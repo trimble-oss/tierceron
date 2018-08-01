@@ -135,7 +135,7 @@ func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.Valid
 func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.ValuesRes, error) {
 
 	environments := []*pb.ValuesRes_Env{}
-	envStrings := []string{"dev", "QA"}
+	envStrings := []string{"dev", "QA", "local"}
 	for _, environment := range envStrings {
 		mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
 		if err != nil {
@@ -253,7 +253,7 @@ func (s *Server) templateFileRecurse(mod *kv.Modifier, pathName string) ([]strin
 	subsecrets, err := mod.List(pathName)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
-		return nil, err
+		return subPathList, err
 	} else if subsecrets != nil {
 		subslice := subsecrets.Data["keys"].([]interface{})
 		if subslice[0] != "template-file" {
