@@ -22,7 +22,7 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 	// Construct path for vault
 	s := strings.Split(emptyFilePath, "/")
 	// Remove file extensions
-	filename := s[2][0:strings.LastIndex(s[2], ".")]
+	filename := s[len(s)-1][0:strings.LastIndex(s[len(s)-1], ".")]
 	filename = filename[0:strings.LastIndex(filename, ".")]
 	vaultPath := service + "/" + filename
 	fmt.Printf("Vault path %s\n", vaultPath)
