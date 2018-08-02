@@ -194,7 +194,10 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
-  packages = ["md4"]
+  packages = [
+    "md4",
+    "ssh/terminal"
+  ]
   revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 
 [[projects]]
@@ -207,6 +210,15 @@
     "idna"
   ]
   revision = "dfa909b99c79129e1100513e5cd36307665e5723"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = [
+    "unix",
+    "windows"
+  ]
+  revision = "bd9dbc187b6e1dacfdd2722a87e83093c2d7bd6e"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -244,6 +256,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "881eed85106310e0a4274fec163e59ef0cd327c4fba8bca0cbd50b9250745ddb"
+  inputs-digest = "561055efeb97dcdbb964c88d8b5d6aa13e901c9c4b4a9010cc0b3f2468d91799"
   solver-name = "gps-cdcl"
   solver-version = 1
