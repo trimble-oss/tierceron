@@ -160,6 +160,10 @@ func getPaths(mod *kv.Modifier, pathName string, pathList []string) []string {
 		slicey := secrets.Data["keys"].([]interface{})
 		for _, pathEnd := range slicey {
 			path := pathName + pathEnd.(string)
+			if pathEnd.(string) == "template-file" {
+				pathList = append(pathList, pathName)
+				break
+			}
 			lookAhead, err2 := mod.List(path)
 			if err2 != nil || lookAhead == nil {
 				//don't add on to paths until you're sure it's an END path
