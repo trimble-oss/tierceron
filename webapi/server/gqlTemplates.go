@@ -40,41 +40,41 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 						utils.LogErrorObject(err, s.Log, false)
 						return nil, err
 					}
-					//if len(filePaths) > 0 {
-					for _, filePath := range filePaths {
-						// Skip directories containing just the template file
-						if filePath[len(filePath)-1] == '/' {
-							continue
-						}
-						kvs, err := mod.ReadData(filePath)
-						secrets := []*pb.ValuesRes_Env_Service_File_Value{}
-						if err != nil {
-							return nil, err
-						}
-						for k, v := range kvs {
-							// Get path to secret
-							if val, ok := v.([]interface{}); ok {
-								if path, ok := val[0].(string); ok {
-									path := strings.SplitN(path, "/", 2)[1]
-									validity, err := mod.ReadData("verification/" + path)
-									if err != nil {
-										return nil, err
-									}
-									if valid, ok := validity["verified"].(bool); ok {
-										if valid {
-											secrets = append(secrets, &pb.ValuesRes_Env_Service_File_Value{Key: k, Value: "verifiedGood", Source: "templates"})
-										} else {
-											secrets = append(secrets, &pb.ValuesRes_Env_Service_File_Value{Key: k, Value: "verifiedBad", Source: "templates"})
+					if len(filePaths) > 0 {
+						for _, filePath := range filePaths {
+							// Skip directories containing just the template file
+							if filePath[len(filePath)-1] == '/' {
+								continue
+							}
+							kvs, err := mod.ReadData(filePath)
+							secrets := []*pb.ValuesRes_Env_Service_File_Value{}
+							if err != nil {
+								return nil, err
+							}
+							for k, v := range kvs {
+								// Get path to secret
+								if val, ok := v.([]interface{}); ok {
+									if path, ok := val[0].(string); ok {
+										path := strings.SplitN(path, "/", 2)[1]
+										validity, err := mod.ReadData("verification/" + path)
+										if err != nil {
+											return nil, err
 										}
-									} else {
-										secrets = append(secrets, &pb.ValuesRes_Env_Service_File_Value{Key: k, Value: "unverified", Source: "templates"})
+										if valid, ok := validity["verified"].(bool); ok {
+											if valid {
+												secrets = append(secrets, &pb.ValuesRes_Env_Service_File_Value{Key: k, Value: "verifiedGood", Source: "templates"})
+											} else {
+												secrets = append(secrets, &pb.ValuesRes_Env_Service_File_Value{Key: k, Value: "verifiedBad", Source: "templates"})
+											}
+										} else {
+											secrets = append(secrets, &pb.ValuesRes_Env_Service_File_Value{Key: k, Value: "unverified", Source: "templates"})
+										}
 									}
 								}
 							}
+							files = append(files, &pb.ValuesRes_Env_Service_File{Name: getPathEnd(filePath), Values: secrets})
 						}
-						files = append(files, &pb.ValuesRes_Env_Service_File{Name: getPathEnd(filePath), Values: secrets})
 					}
-					//}
 					services = append(services, &pb.ValuesRes_Env_Service{Name: getPathEnd(servicePath), Files: files})
 				}
 				envName := mod.Env[:len(mod.Env)-1]
