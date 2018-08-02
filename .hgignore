@@ -22,5 +22,6 @@ vaultUI/build/
 vaultUI\.packages
 vaultUI\pubspec.lock
 public/
-vault_seeds/
+vault_seeds/dev
+vault_seeds/QA
 local_vault.hcl
