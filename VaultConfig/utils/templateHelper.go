@@ -39,8 +39,12 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 	vaultPath := service + extra + "/" + filename
 	fmt.Printf("Vault path %s\n", vaultPath)
 
+	if extra != "" {
+		filename = extra + "/" + filename
+	}
+
 	//populate template
-	template = PopulateTemplate(template, modifier, secretMode, service, extra+"/"+filename)
+	template = PopulateTemplate(template, modifier, secretMode, service, filename)
 	return template
 }
 
