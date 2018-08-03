@@ -149,6 +149,12 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		})
 	}
 
+	if sToken, ok := tokenMap["webapp"].(string); ok {
+		s.VaultToken = sToken
+	} else {
+		s.VaultToken = ""
+	}
+
 	return &pb.InitResp{
 		Success: true,
 		Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
