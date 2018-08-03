@@ -15,9 +15,9 @@ func main() {
 	tokenPtr := flag.String("token", "", "Vault access token")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
 	startDirPtr := flag.String("startDir", "", "Root of project.")
-	templateDirPtr := flag.String("templateDir", "vault_templates/ServiceTechAPI", "Template directory")
-	endDirPtr := flag.String("endDir", "config_files/ServiceTechAPI", "Directory to put configured templates into")
-	certPathPtr := flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")
+	templateDirPtr := flag.String("templateDir", "vault_templates", "Template directory")
+	endDirPtr := flag.String("endDir", "config_files", "Directory to put configured templates into")
+	//certPathPtr := flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")
 	envPtr := flag.String("env", "dev", "Environment to configure")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
@@ -26,18 +26,21 @@ func main() {
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this VaultConfig to access the vault")
 
 	flag.Parse()
-
+	cert, err := Asset("../certs/cert_files/serv_cert.pem")
+	if err != nil {
+		eUtils.CheckError(err, true)
+	}
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			eUtils.CheckError(fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
 		}
-		v, err := sys.NewVault(*addrPtr, *certPathPtr)
+		v, err := sys.NewVault(*addrPtr, cert)
 		eUtils.CheckError(err, true)
 
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		eUtils.CheckError(err, true)
 
-		mod, err := kv.NewModifier(master, *addrPtr, *certPathPtr)
+		mod, err := kv.NewModifier(master, *addrPtr, cert)
 		eUtils.CheckError(err, true)
 		mod.Env = "bamboo"
 
@@ -47,7 +50,7 @@ func main() {
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
-		*envPtr, err = eUtils.LoginToLocal(*certPathPtr)
+		*envPtr, err = eUtils.LoginToLocal(cert)
 		fmt.Println(*envPtr)
 		eUtils.CheckError(err, true)
 	}
@@ -60,5 +63,5 @@ func main() {
 	for _, service := range services {
 		service = strings.TrimSpace(service)
 	}
-	utils.ConfigFromVault(*tokenPtr, *addrPtr, *certPathPtr, *envPtr, *secretMode, services, *startDirPtr, *templateDirPtr, *endDirPtr)
+	utils.ConfigFromVault(*tokenPtr, *addrPtr, cert, *envPtr, *secretMode, services, *startDirPtr, *templateDirPtr, *endDirPtr)
 }

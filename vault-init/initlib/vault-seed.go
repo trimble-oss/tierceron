@@ -24,7 +24,7 @@ type writeCollection struct {
 }
 
 // SeedVault seeds the vault with seed files in the given directory
-func SeedVault(dir string, addr string, token string, env string, logger *log.Logger, certPath string) {
+func SeedVault(dir string, addr string, token string, env string, logger *log.Logger, cert []byte) {
 	logger.SetPrefix("[SEED]")
 	logger.Printf("Seeding vault from seeds in: %s\n", dir)
 
@@ -42,7 +42,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 		if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
 			logger.Printf("\tFound seed file: %s\n", file.Name())
 			path := dir + "/" + file.Name()
-			SeedVaultFromFile(path, addr, token, env, certPath, logger)
+			SeedVaultFromFile(path, addr, token, env, cert, logger)
 		}
 
 	}
@@ -50,15 +50,15 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 }
 
 //SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, certPath string, logger *log.Logger) {
+func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, cert []byte, logger *log.Logger) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	utils.LogErrorObject(err, logger, true)
-	SeedVaultFromData(rawFile, vaultAddr, token, env, certPath, logger)
+	SeedVaultFromData(rawFile, vaultAddr, token, env, cert, logger)
 }
 
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, certPath string, logger *log.Logger) {
+func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, cert []byte, logger *log.Logger) {
 	logger.SetPrefix("[SEED]")
 	logger.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
@@ -108,7 +108,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 
 	// Write values to vault
 	logger.Println("Writing seed values to paths")
-	mod, err := kv.NewModifier(token, vaultAddr, certPath) // Connect to vault
+	mod, err := kv.NewModifier(token, vaultAddr, cert) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
 	for _, entry := range writeStack {
