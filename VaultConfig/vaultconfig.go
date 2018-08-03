@@ -18,7 +18,7 @@ func main() {
 	templateDirPtr := flag.String("templateDir", "vault_templates/ServiceTechAPI", "Template directory")
 	endDirPtr := flag.String("endDir", "config_files/ServiceTechAPI", "Directory to put configured templates into")
 	certPathPtr := flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")
-	env := flag.String("env", "dev", "Environment to configure")
+	envPtr := flag.String("env", "dev", "Environment to configure")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
@@ -45,6 +45,13 @@ func main() {
 		eUtils.CheckError(err, true)
 	}
 
+	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
+		var err error
+		*envPtr, err = eUtils.LoginToLocal(*certPathPtr)
+		fmt.Println(*envPtr)
+		eUtils.CheckError(err, true)
+	}
+
 	services := []string{}
 	if *servicesWanted != "" {
 		services = strings.Split(*servicesWanted, ",")
@@ -53,5 +60,5 @@ func main() {
 	for _, service := range services {
 		service = strings.TrimSpace(service)
 	}
-	utils.ConfigFromVault(*tokenPtr, *addrPtr, *certPathPtr, *env, *secretMode, services, *startDirPtr, *templateDirPtr, *endDirPtr)
+	utils.ConfigFromVault(*tokenPtr, *addrPtr, *certPathPtr, *envPtr, *secretMode, services, *startDirPtr, *templateDirPtr, *endDirPtr)
 }

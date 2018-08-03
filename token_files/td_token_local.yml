@@ -1,0 +1,6 @@
+policies: ["td_local"]
+metadata:
+  user : "TDinator"
+
+ttl:  "336h"
+display_name: "TDinator Token"
