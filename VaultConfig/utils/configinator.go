@@ -12,9 +12,9 @@ import (
 )
 
 //ConfigFromVault configures the templates in vault_templates and writes them to VaultConfig
-func ConfigFromVault(token string, address string, cert []byte, env string, secretMode bool, servicesWanted []string, startDir string, templateDir string, endDir string) {
+func ConfigFromVault(token string, address string, env string, secretMode bool, servicesWanted []string, startDir string, templateDir string, endDir string) {
 
-	mod, err := kv.NewModifier(token, address, cert)
+	mod, err := kv.NewModifier(token, address)
 	if err != nil {
 		panic(err)
 	}

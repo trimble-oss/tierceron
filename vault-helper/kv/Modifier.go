@@ -30,11 +30,11 @@ type Modifier struct {
 // @param address	The address of the API endpoint for the server
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 // 		   			Any errors generated in creating the client
-func NewModifier(token string, address string, cert []byte) (*Modifier, error) {
+func NewModifier(token string, address string) (*Modifier, error) {
 	if len(address) == 0 {
 		address = "http://127.0.0.1:8200" // Default address
 	}
-	httpClient, err := CreateHTTPClient(cert)
+	httpClient, err := CreateHTTPClient()
 	if err != nil {
 		return nil, err
 	}

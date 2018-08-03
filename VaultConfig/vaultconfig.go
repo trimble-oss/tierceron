@@ -26,21 +26,17 @@ func main() {
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this VaultConfig to access the vault")
 
 	flag.Parse()
-	cert, err := Asset("../certs/cert_files/serv_cert.pem")
-	if err != nil {
-		eUtils.CheckError(err, true)
-	}
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			eUtils.CheckError(fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
 		}
-		v, err := sys.NewVault(*addrPtr, cert)
+		v, err := sys.NewVault(*addrPtr)
 		eUtils.CheckError(err, true)
 
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		eUtils.CheckError(err, true)
 
-		mod, err := kv.NewModifier(master, *addrPtr, cert)
+		mod, err := kv.NewModifier(master, *addrPtr)
 		eUtils.CheckError(err, true)
 		mod.Env = "bamboo"
 
@@ -50,7 +46,7 @@ func main() {
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
-		*envPtr, err = eUtils.LoginToLocal(cert)
+		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
 		eUtils.CheckError(err, true)
 	}
@@ -63,5 +59,5 @@ func main() {
 	for _, service := range services {
 		service = strings.TrimSpace(service)
 	}
-	utils.ConfigFromVault(*tokenPtr, *addrPtr, cert, *envPtr, *secretMode, services, *startDirPtr, *templateDirPtr, *endDirPtr)
+	utils.ConfigFromVault(*tokenPtr, *addrPtr, *envPtr, *secretMode, services, *startDirPtr, *templateDirPtr, *endDirPtr)
 }

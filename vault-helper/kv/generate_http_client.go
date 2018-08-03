@@ -7,14 +7,13 @@ import (
 )
 
 //CreateHTTPClient reads from several .pem files to get the necessary keys and certs to configure the http client and returns the client.
-func CreateHTTPClient(cert []byte) (client *http.Client, err error) {
-
+func CreateHTTPClient() (client *http.Client, err error) {
+	cert, err := Asset("../../certs/cert_files/serv_cert.pem")
 	//servCertPEM, err := ioutil.ReadFile(certPath)
 	//servCertPEM := []byte(cert)
 	if err != nil {
 		return nil, err
 	}
-
 	// // create a pool of trusted certs
 	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(cert)

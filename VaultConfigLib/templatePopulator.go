@@ -10,7 +10,7 @@ import (
 )
 
 //export ConfigTemplateLib
-func ConfigTemplateLib(token string, address string, certPath string, env string, templatePath string, configuredFilePath string, secretMode bool, servicesWanted string) string {
+func ConfigTemplateLib(token string, address string, env string, templatePath string, configuredFilePath string, secretMode bool, servicesWanted string) string {
 
 	services := []string{}
 	if servicesWanted != "" {
@@ -21,7 +21,7 @@ func ConfigTemplateLib(token string, address string, certPath string, env string
 		service = strings.TrimSpace(service)
 	}
 
-	mod, err := kv.NewModifier(token, address, certPath)
+	mod, err := kv.NewModifier(token, address)
 	mod.Env = env
 	if err != nil {
 		panic(err)
