@@ -23,21 +23,31 @@ type VaultVals struct {
 type Env struct {
 	ID        int        `json:"id"`
 	Name      string     `json:"name"`
-	Services  []Service  `json:"services"`
+	Projects  []Project  `json:"projects"`
 	Providers []Provider `json:"providers"`
 }
 
 //Service represents an service that contains multiple files
+type Project struct {
+	EnvID    int       `json:"envID"`
+	ID       int       `json:"id"`
+	Name     string    `json:"name"`
+	Services []Service `json:"files"`
+}
+
+//Project represents a project that contains multiple files
 type Service struct {
-	EnvID int    `json:"envID"`
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Files []File `json:"files"`
+	EnvID  int    `json:"envID"`
+	ProjID int    `json:"projID"`
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Files  []File `json:"values"`
 }
 
 //File represents an individual file containing template values
 type File struct {
 	EnvID  int     `json:"envID"`
+	ProjID int     `json:"projID"`
 	ServID int     `json:"servID"`
 	ID     int     `json:"id"`
 	Name   string  `json:"name"`
@@ -47,6 +57,7 @@ type File struct {
 //Value represents an individual key-value pair with source
 type Value struct {
 	EnvID  int    `json:"envID"`
+	ProjID int    `json:"projID"`
 	ServID int    `json:"servID"`
 	FileID int    `json:"fileID"`
 	ID     int    `json:"id"`
@@ -113,6 +124,8 @@ func (s *Server) InitGQL() {
 		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (secrets not added)"}, s.Log, false)
 		return
 	}
+	//fmt.Println("templates")
+	//fmt.Println(templates)
 
 	// Get spectrum sessions
 	spctmSessions["dev"], err = s.getActiveSessions("dev")
@@ -156,53 +169,75 @@ func (s *Server) InitGQL() {
 			index := envIndices[env.Name].index
 			envQL = &envList[index]
 		} else { // Create a new environment
+			fmt.Println("creating new environment")
 			envIndices[env.Name] = &visitedNode{index: len(envList), children: map[string]*visitedNode{}}
-			envList = append(envList, Env{ID: len(envList), Name: env.Name, Services: []Service{}})
+			envList = append(envList, Env{ID: len(envList), Name: env.Name, Projects: []Project{}})
 			envQL = &envList[len(envList)-1]
 		}
+		//envQL is env at index
 
-		serviceIndices := envIndices[env.Name].children // Track indices of services in list
-		serviceList := append([]Service{}, envQL.Services...)
-
-		// Service
-		for _, service := range env.Services {
-			var serviceQL *Service
-			if serviceIndices[service.Name] != nil { // Get a reference to the existing service
-				index := serviceIndices[service.Name].index
-				serviceQL = &serviceList[index]
-			} else { // Create a new service
-				serviceIndices[service.Name] = &visitedNode{index: len(serviceList), children: map[string]*visitedNode{}}
-				serviceList = append(serviceList, Service{ID: len(serviceList), EnvID: envQL.ID, Name: service.Name, Files: []File{}})
-				serviceQL = &serviceList[len(serviceList)-1]
+		projectIndices := envIndices[env.Name].children // Track indices of projects in list
+		projectList := append([]Project{}, envQL.Projects...)
+		// project
+		for _, project := range env.Projects {
+			var projectQL *Project
+			if projectIndices[project.Name] != nil { // Get a reference to the existing project
+				fmt.Println("project already exists: " + project.Name)
+				index := projectIndices[project.Name].index
+				projectQL = &projectList[index]
+			} else { // Create a new project
+				fmt.Println("creating project " + project.Name)
+				projectIndices[project.Name] = &visitedNode{index: len(projectList), children: map[string]*visitedNode{}}
+				projectList = append(projectList, Project{ID: len(projectList), EnvID: envQL.ID, Name: project.Name, Services: []Service{}})
+				projectQL = &projectList[len(projectList)-1]
 			}
-
-			// Files
-			fileIndices := serviceIndices[service.Name].children
-			fileList := append([]File{}, serviceQL.Files...)
-			for _, file := range service.Files {
-				var fileQL *File
-				if fileIndices[file.Name] != nil { // Get a reference to the existing file
-					index := fileIndices[file.Name].index
-					fileQL = &fileList[index]
-				} else { // Create a new file
-					fileIndices[file.Name] = &visitedNode{index: len(fileList), children: map[string]*visitedNode{}}
-					fileList = append(fileList, File{ID: len(fileList), EnvID: envQL.ID, ServID: serviceQL.ID, Name: file.Name, Values: []Value{}})
-					fileQL = &fileList[len(fileList)-1]
+			serviceIndices := projectIndices[project.Name].children // Track indices of services in list
+			serviceList := append([]Service{}, projectQL.Services...)
+			// Project
+			for _, service := range project.Services {
+				var serviceQL *Service
+				if serviceIndices[service.Name] != nil { // Get a reference to the existing serice
+					index := serviceIndices[service.Name].index
+					serviceQL = &serviceList[index]
+				} else { // Create a new serice
+					serviceIndices[service.Name] = &visitedNode{index: len(serviceList), children: map[string]*visitedNode{}}
+					serviceList = append(serviceList, Service{ID: len(serviceList), EnvID: envQL.ID, ProjID: projectQL.ID, Name: service.Name, Files: []File{}})
+					serviceQL = &serviceList[len(serviceList)-1]
 				}
 
-				// Values
-				valList := fileQL.Values
-				for _, val := range file.Values {
-					valQL := Value{ID: len(valList), EnvID: envQL.ID, ServID: serviceQL.ID, FileID: fileQL.ID, Key: val.Key, Value: val.Value, Source: val.Source}
-					valList = append(valList, valQL)
+				// Files
+				fileIndices := serviceIndices[service.Name].children
+				fileList := append([]File{}, serviceQL.Files...)
+				for _, file := range service.Files {
+					var fileQL *File
+					if fileIndices[file.Name] != nil { // Get a reference to the existing file
+						fmt.Println("file already exists: " + file.Name)
+						index := fileIndices[file.Name].index
+						fileQL = &fileList[index]
+					} else { // Create a new file
+						fmt.Println("creating file " + file.Name)
+						fileIndices[file.Name] = &visitedNode{index: len(fileList), children: map[string]*visitedNode{}}
+						fileList = append(fileList, File{ID: len(fileList), EnvID: envQL.ID, ProjID: projectQL.ID, ServID: serviceQL.ID, Name: file.Name, Values: []Value{}})
+						fileQL = &fileList[len(fileList)-1]
+					}
+
+					// Values
+					valList := fileQL.Values
+					for _, val := range file.Values {
+						fmt.Println("value " + val.Key + ", " + val.Value)
+						valQL := Value{ID: len(valList), EnvID: envQL.ID, ProjID: projectQL.ID, ServID: serviceQL.ID, FileID: fileQL.ID, Key: val.Key, Value: val.Value, Source: val.Source}
+						valList = append(valList, valQL)
+					}
+					(*fileQL).Values = valList
 				}
-				(*fileQL).Values = valList
+				(*serviceQL).Files = fileList
 			}
-			(*serviceQL).Files = fileList
+			(*projectQL).Services = serviceList
 		}
-		(*envQL).Services = serviceList
+		(*envQL).Projects = projectList
 
 		if len(envQL.Providers) == 0 {
+			fmt.Println("no providers")
 			for i := 0; i < len(spctmSessions[env.Name]); i++ {
 				spctmSessions[env.Name][i].EnvID = (*envQL).ID
 				spctmSessions[env.Name][i].ProvID = 0
@@ -229,7 +264,6 @@ func (s *Server) InitGQL() {
 
 	}
 	vaultQL := VaultVals{Envs: envList}
-
 	// Convert data to a nested structure
 	var ValueObject = graphql.NewObject(
 		graphql.ObjectConfig{
@@ -241,9 +275,13 @@ func (s *Server) InitGQL() {
 				"envid": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 				},
+				"projid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
 				"servid": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 				},
+
 				"fileid": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 				},
@@ -252,9 +290,11 @@ func (s *Server) InitGQL() {
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						val := params.Source.(Value).ID
 						file := params.Source.(Value).FileID
+
 						serv := params.Source.(Value).ServID
+						proj := params.Source.(Value).ProjID
 						env := params.Source.(Value).EnvID
-						return vaultQL.Envs[env].Services[serv].Files[file].Values[val].Key, nil
+						return vaultQL.Envs[env].Projects[proj].Services[serv].Files[file].Values[val].Key, nil
 					},
 				},
 				"value": &graphql.Field{
@@ -263,9 +303,11 @@ func (s *Server) InitGQL() {
 
 						val := params.Source.(Value).ID
 						file := params.Source.(Value).FileID
+
 						serv := params.Source.(Value).ServID
+						proj := params.Source.(Value).ProjID
 						env := params.Source.(Value).EnvID
-						return vaultQL.Envs[env].Services[serv].Files[file].Values[val].Value, nil
+						return vaultQL.Envs[env].Projects[proj].Services[serv].Files[file].Values[val].Value, nil
 					},
 				},
 				"source": &graphql.Field{
@@ -274,9 +316,11 @@ func (s *Server) InitGQL() {
 
 						val := params.Source.(Value).ID
 						file := params.Source.(Value).FileID
+
 						serv := params.Source.(Value).ServID
+						proj := params.Source.(Value).ProjID
 						env := params.Source.(Value).EnvID
-						return vaultQL.Envs[env].Services[serv].Files[file].Values[val].Source, nil
+						return vaultQL.Envs[env].Projects[proj].Services[serv].Files[file].Values[val].Source, nil
 					},
 				},
 			},
@@ -291,16 +335,22 @@ func (s *Server) InitGQL() {
 				"envid": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 				},
+				"projid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
 				"servid": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 				},
+
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						file := params.Source.(File).ID
+
 						serv := params.Source.(File).ServID
+						proj := params.Source.(File).ProjID
 						env := params.Source.(File).EnvID
-						return vaultQL.Envs[env].Services[serv].Files[file].Name, nil
+						return vaultQL.Envs[env].Projects[proj].Services[serv].Files[file].Name, nil
 					},
 				},
 				"values": &graphql.Field{
@@ -323,19 +373,21 @@ func (s *Server) InitGQL() {
 						sourceStr, sourceOK := params.Args["sourceName"].(string)
 
 						file := params.Source.(File).ID
+
 						serv := params.Source.(File).ServID
+						proj := params.Source.(File).ProjID
 						env := params.Source.(File).EnvID
 						values := []Value{}
 						if keyOK {
 							// Construct a regular expression based on the search
 							regex := regexp.MustCompile(`(?i).*` + keyStr + `.*`)
-							for i, v := range vaultQL.Envs[env].Services[serv].Files[file].Values {
+							for i, v := range vaultQL.Envs[env].Projects[proj].Services[serv].Files[file].Values {
 								if regex.MatchString(v.Key) {
-									values = append(values, vaultQL.Envs[env].Services[serv].Files[file].Values[i])
+									values = append(values, vaultQL.Envs[env].Projects[proj].Services[serv].Files[file].Values[i])
 								}
 							}
 						} else {
-							values = vaultQL.Envs[env].Services[serv].Files[file].Values
+							values = vaultQL.Envs[env].Projects[proj].Services[serv].Files[file].Values
 						}
 
 						if sourceOK {
@@ -370,12 +422,16 @@ func (s *Server) InitGQL() {
 				"envid": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 				},
+				"projid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						serv := params.Source.(Service).ID
+						proj := params.Source.(Service).ProjID
 						env := params.Source.(Service).EnvID
-						return vaultQL.Envs[env].Services[serv].Name, nil
+						return vaultQL.Envs[env].Projects[proj].Services[serv].Name, nil
 					},
 				},
 				"files": &graphql.Field{
@@ -388,16 +444,59 @@ func (s *Server) InitGQL() {
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						fileStr, isOK := params.Args["fileName"].(string)
 						serv := params.Source.(Service).ID
+						proj := params.Source.(Service).ProjID
 						env := params.Source.(Service).EnvID
 						if isOK {
-							for i, f := range vaultQL.Envs[env].Services[serv].Files {
+							for i, f := range vaultQL.Envs[env].Projects[proj].Services[serv].Files {
 								if f.Name == fileStr {
-									return []File{vaultQL.Envs[env].Services[serv].Files[i]}, nil
+									return []File{vaultQL.Envs[env].Projects[proj].Services[serv].Files[i]}, nil
 								}
 							}
-							return vaultQL.Envs[env].Services[serv].Files, errors.New("fileName not found")
+							return vaultQL.Envs[env].Projects[proj].Services[serv].Files, errors.New("fileName not found")
 						}
-						return vaultQL.Envs[env].Services[serv].Files, nil
+						return vaultQL.Envs[env].Projects[proj].Services[serv].Files, nil
+					},
+				},
+			},
+		})
+	var ProjectObject = graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "Project",
+			Fields: graphql.Fields{
+				"id": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"envid": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"name": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+						proj := params.Source.(Project).ID
+						env := params.Source.(Project).EnvID
+						return vaultQL.Envs[env].Projects[proj].Name, nil
+					},
+				},
+				"services": &graphql.Field{
+					Type: graphql.NewList(ServiceObject),
+					Args: graphql.FieldConfigArgument{
+						"servName": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+					},
+					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+						servStr, isOK := params.Args["servName"].(string)
+						proj := params.Source.(Project).ID
+						env := params.Source.(Project).EnvID
+						if isOK {
+							for i, p := range vaultQL.Envs[env].Projects[proj].Services {
+								if p.Name == servStr {
+									return []Service{vaultQL.Envs[env].Projects[proj].Services[i]}, nil
+								}
+							}
+							return vaultQL.Envs[env].Projects[proj].Services, errors.New("servName not found")
+						}
+						return vaultQL.Envs[env].Projects[proj].Services, nil
 					},
 				},
 			},
@@ -499,10 +598,10 @@ func (s *Server) InitGQL() {
 						return vaultQL.Envs[env].Name, nil
 					},
 				},
-				"services": &graphql.Field{
-					Type: graphql.NewList(ServiceObject),
+				"projects": &graphql.Field{
+					Type: graphql.NewList(ProjectObject),
 					Args: graphql.FieldConfigArgument{
-						"servName": &graphql.ArgumentConfig{
+						"projName": &graphql.ArgumentConfig{
 							Type: graphql.String,
 						},
 					},
@@ -510,15 +609,15 @@ func (s *Server) InitGQL() {
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 
 						env := params.Source.(Env).ID
-						if servStr, ok := params.Args["servName"].(string); ok {
-							for i, s := range vaultQL.Envs[env].Services {
-								if s.Name == servStr {
-									return []Service{vaultQL.Envs[env].Services[i]}, nil
+						if projStr, ok := params.Args["projName"].(string); ok {
+							for i, s := range vaultQL.Envs[env].Projects {
+								if s.Name == projStr {
+									return []Project{vaultQL.Envs[env].Projects[i]}, nil
 								}
 							}
-							return vaultQL.Envs[env].Services, errors.New("servName not found")
+							return vaultQL.Envs[env].Projects, errors.New("projName not found")
 						}
-						return vaultQL.Envs[env].Services, nil
+						return vaultQL.Envs[env].Projects, nil
 
 					},
 				},

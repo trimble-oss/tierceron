@@ -77,9 +77,9 @@ select {
 }
 .topnav .selection {
   float:left;
-  width:20%;
+  width:15%;
   height: 40px;
-  padding:6px;
+  padding:5px;
   margin: 8px;
   font-size:17px;
 }
@@ -89,7 +89,7 @@ select {
 }
 .topnav .search-container {
   float: right;
-  width: 21%
+  width: 20%
 }
 
 .topnav .search-container input[type=text] {
