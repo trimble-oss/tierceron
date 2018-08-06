@@ -34,7 +34,7 @@ func NewServer(VaultAddr string, VaultToken string) *Server {
 }
 
 //ListProjectTemplates lists the templates under the requested project
-func (s *Server) ListProjectTemplates(ctx context.Context, req *pb.ListReq) (*pb.ListResp, error) {
+func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb.ListResp, error) {
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
