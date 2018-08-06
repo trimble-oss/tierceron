@@ -160,7 +160,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 			for _, servicePath := range servicePaths {
 				files := []*pb.ValuesRes_Env_Project_Service_File{}
 				//get a list of files under project
-				filePaths, err := s.getPaths(mod, projectPath)
+				filePaths, err := s.getPaths(mod, servicePath)
 				//fmt.Println("filePaths")
 				//fmt.Println(filePaths)
 				if err != nil {

@@ -124,8 +124,6 @@ func (s *Server) InitGQL() {
 		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (secrets not added)"}, s.Log, false)
 		return
 	}
-	//fmt.Println("templates")
-	//fmt.Println(templates)
 
 	// Get spectrum sessions
 	spctmSessions["dev"], err = s.getActiveSessions("dev")
@@ -169,7 +167,6 @@ func (s *Server) InitGQL() {
 			index := envIndices[env.Name].index
 			envQL = &envList[index]
 		} else { // Create a new environment
-			fmt.Println("creating new environment")
 			envIndices[env.Name] = &visitedNode{index: len(envList), children: map[string]*visitedNode{}}
 			envList = append(envList, Env{ID: len(envList), Name: env.Name, Projects: []Project{}})
 			envQL = &envList[len(envList)-1]
@@ -182,11 +179,9 @@ func (s *Server) InitGQL() {
 		for _, project := range env.Projects {
 			var projectQL *Project
 			if projectIndices[project.Name] != nil { // Get a reference to the existing project
-				fmt.Println("project already exists: " + project.Name)
 				index := projectIndices[project.Name].index
 				projectQL = &projectList[index]
 			} else { // Create a new project
-				fmt.Println("creating project " + project.Name)
 				projectIndices[project.Name] = &visitedNode{index: len(projectList), children: map[string]*visitedNode{}}
 				projectList = append(projectList, Project{ID: len(projectList), EnvID: envQL.ID, Name: project.Name, Services: []Service{}})
 				projectQL = &projectList[len(projectList)-1]
@@ -211,11 +206,9 @@ func (s *Server) InitGQL() {
 				for _, file := range service.Files {
 					var fileQL *File
 					if fileIndices[file.Name] != nil { // Get a reference to the existing file
-						fmt.Println("file already exists: " + file.Name)
 						index := fileIndices[file.Name].index
 						fileQL = &fileList[index]
 					} else { // Create a new file
-						fmt.Println("creating file " + file.Name)
 						fileIndices[file.Name] = &visitedNode{index: len(fileList), children: map[string]*visitedNode{}}
 						fileList = append(fileList, File{ID: len(fileList), EnvID: envQL.ID, ProjID: projectQL.ID, ServID: serviceQL.ID, Name: file.Name, Values: []Value{}})
 						fileQL = &fileList[len(fileList)-1]
@@ -224,7 +217,6 @@ func (s *Server) InitGQL() {
 					// Values
 					valList := fileQL.Values
 					for _, val := range file.Values {
-						fmt.Println("value " + val.Key + ", " + val.Value)
 						valQL := Value{ID: len(valList), EnvID: envQL.ID, ProjID: projectQL.ID, ServID: serviceQL.ID, FileID: fileQL.ID, Key: val.Key, Value: val.Value, Source: val.Source}
 						valList = append(valList, valQL)
 					}
