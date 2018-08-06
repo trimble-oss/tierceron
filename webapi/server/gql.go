@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -81,6 +82,7 @@ func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQL
 	rawResult := graphql.Do(graphql.Params{
 		Schema:        s.GQLSchema,
 		RequestString: req.Query,
+		Context:       ctx,
 	})
 
 	result := &pb.GraphQLResp{}
@@ -555,15 +557,25 @@ func (s *Server) InitGQL() {
 						},
 					},
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+						envs := []Env{}
+						for _, e := range vaultQL.Envs {
+							if e.Name == "dev" || e.Name == "QA" {
+								envs = append(envs, e)
+							} else if e.Name == "local/"+params.Context.Value("user").(string) {
+								e.Name = "local"
+								envs = append(envs, e)
+							}
+						}
+
 						if envStr, isOK := params.Args["envName"].(string); isOK {
-							for i, e := range vaultQL.Envs {
+							for i, e := range envs {
 								if e.Name == envStr {
-									return []Env{vaultQL.Envs[i]}, nil
+									return []Env{envs[i]}, nil
 								}
 							}
-							return vaultQL.Envs, errors.New("envName not found")
+							return envs, fmt.Errorf("envName not found: %s", envStr)
 						}
-						return vaultQL.Envs, nil
+						return envs, nil
 
 					},
 				},

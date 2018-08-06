@@ -218,7 +218,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 
 		if name, ok := response["firstName"].(string); ok {
 			if id, ok := response["operatorCode"].(string); ok {
-				token, err := s.generateJWT(name, id, mod)
+				token, err := s.generateJWT(name, req.Environment+"/"+id, mod)
 				if err != nil {
 					utils.LogErrorObject(err, s.Log, false)
 					return nil, err
