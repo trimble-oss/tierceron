@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err

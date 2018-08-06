@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -9,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
 )
@@ -19,7 +20,7 @@ const activeSessionsQuery = `select distinct User_Name, Time_Logged_On from PA_C
 								and Time_Logged_On = (select max(Time_Logged_On) from PA_COMPANY_CODE cc2 where cc1.User_Name=cc2.User_Name)`
 
 func (s *Server) getActiveSessions(env string) ([]Session, error) {
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +101,7 @@ func parseURL(url string) (string, string, string, string) {
 }
 
 func (s *Server) getVaultSessions(env string) ([]Session, error) {
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, s.CertPath)
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
 	if err != nil {
 		return nil, err
 	}

@@ -17,7 +17,6 @@ func main() {
 	startDirPtr := flag.String("startDir", "", "Root of project.")
 	templateDirPtr := flag.String("templateDir", "vault_templates", "Template directory")
 	endDirPtr := flag.String("endDir", "config_files", "Directory to put configured templates into")
-	//certPathPtr := flag.String("certPath", "certs/cert_files/serv_cert.pem", "Path to the server certificate")
 	envPtr := flag.String("env", "dev", "Environment to configure")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
