@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
@@ -8,6 +9,9 @@ import (
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 )
 
+// getTemplateData Fetches all keys listed under 'templates' substituting private values with verification
+// Secret values will only be populated for environments with values for that secret group
+// All template keys that reference public values will be populated with those values
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
 	if err != nil {
@@ -66,38 +70,75 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 						if err != nil {
 							return nil, err
 						}
+
+						// Find secrets groups in this environment
+						vSecret, err := mod.List("super-secrets")
+						if err != nil {
+							return nil, err
+						}
+						// Construct a string -> bool map to track accessable environments
+						availableSecrets := map[string]bool{}
+						if vKeys, ok := vSecret.Data["keys"].([]interface{}); ok {
+							for _, k := range vKeys {
+								if group, ok := k.(string); ok {
+									availableSecrets[group] = true
+								}
+							}
+						} else {
+							return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
+						}
+
 						for k, v := range kvs {
 							// Get path to secret
 							if val, ok := v.([]interface{}); ok {
-								if path, ok := val[0].(string); ok {
-									path := strings.SplitN(path, "/", 2)[1]
-									validity, err := mod.ReadData("verification/" + path)
-									if err != nil {
-										return nil, err
-									}
-									if valid, ok := validity["verified"].(bool); ok {
-										if valid {
-											secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: "verifiedGood", Source: "templates"})
-										} else {
-											secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: "verifiedBad", Source: "templates"})
+								if fullPath, ok := val[0].(string); ok {
+									pathBlocks := strings.SplitN(fullPath, "/", 2) // Check that environment contains secret and check verification
+									if pathBlocks[0] == "super-secrets" && availableSecrets[pathBlocks[1]] {
+										validity, err := mod.ReadData("verification/" + pathBlocks[1])
+										if err != nil {
+											return nil, err
 										}
-									} else {
-										secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: "unverified", Source: "templates"})
+										if valid, ok := validity["verified"].(bool); ok {
+											if valid {
+												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: "verifiedGood", Source: "templates"})
+											} else {
+												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: "verifiedBad", Source: "templates"})
+											}
+										} else {
+											secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: "unverified", Source: "templates"})
+										}
+									} else if pathBlocks[0] == "values" { // Real value, fetch and populate
+										if key, ok := val[1].(string); ok {
+											value, err := mod.ReadValue(fullPath, key)
+											if err == nil && value != "" {
+												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: value, Source: "templates"})
+											}
+										} else {
+											continue
+										}
 									}
 								}
 							}
 						}
 						//if you want to add extra dirs to filename, do it here
-						files = append(files, &pb.ValuesRes_Env_Project_Service_File{Name: getPathEnd(filePath), Values: secrets})
+						if len(secrets) > 0 {
+							files = append(files, &pb.ValuesRes_Env_Project_Service_File{Name: getPathEnd(filePath), Values: secrets})
+						}
 					}
 				}
-				services = append(services, &pb.ValuesRes_Env_Project_Service{Name: getPathEnd(servicePath), Files: files})
+				if len(files) > 0 {
+					services = append(services, &pb.ValuesRes_Env_Project_Service{Name: getPathEnd(servicePath), Files: files})
+				}
 			}
-			projects = append(projects, &pb.ValuesRes_Env_Project{Name: getPathEnd(projectPath), Services: services})
+			if len(services) > 0 {
+				projects = append(projects, &pb.ValuesRes_Env_Project{Name: getPathEnd(projectPath), Services: services})
+			}
 		}
 
-		envName := strings.Trim(mod.Env, "/")
-		environments = append(environments, &pb.ValuesRes_Env{Name: string(envName), Projects: projects})
+		if len(projects) > 0 {
+			envName := strings.Trim(mod.Env, "/")
+			environments = append(environments, &pb.ValuesRes_Env{Name: string(envName), Projects: projects})
+		}
 
 	}
 	return &pb.ValuesRes{Envs: environments}, nil

@@ -205,17 +205,25 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 						}
 
 					}
-					file := &pb.ValuesRes_Env_Project_Service_File{Name: getPathEnd(filePath), Values: vals}
-					files = append(files, file)
+					if len(vals) > 0 {
+						file := &pb.ValuesRes_Env_Project_Service_File{Name: getPathEnd(filePath), Values: vals}
+						files = append(files, file)
+					}
 				}
-				service := &pb.ValuesRes_Env_Project_Service{Name: getPathEnd(servicePath), Files: files}
-				services = append(services, service)
+				if len(files) > 0 {
+					service := &pb.ValuesRes_Env_Project_Service{Name: getPathEnd(servicePath), Files: files}
+					services = append(services, service)
+				}
 			}
-			project := &pb.ValuesRes_Env_Project{Name: getPathEnd(projectPath), Services: services}
-			projects = append(projects, project)
+			if len(services) > 0 {
+				project := &pb.ValuesRes_Env_Project{Name: getPathEnd(projectPath), Services: services}
+				projects = append(projects, project)
+			}
 		}
-		env := &pb.ValuesRes_Env{Name: environment, Projects: projects}
-		environments = append(environments, env)
+		if len(projects) > 0 {
+			env := &pb.ValuesRes_Env{Name: environment, Projects: projects}
+			environments = append(environments, env)
+		}
 	}
 	return &pb.ValuesRes{
 		Envs: environments,
