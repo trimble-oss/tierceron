@@ -228,7 +228,7 @@ func (s *Server) InitGQL() {
 		}
 		(*envQL).Projects = projectList
 
-		if len(envQL.Providers) != 0 {
+		if len(envQL.Providers) == 0 {
 			for i := 0; i < len(spctmSessions[env.Name]); i++ {
 				spctmSessions[env.Name][i].EnvID = (*envQL).ID
 				spctmSessions[env.Name][i].ProvID = 0
@@ -238,19 +238,22 @@ func (s *Server) InitGQL() {
 				vaultSessions[env.Name][i].ProvID = 1
 			}
 
-			(*envQL).Providers = append((*envQL).Providers, Provider{
-				EnvID:    (*envQL).ID,
-				ID:       0,
-				Name:     "Spectrum",
-				Sessions: spctmSessions[env.Name],
-			})
-
-			(*envQL).Providers = append((*envQL).Providers, Provider{
-				EnvID:    (*envQL).ID,
-				ID:       1,
-				Name:     "Vault",
-				Sessions: vaultSessions[env.Name],
-			})
+			if spctmSessions[env.Name] != nil {
+				(*envQL).Providers = append((*envQL).Providers, Provider{
+					EnvID:    (*envQL).ID,
+					ID:       0,
+					Name:     "Spectrum",
+					Sessions: spctmSessions[env.Name],
+				})
+			}
+			if vaultSessions[env.Name] != nil {
+				(*envQL).Providers = append((*envQL).Providers, Provider{
+					EnvID:    (*envQL).ID,
+					ID:       1,
+					Name:     "Vault",
+					Sessions: vaultSessions[env.Name],
+				})
+			}
 		}
 
 	}
