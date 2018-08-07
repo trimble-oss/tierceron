@@ -25,3 +25,4 @@ public/
 vault_seeds/dev
 vault_seeds/QA
 local_vault.hcl
+vault_seeds\local2\local_seed.yml

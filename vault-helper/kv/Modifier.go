@@ -149,10 +149,10 @@ func (m *Modifier) List(path string) (*api.Secret, error) {
 	}
 
 	fullPath := pathBlocks[0] + "metadata/"
+	if !noEnvironments[pathBlocks[0]] {
+		fullPath += m.Env + "/"
+	}
 	if len(pathBlocks) > 1 {
-		if !noEnvironments[pathBlocks[0]] {
-			fullPath += m.Env + "/"
-		}
 		fullPath += pathBlocks[1]
 	}
 	return m.logical.List(fullPath)
