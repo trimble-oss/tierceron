@@ -27,7 +27,8 @@ service EnterpriseServiceBroker {
 /////////////////////////////////////////////////////////
 
 message ListReq {
-    string service = 1;
+    string project = 1;
+    string service = 2;
 }
 
 message ListResp {
@@ -36,8 +37,9 @@ message ListResp {
 
 // Request for retrieving a template file from the vault
 message TemplateReq {
-    string service = 1; // Service name i.e. ST, Spectrum, etc.
-    string file = 2; // Template file name (no extension)
+    string project = 1;
+    string service = 2; // Service name i.e. ST, Spectrum, etc.
+    string file = 3; // Template file name (no extension)
 }
 
 // Response containing template and extension as stored in the vault
@@ -53,7 +55,8 @@ message TemplateResp {
 // Request for checking the validity of credentials for a service in a given environment
 message ValidationReq {
     string service = 1; // service name i.e. ServiceTechDB
-    string env = 2; // Environment (local, dev, QA)
+    string project = 2;
+    string env = 3; // Environment (local, dev, QA)
 }
 
 message ValidationResp {
@@ -68,18 +71,22 @@ message ValidationResp {
 message ValuesRes {
     message Env {
         string name = 1;
-        message Service {
+        message Project {
             string name = 1;
-            message File {
+            message Service {
                 string name = 1;
-                message Value {
-                    string key = 1;
-                    string value = 2;
-                    string source = 3;
+                message File {
+                    string name = 1;
+                    message Value {
+                        string key = 1;
+                        string value = 2;
+                        string source = 3;
+                    }
+                    repeated Value values = 2;
                 }
-                repeated Value values = 2;
+                repeated File files = 2;
             }
-            repeated File files = 2;
+            repeated Service services = 2;
         }
         message Provider {
             string name = 1;
@@ -89,7 +96,7 @@ message ValuesRes {
             }
             repeated Session sessions = 2;
         }
-        repeated Service services = 2;
+        repeated Project projects = 2;
         repeated Provider providers = 3;
     }
     repeated Env envs = 2;

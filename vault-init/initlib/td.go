@@ -38,12 +38,19 @@ func UploadTemplates(mod *kv.Modifier, dirName string) (error, []string) {
 	}
 
 	// Use name of containing directory as the template subdirectory
-	splitDir := strings.SplitAfter(dirName, "/")
+	splitDir := strings.SplitAfterN(dirName, "/", 2)
 	subDir := splitDir[len(splitDir)-1]
 
 	// Parse through files
 	for _, file := range files {
 		// Extract extension and name
+		if file.IsDir() { // Recurse folders
+			err, warn := UploadTemplates(mod, dirName+"/"+file.Name())
+			if err != nil || len(warn) > 0 {
+				return err, warn
+			}
+			continue
+		}
 		ext := filepath.Ext(file.Name())
 		name := file.Name()
 		name = name[0 : len(name)-len(ext)] // Truncate extension

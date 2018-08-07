@@ -9,6 +9,9 @@
         <select #env id="environments" class="selection" (change)="SelectEnv(env.value)">
             <option disabled selected value>All Environments</option>
         </select>
+        <select #proj id="projects" class="selection" (change)="SelectProj(proj.value)">
+            <option disabled selected value>All Projects</option>
+        </select>
         <select #serv id="services" class="selection" (change)="SelectServ(serv.value)">
             <option disabled selected value>All Services</option>
         </select>
