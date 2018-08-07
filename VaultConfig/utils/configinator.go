@@ -12,30 +12,37 @@ import (
 )
 
 //ConfigFromVault configures the templates in vault_templates and writes them to VaultConfig
-func ConfigFromVault(token string, address string, env string, secretMode bool, servicesWanted []string, startDir string, templateDir string, endDir string) {
+func ConfigFromVault(token string, address string, env string, secretMode bool, servicesWanted []string, startDir string, endDir string) {
 
 	mod, err := kv.NewModifier(token, address)
 	if err != nil {
 		panic(err)
 	}
 	mod.Env = env
-
-	templateFileDir := templateDir
-
-	if startDir != "" {
-		templateFileDir = startDir + templateDir
-	}
 	//get files from directory
-	templateFilePaths, endPaths := getDirFiles(templateFileDir, endDir)
+	templatePaths, endPaths := getDirFiles(startDir, endDir)
 	//configure each template in directory
-	for i, templateFilePath := range templateFilePaths {
-		templatePath := templateFilePath
-		if startDir != "" {
-			templatePath = strings.Replace(templateFilePath, startDir, "", 1)
-		}
+	for i, templatePath := range templatePaths {
+
+		//check for template_files directory here
 		s := strings.Split(templatePath, "/")
-		configuredTemplate := ConfigTemplate(mod, templateFilePath, templatePath, secretMode, s[1])
-		writeToFile(configuredTemplate, endPaths[i])
+		//figure out which path is vault_templates
+		dirIndex := -1
+		for j, piece := range s {
+			if piece == "vault_templates" {
+				dirIndex = j
+			}
+		}
+		if dirIndex != -1 {
+			fmt.Println("templatePath, endPath, project, service")
+			fmt.Println(templatePath + ", " + endPaths[i] + ", " + s[dirIndex+1] + ", " + s[dirIndex+2])
+			configuredTemplate := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[dirIndex+1], s[dirIndex+2])
+			writeToFile(configuredTemplate, endPaths[i])
+		} else {
+			//assume the starting directory was vault_templates
+			configuredTemplate := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[1], s[2])
+			writeToFile(configuredTemplate, endPaths[i])
+		}
 	}
 	//print that we're done
 	endDir = strings.Split(endDir, "/")[0]
