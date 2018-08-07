@@ -255,10 +255,6 @@ func (s *Server) getPaths(mod *kv.Modifier, pathName string) ([]string, error) {
 }
 func (s *Server) getTemplateFilePaths(mod *kv.Modifier, pathName string) ([]string, error) {
 	secrets, err := mod.List(pathName)
-	if pathName == "templates/Team/PortalNew/" {
-		fmt.Println(pathName)
-	}
-
 	pathList := []string{}
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
@@ -281,7 +277,9 @@ func (s *Server) getTemplateFilePaths(mod *kv.Modifier, pathName string) ([]stri
 				subPathList = append(subPathList, subsub)
 			}
 		}
-		return subPathList, nil
+		if len(subPathList) != 0 {
+			return subPathList, nil
+		}
 	}
 	return pathList, nil
 }
@@ -310,7 +308,7 @@ func (s *Server) templateFileRecurse(mod *kv.Modifier, pathName string) ([]strin
 			subPathList = append(subPathList, pathName)
 		}
 	}
-	return []string{pathName}, nil
+	return subPathList, nil
 }
 
 func getPathEnd(path string) string {
