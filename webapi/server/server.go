@@ -322,6 +322,7 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoPar
 	cmd := exec.Command(scriptPath, buildNum)
 	cmd.Dir = "/etc/opt/vaultAPI"
 	err := cmd.Run()
+	utils.LogErrorObject(err, s.Log, false)
 	return &pb.NoParams{}, err
 }
 
