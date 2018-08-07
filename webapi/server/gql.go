@@ -228,8 +228,7 @@ func (s *Server) InitGQL() {
 		}
 		(*envQL).Projects = projectList
 
-		if len(envQL.Providers) == 0 {
-			fmt.Println("no providers")
+		if len(envQL.Providers) != 0 {
 			for i := 0; i < len(spctmSessions[env.Name]); i++ {
 				spctmSessions[env.Name][i].EnvID = (*envQL).ID
 				spctmSessions[env.Name][i].ProvID = 0

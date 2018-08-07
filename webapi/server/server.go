@@ -128,9 +128,28 @@ func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.Valid
 
 //GetValues gets values requested from the vault
 func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.ValuesRes, error) {
-
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		return nil, err
+	}
 	environments := []*pb.ValuesRes_Env{}
-	envStrings := []string{"dev", "QA", "local"}
+	envStrings := []string{"dev", "QA"}
+	for _, e := range envStrings {
+		mod.Env = "local/" + e
+		userPaths, err := mod.List("values/")
+		if err != nil {
+			return nil, err
+		}
+		if userPaths == nil {
+			continue
+		}
+		if localEnvs, ok := userPaths.Data["keys"].([]interface{}); ok {
+			for _, env := range localEnvs {
+				envStrings = append(envStrings, strings.Trim("local/"+e+"/"+env.(string), "/"))
+			}
+		}
+	}
 	for _, environment := range envStrings {
 		mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
 		if err != nil {
