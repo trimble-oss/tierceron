@@ -50,10 +50,9 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 //PopulateTemplate takes an empty template and a modifier.
 //It populates the template and returns it in a string.
 func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bool, project string, service string, filename string) string {
-	//fmt.Println("populate file " + filename)
+
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
-	//fmt.Println(secretMode)
 	cds.init(modifier, secretMode, true, project, service)
 	if values, ok := cds.dataMap[service].(map[string]interface{}); ok {
 		//os.Exit(0)

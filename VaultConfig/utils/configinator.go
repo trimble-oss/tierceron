@@ -34,8 +34,6 @@ func ConfigFromVault(token string, address string, env string, secretMode bool, 
 			}
 		}
 		if dirIndex != -1 {
-			fmt.Println("templatePath, endPath, project, service")
-			fmt.Println(templatePath + ", " + endPaths[i] + ", " + s[dirIndex+1] + ", " + s[dirIndex+2])
 			configuredTemplate := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[dirIndex+1], s[dirIndex+2])
 			writeToFile(configuredTemplate, endPaths[i])
 		} else {

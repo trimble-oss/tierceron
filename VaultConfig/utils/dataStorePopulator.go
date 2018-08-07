@@ -72,8 +72,6 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 				valuesScrubbed[strings.Replace(k, ".", "_", -1)] = v
 			}
 			values = valuesScrubbed
-			fmt.Println("values")
-			fmt.Println(values)
 			// Substitute in secrets
 			for k, v := range values {
 				if link, ok := v.([]interface{}); ok {
