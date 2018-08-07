@@ -632,6 +632,9 @@ func (s *Server) InitGQL() {
 							}
 							return vaultQL.Envs[eid].Providers, errors.New("provName not found")
 						}
+						if len(vaultQL.Envs[eid].Providers) == 0 {
+							return vaultQL.Envs[eid].Providers, errors.New("no providers under environnment")
+						}
 						return vaultQL.Envs[eid].Providers, nil
 					},
 				},

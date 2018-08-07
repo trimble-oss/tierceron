@@ -14,8 +14,8 @@ import (
 func main() {
 	tokenPtr := flag.String("token", "", "Vault access token")
 	addrPtr := flag.String("addr", "http://127.0.0.1:8200", "API endpoint for the vault")
-	startDirPtr := flag.String("startDir", "", "Root of project.")
-	templateDirPtr := flag.String("templateDir", "vault_templates", "Template directory")
+	startDirPtr := flag.String("startDir", "vault_templates", "Template directory")
+	//templateDirPtr := flag.String("templateDir", "vault_templates", "Template directory")
 	endDirPtr := flag.String("endDir", "config_files", "Directory to put configured templates into")
 	envPtr := flag.String("env", "dev", "Environment to configure")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
@@ -58,5 +58,5 @@ func main() {
 	for _, service := range services {
 		service = strings.TrimSpace(service)
 	}
-	utils.ConfigFromVault(*tokenPtr, *addrPtr, *envPtr, *secretMode, services, *startDirPtr, *templateDirPtr, *endDirPtr)
+	utils.ConfigFromVault(*tokenPtr, *addrPtr, *envPtr, *secretMode, services, *startDirPtr, *endDirPtr)
 }

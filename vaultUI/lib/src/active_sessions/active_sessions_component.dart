@@ -36,7 +36,7 @@ class ActiveSessionsComponent implements OnActivate{
   String _baseHref;
   String _token;
   String sessQuery = '/graphql?query={envs{name, providers{name, sessions{User, LastLogIn}}}}';
-  String envNameQuery = '/graphql?query={envs{name}}';
+  String envNameQuery = '/graphql?query={envs{name, providers{name}}}';
   String provNameQuery = '/graphql?query={envs{providers{name}}}';
   Start()async {
     await GetSessions();
@@ -138,7 +138,7 @@ class ActiveSessionsComponent implements OnActivate{
     for(var i=0; i<envMaps.length; i++){
       var envMap = envMaps[i];
       var envName = envMap['name'];
-      envNames.add(envName);
+      if (envMap['providers'] != null) envNames.add(envName);
     }
 
     var envList = querySelector('#environments');
@@ -171,6 +171,7 @@ class ActiveSessionsComponent implements OnActivate{
 
     for(var i=0; i<envList.length; i++){
       var envMap = envList[i];
+      if (envMap['providers'] == null) continue;
       var provList = envMap['providers'];
       for(var i=0;i<provList.length; i++){
         var provMap = provList[i];

@@ -13,10 +13,11 @@ type ConfigDataStore struct {
 	dataMap map[string]interface{}
 }
 
-func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool, servicesWanted ...string) {
+func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool, project string, servicesWanted ...string) {
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
-	dataPaths, err := getPathsFromService(mod, servicesWanted...)
+	dataPaths, err := getPathsFromProject(mod, project)
+
 	if err != nil {
 		panic(err)
 	}
@@ -24,10 +25,12 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 	valueMaps := [][]string{}
 	for _, path := range dataPaths {
 		//for each path, read the secrets there
+
 		secrets, err := mod.ReadData(path)
 		if err != nil {
 			panic(err)
 		}
+
 		//get the keys and values in secrets
 		for key, value := range secrets {
 			_, ok := value.(string)
@@ -47,10 +50,11 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 		}
 		if useDirs {
 			s := strings.Split(path, "/")
-			serviceDir := s[1]
+			projectDir := s[1]
+			serviceDir := s[2]
 			fileDir := ""
-			if len(s) > 3 {
-				i := 2
+			if len(s) > 4 {
+				i := 3
 				for i < len(s) {
 					fileDir = fileDir + "/" + s[i]
 					i = i + 1
@@ -58,7 +62,7 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 			} else {
 				fileDir = s[len(s)-1]
 			}
-			if len(fileDir) == 0 || len(serviceDir) == 0 {
+			if len(fileDir) == 0 || len(serviceDir) == 0 || len(projectDir) == 0 {
 				continue
 			}
 			values, _ := mod.ReadData(path)
@@ -68,13 +72,13 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 				valuesScrubbed[strings.Replace(k, ".", "_", -1)] = v
 			}
 			values = valuesScrubbed
-
 			// Substitute in secrets
 			for k, v := range values {
 				if link, ok := v.([]interface{}); ok {
 					values[k], _ = mod.ReadValue(link[0].(string), link[1].(string))
 				}
 			}
+			//not sure about this part with projects structure
 			if subDir, ok := cds.dataMap[serviceDir].(map[string]interface{}); ok {
 				subDir[fileDir] = values
 			} else if cds.dataMap[serviceDir] == nil {
@@ -96,8 +100,10 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 						if dirs[0] == "super-secrets" {
 							key := valueMap[1]
 							value, _ := mod.ReadValue(secretPath, key)
+
 							//put the original key with the correct value
 							cds.dataMap[ogKeys[i]] = value
+
 						}
 					} else {
 						//second element is the key
@@ -113,39 +119,39 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 	}
 }
 
-func getPathsFromService(mod *kv.Modifier, services ...string) ([]string, error) {
+func getPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
 	secrets, err := mod.List("templates")
 	if err != nil {
 		return nil, err
 	} else if secrets != nil {
-		availServices := secrets.Data["keys"].([]interface{})
-		//if services empty, use all available services
-		if len(services) > 0 {
-			servicesUsed := []interface{}{}
-			for _, service := range services {
-				service = service + "/"
-				serviceAvailable := false
-				for _, availService := range availServices {
-					if service == availService.(string) {
-						servicesUsed = append(servicesUsed, availService)
-						serviceAvailable = true
+		availProjects := secrets.Data["keys"].([]interface{})
+		//if projects empty, use all available projects
+		if len(projects) > 0 {
+			projectsUsed := []interface{}{}
+			for _, project := range projects {
+				project = project + "/"
+				projectAvailable := false
+				for _, availProject := range availProjects {
+					if project == availProject.(string) {
+						projectsUsed = append(projectsUsed, availProject)
+						projectAvailable = true
 					}
 				}
-				if !serviceAvailable {
-					fmt.Println(service + " is not an available service. No values found.")
+				if !projectAvailable {
+					fmt.Println(project + " is not an available project. No values found.")
 				}
 			}
-			availServices = servicesUsed
+			availProjects = projectsUsed
 		}
-		for _, service := range availServices {
-			path := "templates/" + service.(interface{}).(string)
+		for _, project := range availProjects {
+			path := "templates/" + project.(interface{}).(string)
 			paths = getPaths(mod, path, paths)
 			//don't add on to paths until you're sure it's an END path
 		}
 
-		//paths = getPaths(mod, availServices, paths)
+		//paths = getPaths(mod, availProjects, paths)
 		return paths, err
 	} else {
 		return nil, errors.New("no paths found from templates engine")
