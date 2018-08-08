@@ -155,4 +155,7 @@ select {
 .secret {
  font-weight: bold;
 }
+.fileEnd {
+  border-bottom: 1px solid black
+}
   
