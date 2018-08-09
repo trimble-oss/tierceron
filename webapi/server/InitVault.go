@@ -11,8 +11,8 @@ import (
 	"net/http"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
-	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	sys "bitbucket.org/dexterchaney/whoville/vaulthelper/system"
 	il "bitbucket.org/dexterchaney/whoville/vaultinit/initlib"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 )

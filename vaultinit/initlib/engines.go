@@ -1,9 +1,10 @@
 package initlib
 
 import (
-	"bitbucket.org/dexterchaney/whoville/utils"
-	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
 	"log"
+
+	"bitbucket.org/dexterchaney/whoville/utils"
+	sys "bitbucket.org/dexterchaney/whoville/vaulthelper/system"
 )
 
 var engines = [...]string{

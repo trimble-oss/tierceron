@@ -5,8 +5,8 @@ import "C"
 import (
 	"strings"
 
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	"bitbucket.org/dexterchaney/whoville/vaultconfig/utils"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 )
 
 //export ConfigTemplateLib

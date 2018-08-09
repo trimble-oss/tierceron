@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 )
 

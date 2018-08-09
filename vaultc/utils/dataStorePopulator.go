@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 )
 
 //ConfigDataStore stores the data needed to configure the specified template files

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
 )

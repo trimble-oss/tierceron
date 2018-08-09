@@ -7,7 +7,7 @@ import (
 	"text/template"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 )
 
 //ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.

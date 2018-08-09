@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
 )

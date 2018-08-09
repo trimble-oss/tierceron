@@ -1,13 +1,14 @@
 package initlib
 
 import (
-	"bitbucket.org/dexterchaney/whoville/utils"
-	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
-	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
+
+	"bitbucket.org/dexterchaney/whoville/utils"
+	sys "bitbucket.org/dexterchaney/whoville/vaulthelper/system"
+	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 )
 
 //UploadTokens accepts a file directory and vault object to upload tokens to. Logs to pased logger

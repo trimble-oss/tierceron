@@ -8,8 +8,8 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
-	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	sys "bitbucket.org/dexterchaney/whoville/vaulthelper/system"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 )
 

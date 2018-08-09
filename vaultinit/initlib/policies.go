@@ -1,11 +1,12 @@
 package initlib
 
 import (
-	"bitbucket.org/dexterchaney/whoville/utils"
-	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
 	"io/ioutil"
 	"log"
 	"path/filepath"
+
+	"bitbucket.org/dexterchaney/whoville/utils"
+	sys "bitbucket.org/dexterchaney/whoville/vaulthelper/system"
 )
 
 //UploadPolicies accepts a file directory and vault object to upload policies to. Logs to pased logger

@@ -1,12 +1,13 @@
 package initlib
 
 import (
-	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/validator"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	"errors"
 	"fmt"
 	"log"
+
+	"bitbucket.org/dexterchaney/whoville/utils"
+	"bitbucket.org/dexterchaney/whoville/validator"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 )
 
 // Runs the verification step from data in the seed file

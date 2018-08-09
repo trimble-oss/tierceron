@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	eUtils "bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
-	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
 	"bitbucket.org/dexterchaney/whoville/vaultconfig/utils"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	sys "bitbucket.org/dexterchaney/whoville/vaulthelper/system"
 )
 
 func main() {
