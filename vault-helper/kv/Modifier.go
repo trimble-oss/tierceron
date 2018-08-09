@@ -96,7 +96,7 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	}
 	secret, err := m.logical.Read(fullPath)
 	if secret == nil {
-		return nil, nil
+		return nil, err
 	}
 	if data, ok := secret.Data["data"].(map[string]interface{}); ok {
 		return data, err

@@ -15,7 +15,7 @@ import (
 	gql "github.com/graphql-go/graphql"
 )
 
-//Server implements the twirp api server endpoints
+// Server implements the twirp api server endpoints
 type Server struct {
 	VaultToken string
 	VaultAddr  string
@@ -23,7 +23,7 @@ type Server struct {
 	Log        *log.Logger
 }
 
-//NewServer Creates a new server struct and initializes the GraphQL schema
+// NewServer Creates a new server struct and initializes the GraphQL schema
 func NewServer(VaultAddr string, VaultToken string) *Server {
 	s := Server{}
 	s.VaultToken = VaultToken
@@ -33,7 +33,7 @@ func NewServer(VaultAddr string, VaultToken string) *Server {
 	return &s
 }
 
-//ListProjectTemplates lists the templates under the requested project
+// ListServiceTemplates lists the templates under the requested project
 func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb.ListResp, error) {
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
 	if err != nil {

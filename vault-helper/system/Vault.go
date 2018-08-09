@@ -47,6 +47,15 @@ func (v *Vault) GetToken() string {
 	return v.client.Token()
 }
 
+// GetTokenInfo fetches data regarding this token
+func (v *Vault) GetTokenInfo(tokenName string) (map[string]interface{}, error) {
+	token, err := v.client.Auth().Token().Lookup(tokenName)
+	if token == nil {
+		return nil, err
+	}
+	return token.Data, err
+}
+
 // RevokeToken If proper access given, revokes access of a token and all children
 func (v *Vault) RevokeToken(token string) error {
 	return v.client.Auth().Token().RevokeTree(token)
@@ -55,6 +64,12 @@ func (v *Vault) RevokeToken(token string) error {
 // RevokeSelf Revokes token of current client
 func (v *Vault) RevokeSelf() error {
 	return v.client.Auth().Token().RevokeSelf("")
+}
+
+// RenewSelf Renews the token associated with this vault struct
+func (v *Vault) RenewSelf(increment int) error {
+	_, err := v.client.Auth().Token().RenewSelf(increment)
+	return err
 }
 
 // CreateKVPath Creates a kv engine with the specified name and description
@@ -135,6 +150,55 @@ func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
 	token := api.TokenCreateRequest{}
 	yaml.Unmarshal(tokenfile, &token)
 	response, err := v.client.Auth().Token().Create(&token)
+	return response.Auth.ClientToken, err
+}
+
+// CreateTokenFromMap takes a map and generates a vault token, returning the token
+func (v *Vault) CreateTokenFromMap(data map[string]interface{}) (string, error) {
+	token := &api.TokenCreateRequest{}
+
+	// Parse input data and create request
+	if policies, ok := data["policies"].([]interface{}); ok {
+		newPolicies := []string{}
+		for _, p := range policies {
+			if newP, ok := p.(string); ok {
+				newPolicies = append(newPolicies, newP)
+			}
+		}
+		token.Policies = newPolicies
+	}
+	if meta, ok := data["meta"].(map[string]string); ok {
+		token.Metadata = meta
+	}
+	if TTL, ok := data["creation_ttl"].(string); ok {
+		token.TTL = TTL
+	}
+	if exTTL, ok := data["explicit_max_ttl"].(string); ok {
+		token.ExplicitMaxTTL = exTTL
+	}
+	if period, ok := data["period"].(string); ok {
+		token.Period = period
+	}
+	if noParent, ok := data["no_parent"].(bool); ok {
+		token.NoParent = noParent
+	}
+	if noDefault, ok := data["no_default_policy"].(bool); ok {
+		token.NoDefaultPolicy = noDefault
+	}
+	if displayName, ok := data["display_name"].(string); ok {
+		token.DisplayName = displayName
+	}
+	if numUses, ok := data["num_uses"].(int); ok {
+		token.NumUses = numUses
+	}
+	if renewable, ok := data["renewable"].(bool); ok {
+		token.Renewable = &renewable
+	}
+
+	response, err := v.client.Auth().Token().Create(token)
+	if response == nil {
+		return "", err
+	}
 	return response.Auth.ClientToken, err
 }
 
