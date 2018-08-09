@@ -1,0 +1,195 @@
+templates:
+  ServiceTech:
+    ServiceTechAPI:
+      hibernate:
+        url: [super-secrets/ServiceTechDB, url]
+        username: [super-secrets/ServiceTechDB, user]
+        password: [super-secrets/ServiceTechDB, pass]
+        sendGridApiKey: [super-secrets/SendGrid, ApiKey]  
+      config:
+        keyStorePath: [super-secrets/KeyStore, Path]
+        keyStorePassword: [super-secrets/KeyStore, Pass]
+    ServiceTechUI:
+      runtimeConfig:
+        serviceBaseUrl: [super-secrets/UIRuntimeConfig, url]
+        stage: [super-secrets/UIRuntimeConfig, dev]
+  Spectrum:
+    RestServices:
+      config:
+        url: [super-secrets/SpectrumDB_Rest, url]
+        username: [super-secrets/SpectrumDB_Rest, user]
+        password: [super-secrets/SpectrumDB_Rest, pass]
+
+        taskServer: [super-secrets/TaskServer, server]
+        taskPort: [super-secrets/TaskServer, port]
+        taskUser: [super-secrets/TaskServer, username]
+        taskPassword: [super-secrets/TaskServer, password]
+
+        keyStorePath: [super-secrets/KeyStore, Path]
+        keyStorePassword: [super-secrets/KeyStore, Pass]
+
+        soapUrl: [super-secrets/LegacyProIVAPI, url]
+        soapPort: [super-secrets/LegacyProIVAPI, port]
+        soapPrefix: [super-secrets/LegacyProIVAPI, prefix]
+
+        apiVersion: [super-secrets/APIInfo, apiVersion]
+        endpointValidationPath: [super-secrets/APIInfo, endpointValidationPath]
+        validateEndpointUrl: [super-secrets/APIInfo, validateEndpointUrl]
+        getEnterpriseRegistrationEndpointUrl: [super-secrets/APIInfo, getEnterpriseRegistrationEndpointUrl]
+        registerEndpointUrl: [super-secrets/APIInfo, registerEndpointUrl]
+        enterpriseByRegistrationKeyUrl: [super-secrets/APIInfo, enterpriseByRegistrationKeyUrl]
+        refreshEntityMappingsUrlTemplate: [super-secrets/APIInfo, refreshEntityMappingsUrlTemplate]
+
+        portalUri: [super-secrets/SpectrumInfo, portalUri]
+        spectrumServiceAuthUrl: [super-secrets/SpectrumInfo, spectrumServiceAuthUrl]
+
+        tokenAudience: [super-secrets/TeamInfo, tokenAudience]
+        serverToServerClientId: [super-secrets/TeamInfo, serverToServerClientId]
+        integrationAccessTokenIssuer: [super-secrets/TeamInfo, integrationAccessTokenIssuer]
+        accessTokenUrl: [super-secrets/TeamInfo, accessTokenUrl]
+        tokenIssuer: [super-secrets/TeamInfo, tokenIssuer]
+        serverToServerPublicKey: [super-secrets/TeamInfo, serverToServerPublicKey]
+        serverToServerClientSecret: [super-secrets/TeamInfo, serverToServerClientSecret]
+    SpectrumAurora:
+      context:
+        url: [super-secrets/SpectrumDB_Aurora, url]
+        username: [super-secrets/SpectrumDB_Aurora, user]
+        password: [super-secrets/SpectrumDB_Aurora, pass]
+        hosted_resourceRef_resRefName: [values/SpectrumDB_Pool, resRefName]
+    SpectrumForms:  
+      context:
+        url: [super-secrets/SpectrumDB_Forms, url]
+        username: [super-secrets/SpectrumDB_Forms, user]
+        password: [super-secrets/SpectrumDB_Forms, pass]
+        hosted_resourceRef_resRefName: [values/SpectrumDB_Pool, resRefName]
+    SpectrumDI:
+      SnowboundLicense:
+        LicensedTo: [super-secrets/SnowboundLicense, LicensedTo]
+        LicenseType: [super-secrets/SnowboundLicense, LicenseType]
+        Signature: [super-secrets/SnowboundLicense, Signature]
+      context:
+        url: [super-secrets/SpectrumDB_DI, url]
+        username: [super-secrets/SpectrumDB_DI, user]
+        password: [super-secrets/SpectrumDB_DI, pass]
+    SpectrumReports:
+      service-config:
+        applicationPort: [super-secrets/ReportsPorts, appPort]
+        adminPort: [super-secrets/ReportsPorts, adminPort]
+        server: [super-secrets/SpectrumDB_Reports, server]
+        user: [super-secrets/SpectrumDB_Reports, user]
+        password: [super-secrets/SpectrumDB_Reports, pass]
+        database: [super-secrets/SpectrumDB_Reports, database]
+
+values:
+  SpectrumDB_Pool:
+    resRefName: jdbc/SpectrumPool
+
+super-secrets:
+  APIInfo:
+    apiVersion: <apuVersion>
+    endpointValidationPath: <endpointValidationPath>
+    validateEndpointUrl: <validateEndpointUrl>
+    getEnterpriseRegistrationEndpointUrl: <getEnterpriseRegistrationEndpointUrl>
+    registerEndpointUrl: <registerEndpointUrl>
+    enterpriseByRegistrationKeyUrl: <enterpriseByRegistrationKeyUrl>
+    refreshEntityMappingsUrlTemplate: <refreshEntityMappingsUrlTemplate>
+  KeyStore:
+    Path: <Path>
+    Pass: <Pass>
+  LegacyProIVAPI:
+    url: https://www.host.com
+    port: '<port>'
+    prefix: /<prefix>/
+  ReportsPorts:
+    appPort: '<port>'
+    adminPort: '<port>'
+  SendGrid:
+    ApiKey: <API Key>
+  ServiceTechDB:
+    url: jdbc:mysql://db.host.com/Database
+    user: <user>
+    pass: <pass>
+  SpectrumDB_Aurora:
+    url: jdbc:sqlserver://db.host.com;DatabaseName=Database
+    user: <user>
+    pass: <pass>
+  SpectrumDB_DI:
+    url: jdbc:sqlserver://db.host.com;DatabaseName=Database
+    user: <user>
+    pass: <pass>
+  SpectrumDB_Forms:
+    url: jdbc:sqlserver://db.host.com;DatabaseName=Database
+    user: <user>
+    pass: <pass>
+  SpectrumDB_Reports:
+    url: jdbc:sqlserver://db.host.com;DatabaseName=Database
+    user: <user>
+    pass: <pass>
+    server: db.host.com
+    database: Database
+  SpectrumDB_Rest:
+    url: jdbc:sqlserver://db.host.com:8000;databaseName=Database
+    user: <user>
+    pass: <pass>
+  SpectrumDB_ST:
+    url: jdbc:sqlserver://db.host.com:8000;databaseName=Database
+    user: <user>
+    pass: <pass>
+  SpectrumInfo:
+    portalUri: https://www.host.com:8000/
+    spectrumServiceAuthUrl: https://www.host.com:8000/endpoint
+  SnowboundLicense:
+    LicensedTo: <LicensedTo>
+    LicenseType: <LicenseType>
+    Signature: <Signature>
+  TaskServer:
+    server: db.host.com
+    port: '8000'
+    username: '<username>'
+    password: '<password>'
+  TeamInfo:
+    tokenAudience: <tokenAudience>
+    serverToServerClientId: <serverToServerClientId>
+    integrationAccessTokenIssuer: <integrationAccessTokenIssuer>
+    accessTokenUrl: <accessTokenUrl>
+    tokenIssuer: <tokenIssuer>
+    serverToServerPublicKey: <serverToServerPublicKey>
+    serverToServerClientSecret: <serverToServerClientSecret>
+  UIRuntimeConfig:
+    url: https://api.host.com/
+    stage: <stage>
+
+value-metrics:    
+
+verification:
+  KeyStore:
+    type: KeyStore
+  SendGrid:
+    type: SendGridKey
+  # LegacyProIVAPI:
+  #   type: Soap
+  ServiceTechDB:
+    type: db
+  SpectrumDB_Aurora:
+    type: db
+  SpectrumDB_DI:
+    type: db
+  SpectrumDB_Forms:
+    type: db
+  SpectrumDB_Reports:
+    type: db
+  SpectrumDB_Rest:
+    type: db
+  SpectrumDB_ST:
+    type: db
+  # SnowboundLicense:
+  #   type: SnowboundLicense
+  # TaskServer:
+  #   type: TaskServer
+
+apiLogins:
+  meta:
+    authEndpoint: https://api.host.com:8000/serviceAuth
+    sessionDB: sqlserver://db.host.com;DatabaseName=Database
+    user: <user>
+    pass: <pass> 
