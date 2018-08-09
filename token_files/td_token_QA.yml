@@ -1,6 +1,0 @@
-policies: ["td_QA"]
-metadata:
-  user : "TDinator"
-
-ttl:  "336h"
-display_name: "TDinator Token"

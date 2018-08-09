@@ -13,7 +13,7 @@ import (
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	sys "bitbucket.org/dexterchaney/whoville/vault-helper/system"
-	il "bitbucket.org/dexterchaney/whoville/vault-init/initlib"
+	il "bitbucket.org/dexterchaney/whoville/vaultinit/initlib"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
 )
 
@@ -164,6 +164,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 //APILogin Verifies the user's login with the cubbyhole
 func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp, error) {
+
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)

@@ -1,13 +1,14 @@
 package initlib
 
 import (
-	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"bitbucket.org/dexterchaney/whoville/utils"
+	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 )
 
 func UploadTemplateDirectory(mod *kv.Modifier, dirName string) (error, []string) {
@@ -60,7 +61,10 @@ func UploadTemplates(mod *kv.Modifier, dirName string) (error, []string) {
 			// Seperate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
 			name = name[0 : len(name)-len(ext)]
-
+			fmt.Println("dirName")
+			fmt.Println(dirName)
+			fmt.Println("file name")
+			fmt.Println(file.Name())
 			// Extract values
 			extractedValues, err := utils.Parse(dirName+"/"+file.Name(), subDir, name)
 			if err != nil {

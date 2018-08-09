@@ -11,7 +11,7 @@ import (
 	"bitbucket.org/dexterchaney/whoville/vault-helper/kv"
 )
 
-//ConfigFromVault configures the templates in vault_templates and writes them to VaultConfig
+//ConfigFromVault configures the templates in vault_templates and writes them to vaultconfig
 func ConfigFromVault(token string, address string, env string, secretMode bool, servicesWanted []string, startDir string, endDir string) {
 
 	mod, err := kv.NewModifier(token, address)
