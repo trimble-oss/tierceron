@@ -79,6 +79,11 @@ templates:
         user: [super-secrets/SpectrumDB_Reports, user]
         password: [super-secrets/SpectrumDB_Reports, pass]
         database: [super-secrets/SpectrumDB_Reports, database]
+  Vault:
+    VaultAPI:
+      config:
+        oauthSecret: [super-secrets/VaultAPIOAuth, secret]
+      
 
 values:
   SpectrumDB_Pool:
@@ -155,6 +160,8 @@ super-secrets:
     tokenIssuer: <tokenIssuer>
     serverToServerPublicKey: <serverToServerPublicKey>
     serverToServerClientSecret: <serverToServerClientSecret>
+  VaultAPIOAuth:
+    secret: <vaultOauth>
   UIRuntimeConfig:
     url: https://api.host.com/
     stage: <stage>
