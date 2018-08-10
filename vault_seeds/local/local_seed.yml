@@ -50,27 +50,34 @@ templates:
         tokenIssuer: [super-secrets/TeamInfo, tokenIssuer]
         serverToServerPublicKey: [super-secrets/TeamInfo, serverToServerPublicKey]
         serverToServerClientSecret: [super-secrets/TeamInfo, serverToServerClientSecret]
-    SpectrumAurora:
+    SpectrumAurora: # Full path for aurora and forms cannot be stored in vault. The metadata gets messed up in vault at a certain depth
       context:
         url: [super-secrets/SpectrumDB_Aurora, url]
         username: [super-secrets/SpectrumDB_Aurora, user]
         password: [super-secrets/SpectrumDB_Aurora, pass]
         hosted_resourceRef_resRefName: [values/SpectrumDB_Pool, resRefName]
     SpectrumForms:  
-      context:
-        url: [super-secrets/SpectrumDB_Forms, url]
-        username: [super-secrets/SpectrumDB_Forms, user]
-        password: [super-secrets/SpectrumDB_Forms, pass]
-        hosted_resourceRef_resRefName: [values/SpectrumDB_Pool, resRefName]
+      src:
+        main:
+          webapp:
+            META-INF:
+              context:
+                url: [super-secrets/SpectrumDB_Forms, url]
+                username: [super-secrets/SpectrumDB_Forms, user]
+                password: [super-secrets/SpectrumDB_Forms, pass]
+                hosted_resourceRef_resRefName: [values/SpectrumDB_Pool, resRefName]
     SpectrumDI:
-      SnowboundLicense:
-        LicensedTo: [super-secrets/SnowboundLicense, LicensedTo]
-        LicenseType: [super-secrets/SnowboundLicense, LicenseType]
-        Signature: [super-secrets/SnowboundLicense, Signature]
-      context:
-        url: [super-secrets/SpectrumDB_DI, url]
-        username: [super-secrets/SpectrumDB_DI, user]
-        password: [super-secrets/SpectrumDB_DI, pass]
+      WebContent:
+        META-INF:
+          context:
+            url: [super-secrets/SpectrumDB_DI, url]
+            username: [super-secrets/SpectrumDB_DI, user]
+            password: [super-secrets/SpectrumDB_DI, pass]
+        WEB-INF:
+          SnowboundLicense:
+            LicensedTo: [super-secrets/SnowboundLicense, LicensedTo]
+            LicenseType: [super-secrets/SnowboundLicense, LicenseType]
+            Signature: [super-secrets/SnowboundLicense, Signature]
     SpectrumReports:
       service-config:
         applicationPort: [super-secrets/ReportsPorts, appPort]
