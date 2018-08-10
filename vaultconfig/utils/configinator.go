@@ -43,7 +43,7 @@ func ConfigFromVault(token string, address string, env string, secretMode bool, 
 		}
 	}
 	//print that we're done
-	endDir = strings.Split(endDir, "/")[0]
+	//endDir = strings.Split(endDir, "/")[0]
 	fmt.Println("templates configured and written to ", endDir)
 }
 func writeToFile(data string, path string) {

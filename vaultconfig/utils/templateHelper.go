@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"strings"
 	"text/template"
@@ -27,7 +28,11 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 	extra := ""
 	// Please rework... Urg...
 	for i, component := range s {
-		if component == "vault_templates" || component == project || component == service || component == "" || i == (len(s)-1) {
+		if component == "vault_templates" {
+			extra = ""
+			continue
+		}
+		if component == project || component == service || component == "" || i == (len(s)-1) {
 			continue
 		}
 		if extra == "" {
@@ -50,7 +55,7 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 //PopulateTemplate takes an empty template and a modifier.
 //It populates the template and returns it in a string.
 func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bool, project string, service string, filename string) string {
-
+	fmt.Println("filename is " + filename)
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
 	cds.init(modifier, secretMode, true, project, service)
