@@ -29,8 +29,8 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 		if userPaths == nil {
 			continue
 		}
-		if localEnvs, ok := userPaths.Data["keys"].([]interface{}); ok {
-			for _, env := range localEnvs {
+		if localEnvs, ok := userPaths.Data["keys"]; ok {
+			for _, env := range localEnvs.([]interface{}) {
 				envStrings = append(envStrings, strings.Trim("local/"+e+"/"+env.(string), "/"))
 			}
 		}
