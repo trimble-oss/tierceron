@@ -58,7 +58,7 @@ func (s *Server) getActiveSessions(env string) ([]Session, error) {
 	defer rows.Close()
 
 	var sessions []Session
-	var id int = 0
+	var id int
 	for rows.Next() {
 		var name string
 		var loggedIn string
@@ -118,7 +118,7 @@ func (s *Server) getVaultSessions(env string) ([]Session, error) {
 	mod.Env = env
 
 	// Pass through all registered users
-	var id int = 0
+	var id int
 	if users, ok := paths.Data["keys"].([]interface{}); ok {
 		for _, user := range users {
 			if user == "meta" {

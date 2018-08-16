@@ -17,10 +17,11 @@ import (
 
 // Server implements the twirp api server endpoints
 type Server struct {
-	VaultToken string
-	VaultAddr  string
-	GQLSchema  gql.Schema
-	Log        *log.Logger
+	VaultToken          string
+	VaultAddr           string
+	VaultAPITokenSecret []byte
+	GQLSchema           gql.Schema
+	Log                 *log.Logger
 }
 
 // NewServer Creates a new server struct and initializes the GraphQL schema
@@ -29,8 +30,24 @@ func NewServer(VaultAddr string, VaultToken string) *Server {
 	s.VaultToken = VaultToken
 	s.VaultAddr = VaultAddr
 	s.Log = log.New(os.Stdout, "[INFO]", log.LstdFlags)
+	s.VaultAPITokenSecret = nil
 
 	return &s
+}
+
+// InitConfig initializes configuration information for the server.
+func (s *Server) InitConfig(env string) error {
+	connInfo, err := s.GetConfig(env, "apiLogins/meta")
+	if err != nil {
+		return err
+	}
+	tokenSecretString, ok := connInfo["vaultApiTokenSecret"].(string)
+	if !ok {
+		return fmt.Errorf("Missing vaultApiTokenSecret")
+	}
+
+	s.VaultAPITokenSecret = []byte(tokenSecretString)
+	return nil
 }
 
 // ListServiceTemplates lists the templates under the requested project
@@ -335,10 +352,16 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoPar
 	return &pb.NoParams{}, err
 }
 
+// ResetServer resets vault token.
 func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParams, error) {
 	s.VaultToken = req.PrivToken
+	if s.VaultAPITokenSecret == nil {
+		s.InitConfig("dev")
+	}
 	return &pb.NoParams{}, nil
 }
+
+// CheckConnection checks the server connection
 func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.CheckConnResp, error) {
 	if len(s.VaultToken) == 0 {
 		return &pb.CheckConnResp{

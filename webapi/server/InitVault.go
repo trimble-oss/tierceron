@@ -129,6 +129,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	s.Log.Println("Init Log \n" + logBuffer.String())
 	s.InitGQL()
+	s.InitConfig("dev")
 
 	res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password, Environment: req.Env})
 	if err != nil {

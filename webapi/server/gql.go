@@ -27,7 +27,7 @@ type Env struct {
 	Providers []Provider `json:"providers"`
 }
 
-//Service represents an service that contains multiple files
+//Project represents a project that contains multiple files
 type Project struct {
 	EnvID    int       `json:"envID"`
 	ID       int       `json:"id"`
@@ -35,7 +35,7 @@ type Project struct {
 	Services []Service `json:"files"`
 }
 
-//Project represents a project that contains multiple files
+//Service represents an service that contains multiple files
 type Service struct {
 	EnvID  int    `json:"envID"`
 	ProjID int    `json:"projID"`
