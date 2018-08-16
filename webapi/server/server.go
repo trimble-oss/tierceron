@@ -39,14 +39,17 @@ func NewServer(VaultAddr string, VaultToken string) *Server {
 func (s *Server) InitConfig(env string) error {
 	connInfo, err := s.GetConfig(env, "apiLogins/meta")
 	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
 		return err
 	}
-	tokenSecretString, ok := connInfo["vaultApiTokenSecret"].(string)
+	vaultAPITokenSecretString, ok := connInfo["vaultApiTokenSecret"].(string)
 	if !ok {
-		return fmt.Errorf("Missing vaultApiTokenSecret")
+		err := fmt.Errorf("Missing vaultApiTokenSecret")
+		utils.LogErrorObject(err, s.Log, false)
+		return err
 	}
 
-	s.VaultAPITokenSecret = []byte(tokenSecretString)
+	s.VaultAPITokenSecret = []byte(vaultAPITokenSecretString)
 	return nil
 }
 
@@ -355,6 +358,7 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoPar
 // ResetServer resets vault token.
 func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParams, error) {
 	s.VaultToken = req.PrivToken
+
 	if s.VaultAPITokenSecret == nil {
 		s.InitConfig("dev")
 	}
