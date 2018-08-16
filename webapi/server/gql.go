@@ -125,34 +125,21 @@ func (s *Server) InitGQL() {
 		return
 	}
 
-	// Get spectrum sessions
-	spctmSessions["dev"], err = s.getActiveSessions("dev")
-	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (Spectrum dev sessions not added)"}, s.Log, false)
-		return
-	}
-
-	spctmSessions["QA"], err = s.getActiveSessions("QA")
-	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (Spectrum QA sessions not added)"}, s.Log, false)
-		return
-	}
-
-	// Get vault sessions
-	vaultSessions["dev"], err = s.getVaultSessions("dev")
-	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (Vault dev sessions not added)"}, s.Log, false)
-		return
-	}
-
-	vaultSessions["QA"], err = s.getVaultSessions("QA")
-	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (Vault QA sessions not added)"}, s.Log, false)
-		return
+	envStrings := []string{"dev", "QA", "RQA", "staging"}
+	for _, e := range envStrings {
+		// Get spectrum sessions
+		spctmSessions[e], err = s.getActiveSessions(e)
+		if err != nil {
+			utils.LogErrorObject(err, s.Log, false)
+			utils.LogWarningsObject([]string{fmt.Sprintf("GraphQL MAY not initialized (Spectrum %s sessions not added)", e)}, s.Log, false)
+			return
+		}
+		vaultSessions[e], err = s.getVaultSessions(e)
+		if err != nil {
+			utils.LogErrorObject(err, s.Log, false)
+			utils.LogWarningsObject([]string{fmt.Sprintf("GraphQL MAY not initialized (Vault %s sessions not added)", e)}, s.Log, false)
+			return
+		}
 	}
 
 	// Merge data into one nested structure
@@ -655,7 +642,7 @@ func (s *Server) InitGQL() {
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						envs := []Env{}
 						for _, e := range vaultQL.Envs {
-							if e.Name == "dev" || e.Name == "QA" {
+							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "staging" {
 								envs = append(envs, e)
 							} else if e.Name == "local/"+params.Context.Value("user").(string) {
 								e.Name = "local"

@@ -154,7 +154,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		return nil, err
 	}
 	environments := []*pb.ValuesRes_Env{}
-	envStrings := []string{"dev", "QA"}
+	envStrings := []string{"dev", "QA", "RQA", "staging"}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
 		userPaths, err := mod.List("values/")
