@@ -14,6 +14,16 @@ func CheckError(err error, exit bool) {
 }
 
 // CheckWarnings Checks warnings returned from various vault relation operations
+func CheckWarning(warning string, exit bool) {
+	if len(warning) > 0 {
+		fmt.Println(warning)
+		if exit {
+			os.Exit(1)
+		}
+	}
+}
+
+// CheckWarnings Checks warnings returned from various vault relation operations
 func CheckWarnings(warnings []string, exit bool) {
 	if len(warnings) > 0 {
 		for _, w := range warnings {
