@@ -121,11 +121,12 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	secretID, err := v.GetSecretID("bamboo")
 	utils.LogErrorObject(err, logger, false)
 
+	s.Log.Println("Init Log \n" + logBuffer.String())
+
 	logger.SetPrefix("[AUTH]")
 	logger.Printf("Role ID: %s\n", roleID)
 	logger.Printf("Secret ID: %s\n", secretID)
 
-	s.Log.Println("Init Log \n" + logBuffer.String())
 	s.InitGQL()
 	s.InitConfig("dev")
 
