@@ -357,7 +357,9 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoPar
 
 // ResetServer resets vault token.
 func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParams, error) {
-	s.VaultToken = req.PrivToken
+	if s.VaultToken == "" {
+		s.VaultToken = req.PrivToken
+	}
 
 	if s.VaultAPITokenSecret == nil {
 		s.InitConfig("dev")
