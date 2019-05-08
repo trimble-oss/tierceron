@@ -1,4 +1,4 @@
-GOPATH=/home/mjrieke/workspace/go/:$(shell pwd)/vendor:$(shell pwd)
+GOPATH=/mnt/c/Users/robert.simons/go/:$(shell pwd)/vendor:$(shell pwd)
 GOBIN=$(shell pwd)/bin
 GOFILES=$(wildcard *.go)
 
