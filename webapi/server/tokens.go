@@ -16,7 +16,7 @@ import (
 func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, error) {
 	tokenSecret := s.VaultAPITokenSecret
 	currentTime := time.Now().Unix()
-	expTime := currentTime + 24*60*60
+	expTime := currentTime + 365*24*60*60
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  id,
