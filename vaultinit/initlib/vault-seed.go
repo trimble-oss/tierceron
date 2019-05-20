@@ -17,7 +17,7 @@ type seedCollection struct {
 	data map[interface{}]interface{}
 }
 
-// Used for containing the actual paths and vlues to vault
+// Used for containing the actual paths and values to vault
 type writeCollection struct {
 	path string
 	data map[string]interface{}
