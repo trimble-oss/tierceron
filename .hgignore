@@ -35,3 +35,7 @@ vaultui/.dart_tool
 vaultui/build
 vaultui/**
 rpc/apinator
+apiRouter
+vaultUI/.packages
+vaultUI/pubspec.lock
+vaultui
