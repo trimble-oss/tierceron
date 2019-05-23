@@ -31,22 +31,27 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 	files, err := ioutil.ReadDir(dir)
 	utils.LogErrorObject(err, logger, true)
 
-	// Iterate through all services
+	// T/S - 5/23
 	for _, file := range files {
-		if file.IsDir() {
-			// Step over directories
-			continue
-		}
-		// Get and check file extension (last substring after .)
-		ext := filepath.Ext(file.Name())
-		if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
-			logger.Printf("\tFound seed file: %s\n", file.Name())
-			path := dir + "/" + file.Name()
-			SeedVaultFromFile(path, addr, token, env, logger)
-		}
+		if file.Name() == env {
+			logger.Println("\tStepping into: " + file.Name())
 
+			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + file.Name())
+			utils.LogErrorObject(err, logger, true)
+
+			for _, fileSteppedInto := range filesSteppedInto {
+				ext := filepath.Ext(fileSteppedInto.Name())
+				if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
+					logger.Println("\t\t" + fileSteppedInto.Name())
+					logger.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
+					path := dir + "/" + file.Name() + "/" + fileSteppedInto.Name()
+					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
+
+					SeedVaultFromFile(path, addr, token, env, logger)
+				}
+			}
+		}
 	}
-
 }
 
 //SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
