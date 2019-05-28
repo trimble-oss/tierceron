@@ -25,8 +25,10 @@ public/
 vault_seeds/dev
 vault_seeds/QA
 local_vault.hcl
-vault_seeds\local2\local_seed.yml
-vault_seeds
+vault_seeds/local
+vault_seeds/**
+vault_seeds/RQA
+vault_seeds/staging
 certs/
 bin/
 distrib/
