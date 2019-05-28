@@ -33,7 +33,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 
 	// T/S - 5/23
 	for _, file := range files {
-		if file.Name() == env {
+		if file.Name() == env || (strings.HasPrefix(env, "local") && file.Name() == "local"){
 			logger.Println("\tStepping into: " + file.Name())
 
 			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + file.Name())
