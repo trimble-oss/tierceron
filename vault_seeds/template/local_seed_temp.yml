@@ -113,9 +113,9 @@ values:
     resRefName: <resRefName>
   SpectrumAPIM:
     Auth:
-      viewpointPlatformIdentity: https://voidentity-develop.azurewebsites.net
-      viewpointPlatformDiscovery: /.well-known/openid-configuration
-      viewpointPlatformClientId: spectrum-web-develop
+      viewpointPlatformIdentity: <viewpointPlatformIdentity>
+      viewpointPlatformDiscovery: <viewpointPlatformDiscovery>
+      viewpointPlatformClientId: <viewpointPlatformClientId>
 
 super-secrets:
   APIInfo:
