@@ -11,13 +11,20 @@ templates:
         keyStorePassword: [super-secrets/KeyStore, Pass]
     ServiceTechAPIM:
       hibernate:
-        url: [super-secrets/ServiceTechDB, url]
-        username: [super-secrets/ServiceTechDB, user]
-        password: [super-secrets/ServiceTechDB, pass]
+        url: [super-secrets/ServiceTechAPIMDB, url]
+        username: [super-secrets/ServiceTechAPIMDB, user]
+        password: [super-secrets/ServiceTechAPIMDB, pass]
         sendGridApiKey: [super-secrets/SendGrid, ApiKey]  
       config:
         keyStorePath: [super-secrets/KeyStore, Path]
         keyStorePassword: [super-secrets/KeyStore, Pass]
+        auth_viewpointPlatformIdentity: [values/SpectrumAPIM/Auth, viewpointPlatformIdentity]
+        auth_viewpointPlatformDiscovery: [values/SpectrumAPIM/Auth, viewpointPlatformDiscovery]
+        auth_viewpointPlatformClientId: [values/SpectrumAPIM/Auth, viewpointPlatformClientId]
+        auth_viewpointApiScopeSecret: [super-secrets/ServiceTechAPIMInfo, viewpointApiScopeSecret] 
+      newrelic:
+        app_name: [super-secrets/ServiceTechAPIMInfo, newrelicAppName]
+        license_key: [super-secrets/ServiceTechAPIMInfo, newrelicLicenseKey]
     ServiceTechUI:
       runtimeConfig:
         serviceBaseUrl: [super-secrets/UIRuntimeConfig, url]
@@ -104,6 +111,11 @@ templates:
 values:
   SpectrumDB_Pool:
     resRefName: <resRefName>
+  SpectrumAPIM:
+    Auth:
+      viewpointPlatformIdentity: https://voidentity-develop.azurewebsites.net
+      viewpointPlatformDiscovery: /.well-known/openid-configuration
+      viewpointPlatformClientId: spectrum-web-develop
 
 super-secrets:
   APIInfo:
@@ -127,6 +139,10 @@ super-secrets:
   SendGrid:
     ApiKey: <API Key>
   ServiceTechDB:
+    url: <url>
+    user: <user>
+    pass: <pass>
+  ServiceTechAPIMDB:
     url: <url>
     user: <user>
     pass: <pass>
@@ -159,6 +175,10 @@ super-secrets:
   SpectrumInfo:
     portalUri: <portalUri>
     spectrumServiceAuthUrl: <spectrumServiceAuthUrl>
+  ServiceTechAPIMInfo:
+    viewpointApiScopeSecret: <viewpointApiScopeSecret>
+    newrelicAppName: <newrelicAppName>
+    newrelicLicenseKey: <newrelicLicenseKey>
   SnowboundLicense:
     LicensedTo: <LicensedTo>
     LicenseType: <LicenseType>
