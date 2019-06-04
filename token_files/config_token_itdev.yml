@@ -1,0 +1,6 @@
+policies: ["config_itdev"]
+metadata:
+  user : "Configinator"
+
+ttl: "8760h"
+display_name: "Configinator Token"
