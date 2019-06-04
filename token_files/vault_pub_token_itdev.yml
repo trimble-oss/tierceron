@@ -1,6 +1,0 @@
-policies: ["vault_pub_itdev"]
-metadata:
-  user : "VaultPub"
-
-ttl:  "8760h"
-display_name: "VaultPub Token"
