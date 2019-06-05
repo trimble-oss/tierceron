@@ -100,7 +100,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	envStrings := []string{"dev", "QA", "RQA", "itdev", "staging"}
 	for _, e := range envStrings {
 		mod.Env = e
-		err, warn = il.UploadTemplateDirectory(mod, templatePath)
+		err, warn = il.UploadTemplateDirectory(mod, templatePath, logger)
 		utils.LogErrorObject(err, logger, false)
 		utils.LogWarningsObject(warn, logger, false)
 	}
