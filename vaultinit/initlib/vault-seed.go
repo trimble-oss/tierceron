@@ -33,7 +33,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 
 	// T/S - 5/23
 	for _, file := range files {
-		if file.Name() == env || (strings.HasPrefix(env, "local") && file.Name() == "local"){
+		if file.Name() == env || (strings.HasPrefix(env, "local") && file.Name() == "local") {
 			logger.Println("\tStepping into: " + file.Name())
 
 			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + file.Name())
@@ -112,7 +112,9 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	}
 
 	// Write values to vault
-	logger.Println("Writing seed values to paths")
+	logger.Println("Seeding configuration data for the following templates:")
+	logger.Println("Please verify that these templates exist in each service")
+
 	mod, err := kv.NewModifier(token, vaultAddr) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
@@ -120,11 +122,15 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 		// Output data being written
 		// Write data and ouput any errors
 		warn, err := mod.Write(entry.path, entry.data)
+
 		utils.LogWarningsObject(warn, logger, false)
 		utils.LogErrorObject(err, logger, false)
 		// Update value metrics to reflect credential use
 		root := strings.Split(entry.path, "/")[0]
 		if root == "templates" {
+			//Printing out path of each entry so that users can verify that folder structure in seed files are correct
+
+			logger.Println("vault_" + entry.path + ".*.tmpl")
 			for _, v := range entry.data {
 				if templateKey, ok := v.([]interface{}); ok {
 					metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
