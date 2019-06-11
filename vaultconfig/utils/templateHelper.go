@@ -69,6 +69,13 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 		}
 		var doc bytes.Buffer
 		//configure the template
+
+		//Check if filename exists in values map
+		_, data := values[filename]
+		if data == false {
+			fmt.Println("Filename does not exist in values. Please check seed files to verify that folder structures are correct.")
+		}
+		fmt.Println(values[filename])
 		err = t.Execute(&doc, values[filename])
 		str = doc.String()
 		if err != nil {
