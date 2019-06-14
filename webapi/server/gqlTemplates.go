@@ -120,7 +120,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 										if key, ok := val[1].(string); ok {
 											value, err := mod.ReadValue(fullPath, key)
 											if err == nil && value != "" {
-												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: value, Source: "templates"})
+												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: value, Source: "value"})
 											}
 										} else {
 											continue
