@@ -7,13 +7,13 @@ ul {
   padding: 5px 20px 5px 20px;
   margin-top: 5px;
 }
+
 .redirect-button {
-  width: 20%;
-  float: right;
-  /* padding: 5px 20px 5px 20px; */
+  width: 14%; 
   margin: 8px;
   text-align: center;
   border-radius: 4px;
+  display: inline-block;
 }
 h1 {
   margin: 8px;
