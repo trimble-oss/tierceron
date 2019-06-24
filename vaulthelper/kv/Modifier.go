@@ -62,13 +62,17 @@ func NewModifier(token string, address string) (*Modifier, error) {
 func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, error) {
 	// Wrap data and send
 	sendData := map[string]interface{}{"data": data}
+
 	// Create full path
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	if len(pathBlocks) == 1 {
 		pathBlocks[0] += "/"
 	}
 	fullPath := pathBlocks[0] + "data/"
-	if !noEnvironments[pathBlocks[0]] {
+	if !noEnvironments[pathBlocks[0]] { //if neither templates nor cubbyhole
+		fullPath += m.Env + "/"
+
+	} else if strings.HasPrefix(m.Env, "local") { //if local environment, add env to fullpath
 		fullPath += m.Env + "/"
 	}
 	if len(pathBlocks) > 1 {
@@ -89,6 +93,8 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	fullPath := pathBlocks[0] + "data/"
 	if !noEnvironments[pathBlocks[0]] {
+		fullPath += m.Env + "/"
+	} else if strings.HasPrefix(m.Env, "local") { //if local environment, add env to retrieve correct path mod.Write wrote to
 		fullPath += m.Env + "/"
 	}
 	if len(pathBlocks) > 1 {
