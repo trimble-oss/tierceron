@@ -155,7 +155,15 @@ select {
 .secret {
  font-weight: bold;
 }
+
 .fileEnd {
   border-bottom: 1px solid black
 }
+
+.details {
+  display: inline-block; 
+  margin-left: 15%;
+}
+
+
   
