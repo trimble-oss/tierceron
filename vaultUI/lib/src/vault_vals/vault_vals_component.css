@@ -160,10 +160,34 @@ select {
   border-bottom: 1px solid black
 }
 
-.details {
-  display: inline-block; 
-  margin-left: 15%;
+.details{
+  display: inline-block;
+  margin-left: 3%;
 }
+
+.dropdown{ 
+  display: none;
+  position: absolute;
+  margin-left: 3%;
+  background-color: #f0f8ff;
+  text-align: -webkit-auto;
+}
+
+.arrow{
+  border: solid black;
+  border-width: 0 2px 2px 0;
+  display: inline-block;
+  padding: 3px;
+   transform: rotate(-45deg);
+  -webkit-transform: rotate(-45deg);
+}
+
+.details:hover>.dropdown{ 
+  display: block;
+  color: blue;
+}
+
+
 
 
   
