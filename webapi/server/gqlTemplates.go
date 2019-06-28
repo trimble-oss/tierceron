@@ -19,7 +19,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 		return nil, err
 	}
 
-	envStrings := []string{"dev", "QA", "RQA", "itdev", "staging"}
+	envStrings := []string{"dev", "QA", "RQA", "itdev", "servicepack", "staging"}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
 		userPaths, err := mod.List("values/")

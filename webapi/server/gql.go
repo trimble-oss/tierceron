@@ -125,7 +125,7 @@ func (s *Server) InitGQL() {
 		return
 	}
 
-	envStrings := []string{"dev", "QA", "RQA", "itdev", "staging"}
+	envStrings := []string{"dev", "QA", "RQA", "itdev", "servicepack", "staging"}
 	for _, e := range envStrings {
 		// Get spectrum sessions
 		spctmSessions[e], err = s.getActiveSessions(e)
@@ -177,7 +177,6 @@ func (s *Server) InitGQL() {
 			serviceList := append([]Service{}, projectQL.Services...)
 			// Project
 			for _, service := range project.Services {
-
 				var serviceQL *Service
 				if serviceIndices[service.Name] != nil { // Get a reference to the existing serice
 					index := serviceIndices[service.Name].index
@@ -187,7 +186,6 @@ func (s *Server) InitGQL() {
 					serviceList = append(serviceList, Service{ID: len(serviceList), EnvID: envQL.ID, ProjID: projectQL.ID, Name: service.Name, Files: []File{}})
 					serviceQL = &serviceList[len(serviceList)-1]
 				}
-
 				// Files
 				fileIndices := serviceIndices[service.Name].children
 				fileList := append([]File{}, serviceQL.Files...)
@@ -201,13 +199,11 @@ func (s *Server) InitGQL() {
 						fileList = append(fileList, File{ID: len(fileList), EnvID: envQL.ID, ProjID: projectQL.ID, ServID: serviceQL.ID, Name: file.Name, Values: []Value{}})
 						fileQL = &fileList[len(fileList)-1]
 					}
-
 					// Values
 					valList := fileQL.Values
 					for _, val := range file.Values {
 						valQL := Value{ID: len(valList), EnvID: envQL.ID, ProjID: projectQL.ID, ServID: serviceQL.ID, FileID: fileQL.ID, Key: val.Key, Value: val.Value, Source: val.Source}
 						valList = append(valList, valQL)
-
 					}
 					(*fileQL).Values = valList
 				}
@@ -644,7 +640,7 @@ func (s *Server) InitGQL() {
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						envs := []Env{}
 						for _, e := range vaultQL.Envs {
-							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "itdev" || e.Name == "staging" {
+							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "itdev" || e.Name == "servicepack" || e.Name == "staging" {
 								envs = append(envs, e)
 							} else if e.Name == "local/"+params.Context.Value("user").(string) {
 								e.Name = "local"
