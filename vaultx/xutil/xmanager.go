@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
+	"gopkg.in/yaml.v2"
 )
 
 //TODO
@@ -30,12 +31,50 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 			}
 		}
 		if dirIndex != -1 {
-			configuredSeed := ToSeed(templatePath, endPaths[i], secretMode, s[dirIndex+1], s[dirIndex+2])
-			writeToFile(configuredSeed, endPaths[i])
+			interfaceTemplateSection, valueSection, secretSection := ToSeed(templatePath, logger)
+
+			template, errT := yaml.Marshal(interfaceTemplateSection)
+			value, errV := yaml.Marshal(valueSection)
+			secret, errS := yaml.Marshal(secretSection)
+
+			if errT != nil {
+				fmt.Println(errT)
+			}
+
+			if errV != nil {
+				fmt.Println(errV)
+			}
+
+			if errS != nil {
+				fmt.Println(errS)
+			}
+
+			seedFile := string(template) + "\n\n\n" + string(value) + "\n\n\n" + string(secret)
+
+			writeToFile(seedFile, endPaths[i])
 		} else {
 			//assume the starting directory was vault_templates
-			configuredSeed := ToSeed(templatePath, endPaths[i], secretMode, s[1], s[2])
-			writeToFile(configuredSeed, endPaths[i])
+			interfaceTemplateSection, valueSection, secretSection := ToSeed(templatePath, logger)
+
+			template, errT := yaml.Marshal(interfaceTemplateSection)
+			value, errV := yaml.Marshal(valueSection)
+			secret, errS := yaml.Marshal(secretSection)
+
+			if errT != nil {
+				fmt.Println(errT)
+			}
+
+			if errV != nil {
+				fmt.Println(errV)
+			}
+
+			if errS != nil {
+				fmt.Println(errS)
+			}
+
+			seedFile := string(template) + "\n\n\n" + string(value) + "\n\n\n" + string(secret)
+
+			writeToFile(seedFile, endPaths[i])
 		}
 	}
 	//print that we're done
