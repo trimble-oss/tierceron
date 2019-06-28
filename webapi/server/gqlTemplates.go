@@ -19,7 +19,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 		return nil, err
 	}
 
-	envStrings := []string{"dev", "QA", "RQA", "itdev", "staging"}
+	envStrings := []string{"dev", "QA", "RQA", "itdev", "servicepack", "staging"}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
 		userPaths, err := mod.List("values/")
@@ -120,7 +120,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 										if key, ok := val[1].(string); ok {
 											value, err := mod.ReadValue(fullPath, key)
 											if err == nil && value != "" {
-												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: value, Source: "templates"})
+												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: value, Source: "value"})
 											}
 										} else {
 											continue

@@ -154,7 +154,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		return nil, err
 	}
 	environments := []*pb.ValuesRes_Env{}
-	envStrings := []string{"dev", "QA", "RQA", "itdev", "staging"}
+	envStrings := []string{"dev", "QA", "RQA", "itdev", "servicepack", "staging"}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
 		userPaths, err := mod.List("values/")
@@ -200,10 +200,6 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 				files := []*pb.ValuesRes_Env_Project_Service_File{}
 				//get a list of files under project
 				filePaths, err := s.getPaths(mod, servicePath)
-				if mod.Env == "dev" {
-					//fmt.Println("filePaths")
-					//fmt.Println(filePaths)
-				}
 				if err != nil {
 					utils.LogErrorObject(err, s.Log, false)
 					return nil, err
@@ -219,7 +215,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 						return nil, err
 					}
 					if valueMap != nil {
-						
+
 						for key, value := range valueMap {
 							kv := &pb.ValuesRes_Env_Project_Service_File_Value{Key: key, Value: value.(string), Source: "value"}
 							vals = append(vals, kv)
