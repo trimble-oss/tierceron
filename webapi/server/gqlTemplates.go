@@ -76,25 +76,27 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 						if err != nil {
 							return nil, err
 						}
-
-						if vSecret == nil {
-							return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
-						}
-
-						// Construct a string -> bool map to track accessable environments
 						availableSecrets := map[string]bool{}
-						if vDataKeys, ok := vSecret.Data["keys"]; ok {
-							if vKeys, okKeys := vDataKeys.([]interface{}); okKeys {
-								for _, k := range vKeys {
-									if group, ok := k.(string); ok {
-										availableSecrets[group] = true
+						if vSecret == nil {
+							s.Log.Println("Unable to retrieve accessible secret groups for", env)
+							continue
+
+						} else {
+							// Construct a string -> bool map to track accessable environments
+
+							if vDataKeys, ok := vSecret.Data["keys"]; ok {
+								if vKeys, okKeys := vDataKeys.([]interface{}); okKeys {
+									for _, k := range vKeys {
+										if group, ok := k.(string); ok {
+											availableSecrets[group] = true
+										}
 									}
+								} else {
+									return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
 								}
 							} else {
 								return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
 							}
-						} else {
-							return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
 						}
 
 						for k, v := range kvs {
