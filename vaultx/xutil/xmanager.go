@@ -18,7 +18,6 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 	//get files from directory
 	templatePaths, endPaths := getDirFiles(startDir, endDir)
 	//configure each template in directory
-	fmt.Println(templatePaths)
 	for i, templatePath := range templatePaths {
 
 		//check for template_files directory here
@@ -106,7 +105,7 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 	}
 	for _, file := range files {
 		//add this directory to path names
-		filePath := dir + "/" + file.Name()
+		filePath := dir + file.Name()
 		//take off .tmpl extension
 		filename := file.Name()
 		extension := filepath.Ext(filename)
