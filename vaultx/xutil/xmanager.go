@@ -19,7 +19,6 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 	templatePaths, endPaths := getDirFiles(startDir, endDir)
 	//configure each template in directory
 	for i, templatePath := range templatePaths {
-
 		//check for template_files directory here
 		s := strings.Split(templatePath, "/")
 		//figure out which path is vault_templates
@@ -77,7 +76,6 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 		}
 	}
 	//print that we're done
-	//endDir = strings.Split(endDir, "/")[0]
 	fmt.Println("seed created and written to ", endDir)
 }
 func writeToFile(data string, path string) {
@@ -105,10 +103,14 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 	}
 	for _, file := range files {
 		//add this directory to path names
-		filePath := dir + file.Name()
-		//take off .tmpl extension
 		filename := file.Name()
 		extension := filepath.Ext(filename)
+		filePath := dir + file.Name()
+		if extension == "" {
+			//newrelic folder goes in here
+			filePath += "/"
+		}
+		//take off .tmpl extension
 		endPath := ""
 		if extension == ".tmpl" {
 			name := filename[0 : len(filename)-len(extension)]
