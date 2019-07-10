@@ -107,7 +107,7 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 		extension := filepath.Ext(filename)
 		filePath := dir + file.Name()
 		if extension == "" {
-			//newrelic folder goes in here
+			//if subfolder add /
 			filePath += "/"
 		}
 		//take off .tmpl extension
