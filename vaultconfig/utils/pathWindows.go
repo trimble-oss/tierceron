@@ -2,4 +2,4 @@
 
 package utils
 
-const CERT_PATH = "%USERPROFILE%/.vault/config"
+const CERT_PATH = "/mnt/c/Users/"
