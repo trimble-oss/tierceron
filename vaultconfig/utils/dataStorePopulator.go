@@ -23,6 +23,7 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 	}
 	ogKeys := []string{}
 	valueMaps := [][]string{}
+
 	for _, path := range dataPaths {
 		//for each path, read the secrets there
 
@@ -117,6 +118,7 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 		}
 
 	}
+	return
 }
 
 func getPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error) {

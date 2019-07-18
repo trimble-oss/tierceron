@@ -12,8 +12,8 @@ import (
 )
 
 //ConfigFromVault configures the templates in vault_templates and writes them to vaultconfig
-func ConfigFromVault(token string, address string, env string, secretMode bool, servicesWanted []string, startDir string, endDir string) {
-
+func ConfigFromVault(token string, address string, env string, secretMode bool, servicesWanted []string, startDir string, endDir string, cert bool) {
+	generatedCert := false
 	mod, err := kv.NewModifier(token, address)
 	if err != nil {
 		panic(err)
@@ -23,7 +23,6 @@ func ConfigFromVault(token string, address string, env string, secretMode bool, 
 	templatePaths, endPaths := getDirFiles(startDir, endDir)
 	//configure each template in directory
 	for i, templatePath := range templatePaths {
-
 		//check for template_files directory here
 		s := strings.Split(templatePath, "/")
 		//figure out which path is vault_templates
@@ -34,17 +33,32 @@ func ConfigFromVault(token string, address string, env string, secretMode bool, 
 			}
 		}
 		if dirIndex != -1 {
-			configuredTemplate := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[dirIndex+1], s[dirIndex+2])
-			writeToFile(configuredTemplate, endPaths[i])
+			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[dirIndex+1], s[dirIndex+2], cert)
+			//generate template or certificate
+			if !generatedCert && cert {
+				writeToFile(certData[1], endDir+"/"+certData[0])
+				generatedCert = true
+				fmt.Println("certificate written to ", endDir)
+				return
+			} else if !cert {
+				writeToFile(configuredTemplate, endPaths[i])
+			}
 		} else {
 			//assume the starting directory was vault_templates
-			configuredTemplate := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[1], s[2])
-			writeToFile(configuredTemplate, endPaths[i])
+			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[1], s[2], cert)
+			if !generatedCert && cert {
+				writeToFile(certData[1], endDir+"/"+certData[0])
+				generatedCert = true
+				fmt.Println("certificate written to ", endDir)
+				return
+			} else if !cert {
+				writeToFile(configuredTemplate, endPaths[i])
+			}
 		}
 	}
 	//print that we're done
-	//endDir = strings.Split(endDir, "/")[0]
 	fmt.Println("templates configured and written to ", endDir)
+
 }
 func writeToFile(data string, path string) {
 	byteData := []byte(data)

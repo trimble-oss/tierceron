@@ -1,6 +1,8 @@
 package initlib
 
 import (
+	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
@@ -121,6 +123,18 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	for _, entry := range writeStack {
 		// Output data being written
 		// Write data and ouput any errors
+		if entry.path == "super-secrets/Cert" {
+			certPath := fmt.Sprintf("%s", entry.data["sourcePath"])
+			certPath = "vault_seeds/" + certPath
+			cert, err := ioutil.ReadFile(certPath)
+			utils.LogErrorObject(err, logger, true)
+			//if pfx file size greater than 25 KB, print warning
+			if len(cert) > 32000 {
+				fmt.Println("Unreasonable size for pfx file. Not written to vault")
+			}
+			certBase64 := base64.StdEncoding.EncodeToString(cert)
+			entry.data["data"] = certBase64
+		}
 		warn, err := mod.Write(entry.path, entry.data)
 
 		utils.LogWarningsObject(warn, logger, false)
@@ -134,7 +148,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 			for _, v := range entry.data {
 				if templateKey, ok := v.([]interface{}); ok {
 					metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
-					mod.AdjustValue("value-metrics/credentials", metricsKey, 1)
+					mod.AdjustValue("value-metrics/credentials", metricsKey, 1, logger)
 				}
 			}
 		}
