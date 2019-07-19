@@ -2,7 +2,10 @@ package server
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
@@ -70,7 +73,30 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 						if err != nil {
 							return nil, err
 						}
-
+						//Get metadata of versions for each filePath
+						versions, err := mod.ReadVersions(filePath)
+						var dates []time.Time
+						for _, v := range versions {
+							if val, ok := v.(map[string]interface{}); ok {
+								location, _ := time.LoadLocation("America/Los_Angeles")
+								creationTime := fmt.Sprintf("%s", val["created_time"])
+								t, _ := time.Parse(time.RFC3339, creationTime)
+								t = t.In(location)
+								dates = append(dates, t)
+							}
+						}
+						sort.Slice(dates, func(i, j int) bool {
+							return dates[i].Before(dates[j])
+						})
+						for i := range dates {
+							year, month, day := dates[i].Date()
+							hour, min, sec := dates[i].Clock()
+							creationDate := strconv.Itoa(year) + "-" + strconv.Itoa(int(month)) + "-" + strconv.Itoa(day)
+							creationHour := strconv.Itoa(hour) + ":" + strconv.Itoa(min) + ":" + strconv.Itoa(sec)
+							s := []string{creationDate, creationHour}
+							creationTime := strings.Join(s, " ")
+							secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: string(i), Value: creationTime, Source: "versions"})
+						}
 						// Find secrets groups in this environment
 						vSecret, err := mod.List("super-secrets")
 						if err != nil {

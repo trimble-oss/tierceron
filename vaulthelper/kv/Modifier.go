@@ -79,6 +79,7 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 		fullPath += pathBlocks[1]
 	}
 	Secret, err := m.logical.Write(fullPath, sendData)
+
 	if Secret == nil { // No warnings
 		return nil, err
 	}
@@ -145,6 +146,28 @@ func (m *Modifier) ReadMetadata(path string) (map[string]interface{}, error) {
 		return data, err
 	}
 	return nil, errors.New("Could not get metadata from vault response")
+}
+
+//ReadVersions Reads the Metadata of all versions from the path referenced by this Modifier
+func (m *Modifier) ReadVersions(path string) (map[string]interface{}, error) {
+	// Create full path
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullPath := pathBlocks[0] + "metadata/"
+
+	if !noEnvironments[pathBlocks[0]] {
+		fullPath += m.Env + "/"
+	}
+	if len(pathBlocks) > 1 {
+		fullPath += pathBlocks[1]
+	}
+	secret, err := m.logical.Read(fullPath)
+	if secret == nil {
+		return nil, err
+	}
+	if versionsData, ok := secret.Data["versions"].(map[string]interface{}); ok {
+		return versionsData, err
+	}
+	return nil, errors.New("Could not get metadata of versions from vault response")
 }
 
 //List lists the paths underneath this one
