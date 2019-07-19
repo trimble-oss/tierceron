@@ -29,6 +29,9 @@
             <input #query id="query" type="text" placeholder="Search.." name="search" (keyup.enter)="SelectKey(query.value)">
             <button type="submit" (click)="SelectKey(query.value)"><i class="fa fa-search"></i></button>
         </div>
+        <select #vers id="versions" class="selection">
+            <option disabled selected value>All Environments</option>
+        </select>
     </div>
 
     <div class="row">
