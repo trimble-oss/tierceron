@@ -148,7 +148,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 			for _, v := range entry.data {
 				if templateKey, ok := v.([]interface{}); ok {
 					metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
-					mod.AdjustValue("value-metrics/credentials", metricsKey, 1, logger)
+					mod.AdjustValue("value-metrics/credentials", metricsKey, 1)
 				}
 			}
 		}
