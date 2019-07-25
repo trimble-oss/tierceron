@@ -11,9 +11,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Declare global variables
-var templateCombinedSection interface{}
-
 // Manage configures the templates in vault_templates and writes them to vaultx
 func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 
@@ -28,10 +25,11 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 	secretCombinedSection["super-secrets"] = map[string]map[string]string{}
 
 	// Declare local variables
+	var templateCombinedSection interface{}
 	sliceTemplateSection := []interface{}{}
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
-	sliceTemplateDepth := []int{}
+	maxDepth := -1
 
 	// Get files from directory
 	templatePaths, endPaths := getDirFiles(startDir, endDir)
@@ -39,22 +37,24 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(templatePath, logger)
+		if templateDepth > maxDepth {
+			maxDepth = templateDepth
+			templateCombinedSection = interfaceTemplateSection
+		}
 
 		// Append new sections to propper slices
 		sliceTemplateSection = append(sliceTemplateSection, interfaceTemplateSection)
 		sliceValueSection = append(sliceValueSection, valueSection)
 		sliceSecretSection = append(sliceSecretSection, secretSection)
-		sliceTemplateDepth = append(sliceTemplateDepth, templateDepth)
 	}
 
 	// Combine values of slice
-	maxDepth := getMaxDepth(sliceTemplateDepth)
-	combineSection(nil, sliceTemplateSection, maxDepth, nil)
-	combineSection(sliceValueSection, nil, -1, valueCombinedSection)
-	combineSection(sliceSecretSection, nil, -1, secretCombinedSection)
+	combineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
+	combineSection(sliceValueSection, -1, valueCombinedSection)
+	combineSection(sliceSecretSection, -1, secretCombinedSection)
 
 	// Create seed file structure
-	template, errT := yaml.Marshal(sliceTemplateSection)
+	template, errT := yaml.Marshal(templateCombinedSection)
 	value, errV := yaml.Marshal(valueCombinedSection)
 	secret, errS := yaml.Marshal(secretCombinedSection)
 
@@ -126,43 +126,49 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 	return filePaths, endPaths
 }
 
-// Get max depth of template
-func getMaxDepth(sliceTemplateDepth []int) int {
-	max := -1
-	for _, v := range sliceTemplateDepth {
-		if v > max {
-			max = v
-		}
-	}
-
-	return max
-}
-
 // Combines the values in a slice, creating a singular map from multiple
 // Input:
 //	- slice to combine
 //	- template slice to combine
 //	- depth of map (-1 for value/secret sections)
-func combineSection(sliceSection []map[string]map[string]map[string]string, sliceTemplateSection []interface{}, maxDepth int, combinedSection map[string]map[string]map[string]string) map[string]map[string]map[string]string {
+func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
 
 	// Value/secret slice section
 	if maxDepth < 0 {
-
+		sliceSection := sliceSectionInterface.([]map[string]map[string]map[string]string)
+		combinedSectionImpl := combinedSectionInterface.(map[string]map[string]map[string]string)
 		for _, v := range sliceSection {
 			for k2, v2 := range v {
 				for k3, v3 := range v2 {
-					combinedSection[k2][k3] = map[string]string{}
+					combinedSectionImpl[k2][k3] = map[string]string{}
 					for k4, v4 := range v3 {
-						combinedSection[k2][k3][k4] = v4
+						combinedSectionImpl[k2][k3][k4] = v4
 					}
 				}
 			}
 		}
 
+		combinedSectionInterface = combinedSectionImpl
+
 		// template slice section
 	} else {
+		/*
+			currDepth := 0
+			combinedSection = combinedSectionInterface.(map[string]interface{})
+			sliceSection := sliceSectionInterface.([]map[string]map[string]map[string]string)
+			for currDepth < maxDepth {
 
+			}
+			for _, v := range sliceSection {
+				for k2, v2 := range v {
+					for k3, v3 := range v2 {
+						combinedSection[k2][k3] = map[string]string{}
+						for k4, v4 := range v3 {
+							combinedSection[k2][k3][k4] = v4
+						}
+					}
+				}
+			}
+		*/
 	}
-
-	return combinedSection
 }
