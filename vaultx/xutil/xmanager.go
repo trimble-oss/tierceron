@@ -163,6 +163,7 @@ func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSec
 
 		//combinedSectionImpl := combinedSectionInterface.(map[string]interface{})
 		sliceSection := sliceSectionInterface.([]interface{})
+		needsInit := false
 
 		for _, v := range sliceSection {
 			v1 := reflect.ValueOf(v)
@@ -171,8 +172,7 @@ func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSec
 				v2 := v1.MapIndex(k2)
 
 				if len(combinedSectionImpl) == 0 {
-					combinedSectionImpl[k2.String()] = map[string]map[string]map[string]interface{}{}
-
+					needsInit = true
 				}
 
 				for _, k3 := range v2.MapKeys() {
@@ -183,10 +183,15 @@ func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSec
 
 						for _, k5 := range v4.MapKeys() {
 
-							if len(combinedSectionImpl) == 0 {
-
-								temp := combinedSectionImpl[k2.String()].(map[string]map[string]interface{})
-								temp[k3.String()][k4.String()] = map[string]interface{}{}
+							if needsInit {
+								combinedSectionImpl[k2.String()] = map[string]interface{}{}
+								t1 := combinedSectionImpl[k2.String()].(map[string]interface{})
+								t1[k3.String()] = map[string]interface{}{}
+								t2 := t1[k3.String()].(map[string]interface{})
+								t2[k4.String()] = map[string]interface{}{}
+								t3 := t2[k4.String()].(map[string]interface{})
+								t3[k5.String()] = map[string]interface{}{}
+								needsInit = false
 							}
 							v5 := v4.MapIndex(k5)
 							//spew.Dump(v4.Interface())
