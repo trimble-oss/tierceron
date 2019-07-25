@@ -6,9 +6,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
-	"gopkg.in/yaml.v2"
+
+	//"gopkg.in/yaml.v2"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/nirekin/yaml"
 )
 
 // Manage configures the templates in vault_templates and writes them to vaultx
@@ -25,7 +29,7 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 	secretCombinedSection["super-secrets"] = map[string]map[string]string{}
 
 	// Declare local variables
-	var templateCombinedSection interface{}
+	templateCombinedSection := map[string]interface{}{}
 	sliceTemplateSection := []interface{}{}
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
@@ -39,7 +43,7 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(templatePath, logger)
 		if templateDepth > maxDepth {
 			maxDepth = templateDepth
-			templateCombinedSection = interfaceTemplateSection
+			//templateCombinedSection = interfaceTemplateSection
 		}
 
 		// Append new sections to propper slices
@@ -152,23 +156,61 @@ func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSec
 
 		// template slice section
 	} else {
-		/*
-			currDepth := 0
-			combinedSection = combinedSectionInterface.(map[string]interface{})
-			sliceSection := sliceSectionInterface.([]map[string]map[string]map[string]string)
-			for currDepth < maxDepth {
 
-			}
-			for _, v := range sliceSection {
-				for k2, v2 := range v {
-					for k3, v3 := range v2 {
-						combinedSection[k2][k3] = map[string]string{}
-						for k4, v4 := range v3 {
-							combinedSection[k2][k3][k4] = v4
+		//currDepth := 0
+		//combinedSectionImpl := reflect.ValueOf(combinedSectionInterface)
+		combinedSectionImpl := combinedSectionInterface.(map[string]interface{})
+
+		//combinedSectionImpl := combinedSectionInterface.(map[string]interface{})
+		sliceSection := sliceSectionInterface.([]interface{})
+
+		for _, v := range sliceSection {
+			v1 := reflect.ValueOf(v)
+
+			for _, k2 := range v1.MapKeys() {
+				v2 := v1.MapIndex(k2)
+
+				if len(combinedSectionImpl) == 0 {
+					combinedSectionImpl[k2.String()] = map[string]map[string]map[string]interface{}{}
+
+				}
+
+				for _, k3 := range v2.MapKeys() {
+					v3 := v2.MapIndex(k3)
+
+					for _, k4 := range v3.MapKeys() {
+						v4 := v3.MapIndex(k4)
+
+						for _, k5 := range v4.MapKeys() {
+
+							if len(combinedSectionImpl) == 0 {
+
+								temp := combinedSectionImpl[k2.String()].(map[string]map[string]interface{})
+								temp[k3.String()][k4.String()] = map[string]interface{}{}
+							}
+							v5 := v4.MapIndex(k5)
+							//spew.Dump(v4.Interface())
+							//combinedSectionDeepMap := combinedSectionInterface.(map[string]map[string]map[string]map[string]interface{})
+							combinedSectionShallowMap := combinedSectionInterface.(map[string]interface{})
+							combinedSectionDeepMap := reflect.ValueOf(combinedSectionShallowMap[k2.String()])
+
+							for _, jk2 := range combinedSectionDeepMap.MapKeys() {
+								jv2 := combinedSectionDeepMap.MapIndex(jk2)
+								for _, jk3 := range jv2.MapKeys() {
+									jv3 := jv2.MapIndex(jk3)
+									for _, jk4 := range jv3.MapKeys() {
+										jv4 := jv3.MapIndex(jk4)
+										jv4.SetMapIndex(k5, v5)
+										//combinedSectionDeepMap = combinedSectionShallowMap[k2.String()].(map[string]map[string]map[string]interface{})
+										//combinedSectionDeepMap[k3.String()][k4.String()][k5.String()] = v5.Interface()
+									}
+								}
+							}
 						}
 					}
 				}
 			}
-		*/
+		}
+		spew.Dump(combinedSectionInterface)
 	}
 }
