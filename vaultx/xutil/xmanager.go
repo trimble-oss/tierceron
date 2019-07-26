@@ -196,16 +196,28 @@ func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSec
 							v5 := v4.MapIndex(k5)
 							//spew.Dump(v4.Interface())
 							//combinedSectionDeepMap := combinedSectionInterface.(map[string]map[string]map[string]map[string]interface{})
-							combinedSectionShallowMap := combinedSectionInterface.(map[string]interface{})
-							combinedSectionDeepMap := reflect.ValueOf(combinedSectionShallowMap[k2.String()])
+							shallowMap1 := combinedSectionInterface.(map[string]interface{})
+							deepMap1 := reflect.ValueOf(shallowMap1[k2.String()])
 
-							for _, jk2 := range combinedSectionDeepMap.MapKeys() {
-								jv2 := combinedSectionDeepMap.MapIndex(jk2)
-								for _, jk3 := range jv2.MapKeys() {
-									jv3 := jv2.MapIndex(jk3)
-									for _, jk4 := range jv3.MapKeys() {
-										jv4 := jv3.MapIndex(jk4)
-										jv4.SetMapIndex(k5, v5)
+							for _, jk2 := range deepMap1.MapKeys() {
+								jv2 := deepMap1.MapIndex(jk2)
+								shallowMap2 := jv2.Interface().(map[string]interface{})
+								shallowMap2[k3.String()] = map[string]interface{}{}
+								deepMap2 := reflect.ValueOf(shallowMap2[k3.String()])
+
+								for _, jk3 := range deepMap2.MapKeys() {
+									jv3 := deepMap2.MapIndex(jk3)
+									shallowMap3 := jv3.Interface().(map[string]interface{})
+									shallowMap3[k4.String()] = map[string]interface{}{}
+									deepMap3 := reflect.ValueOf(shallowMap3[k4.String()])
+
+									for _, jk4 := range deepMap3.MapKeys() {
+										jv4 := deepMap3.MapIndex(jk4)
+										shallowMap4 := jv4.Interface().(map[string]interface{})
+										shallowMap4[k5.String()] = map[string]interface{}{}
+										deepMap4 := reflect.ValueOf(shallowMap4[k5.String()])
+										deepMap4.SetMapIndex(k5, v5)
+
 										//combinedSectionDeepMap = combinedSectionShallowMap[k2.String()].(map[string]map[string]map[string]interface{})
 										//combinedSectionDeepMap[k3.String()][k4.String()][k5.String()] = v5.Interface()
 									}
