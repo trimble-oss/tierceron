@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 
@@ -40,7 +41,25 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
-		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(templatePath, logger)
+		//fmt.Println(templat)
+		//check for template_files directory here
+		s := strings.Split(templatePath, "/")
+		//figure out which path is vault_templates
+		dirIndex := -1
+		for j, piece := range s {
+			if piece == "vault_templates" {
+				dirIndex = j
+			}
+		}
+		//project := ""
+		service := ""
+		if dirIndex != -1 {
+			//project = s[dirIndex+1]
+			service = s[dirIndex+2]
+		}
+
+		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(templatePath, logger, service)
+		spew.Dump(interfaceTemplateSection)
 		if templateDepth > maxDepth {
 			maxDepth = templateDepth
 			//templateCombinedSection = interfaceTemplateSection
@@ -144,7 +163,9 @@ func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSec
 		for _, v := range sliceSection {
 			for k2, v2 := range v {
 				for k3, v3 := range v2 {
-					combinedSectionImpl[k2][k3] = map[string]string{}
+					if _, ok := combinedSectionImpl[k2][k3]; !ok {
+						combinedSectionImpl[k2][k3] = map[string]string{}
+					}
 					for k4, v4 := range v3 {
 						combinedSectionImpl[k2][k3][k4] = v4
 					}
