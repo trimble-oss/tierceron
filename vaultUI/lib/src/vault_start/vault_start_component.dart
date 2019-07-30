@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'package:angular/angular.dart';
 import 'package:angular_forms/angular_forms.dart';
+import 'package:http/browser_client.dart';
 
 import '../twirp_requests.dart';
 import '../init_service.dart';
@@ -27,7 +28,7 @@ class VaultStartComponent implements OnInit{
 
   String LogData;
   bool DialogVisible;
-  final List<String> Envs = ['dev', 'QA', 'RQA', 'itdev', 'servicepack', 'staging', 'local'];  // Valid environment options
+  List<String> Envs = ['dev', 'QA', 'RQA', 'itdev', 'servicepack', 'staging', 'local'];  // Valid environment options
   Set<UISeedFile> Seeds;               // Seed files passed to vault
   //int 
   @Input()
@@ -43,9 +44,23 @@ class VaultStartComponent implements OnInit{
   
   Future<Null> ngOnInit() async {
     Seeds = Set.identity();
+    GetEnvironments();
   }
 
   // Callback for file input element
+
+  GetEnvironments() async {
+    String valQuery = "twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/Environments";
+
+    var client = new BrowserClient();
+      var response =
+          await client.get(valQuery);
+      
+      Map respMap = json.decode(response.body);
+      List<String> environments = respMap['env'];
+      Envs = environments;
+
+  }
   GetFiles(event) {
     // Ensure warning is hidden if new files have been chosen
     querySelector('#no_seed_warn').hidden = true;

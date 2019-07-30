@@ -15,6 +15,9 @@ import (
 	gql "github.com/graphql-go/graphql"
 )
 
+//Currently selected environments
+var SelectedEnvironment []string
+
 // Server implements the twirp api server endpoints
 type Server struct {
 	VaultToken          string
@@ -368,6 +371,7 @@ func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParam
 
 // CheckConnection checks the server connection
 func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.CheckConnResp, error) {
+	fmt.Println("In server.go CheckConnection()")
 	if len(s.VaultToken) == 0 {
 		return &pb.CheckConnResp{
 			Connected: false,
@@ -375,6 +379,16 @@ func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.Che
 	}
 	return &pb.CheckConnResp{
 		Connected: true,
+	}, nil
+
+}
+
+// Environments selects environments based on dev or production mode
+func (s *Server) Environments(ctx context.Context, req *pb.NoParams) (*pb.EnvResp, error) {
+	fmt.Println("In server.go Environments()")
+
+	return &pb.EnvResp{
+		Env: SelectedEnvironment,
 	}, nil
 
 }
