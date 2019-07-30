@@ -157,7 +157,13 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		return nil, err
 	}
 	environments := []*pb.ValuesRes_Env{}
-	envStrings := []string{"dev", "QA", "RQA", "itdev", "servicepack", "staging"}
+	envStrings := SelectedEnvironment
+	for i, other := range envStrings {
+		if other == "prod" {
+			envStrings = append(envStrings[:i], envStrings[i+1:]...)
+			break
+		}
+	}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
 		userPaths, err := mod.List("values/")
@@ -371,7 +377,6 @@ func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParam
 
 // CheckConnection checks the server connection
 func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.CheckConnResp, error) {
-	fmt.Println("In server.go CheckConnection()")
 	if len(s.VaultToken) == 0 {
 		return &pb.CheckConnResp{
 			Connected: false,
@@ -380,13 +385,10 @@ func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.Che
 	return &pb.CheckConnResp{
 		Connected: true,
 	}, nil
-
 }
 
 // Environments selects environments based on dev or production mode
 func (s *Server) Environments(ctx context.Context, req *pb.NoParams) (*pb.EnvResp, error) {
-	fmt.Println("In server.go Environments()")
-
 	return &pb.EnvResp{
 		Env: SelectedEnvironment,
 	}, nil

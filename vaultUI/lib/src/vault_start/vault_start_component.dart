@@ -28,7 +28,7 @@ class VaultStartComponent implements OnInit{
 
   String LogData;
   bool DialogVisible;
-  List<String> Envs = ['dev', 'QA', 'RQA', 'itdev', 'servicepack', 'staging', 'local'];  // Valid environment options
+  List Envs;                           //Valid environment options
   Set<UISeedFile> Seeds;               // Seed files passed to vault
   //int 
   @Input()
@@ -44,7 +44,6 @@ class VaultStartComponent implements OnInit{
   
   Future<Null> ngOnInit() async {
     Seeds = Set.identity();
-    GetEnvironments();
   }
 
   // Callback for file input element
@@ -54,15 +53,18 @@ class VaultStartComponent implements OnInit{
 
     var client = new BrowserClient();
       var response =
-          await client.get(valQuery);
-      
+          await client.post(valQuery, headers: {'Content-Type': 'application/json'}, body: '{}');
       Map respMap = json.decode(response.body);
-      List<String> environments = respMap['env'];
-      Envs = environments;
-
+      List environments = respMap['env'];
+      Set envSet = Set();
+      for(var i=0; i<environments.length; i++){
+        envSet.add(environments[i]);
+      }
+      Envs = envSet.toList();
   }
   GetFiles(event) {
     // Ensure warning is hidden if new files have been chosen
+    GetEnvironments(); //call GetEnvironments()
     querySelector('#no_seed_warn').hidden = true;
 
     RegExp ext = new RegExp(r'(.+\.yml|.+\.yaml)'); 
