@@ -158,6 +158,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 	}
 	environments := []*pb.ValuesRes_Env{}
 	envStrings := SelectedEnvironment
+	//Only display staging in prod mode
 	for i, other := range envStrings {
 		if other == "prod" {
 			envStrings = append(envStrings[:i], envStrings[i+1:]...)

@@ -22,7 +22,14 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 		return nil, err
 	}
 
-	envStrings := []string{"dev", "QA", "RQA", "itdev", "servicepack", "staging"}
+	envStrings := SelectedEnvironment
+	//Only display staging in prod mode
+	for i, other := range envStrings {
+		if other == "prod" {
+			envStrings = append(envStrings[:i], envStrings[i+1:]...)
+			break
+		}
+	}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
 		userPaths, err := mod.List("values/")
