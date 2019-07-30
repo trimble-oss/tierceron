@@ -51,9 +51,10 @@ func verify(mod *kv.Modifier, v map[interface{}]interface{}, logger *log.Logger)
 				utils.LogErrorObject(fmt.Errorf("URL field is not a string value"), logger, false)
 			}
 		case "SendGridKey":
-			key := serviceData["ApiKey"].(string)
-			isValid, err = validator.ValidateSendGrid(key)
-			utils.LogErrorObject(err, logger, false)
+			if key, ok := serviceData["SendGridApiKey"].(string); ok {
+				isValid, err = validator.ValidateSendGrid(key)
+				utils.LogErrorObject(err, logger, false)
+			}
 		case "KeyStore":
 			// path := serviceData["path"].(string)
 			// pass := serviceData["pass"].(string)

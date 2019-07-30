@@ -2,16 +2,16 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:c319c98528b5a28b0ce5e988b4a62111e36ee6aed92b455f727ad7e2a64f2e4c"
-  name = "bitbucket.org/sarawille7/crypto"
+  branch = "develop"
+  digest = "1:1b7e283bceb93bb139ee36045063393772cf4d327f9f6681ec73417a29526fcb"
+  name = "bitbucket.org/dexterchaney/crypto"
   packages = [
     "pkcs12",
     "pkcs12/internal/rc2",
   ]
   pruneopts = "UT"
-  revision = "acdfe2da89e82baff635a31dac4f97456324af70"
-  source = "https://sarawille7@bitbucket.org/sarawille7/crypto.git"
+  revision = "a26154df5be4b0a6209230edc44d8baa58d737c0"
+  source = "git@bitbucket.org:dexterchaney/crypto.git"
 
 [[projects]]
   digest = "1:b62a3c5b37db602bf1158e921da1a762315a4c37855fd418a14498aa87a342d5"

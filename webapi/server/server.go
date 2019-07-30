@@ -15,6 +15,9 @@ import (
 	gql "github.com/graphql-go/graphql"
 )
 
+//Currently selected environments
+var SelectedEnvironment []string
+
 // Server implements the twirp api server endpoints
 type Server struct {
 	VaultToken          string
@@ -154,7 +157,13 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		return nil, err
 	}
 	environments := []*pb.ValuesRes_Env{}
-	envStrings := []string{"dev", "QA", "RQA", "itdev", "staging"}
+	envStrings := SelectedEnvironment
+	for i, other := range envStrings {
+		if other == "prod" {
+			envStrings = append(envStrings[:i], envStrings[i+1:]...)
+			break
+		}
+	}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
 		userPaths, err := mod.List("values/")
@@ -200,10 +209,6 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 				files := []*pb.ValuesRes_Env_Project_Service_File{}
 				//get a list of files under project
 				filePaths, err := s.getPaths(mod, servicePath)
-				if mod.Env == "dev" {
-					//fmt.Println("filePaths")
-					//fmt.Println(filePaths)
-				}
 				if err != nil {
 					utils.LogErrorObject(err, s.Log, false)
 					return nil, err
@@ -219,7 +224,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 						return nil, err
 					}
 					if valueMap != nil {
-						
+
 						for key, value := range valueMap {
 							kv := &pb.ValuesRes_Env_Project_Service_File_Value{Key: key, Value: value.(string), Source: "value"}
 							vals = append(vals, kv)
@@ -379,6 +384,13 @@ func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.Che
 	}
 	return &pb.CheckConnResp{
 		Connected: true,
+	}, nil
+}
+
+// Environments selects environments based on dev or production mode
+func (s *Server) Environments(ctx context.Context, req *pb.NoParams) (*pb.EnvResp, error) {
+	return &pb.EnvResp{
+		Env: SelectedEnvironment,
 	}, nil
 
 }

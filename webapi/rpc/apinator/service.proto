@@ -20,6 +20,7 @@ service EnterpriseServiceBroker {
     rpc RollTokens(NoParams) returns (NoParams);
     rpc ResetServer(ResetReq) returns (NoParams);
     rpc CheckConnection(NoParams) returns (CheckConnResp);
+    rpc Environments(NoParams) returns(EnvResp);
 }
 
 /////////////////////////////////////////////////////////
@@ -126,6 +127,11 @@ message InitResp {
     string logfile = 2;
     repeated Token tokens = 3;
 }
+
+message EnvResp {
+    repeated string env = 1;
+}
+
 
 /////////////////////////////////////////////////////////
 // Web App LogIn Messages                              //

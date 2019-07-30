@@ -62,19 +62,24 @@ func NewModifier(token string, address string) (*Modifier, error) {
 func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, error) {
 	// Wrap data and send
 	sendData := map[string]interface{}{"data": data}
+
 	// Create full path
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	if len(pathBlocks) == 1 {
 		pathBlocks[0] += "/"
 	}
 	fullPath := pathBlocks[0] + "data/"
-	if !noEnvironments[pathBlocks[0]] {
+	if !noEnvironments[pathBlocks[0]] { //if neither templates nor cubbyhole
+		fullPath += m.Env + "/"
+
+	} else if strings.HasPrefix(m.Env, "local") { //if local environment, add env to fullpath
 		fullPath += m.Env + "/"
 	}
 	if len(pathBlocks) > 1 {
 		fullPath += pathBlocks[1]
 	}
 	Secret, err := m.logical.Write(fullPath, sendData)
+
 	if Secret == nil { // No warnings
 		return nil, err
 	}
@@ -89,6 +94,8 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	fullPath := pathBlocks[0] + "data/"
 	if !noEnvironments[pathBlocks[0]] {
+		fullPath += m.Env + "/"
+	} else if strings.HasPrefix(m.Env, "local") { //if local environment, add env to retrieve correct path mod.Write wrote to
 		fullPath += m.Env + "/"
 	}
 	if len(pathBlocks) > 1 {
@@ -139,6 +146,28 @@ func (m *Modifier) ReadMetadata(path string) (map[string]interface{}, error) {
 		return data, err
 	}
 	return nil, errors.New("Could not get metadata from vault response")
+}
+
+//ReadVersions Reads the Metadata of all versions from the path referenced by this Modifier
+func (m *Modifier) ReadVersions(path string) (map[string]interface{}, error) {
+	// Create full path
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullPath := pathBlocks[0] + "metadata/"
+
+	if !noEnvironments[pathBlocks[0]] {
+		fullPath += m.Env + "/"
+	}
+	if len(pathBlocks) > 1 {
+		fullPath += pathBlocks[1]
+	}
+	secret, err := m.logical.Read(fullPath)
+	if secret == nil {
+		return nil, err
+	}
+	if versionsData, ok := secret.Data["versions"].(map[string]interface{}); ok {
+		return versionsData, err
+	}
+	return nil, errors.New("Could not get metadata of versions from vault response")
 }
 
 //List lists the paths underneath this one
