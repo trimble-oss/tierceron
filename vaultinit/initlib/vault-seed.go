@@ -26,7 +26,7 @@ type writeCollection struct {
 }
 
 // SeedVault seeds the vault with seed files in the given directory
-func SeedVault(dir string, addr string, token string, env string, logger *log.Logger, service string, prod bool) {
+func SeedVault(dir string, addr string, token string, env string, logger *log.Logger, service string) {
 	logger.SetPrefix("[SEED]")
 	logger.Printf("Seeding vault from seeds in: %s\n", dir)
 
