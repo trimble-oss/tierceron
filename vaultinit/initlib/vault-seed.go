@@ -26,14 +26,13 @@ type writeCollection struct {
 }
 
 // SeedVault seeds the vault with seed files in the given directory
-func SeedVault(dir string, addr string, token string, env string, logger *log.Logger) {
+func SeedVault(dir string, addr string, token string, env string, logger *log.Logger, service string, prod bool) {
 	logger.SetPrefix("[SEED]")
 	logger.Printf("Seeding vault from seeds in: %s\n", dir)
 
 	files, err := ioutil.ReadDir(dir)
 	utils.LogErrorObject(err, logger, true)
 
-	// T/S - 5/23
 	for _, file := range files {
 		if file.Name() == env || (strings.HasPrefix(env, "local") && file.Name() == "local") {
 			logger.Println("\tStepping into: " + file.Name())
@@ -49,7 +48,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 					path := dir + "/" + file.Name() + "/" + fileSteppedInto.Name()
 					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
 
-					SeedVaultFromFile(path, addr, token, env, logger)
+					SeedVaultFromFile(path, addr, token, env, logger, service)
 				}
 			}
 		}
@@ -57,15 +56,15 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 }
 
 //SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, logger *log.Logger) {
+func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, logger *log.Logger, service string) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	utils.LogErrorObject(err, logger, true)
-	SeedVaultFromData(rawFile, vaultAddr, token, env, logger)
+	SeedVaultFromData(rawFile, vaultAddr, token, env, logger, service)
 }
 
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, logger *log.Logger) {
+func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, logger *log.Logger, service string) {
 	logger.SetPrefix("[SEED]")
 	logger.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
@@ -123,8 +122,8 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	for _, entry := range writeStack {
 		// Output data being written
 		// Write data and ouput any errors
-		if entry.path == "super-secrets/Cert" {
-			certPath := fmt.Sprintf("%s", entry.data["sourcePath"])
+		if entry.path == "super-secrets/Common" {
+			certPath := fmt.Sprintf("%s", entry.data["CertSourcePath"])
 			certPath = "vault_seeds/" + certPath
 			cert, err := ioutil.ReadFile(certPath)
 			utils.LogErrorObject(err, logger, true)
@@ -133,24 +132,15 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 				fmt.Println("Unreasonable size for pfx file. Not written to vault")
 			}
 			certBase64 := base64.StdEncoding.EncodeToString(cert)
-			entry.data["data"] = certBase64
+			entry.data["CertData"] = certBase64
 		}
-		warn, err := mod.Write(entry.path, entry.data)
+		if service != "" {
+			if strings.HasSuffix(entry.path, service) || strings.Contains(entry.path, "Common") {
+				WriteData(entry.path, entry.data, mod, logger)
 
-		utils.LogWarningsObject(warn, logger, false)
-		utils.LogErrorObject(err, logger, false)
-		// Update value metrics to reflect credential use
-		root := strings.Split(entry.path, "/")[0]
-		if root == "templates" {
-			//Printing out path of each entry so that users can verify that folder structure in seed files are correct
-
-			logger.Println("vault_" + entry.path + ".*.tmpl")
-			for _, v := range entry.data {
-				if templateKey, ok := v.([]interface{}); ok {
-					metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
-					mod.AdjustValue("value-metrics/credentials", metricsKey, 1)
-				}
 			}
+		} else {
+			WriteData(entry.path, entry.data, mod, logger)
 		}
 	}
 
@@ -158,4 +148,26 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	warn, err := verify(mod, verificationData, logger)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
+}
+
+//WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
+func WriteData(path string, data map[string]interface{}, mod *kv.Modifier, logger *log.Logger) {
+	warn, err := mod.Write(path, data)
+
+	utils.LogWarningsObject(warn, logger, false)
+	utils.LogErrorObject(err, logger, false)
+	// Update value metrics to reflect credential use
+	root := strings.Split(path, "/")[0]
+	if root == "templates" {
+		//Printing out path of each entry so that users can verify that folder structure in seed files are correct
+
+		logger.Println("vault_" + path + ".*.tmpl")
+		for _, v := range data {
+			if templateKey, ok := v.([]interface{}); ok {
+				metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
+				mod.AdjustValue("value-metrics/credentials", metricsKey, 1)
+			}
+		}
+	}
+
 }
