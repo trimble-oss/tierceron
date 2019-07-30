@@ -78,7 +78,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 				Tokens:  nil,
 			}, err
 		}
-		il.SeedVaultFromData(fBytes, s.VaultAddr, s.VaultToken, seed.Env, logger)
+		il.SeedVaultFromData(fBytes, s.VaultAddr, s.VaultToken, seed.Env, logger, "")
 	}
 
 	il.UploadPolicies(policyPath, v, logger)
