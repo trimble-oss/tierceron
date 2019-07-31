@@ -9,17 +9,11 @@ import (
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
-
-	//"gopkg.in/yaml.v2"
-
-	"github.com/nirekin/yaml"
+	"gopkg.in/yaml.v2"
 )
 
 // Manage configures the templates in vault_templates and writes them to vaultx
 func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
-
-	// TODO - possibly delete later
-	//sliceSections := []interface{}{[]interface{}{}, []map[string]map[string]map[string]string{}, []map[string]map[string]map[string]string{}, []int{}}
 
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -36,11 +30,12 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 	maxDepth := -1
 
 	// Get files from directory
-	templatePaths, endPaths := getDirFiles(startDir, endDir)
+	templatePaths := getDirFiles(startDir)
+	endPath := ""
+	service := ""
 
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
-		//fmt.Println(templat)
 		//check for template_files directory here
 		s := strings.Split(templatePath, "/")
 		//figure out which path is vault_templates
@@ -50,10 +45,7 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 				dirIndex = j
 			}
 		}
-		//project := ""
-		service := ""
 		if dirIndex != -1 {
-			//project = s[dirIndex+1]
 			service = s[dirIndex+2]
 		}
 
@@ -92,7 +84,8 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 	}
 
 	seedFile := string(template) + "\n\n\n" + string(value) + "\n\n\n" + string(secret)
-	writeToFile(seedFile, endPaths[1]) // TODO: change this later
+	endPath = endDir + service + "_seed.yml"
+	writeToFile(seedFile, endPath)
 
 	// Print that we're done
 	fmt.Println("seed created and written to ", endDir)
@@ -113,13 +106,13 @@ func writeToFile(data string, path string) {
 	newFile.Close()
 }
 
-func getDirFiles(dir string, endDir string) ([]string, []string) {
+func getDirFiles(dir string) []string {
 	files, err := ioutil.ReadDir(dir)
 	filePaths := []string{}
-	endPaths := []string{}
+	//endPaths := []string{}
 	if err != nil {
 		//this is a file
-		return []string{dir}, []string{endDir}
+		return []string{dir}
 	}
 	for _, file := range files {
 		//add this directory to path names
@@ -130,21 +123,11 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 			//if subfolder add /
 			filePath += "/"
 		}
-		//take off .tmpl extension
-		endPath := ""
-		if extension == ".tmpl" {
-			name := filename[0 : len(filename)-len(extension)]
-			endPath = endDir + "/" + name
-		} else {
-			endPath = endDir + "/" + filename
-		}
 		//recurse to next level
-		newPaths, newEndPaths := getDirFiles(filePath, endPath)
+		newPaths := getDirFiles(filePath)
 		filePaths = append(filePaths, newPaths...)
-		endPaths = append(endPaths, newEndPaths...)
-		//add endings of path names
 	}
-	return filePaths, endPaths
+	return filePaths
 }
 
 func MergeMaps(x1, x2 interface{}) interface{} {
