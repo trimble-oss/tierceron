@@ -6,13 +6,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 
 	//"gopkg.in/yaml.v2"
-	"github.com/davecgh/go-spew/spew"
+
 	"github.com/nirekin/yaml"
 )
 
@@ -30,7 +29,7 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 	secretCombinedSection["super-secrets"] = map[string]map[string]string{}
 
 	// Declare local variables
-	var templateCombinedSection interface{}
+	templateCombinedSection := map[string]interface{}{}
 	sliceTemplateSection := []interface{}{}
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
@@ -59,7 +58,6 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 		}
 
 		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(templatePath, logger, service)
-		spew.Dump(interfaceTemplateSection)
 		if templateDepth > maxDepth {
 			maxDepth = templateDepth
 			//templateCombinedSection = interfaceTemplateSection
@@ -149,70 +147,7 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 	return filePaths, endPaths
 }
 
-/*
 func MergeMaps(x1, x2 interface{}) interface{} {
-	x1Map := reflect.ValueOf(x1)
-	x1Type := reflect.TypeOf(x1)
-
-	if x1Type == nil {
-		x2, ok := x2.(map[string]interface{})
-		if ok {
-			return x2
-		}
-	} else if x1Type.Kind() == reflect.Map {
-		x2, ok := x2.(map[string]interface{})
-		if !ok {
-			return x1
-		}
-		for k, v2 := range x1Map.MapKeys() {
-			if v1, ok := x1[k]; ok {
-				x1[k] = MergeMaps(v1, v2)
-			} else {
-				x1[k] = v2
-			}
-		}
-	}
-
-	return x1
-}*/
-func MergeMaps(x1, x2 interface{}) interface{} {
-	x1Type := reflect.TypeOf(x1)
-
-	switch x1Type.Kind() {
-	case reflect.Map:
-		x2Type := reflect.TypeOf(x2)
-		if x2Type.Kind() == reflect.Map {
-			x2o := reflect.ValueOf(x2)
-			for _, k := range x2o.MapKeys() {
-				v2 := x2o.MapIndex(k)
-
-				x1o := reflect.ValueOf(x1)
-				v1 := x1o.MapIndex(k)
-
-				if v1.IsValid() && v1.CanInterface() && v2.IsValid() && v2.CanInterface() {
-					v3 := MergeMaps(v1.Interface(), v2.Interface())
-					x1o.SetMapIndex(k, reflect.ValueOf(v3))
-				} else {
-					if v2.IsValid() {
-						fmt.Println(v2.Interface())
-						x1o.SetMapIndex(k, v2)
-					}
-				}
-			}
-		} else {
-			return x1
-		}
-		break
-	case reflect.Invalid:
-		x2Type := reflect.TypeOf(x2)
-		if x2Type.Kind() == reflect.Map {
-			return x2
-		}
-	}
-	return x1
-}
-
-func MergeMapsOld(x1, x2 interface{}) interface{} {
 	switch x1 := x1.(type) {
 	case map[string]interface{}:
 		x2, ok := x2.(map[string]interface{})
@@ -221,7 +156,7 @@ func MergeMapsOld(x1, x2 interface{}) interface{} {
 		}
 		for k, v2 := range x2 {
 			if v1, ok := x1[k]; ok {
-				x1[k] = MergeMapsOld(v1, v2)
+				x1[k] = MergeMaps(v1, v2)
 			} else {
 				x1[k] = v2
 			}
@@ -267,13 +202,7 @@ func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSec
 		sliceSection := sliceSectionInterface.([]interface{})
 
 		for _, v := range sliceSection {
-			fmt.Printf("Here")
-			spew.Dump(combinedSectionInterface)
-			if combinedSectionInterface == nil {
-				combinedSectionInterface = map[string]interface{}{}
-			}
 			MergeMaps(combinedSectionInterface, v)
-			fmt.Printf("Howdy")
 		}
 	}
 }
