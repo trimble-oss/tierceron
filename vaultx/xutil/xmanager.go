@@ -30,7 +30,7 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 	secretCombinedSection["super-secrets"] = map[string]map[string]string{}
 
 	// Declare local variables
-	templateCombinedSection := map[string]interface{}{}
+	var templateCombinedSection interface{}
 	sliceTemplateSection := []interface{}{}
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
@@ -149,6 +149,93 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 	return filePaths, endPaths
 }
 
+/*
+func MergeMaps(x1, x2 interface{}) interface{} {
+	x1Map := reflect.ValueOf(x1)
+	x1Type := reflect.TypeOf(x1)
+
+	if x1Type == nil {
+		x2, ok := x2.(map[string]interface{})
+		if ok {
+			return x2
+		}
+	} else if x1Type.Kind() == reflect.Map {
+		x2, ok := x2.(map[string]interface{})
+		if !ok {
+			return x1
+		}
+		for k, v2 := range x1Map.MapKeys() {
+			if v1, ok := x1[k]; ok {
+				x1[k] = MergeMaps(v1, v2)
+			} else {
+				x1[k] = v2
+			}
+		}
+	}
+
+	return x1
+}*/
+func MergeMaps(x1, x2 interface{}) interface{} {
+	x1Type := reflect.TypeOf(x1)
+
+	switch x1Type.Kind() {
+	case reflect.Map:
+		x2Type := reflect.TypeOf(x2)
+		if x2Type.Kind() == reflect.Map {
+			x2o := reflect.ValueOf(x2)
+			for _, k := range x2o.MapKeys() {
+				v2 := x2o.MapIndex(k)
+
+				x1o := reflect.ValueOf(x1)
+				v1 := x1o.MapIndex(k)
+
+				if v1.IsValid() && v1.CanInterface() && v2.IsValid() && v2.CanInterface() {
+					v3 := MergeMaps(v1.Interface(), v2.Interface())
+					x1o.SetMapIndex(k, reflect.ValueOf(v3))
+				} else {
+					if v2.IsValid() {
+						fmt.Println(v2.Interface())
+						x1o.SetMapIndex(k, v2)
+					}
+				}
+			}
+		} else {
+			return x1
+		}
+		break
+	case reflect.Invalid:
+		x2Type := reflect.TypeOf(x2)
+		if x2Type.Kind() == reflect.Map {
+			return x2
+		}
+	}
+	return x1
+}
+
+func MergeMapsOld(x1, x2 interface{}) interface{} {
+	switch x1 := x1.(type) {
+	case map[string]interface{}:
+		x2, ok := x2.(map[string]interface{})
+		if !ok {
+			return x1
+		}
+		for k, v2 := range x2 {
+			if v1, ok := x1[k]; ok {
+				x1[k] = MergeMapsOld(v1, v2)
+			} else {
+				x1[k] = v2
+			}
+		}
+	case nil:
+		// merge(nil, map[string]interface{...}) -> map[string]interface{...}
+		x2, ok := x2.(map[string]interface{})
+		if ok {
+			return x2
+		}
+	}
+	return x1
+}
+
 // Combines the values in a slice, creating a singular map from multiple
 // Input:
 //	- slice to combine
@@ -177,93 +264,16 @@ func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSec
 
 		// template slice section
 	} else {
-
-		//currDepth := 0
-		//combinedSectionImpl := reflect.ValueOf(combinedSectionInterface)
-		combinedSectionImpl := combinedSectionInterface.(map[string]interface{})
-
-		//combinedSectionImpl := combinedSectionInterface.(map[string]interface{})
 		sliceSection := sliceSectionInterface.([]interface{})
-		needsInit := false
 
 		for _, v := range sliceSection {
-			v1 := reflect.ValueOf(v)
-
-			for _, k2 := range v1.MapKeys() {
-				v2 := v1.MapIndex(k2)
-
-				if len(combinedSectionImpl) == 0 {
-					needsInit = true
-				}
-
-				for _, k3 := range v2.MapKeys() {
-					v3 := v2.MapIndex(k3)
-
-					for _, k4 := range v3.MapKeys() {
-						v4 := v3.MapIndex(k4)
-
-						for _, k5 := range v4.MapKeys() {
-							v5 := v4.MapIndex(k5)
-
-							for _, k6 := range v5.MapKeys() {
-
-								if needsInit {
-									combinedSectionImpl[k2.String()] = map[string]interface{}{}
-									t1 := combinedSectionImpl[k2.String()].(map[string]interface{})
-									t1[k3.String()] = map[string]interface{}{}
-									t2 := t1[k3.String()].(map[string]interface{})
-									t2[k4.String()] = map[string]interface{}{}
-									t3 := t2[k4.String()].(map[string]interface{})
-									t3[k5.String()] = map[string]interface{}{}
-									t4 := t3[k5.String()].(map[string]interface{})
-									t4[k6.String()] = map[string]interface{}{}
-									needsInit = false
-								}
-								v6 := v5.MapIndex(k6)
-								//spew.Dump(v4.Interface())
-								//combinedSectionDeepMap := combinedSectionInterface.(map[string]map[string]map[string]map[string]interface{})
-								shallowMap1 := combinedSectionInterface.(map[string]interface{})
-								deepMap1 := reflect.ValueOf(shallowMap1[k2.String()])
-
-								for _, jk2 := range deepMap1.MapKeys() {
-									jv2 := deepMap1.MapIndex(jk2)
-									shallowMap2 := jv2.Interface().(map[string]interface{})
-									shallowMap2[k3.String()] = map[string]interface{}{}
-									deepMap2 := reflect.ValueOf(shallowMap2[k3.String()])
-
-									for _, jk3 := range deepMap2.MapKeys() {
-										jv3 := deepMap2.MapIndex(jk3)
-										shallowMap3 := jv3.Interface().(map[string]interface{})
-										shallowMap3[k4.String()] = map[string]interface{}{}
-										deepMap3 := reflect.ValueOf(shallowMap3[k4.String()])
-
-										for _, jk4 := range deepMap3.MapKeys() {
-											jv4 := deepMap3.MapIndex(jk4)
-											shallowMap4 := jv4.Interface().(map[string]interface{})
-											shallowMap4[k5.String()] = map[string]interface{}{}
-											deepMap4 := reflect.ValueOf(shallowMap4[k5.String()])
-
-											for _, jk5 := range deepMap4.MapKeys() {
-												jv5 := deepMap4.MapIndex(jk5)
-												shallowMap5 := jv5.Interface().(map[string]interface{})
-												shallowMap5[k6.String()] = map[string]interface{}{}
-												deepMap5 := reflect.ValueOf(shallowMap5[k6.String()])
-												deepMap5.SetMapIndex(k6, v6)
-											}
-
-											//combinedSectionDeepMap = combinedSectionShallowMap[k2.String()].(map[string]map[string]map[string]interface{})
-											//combinedSectionDeepMap[k3.String()][k4.String()][k5.String()] = v5.Interface()
-										}
-									}
-								}
-
-							}
-
-						}
-					}
-				}
+			fmt.Printf("Here")
+			spew.Dump(combinedSectionInterface)
+			if combinedSectionInterface == nil {
+				combinedSectionInterface = map[string]interface{}{}
 			}
+			MergeMaps(combinedSectionInterface, v)
+			fmt.Printf("Howdy")
 		}
-		spew.Dump(combinedSectionInterface)
 	}
 }
