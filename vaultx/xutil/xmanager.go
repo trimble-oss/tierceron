@@ -162,7 +162,6 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 			}
 		}
 	case nil:
-		// merge(nil, map[string]interface{...}) -> map[string]interface{...}
 		x2, ok := x2.(map[string]interface{})
 		if ok {
 			return x2
