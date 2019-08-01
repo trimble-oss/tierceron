@@ -29,7 +29,7 @@ class LoginBoxComponent implements OnActivate {
   @Input()
   String Password;
   @Input()
-  String Environment = 'dev';
+  String Environment;
 
   @Input()
   bool IsSealed = true;
@@ -58,8 +58,13 @@ class LoginBoxComponent implements OnActivate {
       Set envSet = Set();
       for(var i=0; i<environments.length; i++){
         envSet.add(environments[i]);
-        if (environments[i] == 'dev' || environments[i] == 'prod') {
+        if (environments[i] == 'dev') {
         	Environment = environments[i];
+          break;
+        }
+        if (environments[i] == 'staging' || environments[i] == 'prod') {
+        	Environment = environments[i];
+          break;
         }
       }
       Envs = envSet.toList();
