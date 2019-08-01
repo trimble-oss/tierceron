@@ -125,7 +125,7 @@ func (s *Server) InitGQL() {
 		return
 	}
 
-	envStrings := []string{"dev", "QA", "RQA", "staging"}
+	envStrings := SelectedEnvironment
 	for _, e := range envStrings { //Not including itdev and servicepack
 		// Get spectrum sessions
 		spctmSessions[e], err = s.getActiveSessions(e)

@@ -18,8 +18,8 @@ import (
 //Currently selected environments
 var SelectedEnvironment []string
 
-// Currently selected init environments
-var SelectedInitEnvironment []string
+// Currently selected web environments
+var SelectedWebEnvironment []string
 
 // Server implements the twirp api server endpoints
 type Server struct {
@@ -373,7 +373,10 @@ func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParam
 		s.VaultToken = req.PrivToken
 	}
 
+	SelectedEnvironment = SelectedWebEnvironment
+
 	if s.VaultAPITokenSecret == nil {
+
 		var targetEnv string
 		for _, e := range SelectedEnvironment {
 			targetEnv = e

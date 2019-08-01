@@ -97,7 +97,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
 
-	envStrings := SelectedInitEnvironment
+	envStrings := SelectedEnvironment
 	for _, e := range envStrings {
 		mod.Env = e
 		err, warn = il.UploadTemplateDirectory(mod, templatePath, logger)
@@ -134,6 +134,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		if e == "dev" {
 			break
 		} else if e == "staging" {
+			SelectedEnvironment = SelectedWebEnvironment
 			break
 		}
 	}
