@@ -126,18 +126,19 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 			certPath := fmt.Sprintf("%s", entry.data["CertSourcePath"])
 			certPath = "vault_seeds/" + certPath
 			cert, err := ioutil.ReadFile(certPath)
-			utils.LogErrorObject(err, logger, true)
-			//if pfx file size greater than 25 KB, print warning
-			if len(cert) > 32000 {
-				fmt.Println("Unreasonable size for pfx file. Not written to vault")
+			utils.LogErrorObject(err, logger, false)
+			if err == nil {
+				//if pfx file size greater than 25 KB, print warning
+				if len(cert) > 32000 {
+					fmt.Println("Unreasonable size for pfx file. Not written to vault")
+				}
+				certBase64 := base64.StdEncoding.EncodeToString(cert)
+				entry.data["CertData"] = certBase64
 			}
-			certBase64 := base64.StdEncoding.EncodeToString(cert)
-			entry.data["CertData"] = certBase64
 		}
 		if service != "" {
 			if strings.HasSuffix(entry.path, service) || strings.Contains(entry.path, "Common") {
 				WriteData(entry.path, entry.data, mod, logger)
-
 			}
 		} else {
 			WriteData(entry.path, entry.data, mod, logger)
