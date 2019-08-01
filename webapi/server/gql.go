@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	//"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
@@ -105,6 +106,7 @@ func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQL
 
 //InitGQL Initializes the GQL schema
 func (s *Server) InitGQL() {
+	s.Log.Println("InitGQL")
 	makeVaultReq := &pb.GetValuesReq{}
 	spctmSessions := map[string][]Session{} // Spectrum sessions
 	vaultSessions := map[string][]Session{} // Vault sessions
@@ -154,6 +156,12 @@ func (s *Server) InitGQL() {
 			index := envIndices[env.Name].index
 			envQL = &envList[index]
 		} else { // Create a new environment
+			/*
+				if strings.Contains(env.Name, "local/") && env.Name == ("local/"+params.Context.Value("user").(string)) {
+					envs = append(envs, e)
+				}*/
+			/////////////////
+			/////////////////
 			envIndices[env.Name] = &visitedNode{index: len(envList), children: map[string]*visitedNode{}}
 			envList = append(envList, Env{ID: len(envList), Name: env.Name, Projects: []Project{}})
 			envQL = &envList[len(envList)-1]
@@ -643,7 +651,7 @@ func (s *Server) InitGQL() {
 							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "itdev" || e.Name == "servicepack" || e.Name == "staging" {
 								envs = append(envs, e)
 							} else if e.Name == "local/"+params.Context.Value("user").(string) {
-								e.Name = "local"
+								e.Name = "local-dev"
 								envs = append(envs, e)
 							}
 						}

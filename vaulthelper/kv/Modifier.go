@@ -180,6 +180,8 @@ func (m *Modifier) List(path string) (*api.Secret, error) {
 	fullPath := pathBlocks[0] + "metadata/"
 	if !noEnvironments[pathBlocks[0]] {
 		fullPath += m.Env + "/"
+	} else if strings.HasPrefix(m.Env, "local") { //if local environment, add env to fullpath
+		fullPath += m.Env + "/"
 	}
 	if len(pathBlocks) > 1 {
 		fullPath += pathBlocks[1]

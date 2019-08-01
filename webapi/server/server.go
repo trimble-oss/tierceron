@@ -275,9 +275,12 @@ func (s *Server) getPaths(mod *kv.Modifier, pathName string) ([]string, error) {
 		//fmt.Println("secrets are")
 		//fmt.Println(slicey)
 		for _, pathEnd := range slicey {
-			//List is returning both pathEnd and pathEnd/
-			path := pathName + pathEnd.(string)
-			pathList = append(pathList, path)
+			// skip local path if environment is not local
+			if pathEnd != "local/" {
+				//List is returning both pathEnd and pathEnd/
+				path := pathName + pathEnd.(string)
+				pathList = append(pathList, path)
+			}
 		}
 		//fmt.Println("pathList")
 		//fmt.Println(pathList)
