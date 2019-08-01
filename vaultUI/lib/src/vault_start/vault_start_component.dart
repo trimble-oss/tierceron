@@ -28,7 +28,7 @@ class VaultStartComponent implements OnInit{
 
   String LogData;
   bool DialogVisible;
-  List Envs;                           //Valid environment options
+  List Envs;                           // Valid environment options
   Set<UISeedFile> Seeds;               // Seed files passed to vault
   //int 
   @Input()

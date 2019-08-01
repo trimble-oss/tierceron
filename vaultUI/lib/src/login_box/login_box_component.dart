@@ -2,6 +2,7 @@ import 'package:angular/angular.dart';
 import 'package:angular_forms/angular_forms.dart';
 import 'package:angular_components/angular_components.dart';
 import 'package:angular_router/angular_router.dart';
+import 'package:http/browser_client.dart';
 
 import '../routes.dart';
 import 'dart:async';
@@ -21,6 +22,8 @@ import 'dart:convert';
 )
 
 class LoginBoxComponent implements OnActivate {
+  List Envs;                           // Valid environment options
+	
   @Input()
   String Username;
   @Input()
@@ -39,10 +42,29 @@ class LoginBoxComponent implements OnActivate {
 
   Future<Null> onActivate(_, RouterState current) async {
     IsSealed = current.queryParameters['sealed'].toLowerCase() == 'true';
+    GetEnvironments(); //call GetEnvironments()
   }
 
   final String _apiEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess
 
+  GetEnvironments() async {
+    String valQuery = "twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/Environments";
+
+    var client = new BrowserClient();
+      var response =
+          await client.post(valQuery, headers: {'Content-Type': 'application/json'}, body: '{}');
+      Map respMap = json.decode(response.body);
+      List environments = respMap['env'];
+      Set envSet = Set();
+      for(var i=0; i<environments.length; i++){
+        envSet.add(environments[i]);
+        if (environments[i] == 'dev' || environments[i] == 'prod') {
+        	Environment = environments[i];
+        }
+      }
+      Envs = envSet.toList();
+  }
+  
   Future<Null> SignIn() async{
     if (IsSealed) return;
     // Fetch input username/password for making the request.
