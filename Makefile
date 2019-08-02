@@ -10,6 +10,8 @@ seed:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/vaultinit vaultinit/init.go
 x:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/vaultx vaultx/vaultx.go
+pub:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/vaultpub vaultpub/vaultpub.go
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
