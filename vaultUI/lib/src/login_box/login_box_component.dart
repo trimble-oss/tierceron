@@ -42,7 +42,7 @@ class LoginBoxComponent implements OnActivate {
 
   Future<Null> onActivate(_, RouterState current) async {
     IsSealed = current.queryParameters['sealed'].toLowerCase() == 'true';
-    GetEnvironments(); //call GetEnvironments()
+    GetEnvironments(); 
   }
 
   final String _apiEndpoint = window.location.origin + '/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/';   // Vault addreess
@@ -58,13 +58,13 @@ class LoginBoxComponent implements OnActivate {
       Set envSet = Set();
       for(var i=0; i<environments.length; i++){
         envSet.add(environments[i]);
-        if (environments[i] == 'dev') {
-        	Environment = environments[i];
-          break;
-        }
-        if (environments[i] == 'staging' || environments[i] == 'prod') {
-        	Environment = environments[i];
-          break;
+        if (Environment == null) { //set environment if null
+          if (environments[i] == 'dev') {
+            Environment = environments[i];
+          }
+          if (environments[i] == 'staging' || environments[i] == 'prod') {
+            Environment = environments[i];
+          }
         }
       }
       Envs = envSet.toList();
