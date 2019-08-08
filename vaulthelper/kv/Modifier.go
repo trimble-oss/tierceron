@@ -32,7 +32,7 @@ type Modifier struct {
 // 		   			Any errors generated in creating the client
 func NewModifier(token string, address string) (*Modifier, error) {
 	if len(address) == 0 {
-		address = "http://127.0.0.1:8200" // Default address
+		address = "http://127.0.0.1:8020" // Default address
 	}
 	httpClient, err := CreateHTTPClient()
 	if err != nil {
