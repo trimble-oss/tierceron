@@ -40,6 +40,9 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + file.Name())
 			utils.LogErrorObject(err, logger, true)
 
+			if len(filesSteppedInto) > 1 {
+				utils.CheckWarning(fmt.Sprintf("Multiple potentially conflicting configuration files found for evironment: %s", file.Name()), true)
+			}
 			for _, fileSteppedInto := range filesSteppedInto {
 				ext := filepath.Ext(fileSteppedInto.Name())
 				if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
