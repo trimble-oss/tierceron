@@ -15,6 +15,12 @@ import (
 	gql "github.com/graphql-go/graphql"
 )
 
+//Currently selected environments
+var SelectedEnvironment []string
+
+// Currently selected web environments
+var SelectedWebEnvironment []string
+
 // Server implements the twirp api server endpoints
 type Server struct {
 	VaultToken          string
@@ -154,7 +160,14 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		return nil, err
 	}
 	environments := []*pb.ValuesRes_Env{}
-	envStrings := []string{"dev", "QA", "RQA", "staging"}
+	envStrings := SelectedEnvironment
+	//Only display staging in prod mode
+	for i, other := range envStrings {
+		if other == "prod" {
+			envStrings = append(envStrings[:i], envStrings[i+1:]...)
+			break
+		}
+	}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
 		userPaths, err := mod.List("values/")
@@ -189,8 +202,8 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 			services := []*pb.ValuesRes_Env_Project_Service{}
 			//get a list of files under project
 			servicePaths, err := s.getPaths(mod, projectPath)
-			//fmt.Println("filePaths")
-			//fmt.Println(filePaths)
+			//fmt.Println("servicePaths")
+			//fmt.Println(servicePaths)
 			if err != nil {
 				utils.LogErrorObject(err, s.Log, false)
 				return nil, err
@@ -200,8 +213,6 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 				files := []*pb.ValuesRes_Env_Project_Service_File{}
 				//get a list of files under project
 				filePaths, err := s.getPaths(mod, servicePath)
-				//fmt.Println("filePaths")
-				//fmt.Println(filePaths)
 				if err != nil {
 					utils.LogErrorObject(err, s.Log, false)
 					return nil, err
@@ -217,11 +228,12 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 						return nil, err
 					}
 					if valueMap != nil {
-						//fmt.Println("data at path " + path)
+
 						for key, value := range valueMap {
 							kv := &pb.ValuesRes_Env_Project_Service_File_Value{Key: key, Value: value.(string), Source: "value"}
 							vals = append(vals, kv)
 							//data = append(data, value.(string))
+							//fmt.Println(value)
 						}
 
 					}
@@ -263,9 +275,12 @@ func (s *Server) getPaths(mod *kv.Modifier, pathName string) ([]string, error) {
 		//fmt.Println("secrets are")
 		//fmt.Println(slicey)
 		for _, pathEnd := range slicey {
-			//List is returning both pathEnd and pathEnd/
-			path := pathName + pathEnd.(string)
-			pathList = append(pathList, path)
+			// skip local path if environment is not local
+			if pathEnd != "local/" {
+				//List is returning both pathEnd and pathEnd/
+				path := pathName + pathEnd.(string)
+				pathList = append(pathList, path)
+			}
 		}
 		//fmt.Println("pathList")
 		//fmt.Println(pathList)
@@ -361,8 +376,20 @@ func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParam
 		s.VaultToken = req.PrivToken
 	}
 
+	SelectedEnvironment = SelectedWebEnvironment
+
 	if s.VaultAPITokenSecret == nil {
-		s.InitConfig("dev")
+
+		var targetEnv string
+		for _, e := range SelectedEnvironment {
+			targetEnv = e
+			if e == "dev" {
+				break
+			} else if e == "staging" {
+				break
+			}
+		}
+		s.InitConfig(targetEnv)
 	}
 	return &pb.NoParams{}, nil
 }
@@ -376,6 +403,13 @@ func (s *Server) CheckConnection(ctx context.Context, req *pb.NoParams) (*pb.Che
 	}
 	return &pb.CheckConnResp{
 		Connected: true,
+	}, nil
+}
+
+// Environments selects environments based on dev or production mode
+func (s *Server) Environments(ctx context.Context, req *pb.NoParams) (*pb.EnvResp, error) {
+	return &pb.EnvResp{
+		Env: SelectedEnvironment,
 	}, nil
 
 }

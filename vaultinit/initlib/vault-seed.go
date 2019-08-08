@@ -1,6 +1,8 @@
 package initlib
 
 import (
+	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
@@ -24,41 +26,48 @@ type writeCollection struct {
 }
 
 // SeedVault seeds the vault with seed files in the given directory
-func SeedVault(dir string, addr string, token string, env string, logger *log.Logger) {
+func SeedVault(dir string, addr string, token string, env string, logger *log.Logger, service string) {
 	logger.SetPrefix("[SEED]")
 	logger.Printf("Seeding vault from seeds in: %s\n", dir)
 
 	files, err := ioutil.ReadDir(dir)
 	utils.LogErrorObject(err, logger, true)
 
-	// Iterate through all services
 	for _, file := range files {
-		if file.IsDir() {
-			// Step over directories
-			continue
-		}
-		// Get and check file extension (last substring after .)
-		ext := filepath.Ext(file.Name())
-		if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
-			logger.Printf("\tFound seed file: %s\n", file.Name())
-			path := dir + "/" + file.Name()
-			SeedVaultFromFile(path, addr, token, env, logger)
-		}
+		if file.Name() == env || (strings.HasPrefix(env, "local") && file.Name() == "local") {
+			logger.Println("\tStepping into: " + file.Name())
 
+			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + file.Name())
+			utils.LogErrorObject(err, logger, true)
+
+			if len(filesSteppedInto) > 1 {
+				utils.CheckWarning(fmt.Sprintf("Multiple potentially conflicting configuration files found for evironment: %s", file.Name()), true)
+			}
+			for _, fileSteppedInto := range filesSteppedInto {
+				ext := filepath.Ext(fileSteppedInto.Name())
+				if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
+					logger.Println("\t\t" + fileSteppedInto.Name())
+					logger.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
+					path := dir + "/" + file.Name() + "/" + fileSteppedInto.Name()
+					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
+
+					SeedVaultFromFile(path, addr, token, env, logger, service)
+				}
+			}
+		}
 	}
-
 }
 
 //SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, logger *log.Logger) {
+func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, logger *log.Logger, service string) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	utils.LogErrorObject(err, logger, true)
-	SeedVaultFromData(rawFile, vaultAddr, token, env, logger)
+	SeedVaultFromData(rawFile, vaultAddr, token, env, logger, service)
 }
 
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, logger *log.Logger) {
+func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, logger *log.Logger, service string) {
 	logger.SetPrefix("[SEED]")
 	logger.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
@@ -107,25 +116,35 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	}
 
 	// Write values to vault
-	logger.Println("Writing seed values to paths")
+	logger.Println("Seeding configuration data for the following templates:")
+	logger.Println("Please verify that these templates exist in each service")
+
 	mod, err := kv.NewModifier(token, vaultAddr) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
 	for _, entry := range writeStack {
 		// Output data being written
 		// Write data and ouput any errors
-		warn, err := mod.Write(entry.path, entry.data)
-		utils.LogWarningsObject(warn, logger, false)
-		utils.LogErrorObject(err, logger, false)
-		// Update value metrics to reflect credential use
-		root := strings.Split(entry.path, "/")[0]
-		if root == "templates" {
-			for _, v := range entry.data {
-				if templateKey, ok := v.([]interface{}); ok {
-					metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
-					mod.AdjustValue("value-metrics/credentials", metricsKey, 1)
+		if entry.path == "super-secrets/Common" {
+			certPath := fmt.Sprintf("%s", entry.data["CertSourcePath"])
+			certPath = "vault_seeds/" + certPath
+			cert, err := ioutil.ReadFile(certPath)
+			utils.LogErrorObject(err, logger, false)
+			if err == nil {
+				//if pfx file size greater than 25 KB, print warning
+				if len(cert) > 32000 {
+					fmt.Println("Unreasonable size for pfx file. Not written to vault")
 				}
+				certBase64 := base64.StdEncoding.EncodeToString(cert)
+				entry.data["CertData"] = certBase64
 			}
+		}
+		if service != "" {
+			if strings.HasSuffix(entry.path, service) || strings.Contains(entry.path, "Common") {
+				WriteData(entry.path, entry.data, mod, logger)
+			}
+		} else {
+			WriteData(entry.path, entry.data, mod, logger)
 		}
 	}
 
@@ -133,4 +152,26 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	warn, err := verify(mod, verificationData, logger)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
+}
+
+//WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
+func WriteData(path string, data map[string]interface{}, mod *kv.Modifier, logger *log.Logger) {
+	warn, err := mod.Write(path, data)
+
+	utils.LogWarningsObject(warn, logger, false)
+	utils.LogErrorObject(err, logger, false)
+	// Update value metrics to reflect credential use
+	root := strings.Split(path, "/")[0]
+	if root == "templates" {
+		//Printing out path of each entry so that users can verify that folder structure in seed files are correct
+
+		logger.Println("vault_" + path + ".*.tmpl")
+		for _, v := range data {
+			if templateKey, ok := v.([]interface{}); ok {
+				metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
+				mod.AdjustValue("value-metrics/credentials", metricsKey, 1)
+			}
+		}
+	}
+
 }

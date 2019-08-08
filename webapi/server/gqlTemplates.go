@@ -2,7 +2,10 @@ package server
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
@@ -19,7 +22,14 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 		return nil, err
 	}
 
-	envStrings := []string{"dev", "QA", "RQA", "staging"}
+	envStrings := SelectedEnvironment
+	//Only display staging in prod mode
+	for i, other := range envStrings {
+		if other == "prod" {
+			envStrings = append(envStrings[:i], envStrings[i+1:]...)
+			break
+		}
+	}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
 		userPaths, err := mod.List("values/")
@@ -70,31 +80,56 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 						if err != nil {
 							return nil, err
 						}
-
+						//Get metadata of versions for each filePath
+						versions, err := mod.ReadVersions(filePath)
+						var dates []time.Time
+						for _, v := range versions {
+							if val, ok := v.(map[string]interface{}); ok {
+								location, _ := time.LoadLocation("America/Los_Angeles")
+								creationTime := fmt.Sprintf("%s", val["created_time"])
+								t, _ := time.Parse(time.RFC3339, creationTime)
+								t = t.In(location)
+								dates = append(dates, t)
+							}
+						}
+						sort.Slice(dates, func(i, j int) bool {
+							return dates[i].Before(dates[j])
+						})
+						for i := range dates {
+							year, month, day := dates[i].Date()
+							hour, min, sec := dates[i].Clock()
+							creationDate := strconv.Itoa(year) + "-" + strconv.Itoa(int(month)) + "-" + strconv.Itoa(day)
+							creationHour := strconv.Itoa(hour) + ":" + strconv.Itoa(min) + ":" + strconv.Itoa(sec)
+							s := []string{creationDate, creationHour}
+							creationTime := strings.Join(s, " ")
+							secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: string(i), Value: creationTime, Source: "versions"})
+						}
 						// Find secrets groups in this environment
 						vSecret, err := mod.List("super-secrets")
 						if err != nil {
 							return nil, err
 						}
-
-						if vSecret == nil {
-							return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
-						}
-
-						// Construct a string -> bool map to track accessable environments
 						availableSecrets := map[string]bool{}
-						if vDataKeys, ok := vSecret.Data["keys"]; ok {
-							if vKeys, okKeys := vDataKeys.([]interface{}); okKeys {
-								for _, k := range vKeys {
-									if group, ok := k.(string); ok {
-										availableSecrets[group] = true
+						if vSecret == nil {
+							s.Log.Println("Unable to retrieve accessible secret groups for", env)
+							continue
+
+						} else {
+							// Construct a string -> bool map to track accessable environments
+
+							if vDataKeys, ok := vSecret.Data["keys"]; ok {
+								if vKeys, okKeys := vDataKeys.([]interface{}); okKeys {
+									for _, k := range vKeys {
+										if group, ok := k.(string); ok {
+											availableSecrets[group] = true
+										}
 									}
+								} else {
+									return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
 								}
 							} else {
 								return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
 							}
-						} else {
-							return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
 						}
 
 						for k, v := range kvs {
@@ -120,7 +155,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 										if key, ok := val[1].(string); ok {
 											value, err := mod.ReadValue(fullPath, key)
 											if err == nil && value != "" {
-												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: value, Source: "templates"})
+												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: value, Source: "value"})
 											}
 										} else {
 											continue

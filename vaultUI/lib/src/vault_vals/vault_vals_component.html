@@ -4,6 +4,8 @@
     <h1>Configuration Browser</h1>
     <button class="redirect-button" (click)="SignOut()">Sign Out</button>
     <button class="redirect-button" (click)="ActiveSessions()">Active Sessions</button>
+    <button class="redirect-button" (click)="Refresh()">Refresh</button>
+    
 
     <div class="topnav">
         <select #env id="environments" class="selection" (change)="SelectEnv(env.value)">
@@ -19,7 +21,7 @@
             <option disabled selected value>All Files</option>
         </select>
         <select #source id="source" class="selection small-selection" (change)="SelectSource(source.value)">
-            <option selected value="">All Values</option>
+            <option selected value ="">All Values</option>
             <option value="value">Values</option>
             <option value="templates">Secrets</option>
         </select>
@@ -27,6 +29,9 @@
             <input #query id="query" type="text" placeholder="Search.." name="search" (keyup.enter)="SelectKey(query.value)">
             <button type="submit" (click)="SelectKey(query.value)"><i class="fa fa-search"></i></button>
         </div>
+        <select #vers id="versions" class="selection">
+            <option disabled selected value>All Environments</option>
+        </select>
     </div>
 
     <div class="row">

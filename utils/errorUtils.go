@@ -75,7 +75,7 @@ func LogErrorObject(err error, logger *log.Logger, exit bool) {
 		_prefix := logger.Prefix()
 		logger.SetPrefix("[ERROR]")
 		if exit {
-			fmt.Println("Errors encountered, exiting and writing to log file")
+			fmt.Printf("Errors encountered, exiting and writing to log file: %v\n", err)
 			logger.Fatal(err)
 		} else {
 			logger.Println(err)

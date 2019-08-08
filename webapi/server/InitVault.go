@@ -78,7 +78,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 				Tokens:  nil,
 			}, err
 		}
-		il.SeedVaultFromData(fBytes, s.VaultAddr, s.VaultToken, seed.Env, logger)
+		il.SeedVaultFromData(fBytes, s.VaultAddr, s.VaultToken, seed.Env, logger, "")
 	}
 
 	il.UploadPolicies(policyPath, v, logger)
@@ -97,10 +97,10 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
 
-	envStrings := []string{"dev", "QA", "RQA", "staging"}
+	envStrings := SelectedEnvironment
 	for _, e := range envStrings {
 		mod.Env = e
-		err, warn = il.UploadTemplateDirectory(mod, templatePath)
+		err, warn = il.UploadTemplateDirectory(mod, templatePath, logger)
 		utils.LogErrorObject(err, logger, false)
 		utils.LogWarningsObject(warn, logger, false)
 	}
@@ -128,9 +128,19 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	logger.Printf("Secret ID: %s\n", secretID)
 
 	s.InitGQL()
-	s.InitConfig("dev")
+	var targetEnv string
+	for _, e := range envStrings {
+		targetEnv = e
+		if e == "dev" {
+			break
+		} else if e == "staging" {
+			SelectedEnvironment = SelectedWebEnvironment
+			break
+		}
+	}
+	s.InitConfig(targetEnv)
 
-	res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password, Environment: req.Env})
+	res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password, Environment: targetEnv})
 	if err != nil {
 		utils.LogErrorObject(err, logger, false)
 		tokens = append(tokens, &pb.InitResp_Token{

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
 	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
@@ -105,6 +106,7 @@ func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQL
 
 //InitGQL Initializes the GQL schema
 func (s *Server) InitGQL() {
+	s.Log.Println("InitGQL")
 	makeVaultReq := &pb.GetValuesReq{}
 	spctmSessions := map[string][]Session{} // Spectrum sessions
 	vaultSessions := map[string][]Session{} // Vault sessions
@@ -125,8 +127,8 @@ func (s *Server) InitGQL() {
 		return
 	}
 
-	envStrings := []string{"dev", "QA", "RQA", "staging"}
-	for _, e := range envStrings {
+	envStrings := SelectedEnvironment
+	for _, e := range envStrings { //Not including itdev and servicepack
 		// Get spectrum sessions
 		spctmSessions[e], err = s.getActiveSessions(e)
 		if err != nil {
@@ -186,7 +188,6 @@ func (s *Server) InitGQL() {
 					serviceList = append(serviceList, Service{ID: len(serviceList), EnvID: envQL.ID, ProjID: projectQL.ID, Name: service.Name, Files: []File{}})
 					serviceQL = &serviceList[len(serviceList)-1]
 				}
-
 				// Files
 				fileIndices := serviceIndices[service.Name].children
 				fileList := append([]File{}, serviceQL.Files...)
@@ -200,7 +201,6 @@ func (s *Server) InitGQL() {
 						fileList = append(fileList, File{ID: len(fileList), EnvID: envQL.ID, ProjID: projectQL.ID, ServID: serviceQL.ID, Name: file.Name, Values: []Value{}})
 						fileQL = &fileList[len(fileList)-1]
 					}
-
 					// Values
 					valList := fileQL.Values
 					for _, val := range file.Values {
@@ -642,10 +642,11 @@ func (s *Server) InitGQL() {
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						envs := []Env{}
 						for _, e := range vaultQL.Envs {
-							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "staging" {
+							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "itdev" || e.Name == "servicepack" || e.Name == "staging" {
 								envs = append(envs, e)
 							} else if e.Name == "local/"+params.Context.Value("user").(string) {
-								e.Name = "local"
+								nameBlocks := strings.Split(params.Context.Value("user").(string), "/")
+								e.Name = "local-" + nameBlocks[0]
 								envs = append(envs, e)
 							}
 						}
