@@ -1,6 +1,7 @@
 package system
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 
@@ -30,6 +31,15 @@ func NewVault(addr string) (*Vault, error) {
 	client, err := api.NewClient(&api.Config{Address: addr, HttpClient: httpClient})
 	if err != nil {
 		return nil, err
+	}
+
+	health, err := client.Sys().Health()
+	if err != nil {
+		return nil, err
+	}
+
+	if health.Sealed {
+		return nil, errors.New("Vault is sealed")
 	}
 
 	return &Vault{
