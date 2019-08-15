@@ -122,6 +122,9 @@ func getDirFiles(dir string) []string {
 		filename := file.Name()
 		extension := filepath.Ext(filename)
 		filePath := dir + file.Name()
+		if !strings.HasSuffix(dir, "/") {
+			filePath = dir + "/" + file.Name()
+		}
 		if extension == "" {
 			//if subfolder add /
 			filePath += "/"
