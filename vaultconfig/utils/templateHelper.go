@@ -60,7 +60,7 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bool, project string, service string, filename string, cert bool) (string, map[int]string) {
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
-	cds.init(modifier, secretMode, true, project, service)
+	cds.Init(modifier, secretMode, true, project, service)
 	certData := make(map[int]string)
 	if values, ok := cds.dataMap[service].(map[string]interface{}); ok {
 		if cert {

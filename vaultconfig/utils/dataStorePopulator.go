@@ -13,7 +13,7 @@ type ConfigDataStore struct {
 	dataMap map[string]interface{}
 }
 
-func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool, project string, servicesWanted ...string) {
+func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool, project string, servicesWanted ...string) {
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
 	dataPaths, err := getPathsFromProject(mod, project)
@@ -119,6 +119,38 @@ func (cds *ConfigDataStore) init(mod *kv.Modifier, secretMode bool, useDirs bool
 
 	}
 	return
+}
+
+// Provide data from the vault
+func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key string) (string, error) {
+	serviceData, ok := cds.dataMap[service]
+	if ok {
+
+		configPart, configPartOk := serviceData.(map[string]interface{})
+		if configPartOk {
+			for _, keyPathPart := range keyPath {
+				for configPathKey, configPathValues := range configPart {
+					if configPathKey == keyPathPart {
+						configPart, configPartOk = configPathValues.(map[string]interface{})
+						break
+					} else {
+						configPartOk = false
+					}
+				}
+				if !configPartOk {
+					break
+				}
+			}
+			if configPartOk && configPart != nil {
+				configValue, okValue := configPart[key]
+				if okValue {
+					return configValue.(string), nil
+				}
+			}
+		}
+	}
+	return "", errors.New("value not found in store")
+
 }
 
 func getPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error) {

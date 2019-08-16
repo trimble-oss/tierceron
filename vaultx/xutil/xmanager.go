@@ -9,11 +9,13 @@ import (
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
+	vcutils "bitbucket.org/dexterchaney/whoville/vaultconfig/utils"
+	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	"gopkg.in/yaml.v2"
 )
 
 // Manage configures the templates in vault_templates and writes them to vaultx
-func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
+func Manage(token string, address string, env string, secretMode bool, startDir string, endDir string, seed string, logger *log.Logger) {
 
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -32,7 +34,18 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 	// Get files from directory
 	templatePaths := getDirFiles(startDir)
 	endPath := ""
+	project := ""
 	service := ""
+	var mod *kv.Modifier
+
+	if token != "" {
+		var err error
+		mod, err = kv.NewModifier(token, address)
+		if err != nil {
+			panic(err)
+		}
+		mod.Env = env
+	}
 
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
@@ -46,10 +59,16 @@ func Manage(startDir string, endDir string, seed string, logger *log.Logger) {
 			}
 		}
 		if dirIndex != -1 {
+			project = s[dirIndex+1]
 			service = s[dirIndex+2]
 		}
 
-		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(templatePath, logger, service)
+		var cds *vcutils.ConfigDataStore
+		if mod != nil {
+			cds = new(vcutils.ConfigDataStore)
+			cds.Init(mod, secretMode, true, project, service)
+		}
+		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(cds, templatePath, logger, service)
 		if templateDepth > maxDepth {
 			maxDepth = templateDepth
 			//templateCombinedSection = interfaceTemplateSection
