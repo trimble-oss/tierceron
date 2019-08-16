@@ -146,6 +146,21 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 				if okValue {
 					return configValue.(string), nil
 				}
+			} else {
+				// Try nested algorithm.
+				keyPathKey := "/" + strings.Join(keyPath, "/")
+				for configPathKey, configPathValues := range configPart {
+					if configPathKey == keyPathKey {
+						configPart, configPartOk = configPathValues.(map[string]interface{})
+
+						if configPartOk {
+							configValue, okValue := configPart[key]
+							if okValue {
+								return configValue.(string), nil
+							}
+						}
+					}
+				}
 			}
 		}
 	}

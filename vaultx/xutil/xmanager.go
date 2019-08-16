@@ -37,6 +37,7 @@ func Manage(token string, address string, env string, secretMode bool, startDir 
 	project := ""
 	service := ""
 	var mod *kv.Modifier
+	multiService := false
 
 	if token != "" {
 		var err error
@@ -46,6 +47,11 @@ func Manage(token string, address string, env string, secretMode bool, startDir 
 		}
 		mod.Env = env
 	}
+	valueSection = map[string]map[string]map[string]string{}
+	valueSection["values"] = map[string]map[string]string{}
+
+	secretSection = map[string]map[string]map[string]string{}
+	secretSection["super-secrets"] = map[string]map[string]string{}
 
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
@@ -60,6 +66,9 @@ func Manage(token string, address string, env string, secretMode bool, startDir 
 		}
 		if dirIndex != -1 {
 			project = s[dirIndex+1]
+			if service != s[dirIndex+2] {
+				multiService = true
+			}
 			service = s[dirIndex+2]
 		}
 
@@ -106,7 +115,12 @@ func Manage(token string, address string, env string, secretMode bool, startDir 
 	templateData = strings.ReplaceAll(templateData, "'", "")
 	seedFile := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret)
 
-	endPath = endDir + service + "_seed.yml"
+	endDir = endDir + env + string(os.PathSeparator)
+	if multiService {
+		endPath = endDir + env + "_seed.yml"
+	} else {
+		endPath = endDir + service + "_seed.yml"
+	}
 	writeToFile(seedFile, endPath)
 
 	// Print that we're done
@@ -155,6 +169,7 @@ func getDirFiles(dir string) []string {
 	return filePaths
 }
 
+// MergeMaps - merges 2 maps recursively.
 func MergeMaps(x1, x2 interface{}) interface{} {
 	switch x1 := x1.(type) {
 	case map[string]interface{}:
