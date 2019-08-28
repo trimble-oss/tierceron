@@ -90,11 +90,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 				if link, ok := v.([]interface{}); ok {
 					newVaultValue, readErr := mod.ReadValue(link[0].(string), link[1].(string))
 					if link[0].(string) == "super-secrets/Common" {
-						if k != "certData" {
-							commonValues[k] = newVaultValue
-						} else {
-							commonValues[k] = "data"
-						}
+						commonValues[k] = newVaultValue
 					} else {
 						if readErr == nil {
 							values[k] = newVaultValue
