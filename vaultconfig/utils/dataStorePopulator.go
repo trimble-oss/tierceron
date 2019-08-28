@@ -90,7 +90,11 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 				if link, ok := v.([]interface{}); ok {
 					newVaultValue, readErr := mod.ReadValue(link[0].(string), link[1].(string))
 					if link[0].(string) == "super-secrets/Common" {
-						commonValues[k] = newVaultValue
+						if k != "certData" {
+							commonValues[k] = newVaultValue
+						} else {
+							commonValues[k] = "data"
+						}
 					} else {
 						if readErr == nil {
 							values[k] = newVaultValue
@@ -188,7 +192,12 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 						if configPartOk {
 							configValue, okValue := configPart[key]
 							if okValue {
-								return configValue.(string), nil
+								resultValue, okResultValue := configValue.(string)
+								if okResultValue {
+									return resultValue, nil
+								} else {
+									return "", errors.New("value not found in store")
+								}
 							}
 						}
 					}
