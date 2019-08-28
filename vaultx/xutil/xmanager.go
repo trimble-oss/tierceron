@@ -77,7 +77,7 @@ func Manage(token string, address string, env string, secretMode bool, genAuth b
 			cds = new(vcutils.ConfigDataStore)
 			cds.Init(mod, secretMode, true, project, service)
 		}
-		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(mod, cds, templatePath, logger, project, service)
+		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(cds, templatePath, logger, project, service)
 		if templateDepth > maxDepth {
 			maxDepth = templateDepth
 			//templateCombinedSection = interfaceTemplateSection
