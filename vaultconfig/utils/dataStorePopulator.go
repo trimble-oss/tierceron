@@ -28,6 +28,17 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 
 	for _, path := range dataPaths {
 		//for each path, read the secrets there
+		pathParts := strings.Split(path, "/")
+		foundWantedService := false
+		for i := 0; i < len(servicesWanted); i++ {
+			if pathParts[2] == servicesWanted[i] {
+				foundWantedService = true
+				break
+			}
+		}
+		if !foundWantedService {
+			continue
+		}
 
 		secrets, err := mod.ReadData(path)
 		if err != nil {

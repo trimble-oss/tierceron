@@ -62,8 +62,8 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 	cds := new(ConfigDataStore)
 	cds.Init(modifier, secretMode, true, project, service)
 	certData := make(map[int]string)
-	if values, ok := cds.dataMap[service].(map[string]interface{}); ok {
-		if cert {
+	if cert {
+		if values, ok := cds.dataMap["Common"].(map[string]interface{}); ok {
 			//Verify that config file and cert variables exist in cds map
 			config, ok := values["config"].(map[string]interface{})
 			if !ok {
@@ -90,6 +90,8 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 			certData[1] = fmt.Sprintf("%s", decoded)
 			return "", certData
 		}
+	}
+	if values, ok := cds.dataMap[service].(map[string]interface{}); ok {
 		//create new template from template string
 		fmt.Println("filename is " + filename)
 		t := template.New("template")
