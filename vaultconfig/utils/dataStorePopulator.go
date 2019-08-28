@@ -187,7 +187,12 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 			if configPartOk && configPart != nil {
 				configValue, okValue := configPart[key]
 				if okValue {
-					return configValue.(string), nil
+					resultValue, okResultValue := configValue.(string)
+					if okResultValue {
+						return resultValue, nil
+					} else {
+						return "", errors.New("value not found in store")
+					}
 				}
 			} else {
 				// Try nested algorithm.
