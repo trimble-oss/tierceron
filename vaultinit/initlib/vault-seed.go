@@ -1,10 +1,12 @@
 package initlib
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -73,11 +75,16 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
 	// Unmarshal
 	var rawYaml interface{}
+	if bytes.Contains(fData, []byte("<Enter Secret Here>")) {
+		fmt.Println("Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.")
+		os.Exit(1)
+	}
 	err := yaml.Unmarshal(fData, &rawYaml)
 	utils.LogErrorObject(err, logger, true)
 	seed, ok := rawYaml.(map[interface{}]interface{})
 	if ok == false {
-		logger.Fatal("Count not extract seed. Possibly a formatting issue")
+		fmt.Println("Invalid yaml file.  Refusing to continue.")
+		os.Exit(1)
 	}
 
 	mapStack := []seedCollection{seedCollection{"", seed}} // Begin with root of yaml file
