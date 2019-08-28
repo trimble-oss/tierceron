@@ -47,6 +47,15 @@ func Manage(token string, address string, env string, secretMode bool, genAuth b
 		}
 		mod.Env = env
 	}
+
+	if genAuth {
+		_, err := mod.ReadData("apiLogins/meta")
+		if err != nil {
+			fmt.Println("Cannot genAuth with provided token.")
+			os.Exit(1)
+		}
+	}
+
 	valueSection = map[string]map[string]map[string]string{}
 	valueSection["values"] = map[string]map[string]string{}
 
@@ -108,6 +117,9 @@ func Manage(token string, address string, env string, secretMode bool, genAuth b
 			if errA != nil {
 				fmt.Println(errA)
 			}
+		} else {
+			fmt.Println("Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.")
+			os.Exit(1)
 		}
 	}
 
