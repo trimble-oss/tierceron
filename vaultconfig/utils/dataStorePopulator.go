@@ -10,7 +10,8 @@ import (
 
 //ConfigDataStore stores the data needed to configure the specified template files
 type ConfigDataStore struct {
-	dataMap map[string]interface{}
+	dataMap                 map[string]interface{}
+	CommonTemplateVariables map[string][]string
 }
 
 func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool, project string, servicesWanted ...string) {
@@ -23,6 +24,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 	}
 	ogKeys := []string{}
 	valueMaps := [][]string{}
+	commonTemplateVariables := map[string][]string{}
 
 	for _, path := range dataPaths {
 		//for each path, read the secrets there
@@ -39,6 +41,13 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 				//if it's a string, it's not the data we're looking for (we want maps)
 				ogKeys = append(ogKeys, strings.Replace(key, ".", "_", -1))
 				newVal := value.([]interface{})
+				if len(newVal) > 0 && newVal[0].(string) == "super-secrets/Common" {
+					if !strings.HasSuffix(path, "/") {
+						commonConfigElement := []string{}
+						commonConfigElement = append(commonConfigElement, path)
+						commonTemplateVariables[key] = commonConfigElement
+					}
+				}
 				newValues := []string{}
 				for _, val := range newVal {
 					newValues = append(newValues, val.(string))
@@ -49,6 +58,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 				cds.dataMap[key] = value.(string)
 			}
 		}
+		cds.CommonTemplateVariables = commonTemplateVariables
 		if useDirs {
 			s := strings.Split(path, "/")
 			projectDir := s[1]
@@ -73,12 +83,35 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 				valuesScrubbed[strings.Replace(k, ".", "_", -1)] = v
 			}
 			values = valuesScrubbed
+			commonValues := map[string]interface{}{}
+
 			// Substitute in secrets
 			for k, v := range values {
 				if link, ok := v.([]interface{}); ok {
-					values[k], _ = mod.ReadValue(link[0].(string), link[1].(string))
+					newVaultValue, readErr := mod.ReadValue(link[0].(string), link[1].(string))
+					if link[0].(string) == "super-secrets/Common" {
+						commonValues[k] = newVaultValue
+					} else {
+						if readErr == nil {
+							values[k] = newVaultValue
+						}
+					}
 				}
 			}
+			if len(commonValues) > 0 {
+				//not sure about this part with projects structure
+				if subDir, ok := cds.dataMap["Common"].(map[string]interface{}); ok {
+					subDir[fileDir] = commonValues
+				} else if cds.dataMap["Common"] == nil {
+					cds.dataMap["Common"] = map[string]interface{}{
+						fileDir: commonValues,
+					}
+				}
+				for commonKeyD, _ := range commonValues {
+					delete(values, commonKeyD)
+				}
+			}
+
 			//not sure about this part with projects structure
 			if subDir, ok := cds.dataMap[serviceDir].(map[string]interface{}); ok {
 				subDir[fileDir] = values
@@ -104,7 +137,6 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 
 							//put the original key with the correct value
 							cds.dataMap[ogKeys[i]] = value
-
 						}
 					} else {
 						//second element is the key
@@ -121,7 +153,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 	return
 }
 
-// Provide data from the vault
+// GetValue Provides data from the vault
 func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key string) (string, error) {
 	serviceData, ok := cds.dataMap[service]
 	if ok {
