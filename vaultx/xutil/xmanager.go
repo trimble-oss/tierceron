@@ -48,7 +48,7 @@ func Manage(token string, address string, env string, secretMode bool, genAuth b
 		mod.Env = env
 	}
 
-	if genAuth {
+	if genAuth && mod != nil {
 		_, err := mod.ReadData("apiLogins/meta")
 		if err != nil {
 			fmt.Println("Cannot genAuth with provided token.")
@@ -108,18 +108,35 @@ func Manage(token string, address string, env string, secretMode bool, genAuth b
 
 	// Add special auth section.
 	if genAuth {
-		connInfo, err := mod.ReadData("apiLogins/meta")
-		if err == nil {
+		if mod != nil {
+			connInfo, err := mod.ReadData("apiLogins/meta")
+			if err == nil {
+				authSection := map[string]interface{}{}
+				authSection["apiLogins"] = map[string]interface{}{}
+				authSection["apiLogins"].(map[string]interface{})["meta"] = connInfo
+				authYaml, errA = yaml.Marshal(authSection)
+				if errA != nil {
+					fmt.Println(errA)
+				}
+			} else {
+				fmt.Println("Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.")
+				os.Exit(1)
+			}
+		} else {
+			authConfigurations := map[string]interface{}{}
+			authConfigurations["authEndpoint"] = "<Enter Secret Here>"
+			authConfigurations["pass"] = "<Enter Secret Here>"
+			authConfigurations["sessionDB"] = "<Enter Secret Here>"
+			authConfigurations["user"] = "<Enter Secret Here>"
+			authConfigurations["vaultApiTokenSecret"] = "<Enter Secret Here>"
+
 			authSection := map[string]interface{}{}
 			authSection["apiLogins"] = map[string]interface{}{}
-			authSection["apiLogins"].(map[string]interface{})["meta"] = connInfo
+			authSection["apiLogins"].(map[string]interface{})["meta"] = authConfigurations
 			authYaml, errA = yaml.Marshal(authSection)
 			if errA != nil {
 				fmt.Println(errA)
 			}
-		} else {
-			fmt.Println("Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.")
-			os.Exit(1)
 		}
 	}
 
