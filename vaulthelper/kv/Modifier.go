@@ -55,6 +55,9 @@ func NewModifier(token string, address string) (*Modifier, error) {
 
 // ValidateEnvironment Ensures token has access to requested data.
 func (m *Modifier) ValidateEnvironment(environment string) bool {
+	if strings.Contains(environment, "local") {
+		environment = "local"
+	}
 	desiredPolicy := "config_" + strings.ToLower(environment)
 
 	secret, err := m.client.Auth().Token().LookupSelf()
