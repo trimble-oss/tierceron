@@ -18,7 +18,13 @@ func ConfigFromVault(token string, address string, env string, secretMode bool, 
 	if err != nil {
 		panic(err)
 	}
+	if !mod.ValidateEnvironment(env) {
+		fmt.Println("Mismatched token for requested environment: " + env)
+		os.Exit(1)
+	}
+
 	mod.Env = env
+
 	//get files from directory
 	templatePaths, endPaths := getDirFiles(startDir, endDir)
 	//configure each template in directory

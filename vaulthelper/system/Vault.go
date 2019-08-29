@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	"github.com/hashicorp/vault/api"
@@ -126,6 +127,23 @@ func (v *Vault) CreatePolicyFromFile(name string, filepath string) error {
 		return err
 	}
 	return v.client.Sys().PutPolicy(name, string(data))
+}
+
+// ValidateEnvironment Ensures token has access to requested data.
+func (v *Vault) ValidateEnvironment(environment string) bool {
+	secret, err := v.client.Auth().Token().LookupSelf()
+	valid := false
+	if err == nil {
+		policies, _ := secret.TokenPolicies()
+
+		for _, policy := range policies {
+			if strings.Contains(policy, environment) {
+				valid = true
+			}
+		}
+
+	}
+	return valid
 }
 
 // SetShards Sets known shards used by this vault for unsealing

@@ -53,6 +53,28 @@ func NewModifier(token string, address string) (*Modifier, error) {
 	return &Modifier{client: modClient, logical: modClient.Logical(), Env: "secret"}, nil
 }
 
+// ValidateEnvironment Ensures token has access to requested data.
+func (m *Modifier) ValidateEnvironment(environment string) bool {
+	desiredPolicy := "config_" + strings.ToLower(environment)
+
+	secret, err := m.client.Auth().Token().LookupSelf()
+	valid := false
+	if err == nil {
+		policies, _ := secret.TokenPolicies()
+
+		for _, policy := range policies {
+			if policy == "root" {
+				valid = true
+			}
+			if strings.ToLower(policy) == desiredPolicy {
+				valid = true
+			}
+		}
+
+	}
+	return valid
+}
+
 // Writes the key,value pairs in data to the vault
 //
 // @param   data A set of key,value pairs to be written
