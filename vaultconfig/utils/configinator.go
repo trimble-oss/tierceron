@@ -36,6 +36,7 @@ func ConfigFromVault(token string, address string, env string, secretMode bool, 
 		for j, piece := range s {
 			if piece == "vault_templates" {
 				dirIndex = j
+				break
 			}
 		}
 		if dirIndex != -1 {

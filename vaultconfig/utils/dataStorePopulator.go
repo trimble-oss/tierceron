@@ -95,6 +95,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 			}
 			values = valuesScrubbed
 			commonValues := map[string]interface{}{}
+			noValueKeys := []string{}
 
 			// Substitute in secrets
 			for k, v := range values {
@@ -105,10 +106,18 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 					} else {
 						if readErr == nil {
 							values[k] = newVaultValue
+						} else {
+							noValueKeys = append(noValueKeys, k)
 						}
 					}
 				}
 			}
+			if len(noValueKeys) > 0 {
+				for _, noValueKey := range noValueKeys {
+					delete(values, noValueKey)
+				}
+			}
+
 			if len(commonValues) > 0 {
 				//not sure about this part with projects structure
 				if subDir, ok := cds.dataMap["Common"].(map[string]interface{}); ok {
