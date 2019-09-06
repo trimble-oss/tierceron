@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
@@ -17,11 +18,25 @@ type ConfigDataStore struct {
 func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool, project string, servicesWanted ...string) {
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
-	dataPaths, err := getPathsFromProject(mod, project)
+	dataPathsFull, err := getPathsFromProject(mod, project)
 
 	if err != nil {
-		panic(err)
+		fmt.Println("Uninitialized environment.  Please initialize environment.")
+		os.Exit(1)
 	}
+	dataPaths := []string{}
+	for _, fullPath := range dataPathsFull {
+		if strings.HasSuffix(fullPath, "/") {
+			continue
+		} else {
+			dataPaths = append(dataPaths, fullPath)
+		}
+	}
+	if len(dataPaths) < len(dataPathsFull)/3 && len(dataPaths) != len(dataPathsFull) {
+		fmt.Println("Unexpected vault pathing.  Dropping optimization.")
+		dataPaths = dataPathsFull
+	}
+
 	ogKeys := []string{}
 	valueMaps := [][]string{}
 	commonTemplateVariables := map[string][]string{}

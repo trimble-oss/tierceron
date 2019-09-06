@@ -163,7 +163,11 @@ func Manage(token string, address string, env string, secretMode bool, genAuth b
 
 	endDir = endDir + env + string(os.PathSeparator)
 	if multiService {
-		endPath = endDir + env + "_seed.yml"
+		if strings.HasPrefix(env, "local") {
+			endPath = endDir + "local_seed.yml"
+		} else {
+			endPath = endDir + env + "_seed.yml"
+		}
 	} else {
 		endPath = endDir + service + "_seed.yml"
 	}
