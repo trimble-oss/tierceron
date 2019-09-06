@@ -1,0 +1,237 @@
+syntax = "proto3";
+
+package viewpoint.whoville.apinator;
+option go_package="apinator";
+
+message NoParams{}
+
+service EnterpriseServiceBroker {
+    rpc GetTemplate(TemplateReq) returns (TemplateResp);
+    rpc Validate(ValidationReq) returns (ValidationResp);
+    rpc ListServiceTemplates(ListReq) returns (ListResp);
+    rpc GetValues(GetValuesReq) returns (ValuesRes);
+    rpc InitVault(InitReq) returns (InitResp);
+    rpc GetStatus(NoParams) returns (VaultStatus);
+    rpc APILogin(LoginReq) returns (LoginResp);
+    rpc Unseal(UnsealReq) returns (UnsealResp);
+    rpc GraphQL(GraphQLQuery) returns (GraphQLResp);
+    rpc UpdateAPI(UpdateAPIReq) returns (NoParams);
+    rpc GetVaultTokens(TokensReq) returns (TokensResp);
+    rpc RollTokens(NoParams) returns (NoParams);
+    rpc ResetServer(ResetReq) returns (NoParams);
+    rpc CheckConnection(NoParams) returns (CheckConnResp);
+    rpc Environments(NoParams) returns(EnvResp);
+}
+
+/////////////////////////////////////////////////////////
+// Template Messages                                   //
+/////////////////////////////////////////////////////////
+
+message ListReq {
+    string project = 1;
+    string service = 2;
+}
+
+message ListResp {
+    repeated string templates = 1;
+}
+
+// Request for retrieving a template file from the vault
+message TemplateReq {
+    string project = 1;
+    string service = 2; // Service name i.e. ST, Spectrum, etc.
+    string file = 3; // Template file name (no extension)
+}
+
+// Response containing template and extension as stored in the vault
+message TemplateResp {
+    string data = 1; // Template file encoded in base64
+    string ext = 2; // Template file extension
+}
+
+/////////////////////////////////////////////////////////
+// Validation Messages                                 //
+/////////////////////////////////////////////////////////
+
+// Request for checking the validity of credentials for a service in a given environment
+message ValidationReq {
+    string service = 1; // service name i.e. ServiceTechDB
+    string project = 2;
+    string env = 3; // Environment (local, dev, QA)
+}
+
+message ValidationResp {
+    bool isValid = 1; // Boolean value indicating whether the credentials are valid or not
+}
+
+/////////////////////////////////////////////////////////
+// ?? Messages                                 //
+/////////////////////////////////////////////////////////
+
+// Request for checking the validity of credentials for a service in a given environment
+message ValuesRes {
+    message Env {
+        string name = 1;
+        message Project {
+            string name = 1;
+            message Service {
+                string name = 1;
+                message File {
+                    string name = 1;
+                    message Value {
+                        string key = 1;
+                        string value = 2;
+                        string source = 3;
+                    }
+                    repeated Value values = 2;
+                }
+                repeated File files = 2;
+            }
+            repeated Service services = 2;
+        }
+        message Provider {
+            string name = 1;
+            message Session {
+                string user = 1;
+                int64  lastLogIn = 2;
+            }
+            repeated Session sessions = 2;
+        }
+        repeated Project projects = 2;
+        repeated Provider providers = 3;
+    }
+    repeated Env envs = 2;
+}
+message GetValuesReq {}
+
+/////////////////////////////////////////////////////////
+// Initialization Messages                             //
+/////////////////////////////////////////////////////////
+message InitReq {
+    message SeedFile {
+        string env = 1;
+        string data = 2;
+    }
+    repeated SeedFile files = 1;
+    string username = 2;
+    string password = 3;
+    string env = 4;
+}
+
+message InitResp {
+    message Token {
+        string name = 1;
+        string value = 2;
+    }
+    bool success = 1;
+    string logfile = 2;
+    repeated Token tokens = 3;
+}
+
+message EnvResp {
+    repeated string env = 1;
+}
+
+
+/////////////////////////////////////////////////////////
+// Web App LogIn Messages                              //
+/////////////////////////////////////////////////////////
+message VaultStatus {
+    bool initialized = 1;
+    bool sealed = 2;
+    string version = 3;
+}
+
+message LoginReq {
+    string username = 1;
+    string password = 2;
+    string environment = 3;
+}
+
+message LoginResp {
+    bool success = 1;
+    string authToken = 2;
+    repeated string errors = 3;
+}
+
+message UnsealReq {
+    string unsealKey = 1;
+}
+
+message UnsealResp {
+    bool sealed = 1;
+    int32 progress = 2;
+    int32 needed = 3;
+}
+
+/////////////////////////////////////////////////////////
+// GraphQL Messages                                    //
+/////////////////////////////////////////////////////////
+message GraphQLQuery {
+    string query = 1;
+}
+
+message GQLError {
+    message Location{
+        int32 line = 1;
+        int32 column = 2;
+    }
+    string message = 1;
+    repeated Location locations = 2;
+
+}
+
+message GraphQLResp {
+    ValuesRes data = 1;
+    repeated GQLError errors = 2;
+}
+
+message TemplateData {
+    message Service {
+        string name = 1;
+        message File {
+            string name = 1;
+            repeated string secrets = 2;
+        }
+        repeated File files = 2;
+    }
+    repeated Service services = 2;
+}
+
+message GQLTemplateResp {
+    TemplateData data = 1;
+    repeated GQLError errors = 2;
+}
+/////////////////////////////////////////////////////////
+// Update API Messages                                 //
+/////////////////////////////////////////////////////////
+message UpdateAPIReq {
+    string build = 1;
+}
+
+////////////////////////////////////////////////////////
+// Token Messages                                     //
+////////////////////////////////////////////////////////
+message TokensReq {
+    string appRoleID = 1;
+    string appRoleSecretID = 2;
+    repeated string tokens = 3;
+}
+
+message TokensResp {
+    message Token {
+        string name = 1;
+        string value = 2;
+    }
+    repeated Token tokens = 1;
+}
+////////////////////////////////////////////////////////
+// Reset Server Messages                              //
+////////////////////////////////////////////////////////
+message CheckConnResp {
+    bool connected = 1;
+}
+message ResetReq {
+    string pubToken = 1;
+    string privToken = 2;
+}
