@@ -39,7 +39,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 		if file.Name() == env || (strings.HasPrefix(env, "local") && file.Name() == "local") {
 			logger.Println("\tStepping into: " + file.Name())
 
-			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + file.Name())
+			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + env)
 			utils.LogErrorObject(err, logger, true)
 
 			if len(filesSteppedInto) > 1 {
@@ -50,7 +50,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 				if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
 					logger.Println("\t\t" + fileSteppedInto.Name())
 					logger.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
-					path := dir + "/" + file.Name() + "/" + fileSteppedInto.Name()
+					path := dir + "/" + env + "/" + fileSteppedInto.Name()
 					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
 
 					SeedVaultFromFile(path, addr, token, env, logger, service)
