@@ -2,31 +2,63 @@ package validator
 
 import (
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/asn1"
 	"errors"
 	"fmt"
 	"io/ioutil"
 
-	pkcs "bitbucket.org/dexterchaney/crypto/pkcs12"
+	pkcs "golang.org/x/crypto/pkcs12"
 )
 
-//ValidateSendGrid validates the sendgrid API key.
+// Copied from pkcs12.go... why can't they just make these public.  Gr...
+// PEM block types
+const (
+	certificateType = "CERTIFICATE"
+	privateKeyType  = "PRIVATE KEY"
+)
+
+//ValidateKeyStore validates the sendgrid API key.
 func ValidateKeyStore(filename string, pass string) (bool, error) {
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return false, err
 	}
-	keys, certs, err := pkcs.DecodeAll(file, pass)
-
-	fmt.Println(len(keys))
-	fmt.Println(len(certs))
-	if err != nil {
+	pemBlocks, errToPEM := pkcs.ToPEM(file, pass)
+	if errToPEM != nil {
 		return false, errors.New("failed to parse: " + err.Error())
 	}
+	isValid := false
 
-	if err := keys[0].(*rsa.PrivateKey).Validate(); err != nil {
-		fmt.Println("key validation didn't work")
+	for _, pemBlock := range pemBlocks {
+		// PEM constancts defined but not exposed in
+		//	certificateType = "CERTIFICATE"
+		//	privateKeyType  = "PRIVATE KEY"
+
+		if (*pemBlock).Type == certificateType {
+			var cert x509.Certificate
+			_, errUnmarshal := asn1.Unmarshal((*pemBlock).Bytes, &cert)
+			if errUnmarshal != nil {
+				return false, errors.New("failed to parse: " + err.Error())
+			}
+
+			isCertValid, err := VerifyCertificate(&cert)
+			if err != nil {
+				fmt.Println("Certificate validation failure.")
+			}
+			isValid = isCertValid
+		} else if (*pemBlock).Type == privateKeyType {
+			var key rsa.PrivateKey
+			_, errUnmarshal := asn1.Unmarshal((*pemBlock).Bytes, &key)
+			if errUnmarshal != nil {
+				return false, errors.New("failed to parse: " + err.Error())
+			}
+
+			if err := key.Validate(); err != nil {
+				fmt.Println("key validation didn't work")
+			}
+		}
 	}
 
-	isValid, err := VerifyCertificate(certs[0])
 	return isValid, err
 }
