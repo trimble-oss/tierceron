@@ -22,7 +22,8 @@ func CreateHTTPClient() (client *http.Client, err error) {
 	// configure a client to use trust those certificates
 	httpClient := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: certPool},
+			TLSClientConfig:   &tls.Config{RootCAs: certPool},
+			DisableKeepAlives: false,
 		},
 	}
 	return httpClient, nil
