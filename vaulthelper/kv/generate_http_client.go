@@ -35,6 +35,7 @@ func CreateHTTPClient() (client *http.Client, err error) {
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
 			DisableKeepAlives:     false,
+			MaxConnsPerHost:       10,
 		},
 	}
 	return httpClient, nil
