@@ -40,7 +40,8 @@ func NewModifier(token string, address string) (*Modifier, error) {
 	}
 	// Create client
 	modClient, err := api.NewClient(&api.Config{
-		Address: address, HttpClient: httpClient,
+		Address:    address,
+		HttpClient: httpClient,
 	})
 	if err != nil {
 		return nil, err
