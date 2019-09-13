@@ -2,18 +2,6 @@
 
 
 [[projects]]
-  branch = "develop"
-  digest = "1:1b7e283bceb93bb139ee36045063393772cf4d327f9f6681ec73417a29526fcb"
-  name = "bitbucket.org/dexterchaney/crypto"
-  packages = [
-    "pkcs12",
-    "pkcs12/internal/rc2",
-  ]
-  pruneopts = "UT"
-  revision = "a26154df5be4b0a6209230edc44d8baa58d737c0"
-  source = "git@bitbucket.org:dexterchaney/crypto.git"
-
-[[projects]]
   digest = "1:b62a3c5b37db602bf1158e921da1a762315a4c37855fd418a14498aa87a342d5"
   name = "cloud.google.com/go"
   packages = ["civil"]
@@ -241,10 +229,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ee04668811bcca0958f730d2595813a8d2561e9a9e68b0387de6362545d9823b"
+  digest = "1:5a824c07abdbbedbf35f2ab180b07ba6a0f08776777fac1418d7d653cf036b0a"
   name = "golang.org/x/crypto"
   packages = [
     "md4",
+    "pkcs12",
+    "pkcs12/internal/rc2",
     "ssh/terminal",
   ]
   pruneopts = "UT"
@@ -317,7 +307,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "bitbucket.org/sarawille7/crypto/pkcs12",
     "github.com/denisenkom/go-mssqldb",
     "github.com/dgrijalva/jwt-go",
     "github.com/go-sql-driver/mysql",
@@ -330,6 +319,7 @@
     "github.com/sendgrid/sendgrid-go",
     "github.com/twitchtv/twirp",
     "github.com/twitchtv/twirp/ctxsetters",
+    "golang.org/x/crypto/pkcs12",
     "golang.org/x/crypto/ssh/terminal",
     "gopkg.in/yaml.v2",
   ]
