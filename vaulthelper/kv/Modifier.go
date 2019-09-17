@@ -20,9 +20,10 @@ var noEnvironments = map[string]bool{
 // can be changed to alter where in the vault the key,value
 // pair is stored
 type Modifier struct {
-	client  *api.Client  // Client connected to vault
-	logical *api.Logical // Logical used for read/write options
-	Env     string       // Environment (local/dev/QA; Initialized to secrets)
+	client           *api.Client  // Client connected to vault
+	logical          *api.Logical // Logical used for read/write options
+	Env              string       // Environment (local/dev/QA; Initialized to secrets)
+	SecretDictionary *api.Secret  // Current Secret Dictionary Cache.
 }
 
 // NewModifier Constructs a new modifier struct and connects to the vault
@@ -40,7 +41,8 @@ func NewModifier(token string, address string) (*Modifier, error) {
 	}
 	// Create client
 	modClient, err := api.NewClient(&api.Config{
-		Address: address, HttpClient: httpClient,
+		Address:    address,
+		HttpClient: httpClient,
 	})
 	if err != nil {
 		return nil, err
@@ -137,12 +139,8 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 
 }
 
-//ReadValue takes a path and a key and returns the corresponding value from the vault
-func (m *Modifier) ReadValue(path string, key string) (string, error) {
-	valueMap, err := m.ReadData(path)
-	if err != nil {
-		return "", err
-	}
+//ReadMapValue takes a valueMap, path, and a key and returns the corresponding value from the vault
+func (m *Modifier) ReadMapValue(valueMap map[string]interface{}, path string, key string) (string, error) {
 	//return value corresponding to the key
 	if valueMap[key] != nil {
 		if value, ok := valueMap[key].(string); ok {
@@ -154,6 +152,15 @@ func (m *Modifier) ReadValue(path string, key string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("Key '%s' not found in '%s'", key, path)
+}
+
+//ReadValue takes a path and a key and returns the corresponding value from the vault
+func (m *Modifier) ReadValue(path string, key string) (string, error) {
+	valueMap, err := m.ReadData(path)
+	if err != nil {
+		return "", err
+	}
+	return m.ReadMapValue(valueMap, path, key)
 }
 
 // ReadMetadata Reads the Metadata from the path referenced by this Modifier
