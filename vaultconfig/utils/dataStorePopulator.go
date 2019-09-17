@@ -112,10 +112,24 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 			commonValues := map[string]interface{}{}
 			noValueKeys := []string{}
 
-			// Substitute in secrets
+			secretBuckets := map[string]interface{}{}
+
+			// Substitute in values
 			for k, v := range values {
 				if link, ok := v.([]interface{}); ok {
-					newVaultValue, readErr := mod.ReadValue(link[0].(string), link[1].(string))
+					bucket := link[0].(string)
+					var secretBucket map[string]interface{}
+					var ok bool
+					if secretBucket, ok = secretBuckets[bucket].(map[string]interface{}); !ok {
+						secretBucket, err = mod.ReadData(bucket)
+						if err != nil {
+							noValueKeys = append(noValueKeys, k)
+						} else {
+							secretBuckets[bucket] = secretBucket
+						}
+					}
+
+					newVaultValue, readErr := mod.ReadMapValue(secretBucket, bucket, link[1].(string))
 					if link[0].(string) == "super-secrets/Common" {
 						commonValues[k] = newVaultValue
 					} else {
@@ -156,19 +170,30 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 				}
 			}
 		} else {
+			secretBuckets := map[string]interface{}{}
+
 			for i, valueMap := range valueMaps {
 				//these should be [path, key] maps
 				if len(valueMap) != 2 {
 					panic(errors.New("value path is not the correct length"))
 				} else {
 					//first element is the path
-					secretPath := valueMap[0]
+					bucket := valueMap[0]
 					if secretMode {
 						//get rid of non-secret paths
-						dirs := strings.Split(secretPath, "/")
+						dirs := strings.Split(bucket, "/")
 						if dirs[0] == "super-secrets" {
 							key := valueMap[1]
-							value, _ := mod.ReadValue(secretPath, key)
+							var secretBucket map[string]interface{}
+							var ok bool
+							if secretBucket, ok = secretBuckets[bucket].(map[string]interface{}); !ok {
+								secretBucket, err = mod.ReadData(bucket)
+								if err == nil {
+									secretBuckets[bucket] = secretBucket
+								}
+							}
+
+							value, _ := mod.ReadMapValue(secretBucket, bucket, key)
 
 							//put the original key with the correct value
 							cds.dataMap[ogKeys[i]] = value
@@ -176,7 +201,16 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 					} else {
 						//second element is the key
 						key := valueMap[1]
-						value, _ := mod.ReadValue(secretPath, key)
+						var secretBucket map[string]interface{}
+						var ok bool
+						if secretBucket, ok = secretBuckets[bucket].(map[string]interface{}); !ok {
+							secretBucket, err = mod.ReadData(bucket)
+							if err == nil {
+								secretBuckets[bucket] = secretBucket
+							}
+						}
+
+						value, _ := mod.ReadMapValue(secretBucket, bucket, key)
 						//put the original key with the correct value
 						cds.dataMap[ogKeys[i]] = value
 					}
@@ -248,7 +282,12 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 func getPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
-	secrets, err := mod.List("templates")
+	var err error
+	if mod.SecretDictionary == nil {
+		mod.SecretDictionary, err = mod.List("templates")
+	}
+	secrets := mod.SecretDictionary
+
 	if err != nil {
 		return nil, err
 	} else if secrets != nil {
