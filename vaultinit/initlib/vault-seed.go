@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
+	"bitbucket.org/dexterchaney/whoville/validator"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	"gopkg.in/yaml.v2"
 )
@@ -142,8 +143,18 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 				if len(cert) > 32000 {
 					fmt.Println("Unreasonable size for pfx file. Not written to vault")
 				}
-				certBase64 := base64.StdEncoding.EncodeToString(cert)
-				entry.data["certData"] = certBase64
+				isValidPfx, certErr := validator.IsPfxRfc7292(cert)
+				if isValidPfx {
+					certBase64 := base64.StdEncoding.EncodeToString(cert)
+					entry.data["certData"] = certBase64
+				} else {
+					fmt.Println("Cert validation failure.  Cert will not be loaded.", certErr)
+					delete(entry.data, "certData")
+					delete(entry.data, "certSourcePath")
+					delete(entry.data, "certDestPath")
+				}
+			} else {
+				fmt.Println("Missing expected cert at: " + certPath + ".  Cert will not be loaded.")
 			}
 		}
 		if service != "" {
