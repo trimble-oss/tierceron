@@ -45,7 +45,7 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 			extra = extra + "/" + component
 		}
 	}
-	filename = filename[0:strings.LastIndex(filename, ".")]
+	filename = filename[0:strings.Index(filename, ".")]
 
 	if extra != "" {
 		filename = extra + "/" + filename
@@ -62,36 +62,14 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 	cds := new(ConfigDataStore)
 	cds.Init(modifier, secretMode, true, project, service)
 	certData := make(map[int]string)
-	if cert {
-		if values, ok := cds.dataMap["Common"].(map[string]interface{}); ok {
-			//Verify that config file and cert variables exist in cds map
-			config, ok := values["config"].(map[string]interface{})
-			if !ok {
-				fmt.Println("No template named config in this service. Unable to generate cert.pfx")
-				os.Exit(1)
-			}
-			name, ok := config["certDestPath"].(interface{})
-			if !ok {
-				fmt.Println("No certDestPath in config template section of seed for this service. Unable to generate cert.pfx")
-				os.Exit(1)
-			}
-			certData[0] = name.(string)
-			data, ok := config["certData"].(interface{})
-			if !ok {
-				fmt.Println("No certData in config template section of seed for this service. Unable to generate cert.pfx")
-				os.Exit(1)
-			}
-			encoded := fmt.Sprintf("%s", data)
-			//Decode cert as it was encoded in vaultinit
-			decoded, err := base64.StdEncoding.DecodeString(encoded)
-			if err != nil {
-				panic(err)
-			}
-			certData[1] = fmt.Sprintf("%s", decoded)
-			return "", certData
-		}
+	serviceLookup := service
+	i := strings.Index(service, ".")
+	if i > 0 {
+		serviceLookup = service[:i]
 	}
-	if values, ok := cds.dataMap[service].(map[string]interface{}); ok {
+	values, ok := cds.dataMap[serviceLookup].(map[string]interface{})
+
+	if ok {
 		//create new template from template string
 		fmt.Println("filename is " + filename)
 		t := template.New("template")
@@ -106,6 +84,32 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 		_, data := values[filename]
 		if data == false {
 			fmt.Println("Filename does not exist in values. Please check seed files to verify that folder structures are correct.")
+		}
+		if cert {
+			if serviceValues, ok := values[serviceLookup]; ok {
+				valueData := serviceValues.(map[string]interface{})
+				certDestPath, hasCertDefinition := valueData["certDestPath"].(interface{})
+				if hasCertDefinition {
+					if !ok {
+						fmt.Println("No certDestPath in config template section of seed for this service. Unable to generate cert.pfx")
+						os.Exit(1)
+					}
+					certData[0] = certDestPath.(string)
+					data, ok := valueData["certData"].(interface{})
+					if !ok {
+						fmt.Println("No certData in config template section of seed for this service. Unable to generate cert.pfx")
+						os.Exit(1)
+					}
+					encoded := fmt.Sprintf("%s", data)
+					//Decode cert as it was encoded in vaultinit
+					decoded, err := base64.StdEncoding.DecodeString(encoded)
+					if err != nil {
+						panic(err)
+					}
+					certData[1] = fmt.Sprintf("%s", decoded)
+					return "", certData
+				}
+			}
 		}
 		err = t.Execute(&doc, values[filename])
 		str = doc.String()
