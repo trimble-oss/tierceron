@@ -8,25 +8,34 @@ import (
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
+	eUtils "bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 )
 
-//ConfigFromVault configures the templates in vault_templates and writes them to vaultconfig
-func ConfigFromVault(token string, address string, env string, secretMode bool, servicesWanted []string, startDir string, endDir string, cert bool) {
-	generatedCert := false
-	mod, err := kv.NewModifier(token, address)
+//GenerateConfigsFromVault configures the templates in vault_templates and writes them to vaultconfig
+func GenerateConfigsFromVault(config eUtils.DriverConfig) {
+	mod, err := kv.NewModifier(config.Token, config.VaultAddress)
 	if err != nil {
 		panic(err)
 	}
-	if !mod.ValidateEnvironment(env) {
-		fmt.Println("Mismatched token for requested environment: " + env)
+	if !mod.ValidateEnvironment(config.Env) {
+		fmt.Println("Mismatched token for requested environment: " + config.Env)
 		os.Exit(1)
 	}
 
-	mod.Env = env
+	mod.Env = config.Env
 
-	//get files from directory
-	templatePaths, endPaths := getDirFiles(startDir, endDir)
+	templatePaths := []string{}
+	endPaths := []string{}
+
+	//templatePaths
+	for _, startDir := range config.StartDir {
+		//get files from directory
+		tp, ep := getDirFiles(startDir, config.EndDir)
+		templatePaths = append(templatePaths, tp...)
+		endPaths = append(endPaths, ep...)
+	}
+
 	//configure each template in directory
 	for i, templatePath := range templatePaths {
 		//check for template_files directory here
@@ -40,31 +49,56 @@ func ConfigFromVault(token string, address string, env string, secretMode bool, 
 			}
 		}
 		if dirIndex != -1 {
-			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[dirIndex+1], s[dirIndex+2], cert)
+			serviceTemplate := s[dirIndex+2]
+
+			isCert := false
+			if strings.HasSuffix(serviceTemplate, ".pfx.mf.tmpl") || strings.HasSuffix(serviceTemplate, ".cer.mf.tmpl") {
+				isCert = true
+			}
+
+			if config.WantCert != isCert {
+				continue
+			}
+
+			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert)
 			//generate template or certificate
-			if !generatedCert && cert {
-				writeToFile(certData[1], endDir+"/"+certData[0])
-				generatedCert = true
-				fmt.Println("certificate written to ", endDir)
-				return
-			} else if !cert {
+			if config.WantCert {
+				if len(certData) == 0 {
+					fmt.Println("Could not load cert ", endPaths[i])
+					continue
+				}
+				certDestination := config.EndDir + "/" + certData[0]
+				writeToFile(certData[1], certDestination)
+				fmt.Println("certificate written to ", certDestination)
+				continue
+			} else if !config.WantCert {
 				writeToFile(configuredTemplate, endPaths[i])
 			}
 		} else {
+			serviceTemplate := s[2]
+			isCert := false
+			if strings.HasSuffix(serviceTemplate, ".pfx.mf.tmpl") || strings.HasSuffix(serviceTemplate, ".cer.mf.tmpl") {
+				isCert = true
+			}
+
+			if config.WantCert != isCert {
+				continue
+			}
+
 			//assume the starting directory was vault_templates
-			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], secretMode, s[1], s[2], cert)
-			if !generatedCert && cert {
-				writeToFile(certData[1], endDir+"/"+certData[0])
-				generatedCert = true
-				fmt.Println("certificate written to ", endDir)
-				return
-			} else if !cert {
+			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[1], serviceTemplate, config.WantCert)
+			if config.WantCert {
+				certDestination := config.EndDir + "/" + certData[0]
+				writeToFile(certData[1], certDestination)
+				fmt.Println("certificate written to ", certDestination)
+				continue
+			} else if !config.WantCert {
 				writeToFile(configuredTemplate, endPaths[i])
 			}
 		}
+		//print that we're done
+		fmt.Println("templates configured and written to ", endPaths[i])
 	}
-	//print that we're done
-	fmt.Println("templates configured and written to ", endDir)
 
 }
 func writeToFile(data string, path string) {

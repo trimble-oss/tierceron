@@ -2,6 +2,7 @@ package initlib
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
+	"bitbucket.org/dexterchaney/whoville/validator"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	"gopkg.in/yaml.v2"
 )
@@ -132,25 +134,80 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	for _, entry := range writeStack {
 		// Output data being written
 		// Write data and ouput any errors
-		if entry.path == "super-secrets/Common" {
-			certPath := fmt.Sprintf("%s", entry.data["certSourcePath"])
-			certPath = "vault_seeds/" + certPath
-			cert, err := ioutil.ReadFile(certPath)
-			utils.LogErrorObject(err, logger, false)
-			if err == nil {
-				//if pfx file size greater than 25 KB, print warning
-				if len(cert) > 32000 {
-					fmt.Println("Unreasonable size for pfx file. Not written to vault")
+		if strings.HasPrefix(entry.path, "values/") {
+			if certPathData, certPathOk := entry.data["certSourcePath"]; certPathOk {
+				certPath := fmt.Sprintf("%s", certPathData)
+				if strings.Contains(certPath, "ENV") {
+					if len(env) >= 5 && (env)[:5] == "local" {
+						envParts := strings.SplitN(env, "/", 3)
+						certPath = strings.Replace(certPath, "ENV", envParts[1], 1)
+					} else {
+						certPath = strings.Replace(certPath, "ENV", env, 1)
+					}
 				}
-				certBase64 := base64.StdEncoding.EncodeToString(cert)
-				entry.data["certData"] = certBase64
+				certPath = "vault_seeds/" + certPath
+				cert, err := ioutil.ReadFile(certPath)
+				utils.LogErrorObject(err, logger, false)
+				if err == nil {
+					//if pfx file size greater than 25 KB, print warning
+					if len(cert) > 32000 {
+						fmt.Println("Unreasonable size for pfx file. Not written to vault")
+					}
+
+					isValidCert := false
+					var certValidationErr error
+					if strings.HasSuffix(certPath, ".pfx") {
+						isValidCert, certValidationErr = validator.IsPfxRfc7292(cert)
+					} else if strings.HasSuffix(certPath, ".cer") {
+						_, certValidationErr := x509.ParseCertificate(cert)
+						if certValidationErr == nil {
+							isValidCert = true
+						}
+					}
+					if isValidCert {
+						certBase64 := base64.StdEncoding.EncodeToString(cert)
+						if _, ok := entry.data["certData"]; ok {
+							// insecure value entry.
+							entry.data["certData"] = certBase64
+						} else {
+							entryPathParts := strings.Split(entry.path, "/")
+							if len(entryPathParts) == 2 {
+								secretPath := "super-secrets/" + entryPathParts[1]
+								done := false
+								// Look up in private entry.
+								for _, secretEntry := range writeStack {
+									if secretPath == secretEntry.path {
+										if _, ok := secretEntry.data["certData"]; ok {
+											secretEntry.data["certData"] = certBase64
+											WriteData(secretEntry.path, secretEntry.data, mod, logger)
+											done = true
+											break
+										}
+									}
+								}
+								if done {
+									continue
+								}
+							}
+						}
+					} else {
+						fmt.Println("Cert validation failure.  Cert will not be loaded.", certValidationErr)
+						delete(entry.data, "certData")
+						delete(entry.data, "certSourcePath")
+						delete(entry.data, "certDestPath")
+					}
+				} else {
+					fmt.Println("Missing expected cert at: " + certPath + ".  Cert will not be loaded.")
+				}
 			}
 		}
+
 		if service != "" {
 			if strings.HasSuffix(entry.path, service) || strings.Contains(entry.path, "Common") {
 				WriteData(entry.path, entry.data, mod, logger)
 			}
 		} else {
+
 			WriteData(entry.path, entry.data, mod, logger)
 		}
 	}

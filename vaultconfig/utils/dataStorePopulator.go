@@ -11,8 +11,7 @@ import (
 
 //ConfigDataStore stores the data needed to configure the specified template files
 type ConfigDataStore struct {
-	dataMap                 map[string]interface{}
-	CommonTemplateVariables map[string][]string
+	dataMap map[string]interface{}
 }
 
 func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool, project string, servicesWanted ...string) {
@@ -39,14 +38,13 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 
 	ogKeys := []string{}
 	valueMaps := [][]string{}
-	commonTemplateVariables := map[string][]string{}
 
 	for _, path := range dataPaths {
 		//for each path, read the secrets there
 		pathParts := strings.Split(path, "/")
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
-			if pathParts[2] == servicesWanted[i] {
+			if pathParts[2] == servicesWanted[i] || strings.HasPrefix(servicesWanted[i], pathParts[2]) {
 				foundWantedService = true
 				break
 			}
@@ -67,13 +65,6 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 				//if it's a string, it's not the data we're looking for (we want maps)
 				ogKeys = append(ogKeys, strings.Replace(key, ".", "_", -1))
 				newVal := value.([]interface{})
-				if len(newVal) > 0 && newVal[0].(string) == "super-secrets/Common" {
-					if !strings.HasSuffix(path, "/") {
-						commonConfigElement := []string{}
-						commonConfigElement = append(commonConfigElement, path)
-						commonTemplateVariables[key] = commonConfigElement
-					}
-				}
 				newValues := []string{}
 				for _, val := range newVal {
 					newValues = append(newValues, val.(string))
@@ -84,7 +75,6 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 				cds.dataMap[key] = value.(string)
 			}
 		}
-		cds.CommonTemplateVariables = commonTemplateVariables
 		if useDirs {
 			s := strings.Split(path, "/")
 			projectDir := s[1]

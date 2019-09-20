@@ -3,20 +3,19 @@ package xutil
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/utils"
+	eUtils "bitbucket.org/dexterchaney/whoville/utils"
 	vcutils "bitbucket.org/dexterchaney/whoville/vaultconfig/utils"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	"gopkg.in/yaml.v2"
 )
 
-// Manage configures the templates in vault_templates and writes them to vaultx
-func Manage(token string, address string, env string, secretMode bool, genAuth bool, startDir string, endDir string, seed string, logger *log.Logger) {
-
+// GenerateSeedsFromVault configures the templates in vault_templates and writes them to vaultx
+func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -32,23 +31,30 @@ func Manage(token string, address string, env string, secretMode bool, genAuth b
 	maxDepth := -1
 
 	// Get files from directory
-	templatePaths := getDirFiles(startDir)
+	templatePaths := []string{}
+
+	//templatePaths
+	for _, startDir := range config.StartDir {
+		//get files from directory
+		tp := getDirFiles(startDir)
+		templatePaths = append(templatePaths, tp...)
+	}
 	endPath := ""
 	project := ""
 	service := ""
 	var mod *kv.Modifier
 	multiService := false
 
-	if token != "" {
+	if config.Token != "" {
 		var err error
-		mod, err = kv.NewModifier(token, address)
+		mod, err = kv.NewModifier(config.Token, config.VaultAddress)
 		if err != nil {
 			panic(err)
 		}
-		mod.Env = env
+		mod.Env = config.Env
 	}
 
-	if genAuth && mod != nil {
+	if config.GenAuth && mod != nil {
 		_, err := mod.ReadData("apiLogins/meta")
 		if err != nil {
 			fmt.Println("Cannot genAuth with provided token.")
@@ -84,9 +90,9 @@ func Manage(token string, address string, env string, secretMode bool, genAuth b
 		var cds *vcutils.ConfigDataStore
 		if mod != nil {
 			cds = new(vcutils.ConfigDataStore)
-			cds.Init(mod, secretMode, true, project, service)
+			cds.Init(mod, config.SecretMode, true, project, service)
 		}
-		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(cds, templatePath, logger, project, service)
+		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(cds, templatePath, config.Log, project, service)
 		if templateDepth > maxDepth {
 			maxDepth = templateDepth
 			//templateCombinedSection = interfaceTemplateSection
@@ -107,7 +113,7 @@ func Manage(token string, address string, env string, secretMode bool, genAuth b
 	var errA error
 
 	// Add special auth section.
-	if genAuth {
+	if config.GenAuth {
 		if mod != nil {
 			connInfo, err := mod.ReadData("apiLogins/meta")
 			if err == nil {
@@ -161,20 +167,20 @@ func Manage(token string, address string, env string, secretMode bool, genAuth b
 	templateData = strings.ReplaceAll(templateData, "'", "")
 	seedFile := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n" + string(authYaml)
 
-	endDir = endDir + env + string(os.PathSeparator)
+	config.EndDir = config.EndDir + config.Env + string(os.PathSeparator)
 	if multiService {
-		if strings.HasPrefix(env, "local") {
-			endPath = endDir + "local_seed.yml"
+		if strings.HasPrefix(config.Env, "local") {
+			endPath = config.EndDir + "local_seed.yml"
 		} else {
-			endPath = endDir + env + "_seed.yml"
+			endPath = config.EndDir + config.Env + "_seed.yml"
 		}
 	} else {
-		endPath = endDir + service + "_seed.yml"
+		endPath = config.EndDir + service + "_seed.yml"
 	}
 	writeToFile(seedFile, endPath)
 
 	// Print that we're done
-	fmt.Println("seed created and written to ", endDir)
+	fmt.Println("seed created and written to ", config.EndDir)
 }
 
 func writeToFile(data string, path string) {
