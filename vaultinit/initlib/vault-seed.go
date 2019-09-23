@@ -152,6 +152,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 					//if pfx file size greater than 25 KB, print warning
 					if len(cert) > 32000 {
 						fmt.Println("Unreasonable size for pfx file. Not written to vault")
+						continue
 					}
 
 					isValidCert := false
@@ -159,10 +160,28 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 					if strings.HasSuffix(certPath, ".pfx") {
 						isValidCert, certValidationErr = validator.IsPfxRfc7292(cert)
 					} else if strings.HasSuffix(certPath, ".cer") {
-						_, certValidationErr := x509.ParseCertificate(cert)
+						cert, certValidationErr := x509.ParseCertificate(cert)
 						if certValidationErr == nil {
 							isValidCert = true
 						}
+						var certHost string
+						if certHostData, certHostOk := entry.data["certHost"]; certHostOk {
+							certHost = fmt.Sprintf("%s", certHostData)
+						} else {
+							fmt.Println("Missing certHost, cannot validate cert.  Not written to vault")
+							continue
+						}
+						opts := x509.VerifyOptions{
+							DNSName: certHost,
+						}
+
+						if _, err := cert.Verify(opts); err != nil {
+							if _, isUnknownAuthority := err.(x509.UnknownAuthorityError); !isUnknownAuthority {
+								fmt.Println("failed to verify certificate: " + err.Error())
+								continue
+							}
+						}
+
 					}
 					if isValidCert {
 						certBase64 := base64.StdEncoding.EncodeToString(cert)
@@ -193,6 +212,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 					} else {
 						fmt.Println("Cert validation failure.  Cert will not be loaded.", certValidationErr)
 						delete(entry.data, "certData")
+						delete(entry.data, "certHost")
 						delete(entry.data, "certSourcePath")
 						delete(entry.data, "certDestPath")
 					}

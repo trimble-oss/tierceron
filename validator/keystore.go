@@ -42,7 +42,7 @@ func ValidateKeyStore(filename string, pass string) (bool, error) {
 				return false, errors.New("failed to parse: " + err.Error())
 			}
 
-			isCertValid, err := VerifyCertificate(&cert)
+			isCertValid, err := VerifyCertificate(&cert, "")
 			if err != nil {
 				fmt.Println("Certificate validation failure.")
 			}
