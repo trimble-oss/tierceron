@@ -194,6 +194,7 @@ func writeToFile(data string, path string) {
 	utils.CheckError(err, true)
 	//write to file
 	_, err = newFile.Write(byteData)
+	newFile.Sync()
 	utils.CheckError(err, true)
 	newFile.Close()
 }
