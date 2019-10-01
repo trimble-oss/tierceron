@@ -32,7 +32,7 @@ steps:
     go version
     go mod init
     go mod download
-    env CGO_ENABLED=0 GOBIN= GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultconfig
+    CGO_ENABLED=0 GOBIN= GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultconfig
     cp vaultconfig $(Build.ArtifactStagingDirectory)
     if [[ ! -f vaultconfig ]] ; then
         echo 'File "vaultconfig" was not built, aborting.'
