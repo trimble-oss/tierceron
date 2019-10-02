@@ -53,7 +53,7 @@ steps:
         echo 'File "vaultconfig" was not built, aborting.'
         exit 1
     fi
-    cp $(GOBIN)/vaultconfig $(Build.ArtifactStagingDirectory)
+    cp $(GOBIN)/vault* $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
