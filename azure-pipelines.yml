@@ -37,7 +37,7 @@ steps:
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultconfig
     echo "Compile Complete"
     cp $(GOBIN)/vaultconfig $(Build.ArtifactStagingDirectory)
-    if [[ ! -f vaultconfig ]] ; then
+    if [[ ! -f $(GOBIN)/vaultconfig ]] ; then
         echo 'File "vaultconfig" was not built, aborting.'
         exit 1
     fi
