@@ -34,9 +34,9 @@ steps:
     echo "Mod download"
     go mod download
     echo "Compile start"
-    CGO_ENABLED=0 GOBIN= GOOS=linux GOARCH=amd64 go install -v -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultconfig
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultconfig
     echo "Compile Complete"
-    cp vaultconfig $(Build.ArtifactStagingDirectory)
+    cp ./vaultconfig $(Build.ArtifactStagingDirectory)
     if [[ ! -f vaultconfig ]] ; then
         echo 'File "vaultconfig" was not built, aborting.'
         exit 1
