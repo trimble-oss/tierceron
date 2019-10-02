@@ -10,15 +10,23 @@ resource "aws_instance" "web" {
     key_name = "${var.key-name}"
     subnet_id = "${var.subnets}"
     vpc_security_group_ids = ["sg-dc92adb8","sg-5c505b38","sg-306a034b","sg-71365900"]
-    tags{
+    iam_instance_profile = "Ec2RoleforSSM"
+    tags = {
         Name = "vault"
+        Billing    = "dev" 
+        Environment = "dev" 
+        Name       = "vault"
+        Product    = "Spectrum" 
+        "Time Zone"  = "Pacific Standard Time"    
     }
+
     provisioner "file" {
         source      = "../../vault_properties.hcl"
         destination = "/tmp/vault_properties.hcl"
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user = "ubuntu"
+            host = ""
             //agent = true
         }
     }
@@ -26,6 +34,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../certs/cert_files/serv_cert.pem"
@@ -36,6 +45,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../certs/cert_files/serv_key.pem"
@@ -46,6 +56,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "${path.module}/scripts/install.sh"
@@ -57,6 +68,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user = "ubuntu"
+            host = ""
             //agent = true
         }
     }
@@ -76,12 +88,14 @@ resource "aws_instance" "web" {
             agent       = false
             user        = "ubuntu"
             private_key = "${file("${var.deploy-pem-path}")}"
+            host = ""
         }
     }
     provisioner "file" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../public/"
@@ -91,6 +105,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../policy_files/"
@@ -100,6 +115,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../token_files/"
@@ -109,6 +125,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../template_files/"
@@ -119,6 +136,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../webapi/apiRouter/apirouter.zip"
@@ -135,6 +153,7 @@ resource "aws_instance" "web" {
             agent       = false
             user        = "ubuntu"
             private_key = "${file("${var.deploy-pem-path}")}"
+            host = ""
         }
     }
 }
