@@ -9,15 +9,14 @@ resource "aws_instance" "web" {
     instance_type = "${var.instance_type}"
     key_name = "${var.key-name}"
     subnet_id = "${var.subnets}"
-    vpc_security_group_ids = ["sg-dc92adb8","sg-5c505b38","sg-306a034b","sg-71365900"]
-    iam_instance_profile = "Ec2RoleforSSM"
+    vpc_security_group_ids = "${var.security_group_names}"
+    iam_instance_profile = "${var.ec2role}"
     tags = {
-        Name = "vault"
-        Billing    = "dev" 
-        Environment = "dev" 
-        Name       = "vault"
-        Product    = "Spectrum" 
-        "Time Zone"  = "Pacific Standard Time"    
+        Name         = "${var.tags_name}"
+        Billing      = "${var.tags_billing}"
+        Environment  = "${var.tags_environment}"
+        Product      = "${var.tags_product}"
+        "Time Zone"  = "${var.tags_timezone}"
     }
 
     provisioner "file" {
