@@ -67,7 +67,7 @@ steps:
   displayName: Build an image
   inputs:
     repository: vaultconfig
-    buildContext: '**/$(Build.ArtifactStagingDirectory'
+    buildContext: '**/$(Build.ArtifactStagingDirectory)'
     command: build
     dockerfile: '**/docker/vaultconfig/Dockerfile'
     tags: |
@@ -77,7 +77,7 @@ steps:
   displayName: Build an image
   inputs:
     repository: vaultpub
-    buildContext: '**/$(Build.ArtifactStagingDirectory'
+    buildContext: '**/$(Build.ArtifactStagingDirectory)'
     command: build
     dockerfile: '**/docker/vaultpub/Dockerfile'
     tags: |
