@@ -158,3 +158,11 @@ resource "aws_instance" "web" {
     }
 }
 
+resource "aws_ecr_repository" "vaultconfig" {
+  name = "vaultconfig"
+}
+
+resource "aws_ecr_repository" "vaultpub" {
+  name = "vaultpub"
+}
+
