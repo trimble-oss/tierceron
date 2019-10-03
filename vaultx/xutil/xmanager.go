@@ -87,6 +87,12 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 			service = s[dirIndex+2]
 		}
 
+		// Clean up service naming (Everything after '.' removed)
+		dotIndex := strings.Index(service, ".")
+		if dotIndex > 0 {
+			service = service[0:dotIndex]
+		}
+
 		var cds *vcutils.ConfigDataStore
 		if mod != nil {
 			cds = new(vcutils.ConfigDataStore)
