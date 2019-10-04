@@ -54,6 +54,7 @@ steps:
         exit 1
     fi
     cp $(GOBIN)/vault* $(Build.ArtifactStagingDirectory)
+    cp $(GOBIN)/windows_amd64/vault* $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
