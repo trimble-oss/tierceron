@@ -36,6 +36,7 @@ steps:
     echo "Compile start"
 
     for p in vaultconfig vaultpub vaultinit vaultinitp vaultx vaultxp; do
+      echo Compiling $p
       GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
       if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/$p ]] ; then
           echo File $p was not built, aborting.
