@@ -14,6 +14,7 @@ variables:
   GOROOT: '/usr/local/go1.13' # Go installation path
   GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
   modulePath: '$(GOPATH)/src/bitbucket.org/dexterchaney/whoville' # Path to the module's code
+  toolsList: ['vaultconfig', 'vaultpub', 'vaultinit', 'vaultinitp', 'vaultx', 'vaultxp']
 
 steps:
 - script: |
@@ -34,27 +35,22 @@ steps:
     echo "Mod download"
     go mod download
     echo "Compile start"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultconfig
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultpub
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultinit
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultinitp
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultx
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultxp
-
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultconfig
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultpub
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultinit
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultinitp
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultx
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultxp
+    ${{ each p in variables.toolsList}}
+      GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/${{p}}
+    ${{ each p in variables.toolsList}}
+      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/${{p}}
 
     echo "Compile Complete"
     find $(system.defaultWorkingDirectory) *
-    if [[ ! -f $(system.defaultWorkingDirectory)/vaultconfig ]] ; then
+    if [[ ! -f $(system.defaultWorkingDirectory)/gopath/vaultconfig ]] ; then
         echo 'File "vaultconfig" was not built, aborting.'
         exit 1
     fi
-    cp $(system.defaultWorkingDirectory)/vault* $(Build.ArtifactStagingDirectory)
+    if [[ ! -f $(system.defaultWorkingDirectory)/gopath/vaultpub ]] ; then
+        echo 'File "vaultpub" was not built, aborting.'
+        exit 1
+    fi
+    cp $(system.defaultWorkingDirectory)/gopath/vault* $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
