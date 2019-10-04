@@ -38,12 +38,12 @@ steps:
     for p in vaultconfig vaultpub vaultinit vaultinitp vaultx vaultxp; do
       GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
       if [[ ! -f $(system.defaultWorkingDirectory)/gopath/$p ]] ; then
-          echo 'File "$p" was not built, aborting.'
+          echo 'File $p was not built, aborting.'
           exit 1
       fi
       GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
       if [[ ! -f $(system.defaultWorkingDirectory)/gopath/windows_amd64/$p.exe ]] ; then
-          echo 'File "$p" was not built, aborting.'
+          echo 'File $p.exe was not built, aborting.'
           exit 1
       fi
     done
