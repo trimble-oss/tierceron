@@ -54,6 +54,7 @@ steps:
         exit 1
     fi
     cp $(GOBIN)/vault* $(Build.ArtifactStagingDirectory)
+    find $(GOBIN)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
