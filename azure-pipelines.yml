@@ -37,20 +37,20 @@ steps:
 
     for p in vaultconfig vaultpub vaultinit vaultinitp vaultx vaultxp; do
       GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
+      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/$p ]] ; then
+          echo 'File "$p" was not built, aborting.'
+          exit 1
+      fi
       GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
+      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/windows_amd64/$p.exe ]] ; then
+          echo 'File "$p" was not built, aborting.'
+          exit 1
+      fi
     done
 
     echo "Compile Complete"
-    find $(system.defaultWorkingDirectory) *
-    if [[ ! -f $(system.defaultWorkingDirectory)/gopath/vaultconfig ]] ; then
-        echo 'File "vaultconfig" was not built, aborting.'
-        exit 1
-    fi
-    if [[ ! -f $(system.defaultWorkingDirectory)/gopath/vaultpub ]] ; then
-        echo 'File "vaultpub" was not built, aborting.'
-        exit 1
-    fi
-    cp $(system.defaultWorkingDirectory)/gopath/vault* $(Build.ArtifactStagingDirectory)
+    cp $(system.defaultWorkingDirectory)/gopath/bin/vault* $(Build.ArtifactStagingDirectory)
+    cp $(system.defaultWorkingDirectory)/gopath/bin/windows_amd64/vault* $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
