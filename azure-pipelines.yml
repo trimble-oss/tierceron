@@ -49,12 +49,12 @@ steps:
     GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/vaultxp
 
     echo "Compile Complete"
-    if [[ ! -f vaultconfig ]] ; then
+    if [[ ! -f $(system.defaultWorkingDirectory)/vaultconfig ]] ; then
         echo 'File "vaultconfig" was not built, aborting.'
         exit 1
     fi
-    find . *
-    cp vault* $(Build.ArtifactStagingDirectory)
+    find $(system.defaultWorkingDirectory) *
+    cp $(system.defaultWorkingDirectory)/vault* $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
