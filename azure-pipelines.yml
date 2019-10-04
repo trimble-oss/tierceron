@@ -14,7 +14,6 @@ variables:
   GOROOT: '/usr/local/go1.13' # Go installation path
   GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
   modulePath: '$(GOPATH)/src/bitbucket.org/dexterchaney/whoville' # Path to the module's code
-  toolsList: ['vaultconfig', 'vaultpub', 'vaultinit', 'vaultinitp', 'vaultx', 'vaultxp']
 
 steps:
 - script: |
@@ -35,10 +34,11 @@ steps:
     echo "Mod download"
     go mod download
     echo "Compile start"
-    ${{ each p in variables.toolsList}}
+
+    for p in vaultconfig vaultpub vaultinit vaultinitp vaultx vaultxp; do
       GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/${{p}}
-    ${{ each p in variables.toolsList}}
       GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/${{p}}
+    done
 
     echo "Compile Complete"
     find $(system.defaultWorkingDirectory) *
