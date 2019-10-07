@@ -49,8 +49,15 @@ steps:
       fi
     done
 
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/webapi/apiRouter
+    if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/webapi/apiRouter ]] ; then
+        echo File webapi/apiRouter was not built, aborting.
+        exit 1
+    fi
+
     echo "Compile Complete"
     cp $(system.defaultWorkingDirectory)/gopath/bin/vault* $(Build.ArtifactStagingDirectory)
+    cp $(system.defaultWorkingDirectory)/gopath/bin/apiRouter $(Build.ArtifactStagingDirectory)
     cp $(system.defaultWorkingDirectory)/gopath/bin/windows_amd64/vault* $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
