@@ -2,7 +2,13 @@
 
 package mlock
 
+import (
+	"fmt"
+	"os"
+)
+
 // Mlock - provides locking hook for OS's that don't support mlock
 func Mlock() error {
-	return nil
+	fmt.Println("Mlock not supported.")
+	os.Exit(1)
 }
