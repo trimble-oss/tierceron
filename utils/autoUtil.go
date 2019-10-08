@@ -62,7 +62,9 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 	if _, err := os.Stat(userHome + "/.vault/configcert.yml"); !os.IsNotExist(err) {
 		exists = true
 		c.getCert()
-		*addrPtr = c.VaultHost
+		if addrPtr == nil || *addrPtr == "" {
+			*addrPtr = c.VaultHost
+		}
 
 		if *tokenPtr == "" {
 			if !override {
@@ -75,8 +77,6 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 				}
 			}
 		}
-		v, err = sys.NewVault(*addrPtr)
-		CheckErrorNoStack(err, true)
 	}
 
 	// Overriding or first time access: request IDs and create cert file
@@ -118,11 +118,13 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			}
 			*addrPtr = vaultHost
 		}
+		v, err = sys.NewVault(*addrPtr)
+		CheckErrorNoStack(err, true)
 
 		// Get dump
 		if override && exists {
 			fmt.Printf("Creating new cert file in %s:  vaultHost has been set to %s\n", userHome+"/.vault/configcert.yml", *addrPtr)
-			certConfigData := "vaultHost: " + vaultHost + "\n"
+			certConfigData := "vaultHost: " + *addrPtr + "\n"
 			if appRoleIDPtr != nil && secretIDPtr != nil {
 				fmt.Printf("secretID has been set to %s, approleID has been set to %s\n", *secretIDPtr, *appRoleIDPtr)
 				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
@@ -152,8 +154,6 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 					log.Fatal(err)
 				}
 			}
-			v, err = sys.NewVault(*addrPtr)
-			CheckErrorNoStack(err, true)
 
 			// Create cert file
 			writeErr := ioutil.WriteFile(userHome+"/.vault/configcert.yml", dump, 0600)
