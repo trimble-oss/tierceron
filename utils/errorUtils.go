@@ -13,6 +13,16 @@ func CheckError(err error, exit bool) {
 	}
 }
 
+// CheckErrorNoStack Simplifies the error checking process
+func CheckErrorNoStack(err error, exit bool) {
+	if err != nil {
+		fmt.Println(err)
+		if exit {
+			os.Exit(1)
+		}
+	}
+}
+
 // CheckWarnings Checks warnings returned from various vault relation operations
 func CheckWarning(warning string, exit bool) {
 	if len(warning) > 0 {

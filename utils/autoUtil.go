@@ -15,6 +15,7 @@ import (
 )
 
 type cert struct {
+	VaultHost string `yaml:"vaultHost"`
 	ApproleID string `yaml:"approleID"`
 	SecretID  string `yaml:"secretID"`
 }
@@ -44,6 +45,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 	var override bool
 	var exists bool
 	var c cert
+	var v *sys.Vault
 
 	// Get current user's home directory
 	userHome, err := os.UserHomeDir()
@@ -63,15 +65,19 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			if !override {
 				fmt.Println("Grabbing config IDs from cert file.")
 				c.getCert()
+				*addrPtr = c.VaultHost
 				*secretIDPtr = c.SecretID
 				*appRoleIDPtr = c.ApproleID
 			}
+			v, err = sys.NewVault(*addrPtr)
+			CheckErrorNoStack(err, true)
 		}
 	}
 
 	// Overriding or first time access: request IDs and create cert file
 	if *tokenPtr == "" && (override || !exists) {
 		scanner := bufio.NewScanner(os.Stdin)
+		var vaultHost string
 		var secretID string
 		var approleID string
 		var dump []byte
@@ -82,23 +88,33 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 
 			// Enter ID tokens
 			fmt.Println("No cert file found, please enter config IDs")
+			fmt.Print("vaultHost: ")
+			scanner.Scan()
+			vaultHost = scanner.Text()
 			fmt.Print("secretID: ")
 			scanner.Scan()
 			secretID = scanner.Text()
 			fmt.Print("approleID: ")
 			scanner.Scan()
 			approleID = scanner.Text()
+
+			if strings.HasPrefix(vaultHost, "http://") {
+				vaultHost = strings.Replace(vaultHost, "http://", "https://", 1)
+			} else if !strings.HasPrefix(vaultHost, "https://") {
+				vaultHost = "https://" + vaultHost
+			}
+			*addrPtr = vaultHost
 		}
 
 		// Get dump
 		if override && exists {
 			fmt.Printf("Creating new cert file in %s: secretID has been set to %s, approleID has been set to %s\n", userHome+"/.vault/configcert.yml", *secretIDPtr, *appRoleIDPtr)
-			dump = []byte("approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr)
+			dump = []byte("vaultHost: " + vaultHost + "\napproleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr)
 		} else if override && !exists {
 			fmt.Println("No cert file exists, continuing without saving config IDs")
 		} else {
 			fmt.Printf("Creating cert file in %s: secretID has been set to %s, approleID has been set to %s\n", userHome+"/.vault/configcert.yml", secretID, approleID)
-			dump = []byte("approleID: " + approleID + "\nsecretID: " + secretID)
+			dump = []byte("vaultHost: " + vaultHost + "\napproleID: " + approleID + "\nsecretID: " + secretID)
 		}
 
 		// Do not save IDs if overriding and no cert file exists
@@ -111,6 +127,8 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 					log.Fatal(err)
 				}
 			}
+			v, err = sys.NewVault(*addrPtr)
+			CheckErrorNoStack(err, true)
 
 			// Create cert file
 			writeErr := ioutil.WriteFile(userHome+"/.vault/configcert.yml", dump, 0600)
@@ -169,8 +187,6 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			CheckError(fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
 		}
-		v, err := sys.NewVault(*addrPtr)
-		CheckError(err, true)
 
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		CheckError(err, true)
