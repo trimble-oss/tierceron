@@ -47,6 +47,11 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 	var c cert
 	var v *sys.Vault
 
+	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" {
+		// For token based auth, auto auth not
+		return
+	}
+
 	// Get current user's home directory
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -81,7 +86,6 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 
 	// Overriding or first time access: request IDs and create cert file
 	if override || !exists {
-		scanner := bufio.NewScanner(os.Stdin)
 		var vaultHost string
 		var secretID string
 		var approleID string
@@ -90,24 +94,37 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		if override {
 			fmt.Println("Overriding cert file with new config IDs")
 		} else {
-
+			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
 			fmt.Println("No cert file found, please enter config IDs")
-			fmt.Print("vaultHost: ")
-			scanner.Scan()
-			vaultHost = scanner.Text()
+			if addrPtr != nil && *addrPtr != "" {
+				fmt.Println("vaultHost: " + *addrPtr)
+				vaultHost = *addrPtr
+			} else {
+				fmt.Print("vaultHost: ")
+				scanner.Scan()
+				vaultHost = scanner.Text()
+			}
 
 			if *tokenPtr == "" {
-				if secretIDPtr != nil {
+				if secretIDPtr != nil && *secretIDPtr != "" {
+					fmt.Println("secretID: " + *secretIDPtr)
+					secretID = *secretIDPtr
+				} else if secretIDPtr != nil {
 					fmt.Print("secretID: ")
 					scanner.Scan()
 					secretID = scanner.Text()
+					*secretIDPtr = secretID
 				}
 
-				if appRoleIDPtr != nil {
+				if appRoleIDPtr != nil && *appRoleIDPtr != "" {
+					fmt.Println("approleID: " + *appRoleIDPtr)
+					approleID = *appRoleIDPtr
+				} else if appRoleIDPtr != nil {
 					fmt.Print("approleID: ")
 					scanner.Scan()
 					approleID = scanner.Text()
+					*appRoleIDPtr = approleID
 				}
 			}
 
@@ -117,6 +134,11 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 				vaultHost = "https://" + vaultHost
 			}
 			*addrPtr = vaultHost
+
+			// Checks that the scanner is working
+			if err := scanner.Err(); err != nil {
+				log.Fatal(err)
+			}
 		}
 		v, err = sys.NewVault(*addrPtr)
 		CheckErrorNoStack(err, true)
@@ -169,11 +191,9 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 				*appRoleIDPtr = approleID
 			}
 		}
-
-		// Checks that the scanner is working
-		if err := scanner.Err(); err != nil {
-			log.Fatal(err)
-		}
+	} else {
+		v, err = sys.NewVault(*addrPtr)
+		CheckErrorNoStack(err, true)
 	}
 
 	if secretIDPtr == nil || appRoleIDPtr == nil {
