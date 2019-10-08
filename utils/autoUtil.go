@@ -54,28 +54,33 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 	}
 
 	// New values available for the cert file
-	if *secretIDPtr != "" && *appRoleIDPtr != "" {
+	if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
 		override = true
 	}
 
 	// If cert file exists obtain secretID and appRoleID
-	if *tokenPtr == "" {
-		if _, err := os.Stat(userHome + "/.vault/configcert.yml"); !os.IsNotExist(err) {
-			exists = true
+	if _, err := os.Stat(userHome + "/.vault/configcert.yml"); !os.IsNotExist(err) {
+		exists = true
+		c.getCert()
+		*addrPtr = c.VaultHost
+
+		if *tokenPtr == "" {
 			if !override {
 				fmt.Println("Grabbing config IDs from cert file.")
-				c.getCert()
-				*addrPtr = c.VaultHost
-				*secretIDPtr = c.SecretID
-				*appRoleIDPtr = c.ApproleID
+				if c.SecretID != "" {
+					*secretIDPtr = c.SecretID
+				}
+				if c.ApproleID != "" {
+					*appRoleIDPtr = c.ApproleID
+				}
 			}
-			v, err = sys.NewVault(*addrPtr)
-			CheckErrorNoStack(err, true)
 		}
+		v, err = sys.NewVault(*addrPtr)
+		CheckErrorNoStack(err, true)
 	}
 
 	// Overriding or first time access: request IDs and create cert file
-	if *tokenPtr == "" && (override || !exists) {
+	if override || !exists {
 		scanner := bufio.NewScanner(os.Stdin)
 		var vaultHost string
 		var secretID string
@@ -91,12 +96,20 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			fmt.Print("vaultHost: ")
 			scanner.Scan()
 			vaultHost = scanner.Text()
-			fmt.Print("secretID: ")
-			scanner.Scan()
-			secretID = scanner.Text()
-			fmt.Print("approleID: ")
-			scanner.Scan()
-			approleID = scanner.Text()
+
+			if *tokenPtr == "" {
+				if secretIDPtr != nil {
+					fmt.Print("secretID: ")
+					scanner.Scan()
+					secretID = scanner.Text()
+				}
+
+				if appRoleIDPtr != nil {
+					fmt.Print("approleID: ")
+					scanner.Scan()
+					approleID = scanner.Text()
+				}
+			}
 
 			if strings.HasPrefix(vaultHost, "http://") {
 				vaultHost = strings.Replace(vaultHost, "http://", "https://", 1)
@@ -108,13 +121,25 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 
 		// Get dump
 		if override && exists {
-			fmt.Printf("Creating new cert file in %s: secretID has been set to %s, approleID has been set to %s\n", userHome+"/.vault/configcert.yml", *secretIDPtr, *appRoleIDPtr)
-			dump = []byte("vaultHost: " + vaultHost + "\napproleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr)
+			fmt.Printf("Creating new cert file in %s:  vaultHost has been set to %s\n", userHome+"/.vault/configcert.yml", *addrPtr)
+			certConfigData := "vaultHost: " + vaultHost + "\n"
+			if appRoleIDPtr != nil && secretIDPtr != nil {
+				fmt.Printf("secretID has been set to %s, approleID has been set to %s\n", *secretIDPtr, *appRoleIDPtr)
+				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
+			}
+
+			dump = []byte(certConfigData)
 		} else if override && !exists {
 			fmt.Println("No cert file exists, continuing without saving config IDs")
 		} else {
-			fmt.Printf("Creating cert file in %s: secretID has been set to %s, approleID has been set to %s\n", userHome+"/.vault/configcert.yml", secretID, approleID)
-			dump = []byte("vaultHost: " + vaultHost + "\napproleID: " + approleID + "\nsecretID: " + secretID)
+			fmt.Printf("Creating new cert file in %s:  vaultHost has been set to %s\n", userHome+"/.vault/configcert.yml", *addrPtr)
+			certConfigData := "vaultHost: " + vaultHost + "\n"
+			if appRoleIDPtr != nil && secretIDPtr != nil {
+				fmt.Printf("secretID has been set to %s, approleID has been set to %s\n", *secretIDPtr, *appRoleIDPtr)
+				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
+			}
+
+			dump = []byte(certConfigData)
 		}
 
 		// Do not save IDs if overriding and no cert file exists
@@ -139,14 +164,21 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 
 		// Set config IDs
 		if !override {
-			*secretIDPtr = secretID
-			*appRoleIDPtr = approleID
+			if secretIDPtr != nil && appRoleIDPtr != nil {
+				*secretIDPtr = secretID
+				*appRoleIDPtr = approleID
+			}
 		}
 
 		// Checks that the scanner is working
 		if err := scanner.Err(); err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	if secretIDPtr == nil || appRoleIDPtr == nil {
+		// Vaultinit and vaultx may take this path.
+		return
 	}
 
 	//if using appRole
@@ -164,8 +196,6 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			*tokenNamePtr = "config_token_servicepack"
 		case "local":
 			*tokenNamePtr = "config_token_local"
-		case "staging":
-			*tokenNamePtr = "config_token_staging"
 		}
 		//check that none are empty
 		if *secretIDPtr == "" {
