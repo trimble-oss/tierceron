@@ -2,6 +2,8 @@ GOPATH=~/workspace/go:$(shell pwd)/vendor:$(shell pwd)
 GOBIN=$(shell pwd)/bin
 GOFILES=$(wildcard *.go)
 
+apiprod:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/webapi/apiRouter
 api:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/webapi/apiRouter
 config:
