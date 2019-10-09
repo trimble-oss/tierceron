@@ -13,6 +13,7 @@
 vault_properties.hcl
 vendor
 vaultUI/**
-bin/
+bin/vault*
+bin/api*
 .idea/
 .vscode/

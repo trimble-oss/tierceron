@@ -9,16 +9,23 @@ resource "aws_instance" "web" {
     instance_type = "${var.instance_type}"
     key_name = "${var.key-name}"
     subnet_id = "${var.subnets}"
-    vpc_security_group_ids = ["sg-dc92adb8","sg-5c505b38","sg-306a034b","sg-71365900"]
-    tags{
-        Name = "vault"
+    vpc_security_group_ids = "${var.security_group_names}"
+    iam_instance_profile = "${var.ec2role}"
+    tags = {
+        Name         = "${var.tags_name}"
+        Billing      = "${var.tags_billing}"
+        Environment  = "${var.tags_environment}"
+        Product      = "${var.tags_product}"
+        "Time Zone"  = "${var.tags_timezone}"
     }
+
     provisioner "file" {
         source      = "../../vault_properties.hcl"
         destination = "/tmp/vault_properties.hcl"
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user = "ubuntu"
+            host = ""
             //agent = true
         }
     }
@@ -26,6 +33,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../certs/cert_files/serv_cert.pem"
@@ -36,6 +44,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../certs/cert_files/serv_key.pem"
@@ -46,6 +55,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "${path.module}/scripts/install.sh"
@@ -57,6 +67,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user = "ubuntu"
+            host = ""
             //agent = true
         }
     }
@@ -76,12 +87,14 @@ resource "aws_instance" "web" {
             agent       = false
             user        = "ubuntu"
             private_key = "${file("${var.deploy-pem-path}")}"
+            host = ""
         }
     }
     provisioner "file" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../public/"
@@ -91,6 +104,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../policy_files/"
@@ -100,6 +114,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../token_files/"
@@ -109,6 +124,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../template_files/"
@@ -119,6 +135,7 @@ resource "aws_instance" "web" {
         connection {
             private_key = "${file("${var.deploy-pem-path}")}"
             user="ubuntu"
+            host = ""
             //agent = true
         }
         source      = "../../webapi/apiRouter/apirouter.zip"
@@ -135,7 +152,16 @@ resource "aws_instance" "web" {
             agent       = false
             user        = "ubuntu"
             private_key = "${file("${var.deploy-pem-path}")}"
+            host = ""
         }
     }
+}
+
+resource "aws_ecr_repository" "vaultconfig" {
+  name = "vaultconfig"
+}
+
+resource "aws_ecr_repository" "vaultpub" {
+  name = "vaultpub"
 }
 

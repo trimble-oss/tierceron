@@ -1,0 +1,127 @@
+# Go
+# Build your Go project.
+# Add steps that test, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/go
+
+trigger:
+- develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  GOBIN:  '$(GOPATH)/bin' # Go binaries path
+  GOROOT: '/usr/local/go1.13' # Go installation path
+  GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
+  modulePath: '$(GOPATH)/src/bitbucket.org/dexterchaney/whoville' # Path to the module's code
+
+steps:
+- script: |
+    mkdir -p '$(GOBIN)'
+    mkdir -p '$(GOPATH)/pkg'
+    mkdir -p '$(modulePath)'
+    shopt -s extglob
+    shopt -s dotglob
+    mv !(gopath) '$(modulePath)'
+    echo '##vso[task.prependpath]$(GOBIN)'
+    echo '##vso[task.prependpath]$(GOROOT)/bin'
+  displayName: 'Set up the Go workspace'
+
+- script: |
+    go version
+    echo "Mod init"
+    go mod init
+    echo "Mod download"
+    go mod download
+    echo "Compile start"
+
+    for p in vaultconfig vaultpub vaultinit vaultinitp vaultx vaultxp; do
+      echo Compiling $p
+      GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
+      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/$p ]] ; then
+          echo File $p was not built, aborting.
+          exit 1
+      fi
+      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
+      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/windows_amd64/$p.exe ]] ; then
+          echo File $p.exe was not built, aborting.
+          exit 1
+      fi
+    done
+
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/webapi/apiRouter
+    if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/apiRouter ]] ; then
+        echo File apiRouter was not built, aborting.
+        exit 1
+    fi
+
+    echo "Compile Complete"
+    cp $(system.defaultWorkingDirectory)/gopath/bin/vault* $(Build.ArtifactStagingDirectory)
+    cp $(system.defaultWorkingDirectory)/gopath/bin/apiRouter $(Build.ArtifactStagingDirectory)
+    cp $(system.defaultWorkingDirectory)/gopath/bin/windows_amd64/vault* $(Build.ArtifactStagingDirectory)
+  workingDirectory: '$(modulePath)'
+  displayName: 'Get dependencies, then build'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: vaultconfig
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/vaultconfig/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: vaultpub
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/vaultpub/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'vaultconfig'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'vaultconfig'
+    pushTag: '$(Build.SourceVersion)'
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'vaultconfig'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'vaultconfig'
+    pushTag: 'latest'
+
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'vaultpub'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'vaultpub'
+    pushTag: '$(Build.SourceVersion)'
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'vaultpub'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'vaultpub'
+    pushTag: 'latest'
