@@ -128,7 +128,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	logger.Println("Seeding configuration data for the following templates:")
 	logger.Println("Please verify that these templates exist in each service")
 
-	mod, err := kv.NewModifier(token, vaultAddr) // Connect to vault
+	mod, err := kv.NewModifier(token, vaultAddr, env) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
 	for _, entry := range writeStack {

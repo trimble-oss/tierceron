@@ -64,21 +64,26 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 	}
 
 	// If cert file exists obtain secretID and appRoleID
-	if _, err := os.Stat(userHome + "/.vault/configcert.yml"); !os.IsNotExist(err) {
+	if *envPtr == "staging" || *envPtr == "prod" {
+		override = false
 		exists = true
-		c.getCert()
-		if addrPtr == nil || *addrPtr == "" {
-			*addrPtr = c.VaultHost
-		}
+	} else {
+		if _, err := os.Stat(userHome + "/.vault/configcert.yml"); !os.IsNotExist(err) {
+			exists = true
+			c.getCert()
+			if addrPtr == nil || *addrPtr == "" {
+				*addrPtr = c.VaultHost
+			}
 
-		if *tokenPtr == "" {
-			if !override {
-				fmt.Println("Grabbing config IDs from cert file.")
-				if c.SecretID != "" {
-					*secretIDPtr = c.SecretID
-				}
-				if c.ApproleID != "" {
-					*appRoleIDPtr = c.ApproleID
+			if *tokenPtr == "" {
+				if !override {
+					fmt.Println("Grabbing config IDs from cert file.")
+					if c.SecretID != "" {
+						*secretIDPtr = c.SecretID
+					}
+					if c.ApproleID != "" {
+						*appRoleIDPtr = c.ApproleID
+					}
 				}
 			}
 		}
@@ -140,7 +145,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 				log.Fatal(err)
 			}
 		}
-		v, err = sys.NewVault(*addrPtr)
+		v, err = sys.NewVault(*addrPtr, *envPtr)
 		CheckErrorNoStack(err, true)
 
 		// Get dump
@@ -192,7 +197,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			}
 		}
 	} else {
-		v, err = sys.NewVault(*addrPtr)
+		v, err = sys.NewVault(*addrPtr, *envPtr)
 		CheckErrorNoStack(err, true)
 	}
 
@@ -241,7 +246,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		CheckError(err, true)
 
-		mod, err := kv.NewModifier(master, *addrPtr)
+		mod, err := kv.NewModifier(master, *addrPtr, *envPtr)
 		CheckError(err, true)
 		mod.Env = "bamboo"
 

@@ -47,7 +47,7 @@ func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, 
 // GetVaultTokens takes app role credentials and attempts to fetch names tokens from the vault
 func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.TokensResp, error) {
 	// Create 2 vault connections, one for checking/rolling tokens, the other for accessing the AWS user cubbyhole
-	v, err := sys.NewVault(s.VaultAddr)
+	v, err := sys.NewVault(s.VaultAddr, "nonprod")
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
@@ -66,7 +66,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	}
 
 	// Modifier to access token values granted to bamboo
-	mod, err := kv.NewModifier(arToken, s.VaultAddr)
+	mod, err := kv.NewModifier(arToken, s.VaultAddr, "nonprod")
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err

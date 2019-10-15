@@ -29,13 +29,14 @@ type Modifier struct {
 // NewModifier Constructs a new modifier struct and connects to the vault
 // @param token 	The access token needed to connect to the vault
 // @param address	The address of the API endpoint for the server
+// @param env   	The environment currently connecting to.
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 // 		   			Any errors generated in creating the client
-func NewModifier(token string, address string) (*Modifier, error) {
+func NewModifier(token string, address string, env string) (*Modifier, error) {
 	if len(address) == 0 {
 		address = "http://127.0.0.1:8020" // Default address
 	}
-	httpClient, err := CreateHTTPClient()
+	httpClient, err := CreateHTTPClient(env)
 	if err != nil {
 		return nil, err
 	}

@@ -21,7 +21,7 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 		service = strings.TrimSpace(service)
 	}
 
-	mod, err := kv.NewModifier(token, address)
+	mod, err := kv.NewModifier(token, address, env)
 	mod.Env = env
 	if err != nil {
 		panic(err)
