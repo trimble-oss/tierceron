@@ -145,7 +145,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 				log.Fatal(err)
 			}
 		}
-		v, err = sys.NewVault(*addrPtr, *envPtr)
+		v, err = sys.NewVault(*addrPtr, *envPtr, false)
 		CheckErrorNoStack(err, true)
 
 		// Get dump
@@ -197,7 +197,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			}
 		}
 	} else {
-		v, err = sys.NewVault(*addrPtr, *envPtr)
+		v, err = sys.NewVault(*addrPtr, *envPtr, false)
 		CheckErrorNoStack(err, true)
 	}
 

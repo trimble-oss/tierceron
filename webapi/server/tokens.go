@@ -47,7 +47,7 @@ func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, 
 // GetVaultTokens takes app role credentials and attempts to fetch names tokens from the vault
 func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.TokensResp, error) {
 	// Create 2 vault connections, one for checking/rolling tokens, the other for accessing the AWS user cubbyhole
-	v, err := sys.NewVault(s.VaultAddr, "nonprod")
+	v, err := sys.NewVault(s.VaultAddr, "nonprod", false)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
