@@ -20,6 +20,12 @@ type cert struct {
 	SecretID  string `yaml:"secretID"`
 }
 
+var prodRegions = []string{"west", "east", "ca"}
+
+func GetSupportedProdRegions() []string {
+	return prodRegions
+}
+
 func (c *cert) getCert() *cert {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -246,7 +252,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		CheckError(err, true)
 
-		mod, err := kv.NewModifier(master, *addrPtr, *envPtr)
+		mod, err := kv.NewModifier(master, *addrPtr, *envPtr, nil)
 		CheckError(err, true)
 		mod.Env = "bamboo"
 

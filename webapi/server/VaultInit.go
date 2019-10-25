@@ -86,7 +86,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		tokenMap[token.Name] = token.Value
 	}
 
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod")
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
 	utils.LogErrorObject(err, logger, false)
 
 	mod.Env = "bamboo"
@@ -172,7 +172,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 //APILogin Verifies the user's login with the cubbyhole
 func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp, error) {
 
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod")
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err

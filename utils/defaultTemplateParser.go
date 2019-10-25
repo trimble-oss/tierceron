@@ -17,6 +17,7 @@ type DriverConfig struct {
 	Token          string
 	VaultAddress   string
 	Env            string
+	Regions        []string
 	SecretMode     bool
 	ServicesWanted []string
 	StartDir       []string // Starting directory... possibly multiple

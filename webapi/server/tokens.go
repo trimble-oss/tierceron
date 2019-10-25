@@ -66,7 +66,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	}
 
 	// Modifier to access token values granted to bamboo
-	mod, err := kv.NewModifier(arToken, s.VaultAddr, "nonprod")
+	mod, err := kv.NewModifier(arToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err

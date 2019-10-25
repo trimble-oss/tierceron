@@ -23,6 +23,7 @@ type Modifier struct {
 	client           *api.Client  // Client connected to vault
 	logical          *api.Logical // Logical used for read/write options
 	Env              string       // Environment (local/dev/QA; Initialized to secrets)
+	Regions          []string     // Supported regions
 	SecretDictionary *api.Secret  // Current Secret Dictionary Cache.
 }
 
@@ -32,7 +33,7 @@ type Modifier struct {
 // @param env   	The environment currently connecting to.
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 // 		   			Any errors generated in creating the client
-func NewModifier(token string, address string, env string) (*Modifier, error) {
+func NewModifier(token string, address string, env string, regions []string) (*Modifier, error) {
 	if len(address) == 0 {
 		address = "http://127.0.0.1:8020" // Default address
 	}
@@ -53,7 +54,7 @@ func NewModifier(token string, address string, env string) (*Modifier, error) {
 	modClient.SetToken(token)
 
 	// Return the modifier
-	return &Modifier{client: modClient, logical: modClient.Logical(), Env: "secret"}, nil
+	return &Modifier{client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions}, nil
 }
 
 // ValidateEnvironment Ensures token has access to requested data.

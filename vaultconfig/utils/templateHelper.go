@@ -70,6 +70,7 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 	values, ok := cds.dataMap[serviceLookup].(map[string]interface{})
 
 	if ok {
+
 		//create new template from template string
 		fmt.Println("filename is " + filename)
 		t := template.New("template")
@@ -85,6 +86,24 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 		if data == false {
 			fmt.Println("Filename does not exist in values. Please check seed files to verify that folder structures are correct.")
 		}
+
+		if len(cds.Regions) > 0 {
+			if serviceValues, ok := values[filename]; ok {
+				valueData := serviceValues.(map[string]interface{})
+				for valueKey, valueEntry := range valueData {
+					regionSuffix := "~" + cds.Regions[0]
+					if strings.HasSuffix(valueKey, regionSuffix) {
+						baseKey := strings.Replace(valueKey, regionSuffix, "", 1)
+
+						if _, ok := valueData[baseKey]; ok {
+							valueData[baseKey] = valueEntry
+						}
+					}
+
+				}
+			}
+		}
+
 		if cert {
 			if serviceValues, ok := values[serviceLookup]; ok {
 				valueData := serviceValues.(map[string]interface{})

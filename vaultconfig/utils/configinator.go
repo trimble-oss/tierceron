@@ -14,7 +14,7 @@ import (
 
 //GenerateConfigsFromVault configures the templates in vault_templates and writes them to vaultconfig
 func GenerateConfigsFromVault(config eUtils.DriverConfig) {
-	mod, err := kv.NewModifier(config.Token, config.VaultAddress, config.Env)
+	mod, err := kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
 	if err != nil {
 		panic(err)
 	}
