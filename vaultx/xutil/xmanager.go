@@ -47,7 +47,7 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 
 	if config.Token != "" {
 		var err error
-		mod, err = kv.NewModifier(config.Token, config.VaultAddress)
+		mod, err = kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
 		if err != nil {
 			panic(err)
 		}

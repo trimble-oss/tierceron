@@ -128,7 +128,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	logger.Println("Seeding configuration data for the following templates:")
 	logger.Println("Please verify that these templates exist in each service")
 
-	mod, err := kv.NewModifier(token, vaultAddr) // Connect to vault
+	mod, err := kv.NewModifier(token, vaultAddr, env, nil) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
 	for _, entry := range writeStack {
@@ -204,6 +204,8 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 										}
 									}
 								}
+								fmt.Println("Cert loaded from: " + certPath + ".")
+
 								if done {
 									continue
 								}
@@ -236,6 +238,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	warn, err := verify(mod, verificationData, logger)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
+	fmt.Println("Initialization complete.")
 }
 
 //WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault

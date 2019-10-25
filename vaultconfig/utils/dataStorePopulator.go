@@ -12,9 +12,11 @@ import (
 //ConfigDataStore stores the data needed to configure the specified template files
 type ConfigDataStore struct {
 	dataMap map[string]interface{}
+	Regions []string
 }
 
 func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool, project string, servicesWanted ...string) {
+	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
 	dataPathsFull, err := getPathsFromProject(mod, project)
@@ -129,6 +131,16 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 							noValueKeys = append(noValueKeys, k)
 						}
 					}
+
+					// TODO: improve this M*N complexity algorithm.
+					for _, region := range mod.Regions {
+						regionPath := link[1].(string) + "~" + region
+						newVaultValue, readErr := mod.ReadMapValue(secretBucket, bucket, regionPath)
+						if readErr == nil {
+							values[k+"~"+region] = newVaultValue
+						}
+					}
+
 				}
 			}
 			if len(noValueKeys) > 0 {

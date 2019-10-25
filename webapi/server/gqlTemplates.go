@@ -16,7 +16,7 @@ import (
 // Secret values will only be populated for environments with values for that secret group
 // All template keys that reference public values will be populated with those values
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err

@@ -1,5 +1,4 @@
 #!/bin/bash -e
-#this script isn't being called on startup... why?
 # Install packages
 sudo apt-get update -y
 sudo apt-get install -y curl unzip

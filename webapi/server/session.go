@@ -15,7 +15,7 @@ import (
 )
 
 func (s *Server) getActiveSessions(env string) ([]Session, error) {
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func parseURL(url string) (string, string, string, string) {
 }
 
 func (s *Server) getVaultSessions(env string) ([]Session, error) {
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr)
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		return nil, err
 	}

@@ -24,8 +24,8 @@ type KeyTokenWrapper struct {
 }
 
 // NewVault Constructs a new vault at the given address with the given access token
-func NewVault(addr string) (*Vault, error) {
-	httpClient, err := kv.CreateHTTPClient()
+func NewVault(addr string, env string, newVault bool) (*Vault, error) {
+	httpClient, err := kv.CreateHTTPClient(env)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func NewVault(addr string) (*Vault, error) {
 		return nil, err
 	}
 
-	if health.Sealed {
+	if !newVault && health.Sealed {
 		return nil, errors.New("Vault is sealed")
 	}
 
