@@ -199,6 +199,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 										if _, ok := secretEntry.data["certData"]; ok {
 											secretEntry.data["certData"] = certBase64
 											WriteData(secretEntry.path, secretEntry.data, mod, logger)
+											WriteData(entry.path, entry.data, mod, logger)
 											done = true
 											break
 										}
