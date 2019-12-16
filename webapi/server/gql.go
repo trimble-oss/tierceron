@@ -642,7 +642,7 @@ func (s *Server) InitGQL() {
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						envs := []Env{}
 						for _, e := range vaultQL.Envs {
-							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "itdev" || e.Name == "servicepack" || e.Name == "staging" {
+							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "performance" || e.Name == "itdev" || e.Name == "servicepack" || e.Name == "staging" {
 								envs = append(envs, e)
 							} else if e.Name == "local/"+params.Context.Value("user").(string) {
 								nameBlocks := strings.Split(params.Context.Value("user").(string), "/")

@@ -223,6 +223,8 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			*tokenNamePtr = "config_token_RQA"
 		case "itdev":
 			*tokenNamePtr = "config_token_itdev"
+		case "performance":
+			*tokenNamePtr = "config_token_performance"
 		case "servicepack":
 			*tokenNamePtr = "config_token_servicepack"
 		case "local":
