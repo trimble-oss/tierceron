@@ -134,13 +134,11 @@ func (s *Server) InitGQL() {
 		if err != nil {
 			utils.LogErrorObject(err, s.Log, false)
 			utils.LogWarningsObject([]string{fmt.Sprintf("GraphQL MAY not initialized (Spectrum %s sessions not added)", e)}, s.Log, false)
-			return
 		}
 		vaultSessions[e], err = s.getVaultSessions(e)
 		if err != nil {
 			utils.LogErrorObject(err, s.Log, false)
 			utils.LogWarningsObject([]string{fmt.Sprintf("GraphQL MAY not initialized (Vault %s sessions not added)", e)}, s.Log, false)
-			return
 		}
 	}
 
