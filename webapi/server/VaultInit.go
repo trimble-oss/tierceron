@@ -171,39 +171,38 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 //APILogin Verifies the user's login with the cubbyhole
 func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp, error) {
+	result := pb.LoginResp{
+		Success:   false,
+		AuthToken: "",
+	}
 
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
-	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		return nil, err
+    mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
+    if err != nil {
+	    utils.LogErrorObject(err, s.Log, false)
+	    return &result, err
 	}
 	mod.Env = req.Environment
 
-	connectionURL, err := mod.ReadValue("apiLogins/meta", "authEndpoint")
+    authSuccess, name, err := s.authUser(mod, req.Username, req.Password)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
-		return nil, err
-	}
-	fmt.Printf("Connection url: %s\n", connectionURL)
-	name, id, response, errProxy := ProxyLogin(connectionURL, req, s.Log)
-	if errProxy != nil {
-		utils.LogErrorObject(errProxy, s.Log, false)
-		return nil, err
+		return &result, err
 	}
 
-	token, errJwtGen := s.generateJWT(name, req.Environment+"/"+id, mod)
+	token, errJwtGen := s.generateJWT(name, req.Environment+"/"+req.Username, mod)
 	if errJwtGen != nil {
 		utils.LogErrorObject(errJwtGen, s.Log, false)
-		return nil, err
+		return &result, err
 	}
-	response.AuthToken = token
+	result.AuthToken = token
+	result.Success = authSuccess
 
-	return response, nil
+	return &result, nil
 }
 
 //GetStatus requests version info and whether the vault has been initailized
 func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStatus, error) {
-	v, err := sys.NewVault(s.VaultAddr, "nonprod", false)
+	v, err := sys.NewVault(s.VaultAddr, "nonprod", true)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err

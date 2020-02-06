@@ -8,11 +8,77 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"encoding/base64"
+	"crypto/sha512"
 
+	"golang.org/x/crypto/pbkdf2"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
 )
+
+func (s *Server) authUser(mod *kv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
+	connInfo, err := mod.ReadData("apiLogins/meta")
+
+	var url, username, password string
+	url, ok := connInfo["sessionDB"].(string)
+	if !ok {
+		return false, "", fmt.Errorf("Database connection not a string or not found")
+	}
+	username, ok = connInfo["user"].(string)
+	if !ok {
+		return false, "", fmt.Errorf("Username connection not a string or not found")
+	}
+	password, ok = connInfo["pass"].(string)
+	if !ok {
+		return false, "", fmt.Errorf("Password connection not a string or not found")
+	}
+
+	driver, server, port, dbname := parseURL(url)
+	if len(port) == 0 {
+		port = "1433"
+	}
+	db, err := sql.Open(driver, ("server=" + server + ";user id=" + username + ";password=" + password + ";port=" + port + ";database=" + dbname + ";encrypt=true;TrustServerCertificate=true"))
+	defer db.Close()
+	if err != nil {
+		return false, "", err
+	}
+
+	rows, err := db.Query(GetAuthLoginQuery(), sql.Named("Id", operatorId))
+	if err != nil {
+		return false, "", err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var operatorId string
+		var operatorName string
+		var passwordHash string
+		var saltEncoded string
+		var iterationCount int
+
+	// Operator_ID, Password_Hash, Salt, Iteration_Count
+	err := rows.Scan(&operatorId, &operatorName, &passwordHash, &saltEncoded, &iterationCount)
+		if err != nil {
+			return false, "", err
+		}
+		salt, err := base64.StdEncoding.DecodeString(saltEncoded)
+		if err != nil {
+			return false, "", err
+		}
+		operatorPasswordByteArray := pbkdf2.Key([]byte(operatorPassword), salt, iterationCount, 64, sha512.New)
+		operatorPasswordHash := base64.StdEncoding.EncodeToString(operatorPasswordByteArray)
+
+		if (string(operatorPasswordHash) == passwordHash) {
+			return true, operatorName, nil
+		} else {
+			return false, "", errors.New("Invalid password")
+		}
+
+	}
+
+	return false, "", errors.New("Invalid password")
+}
 
 func (s *Server) getActiveSessions(env string) ([]Session, error) {
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
