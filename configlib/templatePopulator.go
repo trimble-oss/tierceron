@@ -1,31 +1,24 @@
 package main
 
-import "C"
-
 import (
-	"strings"
+	"C"
+	"fmt"
 
 	"bitbucket.org/dexterchaney/whoville/vaultconfig/utils"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 )
 
 //export ConfigTemplateLib
-func ConfigTemplateLib(token string, address string, env string, templatePath string, configuredFilePath string, secretMode bool, servicesWanted string) string {
+func ConfigTemplateLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) string {
+	fmt.Println(templatePath)
 
-	services := []string{}
-	if servicesWanted != "" {
-		services = strings.Split(servicesWanted, ",")
-	}
-
-	for _, service := range services {
-		service = strings.TrimSpace(service)
-	}
-
-	mod, err := kv.NewModifier(token, address, env)
+	mod, err := kv.NewModifier(token, address, env, nil)
 	mod.Env = env
 	if err != nil {
 		panic(err)
 	}
-	return utils.ConfigTemplate(mod, templatePath, configuredFilePath, secretMode, services...)
+
+	configuredTemplate, _ := utils.ConfigTemplate(mod, templatePath, configuredFilePath, true, project, service, false)
+	return configuredTemplate
 }
 func main() {}
