@@ -72,7 +72,6 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 	if ok {
 
 		//create new template from template string
-		fmt.Println("filename is " + filename)
 		t := template.New("template")
 		t, err := t.Parse(emptyTemplate)
 		if err != nil {
