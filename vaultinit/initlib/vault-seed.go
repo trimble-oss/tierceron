@@ -137,6 +137,8 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 		if strings.HasPrefix(entry.path, "values/") {
 			if certPathData, certPathOk := entry.data["certSourcePath"]; certPathOk {
 				certPath := fmt.Sprintf("%s", certPathData)
+				fmt.Println("Inspecting certificate: " + certPath + ".")
+
 				if strings.Contains(certPath, "ENV") {
 					if len(env) >= 5 && (env)[:5] == "local" {
 						envParts := strings.SplitN(env, "/", 3)
@@ -158,11 +160,15 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 					isValidCert := false
 					var certValidationErr error
 					if strings.HasSuffix(certPath, ".pfx") {
+						fmt.Println("Inspecting pfx: " + certPath + ".")
 						isValidCert, certValidationErr = validator.IsPfxRfc7292(cert)
 					} else if strings.HasSuffix(certPath, ".cer") {
+						fmt.Println("Inspecting cer: " + certPath + ".")
 						cert, certValidationErr := x509.ParseCertificate(cert)
 						if certValidationErr == nil {
 							isValidCert = true
+						} else {
+							fmt.Println("failed to verify certificate: " + certValidationErr.Error())
 						}
 						var certHost string
 						if certHostData, certHostOk := entry.data["certHost"]; certHostOk {
@@ -184,10 +190,12 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 
 					}
 					if isValidCert {
+						fmt.Println("Certificate passed validation: " + certPath + ".")
 						certBase64 := base64.StdEncoding.EncodeToString(cert)
 						if _, ok := entry.data["certData"]; ok {
 							// insecure value entry.
 							entry.data["certData"] = certBase64
+							fmt.Println("Public cert updated: " + certPath + ".")
 						} else {
 							entryPathParts := strings.Split(entry.path, "/")
 							if len(entryPathParts) == 2 {
