@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -153,7 +154,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 				if err == nil {
 					//if pfx file size greater than 25 KB, print warning
 					if len(cert) > 32000 {
-						fmt.Println("Unreasonable size for pfx file. Not written to vault")
+						fmt.Println("Unreasonable size for certificate type file. Not written to vault")
 						continue
 					}
 
@@ -187,7 +188,16 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 								continue
 							}
 						}
-
+					} else if strings.HasSuffix(certPath, ".pem") {
+						fmt.Println("Inspecting pem: " + certPath + ".")
+						pemBlock, _ := pem.Decode(cert)
+						if pemBlock == nil {
+							fmt.Println("failed to verify certificate PEM.")
+						} else {
+							isValidCert = true
+						}
+					} else if strings.HasSuffix(certPath, ".jks") {
+						isValidCert = true
 					}
 					if isValidCert {
 						fmt.Println("Certificate passed validation: " + certPath + ".")

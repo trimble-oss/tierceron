@@ -52,7 +52,10 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 			serviceTemplate := s[dirIndex+2]
 
 			isCert := false
-			if strings.HasSuffix(serviceTemplate, ".pfx.mf.tmpl") || strings.HasSuffix(serviceTemplate, ".cer.mf.tmpl") {
+			if strings.HasSuffix(serviceTemplate, ".pfx.mf.tmpl") ||
+				strings.HasSuffix(serviceTemplate, ".cer.mf.tmpl") ||
+				strings.HasSuffix(serviceTemplate, ".pem.mf.tmpl") ||
+				strings.HasSuffix(serviceTemplate, ".jks.mf.tmpl") {
 				isCert = true
 			}
 
@@ -77,7 +80,10 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		} else {
 			serviceTemplate := s[2]
 			isCert := false
-			if strings.HasSuffix(serviceTemplate, ".pfx.mf.tmpl") || strings.HasSuffix(serviceTemplate, ".cer.mf.tmpl") {
+			if strings.HasSuffix(serviceTemplate, ".pfx.mf.tmpl") ||
+				strings.HasSuffix(serviceTemplate, ".cer.mf.tmpl") ||
+				strings.HasSuffix(serviceTemplate, ".pem.mf.tmpl") ||
+				strings.HasSuffix(serviceTemplate, ".jks.mf.tmpl") {
 				isCert = true
 			}
 
