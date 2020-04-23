@@ -78,7 +78,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		il.SeedVaultFromData(fBytes, s.VaultAddr, s.VaultToken, seed.Env, logger, "")
 	}
 
-	il.UploadPolicies(policyPath, v, logger)
+	il.UploadPolicies(policyPath, v, false, logger)
 
 	tokens := il.UploadTokens(tokenPath, v, logger)
 	tokenMap := map[string]interface{}{}
@@ -176,14 +176,14 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 		AuthToken: "",
 	}
 
-    mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
-    if err != nil {
-	    utils.LogErrorObject(err, s.Log, false)
-	    return &result, err
+	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
+	if err != nil {
+		utils.LogErrorObject(err, s.Log, false)
+		return &result, err
 	}
 	mod.Env = req.Environment
 
-    authSuccess, name, err := s.authUser(mod, req.Username, req.Password)
+	authSuccess, name, err := s.authUser(mod, req.Username, req.Password)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return &result, err
