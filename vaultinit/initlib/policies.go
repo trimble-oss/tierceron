@@ -10,7 +10,7 @@ import (
 )
 
 //UploadPolicies accepts a file directory and vault object to upload policies to. Logs to pased logger
-func UploadPolicies(dir string, v *sys.Vault, logger *log.Logger) {
+func UploadPolicies(dir string, v *sys.Vault, noPermissions bool, logger *log.Logger) {
 	logger.SetPrefix("[POLICY]")
 	logger.Printf("Writing policies from %s\n", dir)
 	files, err := ioutil.ReadDir(dir)
@@ -24,7 +24,11 @@ func UploadPolicies(dir string, v *sys.Vault, logger *log.Logger) {
 
 		if ext == ".hcl" { // Write policy to vault
 			logger.Printf("\tFound policy file: %s\n", file.Name())
-			err = v.CreatePolicyFromFile(filename, dir+"/"+file.Name())
+			if noPermissions {
+				err = v.CreateEmptyPolicy(filename)
+			} else {
+				err = v.CreatePolicyFromFile(filename, dir+"/"+file.Name())
+			}
 			utils.LogErrorObject(err, logger, false)
 		}
 

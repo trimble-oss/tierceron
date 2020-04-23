@@ -1,0 +1,9 @@
+policies: ["kafka_integration"]
+metadata:
+  user : "KafkaServiceUser"
+
+role_name: "kafka_integration_role"
+
+ttl: "8760h"
+display_name: "Kafka Token"
+
