@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/vault/api"
 )
 
@@ -17,6 +18,29 @@ type NewRoleOptions struct {
 	TokenMaxTTL          string   `json:"token_max_ttl,omitempty"`
 	Period               string   `json:"period,omitempty"`
 	EnableLocalSecretIDs string   `json:"enable_local_secret_ids,omitempty"`
+}
+
+// YamlNewTokenRoleOptions is used to create a new approle
+type YamlNewTokenRoleOptions struct {
+	RoleName        string   `yaml:"role_name,omitempty"`
+	TokenBoundCIDRs []string `yaml:"token_bound_cidrs,omitempty"`
+}
+
+// NewTokenRoleOptions is used to create a new approle
+type NewTokenRoleOptions struct {
+	RoleName             string   `json:"role_name,omitempty"`
+	AllowedPolicies      []string `json:"allowed_policies,omitempty"`
+	DisallowedPolicies   []string `json:"disallowed_policies,omitempty"`
+	Orphan               bool     `json:"orphan,omitempty"`
+	Renewable            bool     `json:"renewable,omitempty"`
+	PathSuffix           string   `json:"path_suffix,omitempty"`
+	AllowedEntityAliases []string `json:"allowed_entity_aliases,omitempty"`
+	TokenBoundCIDRs      []string `json:"token_bound_cidrs,omitempty"`
+	TokenExplicitMaxTTL  int      `json:"token_explicit_max_ttl,omitempty"`
+	TokenNoDefaultPolicy bool     `json:"token_no_default_policy,omitempty"`
+	TokenNumUses         int      `json:"token_num_uses,omitempty"`
+	TokenPeriod          int      `json:"token_period,omitempty"`
+	TokenType            string   `json:"token_type,omitempty"`
 }
 
 // EnableAppRole enables the app role auth method and returns any errors
@@ -36,6 +60,22 @@ func (v *Vault) EnableAppRole() error {
 // CreateNewRole creates a new role with given options
 func (v *Vault) CreateNewRole(roleName string, options *NewRoleOptions) error {
 	r := v.client.NewRequest("POST", fmt.Sprintf("/v1/auth/approle/role/%s", roleName))
+	if err := r.SetJSONBody(options); err != nil {
+		return err
+	}
+
+	resp, err := v.client.RawRequest(r)
+	defer resp.Body.Close()
+	return err
+}
+
+// CreateNewTokenCidrRole creates a new token cidr only role with given cidr options.
+func (v *Vault) CreateNewTokenCidrRole(options *YamlNewTokenRoleOptions) error {
+	rolePath := fmt.Sprintf("/v1/auth/token/roles/%s", options.RoleName)
+	r := v.client.NewRequest("POST", rolePath)
+	limitedTokenRole := NewTokenRoleOptions{}
+	limitedTokenRole.TokenBoundCIDRs = options.TokenBoundCIDRs
+
 	if err := r.SetJSONBody(options); err != nil {
 		return err
 	}

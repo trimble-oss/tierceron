@@ -129,6 +129,11 @@ func (v *Vault) CreatePolicyFromFile(name string, filepath string) error {
 	return v.client.Sys().PutPolicy(name, string(data))
 }
 
+// CreateEmptyPolicy Creates a policy with no permissions
+func (v *Vault) CreateEmptyPolicy(name string) error {
+	return v.client.Sys().PutPolicy(name, "")
+}
+
 // ValidateEnvironment Ensures token has access to requested data.
 func (v *Vault) ValidateEnvironment(environment string) bool {
 	secret, err := v.client.Auth().Token().LookupSelf()
@@ -167,6 +172,21 @@ func (v *Vault) Unseal() (int, int, bool, error) {
 		}
 	}
 	return status.Progress, status.T, status.Sealed, nil
+}
+
+// CreateTokenCidrRoleFromFile Creates a new token cidr role from the given file and returns the name
+func (v *Vault) CreateTokenCidrRoleFromFile(filename string) error {
+	tokenfile, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	tokenRole := YamlNewTokenRoleOptions{}
+	yamlErr := yaml.Unmarshal(tokenfile, &tokenRole)
+	if yamlErr != nil {
+		return yamlErr
+	}
+	errRoleCreate := v.CreateNewTokenCidrRole(&tokenRole)
+	return errRoleCreate
 }
 
 // CreateTokenFromFile Creates a new token from the given file and returns the name
