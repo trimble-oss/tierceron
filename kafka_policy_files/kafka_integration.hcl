@@ -1,3 +1,3 @@
 path "auth/token/*" {
-  capabilities = [ "create", "read" ]
+  capabilities = [ "create", "update", "read" ]
 }
