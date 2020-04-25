@@ -1,4 +1,4 @@
-policies: ["kafka_integration"]
+policies: ["kafka_integration", "kafka_integration_consumer"]
 metadata:
   user : "KafkaServiceUser"
 
