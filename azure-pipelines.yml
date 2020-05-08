@@ -47,6 +47,11 @@ steps:
           echo File $p.exe was not built, aborting.
           exit 1
       fi
+      GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -o $(system.defaultWorkingDirectory)/gopath/bin/darwin_amd64/$p.mac -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
+      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/darwin_amd64/$p ]] ; then
+          echo File $p was not built, aborting.
+          exit 1
+      fi
     done
 
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/webapi/apiRouter
@@ -59,6 +64,7 @@ steps:
     cp $(system.defaultWorkingDirectory)/gopath/bin/vault* $(Build.ArtifactStagingDirectory)
     cp $(system.defaultWorkingDirectory)/gopath/bin/apiRouter $(Build.ArtifactStagingDirectory)
     cp $(system.defaultWorkingDirectory)/gopath/bin/windows_amd64/vault* $(Build.ArtifactStagingDirectory)
+    cp $(system.defaultWorkingDirectory)/gopath/bin/darwin_amd64/vault* $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
