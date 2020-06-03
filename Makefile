@@ -11,7 +11,7 @@ config:
 configwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -o $(GOBIN)/vaultconfig.exe vaultconfig/vaultconfig.go
 configmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/vaultconfig.mac vaultconfig/vaultconfig.go
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/vaultconfig.mac bitbucket.org/dexterchaney/whoville/vaultconfig
 seed:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/vaultinit
 seedmac:
@@ -20,6 +20,8 @@ seedp:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/vaultinitp
 x:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/vaultx
+xmac:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/vaultx.mac bitbucket.org/dexterchaney/whoville/vaultx
 lib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -a -ldflags '-w' -o $(GOBIN)/nc.so bitbucket.org/dexterchaney/whoville/configlib
 winlib:
