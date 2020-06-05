@@ -31,7 +31,7 @@ type writeCollection struct {
 }
 
 // SeedVault seeds the vault with seed files in the given directory
-func SeedVault(dir string, addr string, token string, env string, logger *log.Logger, service string) {
+func SeedVault(dir string, addr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
 	logger.SetPrefix("[SEED]")
 	logger.Printf("Seeding vault from seeds in: %s\n", dir)
 
@@ -56,7 +56,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 					path := dir + "/" + env + "/" + fileSteppedInto.Name()
 					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
 
-					SeedVaultFromFile(path, addr, token, env, logger, service)
+					SeedVaultFromFile(path, addr, token, env, logger, service, uploadCert)
 				}
 			}
 		}
@@ -64,15 +64,15 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 }
 
 //SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, logger *log.Logger, service string) {
+func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	utils.LogErrorObject(err, logger, true)
-	SeedVaultFromData(rawFile, vaultAddr, token, env, logger, service)
+	SeedVaultFromData(rawFile, vaultAddr, token, env, logger, service, uploadCert)
 }
 
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, logger *log.Logger, service string) {
+func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
 	logger.SetPrefix("[SEED]")
 	logger.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
@@ -137,6 +137,9 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 		// Write data and ouput any errors
 		if strings.HasPrefix(entry.path, "values/") {
 			if certPathData, certPathOk := entry.data["certSourcePath"]; certPathOk {
+				if !uploadCert {
+					continue
+				}
 				certPath := fmt.Sprintf("%s", certPathData)
 				fmt.Println("Inspecting certificate: " + certPath + ".")
 
@@ -248,7 +251,6 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 				WriteData(entry.path, entry.data, mod, logger)
 			}
 		} else {
-
 			WriteData(entry.path, entry.data, mod, logger)
 		}
 	}
