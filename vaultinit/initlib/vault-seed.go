@@ -244,6 +244,17 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 					fmt.Println("Missing expected cert at: " + certPath + ".  Cert will not be loaded.")
 				}
 			}
+		} else {
+			if _, certPathOk := entry.data["certSourcePath"]; certPathOk {
+				if !uploadCert {
+					continue
+				}
+			}
+			if _, certDataOK := entry.data["certData"]; certDataOK {
+				if !uploadCert {
+					continue
+				}
+			}
 		}
 
 		if service != "" {
