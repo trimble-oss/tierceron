@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
 	"strings"
 
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
@@ -81,6 +83,82 @@ func (v *Vault) RevokeSelf() error {
 func (v *Vault) RenewSelf(increment int) error {
 	_, err := v.client.Auth().Token().RenewSelf(increment)
 	return err
+}
+
+// RenewTokenInScope
+func (v *Vault) RenewTokenInScope() error {
+	var tokenPath = "token_files"
+
+	var tokenPolicies = []string{}
+
+	files, err := ioutil.ReadDir(tokenPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+
+		var file, err = os.OpenFile(f.Name(), os.O_RDWR, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		defer file.Close()
+		byteValue, _ := ioutil.ReadAll(file)
+		token := api.TokenCreateRequest{}
+		yaml.Unmarshal(byteValue, &token)
+
+		for _, policy := range token.Policies {
+			tokenPolicies = append(tokenPolicies, policy)
+		}
+	}
+	//response, err := v.client.Auth().Token().Create(&token)
+	//return response.Auth.ClientToken, err
+
+	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
+	resp, err := v.client.RawRequest(r)
+	defer resp.Body.Close()
+
+	var jsonData map[string]interface{}
+
+	if err = resp.DecodeJSON(&jsonData); err != nil {
+		return err
+	}
+
+	if data, ok := jsonData["data"].(map[string]interface{}); ok {
+		if accessors, ok := data["keys"].([]string); ok {
+			for _, accessor := range accessors {
+				b := v.client.NewRequest("POST", "/v1/auth/token/lookup-accessor")
+
+				payload := map[string]interface{}{
+					"accessor": accessor,
+				}
+
+				if err := b.SetJSONBody(payload); err != nil {
+					return err
+				}
+				response, err := v.client.RawRequest(b)
+				defer response.Body.Close()
+				var accessorDataMap map[string]interface{}
+				if err = response.DecodeJSON(accessorDataMap); err != nil {
+					return err
+				}
+
+				if accessorData, ok := jsonData["data"].(map[string]interface{}); ok {
+					if policies, ok := accessorData["policies"].([]string); ok {
+						fmt.Println(policies[0])
+					}
+				}
+
+			}
+		}
+		return fmt.Errorf("Error parsing response for key 'auth.client_token'")
+	}
+
+	return fmt.Errorf("Error parsing response for key 'auth'")
 }
 
 // CreateKVPath Creates a kv engine with the specified name and description
