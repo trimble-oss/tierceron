@@ -85,7 +85,7 @@ func (v *Vault) RenewSelf(increment int) error {
 	return err
 }
 
-// RenewTokenInScope
+// RenewTokenInScope()
 func (v *Vault) RenewTokenInScope() error {
 	var tokenPath = "token_files"
 
@@ -115,8 +115,6 @@ func (v *Vault) RenewTokenInScope() error {
 			tokenPolicies = append(tokenPolicies, policy)
 		}
 	}
-	//response, err := v.client.Auth().Token().Create(&token)
-	//return response.Auth.ClientToken, err
 
 	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
 	resp, err := v.client.RawRequest(r)
@@ -149,16 +147,18 @@ func (v *Vault) RenewTokenInScope() error {
 
 				if accessorData, ok := jsonData["data"].(map[string]interface{}); ok {
 					if policies, ok := accessorData["policies"].([]string); ok {
+
 						fmt.Println(policies[0])
 					}
 				}
 
 			}
 		}
-		return fmt.Errorf("Error parsing response for key 'auth.client_token'")
+		return fmt.Errorf("Error parsing response for accessor list")
 	}
-
-	return fmt.Errorf("Error parsing response for key 'auth'")
+	return nil
+	//response, err := v.client.Auth().Token().Create(&token)
+	//return response.Auth.ClientToken, err
 }
 
 // CreateKVPath Creates a kv engine with the specified name and description
