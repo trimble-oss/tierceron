@@ -87,7 +87,7 @@ func (v *Vault) RenewSelf(increment int) error {
 }
 
 // RenewTokenInScope()
-func (v *Vault) RenewTokenInScope() error {
+func (v *Vault) RenewTokenInScope(certExpiration bool) error {
 	var tokenPath = "token_files"
 	var tokenPolicies = []string{}
 
@@ -150,9 +150,11 @@ func (v *Vault) RenewTokenInScope() error {
 				if err = response.DecodeJSON(&accessorDataMap); err != nil {
 					return err
 				}
-
+				var expirationDate string
+				var expirationDateOk bool
+				var matchedPolicy string
 				if accessorData, ok := accessorDataMap["data"].(map[string]interface{}); ok {
-					if expirationDate, ok := accessorData["expire_time"].(string); ok {
+					if expirationDate, expirationDateOk = accessorData["expire_time"].(string); expirationDateOk {
 						currentTime := time.Now()
 						expirationTime, timeError := time.Parse(time.RFC3339Nano, expirationDate)
 						if timeError == nil && currentTime.Before(expirationTime) {
@@ -160,6 +162,7 @@ func (v *Vault) RenewTokenInScope() error {
 								for _, policy := range policies {
 									for _, tokenPolicy := range tokenPolicies {
 										if strings.EqualFold(policy.(string), tokenPolicy) {
+											matchedPolicy = tokenPolicy
 											goto renewAccessor
 										}
 									}
@@ -169,6 +172,10 @@ func (v *Vault) RenewTokenInScope() error {
 					}
 					continue
 				renewAccessor:
+					if certExpiration {
+						fmt.Println("Token with the " + matchedPolicy + " expires on " + expirationDate)
+						continue
+					}
 					b := v.client.NewRequest("POST", "/v1/auth/token/renew-accessor")
 
 					payload := map[string]interface{}{
