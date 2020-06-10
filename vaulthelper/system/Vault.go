@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	"github.com/hashicorp/vault/api"
@@ -121,10 +122,12 @@ func (v *Vault) RenewTokenInScope() error {
 	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
 	fmt.Println("request")
 	resp, err := v.client.RawRequest(r)
+
 	if err != nil {
 		fmt.Println("inside error nil")
 		log.Fatal(err)
 	}
+
 	fmt.Println("request")
 	defer resp.Body.Close()
 
@@ -137,7 +140,7 @@ func (v *Vault) RenewTokenInScope() error {
 
 	if data, ok := jsonData["data"].(map[string]interface{}); ok {
 		fmt.Println("json stuff")
-		if accessors, ok := data["keys"].([]string); ok {
+		if accessors, ok := data["keys"].([]interface{}); ok {
 			fmt.Println("jazz")
 			for _, accessor := range accessors {
 				b := v.client.NewRequest("POST", "/v1/auth/token/lookup-accessor")
@@ -150,17 +153,36 @@ func (v *Vault) RenewTokenInScope() error {
 					return err
 				}
 				response, err := v.client.RawRequest(b)
+				if err != nil {
+					fmt.Println("inside error nil")
+					log.Fatal(err)
+				}
 				defer response.Body.Close()
 				var accessorDataMap map[string]interface{}
-				if err = response.DecodeJSON(accessorDataMap); err != nil {
+				if err = response.DecodeJSON(&accessorDataMap); err != nil {
 					return err
 				}
 
-				if accessorData, ok := jsonData["data"].(map[string]interface{}); ok {
-					if policies, ok := accessorData["policies"].([]string); ok {
-
-						fmt.Println(policies[0])
+				if accessorData, ok := accessorDataMap["data"].(map[string]interface{}); ok {
+					if expirationDate, ok := accessorData["expire_time"].(string); ok {
+						currentTime := time.Now()
+						expirationTime, timeError := time.Parse(time.RFC3339Nano, expirationDate)
+						if timeError == nil && currentTime.After(expirationTime) {
+							if policies, ok := accessorData["policies"].([]interface{}); ok {
+								for _, policy := range policies {
+									for _, tokenPolicy := range tokenPolicies {
+										if strings.EqualFold(policy.(string), tokenPolicy) {
+											goto renewAccessor
+										}
+									}
+								}
+							}
+						}
 					}
+					continue
+				renewAccessor:
+					fmt.Println("Renew Accessor passed!")
+					//POST (/v1/auth/token/renew-accessor)
 				}
 
 			}
