@@ -91,6 +91,7 @@ func (v *Vault) RenewTokenInScope() error {
 
 	var tokenPolicies = []string{}
 
+	fmt.Println("Reading directories")
 	files, err := ioutil.ReadDir(tokenPath)
 	if err != nil {
 		log.Fatal(err)
@@ -101,7 +102,8 @@ func (v *Vault) RenewTokenInScope() error {
 			continue
 		}
 
-		var file, err = os.OpenFile(f.Name(), os.O_RDWR, 0644)
+		fmt.Println(f.Name())
+		var file, err = os.OpenFile(tokenPath+string(os.PathSeparator)+f.Name(), os.O_RDWR, 0644)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -115,19 +117,28 @@ func (v *Vault) RenewTokenInScope() error {
 			tokenPolicies = append(tokenPolicies, policy)
 		}
 	}
-
+	fmt.Println("jazz2")
 	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
+	fmt.Println("request")
 	resp, err := v.client.RawRequest(r)
+	if err != nil {
+		fmt.Println("inside error nil")
+		log.Fatal(err)
+	}
+	fmt.Println("request")
 	defer resp.Body.Close()
 
 	var jsonData map[string]interface{}
 
 	if err = resp.DecodeJSON(&jsonData); err != nil {
+		fmt.Println("jazz1")
 		return err
 	}
 
 	if data, ok := jsonData["data"].(map[string]interface{}); ok {
+		fmt.Println("json stuff")
 		if accessors, ok := data["keys"].([]string); ok {
+			fmt.Println("jazz")
 			for _, accessor := range accessors {
 				b := v.client.NewRequest("POST", "/v1/auth/token/lookup-accessor")
 
