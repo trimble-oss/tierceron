@@ -89,10 +89,8 @@ func (v *Vault) RenewSelf(increment int) error {
 // RenewTokenInScope()
 func (v *Vault) RenewTokenInScope() error {
 	var tokenPath = "token_files"
-
 	var tokenPolicies = []string{}
 
-	fmt.Println("Reading directories")
 	files, err := ioutil.ReadDir(tokenPath)
 	if err != nil {
 		log.Fatal(err)
@@ -102,8 +100,6 @@ func (v *Vault) RenewTokenInScope() error {
 		if f.IsDir() {
 			continue
 		}
-
-		fmt.Println(f.Name())
 		var file, err = os.OpenFile(tokenPath+string(os.PathSeparator)+f.Name(), os.O_RDWR, 0644)
 		if err != nil {
 			log.Fatal(err)
@@ -118,30 +114,23 @@ func (v *Vault) RenewTokenInScope() error {
 			tokenPolicies = append(tokenPolicies, policy)
 		}
 	}
-	fmt.Println("jazz2")
 	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
-	fmt.Println("request")
 	resp, err := v.client.RawRequest(r)
 
 	if err != nil {
-		fmt.Println("inside error nil")
 		log.Fatal(err)
 	}
 
-	fmt.Println("request")
 	defer resp.Body.Close()
 
 	var jsonData map[string]interface{}
 
 	if err = resp.DecodeJSON(&jsonData); err != nil {
-		fmt.Println("jazz1")
 		return err
 	}
 
 	if data, ok := jsonData["data"].(map[string]interface{}); ok {
-		fmt.Println("json stuff")
 		if accessors, ok := data["keys"].([]interface{}); ok {
-			fmt.Println("jazz")
 			for _, accessor := range accessors {
 				b := v.client.NewRequest("POST", "/v1/auth/token/lookup-accessor")
 
@@ -154,7 +143,6 @@ func (v *Vault) RenewTokenInScope() error {
 				}
 				response, err := v.client.RawRequest(b)
 				if err != nil {
-					fmt.Println("inside error nil")
 					log.Fatal(err)
 				}
 				defer response.Body.Close()
@@ -167,7 +155,7 @@ func (v *Vault) RenewTokenInScope() error {
 					if expirationDate, ok := accessorData["expire_time"].(string); ok {
 						currentTime := time.Now()
 						expirationTime, timeError := time.Parse(time.RFC3339Nano, expirationDate)
-						if timeError == nil && currentTime.After(expirationTime) {
+						if timeError == nil && currentTime.Before(expirationTime) {
 							if policies, ok := accessorData["policies"].([]interface{}); ok {
 								for _, policy := range policies {
 									for _, tokenPolicy := range tokenPolicies {
@@ -181,17 +169,38 @@ func (v *Vault) RenewTokenInScope() error {
 					}
 					continue
 				renewAccessor:
-					fmt.Println("Renew Accessor passed!")
-					//POST (/v1/auth/token/renew-accessor)
+					b := v.client.NewRequest("POST", "/v1/auth/token/renew-accessor")
+
+					payload := map[string]interface{}{
+						"accessor":  accessor,
+						"increment": "8760h",
+					}
+
+					if err := b.SetJSONBody(payload); err != nil {
+						return err
+					}
+					response, err := v.client.RawRequest(b)
+					if err != nil {
+						log.Fatal(err)
+					}
+					defer response.Body.Close()
+				}
+				var renewAccessorMap map[string]interface{}
+				if err = response.DecodeJSON(&renewAccessorMap); err != nil {
+					return err
 				}
 
+				if renewAccessors, ok := renewAccessorMap["auth"].(map[string]interface{}); ok {
+					if renewAccessorLeaseDuration, ok := renewAccessors["lease_duration"].(string); ok {
+						if clientToken, ok := renewAccessors["client_token"].(string); ok {
+							fmt.Println("Renewed token: " + clientToken + "Renewed Lease duration: " + renewAccessorLeaseDuration)
+						}
+					}
+				}
 			}
 		}
-		return fmt.Errorf("Error parsing response for accessor list")
 	}
 	return nil
-	//response, err := v.client.Auth().Token().Create(&token)
-	//return response.Auth.ClientToken, err
 }
 
 // CreateKVPath Creates a kv engine with the specified name and description
