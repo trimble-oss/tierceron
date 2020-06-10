@@ -161,7 +161,7 @@ func (v *Vault) RenewTokenInScope(certExpiration bool) error {
 							if policies, ok := accessorData["policies"].([]interface{}); ok {
 								for _, policy := range policies {
 									for _, tokenPolicy := range tokenPolicies {
-										if strings.EqualFold(policy.(string), tokenPolicy) {
+										if policy.(string) == "root" || strings.EqualFold(policy.(string), tokenPolicy) {
 											matchedPolicy = tokenPolicy
 											goto renewAccessor
 										}
