@@ -173,7 +173,7 @@ func (v *Vault) RenewTokenInScope(certExpiration bool) error {
 					continue
 				renewAccessor:
 					if certExpiration {
-						fmt.Println("Token with the " + matchedPolicy + " expires on " + expirationDate)
+						fmt.Println("Token with the policy " + matchedPolicy + " expires on " + expirationDate)
 						continue
 					}
 					b := v.client.NewRequest("POST", "/v1/auth/token/renew-accessor")
