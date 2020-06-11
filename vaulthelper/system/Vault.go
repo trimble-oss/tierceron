@@ -144,6 +144,7 @@ func (v *Vault) RenewTokenInScope(certExpiration bool) error {
 				response, err := v.client.RawRequest(b)
 				if err != nil {
 					log.Fatal(err)
+					return err
 				}
 				defer response.Body.Close()
 				var accessorDataMap map[string]interface{}
@@ -191,22 +192,23 @@ func (v *Vault) RenewTokenInScope(certExpiration bool) error {
 						log.Fatal(err)
 					}
 					defer response.Body.Close()
-				}
-				var renewAccessorMap map[string]interface{}
-				if err = response.DecodeJSON(&renewAccessorMap); err != nil {
-					return err
-				}
+					var renewAccessorMap map[string]interface{}
+					if err = response.DecodeJSON(&renewAccessorMap); err != nil {
+						return err
+					}
 
-				if renewAccessors, ok := renewAccessorMap["auth"].(map[string]interface{}); ok {
-					if renewAccessorLeaseDuration, ok := renewAccessors["lease_duration"].(string); ok {
-						if clientToken, ok := renewAccessors["client_token"].(string); ok {
-							fmt.Println("Renewed token: " + clientToken + "Renewed Lease duration: " + renewAccessorLeaseDuration)
+					if renewAccessors, ok := renewAccessorMap["auth"].(map[string]interface{}); ok {
+						if renewAccessorLeaseDuration, ok := renewAccessors["lease_duration"].(string); ok {
+							if clientToken, ok := renewAccessors["client_token"].(string); ok {
+								fmt.Println("Renewed token: " + clientToken + "Renewed Lease duration: " + renewAccessorLeaseDuration)
+							}
 						}
 					}
 				}
 			}
 		}
 	}
+
 	return nil
 }
 
