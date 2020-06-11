@@ -86,8 +86,8 @@ func (v *Vault) RenewSelf(increment int) error {
 	return err
 }
 
-// RevokeTokensInScope()
-func (v *Vault) RevokeTokensInScope(certExpiration bool, logger *log.Logger) error {
+// GetOrRevokeTokensInScope()
+func (v *Vault) GetOrRevokeTokensInScope(tokenExpiration bool, logger *log.Logger) error {
 	var tokenPath = "token_files"
 	var tokenPolicies = []string{}
 
@@ -173,7 +173,7 @@ func (v *Vault) RevokeTokensInScope(certExpiration bool, logger *log.Logger) err
 					}
 					continue
 				revokeAccessor:
-					if certExpiration {
+					if tokenExpiration {
 						fmt.Println("Token with the policy " + matchedPolicy + " expires on " + expirationDate)
 						continue
 					}
