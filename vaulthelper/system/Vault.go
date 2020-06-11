@@ -86,8 +86,8 @@ func (v *Vault) RenewSelf(increment int) error {
 	return err
 }
 
-// RenewTokenInScope()
-func (v *Vault) RenewTokenInScope(certExpiration bool) error {
+// RevokeTokensInScope()
+func (v *Vault) RevokeTokensInScope(certExpiration bool, logger *log.Logger) error {
 	var tokenPath = "token_files"
 	var tokenPolicies = []string{}
 
@@ -164,7 +164,7 @@ func (v *Vault) RenewTokenInScope(certExpiration bool) error {
 									for _, tokenPolicy := range tokenPolicies {
 										if policy.(string) == "root" || strings.EqualFold(policy.(string), tokenPolicy) {
 											matchedPolicy = tokenPolicy
-											goto renewAccessor
+											goto revokeAccessor
 										}
 									}
 								}
@@ -172,16 +172,15 @@ func (v *Vault) RenewTokenInScope(certExpiration bool) error {
 						}
 					}
 					continue
-				renewAccessor:
+				revokeAccessor:
 					if certExpiration {
 						fmt.Println("Token with the policy " + matchedPolicy + " expires on " + expirationDate)
 						continue
 					}
-					b := v.client.NewRequest("POST", "/v1/auth/token/renew-accessor")
+					b := v.client.NewRequest("POST", "/v1/auth/token/revoke-accessor")
 
 					payload := map[string]interface{}{
-						"accessor":  accessor,
-						"increment": "8760h",
+						"accessor": accessor,
 					}
 
 					if err := b.SetJSONBody(payload); err != nil {
