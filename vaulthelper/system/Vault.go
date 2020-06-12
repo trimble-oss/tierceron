@@ -191,17 +191,13 @@ func (v *Vault) GetOrRevokeTokensInScope(tokenExpiration bool, logger *log.Logge
 						log.Fatal(err)
 					}
 					defer response.Body.Close()
-					var renewAccessorMap map[string]interface{}
-					if err = response.DecodeJSON(&renewAccessorMap); err != nil {
-						return err
-					}
 
-					if renewAccessors, ok := renewAccessorMap["auth"].(map[string]interface{}); ok {
-						if renewAccessorLeaseDuration, ok := renewAccessors["lease_duration"].(string); ok {
-							if clientToken, ok := renewAccessors["client_token"].(string); ok {
-								fmt.Println("Renewed token: " + clientToken + "Renewed Lease duration: " + renewAccessorLeaseDuration)
-							}
-						}
+					if response.StatusCode == 204 {
+						fmt.Println("Revoked token with policy: " + matchedPolicy)
+					} else {
+						fmt.Println(fmt.Sprintf("Failed with status: %s", response.Status))
+						fmt.Println(fmt.Sprintf("Failed with status code: %d", response.StatusCode))
+						return errors.New("Failure to revoke tokens")
 					}
 				}
 			}
