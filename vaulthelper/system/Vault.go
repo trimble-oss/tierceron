@@ -176,29 +176,56 @@ func (v *Vault) GetOrRevokeTokensInScope(tokenExpiration bool, logger *log.Logge
 					if tokenExpiration {
 						fmt.Println("Token with the policy " + matchedPolicy + " expires on " + expirationDate)
 						continue
-					}
-					b := v.client.NewRequest("POST", "/v1/auth/token/revoke-accessor")
+					} else {
+						b := v.client.NewRequest("POST", "/v1/auth/token/revoke-accessor")
 
-					payload := map[string]interface{}{
-						"accessor": accessor,
-					}
+						payload := map[string]interface{}{
+							"accessor": accessor,
+						}
 
-					if err := b.SetJSONBody(payload); err != nil {
+						if err := b.SetJSONBody(payload); err != nil {
+							return err
+						}
+						response, err := v.client.RawRequest(b)
+						if err != nil {
+							log.Fatal(err)
+						}
+						defer response.Body.Close()
+
+						if response.StatusCode == 204 {
+							fmt.Println("Revoked token with policy: " + matchedPolicy)
+						} else {
+							fmt.Println(fmt.Sprintf("Failed with status: %s", response.Status))
+							fmt.Println(fmt.Sprintf("Failed with status code: %d", response.StatusCode))
+							return errors.New("Failure to revoke tokens")
+						}
+					}
+				}
+			}
+
+			if !tokenExpiration {
+				b := v.client.NewRequest("POST", "/v1/auth/token/tidy")
+				response, err := v.client.RawRequest(b)
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer response.Body.Close()
+
+				fmt.Println(fmt.Sprintf("Tidy success status: %s", response.Status))
+
+				if response.StatusCode == 202 {
+					var tidyResponseMap map[string]interface{}
+					if err = response.DecodeJSON(&tidyResponseMap); err != nil {
 						return err
 					}
-					response, err := v.client.RawRequest(b)
-					if err != nil {
-						log.Fatal(err)
+					if warnings, ok := tidyResponseMap["warnings"].([]interface{}); ok {
+						for _, warning := range warnings {
+							fmt.Println(warning.(string))
+						}
 					}
-					defer response.Body.Close()
-
-					if response.StatusCode == 204 {
-						fmt.Println("Revoked token with policy: " + matchedPolicy)
-					} else {
-						fmt.Println(fmt.Sprintf("Failed with status: %s", response.Status))
-						fmt.Println(fmt.Sprintf("Failed with status code: %d", response.StatusCode))
-						return errors.New("Failure to revoke tokens")
-					}
+				} else {
+					fmt.Println(fmt.Sprintf("Non critical tidy success failure: %s", response.Status))
+					fmt.Println(fmt.Sprintf("Non critical tidy success failure: %d", response.StatusCode))
 				}
 			}
 		}
