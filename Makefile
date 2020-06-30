@@ -24,6 +24,8 @@ xmac:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/vaultx.mac bitbucket.org/dexterchaney/whoville/vaultx
 lib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -a -ldflags '-w' -o $(GOBIN)/nc.so bitbucket.org/dexterchaney/whoville/configlib
+maclib:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -o $(GOBIN)/nc.dylib bitbucket.org/dexterchaney/whoville/configlib
 winlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -buildmode=c-shared -o $(GOBIN)/nc.dll bitbucket.org/dexterchaney/whoville/configlib
 xp:
