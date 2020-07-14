@@ -27,7 +27,7 @@ type KeyTokenWrapper struct {
 }
 
 // NewVault Constructs a new vault at the given address with the given access token
-func NewVault(addr string, env string, newVault bool) (*Vault, error) {
+func NewVault(addr string, env string, newVault bool, pingVault bool) (*Vault, error) {
 	httpClient, err := kv.CreateHTTPClient(env)
 	if err != nil {
 		return nil, err
@@ -40,6 +40,11 @@ func NewVault(addr string, env string, newVault bool) (*Vault, error) {
 	health, err := client.Sys().Health()
 	if err != nil {
 		return nil, err
+	}
+
+	if pingVault {
+		fmt.Println("Ping success!")
+		return nil, nil
 	}
 
 	if !newVault && health.Sealed {
