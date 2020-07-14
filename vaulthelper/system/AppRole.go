@@ -48,7 +48,7 @@ func (v *Vault) EnableAppRole() error {
 	sys := v.client.Sys()
 	err := sys.EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type:        "approle",
-		Description: "Auth endpoint for bamboo",
+		Description: "Auth endpoint for vault config",
 		Config: api.AuthConfigInput{
 			DefaultLeaseTTL: "10m",
 			MaxLeaseTTL:     "15m",
