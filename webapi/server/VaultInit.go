@@ -25,7 +25,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	fmt.Println("Initing vault")
 
-	v, err := sys.NewVault(s.VaultAddr, "nonprod", true)
+	v, err := sys.NewVault(s.VaultAddr, "nonprod", true, false)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		utils.LogErrorObject(err, logger, false)
@@ -202,7 +202,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 
 //GetStatus requests version info and whether the vault has been initailized
 func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStatus, error) {
-	v, err := sys.NewVault(s.VaultAddr, "nonprod", true)
+	v, err := sys.NewVault(s.VaultAddr, "nonprod", true, false)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
@@ -222,7 +222,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 
 //Unseal passes the unseal key to the vault and tries to unseal the vault
 func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp, error) {
-	v, err := sys.NewVault(s.VaultAddr, "nonprod", false)
+	v, err := sys.NewVault(s.VaultAddr, "nonprod", false, false)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
