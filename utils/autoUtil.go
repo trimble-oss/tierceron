@@ -46,7 +46,7 @@ func (c *cert) getCert() *cert {
 }
 
 // AutoAuth attempts to
-func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, tokenNamePtr *string, envPtr *string, addrPtr *string) {
+func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, tokenNamePtr *string, envPtr *string, addrPtr *string, ping bool) {
 	// Declare local variables
 	var override bool
 	var exists bool
@@ -151,7 +151,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 				log.Fatal(err)
 			}
 		}
-		v, err = sys.NewVault(*addrPtr, *envPtr, false)
+		v, err = sys.NewVault(*addrPtr, *envPtr, false, ping)
 		CheckErrorNoStack(err, true)
 
 		// Get dump
@@ -203,7 +203,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			}
 		}
 	} else {
-		v, err = sys.NewVault(*addrPtr, *envPtr, false)
+		v, err = sys.NewVault(*addrPtr, *envPtr, false, ping)
 		CheckErrorNoStack(err, true)
 	}
 
