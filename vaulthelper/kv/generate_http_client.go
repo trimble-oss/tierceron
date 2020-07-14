@@ -22,7 +22,11 @@ func CreateHTTPClient(env string) (client *http.Client, err error) {
 	if err != nil {
 		return nil, err
 	}
-	certPool := x509.NewCertPool()
+	certPool, _ := x509.SystemCertPool()
+	if certPool == nil {
+		certPool = x509.NewCertPool()
+	}
+
 	certPool.AppendCertsFromPEM(cert)
 
 	// create another test server and use the certificate
