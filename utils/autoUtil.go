@@ -84,10 +84,10 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			if *tokenPtr == "" {
 				if !override {
 					fmt.Println("Grabbing config IDs from cert file.")
-					if c.SecretID != "" {
+					if c.SecretID != "" && secretIDPtr != nil {
 						*secretIDPtr = c.SecretID
 					}
-					if c.ApproleID != "" {
+					if c.ApproleID != "" && appRoleIDPtr != nil {
 						*appRoleIDPtr = c.ApproleID
 					}
 				}
