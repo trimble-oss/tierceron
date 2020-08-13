@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -16,8 +17,9 @@ import (
 
 //Vault Represents a vault connection for managing the vault's properties
 type Vault struct {
-	client *api.Client // Client connected to vault
-	shards []string    // Master key shards used to unseal vault
+	httpClient *http.Client // Handle to http client.
+	client     *api.Client  // Client connected to vault
+	shards     []string     // Master key shards used to unseal vault
 }
 
 // KeyTokenWrapper Contains the unseal keys and root token
@@ -417,4 +419,9 @@ func (v *Vault) GetStatus() (map[string]interface{}, error) {
 		"sealed":      health.Sealed,
 		"version":     health.Version,
 	}, nil
+}
+
+// Proper shutdown of modifier.
+func (v *Vault) Close() {
+	v.httpClient.CloseIdleConnections()
 }

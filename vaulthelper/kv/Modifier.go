@@ -3,6 +3,7 @@ package kv
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,7 @@ var noEnvironments = map[string]bool{
 // can be changed to alter where in the vault the key,value
 // pair is stored
 type Modifier struct {
+	httpClient       *http.Client // Handle to http client.
 	client           *api.Client  // Client connected to vault
 	logical          *api.Logical // Logical used for read/write options
 	Env              string       // Environment (local/dev/QA; Initialized to secrets)
@@ -54,7 +56,7 @@ func NewModifier(token string, address string, env string, regions []string) (*M
 	modClient.SetToken(token)
 
 	// Return the modifier
-	return &Modifier{client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions}, nil
+	return &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions}, nil
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
@@ -245,4 +247,9 @@ func (m *Modifier) AdjustValue(path string, key string, n int) ([]string, error)
 	newValue := strconv.Itoa(oldValue + n)
 	oldData[key] = newValue
 	return m.Write(path, oldData)
+}
+
+// Proper shutdown of modifier.
+func (m *Modifier) Close() {
+	m.httpClient.CloseIdleConnections()
 }
