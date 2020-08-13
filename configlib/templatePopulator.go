@@ -21,6 +21,8 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 
 	configuredTemplate, _ := utils.ConfigTemplate(mod, templatePath, configuredFilePath, true, project, service, false)
 
+	mod.Close()
+
 	return C.CString(configuredTemplate)
 }
 
@@ -34,6 +36,8 @@ func ConfigCertLib(token string, address string, env string, templatePath string
 	}
 
 	_, configuredCert := utils.ConfigTemplate(mod, templatePath, configuredFilePath, true, project, service, true)
+
+	mod.Close()
 
 	certBase64 := base64.StdEncoding.EncodeToString([]byte(configuredCert[1]))
 
