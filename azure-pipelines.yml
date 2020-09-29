@@ -34,32 +34,32 @@ steps:
     go mod download
     echo "Compile start"
 
-    for p in vaultconfig vaultpub vaultinit vaultinitp vaultx vaultxp; do
-      echo Compiling $p
-      GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
-      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/$p ]] ; then
-          echo File $p was not built, aborting.
-          exit 1
-      fi
-      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
-      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/windows_amd64/$p.exe ]] ; then
-          echo File $p.exe was not built, aborting.
-          exit 1
-      fi
-      GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
-      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/darwin_amd64/$p ]] ; then
-          echo File $p was not built, aborting.
-          exit 1
-      fi
-    done
+    #for p in vaultconfig vaultpub vaultinit vaultinitp vaultx vaultxp; do
+    #  echo Compiling $p
+    #  GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
+    #  if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/$p ]] ; then
+    #      echo File $p was not built, aborting.
+    #      exit 1
+    #  fi
+    #  GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
+    #  if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/windows_amd64/$p.exe ]] ; then
+    #      echo File $p.exe was not built, aborting.
+    #      exit 1
+    #  fi
+    #  GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/$p
+    #  if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/darwin_amd64/$p ]] ; then
+    #      echo File $p was not built, aborting.
+    #      exit 1
+    #  fi
+    #done
 
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/webapi/apiRouter
-    if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/apiRouter ]] ; then
-        echo File apiRouter was not built, aborting.
-        exit 1
-    fi
+    #GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/webapi/apiRouter
+    #if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/apiRouter ]] ; then
+    #    echo File apiRouter was not built, aborting.
+    #    exit 1
+    #fi
 
-    GOBIN= GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' -o nc.so bitbucket.org/dexterchaney/whoville/configlib
+    GOBIN= GOOS=linux GOARCH=amd64 go build -o nc.so -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/configlib
     if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/configlib.so ]] ; then
         echo File configlib was not built, aborting.
         exit 1
