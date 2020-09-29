@@ -23,6 +23,7 @@ type DriverConfig struct {
 	StartDir       []string // Starting directory... possibly multiple
 	EndDir         string
 	WantCert       bool
+	ZeroConfig     bool
 	GenAuth        bool
 	Log            *log.Logger
 }
