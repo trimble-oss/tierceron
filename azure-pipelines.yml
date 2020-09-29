@@ -59,7 +59,7 @@ steps:
         exit 1
     fi
 
-   	GOBIN= GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/configlib
+    GOBIN= GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/configlib
     if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/configlib.so ]] ; then
         echo File configlib was not built, aborting.
         exit 1
