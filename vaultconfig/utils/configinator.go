@@ -63,6 +63,18 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 				continue
 			}
 
+			if strings.HasSuffix(templatePath, ".tmpl") {
+				if !config.ZeroConfig {
+					if strings.HasSuffix(templatePath, "nc.properties.tmpl") {
+						continue
+					}
+				} else {
+					if !strings.HasSuffix(templatePath, "nc.properties.tmpl") {
+						continue
+					}
+				}
+			}
+
 			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert)
 			//generate template or certificate
 			if config.WantCert {
