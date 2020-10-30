@@ -59,7 +59,7 @@ steps:
         exit 1
     fi
 
-    GOBIN= GOOS=linux GOARCH=amd64 go build -o $(system.defaultWorkingDirectory)/gopath/bin/nc.so -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/configlib
+    GOBIN= GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -o $(system.defaultWorkingDirectory)/gopath/bin/nc.so -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/configlib
     if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
