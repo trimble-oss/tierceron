@@ -75,7 +75,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 				}
 			}
 
-			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert)
+			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
 			//generate template or certificate
 			if config.WantCert {
 				if len(certData) == 0 {
@@ -104,7 +104,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 			}
 
 			//assume the starting directory was vault_templates
-			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[1], serviceTemplate, config.WantCert)
+			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[1], serviceTemplate, config.WantCert, false)
 			if config.WantCert {
 				certDestination := config.EndDir + "/" + certData[0]
 				writeToFile(certData[1], certDestination)
