@@ -21,26 +21,29 @@ func GetTemplate(modifier *kv.Modifier, emptyFilePath string) (string, error) {
 	//  ./vault_templates/ServiceTech/ServiceTechAPIM/config.yml.tmpl
 	splitDir := strings.Split(emptyFilePath, "/")
 	var project, service, templateFile string
-	if len(splitDir) == 5 {
-		project = splitDir[2]
-		service = splitDir[3]
-		templateFile = splitDir[4]
+	splitDirLen := len(splitDir)
+
+	if splitDirLen-3 >= 0 && splitDir[len(splitDir)-3] != "vault_templates" {
+		project = splitDir[len(splitDir)-3]
 	} else {
 		project = ""
-		service = splitDir[2]
-		templateFile = splitDir[3]
 	}
+
+	if splitDirLen-2 >= 0 {
+		service = splitDir[len(splitDir)-2]
+	}
+	if splitDirLen-1 >= 0 {
+		templateFile = splitDir[len(splitDir)-1]
+	}
+
 	templateFile = templateFile[0 : len(templateFile)-len(".tmpl")]
 	if strings.HasSuffix(templateFile, ".yml") {
 		templateFile = templateFile[0 : len(templateFile)-len(".yml")]
 	} else {
-		templateFileParts := strings.Split(templateFile, ".")
-		suffixLen := 0
-		if len(templateFileParts) > 1 {
-			suffix := templateFileParts[len(templateFileParts)-1]
-			suffixLen = len(suffix) + 1 // incl dot.
+		lastDotIndex := strings.LastIndex(templateFile, ".")
+		if lastDotIndex > 0 {
+			templateFile = templateFile[0:lastDotIndex]
 		}
-		templateFile = templateFile[0 : len(templateFile)-suffixLen]
 	}
 
 	path := "templates/" + project + "/" + service + "/" + templateFile + "/template-file"
@@ -49,7 +52,7 @@ func GetTemplate(modifier *kv.Modifier, emptyFilePath string) (string, error) {
 		return "", err
 	}
 	if data == nil {
-		err := errors.New("No file " + templateFile + " under " + project + "/" + service)
+		err := errors.New("Trouble with lookup to: " + emptyFilePath + " No file " + templateFile + " under " + project + "/" + service)
 		return "", err
 	}
 
