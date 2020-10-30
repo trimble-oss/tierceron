@@ -50,6 +50,9 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		}
 		if dirIndex != -1 {
 			serviceTemplate := s[dirIndex+2]
+			if strings.HasSuffix(templatePath, ".DS_Store") {
+				continue
+			}
 
 			isCert := false
 			if strings.HasSuffix(serviceTemplate, ".pfx.mf.tmpl") ||
