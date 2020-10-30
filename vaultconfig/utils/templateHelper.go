@@ -35,7 +35,12 @@ func GetTemplate(modifier *kv.Modifier, emptyFilePath string) (string, error) {
 		templateFile = templateFile[0 : len(templateFile)-len(".yml")]
 	} else {
 		templateFileParts := strings.Split(templateFile, ".")
-		templateFile = templateFile[0 : len(templateFile)-len(templateFileParts[len(templateFileParts)-1])-1]
+		suffixLen := 0
+		if len(templateFileParts) > 1 {
+			suffix := templateFileParts[len(templateFileParts)-1]
+			suffixLen = len(suffix) + 1 // incl dot.
+		}
+		templateFile = templateFile[0 : len(templateFile)-suffixLen]
 	}
 
 	path := "templates/" + project + "/" + service + "/" + templateFile + "/template-file"
