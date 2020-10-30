@@ -21,19 +21,22 @@ func GetTemplate(modifier *kv.Modifier, emptyFilePath string) (string, error) {
 	//  ./vault_templates/ServiceTech/ServiceTechAPIM/config.yml.tmpl
 	splitDir := strings.Split(emptyFilePath, "/")
 	var project, service, templateFile string
-	splitDirLen := len(splitDir)
+	templateFile = ""
+	startI := 3
 
-	if splitDirLen-3 >= 0 && splitDir[len(splitDir)-3] != "vault_templates" {
-		project = splitDir[len(splitDir)-3]
-	} else {
+	if splitDir[2] == "Common" {
 		project = ""
+		service = splitDir[2]
+	} else {
+		project = splitDir[2]
+		service = splitDir[3]
+		startI = 4
 	}
-
-	if splitDirLen-2 >= 0 {
-		service = splitDir[len(splitDir)-2]
-	}
-	if splitDirLen-1 >= 0 {
-		templateFile = splitDir[len(splitDir)-1]
+	for i := startI; i < len(splitDir); i = i + 1 {
+		if i != startI {
+			templateFile = templateFile + "/"
+		}
+		templateFile = templateFile + splitDir[i]
 	}
 
 	templateFile = templateFile[0 : len(templateFile)-len(".tmpl")]
