@@ -281,6 +281,33 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 
 }
 
+//GetConfigValues gets a set of configuration values for a service from the data store.
+func (cds *ConfigDataStore) GetConfigValues(service string, config string) (map[string]interface{}, bool) {
+	if serviceValues, okServiceValues := cds.dataMap[service].(map[string]interface{}); okServiceValues {
+		if values, okServiceConfig := serviceValues[config].(map[string]interface{}); okServiceConfig {
+			return values, true
+		}
+	}
+	return nil, false
+}
+
+//GetConfigValue gets an invididual configuration value for a service from the data store.
+func (cds *ConfigDataStore) GetConfigValue(service string, config string, key string) (string, bool) {
+	if strings.Index(key, ".") >= 0 {
+		key = strings.Replace(key, ".", "_", -1)
+	}
+	if serviceValues, okServiceValues := cds.dataMap[service].(map[string]interface{}); okServiceValues {
+		if values, okServiceConfig := serviceValues[config].(map[string]interface{}); okServiceConfig {
+			if value, okValue := values[key]; okValue {
+				if v, okType := value.(string); okType {
+					return v, true
+				}
+			}
+		}
+	}
+	return "", false
+}
+
 func getPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
