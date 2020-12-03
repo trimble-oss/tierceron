@@ -94,8 +94,8 @@ func (v *Vault) RenewSelf(increment int) error {
 }
 
 // GetOrRevokeTokensInScope()
-func (v *Vault) GetOrRevokeTokensInScope(tokenExpiration bool, logger *log.Logger) error {
-	var tokenPath = "token_files"
+func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logger *log.Logger) error {
+	var tokenPath = dir
 	var tokenPolicies = []string{}
 
 	files, err := ioutil.ReadDir(tokenPath)
