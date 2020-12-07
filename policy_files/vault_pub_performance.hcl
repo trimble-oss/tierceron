@@ -1,5 +1,5 @@
 path "templates/*" {
-  capabilities = ["create", "update"]
+  capabilities = ["read", "create", "update", "list"]
 }
 
 path "values/data/performance/*" {
