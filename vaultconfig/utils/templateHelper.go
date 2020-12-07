@@ -63,6 +63,19 @@ func GetTemplate(modifier *kv.Modifier, emptyFilePath string) (string, error) {
 	return data["data"].(string), nil
 }
 
+//ConfigTemplateRaw - gets a raw unpopulated template.
+func ConfigTemplateRaw(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, project string, service string, cert bool, zc bool) ([]byte, error) {
+	var err error
+
+	var templateEncoded string
+	templateEncoded, err = GetTemplate(modifier, emptyFilePath)
+	utils.CheckError(err, true)
+	templateBytes, decodeErr := base64.StdEncoding.DecodeString(templateEncoded)
+	utils.CheckError(decodeErr, true)
+
+	return templateBytes, decodeErr
+}
+
 //ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.
 //It configures the template and writes it to the specified file path.
 func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, project string, service string, cert bool, zc bool) (string, map[int]string) {

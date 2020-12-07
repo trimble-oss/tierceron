@@ -15,6 +15,7 @@ import (
 	"bitbucket.org/dexterchaney/whoville/utils"
 	"bitbucket.org/dexterchaney/whoville/validator"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	"bitbucket.org/dexterchaney/whoville/vaultx/xutil"
 	"gopkg.in/yaml.v2"
 )
 
@@ -37,6 +38,42 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 
 	files, err := ioutil.ReadDir(dir)
 	utils.LogErrorObject(err, logger, true)
+
+	if len(files) == 1 && files[0].Name() == "certs" && uploadCert {
+		// Cert rotation support without templates
+		logger.Printf("No templates available, Common service requested.: %s\n", dir)
+
+		var templatePaths = []string{
+			"vault_templates/Common/vointegration.cer.mf.tmpl",
+			"vault_templates/ServiceTech/ServiceTechAPIM//config.yml.tmpl",
+		}
+		regions := []string{}
+
+		if env == "staging" || env == "prod" {
+			regions = utils.GetSupportedProdRegions()
+		}
+
+		config := utils.DriverConfig{
+			Token:          token,
+			VaultAddress:   addr,
+			Env:            env,
+			Regions:        regions,
+			SecretMode:     true, //  "Only override secret values in templates?"
+			ServicesWanted: []string{service},
+			StartDir:       append([]string{}, ""),
+			EndDir:         "",
+			WantCert:       false,
+			GenAuth:        false,
+			Log:            logger,
+		}
+
+		_, _, _, seedData := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
+
+		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
+
+		SeedVaultFromData([]byte(seedData), addr, token, env, logger, service, true)
+		return
+	}
 
 	for _, file := range files {
 		if file.Name() == env || (strings.HasPrefix(env, "local") && file.Name() == "local") {
@@ -103,7 +140,9 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 		// Convert nested maps into vault writable data
 		for k, v := range current.data {
 			if v == nil { // Don't write empty valus, Vault does not handle them
-				logger.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
+				if !uploadCert {
+					logger.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
+				}
 			} else if current.path == "" && k.(string) == "verification" { // Found verification on top level, store for later
 				verificationData = v.(map[interface{}]interface{})
 			} else if newData, ok := v.(map[interface{}]interface{}); ok { // Decompose into submaps, update path
