@@ -16,6 +16,7 @@ import (
 	"bitbucket.org/dexterchaney/whoville/validator"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	"bitbucket.org/dexterchaney/whoville/vaultx/xutil"
+	"github.com/davecgh/go-spew/spew"
 	"gopkg.in/yaml.v2"
 )
 
@@ -211,7 +212,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 						if certValidationErr == nil {
 							isValidCert = true
 						} else {
-							fmt.Println("failed to verify certificate: " + certValidationErr.Error())
+							fmt.Println("failed to parse and verify certificate: " + certValidationErr.Error())
 						}
 						var certHost string
 						if certHostData, certHostOk := entry.data["certHost"]; certHostOk {
@@ -220,13 +221,26 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 							fmt.Println("Missing certHost, cannot validate cert.  Not written to vault")
 							continue
 						}
+						switch env {
+						case "dev":
+							certHost = strings.Replace(certHost, "*", "develop", 1)
+							break
+						case "QA":
+							certHost = strings.Replace(certHost, "*", "qa", 1)
+							break
+						case "performance":
+							certHost = strings.Replace(certHost, "*", "performance", 1)
+							break
+						}
+
 						opts := x509.VerifyOptions{
 							DNSName: certHost,
 						}
 
 						if _, err := cert.Verify(opts); err != nil {
 							if _, isUnknownAuthority := err.(x509.UnknownAuthorityError); !isUnknownAuthority {
-								fmt.Println("failed to verify certificate: " + err.Error())
+								spew.Dump(err)
+								fmt.Println("Unknown authority: failed to verify certificate: " + err.Error())
 								continue
 							}
 						}
