@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// GenerateSeedsFromVault configures the templates in vault_templates and writes them to vaultx
+// GenerateSeedsFromVaultRaw configures the templates in vault_templates and writes them to vaultx
 func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, string, bool, string) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -226,6 +226,9 @@ func getDirFiles(dir string) []string {
 	for _, file := range files {
 		//add this directory to path names
 		filename := file.Name()
+		if strings.HasSuffix(filename, ".DS_Store") {
+			continue
+		}
 		extension := filepath.Ext(filename)
 		filePath := dir + file.Name()
 		if !strings.HasSuffix(dir, "/") {

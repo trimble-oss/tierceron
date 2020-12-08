@@ -16,7 +16,6 @@ import (
 	"bitbucket.org/dexterchaney/whoville/validator"
 	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
 	"bitbucket.org/dexterchaney/whoville/vaultx/xutil"
-	"github.com/davecgh/go-spew/spew"
 	"gopkg.in/yaml.v2"
 )
 
@@ -239,7 +238,6 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 
 						if _, err := cert.Verify(opts); err != nil {
 							if _, isUnknownAuthority := err.(x509.UnknownAuthorityError); !isUnknownAuthority {
-								spew.Dump(err)
 								fmt.Println("Unknown authority: failed to verify certificate: " + err.Error())
 								continue
 							}
