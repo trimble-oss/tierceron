@@ -48,7 +48,13 @@ func ConfigControl(config DriverConfig, drive ConfigDriver) {
 			config.StartDir[0] = pwd + string(os.PathSeparator) + config.StartDir[0]
 		}
 
-		projectFiles, err := ioutil.ReadDir(config.StartDir[0])
+		projectFilesComplete, err := ioutil.ReadDir(config.StartDir[0])
+		projectFiles := []os.FileInfo{}
+		for _, projectFile := range projectFilesComplete {
+			if !strings.HasSuffix(projectFile.Name(), ".DS_Store") {
+				projectFiles = append(projectFiles, projectFile)
+			}
+		}
 
 		if len(projectFiles) == 2 && (projectFiles[0].Name() == "Common" || projectFiles[1].Name() == "Common") {
 			for _, projectFile := range projectFiles {
@@ -93,6 +99,7 @@ func ConfigControl(config DriverConfig, drive ConfigDriver) {
 	if !multiProject && strings.LastIndex(config.StartDir[0], "/") < (len(config.StartDir[0])-1) {
 		config.StartDir[0] = config.StartDir[0] + "/"
 	}
+
 	// Drive this set of configurations.
 	drive(config)
 }
