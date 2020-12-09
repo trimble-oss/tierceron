@@ -152,6 +152,9 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 		filePath := dir + "/" + file.Name()
 		//take off .tmpl extension
 		filename := file.Name()
+		if strings.HasSuffix(filename, ".DS_Store") {
+			continue
+		}
 		extension := filepath.Ext(filename)
 		endPath := ""
 		if extension == ".tmpl" {
