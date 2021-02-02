@@ -45,6 +45,8 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 
 		var templatePaths = []string{
 			"vault_templates/Common/vointegration.cer.mf.tmpl",
+			"vault_templates/Common/kafka-confluent.pem.mf.tmpl",
+			"vault_templates/Common/schema-confluent.pem.mf.tmpl",
 			"vault_templates/ServiceTech/ServiceTechAPIM//config.yml.tmpl",
 		}
 		regions := []string{}
