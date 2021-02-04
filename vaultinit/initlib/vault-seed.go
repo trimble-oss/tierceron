@@ -292,9 +292,11 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 						delete(entry.data, "certHost")
 						delete(entry.data, "certSourcePath")
 						delete(entry.data, "certDestPath")
+						continue
 					}
 				} else {
 					fmt.Println("Missing expected cert at: " + certPath + ".  Cert will not be loaded.")
+					continue
 				}
 			}
 		} else {
