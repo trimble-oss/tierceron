@@ -13,6 +13,7 @@
 vault_properties.hcl
 vendor
 vaultUI/**
+vault_seeds/**
 bin/vault*
 bin/api*
 .idea/
