@@ -8,8 +8,8 @@ import (
 	"log"
 	"net/http"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
+	"Vault.Whoville/utils"
+	pb "Vault.Whoville/webapi/rpc/apinator"
 )
 
 const activeSessionsQuery = `select distinct User_Name, Time_Logged_On from PA_COMPANY_CODE cc1 with (nolock)
@@ -20,7 +20,7 @@ const activeSessionsQuery = `select distinct User_Name, Time_Logged_On from PA_C
 const authQuery = `select top(1)
                       Operator_ID, Operator_Name, Password_Hash, Salt, Iteration_Count
                       from PA_OPERATOR_MASTER with(nolock)
-                      where Operator_ID = @Id;`								
+                      where Operator_ID = @Id;`
 
 // GetActiveSessionQuery - returns a SQL query with a user name and time logged in.
 func GetActiveSessionQuery() string {
@@ -31,8 +31,6 @@ func GetActiveSessionQuery() string {
 func GetAuthLoginQuery() string {
 	return authQuery
 }
-
-
 
 // ProxyLogin proxy logs in the user.
 func ProxyLogin(authHost string, req *pb.LoginReq, log *log.Logger) (string, string, *pb.LoginResp, error) {

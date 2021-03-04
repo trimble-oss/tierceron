@@ -12,10 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/validator"
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
-	"bitbucket.org/dexterchaney/whoville/vaultx/xutil"
+	"Vault.Whoville/utils"
+	"Vault.Whoville/validator"
+	"Vault.Whoville/vaulthelper/kv"
+	"Vault.Whoville/vaultx/xutil"
 	"gopkg.in/yaml.v2"
 )
 

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/template"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	"Vault.Whoville/utils"
+	"Vault.Whoville/vaulthelper/kv"
 )
 
 // GetTemplate makes a request to the vault for the template found in <project>/<service>/<file>/template-file

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
+	"Vault.Whoville/utils"
+	pb "Vault.Whoville/webapi/rpc/apinator"
 	"github.com/graphql-go/graphql"
 )
 

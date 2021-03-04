@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	eUtils "bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	"Vault.Whoville/utils"
+	eUtils "Vault.Whoville/utils"
+	"Vault.Whoville/vaulthelper/kv"
 )
 
 //GenerateConfigsFromVault configures the templates in vault_templates and writes them to vaultconfig

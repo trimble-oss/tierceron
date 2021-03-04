@@ -9,9 +9,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
-	pb "bitbucket.org/dexterchaney/whoville/webapi/rpc/apinator"
+	"Vault.Whoville/utils"
+	"Vault.Whoville/vaulthelper/kv"
+	pb "Vault.Whoville/webapi/rpc/apinator"
 	gql "github.com/graphql-go/graphql"
 )
 

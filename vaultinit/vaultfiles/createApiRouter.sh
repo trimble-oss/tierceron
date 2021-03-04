@@ -1,3 +1,3 @@
 #!/bin/sh
-go install "bitbucket.org/dexterchaney/whoville/webapi/apiRouter"
+go install "Vault.Whoville/webapi/apiRouter"
 zip ./../../webapi/apiRouter/apiRouter.zip ~/bin/apiRouter

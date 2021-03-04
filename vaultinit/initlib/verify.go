@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/validator"
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	"Vault.Whoville/utils"
+	"Vault.Whoville/validator"
+	"Vault.Whoville/vaulthelper/kv"
 )
 
 // Runs the verification step from data in the seed file

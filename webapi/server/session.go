@@ -1,18 +1,19 @@
 package server
 
 import (
+	"crypto/sha512"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
-	"encoding/base64"
-	"crypto/sha512"
 
+	"Vault.Whoville/vaulthelper/kv"
 	"golang.org/x/crypto/pbkdf2"
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
 )
@@ -57,8 +58,8 @@ func (s *Server) authUser(mod *kv.Modifier, operatorId string, operatorPassword 
 		var saltEncoded string
 		var iterationCount int
 
-	// Operator_ID, Password_Hash, Salt, Iteration_Count
-	err := rows.Scan(&operatorId, &operatorName, &passwordHash, &saltEncoded, &iterationCount)
+		// Operator_ID, Password_Hash, Salt, Iteration_Count
+		err := rows.Scan(&operatorId, &operatorName, &passwordHash, &saltEncoded, &iterationCount)
 		if err != nil {
 			return false, "", err
 		}
@@ -69,7 +70,7 @@ func (s *Server) authUser(mod *kv.Modifier, operatorId string, operatorPassword 
 		operatorPasswordByteArray := pbkdf2.Key([]byte(operatorPassword), salt, iterationCount, 64, sha512.New)
 		operatorPasswordHash := base64.StdEncoding.EncodeToString(operatorPasswordByteArray)
 
-		if (string(operatorPasswordHash) == passwordHash) {
+		if string(operatorPasswordHash) == passwordHash {
 			return true, operatorName, nil
 		} else {
 			return false, "", errors.New("Invalid password")
