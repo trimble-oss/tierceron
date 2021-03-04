@@ -3,35 +3,35 @@ GOBIN=$(shell pwd)/bin
 GOFILES=$(wildcard *.go)
 
 apiprod:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' bitbucket.org/dexterchaney/whoville/webapi/apiRouter
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' Vault.Whoville/webapi/apiRouter
 api:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/webapi/apiRouter
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install Vault.Whoville/webapi/apiRouter
 config:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/vaultconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install Vault.Whoville/vaultconfig
 configwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -o $(GOBIN)/vaultconfig.exe vaultconfig/vaultconfig.go
 configmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/vaultconfig.mac bitbucket.org/dexterchaney/whoville/vaultconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/vaultconfig.mac Vault.Whoville/vaultconfig
 seed:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/vaultinit
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install Vault.Whoville/vaultinit
 seedmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/vaultinit.mac bitbucket.org/dexterchaney/whoville/vaultinit 
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/vaultinit.mac Vault.Whoville/vaultinit 
 seedp:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/vaultinitp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install Vault.Whoville/vaultinitp
 x:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/vaultx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install Vault.Whoville/vaultx
 xmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/vaultx.mac bitbucket.org/dexterchaney/whoville/vaultx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/vaultx.mac Vault.Whoville/vaultx
 lib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -a -ldflags '-w' -o $(GOBIN)/nc.so bitbucket.org/dexterchaney/whoville/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -a -ldflags '-w' -o $(GOBIN)/nc.so Vault.Whoville/configlib
 maclib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -o $(GOBIN)/nc.dylib bitbucket.org/dexterchaney/whoville/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -o $(GOBIN)/nc.dylib Vault.Whoville/configlib
 winlib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -buildmode=c-shared -o $(GOBIN)/nc.dll bitbucket.org/dexterchaney/whoville/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -buildmode=c-shared -o $(GOBIN)/nc.dll Vault.Whoville/configlib
 xp:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/vaultxp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install Vault.Whoville/vaultxp
 pub:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install bitbucket.org/dexterchaney/whoville/vaultpub
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install Vault.Whoville/vaultpub
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
