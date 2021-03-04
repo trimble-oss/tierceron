@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	"Vault.Whoville/vaulthelper/kv"
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
 )

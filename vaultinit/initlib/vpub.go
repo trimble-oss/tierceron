@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	"Vault.Whoville/utils"
+	"Vault.Whoville/vaulthelper/kv"
 )
 
 func UploadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Logger) (error, []string) {

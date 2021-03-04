@@ -6,8 +6,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"bitbucket.org/dexterchaney/whoville/vaultconfig/utils"
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	"Vault.Whoville/vaultconfig/utils"
+	"Vault.Whoville/vaulthelper/kv"
 )
 
 //export ConfigTemplateLib

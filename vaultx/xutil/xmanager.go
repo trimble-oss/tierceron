@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	eUtils "bitbucket.org/dexterchaney/whoville/utils"
-	vcutils "bitbucket.org/dexterchaney/whoville/vaultconfig/utils"
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	"Vault.Whoville/utils"
+	eUtils "Vault.Whoville/utils"
+	vcutils "Vault.Whoville/vaultconfig/utils"
+	"Vault.Whoville/vaulthelper/kv"
 	"gopkg.in/yaml.v2"
 )
 

@@ -5,8 +5,8 @@ import (
 	"log"
 	"path/filepath"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	sys "bitbucket.org/dexterchaney/whoville/vaulthelper/system"
+	"Vault.Whoville/utils"
+	sys "Vault.Whoville/vaulthelper/system"
 )
 
 //UploadTokenCidrRoles accepts a file directory and vault object to upload token roles to. Logs to pased logger

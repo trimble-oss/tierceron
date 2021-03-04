@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	sys "bitbucket.org/dexterchaney/whoville/vaulthelper/system"
+	sys "Vault.Whoville/vaulthelper/system"
 
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	"Vault.Whoville/vaulthelper/kv"
 	"gopkg.in/yaml.v2"
 )
 

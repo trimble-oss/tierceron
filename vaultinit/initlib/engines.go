@@ -3,8 +3,8 @@ package initlib
 import (
 	"log"
 
-	"bitbucket.org/dexterchaney/whoville/utils"
-	sys "bitbucket.org/dexterchaney/whoville/vaulthelper/system"
+	"Vault.Whoville/utils"
+	sys "Vault.Whoville/vaulthelper/system"
 )
 
 var engines = [...]string{

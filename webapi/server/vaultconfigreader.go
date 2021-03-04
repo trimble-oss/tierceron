@@ -1,7 +1,7 @@
 package server
 
 import (
-	"bitbucket.org/dexterchaney/whoville/vaulthelper/kv"
+	"Vault.Whoville/vaulthelper/kv"
 )
 
 //GetConfig gets a configuration by env and path.
