@@ -1,0 +1,9 @@
+policies: ["rest_integration"]
+metadata:
+  user : "RestServiceUser"
+
+role_name: "rest_integration_role"
+
+ttl: "8760h"
+display_name: "Rest Token"
+
