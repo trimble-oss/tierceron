@@ -1,9 +1,7 @@
 package server
 
 import (
-	"crypto/sha512"
 	"database/sql"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +10,7 @@ import (
 	"time"
 
 	"Vault.Whoville/vaulthelper/kv"
-	"golang.org/x/crypto/pbkdf2"
+	configcore "VaultConfig.Bootstrap/configcore"
 
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
@@ -45,43 +43,10 @@ func (s *Server) authUser(mod *kv.Modifier, operatorId string, operatorPassword 
 		return false, "", err
 	}
 
-	rows, err := db.Query(GetAuthLoginQuery(), sql.Named("Id", operatorId))
-	if err != nil {
-		return false, "", err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var operatorId string
-		var operatorName string
-		var passwordHash string
-		var saltEncoded string
-		var iterationCount int
-
-		// Operator_ID, Password_Hash, Salt, Iteration_Count
-		err := rows.Scan(&operatorId, &operatorName, &passwordHash, &saltEncoded, &iterationCount)
-		if err != nil {
-			return false, "", err
-		}
-		salt, err := base64.StdEncoding.DecodeString(saltEncoded)
-		if err != nil {
-			return false, "", err
-		}
-		operatorPasswordByteArray := pbkdf2.Key([]byte(operatorPassword), salt, iterationCount, 64, sha512.New)
-		operatorPasswordHash := base64.StdEncoding.EncodeToString(operatorPasswordByteArray)
-
-		if string(operatorPasswordHash) == passwordHash {
-			return true, operatorName, nil
-		} else {
-			return false, "", errors.New("Invalid password")
-		}
-
-	}
-
-	return false, "", errors.New("Invalid password")
+	return configcore.Authorize(db, operatorId, operatorPassword)
 }
 
-func (s *Server) getActiveSessions(env string) ([]Session, error) {
+func (s *Server) getActiveSessions(env string) ([]configcore.Session, error) {
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		return nil, err
@@ -113,43 +78,7 @@ func (s *Server) getActiveSessions(env string) ([]Session, error) {
 		return nil, err
 	}
 
-	rows, err := db.Query(GetActiveSessionQuery())
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var sessions []Session
-	var id int
-	for rows.Next() {
-		var name string
-		var loggedIn string
-
-		err := rows.Scan(&name, &loggedIn)
-		if err != nil {
-			return nil, err
-		}
-
-		loggedIn = strings.TrimSpace(loggedIn)
-		loc, err := time.LoadLocation("America/Los_Angeles")
-		if err != nil {
-			return nil, err
-		}
-
-		t, err := time.ParseInLocation("01/02/2006 15:04:05", loggedIn, loc)
-		if err != nil {
-			return nil, err
-		}
-
-		sessions = append(sessions, Session{
-			ID:        id,
-			User:      strings.TrimSpace(name),
-			LastLogIn: t.Unix(),
-		})
-		id++
-	}
-
-	return sessions, nil
+	return configcore.ActiveSessions(db)
 }
 
 func parseURL(url string) (string, string, string, string) {
@@ -162,14 +91,14 @@ func parseURL(url string) (string, string, string, string) {
 	return m[1], m[2], m[3], m[4]
 }
 
-func (s *Server) getVaultSessions(env string) ([]Session, error) {
+func (s *Server) getVaultSessions(env string) ([]configcore.Session, error) {
 	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		return nil, err
 	}
 	mod.Env = ""
 
-	sessions := []Session{}
+	sessions := []configcore.Session{}
 	paths, err := mod.List("apiLogins/" + env)
 	if paths == nil {
 		return nil, fmt.Errorf("Nothing found under apiLogins/" + env)
@@ -204,7 +133,7 @@ func (s *Server) getVaultSessions(env string) ([]Session, error) {
 				userData["Issued"] = -1
 				userData["Expires"] = -1
 			} else {
-				sessions = append(sessions, Session{
+				sessions = append(sessions, configcore.Session{
 					ID:        id,
 					User:      strings.TrimSpace(user.(string)),
 					LastLogIn: issued,

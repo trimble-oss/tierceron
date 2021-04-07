@@ -20,12 +20,12 @@ require (
 	github.com/sendgrid/sendgrid-go v3.6.1+incompatible
 	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/twitchtv/twirp v5.12.1+incompatible
-	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974 // indirect
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
+
 replace VaultConfig.Bootstrap => ../VaultConfig.Bootstrap
