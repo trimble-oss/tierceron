@@ -11,4 +11,5 @@ import (
 func Mlock() error {
 	fmt.Println("Mlock not supported.")
 	os.Exit(1)
+	return nil
 }
