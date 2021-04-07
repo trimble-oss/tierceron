@@ -1,6 +1,0 @@
-policies: ["config_staging"]
-metadata:
-  user : "Configinator"
-
-ttl: "8760h"
-display_name: "Configinator Token"
