@@ -11,6 +11,7 @@ import (
 
 	"Vault.Whoville/utils"
 	pb "Vault.Whoville/webapi/rpc/apinator"
+	configcore "VaultConfig.Bootstrap/configcore"
 	"github.com/graphql-go/graphql"
 )
 
@@ -77,16 +78,7 @@ type Provider struct {
 	EnvID    int
 	ID       int
 	Name     string
-	Sessions []Session
-}
-
-//Session represents an active session under a provider
-type Session struct {
-	EnvID     int
-	ProvID    int
-	ID        int
-	User      string
-	LastLogIn int64
+	Sessions []configcore.Session
 }
 
 //GraphQL Accepts a GraphQL query and creates a response
@@ -108,8 +100,8 @@ func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQL
 func (s *Server) InitGQL() {
 	s.Log.Println("InitGQL")
 	makeVaultReq := &pb.GetValuesReq{}
-	spctmSessions := map[string][]Session{} // Spectrum sessions
-	vaultSessions := map[string][]Session{} // Vault sessions
+	spctmSessions := map[string][]configcore.Session{} // Spectrum sessions
+	vaultSessions := map[string][]configcore.Session{} // Vault sessions
 
 	// Fetch template keys and values
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
@@ -497,18 +489,18 @@ func (s *Server) InitGQL() {
 				"User": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						eID := params.Source.(Session).EnvID
-						pID := params.Source.(Session).ProvID
-						sID := params.Source.(Session).ID
+						eID := params.Source.(configcore.Session).EnvID
+						pID := params.Source.(configcore.Session).ProvID
+						sID := params.Source.(configcore.Session).ID
 						return vaultQL.Envs[eID].Providers[pID].Sessions[sID].User, nil
 					},
 				},
 				"LastLogIn": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.Int),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						eID := params.Source.(Session).EnvID
-						pID := params.Source.(Session).ProvID
-						sID := params.Source.(Session).ID
+						eID := params.Source.(configcore.Session).EnvID
+						pID := params.Source.(configcore.Session).ProvID
+						sID := params.Source.(configcore.Session).ID
 						return vaultQL.Envs[eID].Providers[pID].Sessions[sID].LastLogIn, nil
 					},
 				},
@@ -547,7 +539,7 @@ func (s *Server) InitGQL() {
 
 						if userName, ok := params.Args["userName"].(string); ok {
 							regex := regexp.MustCompile(`(?i).*` + userName + `.*`)
-							sessions := []Session{}
+							sessions := []configcore.Session{}
 							for _, s := range vaultQL.Envs[eid].Providers[pid].Sessions {
 								if regex.MatchString(s.User) {
 									sessions = append(sessions, s)
