@@ -16,6 +16,7 @@ import (
 	"Vault.Whoville/validator"
 	"Vault.Whoville/vaulthelper/kv"
 	"Vault.Whoville/vaultx/xutil"
+	configcore "VaultConfig.Bootstrap/configcore"
 	"gopkg.in/yaml.v2"
 )
 
@@ -43,12 +44,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 		// Cert rotation support without templates
 		logger.Printf("No templates available, Common service requested.: %s\n", dir)
 
-		var templatePaths = []string{
-			"vault_templates/Common/vointegration.cer.mf.tmpl",
-			"vault_templates/Common/kafka-confluent.pem.mf.tmpl",
-			"vault_templates/Common/schema-confluent.pem.mf.tmpl",
-			"vault_templates/ServiceTech/ServiceTechAPIM//config.yml.tmpl",
-		}
+		var templatePaths = configcore.GetSupportedTemplates()
 		regions := []string{}
 
 		if env == "staging" || env == "prod" {

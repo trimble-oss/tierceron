@@ -3,7 +3,7 @@ module Vault.Whoville
 go 1.15
 
 require (
-	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
+	viewpointvso.visualstudio.com/Spectrum/_git/VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
 	github.com/denisenkom/go-mssqldb v0.0.0-20200620013148-b91950f658ec
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
@@ -27,5 +27,3 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
-
-replace VaultConfig.Bootstrap => ../VaultConfig.Bootstrap
