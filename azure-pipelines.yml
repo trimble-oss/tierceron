@@ -12,7 +12,7 @@ resources:
   repositories:
   - repository: VaultConfigBootstrap
     type: AzureRepos
-    endpoint: https://viewpointvso.visualstudio.com/Spectrum/_git/VaultConfig.Bootstrap
+    endpoint: https://viewpointvso.visualstudio.com/DefaultCollection/Spectrum/_git/VaultConfig.Bootstrap
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
