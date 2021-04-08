@@ -11,7 +11,7 @@ pool:
 resources:
   repositories:
   - repository: VaultConfig.Bootstrap
-    type: AzureRepos
+    type: git
     endpoint: https://viewpointvso.visualstudio.com/DefaultCollection/Spectrum/_git/VaultConfig.Bootstrap
     name: ViewpointVSO/VaultConfig.Bootstrap
 
