@@ -12,7 +12,7 @@ resources:
   repositories:
   - repository: VaultConfig.Bootstrap
     type: git
-    endpoint: git://viewpointvso.visualstudio.com/DefaultCollection/Spectrum/_git/VaultConfig.Bootstrap
+    endpoint: git://viewpointvso.visualstudio.com/Spectrum/_git/VaultConfig.Bootstrap
     name: ViewpointVSO/VaultConfig.Bootstrap
 
 variables:
