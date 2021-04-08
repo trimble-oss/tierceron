@@ -26,6 +26,9 @@ steps:
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
 
+- checkout: https://viewpointvso.visualstudio.com/Spectrum/_git/VaultConfig.Bootstrap
+  path: VaultConfig.Bootstrap
+
 - script: |
     go version
     echo "Mod init"
