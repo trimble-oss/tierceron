@@ -28,4 +28,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
 
-replace VaultConfig.Bootstrap => viewpointvso.visualstudio.com/Spectrum/_git/VaultConfig.Bootstrap
+replace VaultConfig.Bootstrap => ../VaultConfig.Bootstrap
