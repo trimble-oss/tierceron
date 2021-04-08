@@ -8,6 +8,11 @@ trigger:
 
 pool:
   vmImage: 'ubuntu-latest'
+resources:
+  repositories:
+  - repository: VaultConfigBootstrap
+    type: AzureRepos
+    endpoint: https://viewpointvso.visualstudio.com/Spectrum/_git/VaultConfig.Bootstrap
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
@@ -26,9 +31,8 @@ steps:
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
 
-- checkout: https://viewpointvso.visualstudio.com/Spectrum/_git/VaultConfig.Bootstrap
+- checkout: VaultConfigBootstrap
   path: VaultConfig.Bootstrap
-
 - script: |
     go version
     echo "Mod init"
