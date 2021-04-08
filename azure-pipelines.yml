@@ -10,9 +10,10 @@ pool:
   vmImage: 'ubuntu-latest'
 resources:
   repositories:
-  - repository: VaultConfigBootstrap
+  - repository: VaultConfig.Bootstrap
     type: AzureRepos
     endpoint: https://viewpointvso.visualstudio.com/DefaultCollection/Spectrum/_git/VaultConfig.Bootstrap
+    name: ViewpointVSO/VaultConfig.Bootstrap
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
