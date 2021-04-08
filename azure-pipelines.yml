@@ -32,7 +32,8 @@ steps:
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
 
-- checkout: VaultConfigBootstrap
+- checkout: self
+- checkout: VaultConfig.Bootstrap
   path: VaultConfig.Bootstrap
 - script: |
     go version
