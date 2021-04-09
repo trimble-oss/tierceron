@@ -12,13 +12,14 @@ resources:
   repositories:
   - repository: VaultConfig.Bootstrap
     type: git
-    endpoint: git://viewpointvso.visualstudio.com/Spectrum/_git/VaultConfig.Bootstrap
-    name: ViewpointVSO/VaultConfig.Bootstrap
+    endpoint: AzureBuilderConnection
+    name: Spectrum/_git/VaultConfig.Bootstrap
+    ref: develop
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
-  GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
-  modulePath: '$(GOPATH)/src/Vault.Whoville' # Path to the module's code
+  GOPATH: '$(system.defaultWorkingDirectory)' # Go workspace path
+  modulePath: 'Vault.Whoville' # Path to the module's code
 
 steps:
 - script: |
@@ -31,12 +32,12 @@ steps:
     echo '##vso[task.prependpath]$(GOBIN)'
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
-
-- checkout: self
 - checkout: VaultConfig.Bootstrap
-  path: VaultConfig.Bootstrap
+- checkout: self
 - script: |
     go version
+    pwd
+    echo $GOBIN
     echo "Mod init"
     go mod init
     echo "Mod download"
@@ -46,41 +47,41 @@ steps:
     for p in vaultconfig vaultpub vaultinit vaultinitp vaultx vaultxp; do
       echo Compiling $p
       GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' Vault.Whoville/$p
-      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/$p ]] ; then
+      if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
       fi
       GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' Vault.Whoville/$p
-      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/windows_amd64/$p.exe ]] ; then
+      if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
           echo File $p.exe was not built, aborting.
           exit 1
       fi
       GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -a -ldflags '-w' Vault.Whoville/$p
-      if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/darwin_amd64/$p ]] ; then
+      if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
       fi
     done
 
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' Vault.Whoville/webapi/apiRouter
-    if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/apiRouter ]] ; then
+    if [[ ! -f $GOBIN/apiRouter ]] ; then
         echo File apiRouter was not built, aborting.
         exit 1
     fi
 
-    GOBIN= GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -o $(system.defaultWorkingDirectory)/gopath/bin/nc.so -a -ldflags '-w' Vault.Whoville/configlib
-    if [[ ! -f $(system.defaultWorkingDirectory)/gopath/bin/nc.so ]] ; then
+    GOBIN= GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' Vault.Whoville/configlib
+    if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
     fi
 
     echo "Compile Complete"
-    cp $(system.defaultWorkingDirectory)/gopath/bin/vault* $(Build.ArtifactStagingDirectory)
-    cp $(system.defaultWorkingDirectory)/gopath/bin/apiRouter $(Build.ArtifactStagingDirectory)
-    cp $(system.defaultWorkingDirectory)/gopath/bin/nc.so $(Build.ArtifactStagingDirectory)
-    cp $(system.defaultWorkingDirectory)/gopath/bin/windows_amd64/vault* $(Build.ArtifactStagingDirectory)
-    cp $(system.defaultWorkingDirectory)/gopath/bin/darwin_amd64/vaultconfig $(Build.ArtifactStagingDirectory)/vaultconfig.mac
-    cp $(system.defaultWorkingDirectory)/gopath/bin/darwin_amd64/vaultinit $(Build.ArtifactStagingDirectory)/vaultinit.mac
+    cp $GOBIN/vault* $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/apiRouter $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/windows_amd64/vault* $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/darwin_amd64/vaultconfig $(Build.ArtifactStagingDirectory)/vaultconfig.mac
+    cp $GOBIN/darwin_amd64/vaultinit $(Build.ArtifactStagingDirectory)/vaultinit.mac
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
