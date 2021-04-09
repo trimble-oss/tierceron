@@ -1,0 +1,53 @@
+package validator
+
+import (
+	"database/sql"
+	"errors"
+	"regexp"
+
+	//mysql and mssql go libraries
+	_ "github.com/denisenkom/go-mssqldb"
+	_ "github.com/go-sql-driver/mysql"
+)
+
+//need mssql for spectrum
+
+//Heartbeat validates the database connection
+func Heartbeat(url string, username string, password string) (bool, error) {
+	//extract driver, server, port and dbname with regex
+	driver, server, port, dbname := ParseURL(url)
+	var err error
+	var conn *sql.DB
+	if driver == "mysql" {
+		if len(port) == 0 {
+			conn, err = sql.Open(driver, (username + ":" + password + "@tcp(" + server + ")/" + dbname + "?tls=skip-verify"))
+		} else {
+			conn, err = sql.Open(driver, (username + ":" + password + "@tcp(" + server + ":" + port + ")/" + dbname + "?tls=skip-verify"))
+		}
+	} else if driver == "sqlserver" {
+		if len(port) == 0 {
+			port = "1433"
+		}
+		conn, err = sql.Open(driver, ("server=" + server + ";user id=" + username + ";password=" + password + ";port=" + port + ";database=" + dbname + ";encrypt=true;TrustServerCertificate=true"))
+	}
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+
+	// Open doesn't open a connection. Validate DSN data:
+	err = conn.Ping()
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+func ParseURL(url string) (string, string, string, string) {
+	//only works with jdbc:mysql or jdbc:sqlserver.
+	regex := regexp.MustCompile(`(?i)(?:jdbc:(mysql|sqlserver))://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+).*`)
+	m := regex.FindStringSubmatch(url)
+	if m == nil {
+		panic(errors.New("incorrect URL format"))
+	}
+	return m[1], m[2], m[3], m[4]
+}
