@@ -1,21 +1,3 @@
-﻿Copyright SOFTWARE RIGHTS NOTICE:
- THIS VERSION OF THE TOOLS AND DOCUMENTATION IS FOR INTERNAL TRIMBLE USE ONLY.
+﻿ THIS VERSION OF THE TOOLS AND DOCUMENTATION IS FOR INTERNAL TRIMBLE USE ONLY.
  NOT APPROVED FOR EXTERNAL USE BY, OR DISTRIBUTION TO, THIRD PARTIES.
- © 2021 Viewpoint, Inc. All Rights Reserved. Viewpoint®, ViewpointOne™, Vista™, 
- Spectrum®, ProContractor™, Viewpoint Team™, Viewpoint Field View™, 
- Viewpoint Field Time™, Viewpoint Estimating™, Viewpoint HR Management™ and 
- Viewpoint Field Management™ are trademarks or registered trademarks of
- Viewpoint, Inc. in the United States and other countries. Other names and
- brands may be claimed as the property of others.
-
-U.S. EXPORT CONTROL NOTICE:
- This software contains information that may be subject to US Export Control
- Regulations. Any release of this information to any foreign party, inside or
- outside the United States, either electronically otherwise, may require a US
- export license prior to release.
-
-****************** SPECIAL SOFTWARE LICENSE RIGHTS ******************
- There are no special software license rights associated with this software
- beyond the standard software rights notice. Any reproduction of computer
- software, or portions thereof, marked with this legend must also reproduce the
- markings.
+ Copyright © 2021 Trimble, Inc. All Rights Reserved.
