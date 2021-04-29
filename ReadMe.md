@@ -9,7 +9,7 @@ Vault.Whoville is a [encrypted configuration management system](https://en.wikip
 * We wanted a system that worked transparently from dev -> QA -> staging -> production.
 * Wanted a fun project for our interns to work on over the summer.
 * Since Vault Whoville is written all in go, the services involved are very stable and tiny.  All our configurations are managed on an EC2 tiny up in AWS backed by an encrypted and backed up database.
-* Coding is go is a dream.  If I could code an entire system in go, I would do it in a snap.
+* Coding in go is a dream.  If I could code an entire system in go, I would do it in a snap.
 
 ## Key Features 🔑
 
@@ -27,7 +27,7 @@ Vault.Whoville is a [encrypted configuration management system](https://en.wikip
 
 ## Trusted Committers 💻
 - [Joel Rieke](mailto:joel_rieke@trimble.com)
-- [David Mkrtychyan@](mailto:david_mkrtychyan@trimble.com)
+- [David Mkrtychyan](mailto:david_mkrtychyan@trimble.com)
 
 ## Getting started 🚀
 If you are a contributor, please have a look on the [getting started](GETTING_STARTED.MD) file. Here you can check the information required and other things before providing a useful contribution.
