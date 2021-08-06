@@ -18,6 +18,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/sendgrid/rest v2.6.0+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.6.1+incompatible
+	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
