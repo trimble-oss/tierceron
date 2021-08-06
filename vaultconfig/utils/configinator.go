@@ -5,7 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 
 	"Vault.Whoville/utils"
 	eUtils "Vault.Whoville/utils"
@@ -18,13 +20,13 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 	if err != nil {
 		panic(err)
 	}
+
 	if !mod.ValidateEnvironment(config.Env) {
 		fmt.Println("Mismatched token for requested environment: " + config.Env)
 		os.Exit(1)
 	}
 
 	mod.Env = config.Env
-
 	templatePaths := []string{}
 	endPaths := []string{}
 
@@ -36,95 +38,151 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		endPaths = append(endPaths, ep...)
 	}
 
-	//configure each template in directory
-	for i, templatePath := range templatePaths {
-		//check for template_files directory here
-		s := strings.Split(templatePath, "/")
-		//figure out which path is vault_templates
-		dirIndex := -1
-		for j, piece := range s {
-			if piece == "vault_templates" {
-				dirIndex = j
-				break
-			}
-		}
-		if dirIndex != -1 {
-			serviceTemplate := s[dirIndex+2]
-			if strings.HasSuffix(templatePath, ".DS_Store") {
-				continue
-			}
-
-			isCert := false
-			if strings.HasSuffix(serviceTemplate, ".pfx.mf.tmpl") ||
-				strings.HasSuffix(serviceTemplate, ".cer.mf.tmpl") ||
-				strings.HasSuffix(serviceTemplate, ".pem.mf.tmpl") ||
-				strings.HasSuffix(serviceTemplate, ".jks.mf.tmpl") {
-				isCert = true
-			}
-
-			if config.WantCert != isCert {
-				continue
-			}
-
-			if strings.HasSuffix(templatePath, ".tmpl") {
-				if !config.ZeroConfig {
-					if strings.HasSuffix(templatePath, "nc.properties.tmpl") {
-						continue
-					}
-				} else {
-					if !strings.HasSuffix(templatePath, "nc.properties.tmpl") {
-						continue
-					}
+	//file filter
+	fileFound := true
+	fileFilterIndex := make([]int, len(config.FileFilter))
+	fileFilterCounter := 0
+	if len(config.FileFilter) != 0 && config.FileFilter[0] != "" {
+		for _, FileFilter := range config.FileFilter {
+			for i, templatePath := range templatePaths {
+				if strings.Contains(templatePath, FileFilter) {
+					fileFilterIndex[fileFilterCounter] = i
+					fileFilterCounter++
+					fileFound = true
+					break
 				}
 			}
-
-			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
-			//generate template or certificate
-			if config.WantCert {
-				if len(certData) == 0 {
-					fmt.Println("Could not load cert ", endPaths[i])
-					continue
-				}
-				certDestination := config.EndDir + "/" + certData[0]
-				writeToFile(certData[1], certDestination)
-				fmt.Println("certificate written to ", certDestination)
-				continue
-			} else if !config.WantCert {
-				writeToFile(configuredTemplate, endPaths[i])
-			}
-		} else {
-			serviceTemplate := s[2]
-			isCert := false
-			if strings.HasSuffix(serviceTemplate, ".pfx.mf.tmpl") ||
-				strings.HasSuffix(serviceTemplate, ".cer.mf.tmpl") ||
-				strings.HasSuffix(serviceTemplate, ".pem.mf.tmpl") ||
-				strings.HasSuffix(serviceTemplate, ".jks.mf.tmpl") {
-				isCert = true
-			}
-
-			if config.WantCert != isCert {
-				continue
-			}
-
-			//assume the starting directory was vault_templates
-			configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[1], serviceTemplate, config.WantCert, false)
-			if config.WantCert {
-				certDestination := config.EndDir + "/" + certData[0]
-				writeToFile(certData[1], certDestination)
-				fmt.Println("certificate written to ", certDestination)
-				continue
-			} else if !config.WantCert {
-				writeToFile(configuredTemplate, endPaths[i])
-			}
 		}
-		//print that we're done
-		fmt.Println("templates configured and written to ", endPaths[i])
+		if !fileFound {
+			fmt.Println("Could not find specified file in templates")
+			os.Exit(1)
+		}
+
+		fileTemplatePaths := []string{}
+		fileEndPaths := []string{}
+		for _, index := range fileFilterIndex {
+			fileTemplatePaths = append(fileTemplatePaths, templatePaths[index])
+			fileEndPaths = append(fileEndPaths, endPaths[index])
+		}
+
+		templatePaths = fileTemplatePaths
+		endPaths = fileEndPaths
 	}
 
+	var wg sync.WaitGroup
+	//configure each template in directory
+	for i, templatePath := range templatePaths {
+		wg.Add(1)
+		go func(i int, templatePath string) {
+			defer wg.Done()
+			//check for template_files directory here
+			s := strings.Split(templatePath, "/")
+			//figure out which path is vault_templates
+			dirIndex := -1
+			for j, piece := range s {
+				if piece == "vault_templates" {
+					dirIndex = j
+					break
+				}
+			}
+
+			var isCert bool
+			if dirIndex != -1 {
+				serviceTemplate := s[dirIndex+2]
+				if strings.HasSuffix(templatePath, ".DS_Store") {
+					goto wait
+				}
+
+				isCert := false
+				if strings.Contains(serviceTemplate, ".pfx.mf") ||
+					strings.Contains(serviceTemplate, ".cer.mf") ||
+					strings.Contains(serviceTemplate, ".pem.mf") ||
+					strings.Contains(serviceTemplate, ".jks.mf") {
+					isCert = true
+				}
+
+				if config.WantCert != isCert {
+					goto wait
+				}
+
+				if strings.HasSuffix(templatePath, ".tmpl") {
+					if !config.ZeroConfig {
+						if strings.HasSuffix(templatePath, "nc.properties.tmpl") {
+							goto wait
+						}
+					} else {
+						if !strings.HasSuffix(templatePath, "nc.properties.tmpl") {
+							goto wait
+						}
+					}
+				}
+
+				configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+				//generate template or certificate
+				if config.WantCert {
+					if len(certData) == 0 {
+						fmt.Println("Could not load cert ", endPaths[i])
+						goto wait
+					}
+					certDestination := config.EndDir + "/" + certData[0]
+					writeToFile(certData[1], certDestination)
+					fmt.Println("certificate written to ", certDestination)
+					goto wait
+				} else if !config.WantCert {
+					if config.Diff {
+						config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+					} else {
+						writeToFile(configuredTemplate, endPaths[i])
+					}
+				}
+			} else {
+				serviceTemplate := s[len(s)-1]
+				isCert := false
+				if strings.Contains(serviceTemplate, ".pfx.mf") ||
+					strings.Contains(serviceTemplate, ".cer.mf") ||
+					strings.Contains(serviceTemplate, ".pem.mf") ||
+					strings.Contains(serviceTemplate, ".jks.mf") {
+					isCert = true
+				}
+
+				if config.WantCert != isCert {
+					goto wait
+				}
+				//assume the starting directory was vault_templates
+				configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[1], serviceTemplate, config.WantCert, false)
+				if config.WantCert {
+					certDestination := config.EndDir + "/" + certData[0]
+					writeToFile(certData[1], certDestination)
+					fmt.Println("certificate written to ", certDestination)
+					goto wait
+				} else if !config.WantCert {
+					if config.Diff {
+						config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+					} else {
+						writeToFile(configuredTemplate, endPaths[i])
+					}
+				}
+			}
+
+			//print that we're done
+			if !config.Diff && !isCert {
+				if runtime.GOOS == "windows" {
+					fmt.Println("template configured and written to " + endPaths[i])
+				} else {
+					fmt.Println("\033[0;33m" + "template configured and written to " + endPaths[i] + "\033[0m")
+				}
+			}
+
+		wait:
+			mod.Close()
+		}(i, templatePath)
+	}
+	wg.Wait()
 }
 func writeToFile(data string, path string) {
 	byteData := []byte(data)
 	//Ensure directory has been created
+
 	dirPath := filepath.Dir(path)
 	err := os.MkdirAll(dirPath, os.ModePerm)
 	utils.CheckError(err, true)

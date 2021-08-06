@@ -25,7 +25,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	genAuth := flag.Bool("genAuth", false, "Generate auth section of seed data?")
-
+	cleanPtr := flag.Bool("clean", false, "Cleans seed files locally")
 	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this vaultx to access the vault")
@@ -107,6 +107,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		WantCert:       false,
 		GenAuth:        *genAuth,
 		Log:            logger,
+		Diff:           *cleanPtr,
 	}
 	eUtils.ConfigControl(config, xutil.GenerateSeedsFromVault)
 
