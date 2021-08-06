@@ -18,6 +18,15 @@ import (
 
 var wg sync.WaitGroup
 
+type TemplateResultData struct {
+	interfaceTemplateSection interface{}
+	valueSection             map[string]map[string]map[string]string
+	secretSection            map[string]map[string]map[string]string
+	templateDepth            int
+}
+
+var templateResultChan = make(chan *TemplateResultData, 5)
+
 // GenerateSeedsFromVaultRaw configures the templates in vault_templates and writes them to vaultx
 func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, string, bool, string) {
 	// Initialize global variables
@@ -62,15 +71,13 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		wg.Add(1)
 		go func(templatePath string) {
 			// Map Subsections
-			var interfaceTemplateSection interface{}
-			var valueSection map[string]map[string]map[string]string
-			var secretSection map[string]map[string]map[string]string
+			var templateResult TemplateResultData
 
-			valueSection = map[string]map[string]map[string]string{}
-			valueSection["values"] = map[string]map[string]string{}
+			templateResult.valueSection = map[string]map[string]map[string]string{}
+			templateResult.valueSection["values"] = map[string]map[string]string{}
 
-			secretSection = map[string]map[string]map[string]string{}
-			secretSection["super-secrets"] = map[string]map[string]string{}
+			templateResult.secretSection = map[string]map[string]map[string]string{}
+			templateResult.secretSection["super-secrets"] = map[string]map[string]string{}
 
 			defer wg.Done()
 			//check for template_files directory here
@@ -102,31 +109,40 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				cds.Init(mod, config.SecretMode, true, project, service)
 			}
 
-			interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(mod,
+			templateResult.interfaceTemplateSection, templateResult.valueSection, templateResult.secretSection, templateResult.templateDepth = ToSeed(mod,
 				cds,
 				templatePath,
 				config.Log,
 				project,
 				service,
 				fromVault,
-				interfaceTemplateSection,
-				valueSection,
-				secretSection,
+				templateResult.interfaceTemplateSection,
+				templateResult.valueSection,
+				templateResult.secretSection,
 			)
-			if templateDepth > maxDepth {
-				maxDepth = templateDepth
-				//templateCombinedSection = interfaceTemplateSection
-			}
-
 			// Append new sections to propper slices
-
-			// TODO: this is unsafe append and must be fed back synchronously via channel...
-			// appending on the other end.
-			sliceTemplateSection = append(sliceTemplateSection, interfaceTemplateSection)
-			sliceValueSection = append(sliceValueSection, valueSection)
-			sliceSecretSection = append(sliceSecretSection, secretSection)
+			templateResultChan <- &templateResult
 		}(templatePath)
 	}
+
+	go func() {
+		for {
+			select {
+			case tResult := <-templateResultChan:
+				// TODO: this is unsafe append and must be fed back synchronously via channel...
+				// appending on the other end.
+				sliceTemplateSection = append(sliceTemplateSection, tResult.interfaceTemplateSection)
+				sliceValueSection = append(sliceValueSection, tResult.valueSection)
+				sliceSecretSection = append(sliceSecretSection, tResult.secretSection)
+				if tResult.templateDepth > maxDepth {
+					maxDepth = tResult.templateDepth
+					//templateCombinedSection = interfaceTemplateSection
+				}
+
+			default:
+			}
+		}
+	}()
 	wg.Wait()
 
 	// Combine values of slice
