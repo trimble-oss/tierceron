@@ -57,16 +57,21 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 	}
 
-	valueSection = map[string]map[string]map[string]string{}
-	valueSection["values"] = map[string]map[string]string{}
-
-	secretSection = map[string]map[string]map[string]string{}
-	secretSection["super-secrets"] = map[string]map[string]string{}
-
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
 		go func(templatePath string) {
+			// Map Subsections
+			var interfaceTemplateSection interface{}
+			var valueSection map[string]map[string]map[string]string
+			var secretSection map[string]map[string]map[string]string
+
+			valueSection = map[string]map[string]map[string]string{}
+			valueSection["values"] = map[string]map[string]string{}
+
+			secretSection = map[string]map[string]map[string]string{}
+			secretSection["super-secrets"] = map[string]map[string]string{}
+
 			defer wg.Done()
 			//check for template_files directory here
 			s := strings.Split(templatePath, "/")
@@ -97,13 +102,26 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				cds.Init(mod, config.SecretMode, true, project, service)
 			}
 
-			interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(mod, cds, templatePath, config.Log, project, service, fromVault)
+			interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(mod,
+				cds,
+				templatePath,
+				config.Log,
+				project,
+				service,
+				fromVault,
+				interfaceTemplateSection,
+				valueSection,
+				secretSection,
+			)
 			if templateDepth > maxDepth {
 				maxDepth = templateDepth
 				//templateCombinedSection = interfaceTemplateSection
 			}
 
 			// Append new sections to propper slices
+
+			// TODO: this is unsafe append and must be fed back synchronously via channel...
+			// appending on the other end.
 			sliceTemplateSection = append(sliceTemplateSection, interfaceTemplateSection)
 			sliceValueSection = append(sliceValueSection, valueSection)
 			sliceSecretSection = append(sliceSecretSection, secretSection)
