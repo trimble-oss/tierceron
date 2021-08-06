@@ -22,7 +22,7 @@ type ResultData struct {
 
 var resultMap = make(map[string]*string)
 var envDiffSlice = make([]string, 0)
-var resultChannel = make(chan ResultData, 5)
+var resultChannel = make(chan *ResultData, 5)
 var fileSysIndex = -1
 var envLength int
 var wg sync.WaitGroup
@@ -51,14 +51,14 @@ func messenger(inData *string, inPath string) {
 	}
 
 skipSwitch:
-	resultChannel <- data
+	resultChannel <- &data
 }
 
 func reciever() {
 	for {
 		select {
 		case data := <-resultChannel:
-			if data.inData != nil && data.inPath != "" {
+			if data != nil && data.inData != nil && data.inPath != "" {
 				resultMap[data.inPath] = data.inData
 			}
 		default:
