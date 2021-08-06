@@ -3,6 +3,7 @@ package xutil
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -172,6 +173,16 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 	// Get files from directory
 	templatePaths := []string{}
+	config.EndDir = config.EndDir + config.Env + string(os.PathSeparator)
+	if config.Diff {
+		err := os.RemoveAll(config.EndDir)
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
+		fmt.Println("Seed removed from", config.EndDir)
+		return
+	}
 
 	//templatePaths
 	for _, startDir := range config.StartDir {
@@ -182,7 +193,6 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 
 	service, endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 
-	config.EndDir = config.EndDir + config.Env + string(os.PathSeparator)
 	if multiService {
 		if strings.HasPrefix(config.Env, "local") {
 			endPath = config.EndDir + "local_seed.yml"
@@ -192,10 +202,10 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 	} else {
 		endPath = config.EndDir + service + "_seed.yml"
 	}
-	writeToFile(seedData, endPath)
 
+	writeToFile(seedData, endPath)
 	// Print that we're done
-	fmt.Println("seed created and written to ", config.EndDir)
+	fmt.Println("Seed created and written to ", config.EndDir)
 }
 
 func writeToFile(data string, path string) {
