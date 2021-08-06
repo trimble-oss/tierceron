@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"Vault.Whoville/utils"
 	eUtils "Vault.Whoville/utils"
@@ -14,6 +15,8 @@ import (
 	"Vault.Whoville/vaulthelper/kv"
 	"gopkg.in/yaml.v2"
 )
+
+var wg sync.WaitGroup
 
 // GenerateSeedsFromVaultRaw configures the templates in vault_templates and writes them to vaultx
 func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, string, bool, string) {
@@ -62,46 +65,51 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
-		//check for template_files directory here
-		s := strings.Split(templatePath, "/")
-		//figure out which path is vault_templates
-		dirIndex := -1
-		for j, piece := range s {
-			if piece == "vault_templates" {
-				dirIndex = j
+		wg.Add(1)
+		go func(templatePath string) {
+			defer wg.Done()
+			//check for template_files directory here
+			s := strings.Split(templatePath, "/")
+			//figure out which path is vault_templates
+			dirIndex := -1
+			for j, piece := range s {
+				if piece == "vault_templates" {
+					dirIndex = j
+				}
 			}
-		}
-		if dirIndex != -1 {
-			project = s[dirIndex+1]
-			if service != s[dirIndex+2] {
-				multiService = true
+			if dirIndex != -1 {
+				project = s[dirIndex+1]
+				if service != s[dirIndex+2] {
+					multiService = true
+				}
+				service = s[dirIndex+2]
 			}
-			service = s[dirIndex+2]
-		}
 
-		// Clean up service naming (Everything after '.' removed)
-		dotIndex := strings.Index(service, ".")
-		if dotIndex > 0 {
-			service = service[0:dotIndex]
-		}
+			// Clean up service naming (Everything after '.' removed)
+			dotIndex := strings.Index(service, ".")
+			if dotIndex > 0 {
+				service = service[0:dotIndex]
+			}
 
-		var cds *vcutils.ConfigDataStore
-		if mod != nil {
-			cds = new(vcutils.ConfigDataStore)
-			cds.Init(mod, config.SecretMode, true, project, service)
-		}
+			var cds *vcutils.ConfigDataStore
+			if mod != nil {
+				cds = new(vcutils.ConfigDataStore)
+				cds.Init(mod, config.SecretMode, true, project, service)
+			}
 
-		interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(mod, cds, templatePath, config.Log, project, service, fromVault)
-		if templateDepth > maxDepth {
-			maxDepth = templateDepth
-			//templateCombinedSection = interfaceTemplateSection
-		}
+			interfaceTemplateSection, valueSection, secretSection, templateDepth := ToSeed(mod, cds, templatePath, config.Log, project, service, fromVault)
+			if templateDepth > maxDepth {
+				maxDepth = templateDepth
+				//templateCombinedSection = interfaceTemplateSection
+			}
 
-		// Append new sections to propper slices
-		sliceTemplateSection = append(sliceTemplateSection, interfaceTemplateSection)
-		sliceValueSection = append(sliceValueSection, valueSection)
-		sliceSecretSection = append(sliceSecretSection, secretSection)
+			// Append new sections to propper slices
+			sliceTemplateSection = append(sliceTemplateSection, interfaceTemplateSection)
+			sliceValueSection = append(sliceValueSection, valueSection)
+			sliceSecretSection = append(sliceSecretSection, secretSection)
+		}(templatePath)
 	}
+	wg.Wait()
 
 	// Combine values of slice
 	combineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
@@ -186,10 +194,15 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 
 	//templatePaths
 	for _, startDir := range config.StartDir {
-		//get files from directory
-		tp := getDirFiles(startDir)
-		templatePaths = append(templatePaths, tp...)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			//get files from directory
+			tp := getDirFiles(startDir)
+			templatePaths = append(templatePaths, tp...)
+		}()
 	}
+	wg.Wait()
 
 	service, endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 
