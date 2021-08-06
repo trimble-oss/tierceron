@@ -103,7 +103,6 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		var dump []byte
 
 		if override {
-			fmt.Println("Overriding cert file with new config IDs")
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
@@ -156,10 +155,8 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 
 		// Get dump
 		if override && exists {
-			fmt.Printf("Creating new cert file in %s:  vaultHost has been set to %s\n", userHome+"/.vault/configcert.yml", *addrPtr)
 			certConfigData := "vaultHost: " + *addrPtr + "\n"
 			if appRoleIDPtr != nil && secretIDPtr != nil {
-				fmt.Printf("secretID has been set to %s, approleID has been set to %s\n", *secretIDPtr, *appRoleIDPtr)
 				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
 			}
 
@@ -167,10 +164,9 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		} else if override && !exists {
 			fmt.Println("No cert file exists, continuing without saving config IDs")
 		} else {
-			fmt.Printf("Creating new cert file in %s:  vaultHost has been set to %s\n", userHome+"/.vault/configcert.yml", *addrPtr)
+			fmt.Printf("Creating new cert file in %s", userHome+"/.vault/configcert.yml")
 			certConfigData := "vaultHost: " + vaultHost + "\n"
 			if appRoleIDPtr != nil && secretIDPtr != nil {
-				fmt.Printf("secretID has been set to %s, approleID has been set to %s\n", *secretIDPtr, *appRoleIDPtr)
 				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
 			}
 
