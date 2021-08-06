@@ -18,18 +18,23 @@ const (
 	defaultSecret = "<Enter Secret Here>"
 )
 
-// Map Subsections
-var interfaceTemplateSection interface{}
-var valueSection map[string]map[string]map[string]string
-var secretSection map[string]map[string]map[string]string
-
 // ToSeed parses a <foo>.yml.tmpl file into a <foo>.yml file which then can be used for seeding vault
 // Input:
 //	- Directory location of .tmpl file
 //	- Log file for logging support information
 // Output:
 //	- Parsed string containing the .yml file
-func ToSeed(mod *kv.Modifier, cds *vcutils.ConfigDataStore, templatePath string, logger *log.Logger, project string, service string, fromVault bool) (interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string, int) {
+func ToSeed(mod *kv.Modifier,
+	cds *vcutils.ConfigDataStore,
+	templatePath string,
+	logger *log.Logger,
+	project string,
+	service string,
+	fromVault bool,
+	interfaceTemplateSection interface{},
+	valueSection map[string]map[string]map[string]string,
+	secretSection map[string]map[string]map[string]string,
+) (interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string, int) {
 
 	// TODO: replace string sections with maps
 	pathSlice := strings.SplitN(templatePath, "/", -1)
@@ -74,7 +79,18 @@ func ToSeed(mod *kv.Modifier, cds *vcutils.ConfigDataStore, templatePath string,
 			}
 
 			// Gets the parsed file line
-			Parse(cds, logger, args, pathSlice[len(pathSlice)-2], templatePathSlice, templateDir, templateDepth, service)
+			Parse(cds,
+				logger,
+				args,
+				pathSlice[len(pathSlice)-2],
+				templatePathSlice,
+				templateDir,
+				templateDepth,
+				service,
+				interfaceTemplateSection,
+				valueSection,
+				secretSection,
+			)
 		}
 	}
 
@@ -161,7 +177,18 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 //  - The current template directory
 // Output:
 //	- String(s) containing the .yml file subsections
-func Parse(cds *vcutils.ConfigDataStore, logger *log.Logger, args []string, currentDir string, templatePathSlice []string, templateDir int, templateDepth int, service string) {
+func Parse(cds *vcutils.ConfigDataStore,
+	logger *log.Logger,
+	args []string,
+	currentDir string,
+	templatePathSlice []string,
+	templateDir int,
+	templateDepth int,
+	service string,
+	interfaceTemplateSection interface{},
+	valueSection map[string]map[string]map[string]string,
+	secretSection map[string]map[string]map[string]string,
+) {
 	if len(args) == 3 { //value
 		keySlice := args[1]
 		keyName := keySlice[1:]
@@ -173,7 +200,16 @@ func Parse(cds *vcutils.ConfigDataStore, logger *log.Logger, args []string, curr
 		}
 		keyPath := templatePathSlice[templateDir+fileOffsetIndex : len(templatePathSlice)]
 
-		AppendToTemplateSection(templatePathSlice, templateDir, templateDepth, false, keyName, service)
+		AppendToTemplateSection(interfaceTemplateSection,
+			valueSection,
+			secretSection,
+			templatePathSlice,
+			templateDir,
+			templateDepth,
+			false,
+			keyName,
+			service,
+		)
 
 		parseAndSetSection(cds,
 			valueSection,
@@ -212,7 +248,10 @@ func Parse(cds *vcutils.ConfigDataStore, logger *log.Logger, args []string, curr
 		}
 
 		// Add parsed line to appropriate line sections
-		AppendToTemplateSection(templatePathSlice, templateDir, templateDepth, true, keyName, service)
+		AppendToTemplateSection(interfaceTemplateSection,
+			valueSection,
+			secretSection,
+			templatePathSlice, templateDir, templateDepth, true, keyName, service)
 		parseAndSetSection(cds,
 			secretSection,
 			"super-secrets",
@@ -242,7 +281,15 @@ func Parse(cds *vcutils.ConfigDataStore, logger *log.Logger, args []string, curr
 }
 
 // AppendToTemplateSection Add parse line to template section
-func AppendToTemplateSection(templatePathSlice []string, templateDir int, templateDepth int, isSecret bool, name ...string) {
+func AppendToTemplateSection(
+	interfaceTemplateSection interface{},
+	valueSection map[string]map[string]map[string]string,
+	secretSection map[string]map[string]map[string]string,
+	templatePathSlice []string,
+	templateDir int,
+	templateDepth int,
+	isSecret bool,
+	name ...string) {
 	subSection := "[values/"
 	if isSecret {
 		subSection = "[super-secrets/"
