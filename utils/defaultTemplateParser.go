@@ -26,6 +26,9 @@ type DriverConfig struct {
 	ZeroConfig     bool
 	GenAuth        bool
 	Log            *log.Logger
+	Diff           bool
+	Update         func(*string, string)
+	FileFilter     []string
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
