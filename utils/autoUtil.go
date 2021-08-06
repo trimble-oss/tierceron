@@ -225,6 +225,8 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			*tokenNamePtr = "config_token_servicepack"
 		case "local":
 			*tokenNamePtr = "config_token_local"
+		default:
+			*tokenNamePtr = "Invalid environment"
 		}
 		//check that none are empty
 		if *secretIDPtr == "" {
@@ -233,6 +235,8 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			CheckWarning(fmt.Sprintf("Missing required appRoleID"), true)
 		} else if *tokenNamePtr == "" {
 			CheckWarning(fmt.Sprintf("Missing required tokenName"), true)
+		} else if *tokenNamePtr == "Invalid environment" {
+			CheckWarning(fmt.Sprintf("Invalid environment:"+*envPtr), true)
 		}
 		//check that token matches environment
 		tokenParts := strings.Split(*tokenNamePtr, "_")
