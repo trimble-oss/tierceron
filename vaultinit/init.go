@@ -11,7 +11,7 @@ import (
 // of automating setup and initial seeding
 
 func main() {
-	fmt.Println("Version: " + "1.23")
+	fmt.Println("Version: " + "1.29")
 	envPtr := flag.String("env", "dev", "Environment to be seeded")
 	vaultinitbase.CommonMain(envPtr, nil)
 }
