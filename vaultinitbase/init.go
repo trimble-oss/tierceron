@@ -36,6 +36,9 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	rotateTokens := flag.Bool("rotateTokens", false, "rotate tokens")
 	tokenExpiration := flag.Bool("tokenExpiration", false, "Look up Token expiration dates")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
+	updateRole := flag.Bool("updateRole", false, "Update security role")
+	updatePolicy := flag.Bool("updatePolicy", false, "Update security policy")
+	initNamespace := flag.Bool("initns", false, "Init namespace (tokens, policy, and role)")
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -53,11 +56,17 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		os.Exit(1)
 	}
 
-	namespaceTokenConfigs := "vault_namespaces/" + *namespaceVariable + "/token_files"
-	namespaceRoleConfigs := "vault_namespaces/" + *namespaceVariable + "/role_files"
-	namespacePolicyConfigs := "vault_namespaces/" + *namespaceVariable + "/policy_files"
+	namespaceTokenConfigs := "vault_namespaces" + string(os.PathSeparator) + "token_files"
+	namespaceRoleConfigs := "vault_namespaces" + string(os.PathSeparator) + "role_files"
+	namespacePolicyConfigs := "vault_namespaces" + string(os.PathSeparator) + "policy_files"
 
-	if !*rotateTokens && !*tokenExpiration && !*pingPtr {
+	if *namespaceVariable != "" {
+		namespaceTokenConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "token_files"
+		namespaceRoleConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "role_files"
+		namespacePolicyConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "policy_files"
+	}
+
+	if *namespaceVariable == "" && !*rotateTokens && !*tokenExpiration && !*updatePolicy && !*updateRole && !*pingPtr {
 		if _, err := os.Stat(*seedPtr); os.IsNotExist(err) {
 			fmt.Println("Missing required seed folder: " + *seedPtr)
 			os.Exit(1)
@@ -125,45 +134,169 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	}
 	logger.Printf("Succesfully connected to vault at %s\n", *addrPtr)
 
-	if !*newPtr && *namespaceVariable != "" && *namespaceVariable != "vault" {
-		//
-		// Special path for generating custom scoped tokens.  This path requires
-		// a root token usually.
-		//
+	if !*newPtr && *namespaceVariable != "" && *namespaceVariable != "vault" && !(*rotateTokens || *updatePolicy || *updateRole || *tokenExpiration) {
+		if *initNamespace {
+			fmt.Println("Creating tokens, roles, and policies.")
+			policyExists, policyErr := il.GetExistsPolicies(namespacePolicyConfigs, v, logger)
+			if policyErr != nil {
+				utils.LogErrorObject(policyErr, logger, false)
+				fmt.Println("Cannot safely determine policy.")
+				os.Exit(-1)
+			}
 
-		// Upload new cidr roles.
-		il.UploadTokenCidrRoles(namespaceRoleConfigs, v, logger)
-		// Upload policies from the given policy directory
-		il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
-		// Upload tokens from the given token directory
-		tokens := il.UploadTokens(namespaceTokenConfigs, v, logger)
-		if len(tokens) > 0 {
-			logger.Println(*namespaceVariable + " tokens successfully created.")
+			if policyExists {
+				fmt.Printf("Policy exists for policy configurations in directory: %s.  Refusing to continue.\n", namespacePolicyConfigs)
+				os.Exit(-1)
+			}
+
+			roleExists, roleErr := il.GetExistsRoles(namespaceRoleConfigs, v, logger)
+			if roleErr != nil {
+				utils.LogErrorObject(roleErr, logger, false)
+				fmt.Println("Cannot safely determine role.")
+			}
+
+			if roleExists {
+				fmt.Printf("Role exists for role configurations in directory: %s.  Refusing to continue.\n", namespaceRoleConfigs)
+				os.Exit(-1)
+			}
+
+			// Special path for generating custom scoped tokens.  This path requires
+			// a root token usually.
+			//
+
+			// Upload Create/Update new cidr roles.
+			fmt.Println("Creating role")
+			il.UploadTokenCidrRoles(namespaceRoleConfigs, v, logger)
+			// Upload Create/Update policies from the given policy directory
+
+			fmt.Println("Creating policy")
+			il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
+
+			// Upload tokens from the given token directory
+			fmt.Println("Creating tokens")
+			tokens := il.UploadTokens(namespaceTokenConfigs, v, logger)
+			if len(tokens) > 0 {
+				logger.Println(*namespaceVariable + " tokens successfully created.")
+			} else {
+				logger.Println(*namespaceVariable + " tokens failed to create.")
+			}
+			f.Close()
+			os.Exit(0)
 		} else {
-			logger.Println(*namespaceVariable + " tokens failed to create.")
+			fmt.Println("initns or rotateTokens required with the namespace paramater.")
+			os.Exit(0)
 		}
-		f.Close()
-		os.Exit(0)
+
 	}
 
 	if !*newPtr && (*rotateTokens || *tokenExpiration) {
+		if *tokenExpiration {
+			fmt.Println("Checking token expiration.")
+			roleId, lease, err := v.GetRoleID("bamboo")
+			utils.LogErrorObject(err, logger, false)
+			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
+		} else {
+			fmt.Println("Rotating tokens.")
+		}
 		getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
 		if getOrRevokeError != nil {
 			fmt.Println("Token revocation or access failure.  Cannot continue.")
 			os.Exit(-1)
 		}
+
+		if *updateRole {
+			// Upload Create/Update new cidr roles.
+			fmt.Println("Updating role")
+			errTokenCidr := il.UploadTokenCidrRoles(namespaceRoleConfigs, v, logger)
+			if errTokenCidr != nil {
+				fmt.Println("Role update failed.  Cannot continue.")
+				os.Exit(-1)
+			} else {
+				fmt.Println("Role updated")
+			}
+		}
+
+		if *updatePolicy {
+			// Upload Create/Update policies from the given policy directory
+			fmt.Println("Updating policy")
+			errTokenPolicy := il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
+			if errTokenPolicy != nil {
+				fmt.Println("Policy update failed.  Cannot continue.")
+				os.Exit(-1)
+			} else {
+				fmt.Println("Policy updated")
+			}
+		}
+
 		if !*tokenExpiration {
+			fmt.Println("Rotating tokens.")
+
+			// Create new tokens.
 			tokens := il.UploadTokens(namespaceTokenConfigs, v, logger)
-			if !*prodPtr {
+			if !*prodPtr && *namespaceVariable == "vault" {
+				//
+				// Dev, QA specific token creation.
+				//
 				tokenMap := map[string]interface{}{}
-				for _, token := range tokens {
-					tokenMap[token.Name] = token.Value
-				}
 
 				mod, err := kv.NewModifier(v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
 				utils.LogErrorObject(err, logger, false)
 
 				mod.Env = "bamboo"
+
+				existingTokens, err := mod.ReadData("super-secrets/tokens")
+				if err != nil {
+					fmt.Println("Read existing tokens failure.  Cannot continue.")
+					utils.LogErrorObject(err, logger, false)
+					os.Exit(-1)
+				}
+
+				// We have names of tokens that were referenced in old role.  Ok to delete the role now.
+				//
+				// Merge token data.
+				//
+				// Copy existing.
+				for key, valueObj := range existingTokens {
+					if value, ok := valueObj.(string); ok {
+						tokenMap[key] = value
+					} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
+						tokenMap[key] = stringer.GoString()
+					}
+				}
+
+				// Overwrite new.
+				for _, token := range tokens {
+					// Everything but webapp give access by app role and secret.
+					if token.Name != "webapp" {
+						tokenMap[token.Name] = token.Value
+					}
+				}
+
+				//
+				// Wipe existing role.
+				// Recreate the role.
+				//
+				role_cleanup := v.DeleteRole("bamboo")
+				utils.LogErrorObject(role_cleanup, logger, true)
+
+				err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
+					TokenTTL:    "10m",
+					TokenMaxTTL: "15m",
+					Policies:    []string{"bamboo"},
+				})
+				utils.LogErrorObject(err, logger, false)
+
+				roleID, _, err := v.GetRoleID("bamboo")
+				utils.LogErrorObject(err, logger, false)
+
+				secretID, err := v.GetSecretID("bamboo")
+				utils.LogErrorObject(err, logger, false)
+
+				fmt.Printf("Rotated role id and secret id.\n")
+				fmt.Printf("Role ID: %s\n", roleID)
+				fmt.Printf("Secret ID: %s\n", secretID)
+
+				// Store all new tokens to new appRole.
 				warn, err := mod.Write("super-secrets/tokens", tokenMap)
 				utils.LogErrorObject(err, logger, false)
 				utils.LogWarningsObject(warn, logger, false)
