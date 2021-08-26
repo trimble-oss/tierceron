@@ -1,6 +1,7 @@
 package system
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/vault/api"
@@ -69,6 +70,15 @@ func (v *Vault) CreateNewRole(roleName string, options *NewRoleOptions) error {
 	return err
 }
 
+// DeleteRole deletes role with given role name
+func (v *Vault) DeleteRole(roleName string) error {
+	r := v.client.NewRequest("DELETE", fmt.Sprintf("/v1/auth/approle/role/%s", roleName))
+
+	resp, err := v.client.RawRequest(r)
+	defer resp.Body.Close()
+	return err
+}
+
 // CreateNewTokenCidrRole creates a new token cidr only role with given cidr options.
 func (v *Vault) CreateNewTokenCidrRole(options *YamlNewTokenRoleOptions) error {
 	rolePath := fmt.Sprintf("/v1/auth/token/roles/%s", options.RoleName)
@@ -87,29 +97,29 @@ func (v *Vault) CreateNewTokenCidrRole(options *YamlNewTokenRoleOptions) error {
 }
 
 // GetRoleID checks for the given role name and returns the coresponding id if it exists
-func (v *Vault) GetRoleID(roleName string) (string, error) {
+func (v *Vault) GetRoleID(roleName string) (string, string, error) {
 	r := v.client.NewRequest("GET", fmt.Sprintf("/v1/auth/approle/role/%s/role-id", roleName))
 	resp, err := v.client.RawRequest(r)
 
 	defer resp.Body.Close()
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	var jsonData map[string]interface{}
 	if err = resp.DecodeJSON(&jsonData); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if raw, ok := jsonData["data"].(map[string]interface{}); ok {
 		if roleID, ok := raw["role_id"].(string); ok {
-			return roleID, nil
+			return roleID, string(jsonData["lease_duration"].(json.Number)), nil
 		}
-		return "", fmt.Errorf("Error parsing response for key 'data.id'")
+		return "", "", fmt.Errorf("Error parsing response for key 'data.id'")
 	}
 
-	return "", fmt.Errorf("Error parsing resonse for key 'data'")
+	return "", "", fmt.Errorf("Error parsing resonse for key 'data'")
 }
 
 // GetSecretID checks the vault for the secret ID corresponding to the role name
@@ -133,6 +143,25 @@ func (v *Vault) GetSecretID(roleName string) (string, error) {
 			return secretID, nil
 		}
 		return "", fmt.Errorf("Error parsing response for key 'data.secret_id'")
+	}
+
+	return "", fmt.Errorf("Error parsing resonse for key 'data'")
+}
+
+// GetListApproles lists available approles
+func (v *Vault) GetListApproles() (string, error) {
+	r := v.client.NewRequest("LIST", fmt.Sprintf("/v1/auth/approle/role"))
+	resp, err := v.client.RawRequest(r)
+
+	defer resp.Body.Close()
+
+	if err != nil {
+		return "", err
+	}
+
+	var jsonData map[string]interface{}
+	if err = resp.DecodeJSON(&jsonData); err != nil {
+		return "", err
 	}
 
 	return "", fmt.Errorf("Error parsing resonse for key 'data'")

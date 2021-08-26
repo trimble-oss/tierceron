@@ -278,6 +278,57 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 	return &keyToken, nil
 }
 
+// GetExistsTokenRole - Gets the token role by token role name.
+func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
+	roleFile, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return false, err
+	}
+
+	tokenRole := YamlNewTokenRoleOptions{}
+	yamlErr := yaml.Unmarshal(roleFile, &tokenRole)
+	if yamlErr != nil {
+		return false, yamlErr
+	}
+
+	fmt.Printf("Role: %s\n", tokenRole.RoleName)
+
+	r := v.client.NewRequest("GET", fmt.Sprintf("/v1/auth/token/roles/%s", tokenRole.RoleName))
+	resp, err := v.client.RawRequest(r)
+
+	defer resp.Body.Close()
+
+	if err != nil {
+		return false, err
+	}
+
+	var jsonData map[string]interface{}
+	if err = resp.DecodeJSON(&jsonData); err != nil {
+		return false, err
+	}
+
+	if _, ok := jsonData["data"].(map[string]interface{}); ok {
+		return true, nil
+	}
+
+	return false, fmt.Errorf("Error parsing resonse for key 'data'")
+}
+
+// CreatePolicyFromFile Creates a policy with the given name and rules
+func (v *Vault) GetExistsPolicyFromFileName(filename string) (bool, error) {
+	filenameParts := strings.Split(filename, ".")
+
+	policyContent, err := v.client.Sys().GetPolicy(filenameParts[0])
+
+	if policyContent == "" {
+		return false, nil
+	} else if err != nil {
+		return true, err
+	} else {
+		return true, nil
+	}
+}
+
 // CreatePolicyFromFile Creates a policy with the given name and rules
 func (v *Vault) CreatePolicyFromFile(name string, filepath string) error {
 	data, err := ioutil.ReadFile(filepath)
@@ -355,6 +406,19 @@ func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
 	}
 	token := api.TokenCreateRequest{}
 	yaml.Unmarshal(tokenfile, &token)
+
+	tokenRole := YamlNewTokenRoleOptions{}
+	yamlErr := yaml.Unmarshal(tokenfile, &tokenRole)
+	if yamlErr == nil {
+		if tokenRole.RoleName != "" {
+			response, err := v.client.Auth().Token().CreateWithRole(&token, tokenRole.RoleName)
+			if err != nil {
+				return "", err
+			}
+			return response.Auth.ClientToken, err
+		}
+	}
+
 	response, err := v.client.Auth().Token().Create(&token)
 	return response.Auth.ClientToken, err
 }

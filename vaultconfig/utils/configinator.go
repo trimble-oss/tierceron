@@ -16,17 +16,17 @@ import (
 
 //GenerateConfigsFromVault configures the templates in vault_templates and writes them to vaultconfig
 func GenerateConfigsFromVault(config eUtils.DriverConfig) {
-	mod, err := kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
+	modCheck, err := kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
 	if err != nil {
 		panic(err)
 	}
 
-	if !mod.ValidateEnvironment(config.Env) {
+	if !modCheck.ValidateEnvironment(config.Env) {
 		fmt.Println("Mismatched token for requested environment: " + config.Env)
 		os.Exit(1)
 	}
 
-	mod.Env = config.Env
+	modCheck.Env = config.Env
 	templatePaths := []string{}
 	endPaths := []string{}
 
@@ -75,6 +75,9 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		wg.Add(1)
 		go func(i int, templatePath string) {
 			defer wg.Done()
+
+			mod, _ := kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
+			mod.Env = config.Env
 			//check for template_files directory here
 			s := strings.Split(templatePath, "/")
 			//figure out which path is vault_templates
