@@ -153,16 +153,16 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				cds.Init(goMod, c.SecretMode, true, project, service)
 			}
 
-			templateResult.interfaceTemplateSection, templateResult.valueSection, templateResult.secretSection, templateResult.templateDepth = ToSeed(goMod,
+			_, _, _, templateResult.templateDepth = ToSeed(goMod,
 				cds,
 				templatePath,
 				config.Log,
 				project,
 				service,
 				fromVault,
-				templateResult.interfaceTemplateSection,
-				templateResult.valueSection,
-				templateResult.secretSection,
+				&(templateResult.interfaceTemplateSection),
+				&(templateResult.valueSection),
+				&(templateResult.secretSection),
 			)
 			templateResult.env = goMod.Env
 			templateResultChan <- &templateResult

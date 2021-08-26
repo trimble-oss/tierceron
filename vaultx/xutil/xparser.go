@@ -31,10 +31,10 @@ func ToSeed(mod *kv.Modifier,
 	project string,
 	service string,
 	fromVault bool,
-	interfaceTemplateSection interface{},
-	valueSection map[string]map[string]map[string]string,
-	secretSection map[string]map[string]map[string]string,
-) (interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string, int) {
+	interfaceTemplateSection *interface{},
+	valueSection *map[string]map[string]map[string]string,
+	secretSection *map[string]map[string]map[string]string,
+) (*interface{}, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int) {
 
 	// TODO: replace string sections with maps
 	pathSlice := strings.SplitN(templatePath, "/", -1)
@@ -124,7 +124,7 @@ func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int
 }
 
 func parseAndSetSection(cds *vcutils.ConfigDataStore,
-	sectionMap map[string]map[string]map[string]string,
+	sectionMap *map[string]map[string]map[string]string,
 	sectionType string,
 	service string,
 	keyPath []string,
@@ -135,8 +135,8 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 	var okValue bool
 	var existingValue string
 
-	if _, ok := sectionMap[sectionType][service]; ok {
-		existingValue, okValue = sectionMap[sectionType][service][keyName]
+	if _, ok := (*sectionMap)[sectionType][service]; ok {
+		existingValue, okValue = (*sectionMap)[sectionType][service][keyName]
 	}
 	if keyName == "certData" {
 		value = "data"
@@ -157,17 +157,17 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 		}
 	}
 
-	if _, ok := sectionMap[sectionType][service]; ok {
+	if _, ok := (*sectionMap)[sectionType][service]; ok {
 		if !okValue {
-			sectionMap[sectionType][service][keyName] = value
+			(*sectionMap)[sectionType][service][keyName] = value
 		} else {
 			if existingValue == existingDefault || existingValue == "" {
-				sectionMap[sectionType][service][keyName] = value
+				(*sectionMap)[sectionType][service][keyName] = value
 			}
 		}
 	} else {
-		sectionMap[sectionType][service] = map[string]string{}
-		sectionMap[sectionType][service][keyName] = value
+		(*sectionMap)[sectionType][service] = map[string]string{}
+		(*sectionMap)[sectionType][service][keyName] = value
 	}
 }
 
@@ -185,9 +185,9 @@ func Parse(cds *vcutils.ConfigDataStore,
 	templateDir int,
 	templateDepth int,
 	service string,
-	interfaceTemplateSection interface{},
-	valueSection map[string]map[string]map[string]string,
-	secretSection map[string]map[string]map[string]string,
+	interfaceTemplateSection *interface{},
+	valueSection *map[string]map[string]map[string]string,
+	secretSection *map[string]map[string]map[string]string,
 ) {
 	if len(args) == 3 { //value
 		keySlice := args[1]
@@ -282,9 +282,9 @@ func Parse(cds *vcutils.ConfigDataStore,
 
 // AppendToTemplateSection Add parse line to template section
 func AppendToTemplateSection(
-	interfaceTemplateSection interface{},
-	valueSection map[string]map[string]map[string]string,
-	secretSection map[string]map[string]map[string]string,
+	interfaceTemplateSection *interface{},
+	valueSection *map[string]map[string]map[string]string,
+	secretSection *map[string]map[string]map[string]string,
 	templatePathSlice []string,
 	templateDir int,
 	templateDepth int,
@@ -299,11 +299,11 @@ func AppendToTemplateSection(
 	if len(name) == 2 {
 		wholeName = false
 	}
-	if _, ok := interfaceTemplateSection.(map[string]interface{}); !ok {
-		interfaceTemplateSection = map[string]interface{}{}
+	if _, ok := (*interfaceTemplateSection).(map[string]interface{}); !ok {
+		*interfaceTemplateSection = map[string]interface{}{}
 	}
 
-	itLevel := interfaceTemplateSection.(map[string]interface{})
+	itLevel := (*interfaceTemplateSection).(map[string]interface{})
 
 	for i := templateDir; i < len(templatePathSlice); i++ {
 		currentEntry := templatePathSlice[i]
