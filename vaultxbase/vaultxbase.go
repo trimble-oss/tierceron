@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"sync"
 
 	eUtils "Vault.Whoville/utils"
 	"Vault.Whoville/vaultx/xutil"
@@ -44,6 +46,23 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	flag.Parse()
 
+	//check for clean + env flag
+	cleanPresent := false
+	envPresent := false
+	for _, arg := range args {
+		if strings.Contains(arg, "clean") {
+			cleanPresent = true
+		}
+		if strings.Contains(arg, "env") {
+			envPresent = true
+		}
+	}
+
+	if cleanPresent && !envPresent {
+		fmt.Println("Environment must be defined with -env=env1,... for -clean usage")
+		os.Exit(1)
+	}
+
 	// Prints usage if no flags are specified
 	if *helpPtr {
 		flag.Usage()
@@ -65,7 +84,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	regions := []string{}
 
-	if !*noVaultPtr {
+	//Split multiple environments into slice
+	envSlice := make([]string, 0)
+	if strings.ContainsAny(*envPtr, ",") {
+		envSlice = strings.Split(*envPtr, ",")
+	}
+
+	if len(envSlice) == 0 && !*noVaultPtr {
 		if *envPtr == "staging" || *envPtr == "prod" {
 			secretIDPtr = nil
 			appRoleIDPtr = nil
@@ -74,7 +99,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		eUtils.AutoAuth(secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 	}
 
-	if tokenPtr == nil || *tokenPtr == "" && !*noVaultPtr {
+	if tokenPtr == nil || *tokenPtr == "" && !*noVaultPtr && len(envSlice) == 0 {
 		fmt.Println("Missing required auth token.")
 		os.Exit(1)
 	}
@@ -95,21 +120,37 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	logger.SetPrefix("[vaultx]")
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
-	config := eUtils.DriverConfig{
-		Token:          *tokenPtr,
-		VaultAddress:   *addrPtr,
-		Env:            *envPtr,
-		Regions:        regions,
-		SecretMode:     *secretMode,
-		ServicesWanted: []string{},
-		StartDir:       append([]string{}, *startDirPtr),
-		EndDir:         *endDirPtr,
-		WantCert:       false,
-		GenAuth:        *genAuth,
-		Log:            logger,
-		Diff:           *cleanPtr,
+	//If 1 env only
+	if len(envSlice) == 0 {
+		envSlice = append(envSlice, *envPtr)
 	}
-	eUtils.ConfigControl(config, xutil.GenerateSeedsFromVault)
+
+	var waitg sync.WaitGroup
+	for _, env := range envSlice {
+		*envPtr = env
+		*tokenPtr = ""
+		eUtils.AutoAuth(secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		config := eUtils.DriverConfig{
+			Token:          *tokenPtr,
+			VaultAddress:   *addrPtr,
+			Env:            *envPtr,
+			Regions:        regions,
+			SecretMode:     *secretMode,
+			ServicesWanted: []string{},
+			StartDir:       append([]string{}, *startDirPtr),
+			EndDir:         *endDirPtr,
+			WantCert:       false,
+			GenAuth:        *genAuth,
+			Log:            logger,
+			Diff:           *cleanPtr,
+		}
+		waitg.Add(1)
+		go func() {
+			defer waitg.Done()
+			eUtils.ConfigControl(config, xutil.GenerateSeedsFromVault)
+		}()
+	}
+	waitg.Wait()
 
 	logger.SetPrefix("[vaultx]")
 	logger.Println("=============== Terminating Seed Generator ===============")

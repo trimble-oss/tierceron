@@ -3,7 +3,6 @@ package xutil
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,11 +17,14 @@ import (
 
 var wg sync.WaitGroup
 
+var wg2 sync.WaitGroup
+
 type TemplateResultData struct {
 	interfaceTemplateSection interface{}
 	valueSection             map[string]map[string]map[string]string
 	secretSection            map[string]map[string]map[string]string
 	templateDepth            int
+	env                      string
 }
 
 var templateResultChan = make(chan *TemplateResultData, 5)
@@ -66,10 +68,34 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 	}
 
+	//Reciever for configs
+	go func(c eUtils.DriverConfig) {
+		for {
+			select {
+			case tResult := <-templateResultChan:
+				if config.Env == tResult.env {
+					sliceTemplateSection = append(sliceTemplateSection, tResult.interfaceTemplateSection)
+					sliceValueSection = append(sliceValueSection, tResult.valueSection)
+					sliceSecretSection = append(sliceSecretSection, tResult.secretSection)
+					if tResult.templateDepth > maxDepth {
+						maxDepth = tResult.templateDepth
+						//templateCombinedSection = interfaceTemplateSection
+					}
+					wg.Done()
+				} else {
+					go func(tResult *TemplateResultData) {
+						templateResultChan <- tResult
+					}(tResult)
+				}
+			default:
+			}
+		}
+	}(config)
+
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(templatePath string) {
+		go func(templatePath string, project string, service string, multiService bool, c eUtils.DriverConfig) {
 			// Map Subsections
 			var templateResult TemplateResultData
 
@@ -79,7 +105,25 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			templateResult.secretSection = map[string]map[string]map[string]string{}
 			templateResult.secretSection["super-secrets"] = map[string]map[string]string{}
 
-			defer wg.Done()
+			var goMod *kv.Modifier
+
+			if c.Token != "" {
+				var err error
+				goMod, err = kv.NewModifier(c.Token, c.VaultAddress, c.Env, c.Regions)
+				if err != nil {
+					panic(err)
+				}
+				goMod.Env = c.Env
+			}
+
+			if c.GenAuth && goMod != nil {
+				_, err := mod.ReadData("apiLogins/meta")
+				if err != nil {
+					fmt.Println("Cannot genAuth with provided token.")
+					os.Exit(1)
+				}
+			}
+
 			//check for template_files directory here
 			s := strings.Split(templatePath, "/")
 			//figure out which path is vault_templates
@@ -99,50 +143,31 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 			// Clean up service naming (Everything after '.' removed)
 			dotIndex := strings.Index(service, ".")
-			if dotIndex > 0 {
+			if dotIndex > 0 && dotIndex <= len(service) {
 				service = service[0:dotIndex]
 			}
 
 			var cds *vcutils.ConfigDataStore
-			if mod != nil {
+			if goMod != nil {
 				cds = new(vcutils.ConfigDataStore)
-				cds.Init(mod, config.SecretMode, true, project, service)
+				cds.Init(goMod, c.SecretMode, true, project, service)
 			}
 
-			templateResult.interfaceTemplateSection, templateResult.valueSection, templateResult.secretSection, templateResult.templateDepth = ToSeed(mod,
+			_, _, _, templateResult.templateDepth = ToSeed(goMod,
 				cds,
 				templatePath,
 				config.Log,
 				project,
 				service,
 				fromVault,
-				templateResult.interfaceTemplateSection,
-				templateResult.valueSection,
-				templateResult.secretSection,
+				&(templateResult.interfaceTemplateSection),
+				&(templateResult.valueSection),
+				&(templateResult.secretSection),
 			)
-			// Append new sections to propper slices
+			templateResult.env = goMod.Env
 			templateResultChan <- &templateResult
-		}(templatePath)
+		}(templatePath, project, service, multiService, config)
 	}
-
-	go func() {
-		for {
-			select {
-			case tResult := <-templateResultChan:
-				// TODO: this is unsafe append and must be fed back synchronously via channel...
-				// appending on the other end.
-				sliceTemplateSection = append(sliceTemplateSection, tResult.interfaceTemplateSection)
-				sliceValueSection = append(sliceValueSection, tResult.valueSection)
-				sliceSecretSection = append(sliceSecretSection, tResult.secretSection)
-				if tResult.templateDepth > maxDepth {
-					maxDepth = tResult.templateDepth
-					//templateCombinedSection = interfaceTemplateSection
-				}
-
-			default:
-			}
-		}
-	}()
 	wg.Wait()
 
 	// Combine values of slice
@@ -213,46 +238,54 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 // GenerateSeedsFromVault configures the templates in vault_templates and writes them to vaultx
 func GenerateSeedsFromVault(config eUtils.DriverConfig) {
-	// Get files from directory
-	templatePaths := []string{}
-	config.EndDir = config.EndDir + config.Env + string(os.PathSeparator)
-	if config.Diff {
-		err := os.RemoveAll(config.EndDir)
+	if config.Diff { //Clean flag in vaultX
+		_, err1 := os.Stat(config.EndDir + config.Env)
+		err := os.RemoveAll(config.EndDir + config.Env)
+
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
 			os.Exit(1)
 		}
-		fmt.Println("Seed removed from", config.EndDir)
+
+		if err1 == nil {
+			fmt.Println("Seed removed from", config.EndDir+config.Env)
+		}
 		return
 	}
 
-	//templatePaths
+	// Get files from directory
+	tempTemplatePaths := []string{}
 	for _, startDir := range config.StartDir {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			//get files from directory
-			tp := getDirFiles(startDir)
-			templatePaths = append(templatePaths, tp...)
-		}()
+		//get files from directory
+		tp := getDirFiles(startDir)
+		tempTemplatePaths = append(tempTemplatePaths, tp...)
 	}
-	wg.Wait()
 
-	service, endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
+	//Duplicate path remover
+	keys := make(map[string]bool)
+	templatePaths := []string{}
+	for _, path := range tempTemplatePaths {
+		if _, value := keys[path]; !value {
+			keys[path] = true
+			templatePaths = append(templatePaths, path)
+		}
+	}
+
+	_, endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 
 	if multiService {
 		if strings.HasPrefix(config.Env, "local") {
-			endPath = config.EndDir + "local_seed.yml"
+			endPath = config.EndDir + "local/local_seed.yml"
 		} else {
-			endPath = config.EndDir + config.Env + "_seed.yml"
+			endPath = config.EndDir + config.Env + "/" + config.Env + "_seed.yml"
 		}
 	} else {
-		endPath = config.EndDir + service + "_seed.yml"
+		endPath = config.EndDir + config.Env + "/" + config.Env + "_seed.yml"
 	}
 
 	writeToFile(seedData, endPath)
 	// Print that we're done
-	fmt.Println("Seed created and written to ", config.EndDir)
+	fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + config.Env)
 }
 
 func writeToFile(data string, path string) {
@@ -332,9 +365,10 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 //	- template slice to combine
 //	- depth of map (-1 for value/secret sections)
 func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
+	_, okMap := sliceSectionInterface.([]map[string]map[string]map[string]string)
 
 	// Value/secret slice section
-	if maxDepth < 0 {
+	if maxDepth < 0 && okMap {
 		sliceSection := sliceSectionInterface.([]map[string]map[string]map[string]string)
 		combinedSectionImpl := combinedSectionInterface.(map[string]map[string]map[string]string)
 		for _, v := range sliceSection {
@@ -354,6 +388,9 @@ func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSec
 
 		// template slice section
 	} else {
+		if maxDepth < 0 && !okMap {
+			fmt.Printf("Env failed to gen.  MaxDepth: %d, okMap: %t\n", maxDepth, okMap)
+		}
 		sliceSection := sliceSectionInterface.([]interface{})
 
 		for _, v := range sliceSection {

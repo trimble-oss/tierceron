@@ -26,13 +26,16 @@ var resultChannel = make(chan *ResultData, 5)
 var fileSysIndex = -1
 var envLength int
 var wg sync.WaitGroup
+var mutex = &sync.Mutex{}
 
 func messenger(inData *string, inPath string) {
 	var data ResultData
 	data.inData = inData
 	data.inPath = inPath
 	inPathSplit := strings.Split(inPath, "||.")
+	mutex.Lock()
 	_, present := resultMap["filesys||."+inPathSplit[1]]
+	mutex.Unlock()
 	//If data is filesys - skip fileSys loop
 	if strings.Contains(inPath, "filesys") {
 		goto skipSwitch
@@ -59,7 +62,9 @@ func reciever() {
 		select {
 		case data := <-resultChannel:
 			if data != nil && data.inData != nil && data.inPath != "" {
+				mutex.Lock()
 				resultMap[data.inPath] = data.inData
+				mutex.Unlock()
 			}
 		default:
 		}
@@ -69,7 +74,9 @@ func reciever() {
 func diffHelper() {
 	fileIndex := 0
 	keys := []string{}
+	mutex.Lock()
 	fileList := make([]string, len(resultMap)/envLength)
+	mutex.Unlock()
 
 	//Make fileList
 	for key := range resultMap {
@@ -117,8 +124,10 @@ func diffHelper() {
 		keyB := keys[1]
 		keySplitA := strings.Split(keyA, "||")
 		keySplitB := strings.Split(keyB, "||")
+		mutex.Lock()
 		envFileKeyA := resultMap[keyA]
 		envFileKeyB := resultMap[keyB]
+		mutex.Unlock()
 
 		switch envLength {
 		case 4:
@@ -126,8 +135,10 @@ func diffHelper() {
 			keyD := keys[3]
 			keySplitC := strings.Split(keyC, "||")
 			keySplitD := strings.Split(keyD, "||")
+			mutex.Lock()
 			envFileKeyC := resultMap[keyC]
 			envFileKeyD := resultMap[keyD]
+			mutex.Unlock()
 
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
 			fmt.Println(eUtils.LineByLineDiff(envFileKeyB, envFileKeyA))
@@ -144,7 +155,9 @@ func diffHelper() {
 		case 3:
 			keyC := keys[2]
 			keySplitC := strings.Split(keyC, "||")
+			mutex.Lock()
 			envFileKeyC := resultMap[keyC]
+			mutex.Unlock()
 
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
 			fmt.Println(eUtils.LineByLineDiff(envFileKeyB, envFileKeyA))
