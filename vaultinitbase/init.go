@@ -324,7 +324,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		// Upload policies from the given policy directory
 		il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
 		// Upload tokens from the given token directory
-		tokens := il.UploadTokens(namespacePolicyConfigs, v, logger)
+		tokens := il.UploadTokens(namespaceTokenConfigs, v, logger)
 		if !*prodPtr {
 			tokenMap := map[string]interface{}{}
 			for _, token := range tokens {
