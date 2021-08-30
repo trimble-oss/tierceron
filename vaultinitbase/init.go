@@ -276,8 +276,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				// Wipe existing role.
 				// Recreate the role.
 				//
-				role_cleanup := v.DeleteRole("bamboo")
-				utils.LogErrorObject(role_cleanup, logger, true)
+				resp, role_cleanup := v.DeleteRole("bamboo")
+				utils.LogErrorObject(role_cleanup, logger, false)
+
+				if resp.StatusCode == 404 {
+					err = v.EnableAppRole()
+					utils.LogErrorObject(err, logger, false)
+				}
 
 				err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
 					TokenTTL:    "10m",

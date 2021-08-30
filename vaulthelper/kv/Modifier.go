@@ -67,6 +67,11 @@ func (m *Modifier) ValidateEnvironment(environment string) bool {
 	desiredPolicy := "config_" + strings.ToLower(environment)
 
 	secret, err := m.client.Auth().Token().LookupSelf()
+
+	if err != nil {
+		fmt.Printf("LookupSelf Auth failure: %v\n", err)
+	}
+
 	valid := false
 	if err == nil {
 		policies, _ := secret.TokenPolicies()

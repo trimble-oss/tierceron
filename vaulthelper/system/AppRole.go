@@ -71,12 +71,12 @@ func (v *Vault) CreateNewRole(roleName string, options *NewRoleOptions) error {
 }
 
 // DeleteRole deletes role with given role name
-func (v *Vault) DeleteRole(roleName string) error {
+func (v *Vault) DeleteRole(roleName string) (*api.Response, error) {
 	r := v.client.NewRequest("DELETE", fmt.Sprintf("/v1/auth/approle/role/%s", roleName))
 
 	resp, err := v.client.RawRequest(r)
 	defer resp.Body.Close()
-	return err
+	return resp, err
 }
 
 // CreateNewTokenCidrRole creates a new token cidr only role with given cidr options.
