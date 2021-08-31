@@ -258,3 +258,15 @@ func (m *Modifier) AdjustValue(path string, key string, n int) ([]string, error)
 func (m *Modifier) Close() {
 	m.httpClient.CloseIdleConnections()
 }
+
+func (m *Modifier) Exists(path string) bool {
+	secret, err := m.logical.List(path)
+	if err != nil {
+		return false
+	}
+	if secret == nil {
+		return false
+	} else {
+		return true
+	}
+}
