@@ -277,11 +277,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				// Recreate the role.
 				//
 				resp, role_cleanup := v.DeleteRole("bamboo")
-				utils.LogErrorObject(role_cleanup, logger, false)
+				utils.LogErrorObject(role_cleanup, logger, true)
 
 				if resp.StatusCode == 404 {
 					err = v.EnableAppRole()
-					utils.LogErrorObject(err, logger, false)
+					utils.LogErrorObject(err, logger, true)
 				}
 
 				err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
@@ -289,13 +289,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 					TokenMaxTTL: "15m",
 					Policies:    []string{"bamboo"},
 				})
-				utils.LogErrorObject(err, logger, false)
+				utils.LogErrorObject(err, logger, true)
 
 				roleID, _, err := v.GetRoleID("bamboo")
-				utils.LogErrorObject(err, logger, false)
+				utils.LogErrorObject(err, logger, true)
 
 				secretID, err := v.GetSecretID("bamboo")
-				utils.LogErrorObject(err, logger, false)
+				utils.LogErrorObject(err, logger, true)
 
 				fmt.Printf("Rotated role id and secret id.\n")
 				fmt.Printf("Role ID: %s\n", roleID)
@@ -303,8 +303,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 				// Store all new tokens to new appRole.
 				warn, err := mod.Write("super-secrets/tokens", tokenMap)
-				utils.LogErrorObject(err, logger, false)
-				utils.LogWarningsObject(warn, logger, false)
+				utils.LogErrorObject(err, logger, true)
+				utils.LogWarningsObject(warn, logger, true)
 			}
 		}
 		os.Exit(0)
@@ -324,10 +324,26 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	}
 
 	if *newPtr {
+		mod, err := kv.NewModifier(v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
+		utils.LogErrorObject(err, logger, true)
+
+		mod.Env = "bamboo"
+
+		if mod.Exists("values/metadata") || mod.Exists("templates/metadata") || mod.Exists("super-secrets/metadata") {
+			fmt.Println("Vault has been initialized already...")
+			os.Exit(1)
+		}
+
+		policyExists, err := il.GetExistsPolicies(namespacePolicyConfigs, v, logger)
+		if policyExists || err != nil {
+			fmt.Printf("Vault may be initialized already - Policies exists.\n")
+			os.Exit(1)
+		}
+
 		// Create secret engines
 		il.CreateEngines(v, logger)
 		// Upload policies from the given policy directory
-		il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
+		il.UploadPolicies(namespacePolicyConfigs, v, true, logger)
 		// Upload tokens from the given token directory
 		tokens := il.UploadTokens(namespaceTokenConfigs, v, logger)
 		if !*prodPtr {
@@ -336,13 +352,30 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				tokenMap[token.Name] = token.Value
 			}
 
-			mod, err := kv.NewModifier(v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
-			utils.LogErrorObject(err, logger, false)
+			err = v.EnableAppRole()
+			utils.LogErrorObject(err, logger, true)
 
-			mod.Env = "bamboo"
+			err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
+				TokenTTL:    "10m",
+				TokenMaxTTL: "15m",
+				Policies:    []string{"bamboo"},
+			})
+			utils.LogErrorObject(err, logger, true)
+
+			roleID, _, err := v.GetRoleID("bamboo")
+			utils.LogErrorObject(err, logger, true)
+
+			secretID, err := v.GetSecretID("bamboo")
+			utils.LogErrorObject(err, logger, true)
+
+			fmt.Printf("Rotated role id and secret id.\n")
+			fmt.Printf("Role ID: %s\n", roleID)
+			fmt.Printf("Secret ID: %s\n", secretID)
+
+			// Store all new tokens to new appRole.
 			warn, err := mod.Write("super-secrets/tokens", tokenMap)
-			utils.LogErrorObject(err, logger, false)
-			utils.LogWarningsObject(warn, logger, false)
+			utils.LogErrorObject(err, logger, true)
+			utils.LogWarningsObject(warn, logger, true)
 		}
 	}
 
