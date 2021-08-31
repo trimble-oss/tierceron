@@ -11,6 +11,7 @@ import (
 	sys "Vault.Whoville/vaulthelper/system"
 
 	"Vault.Whoville/vaulthelper/kv"
+	"gopkg.in/yaml.v2"
 )
 
 type cert struct {
