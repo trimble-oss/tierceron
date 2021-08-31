@@ -11,7 +11,6 @@ import (
 	sys "Vault.Whoville/vaulthelper/system"
 
 	"Vault.Whoville/vaulthelper/kv"
-	"gopkg.in/yaml.v2"
 )
 
 type cert struct {
@@ -164,7 +163,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		} else if override && !exists {
 			fmt.Println("No cert file exists, continuing without saving config IDs")
 		} else {
-			fmt.Printf("Creating new cert file in %s", userHome+"/.vault/configcert.yml")
+			fmt.Printf("Creating new cert file in %s", userHome+"/.vault/configcert.yml\n")
 			certConfigData := "vaultHost: " + vaultHost + "\n"
 			if appRoleIDPtr != nil && secretIDPtr != nil {
 				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
