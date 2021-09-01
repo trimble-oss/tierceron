@@ -16,6 +16,7 @@ func UploadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Logge
 
 	dirs, err := ioutil.ReadDir(dirName)
 	if err != nil {
+		fmt.Println("Read directory couldn't be completed.")
 		return err, nil
 	}
 
@@ -25,6 +26,7 @@ func UploadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Logge
 			pathName := dirName + "/" + subDir.Name()
 			err, warn := UploadTemplates(mod, pathName, logger)
 			if err != nil || len(warn) > 0 {
+				fmt.Printf("Upload templates couldn't be completed. %v", err)
 				return err, warn
 			}
 		}
