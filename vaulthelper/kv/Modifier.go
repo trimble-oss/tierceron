@@ -49,6 +49,7 @@ func NewModifier(token string, address string, env string, regions []string) (*M
 		HttpClient: httpClient,
 	})
 	if err != nil {
+		fmt.Println("vaultHost: " + modClient.Address())
 		return nil, err
 	}
 
@@ -261,9 +262,11 @@ func (m *Modifier) Close() {
 
 func (m *Modifier) Exists(path string) bool {
 	secret, err := m.logical.List(path)
+
 	if err != nil {
 		return false
 	}
+
 	if secret == nil {
 		return false
 	} else {

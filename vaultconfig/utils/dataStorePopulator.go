@@ -22,7 +22,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 	dataPathsFull, err := getPathsFromProject(mod, project)
 
 	if err != nil {
-		fmt.Println("Uninitialized environment.  Please initialize environment.")
+		fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
 		os.Exit(1)
 	}
 	dataPaths := []string{}
