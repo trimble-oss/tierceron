@@ -244,6 +244,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 				mod.Env = "bamboo"
 
+				//Checks if vault is initialized already
+				if !mod.Exists("values/metadata") && !mod.Exists("templates/metadata") && !mod.Exists("super-secrets/metadata") {
+					fmt.Println("Vault has not been initialized yet")
+					os.Exit(1)
+				}
+
 				existingTokens, err := mod.ReadData("super-secrets/tokens")
 				if err != nil {
 					fmt.Println("Read existing tokens failure.  Cannot continue.")
@@ -277,7 +283,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				// Recreate the role.
 				//
 				resp, role_cleanup := v.DeleteRole("bamboo")
-				utils.LogErrorObject(role_cleanup, logger, true)
+				utils.LogErrorObject(role_cleanup, logger, false)
 
 				if resp.StatusCode == 404 {
 					err = v.EnableAppRole()
@@ -323,6 +329,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 	}
 
+	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
 		mod, err := kv.NewModifier(v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
 		utils.LogErrorObject(err, logger, true)
@@ -343,7 +350,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		// Create secret engines
 		il.CreateEngines(v, logger)
 		// Upload policies from the given policy directory
-		il.UploadPolicies(namespacePolicyConfigs, v, true, logger)
+		il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
 		// Upload tokens from the given token directory
 		tokens := il.UploadTokens(namespaceTokenConfigs, v, logger)
 		if !*prodPtr {
