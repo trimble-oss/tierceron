@@ -12,7 +12,6 @@ import (
 
 	"Vault.Whoville/vaulthelper/kv"
 	"github.com/hashicorp/vault/api"
-	"gopkg.in/yaml.v2"
 )
 
 //Vault Represents a vault connection for managing the vault's properties
@@ -32,10 +31,12 @@ type KeyTokenWrapper struct {
 func NewVault(addr string, env string, newVault bool, pingVault bool) (*Vault, error) {
 	httpClient, err := kv.CreateHTTPClient(env)
 	if err != nil {
+		fmt.Println("vaultHost: " + addr)
 		return nil, err
 	}
 	client, err := api.NewClient(&api.Config{Address: addr, HttpClient: httpClient})
 	if err != nil {
+		fmt.Println("vaultHost: " + addr)
 		return nil, err
 	}
 
@@ -50,7 +51,7 @@ func NewVault(addr string, env string, newVault bool, pingVault bool) (*Vault, e
 	}
 
 	if !newVault && health.Sealed {
-		return nil, errors.New("Vault is sealed")
+		return nil, errors.New("Vault is sealed at " + addr)
 	}
 
 	return &Vault{
@@ -262,7 +263,7 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 
 	response, err := v.client.Sys().Init(&request)
 	if err != nil {
-		fmt.Println("there was an error")
+		fmt.Println("There was an error with initializing vault @ " + v.client.Address())
 		return nil, err
 	}
 	// Remove for deployment
@@ -420,6 +421,9 @@ func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
 	}
 
 	response, err := v.client.Auth().Token().Create(&token)
+	if err != nil {
+		return "", err
+	}
 	return response.Auth.ClientToken, err
 }
 

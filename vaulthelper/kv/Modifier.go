@@ -49,6 +49,7 @@ func NewModifier(token string, address string, env string, regions []string) (*M
 		HttpClient: httpClient,
 	})
 	if err != nil {
+		fmt.Println("vaultHost: " + modClient.Address())
 		return nil, err
 	}
 
@@ -67,6 +68,11 @@ func (m *Modifier) ValidateEnvironment(environment string) bool {
 	desiredPolicy := "config_" + strings.ToLower(environment)
 
 	secret, err := m.client.Auth().Token().LookupSelf()
+
+	if err != nil {
+		fmt.Printf("LookupSelf Auth failure: %v\n", err)
+	}
+
 	valid := false
 	if err == nil {
 		policies, _ := secret.TokenPolicies()
@@ -252,4 +258,18 @@ func (m *Modifier) AdjustValue(path string, key string, n int) ([]string, error)
 // Proper shutdown of modifier.
 func (m *Modifier) Close() {
 	m.httpClient.CloseIdleConnections()
+}
+
+func (m *Modifier) Exists(path string) bool {
+	secret, err := m.logical.List(path)
+
+	if err != nil {
+		return false
+	}
+
+	if secret == nil {
+		return false
+	} else {
+		return true
+	}
 }

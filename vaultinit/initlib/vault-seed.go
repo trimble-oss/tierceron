@@ -321,7 +321,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	warn, err := verify(mod, verificationData, logger)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
-	fmt.Println("Initialization complete.")
+	fmt.Printf("\nInitialization complete.\n")
 }
 
 //WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
