@@ -100,6 +100,10 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	logger.Println("==========Beginning Vault Initialization==========")
 
 	if addrPtr == nil || *addrPtr == "" {
+		if *newPtr {
+			fmt.Println("Address must be specified using -addr flag")
+			os.Exit(1)
+		}
 		eUtils.AutoAuth(nil, nil, tokenPtr, nil, envPtr, addrPtr, *pingPtr)
 	}
 
