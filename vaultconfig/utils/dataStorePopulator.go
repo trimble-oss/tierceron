@@ -221,7 +221,53 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 		}
 
 	}
-	return
+}
+
+func (cds *ConfigDataStore) InitVersionData(mod *kv.Modifier, secretMode bool, useDirs bool, project string, file string, servicesWanted ...string) map[string]interface{} {
+	cds.Regions = mod.Regions
+	cds.dataMap = make(map[string]interface{})
+	//get paths where the data is stored
+	dataPathsFull, err := getPathsFromProject(mod, project)
+
+	if err != nil {
+		fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
+		os.Exit(1)
+	}
+	dataPaths := []string{}
+	for _, fullPath := range dataPathsFull {
+		if strings.HasSuffix(fullPath, "/") {
+			continue
+		} else {
+			dataPaths = append(dataPaths, fullPath)
+		}
+	}
+	if len(dataPaths) < len(dataPathsFull)/3 && len(dataPaths) != len(dataPathsFull) {
+		fmt.Println("Unexpected vault pathing.  Dropping optimization.")
+		dataPaths = dataPathsFull
+	}
+
+	data := make(map[string]interface{})
+	for _, path := range dataPaths {
+		//for each path, read the secrets there
+		pathParts := strings.Split(path, "/")
+		foundWantedService := false
+		for i := 0; i < len(servicesWanted); i++ {
+			if pathParts[2] == servicesWanted[i] || strings.HasPrefix(servicesWanted[i], pathParts[2]) {
+				foundWantedService = true
+				break
+			}
+		}
+		if !foundWantedService {
+			continue
+		}
+
+		data, err = mod.ReadVersions(path)
+		if err != nil {
+			fmt.Printf("Couldn't read version data for %s\n", path)
+		}
+
+	}
+	return data
 }
 
 // GetValue Provides data from the vault

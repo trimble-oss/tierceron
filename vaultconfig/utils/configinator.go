@@ -14,14 +14,28 @@ import (
 	"Vault.Whoville/vaulthelper/kv"
 )
 
+var mutex = &sync.Mutex{}
+
 //GenerateConfigsFromVault configures the templates in vault_templates and writes them to vaultconfig
 func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 	modCheck, err := kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
 	modCheck.Env = config.Env
+	version := ""
 	if err != nil {
 		panic(err)
 	}
 
+	//Check if versionInfo is selected
+	versionInfo := false
+	if strings.Contains(config.Env, "_") {
+		envAndVersion := strings.Split(config.Env, "_")
+		config.Env = envAndVersion[0]
+		version = envAndVersion[1]
+		if version == "versionInfo" {
+			versionInfo = true
+		}
+	}
+	versionData := make(map[string]interface{})
 	if !modCheck.ValidateEnvironment(config.Env) {
 		fmt.Println("Mismatched token for requested environment: " + config.Env)
 		os.Exit(1)
@@ -73,11 +87,12 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 	//configure each template in directory
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(i int, templatePath string) {
+		go func(i int, templatePath string, version string, versionData map[string]interface{}) {
 			defer wg.Done()
 
 			mod, _ := kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
 			mod.Env = config.Env
+			mod.Version = version
 			//check for template_files directory here
 			s := strings.Split(templatePath, "/")
 			//figure out which path is vault_templates
@@ -120,7 +135,17 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					}
 				}
 
-				configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+				var configuredTemplate string
+				var certData map[int]string
+				if versionInfo {
+					data := getVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
+					mutex.Lock()
+					versionData[endPaths[i]] = data
+					mutex.Unlock()
+					goto wait
+				} else {
+					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+				}
 				//generate template or certificate
 				if config.WantCert {
 					if len(certData) == 0 {
@@ -133,7 +158,11 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					goto wait
 				} else if !config.WantCert {
 					if config.Diff {
-						config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+						if version != "" {
+							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
+						} else {
+							config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+						}
 					} else {
 						writeToFile(configuredTemplate, endPaths[i])
 					}
@@ -152,7 +181,15 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					goto wait
 				}
 				//assume the starting directory was vault_templates
-				configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[1], serviceTemplate, config.WantCert, false)
+				var configuredTemplate string
+				var certData map[int]string
+				if versionInfo {
+					data := getVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
+					versionData[endPaths[i]] = data
+					goto wait
+				} else {
+					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+				}
 				if config.WantCert {
 					certDestination := config.EndDir + "/" + certData[0]
 					writeToFile(certData[1], certDestination)
@@ -160,7 +197,11 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					goto wait
 				} else if !config.WantCert {
 					if config.Diff {
-						config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+						if version != "" {
+							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
+						} else {
+							config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+						}
 					} else {
 						writeToFile(configuredTemplate, endPaths[i])
 					}
@@ -168,7 +209,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 			}
 
 			//print that we're done
-			if !config.Diff && !isCert {
+			if !config.Diff && !isCert && !versionInfo {
 				if runtime.GOOS == "windows" {
 					fmt.Println("template configured and written to " + endPaths[i])
 				} else {
@@ -178,9 +219,12 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 
 		wait:
 			mod.Close()
-		}(i, templatePath)
+		}(i, templatePath, version, versionData)
 	}
 	wg.Wait()
+	if versionInfo {
+		config.VersionInfo(versionData)
+	}
 }
 func writeToFile(data string, path string) {
 	byteData := []byte(data)
