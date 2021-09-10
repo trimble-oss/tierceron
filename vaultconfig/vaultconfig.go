@@ -129,6 +129,8 @@ func diffHelper() {
 		envFileKeyB := resultMap[keyB]
 		mutex.Unlock()
 
+		keySplitA[0] = strings.ReplaceAll(keySplitA[0], "0", "latest")
+		keySplitB[0] = strings.ReplaceAll(keySplitB[0], "0", "latest")
 		switch envLength {
 		case 4:
 			keyC := keys[2]
@@ -138,6 +140,8 @@ func diffHelper() {
 			mutex.Lock()
 			envFileKeyC := resultMap[keyC]
 			envFileKeyD := resultMap[keyD]
+			keySplitC[0] = strings.ReplaceAll(keySplitC[0], "0", "latest")
+			keySplitD[0] = strings.ReplaceAll(keySplitD[0], "0", "latest")
 			mutex.Unlock()
 
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
@@ -158,6 +162,7 @@ func diffHelper() {
 			mutex.Lock()
 			envFileKeyC := resultMap[keyC]
 			mutex.Unlock()
+			keySplitC[0] = strings.ReplaceAll(keySplitC[0], "0", "latest")
 
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
 			fmt.Println(eUtils.LineByLineDiff(envFileKeyB, envFileKeyA))
@@ -180,8 +185,24 @@ func diffHelper() {
 	}
 }
 
+func versionHelper(versionData map[string]interface{}) {
+	for filename, versionMap := range versionData {
+		fmt.Println("======================================================================================")
+		fmt.Println(filename)
+		fmt.Println("======================================================================================")
+		for versionNumber, versionMetadata := range versionMap.(map[string]interface{}) {
+			fmt.Println("Version " + versionNumber + " Metadata:")
+			for field, fieldData := range versionMetadata.(map[string]interface{}) {
+				fmt.Printf(field + ": ")
+				fmt.Println(fieldData)
+			}
+		}
+	}
+	fmt.Println("======================================================================================")
+}
+
 func main() {
-	fmt.Println("Version: " + "1.18")
+	fmt.Println("Version: " + "1.19")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	startDirPtr := flag.String("startDir", "vault_templates", "Template directory")
@@ -199,6 +220,7 @@ func main() {
 	zcPtr := flag.Bool("zc", false, "Zero config (no configuration option).")
 	diffPtr := flag.Bool("diff", false, "Diff files")
 	fileFilterPtr := flag.String("filter", "", "Filter files for diff")
+	versionInfoPtr := flag.Bool("versionInfo", false, "Version information about environment")
 
 	args := os.Args[1:]
 
@@ -221,8 +243,14 @@ func main() {
 		*wantCertPtr = false
 	}
 
+	if *versionInfoPtr && *diffPtr {
+		fmt.Println("Cannot use -diff flag and -versionInfo flag together")
+		os.Exit(1)
+	}
+
 	if *diffPtr {
-		if strings.ContainsAny(*envPtr, ",") {
+		if strings.ContainsAny(*envPtr, ",") { //Multiple environments
+			*envPtr = strings.ReplaceAll(*envPtr, "latest", "0")
 			envDiffSlice = strings.Split(*envPtr, ",")
 			envLength = len(envDiffSlice)
 			if len(envDiffSlice) > 4 {
@@ -238,6 +266,9 @@ func main() {
 					fmt.Println("Unsupported env: local not available with diff flag")
 					os.Exit(1)
 				}
+				if !strings.Contains(env, "_") {
+					envDiffSlice[i] = env + "_0"
+				}
 			}
 		} else {
 			fmt.Println("Incorrect format for diff: -env=env1,env2,...")
@@ -245,14 +276,25 @@ func main() {
 		}
 	} else {
 		if strings.ContainsAny(*envPtr, ",") {
-			fmt.Println("Incorrect format for env: -env=env1")
+			fmt.Println("-diff flag is required for multiple environments - env: -env=env1,env2,...")
 			os.Exit(1)
 		}
 		if strings.Contains(*envPtr, "filesys") {
 			fmt.Println("Unsupported env: filesys only available with diff flag")
 			os.Exit(1)
 		}
+		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
+		*envPtr = envVersion[0]
 		eUtils.AutoAuth(secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		if len(envVersion) >= 2 { //Put back env+version together
+			*envPtr = envVersion[0] + "_" + envVersion[1]
+			if envVersion[1] == "" {
+				fmt.Println("Must declare desired version number after '_' : -env=env1_ver1")
+				os.Exit(1)
+			}
+		} else {
+			*envPtr = envVersion[0] + "_0"
+		}
 	}
 
 	if !*diffPtr {
@@ -305,9 +347,19 @@ func main() {
 	if *diffPtr {
 		configSlice := make([]eUtils.DriverConfig, 0, len(envDiffSlice)-1)
 		for _, env := range envDiffSlice {
-			*envPtr = env
+			envVersion := strings.Split(env, "_") //Break apart env+version for token
+			*envPtr = envVersion[0]
 			*tokenPtr = ""
 			eUtils.AutoAuth(secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			if len(envVersion) >= 2 { //Put back env+version together
+				*envPtr = envVersion[0] + "_" + envVersion[1]
+				if envVersion[1] == "" {
+					fmt.Println("Must declare desired version number after '_' : -env=env1_ver1,env2_ver2")
+					os.Exit(1)
+				}
+			} else {
+				*envPtr = envVersion[0] + "_0"
+			}
 			config := eUtils.DriverConfig{
 				Token:          *tokenPtr,
 				VaultAddress:   *addrPtr,
@@ -333,6 +385,13 @@ func main() {
 			}()
 		}
 	} else {
+		if *versionInfoPtr {
+			*envPtr = *envPtr + "_versionInfo"
+		}
+		envVersion := strings.Split(*envPtr, "_")
+		if len(envVersion) < 2 {
+			*envPtr = envVersion[0] + "_0"
+		}
 		config := eUtils.DriverConfig{
 			Token:          *tokenPtr,
 			VaultAddress:   *addrPtr,
@@ -348,17 +407,21 @@ func main() {
 			Log:            logger,
 			Diff:           *diffPtr,
 			FileFilter:     fileFilterSlice,
+			VersionInfo:    versionHelper,
 		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			eUtils.ConfigControl(config, utils.GenerateConfigsFromVault)
 		}()
-
 	}
 	wg.Wait() //Wait for templates
 	close(resultChannel)
 	if *diffPtr { //Diff if needed
+		if fileSysIndex != -1 {
+			envDiffSlice = append(envDiffSlice, "filesys")
+			envLength = len(envDiffSlice)
+		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
