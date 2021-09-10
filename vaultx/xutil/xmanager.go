@@ -50,6 +50,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	multiService := false
 	service := ""
 	var mod *kv.Modifier
+	noVault := false
 
 	if config.Token != "" {
 		var err error
@@ -58,6 +59,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			panic(err)
 		}
 		mod.Env = config.Env
+		if config.Token == "novault" {
+			noVault = true
+		}
 	}
 
 	if config.GenAuth && mod != nil {
@@ -95,7 +99,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(templatePath string, project string, service string, multiService bool, c eUtils.DriverConfig) {
+		go func(templatePath string, project string, service string, multiService bool, c eUtils.DriverConfig, noVault bool) {
 			// Map Subsections
 			var templateResult TemplateResultData
 
@@ -148,7 +152,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			}
 
 			var cds *vcutils.ConfigDataStore
-			if goMod != nil {
+			if goMod != nil && !noVault {
 				cds = new(vcutils.ConfigDataStore)
 				cds.Init(goMod, c.SecretMode, true, project, service)
 			}
@@ -166,7 +170,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			)
 			templateResult.env = goMod.Env
 			templateResultChan <- &templateResult
-		}(templatePath, project, service, multiService, config)
+		}(templatePath, project, service, multiService, config, noVault)
 	}
 	wg.Wait()
 
