@@ -266,6 +266,9 @@ func main() {
 					fmt.Println("Unsupported env: local not available with diff flag")
 					os.Exit(1)
 				}
+				if !strings.Contains(env, "_") {
+					envDiffSlice[i] = env + "_0"
+				}
 			}
 		} else {
 			fmt.Println("Incorrect format for diff: -env=env1,env2,...")

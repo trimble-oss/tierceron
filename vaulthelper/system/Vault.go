@@ -12,6 +12,7 @@ import (
 
 	"Vault.Whoville/vaulthelper/kv"
 	"github.com/hashicorp/vault/api"
+	"gopkg.in/yaml.v2"
 )
 
 //Vault Represents a vault connection for managing the vault's properties
