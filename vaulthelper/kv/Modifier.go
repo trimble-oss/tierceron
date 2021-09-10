@@ -27,6 +27,7 @@ type Modifier struct {
 	Env              string       // Environment (local/dev/QA; Initialized to secrets)
 	Regions          []string     // Supported regions
 	SecretDictionary *api.Secret  // Current Secret Dictionary Cache.
+	Version          string       // This is the version for data
 }
 
 // NewModifier Constructs a new modifier struct and connects to the vault
@@ -57,7 +58,7 @@ func NewModifier(token string, address string, env string, regions []string) (*M
 	modClient.SetToken(token)
 
 	// Return the modifier
-	return &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions}, nil
+	return &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions, Version: ""}, nil
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
@@ -138,7 +139,18 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	if len(pathBlocks) > 1 {
 		fullPath += pathBlocks[1]
 	}
-	secret, err := m.logical.Read(fullPath)
+
+	var versionMap = make(map[string][]string)
+	var secret *api.Secret
+	var err error
+	if m.Version != "" {
+		versionSlice := []string{m.Version}
+		versionMap["version"] = versionSlice
+		secret, err = m.logical.ReadWithData(fullPath, versionMap)
+	} else {
+		secret, err = m.logical.Read(fullPath)
+	}
+
 	if secret == nil {
 		return nil, err
 	}
@@ -146,7 +158,6 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 		return data, err
 	}
 	return nil, errors.New("Could not get data from vault response")
-
 }
 
 //ReadMapValue takes a valueMap, path, and a key and returns the corresponding value from the vault

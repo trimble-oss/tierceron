@@ -29,6 +29,7 @@ type DriverConfig struct {
 	Diff           bool
 	Update         func(*string, string)
 	FileFilter     []string
+	VersionInfo    func(map[string]interface{})
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.

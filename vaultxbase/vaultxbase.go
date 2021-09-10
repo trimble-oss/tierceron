@@ -129,7 +129,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	for _, env := range envSlice {
 		*envPtr = env
 		*tokenPtr = ""
-		eUtils.AutoAuth(secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		if !*noVaultPtr {
+			eUtils.AutoAuth(secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		} else {
+			*tokenPtr = "novault"
+		}
 		config := eUtils.DriverConfig{
 			Token:          *tokenPtr,
 			VaultAddress:   *addrPtr,
