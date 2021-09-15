@@ -223,7 +223,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 	}
 }
 
-func (cds *ConfigDataStore) InitVersionData(mod *kv.Modifier, secretMode bool, useDirs bool, project string, file string, servicesWanted ...string) map[string]interface{} {
+func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode bool, useDirs bool, project string, file string, servicesWanted ...string) map[string]interface{} {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
@@ -261,7 +261,7 @@ func (cds *ConfigDataStore) InitVersionData(mod *kv.Modifier, secretMode bool, u
 			continue
 		}
 
-		data, err = mod.ReadVersions(path)
+		data, err = mod.ReadTemplateVersions(path)
 		if err != nil {
 			fmt.Printf("Couldn't read version data for %s\n", path)
 		}

@@ -33,6 +33,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this vaultx to access the vault")
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
+	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 
 	// Checks for proper flag input
 	args := os.Args[1:]
@@ -96,7 +97,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			appRoleIDPtr = nil
 			regions = eUtils.GetSupportedProdRegions()
 		}
-		eUtils.AutoAuth(secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 	}
 
 	if tokenPtr == nil || *tokenPtr == "" && !*noVaultPtr && len(envSlice) == 0 {
@@ -128,13 +129,16 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	var waitg sync.WaitGroup
 	for _, env := range envSlice {
 		*envPtr = env
-		*tokenPtr = ""
+		if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
+			*tokenPtr = ""
+		}
 		if !*noVaultPtr {
-			eUtils.AutoAuth(secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 		} else {
 			*tokenPtr = "novault"
 		}
 		config := eUtils.DriverConfig{
+			Insecure:       *insecurePtr,
 			Token:          *tokenPtr,
 			VaultAddress:   *addrPtr,
 			Env:            *envPtr,

@@ -32,7 +32,7 @@ func (c *cert) getCert() *cert {
 		log.Printf("User home directory #%v ", err)
 	}
 
-	yamlFile, err := ioutil.ReadFile(userHome + "/.vault/configcert.yml")
+	yamlFile, err := ioutil.ReadFile(userHome + "/.tierceron/config.yml")
 	if err != nil {
 		log.Printf("yamlFile.Get err #%v ", err)
 	}
@@ -46,7 +46,7 @@ func (c *cert) getCert() *cert {
 }
 
 // AutoAuth attempts to
-func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, tokenNamePtr *string, envPtr *string, addrPtr *string, ping bool) {
+func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, tokenNamePtr *string, envPtr *string, addrPtr *string, ping bool) {
 	// Declare local variables
 	var override bool
 	var exists bool
@@ -74,7 +74,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		override = false
 		exists = true
 	} else {
-		if _, err := os.Stat(userHome + "/.vault/configcert.yml"); !os.IsNotExist(err) {
+		if _, err := os.Stat(userHome + "/.tierceron/config.yml"); !os.IsNotExist(err) {
 			exists = true
 			c.getCert()
 			if addrPtr == nil || *addrPtr == "" {
@@ -150,7 +150,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 				log.Fatal(err)
 			}
 		}
-		v, err = sys.NewVault(*addrPtr, *envPtr, false, ping)
+		v, err = sys.NewVault(insecure, *addrPtr, *envPtr, false, ping)
 		CheckErrorNoStack(err, true)
 
 		// Get dump
@@ -164,7 +164,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		} else if override && !exists {
 			fmt.Println("No cert file exists, continuing without saving config IDs")
 		} else {
-			fmt.Printf("Creating new cert file in %s", userHome+"/.vault/configcert.yml\n")
+			fmt.Printf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n")
 			certConfigData := "vaultHost: " + vaultHost + "\n"
 			if appRoleIDPtr != nil && secretIDPtr != nil {
 				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
@@ -177,15 +177,15 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		if !override || exists {
 
 			// Create hidden folder
-			if _, err := os.Stat(userHome + "/.vault"); os.IsNotExist(err) {
-				err = os.MkdirAll(userHome+"/.vault", 0700)
+			if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {
+				err = os.MkdirAll(userHome+"/.tierceron", 0700)
 				if err != nil {
 					log.Fatal(err)
 				}
 			}
 
 			// Create cert file
-			writeErr := ioutil.WriteFile(userHome+"/.vault/configcert.yml", dump, 0600)
+			writeErr := ioutil.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
 			if writeErr != nil {
 				fmt.Printf("Unable to write file: %v\n", writeErr)
 			}
@@ -199,7 +199,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 			}
 		}
 	} else {
-		v, err = sys.NewVault(*addrPtr, *envPtr, false, ping)
+		v, err = sys.NewVault(insecure, *addrPtr, *envPtr, false, ping)
 		CheckErrorNoStack(err, true)
 	}
 
@@ -254,7 +254,7 @@ func AutoAuth(secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, token
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		CheckError(err, true)
 
-		mod, err := kv.NewModifier(master, *addrPtr, *envPtr, nil)
+		mod, err := kv.NewModifier(insecure, master, *addrPtr, *envPtr, nil)
 		CheckError(err, true)
 		mod.Env = "bamboo"
 
