@@ -33,6 +33,7 @@ func main() {
 	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this vaultpub to access the vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
+	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 
 	logBuffer := new(bytes.Buffer)
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
@@ -43,13 +44,13 @@ func main() {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			utils.CheckError(fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
 		}
-		v, err := sys.NewVault(*addrPtr, *envPtr, false, *pingPtr)
+		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr)
 		utils.CheckError(err, true)
 
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		utils.CheckError(err, true)
 
-		mod, err := kv.NewModifier(master, *addrPtr, *envPtr, nil)
+		mod, err := kv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil)
 		utils.CheckError(err, true)
 		mod.Env = "bamboo"
 
@@ -67,16 +68,22 @@ func main() {
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 
-	mod, err := kv.NewModifier(*tokenPtr, *addrPtr, *envPtr, nil)
+	mod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil)
 	utils.CheckError(err, true)
 	mod.Env = *envPtr
 
 	err, warn := il.UploadTemplateDirectory(mod, *dirPtr, logger)
+	if err != nil {
+		if strings.Contains(err.Error(), "x509: certificate") {
+			os.Exit(-1)
+		}
+	}
+
 	utils.CheckError(err, true)
 	utils.CheckWarnings(warn, true)
 }
 
-func uploadTemplates(addr string, token string, dirName string, env string, logger *log.Logger) {
+func uploadTemplates(insecure bool, addr string, token string, dirName string, env string, logger *log.Logger) {
 	logger.Println("dirName")
 	logger.Println(dirName)
 	// Open directory
@@ -90,14 +97,14 @@ func uploadTemplates(addr string, token string, dirName string, env string, logg
 	logger.Println(subDir)
 
 	// Create modifier
-	mod, err := kv.NewModifier(token, addr, env, nil)
+	mod, err := kv.NewModifier(insecure, token, addr, env, nil)
 	utils.CheckError(err, true)
 	mod.Env = env
 
 	// Parse through files
 	for _, file := range files {
 		if file.IsDir() { // Recurse folders
-			uploadTemplates(addr, token, dirName+"/"+file.Name(), env, logger)
+			uploadTemplates(insecure, addr, token, dirName+"/"+file.Name(), env, logger)
 			// if err != nil || len(warn) > 0 {
 			// 	return err, warn
 			// }

@@ -130,9 +130,9 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 	return template, certData
 }
 
-func getVersionData(modifier *kv.Modifier, secretMode bool, project string, service string, file string) map[string]interface{} {
+func getTemplateVersionData(modifier *kv.Modifier, secretMode bool, project string, service string, file string) map[string]interface{} {
 	cds := new(ConfigDataStore)
-	versionData := cds.InitVersionData(modifier, secretMode, true, project, file, service)
+	versionData := cds.InitTemplateVersionData(modifier, secretMode, true, project, file, service)
 	return versionData
 }
 

@@ -13,7 +13,7 @@ import (
 //export ConfigTemplateLib
 func ConfigTemplateLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	fmt.Println("NCLib Version: " + "1.12")
-	mod, err := kv.NewModifier(token, address, env, nil)
+	mod, err := kv.NewModifier(false, token, address, env, nil)
 	mod.Env = env
 	if err != nil {
 		panic(err)
@@ -29,7 +29,7 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 //export ConfigCertLib
 func ConfigCertLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	fmt.Println("NCLib Version: " + "1.12")
-	mod, err := kv.NewModifier(token, address, env, nil)
+	mod, err := kv.NewModifier(false, token, address, env, nil)
 	mod.Env = env
 	if err != nil {
 		panic(err)

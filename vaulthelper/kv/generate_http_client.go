@@ -5,11 +5,12 @@ import (
 	"crypto/x509"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
 //CreateHTTPClient reads from several .pem files to get the necessary keys and certs to configure the http client and returns the client.
-func CreateHTTPClient(env string) (client *http.Client, err error) {
+func CreateHTTPClient(insecure bool, address string, env string) (client *http.Client, err error) {
 	// // create a pool of trusted certs
 	certPath := "../../certs/cert_files/dcidevpublic.pem"
 	if env == "prod" || env == "staging" {
@@ -29,11 +30,30 @@ func CreateHTTPClient(env string) (client *http.Client, err error) {
 
 	certPool.AppendCertsFromPEM(cert)
 
+	var tlsConfig = &tls.Config{RootCAs: certPool}
+	if insecure {
+		u, err := url.Parse(address)
+		if err != nil {
+			return nil, err
+		}
+		host, _, _ := net.SplitHostPort(u.Host)
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return nil, err
+		}
+		for _, ip := range ips {
+			if ip.String() == "127.0.0.1" {
+				tlsConfig = &tls.Config{RootCAs: certPool, InsecureSkipVerify: true}
+				break
+			}
+		}
+	}
+
 	// create another test server and use the certificate
 	// configure a client to use trust those certificates
 	httpClient := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: certPool},
+			TLSClientConfig: tlsConfig,
 			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
