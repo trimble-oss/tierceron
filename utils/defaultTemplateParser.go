@@ -14,22 +14,24 @@ const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 type ConfigDriver func(config DriverConfig)
 
 type DriverConfig struct {
-	Token          string
-	VaultAddress   string
-	Env            string
-	Regions        []string
-	SecretMode     bool
-	ServicesWanted []string
-	StartDir       []string // Starting directory... possibly multiple
-	EndDir         string
-	WantCert       bool
-	ZeroConfig     bool
-	GenAuth        bool
-	Log            *log.Logger
-	Diff           bool
-	Update         func(*string, string)
-	FileFilter     []string
-	VersionInfo    func(map[string]interface{})
+	Insecure             bool
+	Token                string
+	VaultAddress         string
+	Env                  string
+	Regions              []string
+	SecretMode           bool
+	ServicesWanted       []string
+	StartDir             []string // Starting directory... possibly multiple
+	EndDir               string
+	WantCert             bool
+	ZeroConfig           bool
+	GenAuth              bool
+	Log                  *log.Logger
+	Diff                 bool
+	Update               func(*string, string)
+	FileFilter           []string
+	VersionInfo          func(map[string]interface{}, bool, string)
+	VersionProjectFilter []string
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
@@ -70,6 +72,7 @@ func ConfigControl(config DriverConfig, drive ConfigDriver) {
 					serviceFiles, err := ioutil.ReadDir(projectStartDir)
 					if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 						projectStartDir = projectStartDir + string(os.PathSeparator) + serviceFiles[0].Name()
+						config.VersionProjectFilter = append(config.VersionProjectFilter, serviceFiles[0].Name())
 					}
 					if strings.LastIndex(projectStartDir, string(os.PathSeparator)) < (len(projectStartDir) - 1) {
 						projectStartDir = projectStartDir + string(os.PathSeparator)
@@ -79,6 +82,7 @@ func ConfigControl(config DriverConfig, drive ConfigDriver) {
 				projectStartDir = strings.Replace(projectStartDir, "\\", "/", -1)
 				startDirs = append(startDirs, projectStartDir)
 			}
+
 			config.StartDir = startDirs
 			// Drive this set of configurations.
 			drive(config)

@@ -21,7 +21,7 @@ func LoginToLocal() (string, error) {
 	}
 	var username, environment string
 	var err error
-	httpsClient, err := kv.CreateHTTPClient("nonprod")
+	httpsClient, err := kv.CreateHTTPClient(false, configcore.VaultHost, "nonprod")
 	if err != nil {
 		return "", err
 	}

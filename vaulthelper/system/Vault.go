@@ -29,15 +29,15 @@ type KeyTokenWrapper struct {
 }
 
 // NewVault Constructs a new vault at the given address with the given access token
-func NewVault(addr string, env string, newVault bool, pingVault bool) (*Vault, error) {
-	httpClient, err := kv.CreateHTTPClient(env)
+func NewVault(insecure bool, address string, env string, newVault bool, pingVault bool) (*Vault, error) {
+	httpClient, err := kv.CreateHTTPClient(insecure, address, env)
 	if err != nil {
-		fmt.Println("vaultHost: " + addr)
+		fmt.Println("vaultHost: " + address)
 		return nil, err
 	}
-	client, err := api.NewClient(&api.Config{Address: addr, HttpClient: httpClient})
+	client, err := api.NewClient(&api.Config{Address: address, HttpClient: httpClient})
 	if err != nil {
-		fmt.Println("vaultHost: " + addr)
+		fmt.Println("vaultHost: " + address)
 		return nil, err
 	}
 
@@ -52,7 +52,7 @@ func NewVault(addr string, env string, newVault bool, pingVault bool) (*Vault, e
 	}
 
 	if !newVault && health.Sealed {
-		return nil, errors.New("Vault is sealed at " + addr)
+		return nil, errors.New("Vault is sealed at " + address)
 	}
 
 	return &Vault{

@@ -39,6 +39,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	updateRole := flag.Bool("updateRole", false, "Update security role")
 	updatePolicy := flag.Bool("updatePolicy", false, "Update security policy")
 	initNamespace := flag.Bool("initns", false, "Init namespace (tokens, policy, and role)")
+	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -104,11 +105,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Address must be specified using -addr flag")
 			os.Exit(1)
 		}
-		eUtils.AutoAuth(nil, nil, tokenPtr, nil, envPtr, addrPtr, *pingPtr)
+		eUtils.AutoAuth(*insecurePtr, nil, nil, tokenPtr, nil, envPtr, addrPtr, *pingPtr)
 	}
 
 	// Create a new vault system connection
-	v, err := sys.NewVault(*addrPtr, *envPtr, *newPtr, *pingPtr)
+	v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr)
 	if *pingPtr {
 		if err != nil {
 			fmt.Printf("Ping failure: %v\n", err)
@@ -243,7 +244,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				//
 				tokenMap := map[string]interface{}{}
 
-				mod, err := kv.NewModifier(v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
+				mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
 				utils.LogErrorObject(err, logger, false)
 
 				mod.Env = "bamboo"
@@ -335,7 +336,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
-		mod, err := kv.NewModifier(v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
+		mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
 		utils.LogErrorObject(err, logger, true)
 
 		mod.Env = "bamboo"
@@ -390,8 +391,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 	}
 
-	// Seed the vault with given seed directory
-	il.SeedVault(*seedPtr, *addrPtr, v.GetToken(), *envPtr, logger, *servicePtr, *uploadCertPtr)
+	// New vaults you can't also seed at same time
+	// because you first need tokens to do so.  Only seed if !new.
+	if !*newPtr {
+		// Seed the vault with given seed directory
+		il.SeedVault(*insecurePtr, *seedPtr, *addrPtr, v.GetToken(), *envPtr, logger, *servicePtr, *uploadCertPtr)
+	}
 
 	logger.SetPrefix("[INIT]")
 	logger.Println("=============End Vault Initialization=============")

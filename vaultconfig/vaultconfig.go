@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -129,8 +131,15 @@ func diffHelper() {
 		envFileKeyB := resultMap[keyB]
 		mutex.Unlock()
 
-		keySplitA[0] = strings.ReplaceAll(keySplitA[0], "0", "latest")
+		latestVersionACheck := strings.Split(keySplitA[0], "_")
+		if latestVersionACheck[1] == "0" {
+			keySplitA[0] = strings.ReplaceAll(keySplitA[0], "0", "latest")
+		}
 		keySplitB[0] = strings.ReplaceAll(keySplitB[0], "0", "latest")
+		latestVersionBCheck := strings.Split(keySplitB[0], "_")
+		if latestVersionBCheck[1] == "0" {
+			keySplitB[0] = strings.ReplaceAll(keySplitB[0], "0", "latest")
+		}
 		switch envLength {
 		case 4:
 			keyC := keys[2]
@@ -140,8 +149,14 @@ func diffHelper() {
 			mutex.Lock()
 			envFileKeyC := resultMap[keyC]
 			envFileKeyD := resultMap[keyD]
-			keySplitC[0] = strings.ReplaceAll(keySplitC[0], "0", "latest")
-			keySplitD[0] = strings.ReplaceAll(keySplitD[0], "0", "latest")
+			latestVersionCCheck := strings.Split(keySplitC[0], "_")
+			if latestVersionCCheck[1] == "0" {
+				keySplitC[0] = strings.ReplaceAll(keySplitC[0], "0", "latest")
+			}
+			latestVersionDCheck := strings.Split(keySplitD[0], "_")
+			if latestVersionDCheck[1] == "0" {
+				keySplitD[0] = strings.ReplaceAll(keySplitD[0], "0", "latest")
+			}
 			mutex.Unlock()
 
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
@@ -162,7 +177,10 @@ func diffHelper() {
 			mutex.Lock()
 			envFileKeyC := resultMap[keyC]
 			mutex.Unlock()
-			keySplitC[0] = strings.ReplaceAll(keySplitC[0], "0", "latest")
+			latestVersionCCheck := strings.Split(keySplitC[0], "_")
+			if latestVersionCCheck[1] == "0" {
+				keySplitC[0] = strings.ReplaceAll(keySplitC[0], "0", "latest")
+			}
 
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
 			fmt.Println(eUtils.LineByLineDiff(envFileKeyB, envFileKeyA))
@@ -185,20 +203,103 @@ func diffHelper() {
 	}
 }
 
-func versionHelper(versionData map[string]interface{}) {
-	for filename, versionMap := range versionData {
-		fmt.Println("======================================================================================")
-		fmt.Println(filename)
-		fmt.Println("======================================================================================")
-		for versionNumber, versionMetadata := range versionMap.(map[string]interface{}) {
-			fmt.Println("Version " + versionNumber + " Metadata:")
-			for field, fieldData := range versionMetadata.(map[string]interface{}) {
-				fmt.Printf(field + ": ")
-				fmt.Println(fieldData)
+func versionHelper(versionData map[string]interface{}, templateOrValues bool, valuePath string) {
+	Reset := "\033[0m"
+	Cyan := "\033[36m"
+	Red := "\033[31m"
+	if runtime.GOOS == "windows" {
+		Reset = ""
+		Cyan = ""
+		Red = ""
+	}
+
+	//template == true
+	if templateOrValues {
+		for _, versionMap := range versionData {
+			for _, versionMetadata := range versionMap.(map[string]interface{}) {
+				for field, data := range versionMetadata.(map[string]interface{}) {
+					if field == "destroyed" && !data.(bool) {
+						goto printOutput1
+					}
+				}
 			}
 		}
+		return
+
+	printOutput1:
+		for filename, versionMap := range versionData {
+			fmt.Println(Cyan + "======================================================================================")
+			fmt.Println(filename)
+			fmt.Println("======================================================================================" + Reset)
+			keys := make([]int, 0, len(versionMap.(map[string]interface{})))
+			for versionNumber, _ := range versionMap.(map[string]interface{}) {
+				versionNo, err := strconv.Atoi(versionNumber)
+				if err != nil {
+					fmt.Println()
+				}
+				keys = append(keys, versionNo)
+			}
+			sort.Ints(keys)
+			for i, key := range keys {
+				versionNumber := fmt.Sprint(key)
+				versionMetadata := versionMap.(map[string]interface{})[fmt.Sprint(key)]
+				fmt.Println("Version " + string(versionNumber) + " Metadata:")
+
+				fields := make([]string, 0, len(versionMetadata.(map[string]interface{})))
+				for field, _ := range versionMetadata.(map[string]interface{}) {
+					fields = append(fields, field)
+				}
+				sort.Strings(fields)
+				for _, field := range fields {
+					fmt.Printf(field + ": ")
+					fmt.Println(versionMetadata.(map[string]interface{})[field])
+				}
+				if i != len(keys)-1 {
+					fmt.Println(Red + "-------------------------------------------------------------------------------" + Reset)
+				}
+			}
+		}
+		fmt.Println(Cyan + "======================================================================================" + Reset)
+	} else {
+		for _, versionMetadata := range versionData {
+			for field, data := range versionMetadata.(map[string]interface{}) {
+				if field == "destroyed" && !data.(bool) {
+					goto printOutput
+				}
+			}
+		}
+		return
+
+	printOutput:
+		fmt.Println(Cyan + "ValuePath: " + valuePath)
+		fmt.Println("======================================================================================" + Reset)
+		keys := make([]int, 0, len(versionData))
+		for versionNumber, _ := range versionData {
+			versionNo, _ := strconv.ParseInt(versionNumber, 10, 64)
+			keys = append(keys, int(versionNo))
+		}
+		sort.Ints(keys)
+		for _, key := range keys {
+			versionNumber := key
+			versionMetadata := versionData[fmt.Sprint(key)]
+			fields := make([]string, 0)
+			fieldData := make(map[string]interface{}, 0)
+			for field, data := range versionMetadata.(map[string]interface{}) {
+				fields = append(fields, field)
+				fieldData[field] = data
+			}
+			sort.Strings(fields)
+			fmt.Println("Version " + fmt.Sprint(versionNumber) + " Metadata:")
+			for _, field := range fields {
+				fmt.Printf(field + ": ")
+				fmt.Println(fieldData[field])
+			}
+			if keys[len(keys)-1] != versionNumber {
+				fmt.Println(Red + "-------------------------------------------------------------------------------" + Reset)
+			}
+		}
+		fmt.Println(Cyan + "======================================================================================" + Reset)
 	}
-	fmt.Println("======================================================================================")
 }
 
 func main() {
@@ -220,7 +321,9 @@ func main() {
 	zcPtr := flag.Bool("zc", false, "Zero config (no configuration option).")
 	diffPtr := flag.Bool("diff", false, "Diff files")
 	fileFilterPtr := flag.String("filter", "", "Filter files for diff")
-	versionInfoPtr := flag.Bool("versionInfo", false, "Version information about environment")
+	templateInfoPtr := flag.Bool("templateInfo", false, "Version information about templates")
+	valueInfoPtr := flag.Bool("valueInfo", false, "Version information about values")
+	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 
 	args := os.Args[1:]
 
@@ -243,9 +346,26 @@ func main() {
 		*wantCertPtr = false
 	}
 
-	if *versionInfoPtr && *diffPtr {
-		fmt.Println("Cannot use -diff flag and -versionInfo flag together")
+	if *templateInfoPtr && *diffPtr {
+		fmt.Println("Cannot use -diff flag and -templateInfo flag together")
 		os.Exit(1)
+	} else if *valueInfoPtr && *diffPtr {
+		fmt.Println("Cannot use -diff flag and -valueInfo flag together")
+		os.Exit(1)
+	} else if *valueInfoPtr && *templateInfoPtr {
+		fmt.Println("Cannot use -templateInfo flag and -valueInfo flag together")
+		os.Exit(1)
+	} else if *valueInfoPtr || *templateInfoPtr {
+		envVersion := strings.Split(*envPtr, "_")
+		if len(envVersion) > 1 && envVersion[1] != "" {
+			Yellow := "\033[33m"
+			Reset := "\033[0m"
+			if runtime.GOOS == "windows" {
+				Reset = ""
+				Yellow = ""
+			}
+			fmt.Println(Yellow + "Specified versioning not available, using " + envVersion[0] + " as environment" + Reset)
+		}
 	}
 
 	if *diffPtr {
@@ -285,7 +405,7 @@ func main() {
 		}
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
-		eUtils.AutoAuth(secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 		if len(envVersion) >= 2 { //Put back env+version together
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
@@ -350,7 +470,7 @@ func main() {
 			envVersion := strings.Split(env, "_") //Break apart env+version for token
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
-			eUtils.AutoAuth(secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 			if len(envVersion) >= 2 { //Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]
 				if envVersion[1] == "" {
@@ -361,6 +481,7 @@ func main() {
 				*envPtr = envVersion[0] + "_0"
 			}
 			config := eUtils.DriverConfig{
+				Insecure:       *insecurePtr,
 				Token:          *tokenPtr,
 				VaultAddress:   *addrPtr,
 				Env:            *envPtr,
@@ -385,14 +506,19 @@ func main() {
 			}()
 		}
 	} else {
-		if *versionInfoPtr {
-			*envPtr = *envPtr + "_versionInfo"
+		if *templateInfoPtr {
+			envVersion := strings.Split(*envPtr, "_")
+			*envPtr = envVersion[0] + "_templateInfo"
+		} else if *valueInfoPtr {
+			envVersion := strings.Split(*envPtr, "_")
+			*envPtr = envVersion[0] + "_valueInfo"
 		}
 		envVersion := strings.Split(*envPtr, "_")
 		if len(envVersion) < 2 {
 			*envPtr = envVersion[0] + "_0"
 		}
 		config := eUtils.DriverConfig{
+			Insecure:       *insecurePtr,
 			Token:          *tokenPtr,
 			VaultAddress:   *addrPtr,
 			Env:            *envPtr,
