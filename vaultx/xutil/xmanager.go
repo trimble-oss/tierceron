@@ -54,7 +54,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 	if config.Token != "" {
 		var err error
-		mod, err = kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
+		mod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
 		if err != nil {
 			panic(err)
 		}
@@ -113,7 +113,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 			if c.Token != "" {
 				var err error
-				goMod, err = kv.NewModifier(c.Token, c.VaultAddress, c.Env, c.Regions)
+				goMod, err = kv.NewModifier(c.Insecure, c.Token, c.VaultAddress, c.Env, c.Regions)
 				if err != nil {
 					panic(err)
 				}

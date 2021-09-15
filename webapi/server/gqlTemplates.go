@@ -16,7 +16,7 @@ import (
 // Secret values will only be populated for environments with values for that secret group
 // All template keys that reference public values will be populated with those values
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
+	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
@@ -81,7 +81,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 							return nil, err
 						}
 						//Get metadata of versions for each filePath
-						versions, err := mod.ReadVersions(filePath)
+						versions, err := mod.ReadTemplateVersions(filePath)
 						var dates []time.Time
 						for _, v := range versions {
 							if val, ok := v.(map[string]interface{}); ok {

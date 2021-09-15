@@ -18,21 +18,24 @@ var mutex = &sync.Mutex{}
 
 //GenerateConfigsFromVault configures the templates in vault_templates and writes them to vaultconfig
 func GenerateConfigsFromVault(config eUtils.DriverConfig) {
-	modCheck, err := kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
+	modCheck, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
 	modCheck.Env = config.Env
 	version := ""
 	if err != nil {
 		panic(err)
 	}
 
-	//Check if versionInfo is selected
-	versionInfo := false
+	//Check if templateInfo is selected for template or values
+	templateInfo := false
+	valueInfo := false
 	if strings.Contains(config.Env, "_") {
 		envAndVersion := strings.Split(config.Env, "_")
 		config.Env = envAndVersion[0]
 		version = envAndVersion[1]
-		if version == "versionInfo" {
-			versionInfo = true
+		if version == "valueInfo" {
+			valueInfo = true
+		} else if version == "templateInfo" {
+			templateInfo = true
 		}
 	}
 	versionData := make(map[string]interface{})
@@ -41,6 +44,35 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		os.Exit(1)
 	}
 
+	if valueInfo {
+		Cyan := "\033[36m"
+		Reset := "\033[0m"
+		if runtime.GOOS == "windows" {
+			Reset = ""
+			Cyan = ""
+		}
+		//Gets version metadata for values
+		versionMetadataMap, err := modCheck.GetVersionValues(modCheck)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(Cyan + "======================================================================================" + Reset)
+		for valuePath, data := range versionMetadataMap {
+			projectFound := false
+			for _, project := range config.VersionProjectFilter {
+				if strings.Contains(valuePath, project) {
+					projectFound = true
+				}
+			}
+			if !projectFound {
+				continue
+			}
+			path := strings.Split(valuePath, "values/")
+			formattedPath := path[1]
+			config.VersionInfo(data, false, formattedPath)
+		}
+		return
+	}
 	templatePaths := []string{}
 	endPaths := []string{}
 
@@ -90,7 +122,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) {
 			defer wg.Done()
 
-			mod, _ := kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
+			mod, _ := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
 			mod.Env = config.Env
 			mod.Version = version
 			//check for template_files directory here
@@ -137,8 +169,8 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 
 				var configuredTemplate string
 				var certData map[int]string
-				if versionInfo {
-					data := getVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
+				if templateInfo {
+					data := getTemplateVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
 					mutex.Lock()
 					versionData[endPaths[i]] = data
 					mutex.Unlock()
@@ -183,8 +215,8 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 				//assume the starting directory was vault_templates
 				var configuredTemplate string
 				var certData map[int]string
-				if versionInfo {
-					data := getVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
+				if templateInfo {
+					data := getTemplateVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
 					versionData[endPaths[i]] = data
 					goto wait
 				} else {
@@ -209,7 +241,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 			}
 
 			//print that we're done
-			if !config.Diff && !isCert && !versionInfo {
+			if !config.Diff && !isCert && !templateInfo {
 				if runtime.GOOS == "windows" {
 					fmt.Println("template configured and written to " + endPaths[i])
 				} else {
@@ -222,8 +254,8 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		}(i, templatePath, version, versionData)
 	}
 	wg.Wait()
-	if versionInfo {
-		config.VersionInfo(versionData)
+	if templateInfo {
+		config.VersionInfo(versionData, true, "")
 	}
 }
 func writeToFile(data string, path string) {
