@@ -90,6 +90,14 @@ func ConfigControl(config DriverConfig, drive ConfigDriver) {
 			return
 		}
 
+		if len(config.VersionProjectFilter) == 0 {
+			for _, projectFile := range projectFilesComplete {
+				if !strings.HasSuffix(projectFile.Name(), ".DS_Store") {
+					config.VersionProjectFilter = append(config.VersionProjectFilter, projectFile.Name())
+				}
+			}
+		}
+
 		if err == nil && len(projectFiles) == 1 && projectFiles[0].IsDir() {
 			config.StartDir[0] = config.StartDir[0] + string(os.PathSeparator) + projectFiles[0].Name()
 		} else if len(projectFiles) > 1 {

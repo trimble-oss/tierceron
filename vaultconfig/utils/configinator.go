@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -18,6 +20,12 @@ var mutex = &sync.Mutex{}
 
 //GenerateConfigsFromVault configures the templates in vault_templates and writes them to vaultconfig
 func GenerateConfigsFromVault(config eUtils.DriverConfig) {
+	Cyan := "\033[36m"
+	Reset := "\033[0m"
+	if runtime.GOOS == "windows" {
+		Reset = ""
+		Cyan = ""
+	}
 	modCheck, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
 	modCheck.Env = config.Env
 	version := ""
@@ -44,34 +52,71 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		os.Exit(1)
 	}
 
+	initialized := false
 	if valueInfo {
-		Cyan := "\033[36m"
-		Reset := "\033[0m"
-		if runtime.GOOS == "windows" {
-			Reset = ""
-			Cyan = ""
-		}
 		//Gets version metadata for values
 		versionMetadataMap, err := modCheck.GetVersionValues(modCheck)
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(Cyan + "======================================================================================" + Reset)
 		for valuePath, data := range versionMetadataMap {
 			projectFound := false
 			for _, project := range config.VersionProjectFilter {
 				if strings.Contains(valuePath, project) {
 					projectFound = true
+					initialized = true
+					break
 				}
 			}
 			if !projectFound {
 				continue
 			}
+
 			path := strings.Split(valuePath, "values/")
 			formattedPath := path[1]
 			config.VersionInfo(data, false, formattedPath)
 		}
+		if !initialized {
+			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
+		} else {
+			fmt.Println(Cyan + "======================================================================================" + Reset)
+		}
 		return
+	} else {
+		if version != "0" {
+			versionNumbers := make([]int, 0)
+			versionMetadataMap, err := modCheck.GetVersionValues(modCheck)
+			if err != nil {
+				panic(err)
+			}
+			for valuePath, data := range versionMetadataMap {
+				projectFound := false
+				for _, project := range config.VersionProjectFilter {
+					if strings.Contains(valuePath, project) {
+						projectFound = true
+						initialized = true
+						for key, _ := range data {
+							versionNo, err := strconv.Atoi(key)
+							if err != nil {
+								fmt.Println()
+							}
+							versionNumbers = append(versionNumbers, versionNo)
+						}
+					}
+					if !projectFound {
+						continue
+					}
+				}
+			}
+
+			sort.Ints(versionNumbers)
+			configVersion, _ := strconv.ParseInt(version, 10, 0)
+			if int(configVersion) > versionNumbers[len(versionNumbers)-1] {
+				latestVersion := fmt.Sprintf("%d", versionNumbers[len(versionNumbers)-1])
+				fmt.Println(Cyan + "This version " + config.Env + "_" + version + " is not available as the latest version is " + latestVersion + Reset)
+				os.Exit(1)
+			}
+		}
 	}
 	templatePaths := []string{}
 	endPaths := []string{}
