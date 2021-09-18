@@ -15,6 +15,7 @@ import (
 
 	eUtils "Vault.Whoville/utils"
 	"Vault.Whoville/vaultconfig/utils"
+	"github.com/google/go-cmp/cmp"
 )
 
 type ResultData struct {
@@ -135,7 +136,6 @@ func diffHelper() {
 		if latestVersionACheck[1] == "0" {
 			keySplitA[0] = strings.ReplaceAll(keySplitA[0], "0", "latest")
 		}
-		keySplitB[0] = strings.ReplaceAll(keySplitB[0], "0", "latest")
 		latestVersionBCheck := strings.Split(keySplitB[0], "_")
 		if latestVersionBCheck[1] == "0" {
 			keySplitB[0] = strings.ReplaceAll(keySplitB[0], "0", "latest")
@@ -271,6 +271,7 @@ func versionHelper(versionData map[string]interface{}, templateOrValues bool, va
 		return
 
 	printOutput:
+		fmt.Println(Cyan + "======================================================================================" + Reset)
 		fmt.Println(Cyan + "ValuePath: " + valuePath)
 		fmt.Println("======================================================================================" + Reset)
 		keys := make([]int, 0, len(versionData))
@@ -298,8 +299,20 @@ func versionHelper(versionData map[string]interface{}, templateOrValues bool, va
 				fmt.Println(Red + "-------------------------------------------------------------------------------" + Reset)
 			}
 		}
-		fmt.Println(Cyan + "======================================================================================" + Reset)
 	}
+}
+
+func removeDuplicateValues(intSlice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+
+	for _, entry := range intSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
 
 func main() {
@@ -414,6 +427,14 @@ func main() {
 			}
 		} else {
 			*envPtr = envVersion[0] + "_0"
+		}
+	}
+
+	if len(envDiffSlice) > 1 {
+		removeDuplicateValuesSlice := removeDuplicateValues(envDiffSlice)
+		if !cmp.Equal(envDiffSlice, removeDuplicateValuesSlice) {
+			fmt.Println("There is a duplicate environment in the -env flag")
+			os.Exit(1)
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"Vault.Whoville/utils"
 	eUtils "Vault.Whoville/utils"
@@ -40,6 +41,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	updatePolicy := flag.Bool("updatePolicy", false, "Update security policy")
 	initNamespace := flag.Bool("initns", false, "Init namespace (tokens, policy, and role)")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
+	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -129,7 +132,15 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if *devPtr || !*newPtr { // Dev server, initialization taken care of, get root token
 		v.SetToken(*tokenPtr)
 	} else { // Unseal and grab keys/root token
-		keyToken, err := v.InitVault(1, 1)
+		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
+		if err != nil {
+			fmt.Println("Unable to parse totalKeyShard into int")
+		}
+		unsealShardPtr, err := strconv.ParseUint(*unsealShardPtr, 10, 32)
+		if err != nil {
+			fmt.Println("Unable to parse unsealShardPtr into int")
+		}
+		keyToken, err := v.InitVault(int(unsealShardPtr), int(totalKeyShard))
 		utils.LogErrorObject(err, logger, true)
 		v.SetToken(keyToken.Token)
 		v.SetShards(keyToken.Keys)
