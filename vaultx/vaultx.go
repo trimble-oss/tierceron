@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"Vault.Whoville/vaultxbase"
+	"fyne.io/fyne/app"
 )
 
 // This executable automates the creation of seed files from template file(s).
@@ -12,5 +13,10 @@ import (
 func main() {
 	fmt.Println("Version: " + "1.19")
 	envPtr := flag.String("env", "dev", "Environment to get seed data for.")
-	vaultxbase.CommonMain(envPtr, nil)
+	app := app.New()
+	w := app.NewWindow("Hello")
+
+	vaultxbase.CommonMain(w, envPtr, nil)
+
+	w.ShowAndRun()
 }
