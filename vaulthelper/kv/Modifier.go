@@ -147,7 +147,7 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	var versionMap = make(map[string][]string)
 	var secret *api.Secret
 	var err error
-	if m.Version != "" {
+	if m.Version != "" && !strings.HasPrefix(path, "templates") {
 		versionSlice := []string{m.Version}
 		versionMap["version"] = versionSlice
 		secret, err = m.logical.ReadWithData(fullPath, versionMap)

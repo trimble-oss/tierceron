@@ -46,7 +46,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 		pathParts := strings.Split(path, "/")
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
-			if pathParts[2] == servicesWanted[i] || strings.HasPrefix(servicesWanted[i], pathParts[2]) {
+			if servicesWanted[i] == pathParts[2] {
 				foundWantedService = true
 				break
 			}
@@ -252,7 +252,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode
 		pathParts := strings.Split(path, "/")
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
-			if pathParts[2] == servicesWanted[i] || strings.HasPrefix(servicesWanted[i], pathParts[2]) {
+			if servicesWanted[i] == pathParts[2] {
 				foundWantedService = true
 				break
 			}
