@@ -37,7 +37,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	}
 
 	// Init and unseal vault
-	keyToken, err := v.InitVault(1, 1)
+	keyToken, err := v.InitVault(3, 5)
 	if err != nil {
 		utils.LogErrorObject(err, logger, false)
 		return &pb.InitResp{
