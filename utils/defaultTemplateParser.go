@@ -6,6 +6,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"fyne.io/fyne"
 )
 
 // {{or .<key> "<value>"}}
@@ -14,6 +16,7 @@ const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 type ConfigDriver func(config DriverConfig)
 
 type DriverConfig struct {
+	Window               fyne.Window
 	Insecure             bool
 	Token                string
 	VaultAddress         string
