@@ -32,6 +32,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 	if err != nil {
 		panic(err)
 	}
+	modCheck.ProjectVersionFilter = config.VersionProjectFilter
 
 	//Check if templateInfo is selected for template or values
 	templateInfo := false
@@ -54,8 +55,20 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 
 	initialized := false
 	if valueInfo {
-		//Gets version metadata for values
-		versionMetadataMap, err := modCheck.GetVersionValues(modCheck)
+		versionDataMap := make(map[string]map[string]interface{})
+		versionMetadataMap := make(map[string]map[string]interface{})
+		//Gets version metadata for super secrets or values if super secrets don't exist.
+		secretMetadataMap, err := modCheck.GetVersionValues(modCheck, "super-secrets")
+		if secretMetadataMap == nil {
+			versionMetadataMap, err = modCheck.GetVersionValues(modCheck, "values")
+		}
+		for key, value := range secretMetadataMap {
+			versionMetadataMap[key] = value
+		}
+		if versionMetadataMap == nil {
+			fmt.Println("Unable to get version metadata for values")
+			os.Exit(1)
+		}
 		if err != nil {
 			panic(err)
 		}
@@ -72,9 +85,28 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 				continue
 			}
 
-			path := strings.Split(valuePath, "values/")
-			formattedPath := path[1]
-			config.VersionInfo(data, false, formattedPath)
+			versionDataMap[valuePath] = data
+		}
+		//Find shortest path
+		pathCount := 0
+		shortestPath := ""
+		secretExist := false
+		secretPath := ""
+		for fullPath, data := range versionDataMap {
+			if strings.Contains(fullPath, "super-secret") && strings.HasSuffix(fullPath, config.VersionProjectFilter[0]) {
+				secretExist = true
+				secretPath = fullPath
+			}
+			tempCount := strings.Count(fullPath, "/")
+			if tempCount < pathCount || tempCount == 0 || data != nil {
+				pathCount = tempCount
+				shortestPath = fullPath
+			}
+		}
+		if secretExist {
+			config.VersionInfo(versionDataMap[secretPath], false, secretPath)
+		} else {
+			config.VersionInfo(versionDataMap[shortestPath], false, shortestPath)
 		}
 		if !initialized {
 			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
@@ -85,7 +117,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 	} else {
 		if version != "0" {
 			versionNumbers := make([]int, 0)
-			versionMetadataMap, err := modCheck.GetVersionValues(modCheck)
+			versionMetadataMap, err := modCheck.GetVersionValues(modCheck, "values")
 			if err != nil {
 				panic(err)
 			}
@@ -93,6 +125,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 				projectFound := false
 				for _, project := range config.VersionProjectFilter {
 					if strings.Contains(valuePath, project) {
+
 						projectFound = true
 						initialized = true
 						for key, _ := range data {
@@ -111,7 +144,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 
 			sort.Ints(versionNumbers)
 			configVersion, _ := strconv.ParseInt(version, 10, 0)
-			if int(configVersion) > versionNumbers[len(versionNumbers)-1] {
+			if len(versionNumbers) > 0 && int(configVersion) > versionNumbers[len(versionNumbers)-1] {
 				latestVersion := fmt.Sprintf("%d", versionNumbers[len(versionNumbers)-1])
 				fmt.Println(Cyan + "This version " + config.Env + "_" + version + " is not available as the latest version is " + latestVersion + Reset)
 				os.Exit(1)
@@ -217,6 +250,10 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 				if templateInfo {
 					data := getTemplateVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
 					mutex.Lock()
+					if data == nil {
+						fmt.Println("Template version data could not be retrieved")
+						os.Exit(1)
+					}
 					versionData[endPaths[i]] = data
 					mutex.Unlock()
 					goto wait
