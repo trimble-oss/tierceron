@@ -32,7 +32,7 @@ type KeyTokenWrapper struct {
 func NewVault(insecure bool, address string, env string, newVault bool, pingVault bool) (*Vault, error) {
 	httpClient, err := kv.CreateHTTPClient(insecure, address, env)
 	if err != nil {
-		fmt.Println("vaultHost: " + address)
+		fmt.Println("Connection to vault couldn't be made - vaultHost: " + address)
 		return nil, err
 	}
 	client, err := api.NewClient(&api.Config{Address: address, HttpClient: httpClient})
