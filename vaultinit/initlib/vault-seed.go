@@ -74,6 +74,7 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 		return
 	}
 
+	seeded := false
 	for _, file := range files {
 		if file.Name() == env || (strings.HasPrefix(env, "local") && file.Name() == "local") {
 			logger.Println("\tStepping into: " + file.Name())
@@ -93,9 +94,13 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
 
 					SeedVaultFromFile(insecure, path, addr, token, env, logger, service, uploadCert)
+					seeded = true
 				}
 			}
 		}
+	}
+	if !seeded {
+		fmt.Println("Environment is not valid - Environment:", env)
 	}
 }
 
