@@ -16,7 +16,6 @@ import (
 )
 
 var wg sync.WaitGroup
-
 var wg2 sync.WaitGroup
 
 type TemplateResultData struct {
@@ -242,7 +241,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 // GenerateSeedsFromVault configures the templates in vault_templates and writes them to vaultx
 func GenerateSeedsFromVault(config eUtils.DriverConfig) {
-	if config.Diff { //Clean flag in vaultX
+	if config.Clean { //Clean flag in vaultX
 		_, err1 := os.Stat(config.EndDir + config.Env)
 		err := os.RemoveAll(config.EndDir + config.Env)
 
@@ -287,9 +286,14 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 		endPath = config.EndDir + config.Env + "/" + config.Env + "_seed.yml"
 	}
 
-	writeToFile(seedData, endPath)
-	// Print that we're done
-	fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + config.Env)
+	if config.Diff {
+		config.Update(&seedData, config.Env+"||"+config.Env+"_seed.yml")
+	} else {
+		writeToFile(seedData, endPath)
+		// Print that we're done
+		fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + config.Env)
+	}
+
 }
 
 func writeToFile(data string, path string) {
