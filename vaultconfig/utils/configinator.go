@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -14,19 +16,141 @@ import (
 	"Vault.Whoville/vaulthelper/kv"
 )
 
+var mutex = &sync.Mutex{}
+
 //GenerateConfigsFromVault configures the templates in vault_templates and writes them to vaultconfig
 func GenerateConfigsFromVault(config eUtils.DriverConfig) {
-	modCheck, err := kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
+	Cyan := "\033[36m"
+	Reset := "\033[0m"
+	if runtime.GOOS == "windows" {
+		Reset = ""
+		Cyan = ""
+	}
+	modCheck, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
 	modCheck.Env = config.Env
+	version := ""
 	if err != nil {
 		panic(err)
 	}
+	modCheck.ProjectVersionFilter = config.VersionProjectFilter
 
+	//Check if templateInfo is selected for template or values
+	templateInfo := false
+	valueInfo := false
+	if strings.Contains(config.Env, "_") {
+		envAndVersion := strings.Split(config.Env, "_")
+		config.Env = envAndVersion[0]
+		version = envAndVersion[1]
+		if version == "valueInfo" {
+			valueInfo = true
+		} else if version == "templateInfo" {
+			templateInfo = true
+		}
+	}
+	versionData := make(map[string]interface{})
 	if !modCheck.ValidateEnvironment(config.Env) {
 		fmt.Println("Mismatched token for requested environment: " + config.Env)
 		os.Exit(1)
 	}
 
+	initialized := false
+	if valueInfo {
+		versionDataMap := make(map[string]map[string]interface{})
+		versionMetadataMap := make(map[string]map[string]interface{})
+		//Gets version metadata for super secrets or values if super secrets don't exist.
+		secretMetadataMap, err := modCheck.GetVersionValues(modCheck, "super-secrets")
+		if secretMetadataMap == nil {
+			versionMetadataMap, err = modCheck.GetVersionValues(modCheck, "values")
+		}
+		for key, value := range secretMetadataMap {
+			versionMetadataMap[key] = value
+		}
+		if versionMetadataMap == nil {
+			fmt.Println("Unable to get version metadata for values")
+			os.Exit(1)
+		}
+		if err != nil {
+			panic(err)
+		}
+		for valuePath, data := range versionMetadataMap {
+			projectFound := false
+			for _, project := range config.VersionProjectFilter {
+				if strings.Contains(valuePath, project) {
+					projectFound = true
+					initialized = true
+					break
+				}
+			}
+			if !projectFound {
+				continue
+			}
+
+			versionDataMap[valuePath] = data
+		}
+		//Find shortest path
+		pathCount := 0
+		shortestPath := ""
+		secretExist := false
+		secretPath := ""
+		for fullPath, data := range versionDataMap {
+			if strings.Contains(fullPath, "super-secret") && strings.HasSuffix(fullPath, config.VersionProjectFilter[0]) {
+				secretExist = true
+				secretPath = fullPath
+			}
+			tempCount := strings.Count(fullPath, "/")
+			if tempCount < pathCount || tempCount == 0 || data != nil {
+				pathCount = tempCount
+				shortestPath = fullPath
+			}
+		}
+		if secretExist {
+			config.VersionInfo(versionDataMap[secretPath], false, secretPath)
+		} else {
+			config.VersionInfo(versionDataMap[shortestPath], false, shortestPath)
+		}
+		if !initialized {
+			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
+		} else {
+			fmt.Println(Cyan + "======================================================================================" + Reset)
+		}
+		return
+	} else {
+		if version != "0" {
+			versionNumbers := make([]int, 0)
+			versionMetadataMap, err := modCheck.GetVersionValues(modCheck, "values")
+			if err != nil {
+				panic(err)
+			}
+			for valuePath, data := range versionMetadataMap {
+				projectFound := false
+				for _, project := range config.VersionProjectFilter {
+					if strings.Contains(valuePath, project) {
+
+						projectFound = true
+						initialized = true
+						for key, _ := range data {
+							versionNo, err := strconv.Atoi(key)
+							if err != nil {
+								fmt.Println()
+							}
+							versionNumbers = append(versionNumbers, versionNo)
+						}
+					}
+					if !projectFound {
+						continue
+					}
+				}
+			}
+
+			sort.Ints(versionNumbers)
+			configVersion, _ := strconv.ParseInt(version, 10, 0)
+			if len(versionNumbers) > 0 && int(configVersion) > versionNumbers[len(versionNumbers)-1] {
+				latestVersion := fmt.Sprintf("%d", versionNumbers[len(versionNumbers)-1])
+				fmt.Println(Cyan + "This version " + config.Env + "_" + version + " is not available as the latest version is " + latestVersion + Reset)
+				os.Exit(1)
+			}
+		}
+	}
 	templatePaths := []string{}
 	endPaths := []string{}
 
@@ -73,11 +197,12 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 	//configure each template in directory
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(i int, templatePath string) {
+		go func(i int, templatePath string, version string, versionData map[string]interface{}) {
 			defer wg.Done()
 
-			mod, _ := kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
+			mod, _ := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
 			mod.Env = config.Env
+			mod.Version = version
 			//check for template_files directory here
 			s := strings.Split(templatePath, "/")
 			//figure out which path is vault_templates
@@ -120,7 +245,21 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					}
 				}
 
-				configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+				var configuredTemplate string
+				var certData map[int]string
+				if templateInfo {
+					data := getTemplateVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
+					mutex.Lock()
+					if data == nil {
+						fmt.Println("Template version data could not be retrieved")
+						os.Exit(1)
+					}
+					versionData[endPaths[i]] = data
+					mutex.Unlock()
+					goto wait
+				} else {
+					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+				}
 				//generate template or certificate
 				if config.WantCert {
 					if len(certData) == 0 {
@@ -133,7 +272,11 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					goto wait
 				} else if !config.WantCert {
 					if config.Diff {
-						config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+						if version != "" {
+							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
+						} else {
+							config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+						}
 					} else {
 						writeToFile(configuredTemplate, endPaths[i])
 					}
@@ -152,7 +295,15 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					goto wait
 				}
 				//assume the starting directory was vault_templates
-				configuredTemplate, certData := ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[1], serviceTemplate, config.WantCert, false)
+				var configuredTemplate string
+				var certData map[int]string
+				if templateInfo {
+					data := getTemplateVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
+					versionData[endPaths[i]] = data
+					goto wait
+				} else {
+					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+				}
 				if config.WantCert {
 					certDestination := config.EndDir + "/" + certData[0]
 					writeToFile(certData[1], certDestination)
@@ -160,7 +311,11 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					goto wait
 				} else if !config.WantCert {
 					if config.Diff {
-						config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+						if version != "" {
+							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
+						} else {
+							config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+						}
 					} else {
 						writeToFile(configuredTemplate, endPaths[i])
 					}
@@ -168,7 +323,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 			}
 
 			//print that we're done
-			if !config.Diff && !isCert {
+			if !config.Diff && !isCert && !templateInfo {
 				if runtime.GOOS == "windows" {
 					fmt.Println("template configured and written to " + endPaths[i])
 				} else {
@@ -178,9 +333,12 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 
 		wait:
 			mod.Close()
-		}(i, templatePath)
+		}(i, templatePath, version, versionData)
 	}
 	wg.Wait()
+	if templateInfo {
+		config.VersionInfo(versionData, true, "")
+	}
 }
 func writeToFile(data string, path string) {
 	byteData := []byte(data)

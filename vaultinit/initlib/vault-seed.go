@@ -33,7 +33,7 @@ type writeCollection struct {
 }
 
 // SeedVault seeds the vault with seed files in the given directory
-func SeedVault(dir string, addr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
+func SeedVault(insecure bool, dir string, addr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
 	logger.SetPrefix("[SEED]")
 	logger.Printf("Seeding vault from seeds in: %s\n", dir)
 
@@ -52,6 +52,7 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 		}
 
 		config := utils.DriverConfig{
+			Insecure:       insecure,
 			Token:          token,
 			VaultAddress:   addr,
 			Env:            env,
@@ -69,10 +70,11 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 
 		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
 
-		SeedVaultFromData([]byte(seedData), addr, token, env, logger, service, true)
+		SeedVaultFromData(config.Insecure, []byte(seedData), addr, token, env, logger, service, true)
 		return
 	}
 
+	seeded := false
 	for _, file := range files {
 		if file.Name() == env || (strings.HasPrefix(env, "local") && file.Name() == "local") {
 			logger.Println("\tStepping into: " + file.Name())
@@ -91,23 +93,27 @@ func SeedVault(dir string, addr string, token string, env string, logger *log.Lo
 					path := dir + "/" + env + "/" + fileSteppedInto.Name()
 					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
 
-					SeedVaultFromFile(path, addr, token, env, logger, service, uploadCert)
+					SeedVaultFromFile(insecure, path, addr, token, env, logger, service, uploadCert)
+					seeded = true
 				}
 			}
 		}
 	}
+	if !seeded {
+		fmt.Println("Environment is not valid - Environment:", env)
+	}
 }
 
 //SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(filepath string, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
+func SeedVaultFromFile(insecure bool, filepath string, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	utils.LogErrorObject(err, logger, true)
-	SeedVaultFromData(rawFile, vaultAddr, token, env, logger, service, uploadCert)
+	SeedVaultFromData(insecure, rawFile, vaultAddr, token, env, logger, service, uploadCert)
 }
 
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
+func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
 	logger.SetPrefix("[SEED]")
 	logger.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
@@ -166,7 +172,7 @@ func SeedVaultFromData(fData []byte, vaultAddr string, token string, env string,
 	logger.Println("Seeding configuration data for the following templates:")
 	logger.Println("Please verify that these templates exist in each service")
 
-	mod, err := kv.NewModifier(token, vaultAddr, env, nil) // Connect to vault
+	mod, err := kv.NewModifier(insecure, token, vaultAddr, env, nil) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
 	for _, entry := range writeStack {

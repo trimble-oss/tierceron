@@ -16,7 +16,6 @@ import (
 )
 
 var wg sync.WaitGroup
-
 var wg2 sync.WaitGroup
 
 type TemplateResultData struct {
@@ -50,14 +49,18 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	multiService := false
 	service := ""
 	var mod *kv.Modifier
+	noVault := false
 
 	if config.Token != "" {
 		var err error
-		mod, err = kv.NewModifier(config.Token, config.VaultAddress, config.Env, config.Regions)
+		mod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
 		if err != nil {
 			panic(err)
 		}
 		mod.Env = config.Env
+		if config.Token == "novault" {
+			noVault = true
+		}
 	}
 
 	if config.GenAuth && mod != nil {
@@ -95,7 +98,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(templatePath string, project string, service string, multiService bool, c eUtils.DriverConfig) {
+		go func(templatePath string, project string, service string, multiService bool, c eUtils.DriverConfig, noVault bool) {
 			// Map Subsections
 			var templateResult TemplateResultData
 
@@ -109,7 +112,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 			if c.Token != "" {
 				var err error
-				goMod, err = kv.NewModifier(c.Token, c.VaultAddress, c.Env, c.Regions)
+				goMod, err = kv.NewModifier(c.Insecure, c.Token, c.VaultAddress, c.Env, c.Regions)
 				if err != nil {
 					panic(err)
 				}
@@ -148,7 +151,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			}
 
 			var cds *vcutils.ConfigDataStore
-			if goMod != nil {
+			if goMod != nil && !noVault {
 				cds = new(vcutils.ConfigDataStore)
 				cds.Init(goMod, c.SecretMode, true, project, service)
 			}
@@ -166,7 +169,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			)
 			templateResult.env = goMod.Env
 			templateResultChan <- &templateResult
-		}(templatePath, project, service, multiService, config)
+		}(templatePath, project, service, multiService, config, noVault)
 	}
 	wg.Wait()
 
@@ -238,7 +241,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 // GenerateSeedsFromVault configures the templates in vault_templates and writes them to vaultx
 func GenerateSeedsFromVault(config eUtils.DriverConfig) {
-	if config.Diff { //Clean flag in vaultX
+	if config.Clean { //Clean flag in vaultX
 		_, err1 := os.Stat(config.EndDir + config.Env)
 		err := os.RemoveAll(config.EndDir + config.Env)
 
@@ -283,9 +286,14 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 		endPath = config.EndDir + config.Env + "/" + config.Env + "_seed.yml"
 	}
 
-	writeToFile(seedData, endPath)
-	// Print that we're done
-	fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + config.Env)
+	if config.Diff {
+		config.Update(&seedData, config.Env+"||"+config.Env+"_seed.yml")
+	} else {
+		writeToFile(seedData, endPath)
+		// Print that we're done
+		fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + config.Env)
+	}
+
 }
 
 func writeToFile(data string, path string) {

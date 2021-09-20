@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"Vault.Whoville/utils"
 	eUtils "Vault.Whoville/utils"
@@ -39,6 +40,9 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	updateRole := flag.Bool("updateRole", false, "Update security role")
 	updatePolicy := flag.Bool("updatePolicy", false, "Update security policy")
 	initNamespace := flag.Bool("initns", false, "Init namespace (tokens, policy, and role)")
+	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
+	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -100,11 +104,18 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	logger.Println("==========Beginning Vault Initialization==========")
 
 	if addrPtr == nil || *addrPtr == "" {
-		eUtils.AutoAuth(nil, nil, tokenPtr, nil, envPtr, addrPtr, *pingPtr)
+		if *newPtr {
+			fmt.Println("Address must be specified using -addr flag")
+			os.Exit(1)
+		}
+		eUtils.AutoAuth(*insecurePtr, nil, nil, tokenPtr, nil, envPtr, addrPtr, *pingPtr)
 	}
 
 	// Create a new vault system connection
-	v, err := sys.NewVault(*addrPtr, *envPtr, *newPtr, *pingPtr)
+	v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr)
+	if err != nil {
+		os.Exit(0)
+	}
 	if *pingPtr {
 		if err != nil {
 			fmt.Printf("Ping failure: %v\n", err)
@@ -124,7 +135,15 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if *devPtr || !*newPtr { // Dev server, initialization taken care of, get root token
 		v.SetToken(*tokenPtr)
 	} else { // Unseal and grab keys/root token
-		keyToken, err := v.InitVault(1, 1)
+		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
+		if err != nil {
+			fmt.Println("Unable to parse totalKeyShard into int")
+		}
+		unsealShardPtr, err := strconv.ParseUint(*unsealShardPtr, 10, 32)
+		if err != nil {
+			fmt.Println("Unable to parse unsealShardPtr into int")
+		}
+		keyToken, err := v.InitVault(int(unsealShardPtr), int(totalKeyShard))
 		utils.LogErrorObject(err, logger, true)
 		v.SetToken(keyToken.Token)
 		v.SetShards(keyToken.Keys)
@@ -239,7 +258,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				//
 				tokenMap := map[string]interface{}{}
 
-				mod, err := kv.NewModifier(v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
+				mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
 				utils.LogErrorObject(err, logger, false)
 
 				mod.Env = "bamboo"
@@ -331,7 +350,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
-		mod, err := kv.NewModifier(v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
+		mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil) // Connect to vault
 		utils.LogErrorObject(err, logger, true)
 
 		mod.Env = "bamboo"
@@ -386,8 +405,18 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 	}
 
-	// Seed the vault with given seed directory
-	il.SeedVault(*seedPtr, *addrPtr, v.GetToken(), *envPtr, logger, *servicePtr, *uploadCertPtr)
+	// New vaults you can't also seed at same time
+	// because you first need tokens to do so.  Only seed if !new.
+	if !*newPtr {
+		// Seed the vault with given seed directory
+		mod, _ := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil) // Connect to vault
+		validToken := mod.ValidateEnvironment(mod.Env)                            //This is used to validate token
+		if !validToken {
+			fmt.Println("Invalid token - token: ", *tokenPtr)
+			os.Exit(1)
+		}
+		il.SeedVault(*insecurePtr, *seedPtr, *addrPtr, v.GetToken(), *envPtr, logger, *servicePtr, *uploadCertPtr)
+	}
 
 	logger.SetPrefix("[INIT]")
 	logger.Println("=============End Vault Initialization=============")

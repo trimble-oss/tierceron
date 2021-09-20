@@ -46,7 +46,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 		pathParts := strings.Split(path, "/")
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
-			if pathParts[2] == servicesWanted[i] || strings.HasPrefix(servicesWanted[i], pathParts[2]) {
+			if servicesWanted[i] == pathParts[2] {
 				foundWantedService = true
 				break
 			}
@@ -221,7 +221,52 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 		}
 
 	}
-	return
+}
+
+func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode bool, useDirs bool, project string, file string, servicesWanted ...string) map[string]interface{} {
+	cds.Regions = mod.Regions
+	cds.dataMap = make(map[string]interface{})
+	//get paths where the data is stored
+	dataPathsFull, err := getPathsFromProject(mod, project)
+
+	if err != nil {
+		fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
+		os.Exit(1)
+	}
+
+	dataPaths := dataPathsFull
+
+	var deeperData map[string]interface{}
+	data := make(map[string]interface{})
+	for _, path := range dataPaths {
+		//for each path, read the secrets there
+		pathParts := strings.Split(path, "/")
+		foundWantedService := false
+		for i := 0; i < len(servicesWanted); i++ {
+			if len(pathParts) >= 2 && servicesWanted[i] == pathParts[2] {
+				foundWantedService = true
+				break
+			}
+		}
+
+		if !foundWantedService {
+			continue
+		}
+
+		data, err = mod.ReadTemplateVersions(path)
+		if data == nil {
+			deeperData, _ = mod.ReadTemplateVersions(path + "template-file")
+		}
+		if err != nil || deeperData == nil && data == nil {
+			fmt.Printf("Couldn't read version data for %s\n", path)
+		}
+	}
+
+	if deeperData != nil && data == nil {
+		return deeperData
+	} else {
+		return data
+	}
 }
 
 // GetValue Provides data from the vault

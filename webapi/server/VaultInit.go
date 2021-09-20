@@ -25,7 +25,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	fmt.Println("Initing vault")
 
-	v, err := sys.NewVault(s.VaultAddr, "nonprod", true, false)
+	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		utils.LogErrorObject(err, logger, false)
@@ -37,7 +37,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	}
 
 	// Init and unseal vault
-	keyToken, err := v.InitVault(1, 1)
+	keyToken, err := v.InitVault(3, 5)
 	if err != nil {
 		utils.LogErrorObject(err, logger, false)
 		return &pb.InitResp{
@@ -75,7 +75,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 				Tokens:  nil,
 			}, err
 		}
-		il.SeedVaultFromData(fBytes, s.VaultAddr, s.VaultToken, seed.Env, logger, "", true)
+		il.SeedVaultFromData(false, fBytes, s.VaultAddr, s.VaultToken, seed.Env, logger, "", true)
 	}
 
 	il.UploadPolicies(policyPath, v, false, logger)
@@ -86,7 +86,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		tokenMap[token.Name] = token.Value
 	}
 
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
+	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil)
 	utils.LogErrorObject(err, logger, false)
 
 	mod.Env = "bamboo"
@@ -112,7 +112,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	})
 	utils.LogErrorObject(err, logger, false)
 
-	roleID, err := v.GetRoleID("bamboo")
+	roleID, _, err := v.GetRoleID("bamboo")
 	utils.LogErrorObject(err, logger, false)
 
 	secretID, err := v.GetSecretID("bamboo")
@@ -176,7 +176,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 		AuthToken: "",
 	}
 
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
+	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return &result, err
@@ -202,7 +202,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 
 //GetStatus requests version info and whether the vault has been initailized
 func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStatus, error) {
-	v, err := sys.NewVault(s.VaultAddr, "nonprod", true, false)
+	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
@@ -222,7 +222,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 
 //Unseal passes the unseal key to the vault and tries to unseal the vault
 func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp, error) {
-	v, err := sys.NewVault(s.VaultAddr, "nonprod", false, false)
+	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
