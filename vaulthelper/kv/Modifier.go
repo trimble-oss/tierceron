@@ -22,13 +22,14 @@ var noEnvironments = map[string]bool{
 // can be changed to alter where in the vault the key,value
 // pair is stored
 type Modifier struct {
-	httpClient       *http.Client // Handle to http client.
-	client           *api.Client  // Client connected to vault
-	logical          *api.Logical // Logical used for read/write options
-	Env              string       // Environment (local/dev/QA; Initialized to secrets)
-	Regions          []string     // Supported regions
-	SecretDictionary *api.Secret  // Current Secret Dictionary Cache.
-	Version          string       // This is the version for data
+	httpClient           *http.Client // Handle to http client.
+	client               *api.Client  // Client connected to vault
+	logical              *api.Logical // Logical used for read/write options
+	Env                  string       // Environment (local/dev/QA; Initialized to secrets)
+	Regions              []string     // Supported regions
+	SecretDictionary     *api.Secret  // Current Secret Dictionary Cache.
+	Version              string       // Version for data
+	ProjectVersionFilter []string     // Used to filter vault paths
 }
 
 // NewModifier Constructs a new modifier struct and connects to the vault
@@ -290,10 +291,10 @@ func (m *Modifier) Exists(path string) bool {
 }
 
 //GetVersionValues gets filepath for values and grabs metadata for those paths.
-func (m *Modifier) GetVersionValues(mod *Modifier) (map[string]map[string]interface{}, error) {
+func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[string]map[string]interface{}, error) {
 	envCheck := strings.Split(mod.Env, "_")
 	mod.Env = envCheck[0]
-	userPaths, err := mod.List("values/")
+	userPaths, err := mod.List(enginePath + "/")
 	versionDataMap := make(map[string]map[string]interface{}, 0)
 	//data := make([]string, 0)
 	if err != nil {
@@ -303,8 +304,26 @@ func (m *Modifier) GetVersionValues(mod *Modifier) (map[string]map[string]interf
 		return nil, err
 	}
 
+	//Finds additional paths outside of nested dirs
+	for _, userPath := range userPaths.Data {
+		for _, interfacePath := range userPath.([]interface{}) {
+			path := interfacePath.(string)
+			if path != "" {
+				path = enginePath + "/" + path
+				metadataValue, err := mod.ReadTemplateVersions(path)
+				if err != nil {
+					fmt.Println("Couldn't read version data at " + path)
+				}
+				if len(metadataValue) == 0 {
+					continue
+				}
+				versionDataMap[path] = metadataValue
+			}
+		}
+	}
+
 	//get a list of projects under values
-	projectPaths, err := getPaths(mod, "values/")
+	projectPaths, err := getPaths(mod, enginePath+"/")
 	if err != nil {
 		return nil, err
 	}
@@ -318,12 +337,41 @@ func (m *Modifier) GetVersionValues(mod *Modifier) (map[string]map[string]interf
 			return nil, err
 		}
 
+		if len(projectPaths) > 0 {
+			recursivePathFinder(mod, servicePaths, versionDataMap)
+		}
+		metadataValue, err := mod.ReadTemplateVersions(projectPath)
+		if err != nil {
+			err := fmt.Errorf("Unable to fetch data from %s", projectPath)
+			return nil, err
+		}
+		if len(metadataValue) == 0 {
+			continue
+		}
+		versionDataMap[projectPath] = metadataValue
+
 		for _, servicePath := range servicePaths {
+			if !strings.Contains(projectPath, mod.ProjectVersionFilter[0]) {
+				continue
+			}
 			//get a list of files under project
 			filePaths, err := getPaths(mod, servicePath)
 			if err != nil {
 				return nil, err
 			}
+
+			if len(servicePaths) > 0 {
+				recursivePathFinder(mod, servicePaths, versionDataMap)
+			}
+			metadataValue, err := mod.ReadTemplateVersions(servicePath)
+			if err != nil {
+				err := fmt.Errorf("Unable to fetch data from %s", servicePath)
+				return nil, err
+			}
+			if len(metadataValue) == 0 {
+				continue
+			}
+			versionDataMap[servicePath] = metadataValue
 
 			for _, filePath := range filePaths {
 				subFilePaths, err := getPaths(mod, filePath)
@@ -332,14 +380,14 @@ func (m *Modifier) GetVersionValues(mod *Modifier) (map[string]map[string]interf
 					recursivePathFinder(mod, subFilePaths, versionDataMap)
 				}
 				metadataValue, err := mod.ReadTemplateVersions(filePath)
-				if len(metadataValue) == 0 {
-					continue
-				}
-				versionDataMap[filePath] = metadataValue
 				if err != nil {
 					err := fmt.Errorf("Unable to fetch data from %s", filePath)
 					return nil, err
 				}
+				if len(metadataValue) == 0 {
+					continue
+				}
+				versionDataMap[filePath] = metadataValue
 			}
 		}
 	}
@@ -348,13 +396,20 @@ func (m *Modifier) GetVersionValues(mod *Modifier) (map[string]map[string]interf
 
 func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[string]map[string]interface{}) {
 	for _, filePath := range filePaths {
-		subFilePaths, err := getPaths(mod, filePath)
-		if err != nil {
-			fmt.Println(err)
+		if !strings.Contains(filePath, mod.ProjectVersionFilter[0]) {
+			continue
 		}
+
+		subFilePaths, err := getPaths(mod, filePath)
+
 		if len(subFilePaths) > 0 {
 			recursivePathFinder(mod, subFilePaths, versionDataMap)
 		}
+
+		if err != nil {
+			fmt.Println(err)
+		}
+
 		metadataValue, err := mod.ReadTemplateVersions(filePath)
 		if len(metadataValue) == 0 {
 			continue

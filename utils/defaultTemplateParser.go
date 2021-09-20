@@ -29,6 +29,7 @@ type DriverConfig struct {
 	WantCert             bool
 	ZeroConfig           bool
 	GenAuth              bool
+	Clean                bool
 	Log                  *log.Logger
 	Diff                 bool
 	Update               func(*string, string)
