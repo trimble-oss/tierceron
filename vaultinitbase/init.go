@@ -113,6 +113,9 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	// Create a new vault system connection
 	v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr)
+	if err != nil {
+		os.Exit(0)
+	}
 	if *pingPtr {
 		if err != nil {
 			fmt.Printf("Ping failure: %v\n", err)
@@ -406,6 +409,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	// because you first need tokens to do so.  Only seed if !new.
 	if !*newPtr {
 		// Seed the vault with given seed directory
+		mod, _ := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil) // Connect to vault
+		validToken := mod.ValidateEnvironment(mod.Env)                            //This is used to validate token
+		if !validToken {
+			fmt.Println("Invalid token - token: ", *tokenPtr)
+			os.Exit(1)
+		}
 		il.SeedVault(*insecurePtr, *seedPtr, *addrPtr, v.GetToken(), *envPtr, logger, *servicePtr, *uploadCertPtr)
 	}
 
