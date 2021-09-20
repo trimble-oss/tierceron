@@ -233,41 +233,40 @@ func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode
 		fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
 		os.Exit(1)
 	}
-	dataPaths := []string{}
-	for _, fullPath := range dataPathsFull {
-		if strings.HasSuffix(fullPath, "/") {
-			continue
-		} else {
-			dataPaths = append(dataPaths, fullPath)
-		}
-	}
-	if len(dataPaths) < len(dataPathsFull)/3 && len(dataPaths) != len(dataPathsFull) {
-		fmt.Println("Unexpected vault pathing.  Dropping optimization.")
-		dataPaths = dataPathsFull
-	}
 
+	dataPaths := dataPathsFull
+
+	var deeperData map[string]interface{}
 	data := make(map[string]interface{})
 	for _, path := range dataPaths {
 		//for each path, read the secrets there
 		pathParts := strings.Split(path, "/")
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
-			if servicesWanted[i] == pathParts[2] {
+			if len(pathParts) >= 2 && servicesWanted[i] == pathParts[2] {
 				foundWantedService = true
 				break
 			}
 		}
+
 		if !foundWantedService {
 			continue
 		}
 
 		data, err = mod.ReadTemplateVersions(path)
-		if err != nil {
+		if data == nil {
+			deeperData, _ = mod.ReadTemplateVersions(path + "template-file")
+		}
+		if err != nil || deeperData == nil && data == nil {
 			fmt.Printf("Couldn't read version data for %s\n", path)
 		}
-
 	}
-	return data
+
+	if deeperData != nil && data == nil {
+		return deeperData
+	} else {
+		return data
+	}
 }
 
 // GetValue Provides data from the vault
