@@ -377,12 +377,13 @@ func (m *ValuesRes) GetEnvs() []*ValuesRes_Env {
 }
 
 type ValuesRes_Env struct {
-	Name                 string                    `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Projects             []*ValuesRes_Env_Project  `protobuf:"bytes,2,rep,name=projects,proto3" json:"projects,omitempty"`
-	Providers            []*ValuesRes_Env_Provider `protobuf:"bytes,3,rep,name=providers,proto3" json:"providers,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
-	XXX_unrecognized     []byte                    `json:"-"`
-	XXX_sizecache        int32                     `json:"-"`
+	Name                 string                           `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Services             []*ValuesRes_Env_Project_Service `protobuf:"bytes,2,rep,name=services,proto3" json:"services,omitempty"`
+	Projects             []*ValuesRes_Env_Project         `protobuf:"bytes,2,rep,name=projects,proto3" json:"projects,omitempty"`
+	Providers            []*ValuesRes_Env_Provider        `protobuf:"bytes,3,rep,name=providers,proto3" json:"providers,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                         `json:"-"`
+	XXX_unrecognized     []byte                           `json:"-"`
+	XXX_sizecache        int32                            `json:"-"`
 }
 
 func (m *ValuesRes_Env) Reset()         { *m = ValuesRes_Env{} }

@@ -47,7 +47,7 @@ func (s *Server) authUser(mod *kv.Modifier, operatorId string, operatorPassword 
 }
 
 func (s *Server) getActiveSessions(env string) ([]configcore.Session, error) {
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
+	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func parseURL(url string) (string, string, string, string) {
 }
 
 func (s *Server) getVaultSessions(env string) ([]configcore.Session, error) {
-	mod, err := kv.NewModifier(s.VaultToken, s.VaultAddr, "nonprod", nil)
+	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil)
 	if err != nil {
 		return nil, err
 	}
