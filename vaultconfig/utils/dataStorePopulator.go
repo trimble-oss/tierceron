@@ -46,7 +46,8 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 		pathParts := strings.Split(path, "/")
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
-			if servicesWanted[i] == pathParts[2] {
+			splitService := strings.Split(servicesWanted[i], ".")
+			if pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2] {
 				foundWantedService = true
 				break
 			}
