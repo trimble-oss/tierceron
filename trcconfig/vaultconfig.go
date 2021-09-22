@@ -326,9 +326,9 @@ func main() {
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this vaultconfig to access the vault")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcconfig to access the vault")
 	wantCertPtr := flag.Bool("cert", false, "Pull certificate into directory specified by endDirPtr")
-	logFilePtr := flag.String("log", "./vaultconfig.log", "Output path for log file")
+	logFilePtr := flag.String("log", "./trcconfig.log", "Output path for log file")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	zcPtr := flag.Bool("zc", false, "Zero config (no configuration option).")
 	diffPtr := flag.Bool("diff", false, "Diff files")
@@ -450,7 +450,7 @@ func main() {
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	eUtils.CheckError(err, true)
-	logger := log.New(f, "[vaultconfig]", log.LstdFlags)
+	logger := log.New(f, "[trcconfig]", log.LstdFlags)
 	services := []string{}
 	if *servicesWanted != "" {
 		services = strings.Split(*servicesWanted, ",")

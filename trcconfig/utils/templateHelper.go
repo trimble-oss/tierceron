@@ -201,7 +201,7 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 						os.Exit(1)
 					}
 					encoded := fmt.Sprintf("%s", data)
-					//Decode cert as it was encoded in vaultinit
+					//Decode cert as it was encoded in trcinit
 					decoded, err := base64.StdEncoding.DecodeString(encoded)
 					if err != nil {
 						panic(err)

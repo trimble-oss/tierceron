@@ -18,7 +18,7 @@ import (
 
 var mutex = &sync.Mutex{}
 
-//GenerateConfigsFromVault configures the templates in vault_templates and writes them to vaultconfig
+//GenerateConfigsFromVault configures the templates in vault_templates and writes them to trcconfig
 func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
