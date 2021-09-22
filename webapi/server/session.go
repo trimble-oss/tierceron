@@ -9,7 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"Vault.Whoville/vaulthelper/kv"
+	"tierceron/vaulthelper/kv"
+
 	configcore "VaultConfig.Bootstrap/configcore"
 
 	//mysql and mssql go libraries

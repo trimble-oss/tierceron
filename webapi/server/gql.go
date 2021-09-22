@@ -9,8 +9,9 @@ import (
 	"regexp"
 	"strings"
 
-	"Vault.Whoville/utils"
-	pb "Vault.Whoville/webapi/rpc/apinator"
+	"tierceron/utils"
+	pb "tierceron/webapi/rpc/apinator"
+
 	configcore "VaultConfig.Bootstrap/configcore"
 	"github.com/graphql-go/graphql"
 )

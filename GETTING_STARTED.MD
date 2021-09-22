@@ -72,7 +72,7 @@ Tokens can only be created when logged in to the vault with token creation permi
 
 ##Create Seed Files
 Seed files are written in a YAML format. Each seed file is seeded under a single environment. 
-Seperate values for different environments in different files. [Example](Vault.Whoville/vault_seeds/seed.yml)
+Seperate values for different environments in different files. [Example](tierceron/trc_seeds/seed.yml)
 Data is organized in the vault as key-values pairs in a file system. The seed file should reflect this organization. 
 All values in the seed fall under 5 'root' categories.
 
@@ -149,7 +149,7 @@ vaultinit
 	-policies string
 		Directory that contains vault policies (default "policy_files")
 	-seeds string
-		Directory that contains vault seeds (default "vault_seeds")
+		Directory that contains vault seeds (default "trc_seeds")
 	-shard string
 		Key shard used to unseal a vault that has been initialized but restarted
 		This is required when the vault is restarted but the data has persisted

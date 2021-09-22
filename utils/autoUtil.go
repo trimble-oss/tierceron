@@ -8,9 +8,10 @@ import (
 	"os"
 	"strings"
 
-	sys "Vault.Whoville/vaulthelper/system"
+	sys "tierceron/vaulthelper/system"
 
-	"Vault.Whoville/vaulthelper/kv"
+	"tierceron/vaulthelper/kv"
+
 	"gopkg.in/yaml.v2"
 )
 
