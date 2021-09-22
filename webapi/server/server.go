@@ -9,9 +9,10 @@ import (
 	"os/exec"
 	"strings"
 
-	"Vault.Whoville/utils"
-	"Vault.Whoville/vaulthelper/kv"
-	pb "Vault.Whoville/webapi/rpc/apinator"
+	"tierceron/utils"
+	"tierceron/vaulthelper/kv"
+	pb "tierceron/webapi/rpc/apinator"
+
 	gql "github.com/graphql-go/graphql"
 )
 

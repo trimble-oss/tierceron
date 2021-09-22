@@ -8,8 +8,9 @@ import (
 	"strings"
 	"syscall"
 
-	"Vault.Whoville/vaulthelper/kv"
-	pb "Vault.Whoville/webapi/rpc/apinator"
+	"tierceron/vaulthelper/kv"
+	pb "tierceron/webapi/rpc/apinator"
+
 	configcore "VaultConfig.Bootstrap/configcore"
 	tm "golang.org/x/crypto/ssh/terminal"
 )
