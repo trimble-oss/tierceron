@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"log"
 
-	"Vault.Whoville/utils"
-	"Vault.Whoville/vaulthelper/kv"
-	sys "Vault.Whoville/vaulthelper/system"
-	il "Vault.Whoville/vaultinit/initlib"
-	pb "Vault.Whoville/webapi/rpc/apinator"
+	il "tierceron/trcinit/initlib"
+	"tierceron/utils"
+	"tierceron/vaulthelper/kv"
+	sys "tierceron/vaulthelper/system"
+	pb "tierceron/webapi/rpc/apinator"
 )
 
 const tokenPath string = "token_files"

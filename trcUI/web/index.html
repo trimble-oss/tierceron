@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+    // WARNING: DO NOT set the <base href> like this in production!
+    // Details: https://webdev.dartlang.org/angular/guide/router
+      (function () {
+        var m = document.location.pathname.match(/^(\/[-\w]+)+\/web($|\/)/);
+        document.write('<base href="' + (m ? m[0] : '/') + '" />');
+      }());
+    </script>
+    <!-- <base href="/"> -->
+    <title>trcUI</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="public/styles.css">
+    <link rel="icon" type="public/image/png" href="favicon.png">
+    <script defer src="public/main.dart.js"></script>
+  </head>
+  <body>
+    <my-app>Loading Resources...</my-app>
+  </body>
+</html>
