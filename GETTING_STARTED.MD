@@ -19,7 +19,7 @@ public folder with dart build
 
 Clone the repository
 
-From command line, navigate to the directory containing terraform files (trcinit/trcfiles) and run `terraform init`
+From command line, navigate to the directory containing terraform files (trcinit/vaultfiles) and run `terraform init`
 
 ##Deploying Vault
 Now run `terraform plan -out=vault.plan`

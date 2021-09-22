@@ -12,7 +12,7 @@
 *.out
 vault_properties.hcl
 vendor
-vaultUI/**
+trcUI/**
 trc_seeds/**
 bin/trc*
 bin/api*

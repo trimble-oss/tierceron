@@ -1,8 +1,8 @@
 @TestOn('browser')
 import 'package:angular_test/angular_test.dart';
 import 'package:test/test.dart';
-import 'package:vaultUI/app_component.dart';
-import 'package:vaultUI/app_component.template.dart' as ng;
+import 'package:trcUI/app_component.dart';
+import 'package:trcUI/app_component.template.dart' as ng;
 
 void main() {
   final testBed =
