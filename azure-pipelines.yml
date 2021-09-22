@@ -19,7 +19,7 @@ resources:
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
   GOPATH: '$(system.defaultWorkingDirectory)' # Go workspace path
-  modulePath: 'Vault.Whoville' # Path to the module's code
+  modulePath: 'tierceron' # Path to the module's code
 
 steps:
 - script: |
@@ -44,44 +44,44 @@ steps:
     go mod download
     echo "Compile start"
 
-    for p in vaultconfig vaultpub vaultinit vaultinitp vaultx vaultxp; do
+    for p in trcconfig trcpub trcinit trcinitp trcx trcxp; do
       echo Compiling $p
-      GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' Vault.Whoville/$p
+      GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
       fi
-      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' Vault.Whoville/$p
+      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
           echo File $p.exe was not built, aborting.
           exit 1
       fi
-      GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -a -ldflags '-w' Vault.Whoville/$p
+      GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
       fi
     done
 
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' Vault.Whoville/webapi/apiRouter
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' tierceron/webapi/apiRouter
     if [[ ! -f $GOBIN/apiRouter ]] ; then
         echo File apiRouter was not built, aborting.
         exit 1
     fi
 
-    GOBIN= GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' Vault.Whoville/configlib
+    GOBIN= GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
     fi
 
     echo "Compile Complete"
-    cp $GOBIN/vault* $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/trc* $(Build.ArtifactStagingDirectory)
     cp $GOBIN/apiRouter $(Build.ArtifactStagingDirectory)
     cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/windows_amd64/vault* $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/darwin_amd64/vaultconfig $(Build.ArtifactStagingDirectory)/vaultconfig.mac
-    cp $GOBIN/darwin_amd64/vaultinit $(Build.ArtifactStagingDirectory)/vaultinit.mac
+    cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/trcconfig.mac
+    cp $GOBIN/darwin_amd64/trcinit $(Build.ArtifactStagingDirectory)/trcinit.mac
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
@@ -94,20 +94,20 @@ steps:
 - task: Docker@2
   displayName: Build an image
   inputs:
-    repository: vaultconfig
+    repository: trcconfig
     buildContext: '$(Build.ArtifactStagingDirectory)'
     command: build
-    dockerfile: '**/docker/vaultconfig/Dockerfile'
+    dockerfile: '**/docker/trcconfig/Dockerfile'
     tags: |
       $(Build.SourceVersion)
 
 - task: Docker@2
   displayName: Build an image
   inputs:
-    repository: vaultpub
+    repository: trcpub
     buildContext: '$(Build.ArtifactStagingDirectory)'
     command: build
-    dockerfile: '**/docker/vaultpub/Dockerfile'
+    dockerfile: '**/docker/trcpub/Dockerfile'
     tags: |
       $(Build.SourceVersion)
 
@@ -116,18 +116,18 @@ steps:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'vaultconfig'
+    sourceImageName: 'trcconfig'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultconfig'
+    repositoryName: 'trcconfig'
     pushTag: '$(Build.SourceVersion)'
 - task: ECRPushImage@1
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'vaultconfig'
+    sourceImageName: 'trcconfig'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultconfig'
+    repositoryName: 'trcconfig'
     pushTag: 'latest'
 
 - task: ECRPushImage@1
@@ -135,16 +135,16 @@ steps:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'vaultpub'
+    sourceImageName: 'trcpub'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultpub'
+    repositoryName: 'trcpub'
     pushTag: '$(Build.SourceVersion)'
 - task: ECRPushImage@1
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'vaultpub'
+    sourceImageName: 'trcpub'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultpub'
+    repositoryName: 'trcpub'
     pushTag: 'latest'

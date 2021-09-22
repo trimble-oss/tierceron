@@ -12,9 +12,9 @@
 *.out
 vault_properties.hcl
 vendor
-vaultUI/**
-vault_seeds/**
-bin/vault*
+trcUI/**
+trc_seeds/**
+bin/trc*
 bin/api*
 .idea/
 .vscode/

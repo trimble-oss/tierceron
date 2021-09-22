@@ -6,8 +6,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"Vault.Whoville/vaultconfig/utils"
-	"Vault.Whoville/vaulthelper/kv"
+	"tierceron/trcconfig/utils"
+	"tierceron/vaulthelper/kv"
 )
 
 //export ConfigTemplateLib

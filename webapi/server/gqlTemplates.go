@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"Vault.Whoville/utils"
-	"Vault.Whoville/vaulthelper/kv"
-	pb "Vault.Whoville/webapi/rpc/apinator"
+	"tierceron/utils"
+	"tierceron/vaulthelper/kv"
+	pb "tierceron/webapi/rpc/apinator"
 )
 
 // getTemplateData Fetches all keys listed under 'templates' substituting private values with verification
