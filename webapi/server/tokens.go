@@ -7,10 +7,10 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 
-	"Vault.Whoville/utils"
-	"Vault.Whoville/vaulthelper/kv"
-	sys "Vault.Whoville/vaulthelper/system"
-	pb "Vault.Whoville/webapi/rpc/apinator"
+	"tierceron/utils"
+	"tierceron/vaulthelper/kv"
+	sys "tierceron/vaulthelper/system"
+	pb "tierceron/webapi/rpc/apinator"
 )
 
 func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, error) {
