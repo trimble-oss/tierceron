@@ -138,7 +138,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if addrPtrIn != nil && *addrPtrIn != "" {
 		addrPtr = addrPtrIn
 	}
-	startDirPtr := flag.String("startDir", "vault_templates", "Pull templates from this directory")
+	startDirPtr := flag.String("startDir", "trc_templates", "Pull templates from this directory")
 	endDirPtr := flag.String("endDir", "./trc_seeds/", "Write generated seed files to this directory")
 	logFilePtr := flag.String("log", "./var/log/vaultx.log", "Output path for log file")
 	helpPtr := flag.Bool("h", false, "Provide options for vaultx")

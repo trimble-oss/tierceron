@@ -26,7 +26,7 @@ import (
 
 func main() {
 	fmt.Println("Version: " + "1.3")
-	dirPtr := flag.String("dir", "vault_templates", "Directory containing template files for vault")
+	dirPtr := flag.String("dir", "trc_templates", "Directory containing template files for vault")
 	envPtr := flag.String("env", "dev", "Environement in vault")
 	addrPtr := flag.String("addr", configcore.VaultHostPort, "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")

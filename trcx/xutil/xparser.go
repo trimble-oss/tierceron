@@ -45,7 +45,7 @@ func ToSeed(mod *kv.Modifier,
 	// Gets the template file
 	var newTemplate string
 	if fromVault {
-		templatePathExtended := project + "/" + service + "/" + strings.Replace(templatePath, "vault_templates/", "/", 1)
+		templatePathExtended := project + "/" + service + "/" + strings.Replace(templatePath, "trc_templates/", "/", 1)
 		configuredFilePath := "./"
 		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, service, false, true)
 		newTemplate = string(templateFile)
@@ -113,7 +113,7 @@ func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int
 
 	// Find the index in the slice of the vault_template subdirectory
 	for i, folder := range templatePathSlice {
-		if folder == "vault_templates" {
+		if folder == "trc_templates" {
 			templateDir = i
 			templatePathSlice[i] = "templates"
 		}

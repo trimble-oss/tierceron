@@ -183,7 +183,7 @@ trcconfig
 		API endpoint for the vault (default "http://localhost:8200")
 		Specified in vault's config file
 	-startDir string
-		Template directory (default "vault_templates")
+		Template directory (default "trc_templates")
 	-endDir string
 		Directory to put configured templates into
 	-secretMode bool

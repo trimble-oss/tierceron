@@ -18,7 +18,7 @@ import (
 
 var mutex = &sync.Mutex{}
 
-//GenerateConfigsFromVault configures the templates in vault_templates and writes them to trcconfig
+//GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
 func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
@@ -205,10 +205,10 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 			mod.Version = version
 			//check for template_files directory here
 			s := strings.Split(templatePath, "/")
-			//figure out which path is vault_templates
+			//figure out which path is trc_templates
 			dirIndex := -1
 			for j, piece := range s {
-				if piece == "vault_templates" {
+				if piece == "trc_templates" {
 					dirIndex = j
 					break
 				}
@@ -294,7 +294,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 				if config.WantCert != isCert {
 					goto wait
 				}
-				//assume the starting directory was vault_templates
+				//assume the starting directory was trc_templates
 				var configuredTemplate string
 				var certData map[int]string
 				if templateInfo {
