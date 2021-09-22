@@ -1,7 +1,7 @@
 package server
 
 import (
-	"Vault.Whoville/vaulthelper/kv"
+	"tierceron/vaulthelper/kv"
 )
 
 //GetConfig gets a configuration by env and path.

@@ -1,4 +1,4 @@
-module Vault.Whoville
+module tierceron
 
 go 1.15
 

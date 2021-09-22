@@ -36,7 +36,7 @@ public class Client {
     certPath.n = certPath.p.length();
 
     TemplatePopulator.GoString.ByValue tempDir = new TemplatePopulator.GoString.ByValue();
-    tempDir.p = "~/workspace/VaultConfig.Bootstrap/vault_templates/ST/hibernate.properties.tmpl";
+    tempDir.p = "~/workspace/VaultConfig.Bootstrap/trc_templates/ST/hibernate.properties.tmpl";
     tempDir.n = tempDir.p.length();
 
     TemplatePopulator.GoString.ByValue endDir = new TemplatePopulator.GoString.ByValue();

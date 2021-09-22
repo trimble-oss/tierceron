@@ -8,10 +8,11 @@ import (
 	"os"
 	"strings"
 
-	"Vault.Whoville/utils"
-	"Vault.Whoville/utils/mlock"
-	twp "Vault.Whoville/webapi/rpc/apinator"
-	"Vault.Whoville/webapi/server"
+	"tierceron/utils"
+	"tierceron/utils/mlock"
+	twp "tierceron/webapi/rpc/apinator"
+	"tierceron/webapi/server"
+
 	configcore "VaultConfig.Bootstrap/configcore"
 	jwt "github.com/dgrijalva/jwt-go"
 	rtr "github.com/julienschmidt/httprouter"
