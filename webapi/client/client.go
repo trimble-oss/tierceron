@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"Vault.Whoville/utils"
-	pb "Vault.Whoville/webapi/rpc/apinator"
+	"tierceron/utils"
+	pb "tierceron/webapi/rpc/apinator"
 )
 
 func main() {

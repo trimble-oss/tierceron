@@ -50,7 +50,7 @@ func ConfigControl(config DriverConfig, drive ConfigDriver) {
 	startDirs := []string{}
 
 	// Satisfy needs of templating tool with path cleanup.
-	if config.StartDir[0] == "vault_templates" {
+	if config.StartDir[0] == "trc_templates" {
 		// Set up for single service configuration when available.
 		// This is the most common use of the tool.
 		pwd, err := os.Getwd()
