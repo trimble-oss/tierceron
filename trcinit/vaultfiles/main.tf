@@ -157,11 +157,11 @@ resource "aws_instance" "web" {
     }
 }
 
-resource "aws_ecr_repository" "vaultconfig" {
-  name = "vaultconfig"
+resource "aws_ecr_repository" "trcconfig" {
+  name = "trcconfig"
 }
 
-resource "aws_ecr_repository" "vaultpub" {
-  name = "vaultpub"
+resource "aws_ecr_repository" "trcpub" {
+  name = "trcpub"
 }
 
