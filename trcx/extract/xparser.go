@@ -18,6 +18,14 @@ const (
 	defaultSecret = "<Enter Secret Here>"
 )
 
+type TemplateResultData struct {
+	InterfaceTemplateSection interface{}
+	ValueSection             map[string]map[string]map[string]string
+	SecretSection            map[string]map[string]map[string]string
+	TemplateDepth            int
+	Env                      string
+}
+
 // ToSeed parses a <foo>.yml.tmpl file into a <foo>.yml file which then can be used for seeding vault
 // Input:
 //	- Directory location of .tmpl file

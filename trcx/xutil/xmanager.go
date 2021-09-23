@@ -8,6 +8,9 @@ import (
 	"strings"
 	"sync"
 
+	xdb "tierceron/trcx/db"
+	tui "tierceron/trcx/ui"
+
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
 	"tierceron/utils"
@@ -20,15 +23,7 @@ import (
 var wg sync.WaitGroup
 var wg2 sync.WaitGroup
 
-type TemplateResultData struct {
-	InterfaceTemplateSection interface{}
-	ValueSection             map[string]map[string]map[string]string
-	SecretSection            map[string]map[string]map[string]string
-	TemplateDepth            int
-	Env                      string
-}
-
-var templateResultChan = make(chan *TemplateResultData, 5)
+var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to vaultx
 func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, string, bool, string) {
@@ -88,7 +83,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 					}
 					wg.Done()
 				} else {
-					go func(tResult *TemplateResultData) {
+					go func(tResult *extract.TemplateResultData) {
 						templateResultChan <- tResult
 					}(tResult)
 				}
@@ -102,7 +97,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		wg.Add(1)
 		go func(templatePath string, project string, service string, multiService bool, c eUtils.DriverConfig, noVault bool) {
 			// Map Subsections
-			var templateResult TemplateResultData
+			var templateResult extract.TemplateResultData
 
 			templateResult.ValueSection = map[string]map[string]map[string]string{}
 			templateResult.ValueSection["values"] = map[string]map[string]string{}
@@ -296,6 +291,49 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 		fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + config.Env)
 	}
 
+}
+
+// GenerateSeedsFromVaultToDb pulls all data from vault for each template into a database
+func GenerateSeedsFromVaultToDb(config eUtils.DriverConfig) {
+	if config.Diff { //Clean flag in vaultX
+		_, err1 := os.Stat(config.EndDir + config.Env)
+		err := os.RemoveAll(config.EndDir + config.Env)
+
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if err1 == nil {
+			fmt.Println("Seed removed from", config.EndDir+config.Env)
+		}
+		return
+	}
+
+	// Get files from directory
+	tempTemplatePaths := []string{}
+	for _, startDir := range config.StartDir {
+		//get files from directory
+		tp := getDirFiles(startDir)
+		tempTemplatePaths = append(tempTemplatePaths, tp...)
+	}
+
+	//Duplicate path remover
+	keys := make(map[string]bool)
+	templatePaths := []string{}
+	for _, path := range tempTemplatePaths {
+		if _, value := keys[path]; !value {
+			keys[path] = true
+			templatePaths = append(templatePaths, path)
+		}
+	}
+
+	tierceronEngine := xdb.CreateEngine(config,
+		templatePaths,
+		config.Env)
+
+	// Everything now available for querying in tierceronEngine
+	tui.StartAndRunUI(config.Window, tierceronEngine)
 }
 
 func writeToFile(data string, path string) {

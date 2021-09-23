@@ -11,6 +11,8 @@ import (
 
 	"tierceron/trcx/xutil"
 	eUtils "tierceron/utils"
+
+	"fyne.io/fyne"
 )
 
 type ResultData struct {
@@ -132,7 +134,7 @@ func diffHelper() {
 
 // CommonMain This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
-func CommonMain(envPtr *string, addrPtrIn *string) {
+func CommonMain(w fyne.Window, envPtr *string, addrPtrIn *string) {
 	// Executable input arguments(flags)
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	if addrPtrIn != nil && *addrPtrIn != "" {
@@ -275,6 +277,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			*tokenPtr = "novault"
 		}
 		config := eUtils.DriverConfig{
+			Window:         w,
 			Insecure:       *insecurePtr,
 			Token:          *tokenPtr,
 			VaultAddress:   *addrPtr,
@@ -294,7 +297,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		waitg.Add(1)
 		go func() {
 			defer waitg.Done()
-			eUtils.ConfigControl(config, xutil.GenerateSeedsFromVault)
+			if true {
+				eUtils.ConfigControl(config, xutil.GenerateSeedsFromVaultToDb)
+			} else {
+				eUtils.ConfigControl(config, xutil.GenerateSeedsFromVault)
+			}
 		}()
 	}
 	waitg.Wait()
