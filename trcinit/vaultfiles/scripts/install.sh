@@ -32,26 +32,26 @@ privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
 sudo chown root:root /etc/opt/vault/vault_properties.hcl
 #put API files up
-sudo mkdir -p /etc/opt/vaultAPI
+sudo mkdir -p /etc/opt/trcAPI
 #add build files
-sudo mv /tmp/public /etc/opt/vaultAPI
+sudo mv /tmp/public /etc/opt/trcAPI
 #make server log file
-sudo touch /etc/opt/vaultAPI/server.log
-sudo chmod 0777 /etc/opt/vaultAPI/server.log
-sudo chown root:root /etc/opt/vaultAPI/server.log
+sudo touch /etc/opt/trcAPI/server.log
+sudo chmod 0777 /etc/opt/trcAPI/server.log
+sudo chown root:root /etc/opt/trcAPI/server.log
 #add apiRouter executable
 sudo unzip /tmp/apirouter.zip
-sudo mv /tmp/apiRouter /etc/opt/vaultAPI/apiRouter
-sudo chmod 0755 /etc/opt/vaultAPI/apiRouter
-sudo chown root:root /etc/opt/vaultAPI/apiRouter
+sudo mv /tmp/apiRouter /etc/opt/trcAPI/apiRouter
+sudo chmod 0755 /etc/opt/trcAPI/apiRouter
+sudo chown root:root /etc/opt/trcAPI/apiRouter
 #add policy files
-sudo mv /tmp/policy_files /etc/opt/vaultAPI
+sudo mv /tmp/policy_files /etc/opt/trcAPI
 #add token files
-sudo mv /tmp/token_files /etc/opt/vaultAPI
+sudo mv /tmp/token_files /etc/opt/trcAPI
 #add template files
-sudo mv /tmp/template_files /etc/opt/vaultAPI
-sudo mv /tmp/getArtifacts.sh /etc/opt/vaultAPI
-sudo chmod 0777 /etc/opt/vaultAPI/getArtifacts.sh
+sudo mv /tmp/template_files /etc/opt/trcAPI
+sudo mv /tmp/getArtifacts.sh /etc/opt/trcAPI
+sudo chmod 0777 /etc/opt/trcAPI/getArtifacts.sh
 
 # Setup the init script
 cat <<EOF >/tmp/upstart
