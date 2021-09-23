@@ -29,7 +29,7 @@ type TemplateResultData struct {
 
 var templateResultChan = make(chan *TemplateResultData, 5)
 
-// GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to vaultx
+// GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, string, bool, string) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -240,9 +240,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	return service, endPath, multiService, seedData
 }
 
-// GenerateSeedsFromVault configures the templates in trc_templates and writes them to vaultx
+// GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVault(config eUtils.DriverConfig) {
-	if config.Clean { //Clean flag in vaultX
+	if config.Clean { //Clean flag in trcx
 		_, err1 := os.Stat(config.EndDir + config.Env)
 		err := os.RemoveAll(config.EndDir + config.Env)
 

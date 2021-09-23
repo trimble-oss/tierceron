@@ -62,7 +62,7 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 			if splitAuth[0] == "Bearer" {
 				token, err := jwt.Parse(splitAuth[1], func(token *jwt.Token) (interface{}, error) { // Parse token and verify formatting
 					if _, ok := token.Method.(*jwt.SigningMethodHMAC); ok {
-						return s.VaultAPITokenSecret, nil
+						return s.TrcAPITokenSecret, nil
 					}
 					parseErr := fmt.Errorf("Unexpected singing method %v", token.Header["alg"])
 					s.Log.Println(parseErr)
