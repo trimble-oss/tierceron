@@ -8,7 +8,6 @@ import (
 
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
-	"tierceron/trcx/xutil"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 
@@ -40,7 +39,7 @@ func CreateEngine(config eUtils.DriverConfig,
 	// TODO: Make this async for performance...
 	for _, templatePath := range templatePaths {
 
-		var templateResult xutil.TemplateResultData
+		var templateResult extract.TemplateResultData
 		templateResult.ValueSection = map[string]map[string]map[string]string{}
 		templateResult.ValueSection["values"] = map[string]map[string]string{}
 

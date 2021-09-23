@@ -17,7 +17,7 @@ func main() {
 	app := app.New()
 	w := app.NewWindow("Hello")
 
-	trcxbase.CommonMain(envPtr, nil)
+	trcxbase.CommonMain(w, envPtr, nil)
 
 	w.ShowAndRun()
 }
