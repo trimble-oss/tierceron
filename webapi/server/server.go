@@ -24,11 +24,11 @@ var SelectedWebEnvironment []string
 
 // Server implements the twirp api server endpoints
 type Server struct {
-	VaultToken          string
-	VaultAddr           string
-	VaultAPITokenSecret []byte
-	GQLSchema           gql.Schema
-	Log                 *log.Logger
+	VaultToken        string
+	VaultAddr         string
+	TrcAPITokenSecret []byte
+	GQLSchema         gql.Schema
+	Log               *log.Logger
 }
 
 // NewServer Creates a new server struct and initializes the GraphQL schema
@@ -37,7 +37,7 @@ func NewServer(VaultAddr string, VaultToken string) *Server {
 	s.VaultToken = VaultToken
 	s.VaultAddr = VaultAddr
 	s.Log = log.New(os.Stdout, "[INFO]", log.LstdFlags)
-	s.VaultAPITokenSecret = nil
+	s.TrcAPITokenSecret = nil
 
 	return &s
 }
@@ -49,14 +49,14 @@ func (s *Server) InitConfig(env string) error {
 		utils.LogErrorObject(err, s.Log, false)
 		return err
 	}
-	vaultAPITokenSecretString, ok := connInfo["vaultApiTokenSecret"].(string)
+	trcAPITokenSecretString, ok := connInfo["trcAPITokenSecret"].(string)
 	if !ok {
-		err := fmt.Errorf("Missing vaultApiTokenSecret")
+		err := fmt.Errorf("Missing trcAPITokenSecret")
 		utils.LogErrorObject(err, s.Log, false)
 		return err
 	}
 
-	s.VaultAPITokenSecret = []byte(vaultAPITokenSecretString)
+	s.TrcAPITokenSecret = []byte(trcAPITokenSecretString)
 	return nil
 }
 
@@ -365,7 +365,7 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoPar
 		buildNum = "0" + buildNum
 	}
 	cmd := exec.Command(scriptPath, buildNum)
-	cmd.Dir = "/etc/opt/vaultAPI"
+	cmd.Dir = "/etc/opt/trcAPI"
 	err := cmd.Run()
 	utils.LogErrorObject(err, s.Log, false)
 	return &pb.NoParams{}, err
@@ -379,7 +379,7 @@ func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParam
 
 	SelectedEnvironment = SelectedWebEnvironment
 
-	if s.VaultAPITokenSecret == nil {
+	if s.TrcAPITokenSecret == nil {
 
 		var targetEnv string
 		for _, e := range SelectedEnvironment {
