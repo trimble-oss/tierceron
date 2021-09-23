@@ -24,11 +24,11 @@ var SelectedWebEnvironment []string
 
 // Server implements the twirp api server endpoints
 type Server struct {
-	VaultToken          string
-	VaultAddr           string
-	VaultAPITokenSecret []byte
-	GQLSchema           gql.Schema
-	Log                 *log.Logger
+	VaultToken        string
+	VaultAddr         string
+	TrcAPITokenSecret []byte
+	GQLSchema         gql.Schema
+	Log               *log.Logger
 }
 
 // NewServer Creates a new server struct and initializes the GraphQL schema
@@ -37,7 +37,7 @@ func NewServer(VaultAddr string, VaultToken string) *Server {
 	s.VaultToken = VaultToken
 	s.VaultAddr = VaultAddr
 	s.Log = log.New(os.Stdout, "[INFO]", log.LstdFlags)
-	s.VaultAPITokenSecret = nil
+	s.TrcAPITokenSecret = nil
 
 	return &s
 }
@@ -56,7 +56,7 @@ func (s *Server) InitConfig(env string) error {
 		return err
 	}
 
-	s.VaultAPITokenSecret = []byte(vaultAPITokenSecretString)
+	s.TrcAPITokenSecret = []byte(vaultAPITokenSecretString)
 	return nil
 }
 
@@ -379,7 +379,7 @@ func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParam
 
 	SelectedEnvironment = SelectedWebEnvironment
 
-	if s.VaultAPITokenSecret == nil {
+	if s.TrcAPITokenSecret == nil {
 
 		var targetEnv string
 		for _, e := range SelectedEnvironment {
