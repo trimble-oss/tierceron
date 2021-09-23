@@ -14,7 +14,7 @@ import (
 )
 
 func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, error) {
-	tokenSecret := s.VaultAPITokenSecret
+	tokenSecret := s.TrcAPITokenSecret
 	currentTime := time.Now().Unix()
 	expTime := currentTime + 24*60*60
 
