@@ -8,6 +8,10 @@ import (
 )
 
 func StartAndRunUI(w fyne.Window, tierceronEngine *xdb.TierceronEngine) {
+
+	// Query table to get column names?  Or maybe call describe?
+	//db.Query(tierceronEngine, "SELECT * from")
+
 	w.SetContent(
 		makeTable(
 			[]string{"Foo is much longer", "Bar", "Baz"},
