@@ -142,15 +142,15 @@ func CommonMain(w fyne.Window, envPtr *string, addrPtrIn *string) {
 	}
 	startDirPtr := flag.String("startDir", "trc_templates", "Pull templates from this directory")
 	endDirPtr := flag.String("endDir", "./trc_seeds/", "Write generated seed files to this directory")
-	logFilePtr := flag.String("log", "./var/log/vaultx.log", "Output path for log file")
-	helpPtr := flag.Bool("h", false, "Provide options for vaultx")
+	logFilePtr := flag.String("log", "./var/log/trcx.log", "Output path for log file")
+	helpPtr := flag.Bool("h", false, "Provide options for trcx")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	genAuth := flag.Bool("genAuth", false, "Generate auth section of seed data?")
 	cleanPtr := flag.Bool("clean", false, "Cleans seed files locally")
 	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this vaultx to access the vault")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcx to access the vault")
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
@@ -228,8 +228,8 @@ func CommonMain(w fyne.Window, envPtr *string, addrPtrIn *string) {
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("./var/log/"); os.IsNotExist(err) && *logFilePtr == "./var/log/vaultx.log" {
-		*logFilePtr = "./vaultx.log"
+	if _, err := os.Stat("./var/log/"); os.IsNotExist(err) && *logFilePtr == "./var/log/trcx.log" {
+		*logFilePtr = "./trcx.log"
 	}
 
 	regions := []string{}
@@ -258,10 +258,10 @@ func CommonMain(w fyne.Window, envPtr *string, addrPtrIn *string) {
 	// Initialize logging
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	eUtils.CheckError(err, true)
-	logger := log.New(f, "[vaultx]", log.LstdFlags)
+	logger := log.New(f, "[trcx]", log.LstdFlags)
 	logger.Println("=============== Initializing Seed Generator ===============")
 
-	logger.SetPrefix("[vaultx]")
+	logger.SetPrefix("[trcx]")
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
 	var waitg sync.WaitGroup
@@ -315,7 +315,7 @@ func CommonMain(w fyne.Window, envPtr *string, addrPtrIn *string) {
 	}
 	waitg.Wait() //Wait for diff
 
-	logger.SetPrefix("[vaultx]")
+	logger.SetPrefix("[trcx]")
 	logger.Println("=============== Terminating Seed Generator ===============")
 	logger.SetPrefix("[END]")
 	logger.Println()
