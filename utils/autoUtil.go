@@ -205,7 +205,7 @@ func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr
 	}
 
 	if secretIDPtr == nil || appRoleIDPtr == nil {
-		// Vaultinit and trcx may take this path.
+		// trcinit and trcx may take this path.
 		return
 	}
 
