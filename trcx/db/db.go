@@ -6,10 +6,11 @@ import (
 	"io"
 	"strings"
 
-	eUtils "Vault.Whoville/utils"
-	vcutils "Vault.Whoville/vaultconfig/utils"
-	"Vault.Whoville/vaulthelper/kv"
-	"Vault.Whoville/vaultx/extract"
+	vcutils "tierceron/trcconfig/utils"
+	"tierceron/trcx/extract"
+	"tierceron/trcx/xutil"
+	eUtils "tierceron/utils"
+	"tierceron/vaulthelper/kv"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -39,7 +40,7 @@ func CreateEngine(config eUtils.DriverConfig,
 	// TODO: Make this async for performance...
 	for _, templatePath := range templatePaths {
 
-		var templateResult extract.TemplateResultData
+		var templateResult xutil.TemplateResultData
 		templateResult.ValueSection = map[string]map[string]map[string]string{}
 		templateResult.ValueSection["values"] = map[string]map[string]string{}
 

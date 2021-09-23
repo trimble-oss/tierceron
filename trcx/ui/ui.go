@@ -1,7 +1,7 @@
 package ui
 
 import (
-	xdb "Vault.Whoville/vaultx/db"
+	xdb "tierceron/trcx/db"
 
 	"fyne.io/fyne"
 	"fyne.io/fyne/widget"
