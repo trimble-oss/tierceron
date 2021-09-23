@@ -204,7 +204,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			authConfigurations["pass"] = "<Enter Secret Here>"
 			authConfigurations["sessionDB"] = "<Enter Secret Here>"
 			authConfigurations["user"] = "<Enter Secret Here>"
-			authConfigurations["vaultApiTokenSecret"] = "<Enter Secret Here>"
+			authConfigurations["trcAPITokenSecret"] = "<Enter Secret Here>"
 
 			authSection := map[string]interface{}{}
 			authSection["apiLogins"] = map[string]interface{}{}
