@@ -21,11 +21,11 @@ var wg sync.WaitGroup
 var wg2 sync.WaitGroup
 
 type TemplateResultData struct {
-	interfaceTemplateSection interface{}
-	valueSection             map[string]map[string]map[string]string
-	secretSection            map[string]map[string]map[string]string
-	templateDepth            int
-	env                      string
+	InterfaceTemplateSection interface{}
+	ValueSection             map[string]map[string]map[string]string
+	SecretSection            map[string]map[string]map[string]string
+	TemplateDepth            int
+	Env                      string
 }
 
 var templateResultChan = make(chan *TemplateResultData, 5)
@@ -78,12 +78,12 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		for {
 			select {
 			case tResult := <-templateResultChan:
-				if config.Env == tResult.env {
-					sliceTemplateSection = append(sliceTemplateSection, tResult.interfaceTemplateSection)
-					sliceValueSection = append(sliceValueSection, tResult.valueSection)
-					sliceSecretSection = append(sliceSecretSection, tResult.secretSection)
-					if tResult.templateDepth > maxDepth {
-						maxDepth = tResult.templateDepth
+				if config.Env == tResult.Env {
+					sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
+					sliceValueSection = append(sliceValueSection, tResult.ValueSection)
+					sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
+					if tResult.TemplateDepth > maxDepth {
+						maxDepth = tResult.TemplateDepth
 						//templateCombinedSection = interfaceTemplateSection
 					}
 					wg.Done()
@@ -104,11 +104,11 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			// Map Subsections
 			var templateResult TemplateResultData
 
-			templateResult.valueSection = map[string]map[string]map[string]string{}
-			templateResult.valueSection["values"] = map[string]map[string]string{}
+			templateResult.ValueSection = map[string]map[string]map[string]string{}
+			templateResult.ValueSection["values"] = map[string]map[string]string{}
 
-			templateResult.secretSection = map[string]map[string]map[string]string{}
-			templateResult.secretSection["super-secrets"] = map[string]map[string]string{}
+			templateResult.SecretSection = map[string]map[string]map[string]string{}
+			templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
 
 			var goMod *kv.Modifier
 
@@ -158,18 +158,18 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				cds.Init(goMod, c.SecretMode, true, project, service)
 			}
 
-			_, _, _, templateResult.templateDepth = extract.ToSeed(goMod,
+			_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
 				cds,
 				templatePath,
 				config.Log,
 				project,
 				service,
 				fromVault,
-				&(templateResult.interfaceTemplateSection),
-				&(templateResult.valueSection),
-				&(templateResult.secretSection),
+				&(templateResult.InterfaceTemplateSection),
+				&(templateResult.ValueSection),
+				&(templateResult.SecretSection),
 			)
-			templateResult.env = goMod.Env
+			templateResult.Env = goMod.Env
 			templateResultChan <- &templateResult
 		}(templatePath, project, service, multiService, config, noVault)
 	}
