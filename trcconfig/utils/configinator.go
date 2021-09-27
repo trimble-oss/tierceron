@@ -48,7 +48,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		}
 	}
 	versionData := make(map[string]interface{})
-	if !modCheck.ValidateEnvironment(config.Env) {
+	if !modCheck.ValidateEnvironment(config.Env, false) {
 		fmt.Println("Mismatched token for requested environment: " + config.Env)
 		os.Exit(1)
 	}
