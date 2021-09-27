@@ -410,7 +410,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if !*newPtr {
 		// Seed the vault with given seed directory
 		mod, _ := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil) // Connect to vault
-		validToken := mod.ValidateEnvironment(mod.Env)                            //This is used to validate token
+		mod.Env = *envPtr
+		validToken := mod.ValidateEnvironment(mod.Env, true) //This is used to validate token
 		if !validToken {
 			fmt.Println("Invalid token - token: ", *tokenPtr)
 			os.Exit(1)

@@ -64,11 +64,15 @@ func NewModifier(insecure bool, token string, address string, env string, region
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
-func (m *Modifier) ValidateEnvironment(environment string) bool {
+func (m *Modifier) ValidateEnvironment(environment string, init bool) bool {
 	if strings.Contains(environment, "local") {
 		environment = "local"
 	}
 	desiredPolicy := "config_" + strings.ToLower(environment)
+
+	if init {
+		desiredPolicy = "vault_pub_" + strings.ToLower(environment)
+	}
 
 	secret, err := m.client.Auth().Token().LookupSelf()
 
