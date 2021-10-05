@@ -306,7 +306,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVault(config eUtils.DriverConfig) {
-	if config.Clean { //Clean flag in trcX
+	if config.Clean { //Clean flag in trcx
 		_, err1 := os.Stat(config.EndDir + config.Env)
 		err := os.RemoveAll(config.EndDir + config.Env)
 
