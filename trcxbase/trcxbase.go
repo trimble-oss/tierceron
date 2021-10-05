@@ -260,15 +260,6 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		os.Exit(1)
 	}
 
-	//Duplicate env checker
-	if len(envSlice) > 1 {
-		removeDuplicateValuesSlice := removeDuplicateValues(envSlice)
-		if !cmp.Equal(envSlice, removeDuplicateValuesSlice) {
-			fmt.Println("There is a duplicate environment in the -env flag")
-			os.Exit(1)
-		}
-	}
-
 	if *versionPtr {
 		if strings.Contains(*envPtr, ",") {
 			fmt.Println(Yellow + "Invalid environment, please specify one environment." + Reset)
