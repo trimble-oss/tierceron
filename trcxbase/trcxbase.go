@@ -13,8 +13,6 @@ import (
 
 	"tierceron/trcx/xutil"
 	eUtils "tierceron/utils"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 type ResultData struct {
