@@ -204,17 +204,17 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if addrPtrIn != nil && *addrPtrIn != "" {
 		addrPtr = addrPtrIn
 	}
-	startDirPtr := flag.String("startDir", "vault_templates", "Pull templates from this directory")
-	endDirPtr := flag.String("endDir", "./vault_seeds/", "Write generated seed files to this directory")
-	logFilePtr := flag.String("log", "./var/log/vaultx.log", "Output path for log file")
-	helpPtr := flag.Bool("h", false, "Provide options for vaultx")
+	startDirPtr := flag.String("startDir", "trc_templates", "Pull templates from this directory")
+	endDirPtr := flag.String("endDir", "./trc_seeds/", "Write generated seed files to this directory")
+	logFilePtr := flag.String("log", "./var/log/trcx.log", "Output path for log file")
+	helpPtr := flag.Bool("h", false, "Provide options for trcx")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	genAuth := flag.Bool("genAuth", false, "Generate auth section of seed data?")
 	cleanPtr := flag.Bool("clean", false, "Cleans seed files locally")
 	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this vaultx to access the vault")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcx to access the vault")
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
