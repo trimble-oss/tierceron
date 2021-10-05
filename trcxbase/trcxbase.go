@@ -342,8 +342,8 @@ skipDiff:
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("./var/log/"); os.IsNotExist(err) && *logFilePtr == "./var/log/vaultx.log" {
-		*logFilePtr = "./vaultx.log"
+	if _, err := os.Stat("./var/log/"); os.IsNotExist(err) && *logFilePtr == "./var/log/trcx.log" {
+		*logFilePtr = "./trcx.log"
 	}
 
 	regions := []string{}
@@ -372,10 +372,10 @@ skipDiff:
 	// Initialize logging
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	eUtils.CheckError(err, true)
-	logger := log.New(f, "[vaultx]", log.LstdFlags)
+	logger := log.New(f, "[trcx]", log.LstdFlags)
 	logger.Println("=============== Initializing Seed Generator ===============")
 
-	logger.SetPrefix("[vaultx]")
+	logger.SetPrefix("[trcx]")
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
 	var waitg sync.WaitGroup
@@ -433,7 +433,7 @@ skipDiff:
 	}
 	waitg.Wait() //Wait for diff
 
-	logger.SetPrefix("[vaultx]")
+	logger.SetPrefix("[trcx]")
 	logger.Println("=============== Terminating Seed Generator ===============")
 	logger.SetPrefix("[END]")
 	logger.Println()
