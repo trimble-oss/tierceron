@@ -6,8 +6,6 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -47,153 +45,6 @@ func reciever() {
 	}
 }
 
-func diffHelper() {
-	keys := []string{}
-
-	//Arranges keys for ordered output
-	for _, env := range envSlice {
-		keys = append(keys, env+"||"+env+"_seed.yml")
-	}
-
-	Reset := "\033[0m"
-	Red := "\033[31m"
-	Green := "\033[32m"
-	Yellow := "\033[0;33m"
-
-	if runtime.GOOS == "windows" {
-		Reset = ""
-		Red = ""
-		Green = ""
-		Yellow = ""
-	}
-
-	keyA := keys[0]
-	keyB := keys[1]
-	keySplitA := strings.Split(keyA, "||")
-	keySplitB := strings.Split(keyB, "||")
-	mutex.Lock()
-	envFileKeyA := resultMap[keyA]
-	envFileKeyB := resultMap[keyB]
-	mutex.Unlock()
-
-	//Seperator
-	if runtime.GOOS == "windows" {
-		fmt.Printf("\n======================================================================================")
-	} else {
-		fmt.Printf("\n\033[1;35m======================================================================================\033[0m")
-	}
-	switch envLength {
-	case 4:
-		keyC := keys[2]
-		keyD := keys[3]
-		keySplitC := strings.Split(keyC, "||")
-		keySplitD := strings.Split(keyD, "||")
-		mutex.Lock()
-		envFileKeyC := resultMap[keyC]
-		envFileKeyD := resultMap[keyD]
-		mutex.Unlock()
-
-		fmt.Print("\n" + Yellow + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
-		fmt.Println(eUtils.LineByLineDiff(envFileKeyB, envFileKeyA))
-		fmt.Print("\n" + Yellow + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-		fmt.Println(eUtils.LineByLineDiff(envFileKeyC, envFileKeyA))
-		fmt.Print("\n" + Yellow + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitD[0] + Reset + Yellow + ")" + Reset + "\n")
-		fmt.Println(eUtils.LineByLineDiff(envFileKeyD, envFileKeyA))
-		fmt.Print("\n" + Yellow + " (" + Reset + Red + "-Env-" + keySplitB[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-		fmt.Println(eUtils.LineByLineDiff(envFileKeyC, envFileKeyB))
-		fmt.Print("\n" + Yellow + " (" + Reset + Red + "-Env-" + keySplitB[0] + Reset + Green + " +Env-" + keySplitD[0] + Reset + Yellow + ")" + Reset + "\n")
-		fmt.Println(eUtils.LineByLineDiff(envFileKeyD, envFileKeyB))
-		fmt.Print("\n" + Yellow + " (" + Reset + Red + "-Env-" + keySplitC[0] + Reset + Green + " +Env-" + keySplitD[0] + Reset + Yellow + ")" + Reset + "\n")
-		fmt.Println(eUtils.LineByLineDiff(envFileKeyD, envFileKeyC))
-	case 3:
-		keyC := keys[2]
-		keySplitC := strings.Split(keyC, "||")
-		mutex.Lock()
-		envFileKeyC := resultMap[keyC]
-		mutex.Unlock()
-
-		fmt.Print("\n" + Yellow + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
-		fmt.Println(eUtils.LineByLineDiff(envFileKeyB, envFileKeyA))
-		fmt.Print("\n" + Yellow + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-		fmt.Println(eUtils.LineByLineDiff(envFileKeyC, envFileKeyA))
-		fmt.Print("\n" + Yellow + " (" + Reset + Red + "-Env-" + keySplitB[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-		fmt.Println(eUtils.LineByLineDiff(envFileKeyC, envFileKeyB))
-	default:
-		fmt.Print("\n" + Yellow + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
-		fmt.Println(eUtils.LineByLineDiff(envFileKeyB, envFileKeyA))
-	}
-
-	//Seperator
-	if runtime.GOOS == "windows" {
-		fmt.Println("======================================================================================")
-	} else {
-		fmt.Println("\033[1;35m======================================================================================\033[0m")
-	}
-	keys = keys[:0] //Cleans keys for next file
-}
-
-func removeDuplicateValues(intSlice []string) []string {
-	keys := make(map[string]bool)
-	list := []string{}
-	for _, entry := range intSlice {
-		if _, value := keys[entry]; !value {
-			keys[entry] = true
-			list = append(list, entry)
-		}
-	}
-	return list
-}
-func versionHelper(versionData map[string]interface{}, templateOrValues bool, valuePath string) {
-	Reset := "\033[0m"
-	Cyan := "\033[36m"
-	Red := "\033[31m"
-	if runtime.GOOS == "windows" {
-		Reset = ""
-		Cyan = ""
-		Red = ""
-	}
-	if versionData == nil {
-		fmt.Println("No version data found for this environment")
-		os.Exit(1)
-	}
-	for _, versionMetadata := range versionData {
-		for field, data := range versionMetadata.(map[string]interface{}) {
-			if field == "destroyed" && !data.(bool) {
-				goto printOutput
-			}
-		}
-	}
-	return
-printOutput:
-	fmt.Println(Cyan + "======================================================================================" + Reset)
-	keys := make([]int, 0, len(versionData))
-	for versionNumber, _ := range versionData {
-		versionNo, _ := strconv.ParseInt(versionNumber, 10, 64)
-		keys = append(keys, int(versionNo))
-	}
-	sort.Ints(keys)
-	for _, key := range keys {
-		versionNumber := key
-		versionMetadata := versionData[fmt.Sprint(key)]
-		fields := make([]string, 0)
-		fieldData := make(map[string]interface{}, 0)
-		for field, data := range versionMetadata.(map[string]interface{}) {
-			fields = append(fields, field)
-			fieldData[field] = data
-		}
-		sort.Strings(fields)
-		fmt.Println("Version " + fmt.Sprint(versionNumber) + " Metadata:")
-		for _, field := range fields {
-			fmt.Printf(field + ": ")
-			fmt.Println(fieldData[field])
-		}
-		if keys[len(keys)-1] != versionNumber {
-			fmt.Println(Red + "-------------------------------------------------------------------------------" + Reset)
-		}
-	}
-	fmt.Println(Cyan + "======================================================================================" + Reset)
-}
-
 // CommonMain This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
 func CommonMain(envPtr *string, addrPtrIn *string) {
@@ -217,7 +68,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	diffPtr := flag.Bool("diff", false, "Diff files")
-	versionPtr := flag.Bool("version", false, "Gets version metadata information")
+	versionPtr := flag.Bool("versions", false, "Gets version metadata information")
 
 	// Checks for proper flag input
 	args := os.Args[1:]
@@ -403,7 +254,7 @@ skipDiff:
 			Clean:          *cleanPtr,
 			Diff:           *diffPtr,
 			Update:         messenger,
-			VersionInfo:    versionHelper,
+			VersionInfo:    eUtils.VersionHelper,
 		}
 		waitg.Add(1)
 		go func() {
@@ -417,7 +268,7 @@ skipDiff:
 		waitg.Add(1)
 		go func() {
 			defer waitg.Done()
-			diffHelper()
+			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, mutex)
 		}()
 	}
 	waitg.Wait() //Wait for diff
