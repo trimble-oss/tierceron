@@ -152,17 +152,14 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	var secret *api.Secret
 	var err error
 	var versionMap = make(map[string][]string)
-	if strings.HasSuffix(m.Version, "***X-Mode") {		//x path
+	if strings.HasSuffix(m.Version, "***X-Mode") { //x path
 		if m.Version != "" && m.Version != "0" && strings.HasPrefix(path, "templates") {
 			m.Version = strings.Split(m.Version, "***")[0]
 			versionSlice := []string{m.Version}
 			versionMap["version"] = versionSlice
 			secret, err = m.logical.ReadWithData(fullPath, versionMap)
 		}
-		goto skip
-	}
-
-	if m.Version != "" && !strings.HasPrefix(path, "templates") {	//config path
+	} else if m.Version != "" && !strings.HasPrefix(path, "templates") { //config path
 		versionSlice := []string{m.Version}
 		versionMap["version"] = versionSlice
 		secret, err = m.logical.ReadWithData(fullPath, versionMap)
@@ -170,7 +167,6 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 		secret, err = m.logical.Read(fullPath)
 	}
 
-skip:
 	if secret == nil {
 		return nil, err
 	}
