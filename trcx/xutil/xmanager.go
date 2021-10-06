@@ -5,6 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -52,13 +55,18 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	var mod *kv.Modifier
 	noVault := false
 
+	envVersion := strings.Split(config.Env, "_")
+	env := envVersion[0]
+	version := envVersion[1]
+
 	if config.Token != "" {
 		var err error
-		mod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
+		mod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions)
 		if err != nil {
 			panic(err)
 		}
-		mod.Env = config.Env
+		mod.Env = env
+		mod.Version = version
 		if config.Token == "novault" {
 			noVault = true
 		}
@@ -69,6 +77,64 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		if err != nil {
 			fmt.Println("Cannot genAuth with provided token.")
 			os.Exit(1)
+		}
+	}
+
+	templateVersionMap := make(map[string]map[string]interface{})
+	if mod.Version != "0" {
+		mod.ProjectVersionFilter = config.VersionProjectFilter
+		templatePathMap, err := mod.GetVersionValues(mod, "super-secrets") //Needs filter
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		var lastKey string
+		for key, value := range templatePathMap {
+			if len(config.VersionProjectFilter) > 0 && !strings.Contains(key, config.VersionProjectFilter[0]) {
+				continue
+			} else {
+				templateVersionMap[key] = value
+				lastKey = key
+			}
+		}
+
+		Cyan := "\033[36m"
+		Reset := "\033[0m"
+		if runtime.GOOS == "windows" {
+			Reset = ""
+			Cyan = ""
+		}
+
+		if templateVersionMap == nil {
+			fmt.Println("No version data found - this filter was applied during search: ", config.VersionProjectFilter)
+			os.Exit(1)
+		} else if version == "versionInfo" {
+			config.VersionInfo(templateVersionMap[lastKey], false, "")
+			os.Exit(1)
+		} else {
+			var versions []string //Check available version bounds for regular diff or config
+			for version := range templatePathMap[lastKey] {
+				versions = append(versions, version)
+				sort.Slice(versions, func(i, j int) bool {
+					numA, _ := strconv.Atoi(versions[i])
+					numB, _ := strconv.Atoi(versions[j])
+					return numA < numB
+				})
+			}
+
+			if len(versions) >= 1 {
+				latestVersion, _ := strconv.Atoi(versions[len(versions)-1])
+				oldestVersion, _ := strconv.Atoi(versions[0])
+				userVersion, _ := strconv.Atoi(version)
+				if userVersion > latestVersion || userVersion < oldestVersion && len(versions) != 1 {
+					fmt.Println(Cyan + "This version " + env + "_" + version + " is not available as the latest version is " + versions[len(versions)-1] + " and oldest version available is " + versions[0] + Reset)
+					os.Exit(1)
+				}
+			} else {
+				fmt.Println(Cyan + "No version data found" + Reset)
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -117,7 +183,11 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				if err != nil {
 					panic(err)
 				}
-				goMod.Env = c.Env
+				envVersion := strings.Split(config.Env, "_")
+				env := envVersion[0]
+				version := envVersion[1]
+				goMod.Env = env
+				goMod.Version = version
 			}
 
 			if c.GenAuth && goMod != nil {
@@ -151,9 +221,11 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				service = service[0:dotIndex]
 			}
 
+			requestedVersion := goMod.Version
 			var cds *vcutils.ConfigDataStore
 			if goMod != nil && !noVault {
 				cds = new(vcutils.ConfigDataStore)
+				goMod.Version = goMod.Version + "***X-Mode"
 				cds.Init(goMod, c.SecretMode, true, project, service)
 			}
 
@@ -168,7 +240,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				&(templateResult.valueSection),
 				&(templateResult.secretSection),
 			)
-			templateResult.env = goMod.Env
+			templateResult.env = goMod.Env + "_" + requestedVersion
 			templateResultChan <- &templateResult
 		}(templatePath, project, service, multiService, config, noVault)
 	}
