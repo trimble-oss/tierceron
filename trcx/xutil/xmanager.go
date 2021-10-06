@@ -99,6 +99,13 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			}
 		}
 
+		Cyan := "\033[36m"
+		Reset := "\033[0m"
+		if runtime.GOOS == "windows" {
+			Reset = ""
+			Cyan = ""
+		}
+
 		if templateVersionMap == nil {
 			fmt.Println("No version data found - this filter was applied during search: ", config.VersionProjectFilter)
 			os.Exit(1)
@@ -107,7 +114,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			os.Exit(1)
 		} else {
 			var versions []string //Check available version bounds for regular diff or config
-			for version, _ := range templatePathMap[lastKey] {
+			for version := range templatePathMap[lastKey] {
 				versions = append(versions, version)
 				sort.Slice(versions, func(i, j int) bool {
 					numA, _ := strconv.Atoi(versions[i])
@@ -115,16 +122,17 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 					return numA < numB
 				})
 			}
-			availableVersion, _ := strconv.Atoi(versions[len(versions)-1])
-			userVersion, _ := strconv.Atoi(version)
-			if userVersion > availableVersion {
-				Cyan := "\033[36m"
-				Reset := "\033[0m"
-				if runtime.GOOS == "windows" {
-					Reset = ""
-					Cyan = ""
+
+			if len(versions) >= 1 {
+				latestVersion, _ := strconv.Atoi(versions[len(versions)-1])
+				oldestVersion, _ := strconv.Atoi(versions[0])
+				userVersion, _ := strconv.Atoi(version)
+				if userVersion > latestVersion || userVersion < oldestVersion && len(versions) != 1 {
+					fmt.Println(Cyan + "This version " + env + "_" + version + " is not available as the latest version is " + versions[len(versions)-1] + " and oldest version available is " + versions[0] + Reset)
+					os.Exit(1)
 				}
-				fmt.Println(Cyan + "This version " + env + "_" + version + " is not available as the latest version is " + versions[len(versions)-1] + Reset)
+			} else {
+				fmt.Println(Cyan + "No version data found" + Reset)
 				os.Exit(1)
 			}
 		}
