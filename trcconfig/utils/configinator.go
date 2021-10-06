@@ -110,12 +110,10 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		}
 		if !initialized {
 			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
-		} else {
-			fmt.Println(Cyan + "======================================================================================" + Reset)
 		}
 		return
 	} else {
-		if version != "0" {
+		if version != "0" { //Check requested version bounds
 			versionNumbers := make([]int, 0)
 			versionMetadataMap, err := modCheck.GetVersionValues(modCheck, "values")
 			if err != nil {
@@ -143,10 +141,16 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 			}
 
 			sort.Ints(versionNumbers)
-			configVersion, _ := strconv.ParseInt(version, 10, 0)
-			if len(versionNumbers) > 0 && int(configVersion) > versionNumbers[len(versionNumbers)-1] {
-				latestVersion := fmt.Sprintf("%d", versionNumbers[len(versionNumbers)-1])
-				fmt.Println(Cyan + "This version " + config.Env + "_" + version + " is not available as the latest version is " + latestVersion + Reset)
+			if len(versionNumbers) >= 1 {
+				latestVersion := versionNumbers[len(versionNumbers)-1]
+				oldestVersion := versionNumbers[0]
+				userVersion, _ := strconv.Atoi(version)
+				if userVersion > latestVersion || userVersion < oldestVersion && len(versionNumbers) != 1 {
+					fmt.Println(Cyan + "This version " + config.Env + "_" + version + " is not available as the latest version is " + strconv.Itoa(versionNumbers[len(versionNumbers)-1]) + " and oldest version available is " + strconv.Itoa(versionNumbers[0]) + Reset)
+					os.Exit(1)
+				}
+			} else {
+				fmt.Println(Cyan + "No version data found" + Reset)
 				os.Exit(1)
 			}
 		}
