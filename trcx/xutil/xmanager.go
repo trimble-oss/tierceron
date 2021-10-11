@@ -56,6 +56,12 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	noVault := false
 
 	envVersion := strings.Split(config.Env, "_")
+        if len(envVersion) != 2 {
+               // Make it so.
+               config.Env = config.Env + "_0"
+               envVersion = strings.Split(config.Env, "_")
+        }
+
 	env := envVersion[0]
 	version := envVersion[1]
 
@@ -315,6 +321,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 	if config.Clean { //Clean flag in trcx
+		if strings.HasSuffix(config.Env, "_0") {
+			config.Env = strings.Split(config.Env, "_")[0]
+		}
 		_, err1 := os.Stat(config.EndDir + config.Env)
 		err := os.RemoveAll(config.EndDir + config.Env)
 
@@ -349,6 +358,9 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 
 	_, endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 
+	if strings.HasSuffix(config.Env, "_0") {
+		config.Env = strings.Split(config.Env, "_")[0]
+	}
 	if multiService {
 		if strings.HasPrefix(config.Env, "local") {
 			endPath = config.EndDir + "local/local_seed.yml"

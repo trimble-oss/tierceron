@@ -11,7 +11,7 @@ import (
 // of automating setup and initial seeding
 
 func main() {
-	fmt.Println("Version: " + "1.29")
+	fmt.Println("Version: " + "1.30")
 	envPtr := flag.String("env", "dev", "Environment to be seeded")
 	trcinitbase.CommonMain(envPtr, nil)
 }
