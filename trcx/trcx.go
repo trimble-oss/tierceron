@@ -13,7 +13,7 @@ import (
 // New seed files are written (or overwrite current seed files) to the specified directory.
 func main() {
 	fmt.Println("Version: " + "1.19")
-	serverMode := flag.Bool("server", false, "Run trcx as a mysql server.")
+	//serverMode := flag.Bool("server", false, "Run trcx as a mysql server.")
 
 	envPtr := flag.String("env", "dev", "Environment to get seed data for.")
 	app := app.New()
