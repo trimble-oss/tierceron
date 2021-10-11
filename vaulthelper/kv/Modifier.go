@@ -149,10 +149,17 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 		fullPath += pathBlocks[1]
 	}
 
-	var versionMap = make(map[string][]string)
 	var secret *api.Secret
 	var err error
-	if m.Version != "" && !strings.HasPrefix(path, "templates") {
+	var versionMap = make(map[string][]string)
+	if strings.HasSuffix(m.Version, "***X-Mode") { //x path
+		if m.Version != "" && m.Version != "0" && strings.HasPrefix(path, "templates") {
+			m.Version = strings.Split(m.Version, "***")[0]
+			versionSlice := []string{m.Version}
+			versionMap["version"] = versionSlice
+			secret, err = m.logical.ReadWithData(fullPath, versionMap)
+		}
+	} else if m.Version != "" && !strings.HasPrefix(path, "templates") { //config path
 		versionSlice := []string{m.Version}
 		versionMap["version"] = versionSlice
 		secret, err = m.logical.ReadWithData(fullPath, versionMap)
@@ -400,7 +407,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 
 func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[string]map[string]interface{}) {
 	for _, filePath := range filePaths {
-		if !strings.Contains(filePath, mod.ProjectVersionFilter[0]) {
+		if len(mod.ProjectVersionFilter) > 0 && !strings.Contains(filePath, mod.ProjectVersionFilter[0]) {
 			continue
 		}
 
