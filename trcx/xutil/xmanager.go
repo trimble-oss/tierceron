@@ -56,6 +56,12 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	noVault := false
 
 	envVersion := strings.Split(config.Env, "_")
+        if len(envVersion) != 2 {
+               // Make it so.
+               config.Env = config.Env + "_0"
+               envVersion = strings.Split(config.Env, "_")
+        }
+
 	env := envVersion[0]
 	version := envVersion[1]
 
