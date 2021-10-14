@@ -11,10 +11,12 @@ import (
 // {{or .<key> "<value>"}}
 const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
-type ConfigDriver func(ctx interface{}, config DriverConfig) interface{}
+type ProcessContext interface{}
+
+type ConfigDriver func(ctx ProcessContext, config DriverConfig) interface{}
 
 type DriverConfig struct {
-	Context              interface{}
+	Context              ProcessContext
 	Insecure             bool
 	Token                string
 	VaultAddress         string
@@ -37,7 +39,7 @@ type DriverConfig struct {
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
-func ConfigControl(ctx interface{}, config DriverConfig, drive ConfigDriver) {
+func ConfigControl(ctx ProcessContext, config DriverConfig, drive ConfigDriver) {
 	multiProject := false
 
 	config.EndDir = strings.Replace(config.EndDir, "\\", "/", -1)

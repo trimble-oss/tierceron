@@ -19,7 +19,7 @@ import (
 var mutex = &sync.Mutex{}
 
 //GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx interface{}, config eUtils.DriverConfig) interface{} {
+func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfig) interface{} {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if runtime.GOOS == "windows" {
