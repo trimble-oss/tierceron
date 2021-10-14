@@ -4,9 +4,8 @@ import (
 	"flag"
 	"fmt"
 
+	"tierceron/trcx/xutil"
 	trcxbase "tierceron/trcxbase"
-
-	"fyne.io/fyne/app"
 )
 
 // This executable automates the creation of seed files from template file(s).
@@ -16,10 +15,6 @@ func main() {
 	//serverMode := flag.Bool("server", false, "Run trcx as a mysql server.")
 
 	envPtr := flag.String("env", "dev", "Environment to get seed data for.")
-	app := app.New()
-	w := app.NewWindow("Hello")
 
-	trcxbase.CommonMain(w, envPtr, nil)
-
-	w.ShowAndRun()
+	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil)
 }

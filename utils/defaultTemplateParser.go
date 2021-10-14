@@ -6,17 +6,15 @@ import (
 	"os"
 	"regexp"
 	"strings"
-
-	"fyne.io/fyne"
 )
 
 // {{or .<key> "<value>"}}
 const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
-type ConfigDriver func(config DriverConfig)
+type ConfigDriver func(ctx interface{}, config DriverConfig) interface{}
 
 type DriverConfig struct {
-	Window               fyne.Window
+	Context              interface{}
 	Insecure             bool
 	Token                string
 	VaultAddress         string
@@ -39,7 +37,7 @@ type DriverConfig struct {
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
-func ConfigControl(config DriverConfig, drive ConfigDriver) {
+func ConfigControl(ctx interface{}, config DriverConfig, drive ConfigDriver) {
 	multiProject := false
 
 	config.EndDir = strings.Replace(config.EndDir, "\\", "/", -1)
@@ -89,7 +87,7 @@ func ConfigControl(config DriverConfig, drive ConfigDriver) {
 
 			config.StartDir = startDirs
 			// Drive this set of configurations.
-			drive(config)
+			drive(ctx, config)
 
 			return
 		}
@@ -121,7 +119,7 @@ func ConfigControl(config DriverConfig, drive ConfigDriver) {
 	}
 
 	// Drive this set of configurations.
-	drive(config)
+	drive(ctx, config)
 }
 
 // Parse Extracts default values as key-value pairs from template files.
