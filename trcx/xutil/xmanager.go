@@ -11,9 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	xdb "tierceron/trcx/db"
-
 	vcutils "tierceron/trcconfig/utils"
+	xdb "tierceron/trcx/db"
 	"tierceron/trcx/extract"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
@@ -314,7 +313,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVault(ctx interface{}, config eUtils.DriverConfig) interface{} {
+func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfig) interface{} {
 	if config.Clean { //Clean flag in trcx
 		if strings.HasSuffix(config.Env, "_0") {
 			config.Env = strings.Split(config.Env, "_")[0]
