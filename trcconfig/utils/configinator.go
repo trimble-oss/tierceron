@@ -19,7 +19,7 @@ import (
 var mutex = &sync.Mutex{}
 
 //GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(config eUtils.DriverConfig) {
+func GenerateConfigsFromVault(ctx interface{}, config eUtils.DriverConfig) interface{} {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if runtime.GOOS == "windows" {
@@ -111,7 +111,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		if !initialized {
 			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
 		}
-		return
+		return nil
 	} else {
 		if version != "0" { //Check requested version bounds
 			versionNumbers := make([]int, 0)
@@ -343,6 +343,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 	if templateInfo {
 		config.VersionInfo(versionData, true, "")
 	}
+	return nil
 }
 func writeToFile(data string, path string) {
 	byteData := []byte(data)

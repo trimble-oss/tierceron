@@ -285,7 +285,7 @@ func main() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				eUtils.ConfigControl(configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault)
+				eUtils.ConfigControl(nil, configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault)
 			}()
 		}
 	} else {
@@ -321,7 +321,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			eUtils.ConfigControl(config, utils.GenerateConfigsFromVault)
+			eUtils.ConfigControl(nil, config, utils.GenerateConfigsFromVault)
 		}()
 	}
 	wg.Wait() //Wait for templates
