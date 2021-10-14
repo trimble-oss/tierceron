@@ -9,10 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"tierceron/trcx/xutil"
+	"tierceron/utils"
 	eUtils "tierceron/utils"
-
-	"fyne.io/fyne"
 )
 
 type ResultData struct {
@@ -49,7 +47,7 @@ func reciever() {
 
 // CommonMain This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
-func CommonMain(w fyne.Window, envPtr *string, addrPtrIn *string) {
+func CommonMain(ctx interface{}, configDriver utils.ConfigDriver, envPtr *string, addrPtrIn *string) {
 	// Executable input arguments(flags)
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	if addrPtrIn != nil && *addrPtrIn != "" {
@@ -241,7 +239,7 @@ skipDiff:
 			*envPtr = envVersion[0] + "_0"
 		}
 		config := eUtils.DriverConfig{
-			Window:         w,
+			Context:        ctx,
 			Insecure:       *insecurePtr,
 			Token:          *tokenPtr,
 			VaultAddress:   *addrPtr,
@@ -262,11 +260,7 @@ skipDiff:
 		waitg.Add(1)
 		go func() {
 			defer waitg.Done()
-			if true {
-				eUtils.ConfigControl(config, xutil.GenerateSeedsFromVaultToDb)
-			} else {
-				eUtils.ConfigControl(config, xutil.GenerateSeedsFromVault)
-			}
+			eUtils.ConfigControl(ctx, config, configDriver)
 		}()
 	}
 	waitg.Wait()
