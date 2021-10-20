@@ -47,7 +47,7 @@ func reciever() {
 
 // CommonMain This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
-func CommonMain(ctx utils.ProcessContext, configDriver utils.ConfigDriver, envPtr *string, addrPtrIn *string) {
+func CommonMain(ctx utils.ProcessContext, configDriver utils.ConfigDriver, envPtr *string, addrPtrIn *string, unsecurePtr bool) {
 	// Executable input arguments(flags)
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	if addrPtrIn != nil && *addrPtrIn != "" {
@@ -82,6 +82,9 @@ func CommonMain(ctx utils.ProcessContext, configDriver utils.ConfigDriver, envPt
 
 	flag.Parse()
 
+	if unsecurePtr {
+		*insecurePtr = true
+	}
 	Yellow := "\033[33m"
 	Reset := "\033[0m"
 	if runtime.GOOS == "windows" {
