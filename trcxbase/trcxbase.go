@@ -1,4 +1,4 @@
-package trcxbase
+package vaultxbase
 
 import (
 	"flag"
@@ -106,6 +106,9 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		os.Exit(1)
 	} else if *diffPtr && *versionPtr {
 		fmt.Println("-version flag cannot be used with -diff flag")
+		os.Exit(1)
+	} else if (*envPtr == "staging" || *envPtr == "prod") && *addrPtr == "" {
+		fmt.Println("The -addr flag must be used with staging/prod environment")
 		os.Exit(1)
 	}
 
@@ -223,7 +226,6 @@ skipDiff:
 	for _, env := range envSlice {
 		envVersion := strings.Split(env, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
-		*tokenPtr = ""
 		if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
 			*tokenPtr = ""
 		}
