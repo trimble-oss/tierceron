@@ -71,9 +71,11 @@ func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr
 	}
 
 	// If cert file exists obtain secretID and appRoleID
-	if *envPtr == "staging" || *envPtr == "prod" {
+	if strings.Index(*envPtr, "staging") == 0 || strings.Index(*envPtr, "prod") == 0 {
 		override = false
 		exists = true
+		appRoleIDPtr = nil
+		secretIDPtr = nil
 	} else {
 		if _, err := os.Stat(userHome + "/.tierceron/config.yml"); !os.IsNotExist(err) {
 			exists = true
@@ -205,13 +207,19 @@ func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr
 	}
 
 	if secretIDPtr == nil || appRoleIDPtr == nil {
-		// trcinit and trcx may take this path.
+		// Vaultinit and vaultx may take this path.
 		return
 	}
 
 	//if using appRole
 	if *secretIDPtr != "" || *appRoleIDPtr != "" || *tokenNamePtr != "" {
-		switch *envPtr {
+		env, _, envErr := kv.PreCheckEnvironment(*envPtr)
+		if envErr != nil {
+			fmt.Printf("Environment format error: %v\n", envErr)
+			os.Exit(-1)
+		}
+
+		switch env {
 		case "dev":
 			*tokenNamePtr = "config_token_dev"
 		case "QA":
@@ -242,7 +250,7 @@ func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr
 		//check that token matches environment
 		tokenParts := strings.Split(*tokenNamePtr, "_")
 		tokenEnv := tokenParts[len(tokenParts)-1]
-		if *envPtr != tokenEnv {
+		if env != tokenEnv {
 			CheckWarning(fmt.Sprintf("Token doesn't match environment"), true)
 		}
 	}
