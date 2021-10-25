@@ -352,6 +352,9 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		}
 	} else {
 		for _, env := range envDiffSlice { //Arranges keys for ordered output
+			if strings.Contains(env, "_0") {
+				env = strings.Split(env, "_")[0]
+			}
 			keys = append(keys, env+"||"+env+"_seed.yml")
 			fileList[0] = "placeHolder"
 		}
@@ -455,9 +458,9 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 
 		//Seperator
 		if runtime.GOOS == "windows" {
-			fmt.Printf("======================================================================================")
+			fmt.Printf("======================================================================================\n")
 		} else {
-			fmt.Printf("\033[1;35m======================================================================================\033[0m")
+			fmt.Printf("\033[1;35m======================================================================================\033[0m\n")
 		}
 		keys = keys[:0] //Cleans keys for next file
 	}
