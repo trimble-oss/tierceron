@@ -167,7 +167,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		wg.Add(1)
 		go func(templatePath string, project string, service string, multiService bool, c eUtils.DriverConfig, noVault bool) {
 			// Map Subsections
-			var templateResult *extract.TemplateResultData
+			var templateResult extract.TemplateResultData
 
 			templateResult.ValueSection = map[string]map[string]map[string]string{}
 			templateResult.ValueSection["values"] = map[string]map[string]string{}
@@ -239,7 +239,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				&(templateResult.SecretSection),
 			)
 			templateResult.Env = goMod.Env + "_" + requestedVersion
-			templateResultChan <- templateResult
+			templateResultChan <- &templateResult
 		}(templatePath, project, service, multiService, config, noVault)
 	}
 	wg.Wait()
