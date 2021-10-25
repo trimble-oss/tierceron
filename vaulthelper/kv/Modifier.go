@@ -32,6 +32,21 @@ type Modifier struct {
 	ProjectVersionFilter []string     // Used to filter vault paths
 }
 
+func PreCheckEnvironment(environment string) (string, string, error) {
+	envParts := strings.Split(environment, ".")
+	if len(envParts) == 2 {
+		if envParts[1] != "*" {
+			_, idErr := strconv.Atoi(envParts[1])
+			if idErr != nil {
+				return "", "", idErr
+			}
+		}
+		return envParts[0], envParts[1], nil
+	}
+
+	return environment, "", nil
+}
+
 // NewModifier Constructs a new modifier struct and connects to the vault
 // @param token 	The access token needed to connect to the vault
 // @param address	The address of the API endpoint for the server
@@ -65,6 +80,17 @@ func NewModifier(insecure bool, token string, address string, env string, region
 
 // ValidateEnvironment Ensures token has access to requested data.
 func (m *Modifier) ValidateEnvironment(environment string, init bool) bool {
+	env, sub, envErr := PreCheckEnvironment(environment)
+
+	if envErr != nil {
+		fmt.Printf("Environment format error: %v\n", envErr)
+		os.Exit(-1)
+	} else {
+		if sub != "" {
+			environment = env
+		}
+	}
+
 	if strings.Contains(environment, "local") {
 		environment = "local"
 	}

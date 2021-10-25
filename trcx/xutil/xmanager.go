@@ -56,11 +56,11 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	noVault := false
 
 	envVersion := strings.Split(config.Env, "_")
-        if len(envVersion) != 2 {
-               // Make it so.
-               config.Env = config.Env + "_0"
-               envVersion = strings.Split(config.Env, "_")
-        }
+	if len(envVersion) != 2 {
+		// Make it so.
+		config.Env = config.Env + "_0"
+		envVersion = strings.Split(config.Env, "_")
+	}
 
 	env := envVersion[0]
 	version := envVersion[1]
@@ -97,7 +97,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 		var lastKey string
 		for key, value := range templatePathMap {
-			if len(config.VersionProjectFilter) > 0 && !strings.Contains(key, config.VersionProjectFilter[0]) {
+			if len(config.VersionProjectFilter) > 0 && !strings.HasSuffix(key, config.VersionProjectFilter[0]) {
 				continue
 			} else {
 				templateVersionMap[key] = value
@@ -190,10 +190,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 					panic(err)
 				}
 				envVersion := strings.Split(config.Env, "_")
-				env := envVersion[0]
-				version := envVersion[1]
-				goMod.Env = env
-				goMod.Version = version
+				goMod.Env = envVersion[0]
+				goMod.Version = envVersion[1]
 			}
 
 			if c.GenAuth && goMod != nil {
@@ -361,22 +359,25 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 	if strings.HasSuffix(config.Env, "_0") {
 		config.Env = strings.Split(config.Env, "_")[0]
 	}
+
+	envBasePath, _, _ := kv.PreCheckEnvironment(config.Env)
+
 	if multiService {
 		if strings.HasPrefix(config.Env, "local") {
 			endPath = config.EndDir + "local/local_seed.yml"
 		} else {
-			endPath = config.EndDir + config.Env + "/" + config.Env + "_seed.yml"
+			endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 		}
 	} else {
-		endPath = config.EndDir + config.Env + "/" + config.Env + "_seed.yml"
+		endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 	}
 
 	if config.Diff {
-		config.Update(&seedData, config.Env+"||"+config.Env+"_seed.yml")
+		config.Update(&seedData, envBasePath+"||"+config.Env+"_seed.yml")
 	} else {
 		writeToFile(seedData, endPath)
 		// Print that we're done
-		fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + config.Env)
+		fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + envBasePath + string(os.PathSeparator) + config.Env + "_seed.yml")
 	}
 
 }
