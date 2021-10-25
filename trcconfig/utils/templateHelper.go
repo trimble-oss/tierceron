@@ -120,7 +120,9 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, configuredFileP
 			extra = extra + "/" + component
 		}
 	}
-	filename = filename[0:strings.Index(filename, ".")]
+	if strings.Index(filename, ".") != -1 {
+		filename = filename[0:strings.Index(filename, ".")]
+	}
 
 	if extra != "" {
 		filename = extra + "/" + filename
