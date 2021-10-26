@@ -46,7 +46,7 @@ func reciever() {
 
 // CommonMain This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
-func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, envPtr *string, addrPtrIn *string, insecure bool) {
+func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, envPtr *string, addrPtrIn *string, insecurePtrIn *bool) {
 	// Executable input arguments(flags)
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	if addrPtrIn != nil && *addrPtrIn != "" {
@@ -66,10 +66,10 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	var insecurePtr *bool
-	if !insecure {
+	if insecurePtrIn == nil {
 		insecurePtr = flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	} else {
-		insecurePtr = &insecure
+		insecurePtr = insecurePtrIn
 	}
 	diffPtr := flag.Bool("diff", false, "Diff files")
 	versionPtr := flag.Bool("versions", false, "Gets version metadata information")
