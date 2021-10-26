@@ -396,7 +396,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 			sortedKeyA = "||" + keySplitA[1]
 		}
 		if _, ok := resultMap[sortedKeyB]; !ok {
-			sortedKeyB = "||" + keySplitA[1]
+			sortedKeyB = "||" + keySplitB[1]
 		}
 
 		envFileKeyA := resultMap[sortedKeyA]
