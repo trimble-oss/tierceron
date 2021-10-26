@@ -94,14 +94,6 @@ func ConfigControl(ctx ProcessContext, config DriverConfig, drive ConfigDriver) 
 			return
 		}
 
-		if len(config.VersionProjectFilter) == 0 {
-			for _, projectFile := range projectFilesComplete {
-				if !strings.HasSuffix(projectFile.Name(), ".DS_Store") {
-					config.VersionProjectFilter = append(config.VersionProjectFilter, projectFile.Name())
-				}
-			}
-		}
-
 		if err == nil && len(projectFiles) == 1 && projectFiles[0].IsDir() {
 			config.StartDir[0] = config.StartDir[0] + string(os.PathSeparator) + projectFiles[0].Name()
 		} else if len(projectFiles) > 1 {
@@ -111,8 +103,17 @@ func ConfigControl(ctx ProcessContext, config DriverConfig, drive ConfigDriver) 
 
 		if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 			config.StartDir[0] = config.StartDir[0] + string(os.PathSeparator) + serviceFiles[0].Name()
+			config.VersionProjectFilter = append(config.VersionProjectFilter, serviceFiles[0].Name())
 		} else if len(projectFiles) > 1 {
 			multiProject = true
+		}
+
+		if len(config.VersionProjectFilter) == 0 {
+			for _, projectFile := range projectFilesComplete {
+				if !strings.HasSuffix(projectFile.Name(), ".DS_Store") {
+					config.VersionProjectFilter = append(config.VersionProjectFilter, projectFile.Name())
+				}
+			}
 		}
 	}
 

@@ -389,8 +389,15 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		keySplitA := strings.Split(keyA, "||")
 		keySplitB := strings.Split(keyB, "||")
 		mutex.Lock()
-		envFileKeyA := resultMap[keyA]
-		envFileKeyB := resultMap[keyB]
+
+		sortedKeyA := keyA
+		sortedKeyB := keyB
+		if !config {
+			sortedKeyA = "||" + keySplitA[1]
+			sortedKeyB = "||" + keySplitB[1]
+		}
+		envFileKeyA := resultMap[sortedKeyA]
+		envFileKeyB := resultMap[sortedKeyB]
 		mutex.Unlock()
 
 		latestVersionACheck := strings.Split(keySplitA[0], "_")
