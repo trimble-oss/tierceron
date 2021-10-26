@@ -356,8 +356,8 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 				env = strings.Split(env, "_")[0]
 			}
 			keys = append(keys, env+"||"+env+"_seed.yml")
-			fileList[0] = "placeHolder"
 		}
+		fileList[0] = "placeHolder"
 	}
 
 	//Diff resultMap using fileList
@@ -389,8 +389,18 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		keySplitA := strings.Split(keyA, "||")
 		keySplitB := strings.Split(keyB, "||")
 		mutex.Lock()
-		envFileKeyA := resultMap[keyA]
-		envFileKeyB := resultMap[keyB]
+
+		sortedKeyA := keyA
+		sortedKeyB := keyB
+		if _, ok := resultMap[sortedKeyA]; !ok {
+			sortedKeyA = "||" + keySplitA[1]
+		}
+		if _, ok := resultMap[sortedKeyB]; !ok {
+			sortedKeyB = "||" + keySplitA[1]
+		}
+
+		envFileKeyA := resultMap[sortedKeyA]
+		envFileKeyB := resultMap[sortedKeyB]
 		mutex.Unlock()
 
 		latestVersionACheck := strings.Split(keySplitA[0], "_")
