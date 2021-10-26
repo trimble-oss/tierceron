@@ -12,7 +12,9 @@ require (
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/google/go-cmp v0.5.4
 	github.com/graphql-go/graphql v0.7.9
-	github.com/hashicorp/vault/api v1.0.4
+	github.com/hashicorp/vault-plugin-secrets-kv v0.9.0
+	github.com/hashicorp/vault/api v1.0.5-0.20200215224050-f6547fa8e820
+	github.com/hashicorp/vault/sdk v0.1.14-0.20200215224050-f6547fa8e820
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/rs/cors v1.7.0
 	github.com/sendgrid/rest v2.6.0+incompatible // indirect
