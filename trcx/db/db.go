@@ -2,14 +2,12 @@ package db
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 
@@ -37,17 +35,23 @@ func CreateEngine(config eUtils.DriverConfig,
 			noVault = true
 		}
 	}
-	var cds *vcutils.ConfigDataStore
-	if goMod != nil {
-		cds = new(vcutils.ConfigDataStore)
-	}
+	// var cds *vcutils.ConfigDataStore
+	// if goMod != nil {
+	// 	cds = new(vcutils.ConfigDataStore)
+	// }
 
 	projectServiceMap, err := goMod.GetProjectServicesMap()
+	if err != nil {
+		return nil
+	}
 
 	for project, services := range projectServiceMap {
-		for _, service range services {
-			listPath := "templates/" + project + "/" + req.Service
+		for _, service := range services {
+			listPath := "templates/" + project + "/" + service
 			secret, err := goMod.List(listPath)
+			if err != nil {
+				return nil
+			}
 			templatePaths := []string{}
 			for _, fileName := range secret.Data["keys"].([]interface{}) {
 				if strFile, ok := fileName.(string); ok {
