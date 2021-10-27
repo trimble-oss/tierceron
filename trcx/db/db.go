@@ -2,12 +2,14 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
+	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 
@@ -35,75 +37,103 @@ func CreateEngine(config eUtils.DriverConfig,
 			noVault = true
 		}
 	}
-
-	// TODO: Make this async for performance...
-	for _, templatePath := range templatePaths {
-
-		var templateResult extract.TemplateResultData
-		templateResult.ValueSection = map[string]map[string]map[string]string{}
-		templateResult.ValueSection["values"] = map[string]map[string]string{}
-
-		templateResult.SecretSection = map[string]map[string]map[string]string{}
-		templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
-
-		project := ""
-		service := ""
-
-		//check for template_files directory here
-		s := strings.Split(templatePath, "/")
-		//figure out which path is trc_templates
-		dirIndex := -1
-		for j, piece := range s {
-			if piece == "trc_templates" {
-				dirIndex = j
-			}
-		}
-		if dirIndex != -1 {
-			project = s[dirIndex+1]
-			service = s[dirIndex+2]
-		}
-
-		// Clean up service naming (Everything after '.' removed)
-		dotIndex := strings.Index(service, ".")
-		if dotIndex > 0 && dotIndex <= len(service) {
-			service = service[0:dotIndex]
-		}
-
-		var cds *vcutils.ConfigDataStore
-		if goMod != nil && !noVault {
-			cds = new(vcutils.ConfigDataStore)
-			cds.Init(goMod, config.SecretMode, true, project, service)
-		}
-
-		_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
-			cds,
-			templatePath,
-			config.Log,
-			project,
-			service,
-			noVault,
-			&(templateResult.InterfaceTemplateSection),
-			&(templateResult.ValueSection),
-			&(templateResult.SecretSection),
-		)
-
-		// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
-		table := memory.NewTable("tableName", sql.Schema{
-			{Name: "col1", Type: sql.Text, Source: "tableName"},
-			{Name: "col2", Type: sql.Text, Source: "tableName2"},
-		})
-		db.AddTable("tableName", table)
-		ctx := sql.NewEmptyContext()
-
-		rows := []sql.Row{
-			sql.NewRow("col1", "col2"),
-			sql.NewRow("col1", "col2"),
-		}
-
-		for _, row := range rows {
-			table.Insert(ctx, row)
-		}
+	var cds *vcutils.ConfigDataStore
+	if goMod != nil {
+		cds = new(vcutils.ConfigDataStore)
 	}
+
+	projectServiceMap, err := goMod.GetProjectServicesMap()
+
+	for project, services := range projectServiceMap {
+		for _, service range services {
+			listPath := "templates/" + project + "/" + req.Service
+			secret, err := goMod.List(listPath)
+			templatePaths := []string{}
+			for _, fileName := range secret.Data["keys"].([]interface{}) {
+				if strFile, ok := fileName.(string); ok {
+					if strFile[len(strFile)-1] != '/' { // Skip subdirectories where template files are stored
+						templatePaths = append(templatePaths, strFile)
+					}
+				}
+			}
+
+			// TODO: Make this async for performance...
+			for _, templatePath := range templatePaths {
+
+				var templateResult extract.TemplateResultData
+				templateResult.ValueSection = map[string]map[string]map[string]string{}
+				templateResult.ValueSection["values"] = map[string]map[string]string{}
+
+				templateResult.SecretSection = map[string]map[string]map[string]string{}
+				templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
+
+				project := ""
+				service := ""
+
+				//check for template_files directory here
+				s := strings.Split(templatePath, "/")
+				//figure out which path is trc_templates
+				dirIndex := -1
+				for j, piece := range s {
+					if piece == "trc_templates" {
+						dirIndex = j
+					}
+				}
+				if dirIndex != -1 {
+					project = s[dirIndex+1]
+					service = s[dirIndex+2]
+				}
+
+				// Clean up service naming (Everything after '.' removed)
+				dotIndex := strings.Index(service, ".")
+				if dotIndex > 0 && dotIndex <= len(service) {
+					service = service[0:dotIndex]
+				}
+
+				var cds *vcutils.ConfigDataStore
+				if goMod != nil && !noVault {
+					cds = new(vcutils.ConfigDataStore)
+					cds.Init(goMod, config.SecretMode, true, project, service)
+				}
+
+				_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
+					cds,
+					templatePath,
+					config.Log,
+					project,
+					service,
+					noVault,
+					&(templateResult.InterfaceTemplateSection),
+					&(templateResult.ValueSection),
+					&(templateResult.SecretSection),
+				)
+
+				//
+				// What we need is in ValueSection and SecretSection...
+				//
+
+				// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
+				table := memory.NewTable("tableName", sql.Schema{
+					{Name: "col1", Type: sql.Text, Source: "tableName"},
+					{Name: "col2", Type: sql.Text, Source: "tableName2"},
+				})
+				db.AddTable("tableName", table)
+				ctx := sql.NewEmptyContext()
+
+				rows := []sql.Row{
+					sql.NewRow("col1", "col2"),
+					sql.NewRow("col1", "col2"),
+				}
+
+				for _, row := range rows {
+					table.Insert(ctx, row)
+				}
+			}
+
+		}
+
+	}
+
 	e := sqle.NewDefault(sql.NewDatabaseProvider(db))
 	te := TierceronEngine{Name: db.Name(), Engine: e}
 
