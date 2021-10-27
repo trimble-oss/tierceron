@@ -327,6 +327,32 @@ func (m *Modifier) Exists(path string) bool {
 	}
 }
 
+// GetProjectServiceMap - returns a map of all projects with list of their available services.
+func (m *Modifier) GetProjectServicesMap() (map[string][]string, error) {
+	projectServiceMap := map[string][]string{}
+	projectData, err := m.List("templates")
+	if err != nil {
+		return nil, err
+	}
+
+	availProjects := projectData.Data["keys"].([]interface{})
+	for _, availProject := range availProjects {
+		serviceData, serviceErr := m.List("templates/" + availProject.(string))
+		if err != nil {
+			return nil, serviceErr
+		}
+
+		availServices := serviceData.Data["keys"].([]interface{})
+		services := []string{}
+		for _, availService := range availServices {
+			services = append(services, availService.(string))
+		}
+		projectServiceMap[availProject.(string)] = services
+	}
+
+	return projectServiceMap, nil
+}
+
 //GetVersionValues gets filepath for values and grabs metadata for those paths.
 func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[string]map[string]interface{}, error) {
 	envCheck := strings.Split(mod.Env, "_")
