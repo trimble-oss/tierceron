@@ -355,6 +355,7 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 	return "", false
 }
 
+//getPathsFromProject - gets all paths for provided projects so data can be extracted from them..
 func getPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
