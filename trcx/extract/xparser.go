@@ -53,7 +53,12 @@ func ToSeed(mod *kv.Modifier,
 	// Gets the template file
 	var newTemplate string
 	if fromVault {
-		templatePathExtended := project + "/" + service + "/" + strings.Replace(templatePath, "trc_templates/", "/", 1)
+		templatePathExtended := templatePath
+		if strings.HasPrefix(templatePath, "templates/") {
+			templatePathExtended = strings.Replace(templatePath, "templates/", "", 1)
+		} else {
+			templatePathExtended = project + "/" + service + "/" + strings.Replace(templatePath, "trc_templates/", "/", 1)
+		}
 		configuredFilePath := "./"
 		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, service, false, true)
 		newTemplate = string(templateFile)
@@ -203,10 +208,14 @@ func Parse(cds *vcutils.ConfigDataStore,
 		valueSlice := args[2]
 		value := valueSlice[1 : len(valueSlice)-1]
 		fileOffsetIndex := 3
-		if templatePathSlice[templateDir+1] == "Common" {
+		if len(templatePathSlice) > 1 && templatePathSlice[templateDir+1] == "Common" {
 			fileOffsetIndex = 2
 		}
-		keyPath := templatePathSlice[templateDir+fileOffsetIndex : len(templatePathSlice)]
+		keyPath := []string{}
+
+		if len(templatePathSlice) > 1 {
+			keyPath = templatePathSlice[templateDir+fileOffsetIndex : len(templatePathSlice)]
+		}
 
 		AppendToTemplateSection(interfaceTemplateSection,
 			valueSection,
