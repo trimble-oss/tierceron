@@ -76,22 +76,20 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 	}
 
 	seeded := false
-	for _, file := range files {
-		if file.Name() == env || (strings.HasPrefix(env, "local") && file.Name() == "local") {
-			logger.Println("\tStepping into: " + file.Name())
+	for _, envDir := range files {
 
-			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + env)
+		if strings.HasPrefix(env, envDir.Name()) || (strings.HasPrefix(env, "local") && envDir.Name() == "local") {
+			logger.Println("\tStepping into: " + envDir.Name())
+
+			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + envDir.Name())
 			utils.LogErrorObject(err, logger, true)
 
-			if len(filesSteppedInto) > 1 {
-				utils.CheckWarning(fmt.Sprintf("Multiple potentially conflicting configuration files found for evironment: %s", file.Name()), true)
-			}
 			for _, fileSteppedInto := range filesSteppedInto {
 				ext := filepath.Ext(fileSteppedInto.Name())
-				if ext == ".yaml" || ext == ".yml" { // Only read YAML config files
+				if strings.HasPrefix(fileSteppedInto.Name(), env) && (ext == ".yaml" || ext == ".yml") { // Only read YAML config files
 					logger.Println("\t\t" + fileSteppedInto.Name())
 					logger.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
-					path := dir + "/" + env + "/" + fileSteppedInto.Name()
+					path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name()
 					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
 
 					SeedVaultFromFile(insecure, path, addr, token, env, logger, service, uploadCert)
@@ -195,7 +193,7 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 						certPath = strings.Replace(certPath, "ENV", env, 1)
 					}
 				}
-				certPath = "trc_seeds/" + certPath
+				certPath = "vault_seeds/" + certPath
 				cert, err := ioutil.ReadFile(certPath)
 				utils.LogErrorObject(err, logger, false)
 				if err == nil {
