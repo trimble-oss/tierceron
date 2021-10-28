@@ -56,7 +56,7 @@ func CreateEngine(config eUtils.DriverConfig,
 			for _, fileName := range secret.Data["keys"].([]interface{}) {
 				if strFile, ok := fileName.(string); ok {
 					if strFile[len(strFile)-1] != '/' { // Skip subdirectories where template files are stored
-						templatePaths = append(templatePaths, strFile)
+						templatePaths = append(templatePaths, listPath+"/"+strFile)
 					}
 				}
 			}

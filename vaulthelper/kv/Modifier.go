@@ -345,9 +345,9 @@ func (m *Modifier) GetProjectServicesMap() (map[string][]string, error) {
 		availServices := serviceData.Data["keys"].([]interface{})
 		services := []string{}
 		for _, availService := range availServices {
-			services = append(services, availService.(string))
+			services = append(services, strings.ReplaceAll(availService.(string), "/", ""))
 		}
-		projectServiceMap[availProject.(string)] = services
+		projectServiceMap[strings.ReplaceAll(availProject.(string), "/", "")] = services
 	}
 
 	return projectServiceMap, nil
