@@ -91,11 +91,11 @@ func UploadTemplates(mod *kv.Modifier, dirName string, logger *log.Logger) (erro
 
 			// Construct template path for vault
 			templatePath := "templates/" + subDir + "/" + name + "/template-file"
-			logger.Println("\tUploading template to path:\t%s\n", templatePath)
+			logger.Printf("\tUploading template to path:\t%s\n", templatePath)
 
 			// Construct value path for vault
 			valuePath := "values/" + subDir + "/" + name
-			logger.Println("\tUploading values to path:\t%s\n", valuePath)
+			logger.Printf("\tUploading values to path:\t%s\n", valuePath)
 
 			// Write templates to vault and output errors/warnings
 			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext})
@@ -108,6 +108,8 @@ func UploadTemplates(mod *kv.Modifier, dirName string, logger *log.Logger) (erro
 			if err != nil || len(warn) > 0 {
 				return err, warn
 			}
+		} else {
+			logger.Printf("\tSkippping template (templates must end in .tmpl):\t%s\n", file.Name())
 		}
 	}
 	return nil, nil
