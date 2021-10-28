@@ -116,8 +116,10 @@ func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int
 	var templateDepth int
 
 	// Remove the file format from the name of the template file
-	idxFileFormat := strings.Index(templatePathSlice[len(templatePathSlice)-1], ".")
-	templatePathSlice[len(templatePathSlice)-1] = templatePathSlice[len(templatePathSlice)-1][:idxFileFormat]
+	if strings.Index(templatePathSlice[len(templatePathSlice)-1], ".") >= 0 {
+		idxFileFormat := strings.Index(templatePathSlice[len(templatePathSlice)-1], ".")
+		templatePathSlice[len(templatePathSlice)-1] = templatePathSlice[len(templatePathSlice)-1][:idxFileFormat]
+	}
 
 	// Find the index in the slice of the vault_template subdirectory
 	for i, folder := range templatePathSlice {

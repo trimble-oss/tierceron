@@ -28,9 +28,15 @@ func GetTemplate(modifier *kv.Modifier, emptyFilePath string) (string, error) {
 		project = ""
 		service = splitDir[2]
 	} else {
-		project = splitDir[2]
-		service = splitDir[3]
-		startI = 4
+		if len(splitDir) == 4 {
+			project = splitDir[2]
+			service = splitDir[3]
+			startI = 4
+		} else if len(splitDir) == 3 {
+			project = splitDir[0]
+			service = splitDir[1]
+			startI = 2
+		}
 	}
 	for i := startI; i < len(splitDir); i = i + 1 {
 		if i != startI {
@@ -39,13 +45,17 @@ func GetTemplate(modifier *kv.Modifier, emptyFilePath string) (string, error) {
 		templateFile = templateFile + splitDir[i]
 	}
 
-	templateFile = templateFile[0 : len(templateFile)-len(".tmpl")]
+	if strings.HasSuffix(templateFile, ".tmpl") {
+		templateFile = templateFile[0 : len(templateFile)-len(".tmpl")]
+	}
 	if strings.HasSuffix(templateFile, ".yml") {
 		templateFile = templateFile[0 : len(templateFile)-len(".yml")]
 	} else {
-		lastDotIndex := strings.LastIndex(templateFile, ".")
-		if lastDotIndex > 0 {
-			templateFile = templateFile[0:lastDotIndex]
+		if strings.Index(templateFile, ".") >= 0 {
+			lastDotIndex := strings.LastIndex(templateFile, ".")
+			if lastDotIndex > 0 {
+				templateFile = templateFile[0:lastDotIndex]
+			}
 		}
 	}
 
