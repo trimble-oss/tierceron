@@ -193,7 +193,7 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 						certPath = strings.Replace(certPath, "ENV", env, 1)
 					}
 				}
-				certPath = "vault_seeds/" + certPath
+				certPath = "trc_seeds/" + certPath
 				cert, err := ioutil.ReadFile(certPath)
 				utils.LogErrorObject(err, logger, false)
 				if err == nil {
