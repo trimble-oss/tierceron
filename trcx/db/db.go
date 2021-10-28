@@ -21,7 +21,6 @@ func CreateEngine(config eUtils.DriverConfig,
 	templatePaths []string,
 	env string) *TierceronEngine {
 	db := memory.NewDatabase(env)
-	noVault := false
 	var goMod *kv.Modifier
 
 	if config.Token != "" {
@@ -31,9 +30,6 @@ func CreateEngine(config eUtils.DriverConfig,
 			panic(err)
 		}
 		goMod.Env = config.Env
-		if config.Token == "novault" {
-			noVault = true
-		}
 	}
 	// var cds *vcutils.ConfigDataStore
 	// if goMod != nil {
@@ -56,7 +52,9 @@ func CreateEngine(config eUtils.DriverConfig,
 			for _, fileName := range secret.Data["keys"].([]interface{}) {
 				if strFile, ok := fileName.(string); ok {
 					if strFile[len(strFile)-1] != '/' { // Skip subdirectories where template files are stored
-						templatePaths = append(templatePaths, listPath+"/"+strFile)
+						templatePaths = append(templatePaths, strFile)
+					} else {
+						templatePaths = append(templatePaths, strings.ReplaceAll(strFile, "/", ""))
 					}
 				}
 			}
@@ -71,31 +69,8 @@ func CreateEngine(config eUtils.DriverConfig,
 				templateResult.SecretSection = map[string]map[string]map[string]string{}
 				templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
 
-				project := ""
-				service := ""
-
-				//check for template_files directory here
-				s := strings.Split(templatePath, "/")
-				//figure out which path is trc_templates
-				dirIndex := -1
-				for j, piece := range s {
-					if piece == "trc_templates" {
-						dirIndex = j
-					}
-				}
-				if dirIndex != -1 {
-					project = s[dirIndex+1]
-					service = s[dirIndex+2]
-				}
-
-				// Clean up service naming (Everything after '.' removed)
-				dotIndex := strings.Index(service, ".")
-				if dotIndex > 0 && dotIndex <= len(service) {
-					service = service[0:dotIndex]
-				}
-
 				var cds *vcutils.ConfigDataStore
-				if goMod != nil && !noVault {
+				if goMod != nil {
 					cds = new(vcutils.ConfigDataStore)
 					cds.Init(goMod, config.SecretMode, true, project, service)
 				}
@@ -106,7 +81,7 @@ func CreateEngine(config eUtils.DriverConfig,
 					config.Log,
 					project,
 					service,
-					noVault,
+					true,
 					&(templateResult.InterfaceTemplateSection),
 					&(templateResult.ValueSection),
 					&(templateResult.SecretSection),
