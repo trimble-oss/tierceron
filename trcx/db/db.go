@@ -18,10 +18,18 @@ import (
 
 // CreateEngine - creates a Tierceron query engine for query of configurations.
 func CreateEngine(config eUtils.DriverConfig,
-	templatePaths []string,
-	env string) *TierceronEngine {
-	db := memory.NewDatabase(env)
+	templatePaths []string) *TierceronEngine {
 	var goMod *kv.Modifier
+
+	envVersion := strings.Split(config.Env, "_")
+	if len(envVersion) != 2 {
+		// Make it so.
+		config.Env = config.Env + "_0"
+		envVersion = strings.Split(config.Env, "_")
+	}
+
+	env := envVersion[0]
+	version := envVersion[1]
 
 	if config.Token != "" {
 		var err error
@@ -29,8 +37,12 @@ func CreateEngine(config eUtils.DriverConfig,
 		if err != nil {
 			panic(err)
 		}
-		goMod.Env = config.Env
+		goMod.Env = env
+		goMod.Version = version
 	}
+
+	db := memory.NewDatabase(env)
+
 	// var cds *vcutils.ConfigDataStore
 	// if goMod != nil {
 	// 	cds = new(vcutils.ConfigDataStore)
