@@ -88,6 +88,18 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 	}
 }
 
+func removeDuplicateValues(slice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range slice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}
+
 func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, service string, config eUtils.DriverConfig) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath)
@@ -104,6 +116,8 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 			}
 		}
 	}
+
+	templatePaths = removeDuplicateValues(templatePaths)
 
 	// TODO: Make this async for performance...
 	for _, templatePath := range templatePaths {
