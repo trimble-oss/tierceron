@@ -159,7 +159,7 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 func CreateEngine(config eUtils.DriverConfig,
 	templatePaths []string) (*TierceronEngine, error) {
 
-	te := &TierceronEngine{Database: memory.NewDatabase("TierceronDB"), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext()}
+	te := &TierceronEngine{Database: memory.NewDatabase("TierceronDB"), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext(), Config: config}
 
 	var goMod *kv.Modifier
 	goMod, errModInit := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions)
