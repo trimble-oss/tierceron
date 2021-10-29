@@ -29,7 +29,7 @@ func GetStringInBetween(str string, start string, end string) (result string) {
 	return str[s : s+e]
 }
 
-func LineByLineDiff(stringA *string, stringB *string, patchData bool) string {
+func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip bool) string {
 	//Colors used for output
 	var Reset = "\033[0m"
 	var Red = "\033[31m"
@@ -42,6 +42,11 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool) string {
 		Red = "\x1b[31m"
 		Green = "\x1b[32m"
 		Cyan = "\x1b[36m"
+	} else if colorSkip {
+		Reset = ""
+		Red = ""
+		Green = ""
+		Cyan = ""
 	}
 
 	dmp := diffmatchpatch.New()
@@ -198,7 +203,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool) string {
 	result = strings.ReplaceAll(result, "\n-", "\n"+Red+"-"+Reset)
 
 	//Diff vs no Diff output
-	if len(strings.TrimSpace(result)) == 0 {
+	if len(strings.TrimSpace(result)) == 0 && patchData {
 		if runtime.GOOS == "windows" {
 			return "@@ No Differences @@"
 		}
@@ -442,17 +447,17 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 			}
 
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true))
+			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyA, true))
+			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyA, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitD[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyA, true))
+			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyA, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitB[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyB, true))
+			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyB, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitB[0] + Reset + Green + " +Env-" + keySplitD[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyB, true))
+			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyB, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitC[0] + Reset + Green + " +Env-" + keySplitD[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyC, true))
+			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyC, true, false))
 		case 3:
 			keyC := keys[2]
 			keySplitC := strings.Split(keyC, "||")
@@ -466,14 +471,14 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 			}
 
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true))
+			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyA, true))
+			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyA, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitB[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyB, true))
+			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyB, true, false))
 		default:
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true))
+			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true, false))
 		}
 
 		//Seperator
