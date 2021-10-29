@@ -84,7 +84,7 @@ func writeToTable(te *TierceronEngine, project string, service string, templateR
 	}
 }
 
-func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envVersionData string, enterpriseId string, project string, service string, config eUtils.DriverConfig) error {
+func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, service string, config eUtils.DriverConfig) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath)
 	if err != nil {
@@ -114,6 +114,8 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envVersionData str
 		var cds *vcutils.ConfigDataStore
 		if goMod != nil {
 			cds = new(vcutils.ConfigDataStore)
+			goMod.Env = envEnterprise
+			goMod.Version = version
 			cds.Init(goMod, config.SecretMode, true, project, service)
 		}
 
@@ -143,36 +145,55 @@ func CreateEngine(config eUtils.DriverConfig,
 	te := &TierceronEngine{Database: memory.NewDatabase("TierceronDB"), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext()}
 
 	var goMod *kv.Modifier
-
-	envVersion := strings.Split(config.Env, "_")
-	if len(envVersion) != 2 {
-		// Make it so.
-		config.Env = config.Env + "_0"
-		envVersion = strings.Split(config.Env, "_")
+	goMod, errModInit := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions)
+	if errModInit != nil {
+		return nil, errModInit
 	}
-
-	env := envVersion[0]
-	version := envVersion[1]
-
-	if config.Token != "" {
-		var err error
-		goMod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions)
-		if err != nil {
-			panic(err)
-		}
-		goMod.Env = env
-		goMod.Version = version
-	}
-
 	projectServiceMap, err := goMod.GetProjectServicesMap()
 	if err != nil {
 		return nil, err
 	}
 
+	var envEnterprises []string
+	goMod.Env = ""
+	tempEnterprises, err := goMod.List("values")
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	for _, enterprise := range tempEnterprises.Data["keys"].([]interface{}) {
+		envEnterprises = append(envEnterprises, strings.Replace(enterprise.(string), "/", "", 1))
+	}
+
 	// Fun stuff here....
-	for project, services := range projectServiceMap {
-		for _, service := range services {
-			TransformConfig(goMod, te, config.Env, "1" /* enterpriseId */, project, service, config)
+	var versionMetadata []string
+	for _, envEnterprise := range envEnterprises {
+		goMod.Env = ""
+		versionMetadata = versionMetadata[:0]
+		fileMetadata, err := goMod.GetVersionValues(goMod, "values/"+envEnterprise)
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+
+		var first map[string]interface{}
+		for _, file := range fileMetadata {
+			if first == nil {
+				first = file
+				break
+			}
+		}
+
+		for versionNumber, _ := range first {
+			versionMetadata = append(versionMetadata, versionNumber)
+		}
+
+		for _, versionNo := range versionMetadata {
+			for project, services := range projectServiceMap {
+				for _, service := range services {
+					TransformConfig(goMod, te, envEnterprise, versionNo, project, service, config)
+				}
+			}
 		}
 	}
 
