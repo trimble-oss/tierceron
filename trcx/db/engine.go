@@ -12,7 +12,7 @@ type TierceronTable struct {
 }
 
 type TierceronEngine struct {
-	Name       string
+	Database   *memory.Database
 	Engine     *sqle.Engine
 	Context    *sql.Context
 	TableCache map[string]*TierceronTable
