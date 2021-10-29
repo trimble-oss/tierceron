@@ -17,7 +17,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-func writeToTable(te *TierceronEngine, project string, service string, templateResult *extract.TemplateResultData) {
+func writeToTable(te *TierceronEngine, envEnterprise string, version string, project string, service string, templateResult *extract.TemplateResultData) {
 
 	//
 	// What we need is in ValueSection and SecretSection...
@@ -30,10 +30,19 @@ func writeToTable(te *TierceronEngine, project string, service string, templateR
 	// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
 	configTableMap := templateResult.InterfaceTemplateSection.(map[string]interface{})["templates"].(map[string]interface{})[project].(map[string]interface{})[service].(map[string]interface{})
 	for configName, _ := range configTableMap {
-		tableName := project + "." + service + "." + configName
+		tableName := project + "_" + service + "_" + configName
 		tierceronTable := te.TableCache[tableName]
 		valueColumns := templateResult.ValueSection["values"][service]
 		secretColumns := templateResult.SecretSection["super-secrets"][service]
+
+		if strings.Contains(envEnterprise, ".") {
+			envEnterpriseParts := strings.Split(envEnterprise, ".")
+			valueColumns["_Env_"] = envEnterpriseParts[0]
+			valueColumns["_EnterpriseId_"] = envEnterpriseParts[1]
+		} else {
+			valueColumns["_Env_"] = envEnterprise
+		}
+		valueColumns["_Version_"] = version
 
 		if tierceronTable == nil {
 			// This is cacheable...
@@ -63,8 +72,9 @@ func writeToTable(te *TierceronEngine, project string, service string, templateR
 			te.TableCache[tableName] = tierceronTable
 		}
 
-		row := []string{}
-		// TODO: Add Enterprise, Column, and Version....
+		row := []interface{}{}
+
+		// TODO: Add Enterprise, Environment, and Version....
 
 		for _, column := range tierceronTable.Schema {
 			if value, ok := valueColumns[column.Name]; ok {
@@ -74,13 +84,7 @@ func writeToTable(te *TierceronEngine, project string, service string, templateR
 			}
 		}
 
-		rows := []sql.Row{
-			sql.NewRow(row),
-		}
-
-		for _, row := range rows {
-			tierceronTable.Table.Insert(te.Context, row)
-		}
+		tierceronTable.Table.Insert(te.Context, sql.NewRow(row...))
 	}
 }
 
@@ -131,7 +135,7 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 			&(templateResult.SecretSection),
 		)
 
-		writeToTable(te, project, service, &templateResult)
+		writeToTable(te, envEnterprise, version, project, service, &templateResult)
 	}
 
 	te.Engine = sqle.NewDefault(sql.NewDatabaseProvider(te.Database))
@@ -205,7 +209,8 @@ func CreateEngine(config eUtils.DriverConfig,
 func Query(te *TierceronEngine, query string) {
 	// Create a test memory database and register it to the default engine.
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
+	//	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
+	ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 
 	_, r, err := te.Engine.Query(ctx, query)
 	if err != nil {
