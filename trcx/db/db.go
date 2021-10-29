@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	vcutils "tierceron/trcconfig/utils"
@@ -42,17 +43,14 @@ func CreateEngine(config eUtils.DriverConfig,
 	}
 
 	db := memory.NewDatabase(env)
-
-	// var cds *vcutils.ConfigDataStore
-	// if goMod != nil {
-	// 	cds = new(vcutils.ConfigDataStore)
-	// }
+	te := TierceronEngine{Name: db.Name(), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext()}
 
 	projectServiceMap, err := goMod.GetProjectServicesMap()
 	if err != nil {
 		return nil
 	}
 
+	// Fun stuff here....
 	for project, services := range projectServiceMap {
 		for _, service := range services {
 			listPath := "templates/" + project + "/" + service
@@ -102,22 +100,65 @@ func CreateEngine(config eUtils.DriverConfig,
 				//
 				// What we need is in ValueSection and SecretSection...
 				//
-
-				// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
-				table := memory.NewTable("tableName", sql.Schema{
-					{Name: "col1", Type: sql.Text, Source: "tableName"},
-					{Name: "col2", Type: sql.Text, Source: "tableName2"},
-				})
-				db.AddTable("tableName", table)
-				ctx := sql.NewEmptyContext()
-
-				rows := []sql.Row{
-					sql.NewRow("col1", "col2"),
-					sql.NewRow("col1", "col2"),
+				if templateResult.InterfaceTemplateSection == nil {
+					// No templates, no configs, no tables.
+					continue
 				}
 
-				for _, row := range rows {
-					table.Insert(ctx, row)
+				// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
+				configTableMap := templateResult.InterfaceTemplateSection.(map[string]interface{})["templates"].(map[string]interface{})[project].(map[string]interface{})[service].(map[string]interface{})
+				for configName, _ := range configTableMap {
+					tableName := project + "." + service + "." + configName
+					tierceronTable := te.TableCache[tableName]
+					valueColumns := templateResult.ValueSection["values"][service]
+					secretColumns := templateResult.SecretSection["super-secrets"][service]
+
+					if tierceronTable == nil {
+						// This is cacheable...
+						tierceronTable = &TierceronTable{Table: nil, Schema: []*sql.Column{}}
+
+						columnKeys := []string{}
+
+						for valueKeyColumn, _ := range valueColumns {
+							columnKeys = append(columnKeys, valueKeyColumn)
+						}
+
+						for secretKeyColumn, _ := range secretColumns {
+							columnKeys = append(columnKeys, secretKeyColumn)
+						}
+
+						// Alpha sort -- yay...?
+						sort.Strings(columnKeys)
+
+						for _, columnKey := range columnKeys {
+							column := sql.Column{Name: columnKey, Type: sql.Text, Source: tableName}
+							tierceronTable.Schema = append(tierceronTable.Schema, &column)
+						}
+
+						table := memory.NewTable(tableName, tierceronTable.Schema)
+						db.AddTable(tableName, table)
+						tierceronTable.Table = table
+						te.TableCache[tableName] = tierceronTable
+					}
+
+					row := []string{}
+					// TODO: Add Enterprise, Column, and Version....
+
+					for _, column := range tierceronTable.Schema {
+						if value, ok := valueColumns[column.Name]; ok {
+							row = append(row, value)
+						} else if secretValue, svOk := secretColumns[column.Name]; svOk {
+							row = append(row, secretValue)
+						}
+					}
+
+					rows := []sql.Row{
+						sql.NewRow(row),
+					}
+
+					for _, row := range rows {
+						tierceronTable.Table.Insert(te.Context, row)
+					}
 				}
 			}
 
@@ -125,8 +166,7 @@ func CreateEngine(config eUtils.DriverConfig,
 
 	}
 
-	e := sqle.NewDefault(sql.NewDatabaseProvider(db))
-	te := TierceronEngine{Name: db.Name(), Engine: e}
+	te.Engine = sqle.NewDefault(sql.NewDatabaseProvider(db))
 
 	return &te
 }
