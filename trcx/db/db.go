@@ -206,15 +206,22 @@ func CreateEngine(config eUtils.DriverConfig,
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func Query(te *TierceronEngine, query string) {
+func Query(te *TierceronEngine, query string) ([]string, [][]string, error) {
 	// Create a test memory database and register it to the default engine.
 
-	//	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
+	//  ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 
-	_, r, err := te.Engine.Query(ctx, query)
+	schema, r, err := te.Engine.Query(ctx, query)
 	if err != nil {
+		return nil, nil, err
+	}
 
+	columns := []string{}
+	matrix := [][]string{}
+
+	for _, col := range schema {
+		columns = append(columns, col.Name)
 	}
 
 	// Iterate results and print them.
@@ -223,12 +230,11 @@ func Query(te *TierceronEngine, query string) {
 		if err == io.EOF {
 			break
 		}
-
-		name := row[0]
-		count := row[1]
-
-		fmt.Println(name, count)
+		rowData := []string{}
+		for _, col := range row {
+			rowData = append(rowData, col.(string))
+		}
+		matrix = append(matrix, rowData)
 	}
-
-	// Output: John Doe 2
+	return columns, matrix, nil
 }
