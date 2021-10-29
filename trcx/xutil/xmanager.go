@@ -413,8 +413,7 @@ func GenerateSeedsFromVaultToDb(config eUtils.DriverConfig) interface{} {
 	}
 
 	tierceronEngine := xdb.CreateEngine(config,
-		templatePaths,
-		config.Env)
+		templatePaths)
 
 	return tierceronEngine
 }
