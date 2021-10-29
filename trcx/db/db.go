@@ -152,7 +152,6 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 		writeToTable(te, envEnterprise, version, project, service, &templateResult)
 	}
 
-	te.Engine = sqle.NewDefault(sql.NewDatabaseProvider(te.Database))
 	return nil
 }
 
@@ -186,6 +185,9 @@ func CreateEngine(config eUtils.DriverConfig,
 	// Fun stuff here....
 	var versionMetadata []string
 	for _, envEnterprise := range envEnterprises {
+		if !strings.Contains(envEnterprise, ".") {
+			continue
+		}
 		goMod.Env = ""
 		versionMetadata = versionMetadata[:0]
 		fileMetadata, err := goMod.GetVersionValues(goMod, "values/"+envEnterprise)
@@ -214,13 +216,14 @@ func CreateEngine(config eUtils.DriverConfig,
 			}
 		}
 	}
+	te.Engine = sqle.NewDefault(sql.NewDatabaseProvider(te.Database))
 
 	return te, nil
 }
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func Query(te *TierceronEngine, query string) ([]string, [][]string, error) {
+func Query(te *TierceronEngine, query string) (string, []string, [][]string, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//  ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
@@ -228,13 +231,17 @@ func Query(te *TierceronEngine, query string) ([]string, [][]string, error) {
 
 	schema, r, err := te.Engine.Query(ctx, query)
 	if err != nil {
-		return nil, nil, err
+		return "", nil, nil, err
 	}
 
 	columns := []string{}
 	matrix := [][]string{}
+	tableName := ""
 
 	for _, col := range schema {
+		if tableName == "" {
+			tableName = col.Source
+		}
 		columns = append(columns, col.Name)
 	}
 
@@ -250,5 +257,5 @@ func Query(te *TierceronEngine, query string) ([]string, [][]string, error) {
 		}
 		matrix = append(matrix, rowData)
 	}
-	return columns, matrix, nil
+	return tableName, columns, matrix, nil
 }
