@@ -153,7 +153,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		if err != nil {
 			fmt.Println("Unable to parse unsealShardPtr into int")
 		}
-		keyToken, err := v.InitVault(int(unsealShardPtr), int(totalKeyShard))
+		keyToken, err := v.InitVault(int(totalKeyShard), int(unsealShardPtr))
 		utils.LogErrorObject(err, logger, true)
 		v.SetToken(keyToken.Token)
 		v.SetShards(keyToken.Keys)
