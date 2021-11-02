@@ -179,13 +179,15 @@ skipDiff:
 		flag.Usage()
 		os.Exit(1)
 	}
-	if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-		fmt.Println("Missing required start template folder: " + *startDirPtr)
-		os.Exit(1)
-	}
-	if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
-		fmt.Println("Missing required start seed folder: " + *endDirPtr)
-		os.Exit(1)
+	if ctx == nil {
+		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
+			fmt.Println("Missing required start template folder: " + *startDirPtr)
+			os.Exit(1)
+		}
+		if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
+			fmt.Println("Missing required start seed folder: " + *endDirPtr)
+			os.Exit(1)
+		}
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
