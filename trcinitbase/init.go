@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	il "tierceron/trcinit/initlib"
 	"tierceron/utils"
@@ -41,7 +42,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	updatePolicy := flag.Bool("updatePolicy", false, "Update security policy")
 	initNamespace := flag.Bool("initns", false, "Init namespace (tokens, policy, and role)")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
+	keyShardPtr := flag.String("totalKeys", "3", "Total number of key shards to make")
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
 
 	args := os.Args[1:]
@@ -57,6 +58,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	// Prints usage if no flags are specified
 	if flag.NFlag() == 0 {
 		flag.Usage()
+		os.Exit(1)
+	}
+
+	if *namespaceVariable == "" && *newPtr {
+		fmt.Println("Namespace (-namespace) required to initialize a new vault.")
 		os.Exit(1)
 	}
 
@@ -114,6 +120,10 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	// Create a new vault system connection
 	v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr)
 	if err != nil {
+		if strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
+			fmt.Printf("Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
+		}
+
 		os.Exit(0)
 	}
 	if *pingPtr {

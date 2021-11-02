@@ -271,7 +271,9 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 	// Remove for deployment
 	fmt.Println("Vault succesfully Init'd")
 	fmt.Println("=========================")
-	fmt.Printf("Unseal key: %s\n", response.KeysB64[0])
+	for _, key := range response.KeysB64 {
+		fmt.Printf("Unseal key: %s\n", key)
+	}
 	fmt.Printf("Root token: %s\n\n", response.RootToken)
 
 	keyToken := KeyTokenWrapper{
