@@ -86,7 +86,7 @@ func main() {
 	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcconfig to access the vault")
-	wantCertPtr := flag.Bool("cert", false, "Pull certificate into directory specified by endDirPtr")
+	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	logFilePtr := flag.String("log", "./trcconfig.log", "Output path for log file")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	zcPtr := flag.Bool("zc", false, "Zero config (no configuration option).")
@@ -114,7 +114,7 @@ func main() {
 	}
 
 	if *zcPtr {
-		*wantCertPtr = false
+		*wantCertsPtr = false
 	}
 
 	//Dont allow these combinations of flags
@@ -273,7 +273,7 @@ func main() {
 				ServicesWanted: services,
 				StartDir:       append([]string{}, *startDirPtr),
 				EndDir:         *endDirPtr,
-				WantCert:       *wantCertPtr,
+				WantCerts:      *wantCertsPtr,
 				ZeroConfig:     *zcPtr,
 				GenAuth:        false,
 				Log:            logger,
@@ -310,7 +310,7 @@ func main() {
 			ServicesWanted: services,
 			StartDir:       append([]string{}, *startDirPtr),
 			EndDir:         *endDirPtr,
-			WantCert:       *wantCertPtr,
+			WantCerts:      *wantCertsPtr,
 			ZeroConfig:     *zcPtr,
 			GenAuth:        false,
 			Log:            logger,

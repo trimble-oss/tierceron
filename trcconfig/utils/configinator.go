@@ -233,7 +233,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					isCert = true
 				}
 
-				if config.WantCert != isCert {
+				if config.WantCerts != isCert {
 					goto wait
 				}
 
@@ -262,10 +262,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					mutex.Unlock()
 					goto wait
 				} else {
-					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCerts, false)
 				}
 				//generate template or certificate
-				if config.WantCert {
+				if config.WantCerts {
 					if len(certData) == 0 {
 						fmt.Println("Could not load cert ", endPaths[i])
 						goto wait
@@ -274,7 +274,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					writeToFile(certData[1], certDestination)
 					fmt.Println("certificate written to ", certDestination)
 					goto wait
-				} else if !config.WantCert {
+				} else if !config.WantCerts {
 					if config.Diff {
 						if version != "" {
 							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
@@ -295,7 +295,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					isCert = true
 				}
 
-				if config.WantCert != isCert {
+				if config.WantCerts != isCert {
 					goto wait
 				}
 				//assume the starting directory was trc_templates
@@ -306,14 +306,14 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					versionData[endPaths[i]] = data
 					goto wait
 				} else {
-					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCerts, false)
 				}
-				if config.WantCert {
+				if config.WantCerts {
 					certDestination := config.EndDir + "/" + certData[0]
 					writeToFile(certData[1], certDestination)
 					fmt.Println("certificate written to ", certDestination)
 					goto wait
-				} else if !config.WantCert {
+				} else if !config.WantCerts {
 					if config.Diff {
 						if version != "" {
 							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])

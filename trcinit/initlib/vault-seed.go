@@ -62,7 +62,7 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 			ServicesWanted: []string{service},
 			StartDir:       append([]string{}, ""),
 			EndDir:         "",
-			WantCert:       false,
+			WantCerts:      false,
 			GenAuth:        false,
 			Log:            logger,
 		}

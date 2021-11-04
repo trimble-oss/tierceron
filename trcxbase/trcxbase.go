@@ -180,13 +180,13 @@ skipDiff:
 		os.Exit(1)
 	}
 	if ctx == nil {
-		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-			fmt.Println("Missing required start template folder: " + *startDirPtr)
-			os.Exit(1)
-		}
-		if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
-			fmt.Println("Missing required start seed folder: " + *endDirPtr)
-			os.Exit(1)
+	if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
+		fmt.Println("Missing required start template folder: " + *startDirPtr)
+		os.Exit(1)
+	}
+	if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
+		fmt.Println("Missing required start seed folder: " + *endDirPtr)
+		os.Exit(1)
 		}
 	}
 
@@ -257,7 +257,7 @@ skipDiff:
 			ServicesWanted: []string{},
 			StartDir:       append([]string{}, *startDirPtr),
 			EndDir:         *endDirPtr,
-			WantCert:       false,
+			WantCerts:      false,
 			GenAuth:        *genAuth,
 			Log:            logger,
 			Clean:          *cleanPtr,

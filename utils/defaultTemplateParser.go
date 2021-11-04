@@ -26,7 +26,7 @@ type DriverConfig struct {
 	ServicesWanted       []string
 	StartDir             []string // Starting directory... possibly multiple
 	EndDir               string
-	WantCert             bool
+	WantCerts            bool
 	ZeroConfig           bool
 	GenAuth              bool
 	Clean                bool
