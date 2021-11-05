@@ -208,28 +208,19 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			mod.Env = config.Env
 			mod.Version = version
 			//check for template_files directory here
-			s := strings.Split(templatePath, "/")
-			//figure out which path is trc_templates
-			dirIndex := -1
-			for j, piece := range s {
-				if piece == "trc_templates" {
-					dirIndex = j
-					break
-				}
-			}
+			project, service, templatePath := GetProjectService(templatePath)
 
 			var isCert bool
-			if dirIndex != -1 {
-				serviceTemplate := s[dirIndex+2]
+			if service != "" {
 				if strings.HasSuffix(templatePath, ".DS_Store") {
 					goto wait
 				}
 
 				isCert := false
-				if strings.Contains(serviceTemplate, ".pfx.mf") ||
-					strings.Contains(serviceTemplate, ".cer.mf") ||
-					strings.Contains(serviceTemplate, ".pem.mf") ||
-					strings.Contains(serviceTemplate, ".jks.mf") {
+				if strings.Contains(service, ".pfx.mf") ||
+					strings.Contains(service, ".cer.mf") ||
+					strings.Contains(service, ".pem.mf") ||
+					strings.Contains(service, ".jks.mf") {
 					isCert = true
 				}
 
@@ -253,7 +244,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 				var certData map[int]string
 				certLoaded := false
 				if templateInfo {
-					data := getTemplateVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
+					data := getTemplateVersionData(mod, config.SecretMode, project, service, endPaths[i])
 					mutex.Lock()
 					if data == nil {
 						fmt.Println("Template version data could not be retrieved")
@@ -263,7 +254,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					mutex.Unlock()
 					goto wait
 				} else {
-					configuredTemplate, certData, certLoaded = ConfigTemplate(mod, templatePath, config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCerts, false)
+					configuredTemplate, certData, certLoaded = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
 				}
 				//generate template or certificate
 				if config.WantCerts && certLoaded {
@@ -287,12 +278,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					}
 				}
 			} else {
-				serviceTemplate := s[len(s)-1]
 				isCert := false
-				if strings.Contains(serviceTemplate, ".pfx.mf") ||
-					strings.Contains(serviceTemplate, ".cer.mf") ||
-					strings.Contains(serviceTemplate, ".pem.mf") ||
-					strings.Contains(serviceTemplate, ".jks.mf") {
+				if strings.Contains(service, ".pfx.mf") ||
+					strings.Contains(service, ".cer.mf") ||
+					strings.Contains(service, ".pem.mf") ||
+					strings.Contains(service, ".jks.mf") {
 					isCert = true
 				}
 
@@ -304,11 +294,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 				var certData map[int]string
 				certLoaded := false
 				if templateInfo {
-					data := getTemplateVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
+					data := getTemplateVersionData(mod, config.SecretMode, project, service, endPaths[i])
 					versionData[endPaths[i]] = data
 					goto wait
 				} else {
-					configuredTemplate, certData, certLoaded = ConfigTemplate(mod, templatePath, config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCerts, false)
+					configuredTemplate, certData, certLoaded = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
 				}
 				if config.WantCerts && certLoaded {
 					certDestination := config.EndDir + "/" + certData[0]
@@ -375,7 +365,12 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 	}
 	for _, file := range files {
 		//add this directory to path names
-		filePath := dir + "/" + file.Name()
+		if dir[len(dir)-1] != '/' {
+			dir = dir + "/"
+		}
+
+		filePath := dir + file.Name()
+
 		//take off .tmpl extension
 		filename := file.Name()
 		if strings.HasSuffix(filename, ".DS_Store") {

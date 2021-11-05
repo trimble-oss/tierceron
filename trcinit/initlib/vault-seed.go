@@ -48,7 +48,7 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 		var templatePaths = configcore.GetSupportedTemplates()
 		regions := []string{}
 
-		if env == "staging" || env == "prod" {
+		if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
 			regions = utils.GetSupportedProdRegions()
 		}
 

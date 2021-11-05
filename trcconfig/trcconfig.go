@@ -222,7 +222,7 @@ func main() {
 	}
 	regions := []string{}
 
-	if *envPtr == "staging" || *envPtr == "prod" {
+	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
 		if *regionPtr != "" {
 			for _, supportedRegion := range supportedRegions {
