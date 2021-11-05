@@ -73,6 +73,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	}
 	diffPtr := flag.Bool("diff", false, "Diff files")
 	versionPtr := flag.Bool("versions", false, "Gets version metadata information")
+	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 
 	// Checks for proper flag input
 	args := os.Args[1:]
@@ -180,13 +181,13 @@ skipDiff:
 		os.Exit(1)
 	}
 	if ctx == nil {
-	if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-		fmt.Println("Missing required start template folder: " + *startDirPtr)
-		os.Exit(1)
-	}
-	if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
-		fmt.Println("Missing required start seed folder: " + *endDirPtr)
-		os.Exit(1)
+		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
+			fmt.Println("Missing required start template folder: " + *startDirPtr)
+			os.Exit(1)
+		}
+		if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
+			fmt.Println("Missing required start seed folder: " + *endDirPtr)
+			os.Exit(1)
 		}
 	}
 
@@ -257,7 +258,7 @@ skipDiff:
 			ServicesWanted: []string{},
 			StartDir:       append([]string{}, *startDirPtr),
 			EndDir:         *endDirPtr,
-			WantCerts:      false,
+			WantCerts:      *wantCertsPtr,
 			GenAuth:        *genAuth,
 			Log:            logger,
 			Clean:          *cleanPtr,

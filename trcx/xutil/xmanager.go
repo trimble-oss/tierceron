@@ -27,7 +27,7 @@ var wg2 sync.WaitGroup
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, string, bool, string) {
+func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -42,10 +42,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	sliceSecretSection := []map[string]map[string]map[string]string{}
 	maxDepth := -1
 
-	project := ""
 	endPath := ""
 	multiService := false
-	service := ""
 	var mod *kv.Modifier
 	noVault := false
 
@@ -55,7 +53,6 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		config.Env = config.Env + "_0"
 		envVersion = strings.Split(config.Env, "_")
 	}
-
 	env := envVersion[0]
 	version := envVersion[1]
 
@@ -165,7 +162,10 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(templatePath string, project string, service string, multiService bool, c eUtils.DriverConfig, noVault bool) {
+		go func(templatePath string, multiService bool, c eUtils.DriverConfig, noVault bool) {
+			project := ""
+			service := ""
+
 			// Map Subsections
 			var templateResult extract.TemplateResultData
 
@@ -240,7 +240,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			)
 			templateResult.Env = goMod.Env + "_" + requestedVersion
 			templateResultChan <- &templateResult
-		}(templatePath, project, service, multiService, config, noVault)
+		}(templatePath, multiService, config, noVault)
 	}
 	wg.Wait()
 
@@ -307,7 +307,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	templateData = strings.ReplaceAll(templateData, "'", "")
 	seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n" + string(authYaml)
 
-	return service, endPath, multiService, seedData
+	return endPath, multiService, seedData
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
@@ -348,7 +348,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		}
 	}
 
-	_, endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
+	endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 
 	if strings.HasSuffix(config.Env, "_0") {
 		config.Env = strings.Split(config.Env, "_")[0]
@@ -364,6 +364,54 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		}
 	} else {
 		endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
+	}
+
+	//generate template or certificate
+	if config.WantCerts {
+		var certData map[int]string
+
+		for _, templatePath := range templatePaths {
+
+			project, service, templatePath := vcutils.GetProjectService(templatePath)
+
+			envVersion := strings.Split(config.Env, "_")
+			if len(envVersion) != 2 {
+				// Make it so.
+				config.Env = config.Env + "_0"
+				envVersion = strings.Split(config.Env, "_")
+			}
+
+			mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
+			if err != nil {
+				panic(err)
+			}
+			mod.Env = envVersion[0]
+			mod.Version = envVersion[1]
+
+			_, certData = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+
+			if len(certData) == 0 {
+				fmt.Println("Could not load cert ", templatePath)
+				return nil
+			}
+
+			certPath := fmt.Sprintf("%s", certData[2])
+			fmt.Println("Writing certificate: " + certPath + ".")
+
+			if strings.Contains(certPath, "ENV") {
+				if len(mod.Env) >= 5 && (mod.Env)[:5] == "local" {
+					envParts := strings.SplitN(mod.Env, "/", 3)
+					certPath = strings.Replace(certPath, "ENV", envParts[1], 1)
+				} else {
+					certPath = strings.Replace(certPath, "ENV", mod.Env, 1)
+				}
+			}
+
+			certDestination := config.EndDir + "/" + certPath
+			writeToFile(certData[1], certDestination)
+			fmt.Println("certificate written to ", certDestination)
+		}
+		return nil
 	}
 
 	if config.Diff {

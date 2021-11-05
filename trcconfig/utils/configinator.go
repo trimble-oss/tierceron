@@ -262,7 +262,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					mutex.Unlock()
 					goto wait
 				} else {
-					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCerts, false)
+					configuredTemplate, certData = ConfigTemplate(mod, templatePath, config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCerts, false)
 				}
 				//generate template or certificate
 				if config.WantCerts {
@@ -274,7 +274,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					writeToFile(certData[1], certDestination)
 					fmt.Println("certificate written to ", certDestination)
 					goto wait
-				} else if !config.WantCerts {
+				} else {
 					if config.Diff {
 						if version != "" {
 							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
@@ -306,7 +306,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					versionData[endPaths[i]] = data
 					goto wait
 				} else {
-					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCerts, false)
+					configuredTemplate, certData = ConfigTemplate(mod, templatePath, config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCerts, false)
 				}
 				if config.WantCerts {
 					certDestination := config.EndDir + "/" + certData[0]
