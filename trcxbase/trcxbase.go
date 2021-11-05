@@ -199,7 +199,7 @@ skipDiff:
 	regions := []string{}
 
 	if len(envSlice) == 1 && !*noVaultPtr {
-		if *envPtr == "staging" || *envPtr == "prod" {
+		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 			secretIDPtr = nil
 			appRoleIDPtr = nil
 			regions = eUtils.GetSupportedProdRegions()
