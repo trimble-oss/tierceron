@@ -81,7 +81,7 @@ func ConfigTemplateRaw(modifier *kv.Modifier, emptyFilePath string, configuredFi
 
 //ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.
 //It configures the template and writes it to the specified file path.
-func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool, project string, service string, cert bool, zc bool) (string, map[int]string) {
+func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool, project string, service string, cert bool, zc bool) (string, map[int]string, bool) {
 	var template string
 	var err error
 
@@ -100,6 +100,9 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool
 	}
 	// cert map
 	certData := make(map[int]string)
+	if cert && !strings.Contains(template, ".certData") {
+		return "", certData, false
+	}
 
 	// Construct path for vault
 	s := strings.Split(emptyFilePath, "/")
@@ -132,7 +135,7 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool
 	}
 	//populate template
 	template, certData = PopulateTemplate(template, modifier, secretMode, project, service, filename, cert)
-	return template, certData
+	return template, certData, true
 }
 
 func getTemplateVersionData(modifier *kv.Modifier, secretMode bool, project string, service string, file string) map[string]interface{} {

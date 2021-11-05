@@ -369,6 +369,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	//generate template or certificate
 	if config.WantCerts {
 		var certData map[int]string
+		certLoaded := false
 
 		for _, templatePath := range templatePaths {
 
@@ -388,11 +389,15 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			mod.Env = envVersion[0]
 			mod.Version = envVersion[1]
 
-			_, certData = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+			_, certData, certLoaded = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
 
 			if len(certData) == 0 {
-				fmt.Println("Could not load cert ", templatePath)
-				return nil
+				if certLoaded {
+					fmt.Println("Could not load cert ", templatePath)
+					return nil
+				} else {
+					continue
+				}
 			}
 
 			certPath := fmt.Sprintf("%s", certData[2])
