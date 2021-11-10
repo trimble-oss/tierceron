@@ -134,7 +134,7 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 			cds = new(vcutils.ConfigDataStore)
 			goMod.Env = envEnterprise
 			goMod.Version = version
-			cds.Init(goMod, config.SecretMode, true, project, service)
+			cds.Init(goMod, config.SecretMode, true, project, nil, service)
 		}
 
 		_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,

@@ -32,6 +32,12 @@ func GetProjectService(templateFile string) (string, string, string) {
 	project = splitDir[offsetBase+1]
 	service = splitDir[offsetBase+2]
 
+	// Clean up service naming (Everything after '.' removed)
+	dotIndex := strings.Index(service, ".")
+	if dotIndex > 0 && dotIndex <= len(service) {
+		service = service[0:dotIndex]
+	}
+
 	return project, service, templateFile
 }
 
@@ -42,17 +48,30 @@ func GetTemplate(modifier *kv.Modifier, templatePath string) (string, error) {
 	//  ./vault_templates/ServiceTech/ServiceTechAPIM/config.yml.tmpl
 	project, service, templateFile := GetProjectService(templatePath)
 
-	templateFile = templateFile[0 : len(templateFile)-len(".tmpl")]
-	if strings.HasSuffix(templateFile, ".yml") {
-		templateFile = templateFile[0 : len(templateFile)-len(".yml")]
-	} else {
-		lastDotIndex := strings.LastIndex(templateFile, ".")
-		if lastDotIndex > 0 {
-			templateFile = templateFile[0:lastDotIndex]
+	// templateFile currently has full path, but we don't want all that...  Scrub it down.
+	splitDir := strings.Split(templateFile, "/")
+	templateFile = splitDir[len(splitDir)-1]
+
+	if strings.Contains(templateFile, ".tmpl") {
+		templateFile = templateFile[0 : len(templateFile)-len(".tmpl")]
+		if strings.HasSuffix(templateFile, ".yml") {
+			templateFile = templateFile[0 : len(templateFile)-len(".yml")]
+		} else {
+			lastDotIndex := strings.LastIndex(templateFile, ".")
+			if lastDotIndex > 0 {
+				templateFile = templateFile[0:lastDotIndex]
+			}
 		}
 	}
 
-	path := "templates/" + project + "/" + service + "/" + templateFile + "/template-file"
+	var path string
+
+	if project == "Common" {
+		// No service for Common project...
+		path = "templates/" + project + "/" + templateFile + "/template-file"
+	} else {
+		path = "templates/" + project + "/" + service + "/" + templateFile + "/template-file"
+	}
 	data, err := modifier.ReadData(path)
 	if err != nil {
 		return "", err
@@ -102,6 +121,8 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool
 	certData := make(map[int]string)
 	if cert && !strings.Contains(template, ".certData") {
 		return "", certData, false
+	} else if !cert && strings.Contains(template, ".certData") {
+		return "", certData, false
 	}
 
 	// Construct path for vault
@@ -149,7 +170,7 @@ func getTemplateVersionData(modifier *kv.Modifier, secretMode bool, project stri
 func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bool, project string, service string, filename string, cert bool) (string, map[int]string) {
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
-	cds.Init(modifier, secretMode, true, project, service)
+	cds.Init(modifier, secretMode, true, project, nil, service)
 	certData := make(map[int]string)
 	serviceLookup := service
 	i := strings.Index(service, ".")

@@ -159,6 +159,23 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 	}(config)
 
+	commonPaths := []string{}
+	if config.Token != "" {
+		var commonMod *kv.Modifier
+		var err error
+		commonMod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
+		if err != nil {
+			panic(err)
+		}
+		envVersion := strings.Split(config.Env, "_")
+		commonMod.Env = envVersion[0]
+		commonMod.Version = envVersion[1]
+		commonMod.Version = commonMod.Version + "***X-Mode"
+
+		commonPaths, err = vcutils.GetPathsFromProject(commonMod, "Common")
+		commonMod.Close()
+	}
+
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
@@ -197,34 +214,14 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			}
 
 			//check for template_files directory here
-			s := strings.Split(templatePath, "/")
-			//figure out which path is trc_templates
-			dirIndex := -1
-			for j, piece := range s {
-				if piece == "trc_templates" {
-					dirIndex = j
-				}
-			}
-			if dirIndex != -1 {
-				project = s[dirIndex+1]
-				if service != s[dirIndex+2] {
-					multiService = true
-				}
-				service = s[dirIndex+2]
-			}
-
-			// Clean up service naming (Everything after '.' removed)
-			dotIndex := strings.Index(service, ".")
-			if dotIndex > 0 && dotIndex <= len(service) {
-				service = service[0:dotIndex]
-			}
+			project, service, templatePath = vcutils.GetProjectService(templatePath)
 
 			requestedVersion := goMod.Version
 			var cds *vcutils.ConfigDataStore
 			if goMod != nil && !noVault {
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				cds.Init(goMod, c.SecretMode, true, project, service)
+				cds.Init(goMod, c.SecretMode, true, project, commonPaths, service)
 			}
 
 			_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
@@ -394,7 +391,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			if len(certData) == 0 {
 				if certLoaded {
 					fmt.Println("Could not load cert ", templatePath)
-					return nil
+					continue
 				} else {
 					continue
 				}

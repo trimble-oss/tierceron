@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -34,17 +35,11 @@ func main() {
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcpub to access the vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./var/log/trcpub.log", "Output path for log files")
+
+	logBuffer := new(bytes.Buffer)
+	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
 
 	flag.Parse()
-
-	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("./var/log/"); os.IsNotExist(err) && *logFilePtr == "./var/log/trcpub.log" {
-		*logFilePtr = "./trcpub.log"
-	}
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	utils.CheckError(err, true)
-	logger := log.New(f, "[INIT]", log.LstdFlags)
 
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {

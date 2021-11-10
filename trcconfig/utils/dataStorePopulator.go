@@ -15,16 +15,30 @@ type ConfigDataStore struct {
 	Regions []string
 }
 
-func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool, project string, servicesWanted ...string) {
+func (cds *ConfigDataStore) Init(mod *kv.Modifier,
+	secretMode bool,
+	useDirs bool,
+	project string,
+	commonPaths []string,
+	servicesWanted ...string) {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
-	//get paths where the data is stored
-	dataPathsFull, err := getPathsFromProject(mod, project)
 
-	if err != nil {
-		fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
-		os.Exit(1)
+	var dataPathsFull []string
+
+	if project == "Common" && commonPaths != nil && len(commonPaths) > 0 {
+		dataPathsFull = commonPaths
+	} else {
+		//get paths where the data is stored
+		dp, err := GetPathsFromProject(mod, project)
+
+		if err != nil {
+			fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
+			os.Exit(1)
+		}
+		dataPathsFull = dp
 	}
+
 	dataPaths := []string{}
 	for _, fullPath := range dataPathsFull {
 		if strings.HasSuffix(fullPath, "/") {
@@ -228,7 +242,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
-	dataPathsFull, err := getPathsFromProject(mod, project)
+	dataPathsFull, err := GetPathsFromProject(mod, project)
 
 	if err != nil {
 		fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
@@ -355,8 +369,7 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 	return "", false
 }
 
-//getPathsFromProject - gets all paths for provided projects so data can be extracted from them..
-func getPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error) {
+func GetPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
 	var err error
