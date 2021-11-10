@@ -395,7 +395,11 @@ func GetPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error)
 					}
 				}
 				if !projectAvailable {
-					fmt.Println(project + " is not an available project. No values found.")
+					if !projectAvailable {
+						if len(projects) > 1 || project != "Common/" {
+							fmt.Println(project + " is not an available project. No values found.")
+						}
+					}
 				}
 			}
 			availProjects = projectsUsed
