@@ -53,14 +53,16 @@ func ToSeed(mod *kv.Modifier,
 	// Gets the template file
 	var newTemplate string
 	if fromVault {
-		templatePathExtended := templatePath
-		if strings.HasPrefix(templatePath, "templates/") {
-			templatePathExtended = strings.Replace(templatePath, "templates/", "", 1)
+		templatePathExtended := ""
+		serviceRaw := service
+		if project == "Common" {
+			templatePathExtended = templatePath
+			serviceRaw = ""
 		} else {
-			templatePathExtended = project + "/" + service + "/" + strings.Replace(templatePath, "trc_templates/", "/", 1)
+			templatePathExtended = strings.Replace(templatePath, "vault_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
-		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, service, false, true)
+		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true)
 		newTemplate = string(templateFile)
 	} else {
 		templateFile, err := ioutil.ReadFile(templatePath)
@@ -95,6 +97,7 @@ func ToSeed(mod *kv.Modifier,
 			Parse(cds,
 				logger,
 				args,
+				pathSlice[len(pathSlice)-2],
 				templatePathSlice,
 				templateDir,
 				templateDepth,
@@ -121,8 +124,8 @@ func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int
 
 	// Remove the file format from the name of the template file
 	if strings.Index(templatePathSlice[len(templatePathSlice)-1], ".") >= 0 {
-		idxFileFormat := strings.Index(templatePathSlice[len(templatePathSlice)-1], ".")
-		templatePathSlice[len(templatePathSlice)-1] = templatePathSlice[len(templatePathSlice)-1][:idxFileFormat]
+	idxFileFormat := strings.Index(templatePathSlice[len(templatePathSlice)-1], ".")
+	templatePathSlice[len(templatePathSlice)-1] = templatePathSlice[len(templatePathSlice)-1][:idxFileFormat]
 	}
 
 	// Find the index in the slice of the vault_template subdirectory
@@ -194,6 +197,7 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 func Parse(cds *vcutils.ConfigDataStore,
 	logger *log.Logger,
 	args []string,
+	currentDir string,
 	templatePathSlice []string,
 	templateDir int,
 	templateDepth int,
@@ -208,14 +212,10 @@ func Parse(cds *vcutils.ConfigDataStore,
 		valueSlice := args[2]
 		value := valueSlice[1 : len(valueSlice)-1]
 		fileOffsetIndex := 3
-		if len(templatePathSlice) > 1 && templatePathSlice[templateDir+1] == "Common" {
+		if templatePathSlice[templateDir+1] == "Common" {
 			fileOffsetIndex = 2
 		}
-		keyPath := []string{}
-
-		if len(templatePathSlice) > 1 {
-			keyPath = templatePathSlice[templateDir+fileOffsetIndex : len(templatePathSlice)]
-		}
+		keyPath := templatePathSlice[templateDir+fileOffsetIndex : len(templatePathSlice)]
 
 		AppendToTemplateSection(interfaceTemplateSection,
 			valueSection,
