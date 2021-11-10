@@ -194,15 +194,17 @@ skipDiff:
 	regions := []string{}
 
 	if len(envSlice) == 1 && !*noVaultPtr {
-		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
+		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") {
 			secretIDPtr = nil
 			appRoleIDPtr = nil
+		}
+		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 			regions = eUtils.GetSupportedProdRegions()
 		}
 		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 	}
 
-	if tokenPtr == nil || *tokenPtr == "" && !*noVaultPtr && len(envSlice) == 1 {
+	if (tokenPtr == nil || *tokenPtr == "") && !*noVaultPtr && len(envSlice) == 1 {
 		fmt.Println("Missing required auth token.")
 		os.Exit(1)
 	}
