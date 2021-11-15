@@ -19,7 +19,7 @@ import (
 var mutex = &sync.Mutex{}
 
 //GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(config eUtils.DriverConfig) {
+func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfig) interface{} {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if runtime.GOOS == "windows" {
@@ -111,7 +111,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 		if !initialized {
 			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
 		}
-		return
+		return nil
 	} else {
 		if version != "0" { //Check requested version bounds
 			versionNumbers := make([]int, 0)
@@ -208,32 +208,23 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 			mod.Env = config.Env
 			mod.Version = version
 			//check for template_files directory here
-			s := strings.Split(templatePath, "/")
-			//figure out which path is trc_templates
-			dirIndex := -1
-			for j, piece := range s {
-				if piece == "trc_templates" {
-					dirIndex = j
-					break
-				}
-			}
+			project, service, templatePath := GetProjectService(templatePath)
 
 			var isCert bool
-			if dirIndex != -1 {
-				serviceTemplate := s[dirIndex+2]
+			if service != "" {
 				if strings.HasSuffix(templatePath, ".DS_Store") {
 					goto wait
 				}
 
 				isCert := false
-				if strings.Contains(serviceTemplate, ".pfx.mf") ||
-					strings.Contains(serviceTemplate, ".cer.mf") ||
-					strings.Contains(serviceTemplate, ".pem.mf") ||
-					strings.Contains(serviceTemplate, ".jks.mf") {
+				if strings.Contains(templatePath, ".pfx.mf") ||
+					strings.Contains(templatePath, ".cer.mf") ||
+					strings.Contains(templatePath, ".pem.mf") ||
+					strings.Contains(templatePath, ".jks.mf") {
 					isCert = true
 				}
 
-				if config.WantCert != isCert {
+				if config.WantCerts != isCert {
 					goto wait
 				}
 
@@ -251,8 +242,9 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 
 				var configuredTemplate string
 				var certData map[int]string
+				certLoaded := false
 				if templateInfo {
-					data := getTemplateVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
+					data := getTemplateVersionData(mod, config.SecretMode, project, service, endPaths[i])
 					mutex.Lock()
 					if data == nil {
 						fmt.Println("Template version data could not be retrieved")
@@ -262,10 +254,10 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					mutex.Unlock()
 					goto wait
 				} else {
-					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+					configuredTemplate, certData, certLoaded = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
 				}
 				//generate template or certificate
-				if config.WantCert {
+				if config.WantCerts && certLoaded {
 					if len(certData) == 0 {
 						fmt.Println("Could not load cert ", endPaths[i])
 						goto wait
@@ -274,7 +266,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					writeToFile(certData[1], certDestination)
 					fmt.Println("certificate written to ", certDestination)
 					goto wait
-				} else if !config.WantCert {
+				} else {
 					if config.Diff {
 						if version != "" {
 							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
@@ -286,34 +278,34 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 					}
 				}
 			} else {
-				serviceTemplate := s[len(s)-1]
 				isCert := false
-				if strings.Contains(serviceTemplate, ".pfx.mf") ||
-					strings.Contains(serviceTemplate, ".cer.mf") ||
-					strings.Contains(serviceTemplate, ".pem.mf") ||
-					strings.Contains(serviceTemplate, ".jks.mf") {
+				if strings.Contains(service, ".pfx.mf") ||
+					strings.Contains(service, ".cer.mf") ||
+					strings.Contains(service, ".pem.mf") ||
+					strings.Contains(service, ".jks.mf") {
 					isCert = true
 				}
 
-				if config.WantCert != isCert {
+				if config.WantCerts != isCert {
 					goto wait
 				}
 				//assume the starting directory was trc_templates
 				var configuredTemplate string
 				var certData map[int]string
+				certLoaded := false
 				if templateInfo {
-					data := getTemplateVersionData(mod, config.SecretMode, s[dirIndex+1], serviceTemplate, endPaths[i])
+					data := getTemplateVersionData(mod, config.SecretMode, project, service, endPaths[i])
 					versionData[endPaths[i]] = data
 					goto wait
 				} else {
-					configuredTemplate, certData = ConfigTemplate(mod, templatePath, endPaths[i], config.SecretMode, s[dirIndex+1], serviceTemplate, config.WantCert, false)
+					configuredTemplate, certData, certLoaded = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
 				}
-				if config.WantCert {
+				if config.WantCerts && certLoaded {
 					certDestination := config.EndDir + "/" + certData[0]
 					writeToFile(certData[1], certDestination)
 					fmt.Println("certificate written to ", certDestination)
 					goto wait
-				} else if !config.WantCert {
+				} else {
 					if config.Diff {
 						if version != "" {
 							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
@@ -343,6 +335,7 @@ func GenerateConfigsFromVault(config eUtils.DriverConfig) {
 	if templateInfo {
 		config.VersionInfo(versionData, true, "")
 	}
+	return nil
 }
 func writeToFile(data string, path string) {
 	byteData := []byte(data)
@@ -372,7 +365,12 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 	}
 	for _, file := range files {
 		//add this directory to path names
-		filePath := dir + "/" + file.Name()
+		if dir[len(dir)-1] != '/' {
+			dir = dir + "/"
+		}
+
+		filePath := dir + file.Name()
+
 		//take off .tmpl extension
 		filename := file.Name()
 		if strings.HasSuffix(filename, ".DS_Store") {

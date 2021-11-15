@@ -22,7 +22,7 @@ x:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcx
 xmac:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/trcx.mac tierceron/trcx
-lib:
+xlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -a -ldflags '-w' -o $(GOBIN)/nc.so tierceron/configlib
 maclib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -o $(GOBIN)/nc.dylib tierceron/configlib

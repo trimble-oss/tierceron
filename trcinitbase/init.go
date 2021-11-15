@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	il "tierceron/trcinit/initlib"
 	"tierceron/utils"
@@ -57,6 +58,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	// Prints usage if no flags are specified
 	if flag.NFlag() == 0 {
 		flag.Usage()
+		os.Exit(1)
+	}
+
+	if *namespaceVariable == "" && *newPtr {
+		fmt.Println("Namespace (-namespace) required to initialize a new vault.")
 		os.Exit(1)
 	}
 
@@ -114,6 +120,9 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	// Create a new vault system connection
 	v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr)
 	if err != nil {
+		if strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
+			fmt.Printf("Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
+		}
 		os.Exit(0)
 	}
 	if *pingPtr {
@@ -143,7 +152,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		if err != nil {
 			fmt.Println("Unable to parse unsealShardPtr into int")
 		}
-		keyToken, err := v.InitVault(int(unsealShardPtr), int(totalKeyShard))
+		keyToken, err := v.InitVault(int(totalKeyShard), int(unsealShardPtr))
 		utils.LogErrorObject(err, logger, true)
 		v.SetToken(keyToken.Token)
 		v.SetShards(keyToken.Keys)

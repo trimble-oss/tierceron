@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"tierceron/trcx/xutil"
 	eUtils "tierceron/utils"
 )
 
@@ -47,7 +46,7 @@ func reciever() {
 
 // CommonMain This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
-func CommonMain(envPtr *string, addrPtrIn *string) {
+func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, envPtr *string, addrPtrIn *string, insecurePtrIn *bool) {
 	// Executable input arguments(flags)
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	if addrPtrIn != nil && *addrPtrIn != "" {
@@ -66,9 +65,17 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcx to access the vault")
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
-	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+
+	var insecurePtr *bool
+	if insecurePtrIn == nil {
+		insecurePtr = flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	} else {
+		insecurePtr = insecurePtrIn
+	}
+
 	diffPtr := flag.Bool("diff", false, "Diff files")
 	versionPtr := flag.Bool("versions", false, "Gets version metadata information")
+	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 
 	// Checks for proper flag input
 	args := os.Args[1:]
@@ -175,13 +182,15 @@ skipDiff:
 		flag.Usage()
 		os.Exit(1)
 	}
-	if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-		fmt.Println("Missing required start template folder: " + *startDirPtr)
-		os.Exit(1)
-	}
-	if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
-		fmt.Println("Missing required start seed folder: " + *endDirPtr)
-		os.Exit(1)
+	if ctx == nil {
+		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
+			fmt.Println("Missing required start template folder: " + *startDirPtr)
+			os.Exit(1)
+		}
+		if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
+			fmt.Println("Missing required start seed folder: " + *endDirPtr)
+			os.Exit(1)
+		}
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
@@ -192,15 +201,17 @@ skipDiff:
 	regions := []string{}
 
 	if len(envSlice) == 1 && !*noVaultPtr {
-		if *envPtr == "staging" || *envPtr == "prod" {
+		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") {
 			secretIDPtr = nil
 			appRoleIDPtr = nil
+		}
+		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 			regions = eUtils.GetSupportedProdRegions()
 		}
 		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 	}
 
-	if tokenPtr == nil || *tokenPtr == "" && !*noVaultPtr && len(envSlice) == 1 {
+	if (tokenPtr == nil || *tokenPtr == "") && !*noVaultPtr && len(envSlice) == 1 {
 		fmt.Println("Missing required auth token.")
 		os.Exit(1)
 	}
@@ -241,6 +252,7 @@ skipDiff:
 			*envPtr = envVersion[0] + "_0"
 		}
 		config := eUtils.DriverConfig{
+			Context:        ctx,
 			Insecure:       *insecurePtr,
 			Token:          *tokenPtr,
 			VaultAddress:   *addrPtr,
@@ -250,7 +262,7 @@ skipDiff:
 			ServicesWanted: []string{},
 			StartDir:       append([]string{}, *startDirPtr),
 			EndDir:         *endDirPtr,
-			WantCert:       false,
+			WantCerts:      *wantCertsPtr,
 			GenAuth:        *genAuth,
 			Log:            logger,
 			Clean:          *cleanPtr,
@@ -261,7 +273,7 @@ skipDiff:
 		waitg.Add(1)
 		go func() {
 			defer waitg.Done()
-			eUtils.ConfigControl(config, xutil.GenerateSeedsFromVault)
+			eUtils.ConfigControl(ctx, config, configDriver)
 		}()
 	}
 	waitg.Wait()

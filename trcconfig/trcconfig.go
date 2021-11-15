@@ -74,7 +74,7 @@ func reciever() {
 }
 
 func main() {
-	fmt.Println("Version: " + "1.19")
+	fmt.Println("Version: " + "1.21")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	startDirPtr := flag.String("startDir", "trc_templates", "Template directory")
@@ -86,7 +86,7 @@ func main() {
 	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcconfig to access the vault")
-	wantCertPtr := flag.Bool("cert", false, "Pull certificate into directory specified by endDirPtr")
+	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	logFilePtr := flag.String("log", "./trcconfig.log", "Output path for log file")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	zcPtr := flag.Bool("zc", false, "Zero config (no configuration option).")
@@ -114,7 +114,7 @@ func main() {
 	}
 
 	if *zcPtr {
-		*wantCertPtr = false
+		*wantCertsPtr = false
 	}
 
 	//Dont allow these combinations of flags
@@ -222,7 +222,7 @@ func main() {
 	}
 	regions := []string{}
 
-	if *envPtr == "staging" || *envPtr == "prod" {
+	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
 		if *regionPtr != "" {
 			for _, supportedRegion := range supportedRegions {
@@ -273,7 +273,7 @@ func main() {
 				ServicesWanted: services,
 				StartDir:       append([]string{}, *startDirPtr),
 				EndDir:         *endDirPtr,
-				WantCert:       *wantCertPtr,
+				WantCerts:      *wantCertsPtr,
 				ZeroConfig:     *zcPtr,
 				GenAuth:        false,
 				Log:            logger,
@@ -285,7 +285,7 @@ func main() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				eUtils.ConfigControl(configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault)
+				eUtils.ConfigControl(nil, configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault)
 			}()
 		}
 	} else {
@@ -310,7 +310,7 @@ func main() {
 			ServicesWanted: services,
 			StartDir:       append([]string{}, *startDirPtr),
 			EndDir:         *endDirPtr,
-			WantCert:       *wantCertPtr,
+			WantCerts:      *wantCertsPtr,
 			ZeroConfig:     *zcPtr,
 			GenAuth:        false,
 			Log:            logger,
@@ -321,7 +321,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			eUtils.ConfigControl(config, utils.GenerateConfigsFromVault)
+			eUtils.ConfigControl(nil, config, utils.GenerateConfigsFromVault)
 		}()
 	}
 	wg.Wait() //Wait for templates
