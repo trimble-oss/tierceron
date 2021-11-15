@@ -11,9 +11,12 @@ import (
 // {{or .<key> "<value>"}}
 const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
-type ConfigDriver func(config DriverConfig)
+type ProcessContext interface{}
+
+type ConfigDriver func(ctx ProcessContext, config DriverConfig) interface{}
 
 type DriverConfig struct {
+	Context              ProcessContext
 	Insecure             bool
 	Token                string
 	VaultAddress         string
@@ -23,7 +26,7 @@ type DriverConfig struct {
 	ServicesWanted       []string
 	StartDir             []string // Starting directory... possibly multiple
 	EndDir               string
-	WantCert             bool
+	WantCerts            bool
 	ZeroConfig           bool
 	GenAuth              bool
 	Clean                bool
@@ -36,7 +39,7 @@ type DriverConfig struct {
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
-func ConfigControl(config DriverConfig, drive ConfigDriver) {
+func ConfigControl(ctx ProcessContext, config DriverConfig, drive ConfigDriver) {
 	multiProject := false
 
 	config.EndDir = strings.Replace(config.EndDir, "\\", "/", -1)
@@ -86,7 +89,7 @@ func ConfigControl(config DriverConfig, drive ConfigDriver) {
 
 			config.StartDir = startDirs
 			// Drive this set of configurations.
-			drive(config)
+			drive(ctx, config)
 
 			return
 		}
@@ -119,7 +122,7 @@ func ConfigControl(config DriverConfig, drive ConfigDriver) {
 	}
 
 	// Drive this set of configurations.
-	drive(config)
+	drive(ctx, config)
 }
 
 // Parse Extracts default values as key-value pairs from template files.

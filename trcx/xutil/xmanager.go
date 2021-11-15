@@ -12,6 +12,8 @@ import (
 	"sync"
 
 	vcutils "tierceron/trcconfig/utils"
+	xdb "tierceron/trcx/db"
+	"tierceron/trcx/extract"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
@@ -22,18 +24,10 @@ import (
 var wg sync.WaitGroup
 var wg2 sync.WaitGroup
 
-type TemplateResultData struct {
-	interfaceTemplateSection interface{}
-	valueSection             map[string]map[string]map[string]string
-	secretSection            map[string]map[string]map[string]string
-	templateDepth            int
-	env                      string
-}
-
-var templateResultChan = make(chan *TemplateResultData, 5)
+var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, string, bool, string) {
+func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -48,10 +42,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	sliceSecretSection := []map[string]map[string]map[string]string{}
 	maxDepth := -1
 
-	project := ""
 	endPath := ""
 	multiService := false
-	service := ""
 	var mod *kv.Modifier
 	noVault := false
 
@@ -61,7 +53,6 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		config.Env = config.Env + "_0"
 		envVersion = strings.Split(config.Env, "_")
 	}
-
 	env := envVersion[0]
 	version := envVersion[1]
 
@@ -149,17 +140,17 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		for {
 			select {
 			case tResult := <-templateResultChan:
-				if config.Env == tResult.env {
-					sliceTemplateSection = append(sliceTemplateSection, tResult.interfaceTemplateSection)
-					sliceValueSection = append(sliceValueSection, tResult.valueSection)
-					sliceSecretSection = append(sliceSecretSection, tResult.secretSection)
-					if tResult.templateDepth > maxDepth {
-						maxDepth = tResult.templateDepth
+				if config.Env == tResult.Env {
+					sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
+					sliceValueSection = append(sliceValueSection, tResult.ValueSection)
+					sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
+					if tResult.TemplateDepth > maxDepth {
+						maxDepth = tResult.TemplateDepth
 						//templateCombinedSection = interfaceTemplateSection
 					}
 					wg.Done()
 				} else {
-					go func(tResult *TemplateResultData) {
+					go func(tResult *extract.TemplateResultData) {
 						templateResultChan <- tResult
 					}(tResult)
 				}
@@ -168,18 +159,38 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 	}(config)
 
+	commonPaths := []string{}
+	if config.Token != "" {
+		var commonMod *kv.Modifier
+		var err error
+		commonMod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
+		if err != nil {
+			panic(err)
+		}
+		envVersion := strings.Split(config.Env, "_")
+		commonMod.Env = envVersion[0]
+		commonMod.Version = envVersion[1]
+		commonMod.Version = commonMod.Version + "***X-Mode"
+
+		commonPaths, err = vcutils.GetPathsFromProject(commonMod, "Common")
+		commonMod.Close()
+	}
+
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(templatePath string, project string, service string, multiService bool, c eUtils.DriverConfig, noVault bool) {
+		go func(templatePath string, multiService bool, c eUtils.DriverConfig, noVault bool) {
+			project := ""
+			service := ""
+
 			// Map Subsections
-			var templateResult TemplateResultData
+			var templateResult extract.TemplateResultData
 
-			templateResult.valueSection = map[string]map[string]map[string]string{}
-			templateResult.valueSection["values"] = map[string]map[string]string{}
+			templateResult.ValueSection = map[string]map[string]map[string]string{}
+			templateResult.ValueSection["values"] = map[string]map[string]string{}
 
-			templateResult.secretSection = map[string]map[string]map[string]string{}
-			templateResult.secretSection["super-secrets"] = map[string]map[string]string{}
+			templateResult.SecretSection = map[string]map[string]map[string]string{}
+			templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
 
 			var goMod *kv.Modifier
 
@@ -203,50 +214,30 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			}
 
 			//check for template_files directory here
-			s := strings.Split(templatePath, "/")
-			//figure out which path is trc_templates
-			dirIndex := -1
-			for j, piece := range s {
-				if piece == "trc_templates" {
-					dirIndex = j
-				}
-			}
-			if dirIndex != -1 {
-				project = s[dirIndex+1]
-				if service != s[dirIndex+2] {
-					multiService = true
-				}
-				service = s[dirIndex+2]
-			}
-
-			// Clean up service naming (Everything after '.' removed)
-			dotIndex := strings.Index(service, ".")
-			if dotIndex > 0 && dotIndex <= len(service) {
-				service = service[0:dotIndex]
-			}
+			project, service, templatePath = vcutils.GetProjectService(templatePath)
 
 			requestedVersion := goMod.Version
 			var cds *vcutils.ConfigDataStore
 			if goMod != nil && !noVault {
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				cds.Init(goMod, c.SecretMode, true, project, service)
+				cds.Init(goMod, c.SecretMode, true, project, commonPaths, service)
 			}
 
-			_, _, _, templateResult.templateDepth = ToSeed(goMod,
+			_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
 				cds,
 				templatePath,
 				config.Log,
 				project,
 				service,
 				fromVault,
-				&(templateResult.interfaceTemplateSection),
-				&(templateResult.valueSection),
-				&(templateResult.secretSection),
+				&(templateResult.InterfaceTemplateSection),
+				&(templateResult.ValueSection),
+				&(templateResult.SecretSection),
 			)
-			templateResult.env = goMod.Env + "_" + requestedVersion
+			templateResult.Env = goMod.Env + "_" + requestedVersion
 			templateResultChan <- &templateResult
-		}(templatePath, project, service, multiService, config, noVault)
+		}(templatePath, multiService, config, noVault)
 	}
 	wg.Wait()
 
@@ -313,11 +304,11 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	templateData = strings.ReplaceAll(templateData, "'", "")
 	seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n" + string(authYaml)
 
-	return service, endPath, multiService, seedData
+	return endPath, multiService, seedData
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVault(config eUtils.DriverConfig) {
+func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfig) interface{} {
 	if config.Clean { //Clean flag in trcx
 		if strings.HasSuffix(config.Env, "_0") {
 			config.Env = strings.Split(config.Env, "_")[0]
@@ -333,7 +324,7 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 		if err1 == nil {
 			fmt.Println("Seed removed from", config.EndDir+config.Env)
 		}
-		return
+		return nil
 	}
 
 	// Get files from directory
@@ -354,7 +345,7 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 		}
 	}
 
-	_, endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
+	endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 
 	if strings.HasSuffix(config.Env, "_0") {
 		config.Env = strings.Split(config.Env, "_")[0]
@@ -372,6 +363,59 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 		endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 	}
 
+	//generate template or certificate
+	if config.WantCerts {
+		var certData map[int]string
+		certLoaded := false
+
+		for _, templatePath := range templatePaths {
+
+			project, service, templatePath := vcutils.GetProjectService(templatePath)
+
+			envVersion := strings.Split(config.Env, "_")
+			if len(envVersion) != 2 {
+				// Make it so.
+				config.Env = config.Env + "_0"
+				envVersion = strings.Split(config.Env, "_")
+			}
+
+			mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
+			if err != nil {
+				panic(err)
+			}
+			mod.Env = envVersion[0]
+			mod.Version = envVersion[1]
+
+			_, certData, certLoaded = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+
+			if len(certData) == 0 {
+				if certLoaded {
+					fmt.Println("Could not load cert ", templatePath)
+					continue
+				} else {
+					continue
+				}
+			}
+
+			certPath := fmt.Sprintf("%s", certData[2])
+			fmt.Println("Writing certificate: " + certPath + ".")
+
+			if strings.Contains(certPath, "ENV") {
+				if len(mod.Env) >= 5 && (mod.Env)[:5] == "local" {
+					envParts := strings.SplitN(mod.Env, "/", 3)
+					certPath = strings.Replace(certPath, "ENV", envParts[1], 1)
+				} else {
+					certPath = strings.Replace(certPath, "ENV", mod.Env, 1)
+				}
+			}
+
+			certDestination := config.EndDir + "/" + certPath
+			writeToFile(certData[1], certDestination)
+			fmt.Println("certificate written to ", certDestination)
+		}
+		return nil
+	}
+
 	if config.Diff {
 		config.Update(&seedData, envBasePath+"||"+config.Env+"_seed.yml")
 	} else {
@@ -380,6 +424,52 @@ func GenerateSeedsFromVault(config eUtils.DriverConfig) {
 		fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + envBasePath + string(os.PathSeparator) + config.Env + "_seed.yml")
 	}
 
+	return nil
+}
+
+// GenerateSeedsFromVaultToDb pulls all data from vault for each template into a database
+func GenerateSeedsFromVaultToDb(config eUtils.DriverConfig) interface{} {
+	if config.Diff { //Clean flag in trcx
+		_, err1 := os.Stat(config.EndDir + config.Env)
+		err := os.RemoveAll(config.EndDir + config.Env)
+
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if err1 == nil {
+			fmt.Println("Seed removed from", config.EndDir+config.Env)
+		}
+		return nil
+	}
+
+	// Get files from directory
+	tempTemplatePaths := []string{}
+	for _, startDir := range config.StartDir {
+		//get files from directory
+		tp := getDirFiles(startDir)
+		tempTemplatePaths = append(tempTemplatePaths, tp...)
+	}
+
+	//Duplicate path remover
+	keys := make(map[string]bool)
+	templatePaths := []string{}
+	for _, path := range tempTemplatePaths {
+		if _, value := keys[path]; !value {
+			keys[path] = true
+			templatePaths = append(templatePaths, path)
+		}
+	}
+
+	tierceronEngine, err := xdb.CreateEngine(config,
+		templatePaths)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	return tierceronEngine
 }
 
 func writeToFile(data string, path string) {

@@ -1,4 +1,4 @@
-package xutil
+package extract
 
 import (
 	"errors"
@@ -17,6 +17,14 @@ import (
 const (
 	defaultSecret = "<Enter Secret Here>"
 )
+
+type TemplateResultData struct {
+	InterfaceTemplateSection interface{}
+	ValueSection             map[string]map[string]map[string]string
+	SecretSection            map[string]map[string]map[string]string
+	TemplateDepth            int
+	Env                      string
+}
 
 // ToSeed parses a <foo>.yml.tmpl file into a <foo>.yml file which then can be used for seeding vault
 // Input:
@@ -45,9 +53,16 @@ func ToSeed(mod *kv.Modifier,
 	// Gets the template file
 	var newTemplate string
 	if fromVault {
-		templatePathExtended := project + "/" + service + "/" + strings.Replace(templatePath, "trc_templates/", "/", 1)
+		templatePathExtended := ""
+		serviceRaw := service
+		if project == "Common" {
+			templatePathExtended = templatePath
+			serviceRaw = ""
+		} else {
+			templatePathExtended = strings.Replace(templatePath, "vault_templates/", "/", 1)
+		}
 		configuredFilePath := "./"
-		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, service, false, true)
+		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true)
 		newTemplate = string(templateFile)
 	} else {
 		templateFile, err := ioutil.ReadFile(templatePath)
@@ -108,8 +123,10 @@ func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int
 	var templateDepth int
 
 	// Remove the file format from the name of the template file
+	if strings.Index(templatePathSlice[len(templatePathSlice)-1], ".") >= 0 {
 	idxFileFormat := strings.Index(templatePathSlice[len(templatePathSlice)-1], ".")
 	templatePathSlice[len(templatePathSlice)-1] = templatePathSlice[len(templatePathSlice)-1][:idxFileFormat]
+	}
 
 	// Find the index in the slice of the vault_template subdirectory
 	for i, folder := range templatePathSlice {
