@@ -59,7 +59,7 @@ func ToSeed(mod *kv.Modifier,
 			templatePathExtended = templatePath
 			serviceRaw = ""
 		} else {
-			templatePathExtended = strings.Replace(templatePath, "vault_templates/", "/", 1)
+			templatePathExtended = strings.Replace(templatePath, "trc_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
 		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true)
@@ -124,8 +124,8 @@ func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int
 
 	// Remove the file format from the name of the template file
 	if strings.Index(templatePathSlice[len(templatePathSlice)-1], ".") >= 0 {
-	idxFileFormat := strings.Index(templatePathSlice[len(templatePathSlice)-1], ".")
-	templatePathSlice[len(templatePathSlice)-1] = templatePathSlice[len(templatePathSlice)-1][:idxFileFormat]
+		idxFileFormat := strings.Index(templatePathSlice[len(templatePathSlice)-1], ".")
+		templatePathSlice[len(templatePathSlice)-1] = templatePathSlice[len(templatePathSlice)-1][:idxFileFormat]
 	}
 
 	// Find the index in the slice of the vault_template subdirectory
