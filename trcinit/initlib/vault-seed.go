@@ -33,6 +33,8 @@ type writeCollection struct {
 	data map[string]interface{}
 }
 
+var templateWritten map[string]bool
+
 // SeedVault seeds the vault with seed files in the given directory
 func SeedVault(insecure bool, dir string, addr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
 	logger.SetPrefix("[SEED]")
@@ -71,28 +73,67 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 
 		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
 
-		SeedVaultFromData(config.Insecure, []byte(seedData), addr, token, env, logger, service, true)
+		SeedVaultFromData(config.Insecure, []byte(seedData), addr, token, env, logger, service, true, "")
 		return
 	}
 
 	seeded := false
+	starEnv := false
+	templateWritten = make(map[string]bool)
+	if strings.Contains(env, "*") {
+		starEnv = true
+		env = strings.Split(env, "*")[0]
+	}
 	for _, envDir := range files {
-
 		if strings.HasPrefix(env, envDir.Name()) || (strings.HasPrefix(env, "local") && envDir.Name() == "local") {
 			logger.Println("\tStepping into: " + envDir.Name())
 
 			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + envDir.Name())
 			utils.LogErrorObject(err, logger, true)
 
+			conflictingFile := false
 			for _, fileSteppedInto := range filesSteppedInto {
+				if !strings.HasPrefix(fileSteppedInto.Name(), env) {
+					if strings.Contains(env, ".") {
+						secondCheck := strings.Split(env, ".")[0]
+						if !strings.HasPrefix(fileSteppedInto.Name(), secondCheck) {
+							conflictingFile = true
+							logger.Printf("Found conflicting env seed file: %s \n", fileSteppedInto.Name())
+						}
+					}
+				}
+			}
+			if len(filesSteppedInto) > 1 && conflictingFile {
+				utils.CheckWarning(fmt.Sprintf("Multiple potentially conflicting configuration files found for environment: %s", envDir.Name()), true)
+			}
+
+			normalEnv := false
+			if !starEnv && !strings.Contains(env, ".") {
+				normalEnv = true
+			}
+
+			for _, fileSteppedInto := range filesSteppedInto {
+				if normalEnv && len(strings.Split(fileSteppedInto.Name(), ".")) > 2 {
+					continue
+				}
+
+				if starEnv && len(strings.Split(fileSteppedInto.Name(), ".")) <= 2 {
+					continue
+				}
+
 				ext := filepath.Ext(fileSteppedInto.Name())
 				if strings.HasPrefix(fileSteppedInto.Name(), env) && (ext == ".yaml" || ext == ".yml") { // Only read YAML config files
 					logger.Println("\t\t" + fileSteppedInto.Name())
 					logger.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
 					path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name()
 					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
+					fileNameSplit := strings.Split(fileSteppedInto.Name(), "_")
+					foundconfigIdDelimiter := ""
+					if strings.Contains(fileNameSplit[0], ".") {
+						foundconfigIdDelimiter = fileNameSplit[0]
+					}
 
-					SeedVaultFromFile(insecure, path, addr, token, env, logger, service, uploadCert)
+					SeedVaultFromFile(insecure, path, addr, token, env, logger, service, uploadCert, foundconfigIdDelimiter)
 					seeded = true
 				}
 			}
@@ -104,15 +145,15 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 }
 
 //SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(insecure bool, filepath string, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
+func SeedVaultFromFile(insecure bool, filepath string, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool, configId string) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	utils.LogErrorObject(err, logger, true)
-	SeedVaultFromData(insecure, rawFile, vaultAddr, token, env, logger, service, uploadCert)
+	SeedVaultFromData(insecure, rawFile, vaultAddr, token, env, logger, service, uploadCert, configId)
 }
 
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
+func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool, configId string) {
 	logger.SetPrefix("[SEED]")
 	logger.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
@@ -173,7 +214,11 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 
 	mod, err := kv.NewModifier(insecure, token, vaultAddr, env, nil) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
-	mod.Env = env
+	if configId == "" {
+		mod.Env = env
+	} else {
+		mod.Env = configId
+	}
 	for _, entry := range writeStack {
 		// Output data being written
 		// Write data and ouput any errors
@@ -339,15 +384,22 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 
 //WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
 func WriteData(path string, data map[string]interface{}, mod *kv.Modifier, logger *log.Logger) {
+	root := strings.Split(path, "/")[0]
+	if root == "templates" { //Check if templates have already been written in this init call.
+		_, ok := templateWritten[path]
+		if !ok {
+			templateWritten[path] = true
+		} else {
+			return
+		}
+	}
 	warn, err := mod.Write(path, data)
 
 	utils.LogWarningsObject(warn, logger, false)
 	utils.LogErrorObject(err, logger, false)
 	// Update value metrics to reflect credential use
-	root := strings.Split(path, "/")[0]
 	if root == "templates" {
 		//Printing out path of each entry so that users can verify that folder structure in seed files are correct
-
 		logger.Println("vault_" + path + ".*.tmpl")
 		for _, v := range data {
 			if templateKey, ok := v.([]interface{}); ok {
@@ -356,5 +408,4 @@ func WriteData(path string, data map[string]interface{}, mod *kv.Modifier, logge
 			}
 		}
 	}
-
 }
