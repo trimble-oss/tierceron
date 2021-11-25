@@ -31,6 +31,10 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 	} else {
 		//get paths where the data is stored
 		dp, err := GetPathsFromProject(mod, project)
+		if len(dp) > 1 && strings.Contains(dp[len(dp)-1], "!=!") {
+			mod.ProjectVersionFilter = append(mod.ProjectVersionFilter, strings.Split(dp[len(dp)-1], "!=!")[0])
+			dp = dp[:len(dp)-1]
+		}
 
 		if err != nil {
 			fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
@@ -61,7 +65,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
 			splitService := strings.Split(servicesWanted[i], ".")
-			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2]) {
+			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2] || (len(pathParts) >= 4 && pathParts[3] == servicesWanted[i])) {
 				foundWantedService = true
 				break
 			}
@@ -243,6 +247,9 @@ func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
 	dataPathsFull, err := GetPathsFromProject(mod, project)
+	if len(dataPathsFull) > 0 && strings.Contains(dataPathsFull[len(dataPathsFull)-1], "!=!") {
+		dataPathsFull = dataPathsFull[:len(dataPathsFull)-1]
+	}
 
 	if err != nil {
 		fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
@@ -259,7 +266,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
 			splitService := strings.Split(servicesWanted[i], ".")
-			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2]) {
+			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2] || (len(pathParts) >= 4 && pathParts[3] == servicesWanted[i])) {
 				foundWantedService = true
 				break
 			}
@@ -377,7 +384,7 @@ func GetPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error)
 		mod.SecretDictionary, err = mod.List("templates")
 	}
 	secrets := mod.SecretDictionary
-
+	var innerService string
 	if err != nil {
 		return nil, err
 	} else if secrets != nil {
@@ -392,6 +399,22 @@ func GetPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error)
 					if project == availProject.(string) {
 						projectsUsed = append(projectsUsed, availProject)
 						projectAvailable = true
+					}
+					innerPathList, err := mod.List("templates/" + availProject.(string)) //Looks for services one path deeper
+					if err != nil {
+						fmt.Println("Unable to read into nested template path: " + err.Error())
+					}
+					if innerPathList == nil || availProject.(string) == "Common/" {
+						continue
+					}
+					innerPaths := innerPathList.Data["keys"].([]interface{})
+					for _, innerPath := range innerPaths {
+						if project == innerPath.(string) {
+							innerPath = availProject.(string) + innerPath.(string)
+							innerService = "!=!" + innerPath.(string) //Pass project back somehow?
+							projectsUsed = append(projectsUsed, innerPath)
+							projectAvailable = true
+						}
 					}
 				}
 				if !projectAvailable {
@@ -410,6 +433,9 @@ func GetPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error)
 			//don't add on to paths until you're sure it's an END path
 		}
 
+		if strings.HasPrefix(innerService, "!=!") {
+			paths = append(paths, innerService)
+		}
 		//paths = getPaths(mod, availProjects, paths)
 		return paths, err
 	} else {
@@ -419,7 +445,10 @@ func GetPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error)
 func getPaths(mod *kv.Modifier, pathName string, pathList []string) []string {
 	secrets, err := mod.List(pathName)
 	if err != nil {
-		panic(err)
+		secrets, err = mod.List(pathName + "template-file")
+		if err != nil {
+			panic(err)
+		}
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
