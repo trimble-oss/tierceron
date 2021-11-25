@@ -178,7 +178,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		commonMod.Version = commonMod.Version + "***X-Mode"
 
 		commonPaths, err = vcutils.GetPathsFromProject(commonMod, "Common")
-		if strings.Contains(commonPaths[len(commonPaths)-1], "!=!") {
+		if len(commonPaths) > 0 && strings.Contains(commonPaths[len(commonPaths)-1], "!=!") {
 			commonPaths = commonPaths[:len(commonPaths)-1]
 		}
 		commonMod.Close()

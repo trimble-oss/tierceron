@@ -247,7 +247,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
 	dataPathsFull, err := GetPathsFromProject(mod, project)
-	if strings.Contains(dataPathsFull[len(dataPathsFull)-1], "!=!") {
+	if len(dataPathsFull) > 0 && strings.Contains(dataPathsFull[len(dataPathsFull)-1], "!=!") {
 		dataPathsFull = dataPathsFull[:len(dataPathsFull)-1]
 	}
 
