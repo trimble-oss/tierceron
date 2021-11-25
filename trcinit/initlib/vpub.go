@@ -60,8 +60,8 @@ func UploadTemplates(mod *kv.Modifier, dirName string, logger *log.Logger) (erro
 		name = name[0 : len(name)-len(ext)] // Truncate extension
 
 		if ext == ".tmpl" { // Only upload template files
-			fmt.Printf("Found template file %s\n", file.Name())
-			logger.Println("Found template file %s\n", file.Name())
+			fmt.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
+			logger.Println("Found template file %s for %s\n", file.Name(), mod.Env)
 
 			// Seperate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
