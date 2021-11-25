@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	eUtils "tierceron/utils"
+	"tierceron/vaulthelper/kv"
 )
 
 type ResultData struct {
@@ -119,6 +120,9 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		os.Exit(1)
 	}
 
+	keysCheck := make(map[string]bool)
+	listCheck := []string{}
+
 	if *versionPtr {
 		if strings.Contains(*envPtr, ",") {
 			fmt.Println(Yellow + "Invalid environment, please specify one environment." + Reset)
@@ -174,6 +178,19 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		} else {
 			*envPtr = envVersion[0] + "_0"
 		}
+	}
+
+	//Duplicate env check
+	for _, entry := range envSlice {
+		if _, value := keysCheck[entry]; !value {
+			keysCheck[entry] = true
+			listCheck = append(listCheck, entry)
+		}
+	}
+
+	if len(listCheck) != len(envSlice) {
+		fmt.Printf("Cannot diff an environment against itself.\n")
+		os.Exit(1)
 	}
 
 skipDiff:
@@ -233,10 +250,39 @@ skipDiff:
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
 	var waitg sync.WaitGroup
+	if len(envSlice) == 1 {
+		if strings.Contains(envSlice[0], "*") {
+			//Ask vault for list of dev.* environments, add to envSlice
+			testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions)
+			testMod.Env = strings.Split(envSlice[0], ".")[0]
+			listValues, err := testMod.ListEnv("values/")
+			if err != nil {
+				logger.Printf(err.Error())
+			}
+			newEnvSlice := make([]string, 0)
+			if listValues == nil {
+				fmt.Println("No enterprise IDs were found.")
+				os.Exit(1)
+			}
+			for _, valuesPath := range listValues.Data {
+				for _, envInterface := range valuesPath.([]interface{}) {
+					env := envInterface.(string)
+					if strings.Contains(env, ".") && strings.Contains(env, testMod.Env) {
+						env = strings.ReplaceAll(env, "/", "")
+						newEnvSlice = append(newEnvSlice, env)
+					}
+				}
+			}
+			envSlice = newEnvSlice
+		}
+	}
 	go reciever() //Channel reciever
 	for _, env := range envSlice {
 		envVersion := strings.Split(env, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
+		if strings.Contains(*envPtr, ".") {
+			*envPtr = strings.Split(*envPtr, ".")[0]
+		}
 		if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
 			*tokenPtr = ""
 		}

@@ -45,6 +45,7 @@ func ToSeed(mod *kv.Modifier,
 ) (*interface{}, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int) {
 
 	// TODO: replace string sections with maps
+	templatePath = strings.ReplaceAll(templatePath, "\\", "/")
 	pathSlice := strings.SplitN(templatePath, "/", -1)
 
 	// Initialize map subsections
