@@ -89,6 +89,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		var lastKey string
 		for key, value := range templatePathMap {
 			if len(config.VersionProjectFilter) > 0 && !strings.HasSuffix(key, config.VersionProjectFilter[0]) {
+				lastKey = key
 				continue
 			} else {
 				templateVersionMap[key] = value
@@ -107,7 +108,11 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			fmt.Println("No version data found - this filter was applied during search: ", config.VersionProjectFilter)
 			os.Exit(1)
 		} else if version == "versionInfo" {
-			config.VersionInfo(templateVersionMap[lastKey], false, "")
+			if templateVersionMap == nil {
+				config.VersionInfo(templateVersionMap[lastKey], false, "")
+			} else {
+				config.VersionInfo(templatePathMap[lastKey], false, "")
+			}
 			os.Exit(1)
 		} else {
 			var versions []string //Check available version bounds for regular diff or config
@@ -173,6 +178,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		commonMod.Version = commonMod.Version + "***X-Mode"
 
 		commonPaths, err = vcutils.GetPathsFromProject(commonMod, "Common")
+		if strings.Contains(commonPaths[len(commonPaths)-1], "!=!") {
+			commonPaths = commonPaths[:len(commonPaths)-1]
+		}
 		commonMod.Close()
 	}
 
@@ -222,6 +230,16 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
 				cds.Init(goMod, c.SecretMode, true, project, commonPaths, service)
+			}
+
+			innerProject := "Not Found"
+			if len(goMod.ProjectVersionFilter) >= 1 && strings.Contains(goMod.ProjectVersionFilter[len(goMod.ProjectVersionFilter)-1], "!=!") {
+				innerProject = strings.Split(goMod.ProjectVersionFilter[len(goMod.ProjectVersionFilter)-1], "!=!")[1]
+				goMod.ProjectVersionFilter = goMod.ProjectVersionFilter[:len(goMod.ProjectVersionFilter)-1]
+			}
+			if innerProject != "Not Found" {
+				project = innerProject
+				service = project
 			}
 
 			_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
