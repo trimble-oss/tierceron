@@ -58,6 +58,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		versionDataMap := make(map[string]map[string]interface{})
 		versionMetadataMap := make(map[string]map[string]interface{})
 		//Gets version metadata for super secrets or values if super secrets don't exist.
+		if strings.Contains(modCheck.Env, ".") {
+			config.VersionProjectFilter = append(config.VersionProjectFilter, strings.Split(modCheck.Env, "_")[0])
+			modCheck.Env = strings.Split(modCheck.Env, "_")[0]
+		}
+		modCheck.ProjectVersionFilter = config.VersionProjectFilter
 		secretMetadataMap, err := modCheck.GetVersionValues(modCheck, "super-secrets")
 		if secretMetadataMap == nil {
 			versionMetadataMap, err = modCheck.GetVersionValues(modCheck, "values")
@@ -112,7 +117,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
 		}
 		return nil
-	} else {
+	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
 			versionNumbers := make([]int, 0)
 			versionMetadataMap, err := modCheck.GetVersionValues(modCheck, "values")
@@ -126,7 +131,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 
 						projectFound = true
 						initialized = true
-						for key, _ := range data {
+						for key := range data {
 							versionNo, err := strconv.Atoi(key)
 							if err != nil {
 								fmt.Println()
