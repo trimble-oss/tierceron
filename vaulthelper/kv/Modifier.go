@@ -284,6 +284,17 @@ func (m *Modifier) List(path string) (*api.Secret, error) {
 	return m.logical.List(fullPath)
 }
 
+//List lists the paths underneath this one
+func (m *Modifier) ListEnv(path string) (*api.Secret, error) {
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	if len(pathBlocks) == 1 {
+		pathBlocks[0] += "/"
+	}
+
+	fullPath := pathBlocks[0] + "metadata/"
+	return m.logical.List(fullPath)
+}
+
 //AdjustValue adjusts the value at the given path/key by n
 func (m *Modifier) AdjustValue(path string, key string, n int) ([]string, error) {
 	// Get the existing data at the path
@@ -408,10 +419,9 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 			err := fmt.Errorf("Unable to fetch data from %s", projectPath)
 			return nil, err
 		}
-		if len(metadataValue) == 0 {
-			continue
+		if len(metadataValue) != 0 {
+			versionDataMap[projectPath] = metadataValue
 		}
-		versionDataMap[projectPath] = metadataValue
 
 		for _, servicePath := range servicePaths {
 			if !strings.Contains(projectPath, mod.ProjectVersionFilter[0]) {
