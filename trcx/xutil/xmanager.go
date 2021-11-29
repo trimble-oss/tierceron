@@ -184,6 +184,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		commonMod.Close()
 	}
 
+	projectFound := false
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
@@ -223,6 +224,25 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 			//check for template_files directory here
 			project, service, templatePath = vcutils.GetProjectService(templatePath)
+			//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
+			if strings.Contains(goMod.Env, ".") && !projectFound {
+				listValues, err := goMod.ListEnv("values/" + goMod.Env + "/")
+				if err != nil {
+					fmt.Println(err)
+				}
+				projectSlice := make([]string, 0)
+				for _, valuesPath := range listValues.Data {
+					for _, envInterface := range valuesPath.([]interface{}) {
+						env := envInterface.(string)
+						projectSlice = append(projectSlice, env)
+					}
+				}
+				for _, listedProject := range projectSlice {
+					if strings.Contains(listedProject, project) {
+						projectFound = true
+					}
+				}
+			}
 
 			requestedVersion := goMod.Version
 			var cds *vcutils.ConfigDataStore
@@ -259,6 +279,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	}
 	wg.Wait()
 
+	if !projectFound { //Exit for irrelevant enterprises
+		return "", false, ""
+	}
 	// Combine values of slice
 	combineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
 	combineSection(sliceValueSection, -1, valueCombinedSection)
@@ -364,6 +387,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	}
 
 	endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
+
+	if endPath == "" && !multiService && seedData == "" {
+		return nil
+	}
 
 	if strings.HasSuffix(config.Env, "_0") {
 		config.Env = strings.Split(config.Env, "_")[0]
