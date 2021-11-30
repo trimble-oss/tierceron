@@ -195,17 +195,18 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				fmt.Println(err)
 			} else if listValues == nil {
 				fmt.Println("No values were returned under values/.")
-			}
-			serviceSlice := make([]string, 0)
-			for _, valuesPath := range listValues.Data {
-				for _, envInterface := range valuesPath.([]interface{}) {
-					env := envInterface.(string)
-					serviceSlice = append(serviceSlice, env)
+			} else {
+				serviceSlice := make([]string, 0)
+				for _, valuesPath := range listValues.Data {
+					for _, envInterface := range valuesPath.([]interface{}) {
+						env := envInterface.(string)
+						serviceSlice = append(serviceSlice, env)
+					}
 				}
-			}
-			for _, listedService := range serviceSlice {
-				if strings.Contains(listedService, service) {
-					serviceFound = true
+				for _, listedService := range serviceSlice {
+					if strings.Contains(listedService, service) {
+						serviceFound = true
+					}
 				}
 			}
 		}
