@@ -404,8 +404,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		return nil
 	}
 
+	suffixRemoved := false
 	if strings.HasSuffix(config.Env, "_0") {
 		config.Env = strings.Split(config.Env, "_")[0]
+		suffixRemoved = true
 	}
 
 	envBasePath, _, _ := kv.PreCheckEnvironment(config.Env)
@@ -418,6 +420,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		}
 	} else {
 		endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
+	}
+
+	if suffixRemoved {
+		config.Env = config.Env + "_0"
 	}
 
 	//generate template or certificate
@@ -474,7 +480,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	}
 
 	if config.Diff {
-		config.Update(&seedData, envBasePath+"||"+config.Env+"_seed.yml")
+		config.Update(&seedData, config.Env+"||"+config.Env+"_seed.yml")
 	} else {
 		writeToFile(seedData, endPath)
 		// Print that we're done
