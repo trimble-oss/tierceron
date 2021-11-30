@@ -287,11 +287,15 @@ func (m *Modifier) List(path string) (*api.Secret, error) {
 //List lists the paths underneath this one
 func (m *Modifier) ListEnv(path string) (*api.Secret, error) {
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	var fullPath string
 	if len(pathBlocks) == 1 {
 		pathBlocks[0] += "/"
+		fullPath = pathBlocks[0] + "metadata/"
+	} else if len(pathBlocks) == 2 {
+		fullPath = pathBlocks[0] + "metadata/"
+		fullPath = fullPath + pathBlocks[1]
 	}
 
-	fullPath := pathBlocks[0] + "metadata/"
 	return m.logical.List(fullPath)
 }
 
