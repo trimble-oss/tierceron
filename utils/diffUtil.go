@@ -409,15 +409,6 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		keyB := keys[1]
 		keySplitA := strings.Split(keyA, "||")
 		keySplitB := strings.Split(keyB, "||")
-
-		//Checks for enterprise ID in seed file name for displaying env in diff
-		if len(keySplitA) >= 2 && strings.Contains(strings.Split(keySplitA[1], "_")[0], ".") {
-			keySplitA[0] = strings.Split(keySplitA[1], "_")[0]
-		}
-
-		if len(keySplitB) >= 2 && strings.Contains(strings.Split(keySplitB[1], "_")[0], ".") {
-			keySplitB[0] = strings.Split(keySplitB[1], "_")[0]
-		}
 		mutex.Lock()
 
 		sortedKeyA := keyA
@@ -447,14 +438,6 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 			keyD := keys[3]
 			keySplitC := strings.Split(keyC, "||")
 			keySplitD := strings.Split(keyD, "||")
-			//Checks for enterprise ID in seed file name for displaying env in diff
-			if len(keySplitC) >= 2 && strings.Contains(strings.Split(keySplitC[1], "_")[0], ".") {
-				keySplitC[0] = strings.Split(keySplitC[1], "_")[0]
-			}
-
-			if len(keySplitD) >= 2 && strings.Contains(strings.Split(keySplitD[1], "_")[0], ".") {
-				keySplitD[0] = strings.Split(keySplitD[1], "_")[0]
-			}
 			mutex.Lock()
 			envFileKeyC := resultMap[keyC]
 			envFileKeyD := resultMap[keyD]
@@ -484,10 +467,6 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		case 3:
 			keyC := keys[2]
 			keySplitC := strings.Split(keyC, "||")
-			//Checks for enterprise ID in seed file name for displaying env in diff
-			if len(keySplitC) >= 2 && strings.Contains(strings.Split(keySplitC[1], "_")[0], ".") {
-				keySplitC[0] = strings.Split(keySplitC[1], "_")[0]
-			}
 			mutex.Lock()
 			envFileKeyC := resultMap[keyC]
 			mutex.Unlock()
