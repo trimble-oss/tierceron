@@ -183,13 +183,15 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 		commonMod.Close()
 	}
-	serviceFound := false
+
 	// Configure each template in directory
-	for _, templatePath := range templatePaths {
-		var service string
-		_, service, templatePath = vcutils.GetProjectService(templatePath)
-		//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
-		if strings.Contains(mod.Env, ".*") && !serviceFound {
+	if strings.Contains(mod.Env, ".*") && !serviceFound {
+		serviceFound := false
+		for _, templatePath := range templatePaths {
+			var service string
+			_, service, templatePath = vcutils.GetProjectService(templatePath)
+			//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
+
 			listValues, err := mod.ListEnv("values/" + mod.Env + "/") //Fix values to add to project to directory
 			if err != nil {
 				fmt.Println(err)
