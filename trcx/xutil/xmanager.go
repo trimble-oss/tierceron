@@ -212,11 +212,11 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				}
 			}
 		}
+		if strings.Contains(mod.Env, ".*") && !serviceFound { //Exit for irrelevant enterprises
+			return "", false, ""
+		}
 	}
 
-	if strings.Contains(mod.Env, ".*") && !serviceFound { //Exit for irrelevant enterprises
-		return "", false, ""
-	}
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
