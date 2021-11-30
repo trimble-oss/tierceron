@@ -22,14 +22,14 @@ var noEnvironments = map[string]bool{
 // can be changed to alter where in the vault the key,value
 // pair is stored
 type Modifier struct {
-	httpClient           *http.Client // Handle to http client.
-	client               *api.Client  // Client connected to vault
-	logical              *api.Logical // Logical used for read/write options
-	Env                  string       // Environment (local/dev/QA; Initialized to secrets)
-	Regions              []string     // Supported regions
-	SecretDictionary     *api.Secret  // Current Secret Dictionary Cache.
-	Version              string       // Version for data
-	ProjectVersionFilter []string     // Used to filter vault paths
+	httpClient       *http.Client // Handle to http client.
+	client           *api.Client  // Client connected to vault
+	logical          *api.Logical // Logical used for read/write options
+	Env              string       // Environment (local/dev/QA; Initialized to secrets)
+	Regions          []string     // Supported regions
+	SecretDictionary *api.Secret  // Current Secret Dictionary Cache.
+	Version          string       // Version for data
+	VersionFilter    []string     // Used to filter vault paths
 }
 
 func PreCheckEnvironment(environment string) (string, string, error) {
@@ -428,7 +428,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 		}
 
 		for _, servicePath := range servicePaths {
-			if !strings.Contains(projectPath, mod.ProjectVersionFilter[0]) {
+			if !strings.Contains(projectPath, mod.VersionFilter[0]) {
 				continue
 			}
 			//get a list of files under project
@@ -473,7 +473,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 
 func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[string]map[string]interface{}) {
 	for _, filePath := range filePaths {
-		if len(mod.ProjectVersionFilter) > 0 && !strings.Contains(filePath, mod.ProjectVersionFilter[0]) {
+		if len(mod.VersionFilter) > 0 && !strings.Contains(filePath, mod.VersionFilter[0]) {
 			continue
 		}
 
