@@ -54,7 +54,52 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 	}
 
 	initialized := false
+	templatePaths := []string{}
+	endPaths := []string{}
+
+	//templatePaths
+	for _, startDir := range config.StartDir {
+		//get files from directory
+		tp, ep := getDirFiles(startDir, config.EndDir)
+		templatePaths = append(templatePaths, tp...)
+		endPaths = append(endPaths, ep...)
+	}
+
+	//File filter
+	fileFound := true
+	fileFilterIndex := make([]int, len(config.FileFilter))
+	fileFilterCounter := 0
+	if len(config.FileFilter) != 0 && config.FileFilter[0] != "" {
+		for _, FileFilter := range config.FileFilter {
+			for i, templatePath := range templatePaths {
+				if strings.Contains(templatePath, FileFilter) {
+					fileFilterIndex[fileFilterCounter] = i
+					fileFilterCounter++
+					fileFound = true
+					break
+				}
+			}
+		}
+		if !fileFound {
+			fmt.Println("Could not find specified file in templates")
+			os.Exit(1)
+		}
+
+		fileTemplatePaths := []string{}
+		fileEndPaths := []string{}
+		for _, index := range fileFilterIndex {
+			fileTemplatePaths = append(fileTemplatePaths, templatePaths[index])
+			fileEndPaths = append(fileEndPaths, endPaths[index])
+		}
+
+		templatePaths = fileTemplatePaths
+		endPaths = fileEndPaths
+	}
+
 	if valueInfo {
+		shortestPath := ""
+		secretExist := false
+		secretPath := ""
 		versionDataMap := make(map[string]map[string]interface{})
 		versionMetadataMap := make(map[string]map[string]interface{})
 		//Gets version metadata for super secrets or values if super secrets don't exist.
@@ -77,6 +122,14 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		if err != nil {
 			panic(err)
 		}
+
+		var path string
+		if len(templatePaths) > 0 {
+			path = templatePaths[0]
+		}
+		_, service, _ := GetProjectService(path)                                   //This checks for nested project names
+		config.VersionProjectFilter = append(config.VersionProjectFilter, service) //Adds nested project name to filter otherwise it will be not found.
+
 		for valuePath, data := range versionMetadataMap {
 			projectFound := false
 			for _, project := range config.VersionProjectFilter {
@@ -94,9 +147,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		}
 		//Find shortest path
 		pathCount := 0
-		shortestPath := ""
-		secretExist := false
-		secretPath := ""
 		for fullPath, data := range versionDataMap {
 			if strings.Contains(fullPath, "super-secret") && strings.HasSuffix(fullPath, config.VersionProjectFilter[0]) {
 				secretExist = true
@@ -110,10 +160,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		}
 		if secretExist {
 			config.VersionInfo(versionDataMap[secretPath], false, secretPath)
-		} else {
+		} else if versionDataMap != nil {
 			config.VersionInfo(versionDataMap[shortestPath], false, shortestPath)
-		}
-		if !initialized {
+		} else if !initialized {
 			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
 		}
 		return nil
@@ -159,47 +208,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 				os.Exit(1)
 			}
 		}
-	}
-	templatePaths := []string{}
-	endPaths := []string{}
-
-	//templatePaths
-	for _, startDir := range config.StartDir {
-		//get files from directory
-		tp, ep := getDirFiles(startDir, config.EndDir)
-		templatePaths = append(templatePaths, tp...)
-		endPaths = append(endPaths, ep...)
-	}
-
-	//file filter
-	fileFound := true
-	fileFilterIndex := make([]int, len(config.FileFilter))
-	fileFilterCounter := 0
-	if len(config.FileFilter) != 0 && config.FileFilter[0] != "" {
-		for _, FileFilter := range config.FileFilter {
-			for i, templatePath := range templatePaths {
-				if strings.Contains(templatePath, FileFilter) {
-					fileFilterIndex[fileFilterCounter] = i
-					fileFilterCounter++
-					fileFound = true
-					break
-				}
-			}
-		}
-		if !fileFound {
-			fmt.Println("Could not find specified file in templates")
-			os.Exit(1)
-		}
-
-		fileTemplatePaths := []string{}
-		fileEndPaths := []string{}
-		for _, index := range fileFilterIndex {
-			fileTemplatePaths = append(fileTemplatePaths, templatePaths[index])
-			fileEndPaths = append(fileEndPaths, endPaths[index])
-		}
-
-		templatePaths = fileTemplatePaths
-		endPaths = fileEndPaths
 	}
 
 	var wg sync.WaitGroup
