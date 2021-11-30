@@ -89,6 +89,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	}
 
 	flag.Parse()
+	envRaw := *envPtr
 
 	Yellow := "\033[33m"
 	Reset := "\033[0m"
@@ -302,6 +303,7 @@ skipDiff:
 			Insecure:       *insecurePtr,
 			Token:          *tokenPtr,
 			VaultAddress:   *addrPtr,
+			EnvRaw:         envRaw,
 			Env:            *envPtr,
 			Regions:        regions,
 			SecretMode:     *secretMode,
