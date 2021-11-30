@@ -193,10 +193,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			listValues, err := mod.ListEnv("values/" + mod.Env + "/") //Fix values to add to project to directory
 			if err != nil {
 				fmt.Println(err)
-				os.Exit(1)
 			} else if listValues == nil {
 				fmt.Println("No values were returned under values/.")
-				os.Exit(1)
 			}
 			serviceSlice := make([]string, 0)
 			for _, valuesPath := range listValues.Data {
