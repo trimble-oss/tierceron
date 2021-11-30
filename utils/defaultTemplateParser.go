@@ -20,6 +20,7 @@ type DriverConfig struct {
 	Insecure             bool
 	Token                string
 	VaultAddress         string
+	EnvRaw               string
 	Env                  string
 	Regions              []string
 	SecretMode           bool
