@@ -185,7 +185,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	}
 
 	// Configure each template in directory
-	if strings.Contains(mod.Env, ".*") && !serviceFound {
+	if strings.Contains(mod.Env, ".*") {
 		serviceFound := false
 		for _, templatePath := range templatePaths {
 			var service string
