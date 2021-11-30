@@ -183,7 +183,38 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 		commonMod.Close()
 	}
+	serviceFound := false
+	// Configure each template in directory
+	for _, templatePath := range templatePaths {
+		var service string
+		_, service, templatePath = vcutils.GetProjectService(templatePath)
+		//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
+		if strings.Contains(mod.Env, ".") && !serviceFound {
+			listValues, err := mod.ListEnv("values/" + mod.Env + "/") //Fix values to add to project to directory
+			if err != nil {
+				fmt.Println(err)
+			} else if listValues == nil {
+				fmt.Println("No values were returned under values/.")
+			} else {
+				serviceSlice := make([]string, 0)
+				for _, valuesPath := range listValues.Data {
+					for _, envInterface := range valuesPath.([]interface{}) {
+						env := envInterface.(string)
+						serviceSlice = append(serviceSlice, env)
+					}
+				}
+				for _, listedService := range serviceSlice {
+					if strings.Contains(listedService, service) {
+						serviceFound = true
+					}
+				}
+			}
+		}
+	}
 
+	if !serviceFound { //Exit for irrelevant enterprises
+		return "", false, ""
+	}
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
@@ -364,6 +395,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	}
 
 	endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
+
+	if endPath == "" && !multiService && seedData == "" {
+		return nil
+	}
 
 	if strings.HasSuffix(config.Env, "_0") {
 		config.Env = strings.Split(config.Env, "_")[0]
