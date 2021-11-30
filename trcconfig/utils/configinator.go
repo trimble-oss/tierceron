@@ -32,7 +32,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 	if err != nil {
 		panic(err)
 	}
-	modCheck.ProjectVersionFilter = config.VersionProjectFilter
+	modCheck.VersionFilter = config.VersionFilter
 
 	//Check if templateInfo is selected for template or values
 	templateInfo := false
@@ -104,10 +104,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		versionMetadataMap := make(map[string]map[string]interface{})
 		//Gets version metadata for super secrets or values if super secrets don't exist.
 		if strings.Contains(modCheck.Env, ".") {
-			config.VersionProjectFilter = append(config.VersionProjectFilter, strings.Split(modCheck.Env, "_")[0])
+			config.VersionFilter = append(config.VersionFilter, strings.Split(modCheck.Env, "_")[0])
 			modCheck.Env = strings.Split(modCheck.Env, "_")[0]
 		}
-		modCheck.ProjectVersionFilter = config.VersionProjectFilter
+		modCheck.VersionFilter = config.VersionFilter
 		secretMetadataMap, err := modCheck.GetVersionValues(modCheck, "super-secrets")
 		if secretMetadataMap == nil {
 			versionMetadataMap, err = modCheck.GetVersionValues(modCheck, "values")
@@ -127,12 +127,12 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		if len(templatePaths) > 0 {
 			path = templatePaths[0]
 		}
-		_, service, _ := GetProjectService(path)                                   //This checks for nested project names
-		config.VersionProjectFilter = append(config.VersionProjectFilter, service) //Adds nested project name to filter otherwise it will be not found.
+		_, service, _ := GetProjectService(path)                     //This checks for nested project names
+		config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 
 		for valuePath, data := range versionMetadataMap {
 			projectFound := false
-			for _, project := range config.VersionProjectFilter {
+			for _, project := range config.VersionFilter {
 				if strings.Contains(valuePath, project) {
 					projectFound = true
 					initialized = true
@@ -148,7 +148,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		//Find shortest path
 		pathCount := 0
 		for fullPath, data := range versionDataMap {
-			if strings.Contains(fullPath, "super-secret") && strings.HasSuffix(fullPath, config.VersionProjectFilter[0]) {
+			if strings.Contains(fullPath, "super-secret") && strings.HasSuffix(fullPath, config.VersionFilter[0]) {
 				secretExist = true
 				secretPath = fullPath
 			}
@@ -175,7 +175,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			}
 			for valuePath, data := range versionMetadataMap {
 				projectFound := false
-				for _, project := range config.VersionProjectFilter {
+				for _, project := range config.VersionFilter {
 					if strings.Contains(valuePath, project) {
 
 						projectFound = true

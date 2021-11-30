@@ -16,27 +16,27 @@ type ProcessContext interface{}
 type ConfigDriver func(ctx ProcessContext, config DriverConfig) interface{}
 
 type DriverConfig struct {
-	Context              ProcessContext
-	Insecure             bool
-	Token                string
-	VaultAddress         string
-	EnvRaw               string
-	Env                  string
-	Regions              []string
-	SecretMode           bool
-	ServicesWanted       []string
-	StartDir             []string // Starting directory... possibly multiple
-	EndDir               string
-	WantCerts            bool
-	ZeroConfig           bool
-	GenAuth              bool
-	Clean                bool
-	Log                  *log.Logger
-	Diff                 bool
-	Update               func(*string, string)
-	FileFilter           []string
-	VersionInfo          func(map[string]interface{}, bool, string)
-	VersionProjectFilter []string
+	Context        ProcessContext
+	Insecure       bool
+	Token          string
+	VaultAddress   string
+	EnvRaw         string
+	Env            string
+	Regions        []string
+	SecretMode     bool
+	ServicesWanted []string
+	StartDir       []string // Starting directory... possibly multiple
+	EndDir         string
+	WantCerts      bool
+	ZeroConfig     bool
+	GenAuth        bool
+	Clean          bool
+	Log            *log.Logger
+	Diff           bool
+	Update         func(*string, string)
+	FileFilter     []string
+	VersionInfo    func(map[string]interface{}, bool, string)
+	VersionFilter  []string
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
@@ -77,7 +77,7 @@ func ConfigControl(ctx ProcessContext, config DriverConfig, drive ConfigDriver) 
 					serviceFiles, err := ioutil.ReadDir(projectStartDir)
 					if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 						projectStartDir = projectStartDir + string(os.PathSeparator) + serviceFiles[0].Name()
-						config.VersionProjectFilter = append(config.VersionProjectFilter, serviceFiles[0].Name())
+						config.VersionFilter = append(config.VersionFilter, serviceFiles[0].Name())
 					}
 					if strings.LastIndex(projectStartDir, string(os.PathSeparator)) < (len(projectStartDir) - 1) {
 						projectStartDir = projectStartDir + string(os.PathSeparator)
@@ -104,15 +104,15 @@ func ConfigControl(ctx ProcessContext, config DriverConfig, drive ConfigDriver) 
 
 		if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 			config.StartDir[0] = config.StartDir[0] + string(os.PathSeparator) + serviceFiles[0].Name()
-			config.VersionProjectFilter = append(config.VersionProjectFilter, serviceFiles[0].Name())
+			config.VersionFilter = append(config.VersionFilter, serviceFiles[0].Name())
 		} else if len(projectFiles) > 1 {
 			multiProject = true
 		}
 
-		if len(config.VersionProjectFilter) == 0 {
+		if len(config.VersionFilter) == 0 {
 			for _, projectFile := range projectFilesComplete {
 				if !strings.HasSuffix(projectFile.Name(), ".DS_Store") {
-					config.VersionProjectFilter = append(config.VersionProjectFilter, projectFile.Name())
+					config.VersionFilter = append(config.VersionFilter, projectFile.Name())
 				}
 			}
 		}

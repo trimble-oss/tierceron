@@ -32,7 +32,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 		//get paths where the data is stored
 		dp, err := GetPathsFromProject(mod, project)
 		if len(dp) > 1 && strings.Contains(dp[len(dp)-1], "!=!") {
-			mod.ProjectVersionFilter = append(mod.ProjectVersionFilter, strings.Split(dp[len(dp)-1], "!=!")[0])
+			mod.VersionFilter = append(mod.VersionFilter, strings.Split(dp[len(dp)-1], "!=!")[0])
 			dp = dp[:len(dp)-1]
 		}
 

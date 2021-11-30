@@ -79,7 +79,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 	templateVersionMap := make(map[string]map[string]interface{})
 	if mod.Version != "0" {
-		mod.ProjectVersionFilter = config.VersionProjectFilter
+		mod.VersionFilter = config.VersionFilter
 		templatePathMap, err := mod.GetVersionValues(mod, "super-secrets") //Needs filter
 		if err != nil {
 			fmt.Println(err)
@@ -88,7 +88,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 		var lastKey string
 		for key, value := range templatePathMap {
-			if len(config.VersionProjectFilter) > 0 && !strings.HasSuffix(key, config.VersionProjectFilter[0]) {
+			if len(config.VersionFilter) > 0 && !strings.HasSuffix(key, config.VersionFilter[0]) {
 				lastKey = key
 				continue
 			} else {
@@ -105,7 +105,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 
 		if templateVersionMap == nil {
-			fmt.Println("No version data found - this filter was applied during search: ", config.VersionProjectFilter)
+			fmt.Println("No version data found - this filter was applied during search: ", config.VersionFilter)
 			os.Exit(1)
 		} else if version == "versionInfo" {
 			if templateVersionMap == nil {
@@ -268,9 +268,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			}
 
 			innerProject := "Not Found"
-			if len(goMod.ProjectVersionFilter) >= 1 && strings.Contains(goMod.ProjectVersionFilter[len(goMod.ProjectVersionFilter)-1], "!=!") {
-				innerProject = strings.Split(goMod.ProjectVersionFilter[len(goMod.ProjectVersionFilter)-1], "!=!")[1]
-				goMod.ProjectVersionFilter = goMod.ProjectVersionFilter[:len(goMod.ProjectVersionFilter)-1]
+			if len(goMod.VersionFilter) >= 1 && strings.Contains(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!") {
+				innerProject = strings.Split(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!")[1]
+				goMod.VersionFilter = goMod.VersionFilter[:len(goMod.VersionFilter)-1]
 			}
 			if innerProject != "Not Found" {
 				project = innerProject
