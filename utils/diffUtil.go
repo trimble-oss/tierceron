@@ -369,14 +369,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		}
 	} else {
 		for _, env := range envDiffSlice { //Arranges keys for ordered output
-			if strings.Contains(env, "_0") {
-				env = strings.Split(env, "_")[0]
-			}
-			envBasePath := env
-			if strings.Contains(env, ".") {
-				envBasePath = strings.Split(env, ".")[0]
-			}
-			keys = append(keys, envBasePath+"||"+env+"_seed.yml")
+			keys = append(keys, env+"||"+env+"_seed.yml")
 		}
 		fileList[0] = "placeHolder"
 	}
@@ -432,6 +425,16 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		if len(latestVersionBCheck) > 1 && latestVersionBCheck[1] == "0" {
 			keySplitB[0] = strings.ReplaceAll(keySplitB[0], "0", "latest")
 		}
+
+		if strings.Count(keySplitA[1], "_") == 2 {
+			fileSplit := strings.Split(keySplitA[1], "_")
+			keySplitA[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
+		}
+
+		if strings.Count(keySplitB[1], "_") == 2 {
+			fileSplit := strings.Split(keySplitB[1], "_")
+			keySplitB[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
+		}
 		switch envLength {
 		case 4:
 			keyC := keys[2]
@@ -450,6 +453,16 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 			latestVersionDCheck := strings.Split(keySplitD[0], "_")
 			if len(latestVersionDCheck) > 1 && latestVersionDCheck[1] == "0" {
 				keySplitD[0] = strings.ReplaceAll(keySplitD[0], "0", "latest")
+			}
+
+			if strings.Count(keySplitC[1], "_") == 2 {
+				fileSplit := strings.Split(keySplitC[1], "_")
+				keySplitC[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
+			}
+
+			if strings.Count(keySplitD[1], "_") == 2 {
+				fileSplit := strings.Split(keySplitD[1], "_")
+				keySplitD[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
 			}
 
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
@@ -474,6 +487,11 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 			latestVersionCCheck := strings.Split(keySplitC[0], "_")
 			if len(latestVersionCCheck) > 1 && latestVersionCCheck[1] == "0" {
 				keySplitC[0] = strings.ReplaceAll(keySplitC[0], "0", "latest")
+			}
+
+			if strings.Count(keySplitC[1], "_") == 2 {
+				fileSplit := strings.Split(keySplitC[1], "_")
+				keySplitC[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
 			}
 
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
