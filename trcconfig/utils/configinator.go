@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -101,35 +99,19 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		secretExist := false
 		secretPath := ""
 		versionDataMap := make(map[string]map[string]interface{})
-		versionMetadataMap := make(map[string]map[string]interface{})
 		//Gets version metadata for super secrets or values if super secrets don't exist.
 		if strings.Contains(modCheck.Env, ".") {
 			config.VersionFilter = append(config.VersionFilter, strings.Split(modCheck.Env, "_")[0])
 			modCheck.Env = strings.Split(modCheck.Env, "_")[0]
 		}
-		modCheck.VersionFilter = config.VersionFilter
-		secretMetadataMap, err := modCheck.GetVersionValues(modCheck, "super-secrets")
-		if secretMetadataMap == nil {
-			versionMetadataMap, err = modCheck.GetVersionValues(modCheck, "values")
-		}
-		for key, value := range secretMetadataMap {
-			versionMetadataMap[key] = value
-		}
-		if versionMetadataMap == nil {
-			fmt.Println("Unable to get version metadata for values")
-			os.Exit(1)
-		}
-		if err != nil {
-			panic(err)
+
+		for _, templatePath := range templatePaths {
+			_, service, _ := GetProjectService(templatePath) //This checks for nested project names
+			config.VersionFilter = append(config.VersionFilter, service)
 		}
 
-		var path string
-		if len(templatePaths) > 0 {
-			path = templatePaths[0]
-		}
-		_, service, _ := GetProjectService(path)                     //This checks for nested project names
-		config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
-
+		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
+		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
 		for valuePath, data := range versionMetadataMap {
 			projectFound := false
 			for _, project := range config.VersionFilter {
@@ -168,45 +150,16 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		return nil
 	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
-			versionNumbers := make([]int, 0)
-			versionMetadataMap, err := modCheck.GetVersionValues(modCheck, "values")
-			if err != nil {
-				panic(err)
+			for _, templatePath := range templatePaths {
+				_, service, _ := GetProjectService(templatePath)             //This checks for nested project names
+				config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 			}
-			for valuePath, data := range versionMetadataMap {
-				projectFound := false
-				for _, project := range config.VersionFilter {
-					if strings.Contains(valuePath, project) {
+			config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
 
-						projectFound = true
-						initialized = true
-						for key := range data {
-							versionNo, err := strconv.Atoi(key)
-							if err != nil {
-								fmt.Println()
-							}
-							versionNumbers = append(versionNumbers, versionNo)
-						}
-					}
-					if !projectFound {
-						continue
-					}
-				}
-			}
+			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
+			versionNumbers := utils.GetProjectVersion(config, versionMetadataMap)
 
-			sort.Ints(versionNumbers)
-			if len(versionNumbers) >= 1 {
-				latestVersion := versionNumbers[len(versionNumbers)-1]
-				oldestVersion := versionNumbers[0]
-				userVersion, _ := strconv.Atoi(version)
-				if userVersion > latestVersion || userVersion < oldestVersion && len(versionNumbers) != 1 {
-					fmt.Println(Cyan + "This version " + config.Env + "_" + version + " is not available as the latest version is " + strconv.Itoa(versionNumbers[len(versionNumbers)-1]) + " and oldest version available is " + strconv.Itoa(versionNumbers[0]) + Reset)
-					os.Exit(1)
-				}
-			} else {
-				fmt.Println(Cyan + "No version data found" + Reset)
-				os.Exit(1)
-			}
+			utils.BoundCheck(config, versionNumbers, version)
 		}
 	}
 
