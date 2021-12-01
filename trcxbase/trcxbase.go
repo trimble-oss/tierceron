@@ -131,8 +131,8 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		}
 		envVersion := strings.Split(*envPtr, "_")
 		if len(envVersion) > 1 && envVersion[1] != "" && envVersion[1] != "0" {
-
 			fmt.Println(Yellow + "Specified versioning not available, using " + envVersion[0] + " as environment" + Reset)
+			*envPtr = strings.Split(*envPtr, "_")[0]
 		}
 		envSlice = append(envSlice, *envPtr+"_versionInfo")
 		goto skipDiff
