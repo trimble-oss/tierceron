@@ -75,7 +75,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	}
 
 	templateVersionMap := make(map[string]map[string]interface{})
-	if mod.Version != "0" {
+	if mod.Version != "0" { //If version isn't latest or is a flag
 		for _, templatePath := range templatePaths {
 			_, service, _ := utils.GetProjectService(templatePath)       //This checks for nested project names
 			config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
@@ -84,10 +84,19 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
 		mod.VersionFilter = config.VersionFilter
 		templatePathMap := utils.GetProjectVersionInfo(config, mod)
-		var lastKey string
+		lastKey := ""
 		for key, value := range templatePathMap {
-			if len(config.VersionFilter) > 0 && !strings.HasSuffix(key, config.VersionFilter[0]) {
-				lastKey = key
+			//Loop through filters - > if no match then else
+			noMatch := true
+			for _, filter := range config.VersionFilter {
+				if strings.HasSuffix(key, filter) {
+					noMatch = false
+				}
+			}
+			if noMatch {
+				if lastKey == "" {
+					lastKey = key
+				}
 				continue
 			} else {
 				templateVersionMap[key] = value
@@ -98,14 +107,14 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		if templateVersionMap == nil {
 			fmt.Println("No version data found - this filter was applied during search: ", config.VersionFilter)
 			os.Exit(1)
-		} else if version == "versionInfo" {
+		} else if version == "versionInfo" { //Version flag
 			if templateVersionMap == nil {
 				config.VersionInfo(templateVersionMap[lastKey], false, "")
 			} else {
 				config.VersionInfo(templatePathMap[lastKey], false, "")
 			}
 			os.Exit(1)
-		} else {
+		} else { //Version bound check
 			versionNumbers := utils.GetProjectVersion(config, templatePathMap)
 			utils.BoundCheck(config, versionNumbers, version)
 		}
