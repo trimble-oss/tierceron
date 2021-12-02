@@ -12,6 +12,7 @@ import (
 
 func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier) map[string]map[string]interface{} {
 	versionMetadataMap := make(map[string]map[string]interface{})
+	mod.VersionFilter = config.VersionFilter
 	secretMetadataMap, err := mod.GetVersionValues(mod, "super-secrets")
 	if secretMetadataMap == nil {
 		versionMetadataMap, err = mod.GetVersionValues(mod, "values")
@@ -87,8 +88,8 @@ func GetProjectService(templateFile string) (string, string, string) {
 		}
 	}
 
-	project = splitDir[offsetBase+1]
-	service = splitDir[offsetBase+2]
+	project = splitDir[offsetBase]
+	service = splitDir[offsetBase+1]
 
 	// Clean up service naming (Everything after '.' removed)
 	dotIndex := strings.Index(service, ".")
