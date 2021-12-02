@@ -71,46 +71,17 @@ func main() {
 
 	mod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil)
 	utils.CheckError(err, true)
+	mod.Env = *envPtr
 
-	envSlice := make([]string, 0)
-	if strings.Contains(*envPtr, "*") {
-		//Ask vault for list of dev.* environments, add to envSlice
-		mod.Env = strings.Split(*envPtr, "*")[0]
-		listValues, err := mod.ListEnv("values/")
-		if err != nil {
-			logger.Printf(err.Error())
+	err, warn := il.UploadTemplateDirectory(mod, *dirPtr, logger)
+	if err != nil {
+		if strings.Contains(err.Error(), "x509: certificate") {
+			os.Exit(-1)
 		}
-
-		if listValues == nil {
-			fmt.Println("No enterprise IDs were found.")
-			os.Exit(1)
-		}
-		for _, valuesPath := range listValues.Data {
-			for _, envInterface := range valuesPath.([]interface{}) {
-				env := envInterface.(string)
-				if strings.Contains(env, ".") && strings.Contains(env, mod.Env) {
-					env = strings.ReplaceAll(env, "/", "")
-					envSlice = append(envSlice, env)
-				}
-			}
-		}
-	} else {
-		envSlice = append(envSlice, *envPtr)
 	}
 
-	for _, env := range envSlice {
-		mod.Env = env
-		err, warn := il.UploadTemplateDirectory(mod, *dirPtr, logger)
-
-		if err != nil {
-			if strings.Contains(err.Error(), "x509: certificate") {
-				os.Exit(-1)
-			}
-		}
-
-		utils.CheckError(err, true)
-		utils.CheckWarnings(warn, true)
-	}
+	utils.CheckError(err, true)
+	utils.CheckWarnings(warn, true)
 }
 
 func uploadTemplates(insecure bool, addr string, token string, dirName string, env string, logger *log.Logger) {
@@ -146,8 +117,8 @@ func uploadTemplates(insecure bool, addr string, token string, dirName string, e
 		name = name[0 : len(name)-len(ext)] // Truncate extension
 
 		if ext == ".tmpl" { // Only upload template files
-			fmt.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
-			logger.Println("Found template file %s for %s\n", file.Name(), mod.Env)
+			fmt.Printf("Found template file %s\n", file.Name())
+			logger.Println("Found template file %s\n", file.Name())
 			// Seperate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
 			name = name[0 : len(name)-len(ext)]
