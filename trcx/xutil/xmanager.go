@@ -78,6 +78,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	if mod.Version != "0" { //If version isn't latest or is a flag
 		for _, templatePath := range templatePaths {
 			_, service, _ := utils.GetProjectService(templatePath)       //This checks for nested project names
+			if service == "Common" {
+				continue
+			}
 			config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 		}
 
