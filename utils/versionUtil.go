@@ -14,14 +14,24 @@ func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier) map[string]map
 	versionMetadataMap := make(map[string]map[string]interface{})
 	mod.VersionFilter = config.VersionFilter
 	secretMetadataMap, err := mod.GetVersionValues(mod, "super-secrets")
-	if secretMetadataMap == nil {
+	if secretMetadataMap == nil || config.WantCerts {		//Certs are in values, not super secrets
 		versionMetadataMap, err = mod.GetVersionValues(mod, "values")
 	}
+	var foundKey string
 	for key, value := range secretMetadataMap {
-		versionMetadataMap[key] = value
+		foundService := false
+		for _, service := range mod.VersionFilter {
+			if strings.Contains(key, service) && !foundService {
+				foundService = true
+				foundKey = key
+			}
+		}
+		if foundService && len(foundKey) > 0 {
+			versionMetadataMap[foundKey] = value
+		}
 	}
 	if versionMetadataMap == nil {
-		fmt.Println("Unable to get version metadata for values")
+		fmt.Println("No version data available for this env")
 		os.Exit(1)
 	}
 	if err != nil {
@@ -30,7 +40,7 @@ func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier) map[string]map
 	return versionMetadataMap
 }
 
-func GetProjectVersion(config DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
+func GetProjectVersions(config DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
 	var versionNumbers []int
 	for valuePath, data := range versionMetadataMap {
 		projectFound := false
@@ -77,6 +87,7 @@ func BoundCheck(config DriverConfig, versionNumbers []int, version string) {
 }
 
 func GetProjectService(templateFile string) (string, string, string) {
+	templateFile = strings.ReplaceAll(strings.ReplaceAll(templateFile, "\\\\", "/"), "\\", "/")
 	splitDir := strings.Split(templateFile, "/")
 	var project, service string
 	offsetBase := 0
@@ -88,8 +99,8 @@ func GetProjectService(templateFile string) (string, string, string) {
 		}
 	}
 
-	project = splitDir[offsetBase]
-	service = splitDir[offsetBase+1]
+	project = splitDir[offsetBase+1]
+	service = splitDir[offsetBase+2]
 
 	// Clean up service naming (Everything after '.' removed)
 	dotIndex := strings.Index(service, ".")
