@@ -95,9 +95,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 	}
 
 	if valueInfo {
-		shortestPath := ""
-		secretExist := false
-		secretPath := ""
 		versionDataMap := make(map[string]map[string]interface{})
 		//Gets version metadata for super secrets or values if super secrets don't exist.
 		if strings.Contains(modCheck.Env, ".") {
@@ -110,8 +107,28 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			config.VersionFilter = append(config.VersionFilter, service)
 		}
 
+		if config.WantCerts { //For cert version history
+			config.VersionFilter = append(config.VersionFilter, "Common")
+		}
+
 		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
 		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
+		var masterKey string
+		if config.WantCerts {
+
+			for key := range versionMetadataMap {
+				if !strings.Contains(key, "Common") {
+					continue
+				} else {
+					if len(key) > 0 && len(masterKey) < 1 {
+						masterKey = key
+						config.VersionInfo(versionMetadataMap[masterKey], false, "")
+						os.Exit(1)
+					}
+				}
+			}
+		}
+
 		for valuePath, data := range versionMetadataMap {
 			projectFound := false
 			for _, project := range config.VersionFilter {
@@ -126,28 +143,15 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			}
 
 			versionDataMap[valuePath] = data
+			masterKey = valuePath
 		}
-		//Find shortest path
-		pathCount := 0
-		for fullPath, data := range versionDataMap {
-			if strings.Contains(fullPath, "super-secret") && strings.HasSuffix(fullPath, config.VersionFilter[0]) {
-				secretExist = true
-				secretPath = fullPath
-			}
-			tempCount := strings.Count(fullPath, "/")
-			if tempCount < pathCount || tempCount == 0 || data != nil {
-				pathCount = tempCount
-				shortestPath = fullPath
-			}
-		}
-		if secretExist {
-			config.VersionInfo(versionDataMap[secretPath], false, secretPath)
-		} else if versionDataMap != nil {
-			config.VersionInfo(versionDataMap[shortestPath], false, shortestPath)
+
+		if versionDataMap != nil {
+			config.VersionInfo(versionDataMap[masterKey], false, masterKey)
 		} else if !initialized {
 			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
 		}
-		return nil
+		return nil //End of -versions flag
 	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
 			for _, templatePath := range templatePaths {
