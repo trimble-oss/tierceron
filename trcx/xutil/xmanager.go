@@ -89,34 +89,34 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
 		mod.VersionFilter = config.VersionFilter
-		templatePathMap := utils.GetProjectVersionInfo(config, mod)
+		versionMetadataMap := utils.GetProjectVersionInfo(config, mod)
 
-		if templatePathMap == nil {
+		if versionMetadataMap == nil {
 			fmt.Println("No version data found - this filter was applied during search: ", config.VersionFilter)
 			os.Exit(1)
 		} else if version == "versionInfo" { //Version flag
 			var masterKey string
-			for key := range templatePathMap {
+			for key := range versionMetadataMap {
 				if config.WantCerts {
 					if !strings.Contains(key, "Common") {
 						continue
 					} else {
 						if len(key) > 0 && len(masterKey) < 1 {
 							masterKey = key
-							config.VersionInfo(templatePathMap[masterKey], false, "")
+							config.VersionInfo(versionMetadataMap[masterKey], false, "")
 							os.Exit(1)
 						}
 					}
 				} else {
 					if len(key) > 0 && len(masterKey) < 1 {
 						masterKey = key
-						config.VersionInfo(templatePathMap[masterKey], false, "")
+						config.VersionInfo(versionMetadataMap[masterKey], false, "")
 						os.Exit(1)
 					}
 				}
 			}
 		} else { //Version bound check
-			versionNumbers := utils.GetProjectVersions(config, templatePathMap)
+			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
 			utils.BoundCheck(config, versionNumbers, version)
 		}
 	}
