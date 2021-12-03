@@ -157,7 +157,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
 
 			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
-			versionNumbers := utils.GetProjectVersion(config, versionMetadataMap)
+			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
 
 			utils.BoundCheck(config, versionNumbers, version)
 		}
