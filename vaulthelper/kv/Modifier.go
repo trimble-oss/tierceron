@@ -411,11 +411,6 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 		}
 	}
 
-	if len(versionDataMap) < 1 {
-		fmt.Println("No version data available for this env")
-		os.Exit(1)
-	}
-
 	//get a list of projects under values
 	projectPaths, err := getPaths(mod, enginePath+"/")
 	if err != nil {
@@ -444,7 +439,14 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 		}
 
 		for _, servicePath := range servicePaths {
-			if !strings.Contains(projectPath, mod.VersionFilter[0]) {
+			foundService := false
+			for _, service := range mod.VersionFilter {
+				if strings.Contains(servicePath, service) && !foundService {
+					foundService = true
+				}
+			}
+
+			if !foundService {
 				continue
 			}
 			//get a list of files under project
@@ -484,12 +486,24 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 			}
 		}
 	}
+
+	if len(versionDataMap) < 1 {
+		fmt.Println("No version data available for this env")
+		os.Exit(1)
+	}
 	return versionDataMap, nil
 }
 
 func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[string]map[string]interface{}) {
 	for _, filePath := range filePaths {
-		if len(mod.VersionFilter) > 0 && !strings.Contains(filePath, mod.VersionFilter[0]) {
+		foundService := false
+		for _, service := range mod.VersionFilter {
+			if strings.Contains(filePath, service) && !foundService {
+				foundService = true
+			}
+		}
+
+		if !foundService {
 			continue
 		}
 
