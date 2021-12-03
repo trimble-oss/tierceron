@@ -387,6 +387,17 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 		for _, interfacePath := range userPath.([]interface{}) {
 			path := interfacePath.(string)
 			if path != "" {
+				foundService := false
+				for _, service := range mod.VersionFilter {
+					if strings.Contains(path, service) && !foundService {
+						foundService = true
+					}
+				}
+
+				if !foundService {
+					continue
+				}
+
 				path = enginePath + "/" + path
 				metadataValue, err := mod.ReadTemplateVersions(path)
 				if err != nil {
@@ -398,6 +409,11 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 				versionDataMap[path] = metadataValue
 			}
 		}
+	}
+
+	if len(versionDataMap) < 1 {
+		fmt.Println("No version data available for this env")
+		os.Exit(1)
 	}
 
 	//get a list of projects under values
