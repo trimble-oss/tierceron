@@ -74,51 +74,49 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 	}
 
-	templateVersionMap := make(map[string]map[string]interface{})
 	if mod.Version != "0" { //If version isn't latest or is a flag
 		for _, templatePath := range templatePaths {
-			_, service, _ := utils.GetProjectService(templatePath)       //This checks for nested project names
+			_, service, _ := utils.GetProjectService(templatePath) //This checks for nested project names
 			if service == "Common" {
 				continue
 			}
 			config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 		}
 
+		if config.WantCerts { //For cert version history
+			config.VersionFilter = append(config.VersionFilter, "Common")
+		}
+
 		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
 		mod.VersionFilter = config.VersionFilter
 		templatePathMap := utils.GetProjectVersionInfo(config, mod)
-		lastKey := ""
-		for key, value := range templatePathMap {
-			//Loop through filters - > if no match then else
-			noMatch := true
-			for _, filter := range config.VersionFilter {
-				if strings.HasSuffix(key, filter) {
-					noMatch = false
-				}
-			}
-			if noMatch {
-				if lastKey == "" {
-					lastKey = key
-				}
-				continue
-			} else {
-				templateVersionMap[key] = value
-				lastKey = key
-			}
-		}
 
-		if templateVersionMap == nil {
+		if templatePathMap == nil {
 			fmt.Println("No version data found - this filter was applied during search: ", config.VersionFilter)
 			os.Exit(1)
 		} else if version == "versionInfo" { //Version flag
-			if templateVersionMap == nil {
-				config.VersionInfo(templateVersionMap[lastKey], false, "")
-			} else {
-				config.VersionInfo(templatePathMap[lastKey], false, "")
+			var masterKey string
+			for key := range templatePathMap {
+				if config.WantCerts {
+					if !strings.Contains(key, "Common") {
+						continue
+					} else {
+						if len(key) > 0 && len(masterKey) < 1 {
+							masterKey = key
+							config.VersionInfo(templatePathMap[masterKey], false, "")
+							os.Exit(1)
+						}
+					}
+				} else {
+					if len(key) > 0 && len(masterKey) < 1 {
+						masterKey = key
+						config.VersionInfo(templatePathMap[masterKey], false, "")
+						os.Exit(1)
+					}
+				}
 			}
-			os.Exit(1)
 		} else { //Version bound check
-			versionNumbers := utils.GetProjectVersion(config, templatePathMap)
+			versionNumbers := utils.GetProjectVersions(config, templatePathMap)
 			utils.BoundCheck(config, versionNumbers, version)
 		}
 	}
@@ -174,7 +172,6 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			var service string
 			_, service, templatePath = vcutils.GetProjectService(templatePath)
 			//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
-
 			if strings.Contains(mod.Env, ".") && !serviceFound {
 				listValues, err := mod.ListEnv("values/" + mod.Env + "/") //Fix values to add to project to directory
 				if err != nil {
