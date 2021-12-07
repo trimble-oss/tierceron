@@ -75,15 +75,33 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	}
 
 	if mod.Version != "0" { //If version isn't latest or is a flag
+		var noCertPaths []string
+		var certPaths []string
+		for _, templatePath := range templatePaths { //Seperate cert vs normal paths
+			if !strings.Contains(templatePath, "Common") {
+				noCertPaths = append(noCertPaths, templatePath)
+			} else {
+				certPaths = append(certPaths, templatePath)
+			}
+		}
+
+		if config.WantCerts { //Remove unneeded template paths
+			templatePaths = certPaths
+		} else {
+			templatePaths = noCertPaths
+		}
+
+		project := ""
+		if len(config.VersionFilter) > 0 {
+			project = config.VersionFilter[0]
+		}
 		for _, templatePath := range templatePaths {
 			_, service, _ := utils.GetProjectService(templatePath) //This checks for nested project names
-			if service == "Common" {
-				continue
-			}
+
 			config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 		}
 
-		if config.WantCerts { //For cert version history
+		if config.WantCerts { //For cert version history  -> Maybe not needed
 			config.VersionFilter = append(config.VersionFilter, "Common")
 		}
 
@@ -97,14 +115,15 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		} else if version == "versionInfo" { //Version flag
 			var masterKey string
 			for key := range versionMetadataMap {
+				passed := false
 				if config.WantCerts {
-					if !strings.Contains(key, "Common") {
-						continue
-					} else {
-						if len(key) > 0 && len(masterKey) < 1 {
-							masterKey = key
-							config.VersionInfo(versionMetadataMap[masterKey], false, "")
-							os.Exit(1)
+					for _, service := range mod.VersionFilter {
+						if !passed && strings.Contains(key, "Common") && strings.Contains(key, service) && !strings.Contains(key, project) && !strings.HasSuffix(key, "Common") {
+							if len(key) > 0 {
+								keySplit := strings.Split(key, "/")
+								config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1])
+								passed = true
+							}
 						}
 					}
 				} else {
@@ -115,6 +134,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 					}
 				}
 			}
+			os.Exit(1)
 		} else { //Version bound check
 			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
 			utils.BoundCheck(config, versionNumbers, version)
@@ -464,6 +484,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	} else {
 		writeToFile(seedData, endPath)
 		// Print that we're done
+		config.Env = strings.Split(config.Env, "_")[0]
 		fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + envBasePath + string(os.PathSeparator) + config.Env + "_seed.yml")
 	}
 
