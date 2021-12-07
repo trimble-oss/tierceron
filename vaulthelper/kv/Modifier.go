@@ -389,7 +389,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 			if path != "" {
 				foundService := false
 				for _, service := range mod.VersionFilter {
-					if strings.Contains(path, service) && !foundService {
+					if strings.HasSuffix(path, service) && !foundService {
 						foundService = true
 					}
 				}
@@ -441,7 +441,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 		for _, servicePath := range servicePaths {
 			foundService := false
 			for _, service := range mod.VersionFilter {
-				if strings.Contains(servicePath, service) && !foundService {
+				if strings.HasSuffix(servicePath, service) && !foundService {
 					foundService = true
 				}
 			}
