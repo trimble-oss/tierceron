@@ -296,7 +296,14 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 		return
 
 	printOutput:
-		fmt.Println(Cyan + "======================================================================================" + Reset)
+		if len(valuePath) > 0 {
+			fmt.Println(Cyan + "======================================================================================")
+			fmt.Println(valuePath)
+			fmt.Println("======================================================================================" + Reset)
+		} else {
+			fmt.Println(Cyan + "======================================================================================" + Reset)
+		}
+
 		keys := make([]int, 0, len(versionData))
 		for versionNumber := range versionData {
 			versionNo, _ := strconv.ParseInt(versionNumber, 10, 64)
