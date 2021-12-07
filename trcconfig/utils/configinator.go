@@ -133,9 +133,8 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					}
 				}
 			} else {
-				if len(key) > 0 && len(masterKey) < 1 {
-					masterKey = key
-					config.VersionInfo(versionMetadataMap[masterKey], false, "", false)
+				if len(key) > 0 {
+					config.VersionInfo(versionMetadataMap[key], false, "", false)
 					os.Exit(1)
 				}
 			}

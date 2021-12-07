@@ -52,7 +52,7 @@ func GetProjectVersions(config DriverConfig, versionMetadataMap map[string]map[s
 				for key := range data {
 					versionNo, err := strconv.Atoi(key)
 					if err != nil {
-						fmt.Println()
+						fmt.Printf("Could not convert %s into a int", key)
 					}
 					versionNumbers = append(versionNumbers, versionNo)
 				}
