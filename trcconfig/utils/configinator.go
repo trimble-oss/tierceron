@@ -103,7 +103,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		}
 
 		for _, templatePath := range templatePaths {
-			_, service, _ := GetProjectService(templatePath) //This checks for nested project names
+			_, service, _ := utils.GetProjectService(templatePath) //This checks for nested project names
 			config.VersionFilter = append(config.VersionFilter, service)
 		}
 
@@ -114,20 +114,31 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
 		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
 		var masterKey string
-		if config.WantCerts {
-
-			for key := range versionMetadataMap {
-				if !strings.Contains(key, "Common") {
-					continue
-				} else {
-					if len(key) > 0 && len(masterKey) < 1 {
-						masterKey = key
-						config.VersionInfo(versionMetadataMap[masterKey], false, "")
-						os.Exit(1)
+		project := ""
+		if len(config.VersionFilter) > 0 {
+			project = config.VersionFilter[0]
+		}
+		for key := range versionMetadataMap {
+			passed := false
+			if config.WantCerts {
+				for _, service := range config.VersionFilter {
+					if !passed && strings.Contains(key, "Common") && strings.Contains(key, service) && !strings.Contains(key, project) && !strings.HasSuffix(key, "Common") {
+						if len(key) > 0 {
+							keySplit := strings.Split(key, "/")
+							config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1])
+							passed = true
+						}
 					}
+				}
+			} else {
+				if len(key) > 0 && len(masterKey) < 1 {
+					masterKey = key
+					config.VersionInfo(versionMetadataMap[masterKey], false, "")
+					os.Exit(1)
 				}
 			}
 		}
+		os.Exit(1)
 
 		for valuePath, data := range versionMetadataMap {
 			projectFound := false
