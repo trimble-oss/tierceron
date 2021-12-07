@@ -126,7 +126,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					if !passed && strings.Contains(key, "Common") && strings.Contains(key, service) && !strings.Contains(key, project) && !strings.HasSuffix(key, "Common") {
 						if len(key) > 0 {
 							keySplit := strings.Split(key, "/")
-							config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1])
+							config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1], neverPrinted)
 							passed = true
 							neverPrinted = false
 						}
@@ -135,7 +135,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			} else {
 				if len(key) > 0 && len(masterKey) < 1 {
 					masterKey = key
-					config.VersionInfo(versionMetadataMap[masterKey], false, "")
+					config.VersionInfo(versionMetadataMap[masterKey], false, "", false)
 					os.Exit(1)
 				}
 			}
@@ -163,7 +163,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		}
 
 		if versionDataMap != nil {
-			config.VersionInfo(versionDataMap[masterKey], false, masterKey)
+			config.VersionInfo(versionDataMap[masterKey], false, masterKey, false)
 		} else if !initialized {
 			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
 		}
@@ -319,7 +319,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 	}
 	wg.Wait()
 	if templateInfo {
-		config.VersionInfo(versionData, true, "")
+		config.VersionInfo(versionData, true, "", false)
 	}
 	return nil
 }

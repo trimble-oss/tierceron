@@ -35,7 +35,7 @@ type DriverConfig struct {
 	Diff           bool
 	Update         func(*string, string)
 	FileFilter     []string
-	VersionInfo    func(map[string]interface{}, bool, string)
+	VersionInfo    func(map[string]interface{}, bool, string, bool)
 	VersionFilter  []string
 }
 
