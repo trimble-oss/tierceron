@@ -115,6 +115,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
 		var masterKey string
 		project := ""
+		neverPrinted := true
 		if len(config.VersionFilter) > 0 {
 			project = config.VersionFilter[0]
 		}
@@ -127,6 +128,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 							keySplit := strings.Split(key, "/")
 							config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1])
 							passed = true
+							neverPrinted = false
 						}
 					}
 				}
@@ -137,6 +139,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					os.Exit(1)
 				}
 			}
+		}
+		if neverPrinted {
+			fmt.Println("No version data available for this env")
 		}
 		os.Exit(1)
 
