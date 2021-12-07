@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"tierceron/trcx/xutil"
@@ -113,6 +114,18 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 			}
 
 			for _, fileSteppedInto := range filesSteppedInto {
+				if !normalEnv {	//Enterprise ID 
+					dotSplit := strings.Split(strings.Split(fileSteppedInto.Name(), "_")[0], ".")	//Checks if file name only has digits for enterprise
+					_, err := strconv.Atoi(dotSplit[len(dotSplit)-1])
+					if err != nil {
+						continue
+					}
+				}
+
+				if !strings.HasSuffix(fileSteppedInto.Name(), "_seed.yml") { //Rigid file path check - must be env_seed.yml or dev.eid_seed.yml
+					continue
+				}
+
 				if normalEnv && len(strings.Split(fileSteppedInto.Name(), ".")) > 2 {
 					continue
 				}
