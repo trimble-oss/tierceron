@@ -14,14 +14,14 @@ func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier) map[string]map
 	versionMetadataMap := make(map[string]map[string]interface{})
 	mod.VersionFilter = config.VersionFilter
 	secretMetadataMap, err := mod.GetVersionValues(mod, "super-secrets")
-	if secretMetadataMap == nil || config.WantCerts {		//Certs are in values, not super secrets
-		versionMetadataMap, err = mod.GetVersionValues(mod, "values")
+	if secretMetadataMap == nil || config.WantCerts { //Certs are in values, not super secrets
+		secretMetadataMap, _ = mod.GetVersionValues(mod, "values")
 	}
 	var foundKey string
 	for key, value := range secretMetadataMap {
 		foundService := false
 		for _, service := range mod.VersionFilter {
-			if strings.Contains(key, service) && !foundService {
+			if strings.HasSuffix(key, service) && !foundService {
 				foundService = true
 				foundKey = key
 			}
@@ -30,7 +30,8 @@ func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier) map[string]map
 			versionMetadataMap[foundKey] = value
 		}
 	}
-	if versionMetadataMap == nil {
+
+	if len(versionMetadataMap) == 0 {
 		fmt.Println("No version data available for this env")
 		os.Exit(1)
 	}
@@ -103,9 +104,13 @@ func GetProjectService(templateFile string) (string, string, string) {
 	service = splitDir[offsetBase+2]
 
 	// Clean up service naming (Everything after '.' removed)
-	dotIndex := strings.Index(service, ".")
-	if dotIndex > 0 && dotIndex <= len(service) {
-		service = service[0:dotIndex]
+	if !strings.Contains(templateFile, "Common") {
+		dotIndex := strings.Index(service, ".")
+		if dotIndex > 0 && dotIndex <= len(service) {
+			service = service[0:dotIndex]
+		}
+	} else if strings.Contains(service, ".mf.tmpl") {
+		service = strings.Split(service, ".mf.tmpl")[0]
 	}
 
 	return project, service, templateFile
