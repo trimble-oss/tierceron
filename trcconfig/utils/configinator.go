@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -32,7 +30,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 	if err != nil {
 		panic(err)
 	}
-	modCheck.ProjectVersionFilter = config.VersionProjectFilter
+	modCheck.VersionFilter = config.VersionFilter
 
 	//Check if templateInfo is selected for template or values
 	templateInfo := false
@@ -54,112 +52,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 	}
 
 	initialized := false
-	if valueInfo {
-		versionDataMap := make(map[string]map[string]interface{})
-		versionMetadataMap := make(map[string]map[string]interface{})
-		//Gets version metadata for super secrets or values if super secrets don't exist.
-		if strings.Contains(modCheck.Env, ".") {
-			config.VersionProjectFilter = append(config.VersionProjectFilter, strings.Split(modCheck.Env, "_")[0])
-			modCheck.Env = strings.Split(modCheck.Env, "_")[0]
-		}
-		modCheck.ProjectVersionFilter = config.VersionProjectFilter
-		secretMetadataMap, err := modCheck.GetVersionValues(modCheck, "super-secrets")
-		if secretMetadataMap == nil {
-			versionMetadataMap, err = modCheck.GetVersionValues(modCheck, "values")
-		}
-		for key, value := range secretMetadataMap {
-			versionMetadataMap[key] = value
-		}
-		if versionMetadataMap == nil {
-			fmt.Println("Unable to get version metadata for values")
-			os.Exit(1)
-		}
-		if err != nil {
-			panic(err)
-		}
-		for valuePath, data := range versionMetadataMap {
-			projectFound := false
-			for _, project := range config.VersionProjectFilter {
-				if strings.Contains(valuePath, project) {
-					projectFound = true
-					initialized = true
-					break
-				}
-			}
-			if !projectFound {
-				continue
-			}
-
-			versionDataMap[valuePath] = data
-		}
-		//Find shortest path
-		pathCount := 0
-		shortestPath := ""
-		secretExist := false
-		secretPath := ""
-		for fullPath, data := range versionDataMap {
-			if strings.Contains(fullPath, "super-secret") && strings.HasSuffix(fullPath, config.VersionProjectFilter[0]) {
-				secretExist = true
-				secretPath = fullPath
-			}
-			tempCount := strings.Count(fullPath, "/")
-			if tempCount < pathCount || tempCount == 0 || data != nil {
-				pathCount = tempCount
-				shortestPath = fullPath
-			}
-		}
-		if secretExist {
-			config.VersionInfo(versionDataMap[secretPath], false, secretPath)
-		} else {
-			config.VersionInfo(versionDataMap[shortestPath], false, shortestPath)
-		}
-		if !initialized {
-			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
-		}
-		return nil
-	} else if !templateInfo {
-		if version != "0" { //Check requested version bounds
-			versionNumbers := make([]int, 0)
-			versionMetadataMap, err := modCheck.GetVersionValues(modCheck, "values")
-			if err != nil {
-				panic(err)
-			}
-			for valuePath, data := range versionMetadataMap {
-				projectFound := false
-				for _, project := range config.VersionProjectFilter {
-					if strings.Contains(valuePath, project) {
-
-						projectFound = true
-						initialized = true
-						for key := range data {
-							versionNo, err := strconv.Atoi(key)
-							if err != nil {
-								fmt.Println()
-							}
-							versionNumbers = append(versionNumbers, versionNo)
-						}
-					}
-					if !projectFound {
-						continue
-					}
-				}
-			}
-
-			sort.Ints(versionNumbers)
-			if len(versionNumbers) >= 1 {
-				latestVersion := versionNumbers[len(versionNumbers)-1]
-				oldestVersion := versionNumbers[0]
-				userVersion, _ := strconv.Atoi(version)
-				if userVersion > latestVersion || userVersion < oldestVersion && len(versionNumbers) != 1 {
-					fmt.Println(Cyan + "This version " + config.Env + "_" + version + " is not available as the latest version is " + strconv.Itoa(versionNumbers[len(versionNumbers)-1]) + " and oldest version available is " + strconv.Itoa(versionNumbers[0]) + Reset)
-					os.Exit(1)
-				}
-			} else {
-				fmt.Println(Cyan + "No version data found" + Reset)
-				os.Exit(1)
-			}
-		}
-	}
 	templatePaths := []string{}
 	endPaths := []string{}
 
@@ -171,7 +63,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		endPaths = append(endPaths, ep...)
 	}
 
-	//file filter
+	//File filter
 	fileFound := true
 	fileFilterIndex := make([]int, len(config.FileFilter))
 	fileFilterCounter := 0
@@ -200,6 +92,103 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 
 		templatePaths = fileTemplatePaths
 		endPaths = fileEndPaths
+	}
+
+	if valueInfo {
+		versionDataMap := make(map[string]map[string]interface{})
+		//Gets version metadata for super secrets or values if super secrets don't exist.
+		if strings.Contains(modCheck.Env, ".") {
+			config.VersionFilter = append(config.VersionFilter, strings.Split(modCheck.Env, "_")[0])
+			modCheck.Env = strings.Split(modCheck.Env, "_")[0]
+		}
+
+		for _, templatePath := range templatePaths {
+			_, service, _ := utils.GetProjectService(templatePath) //This checks for nested project names
+			config.VersionFilter = append(config.VersionFilter, service)
+		}
+
+		if config.WantCerts { //For cert version history
+			config.VersionFilter = append(config.VersionFilter, "Common")
+		}
+
+		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
+		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
+		var masterKey string
+		project := ""
+		neverPrinted := true
+		if len(config.VersionFilter) > 0 {
+			project = config.VersionFilter[0]
+		}
+		for key := range versionMetadataMap {
+			passed := false
+			if config.WantCerts {
+				//If paths were clean - this would be logic
+				/*
+					if len(key) > 0 {
+						keySplit := strings.Split(key, "/")
+						config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1], neverPrinted)
+						neverPrinted = false
+					}
+				*/
+				//This is happening because of garbage paths that look like this -> values/{projectName}/{service}/Common/{file.cer}
+				for _, service := range config.VersionFilter { //The following for loop could be removed if vault paths were clean
+					if !passed && strings.Contains(key, "Common") && strings.Contains(key, service) && !strings.Contains(key, project) && !strings.HasSuffix(key, "Common") {
+						if len(key) > 0 {
+							keySplit := strings.Split(key, "/")
+							config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1], neverPrinted)
+							passed = true
+							neverPrinted = false
+						}
+					}
+				}
+			} else {
+				if len(key) > 0 {
+					config.VersionInfo(versionMetadataMap[key], false, "", false)
+					os.Exit(1)
+				}
+			}
+		}
+		if neverPrinted {
+			fmt.Println("No version data available for this env")
+		}
+		os.Exit(1)
+
+		for valuePath, data := range versionMetadataMap {
+			projectFound := false
+			for _, project := range config.VersionFilter {
+				if strings.Contains(valuePath, project) {
+					projectFound = true
+					initialized = true
+					break
+				}
+			}
+			if !projectFound {
+				continue
+			}
+
+			versionDataMap[valuePath] = data
+			masterKey = valuePath
+		}
+
+		if versionDataMap != nil {
+			config.VersionInfo(versionDataMap[masterKey], false, masterKey, false)
+		} else if !initialized {
+			fmt.Println(Cyan + "No metadata found for this environment" + Reset)
+		}
+		return nil //End of -versions flag
+	} else if !templateInfo {
+		if version != "0" { //Check requested version bounds
+			for _, templatePath := range templatePaths {
+				_, service, _ := GetProjectService(templatePath)             //This checks for nested project names
+				config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
+			}
+			config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
+
+			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
+			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
+
+			utils.BoundCheck(config, versionNumbers, version)
+		}
 	}
 
 	var wg sync.WaitGroup
@@ -338,7 +327,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 	}
 	wg.Wait()
 	if templateInfo {
-		config.VersionInfo(versionData, true, "")
+		config.VersionInfo(versionData, true, "", false)
 	}
 	return nil
 }

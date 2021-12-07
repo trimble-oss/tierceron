@@ -5,9 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
-	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -77,66 +74,72 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 	}
 
-	templateVersionMap := make(map[string]map[string]interface{})
-	if mod.Version != "0" {
-		mod.ProjectVersionFilter = config.VersionProjectFilter
-		templatePathMap, err := mod.GetVersionValues(mod, "super-secrets") //Needs filter
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		var lastKey string
-		for key, value := range templatePathMap {
-			if len(config.VersionProjectFilter) > 0 && !strings.HasSuffix(key, config.VersionProjectFilter[0]) {
-				lastKey = key
-				continue
+	if mod.Version != "0" { //If version isn't latest or is a flag
+		var noCertPaths []string
+		var certPaths []string
+		for _, templatePath := range templatePaths { //Seperate cert vs normal paths
+			if !strings.Contains(templatePath, "Common") {
+				noCertPaths = append(noCertPaths, templatePath)
 			} else {
-				templateVersionMap[key] = value
-				lastKey = key
+				certPaths = append(certPaths, templatePath)
 			}
 		}
 
-		Cyan := "\033[36m"
-		Reset := "\033[0m"
-		if runtime.GOOS == "windows" {
-			Reset = ""
-			Cyan = ""
-		}
-
-		if templateVersionMap == nil {
-			fmt.Println("No version data found - this filter was applied during search: ", config.VersionProjectFilter)
-			os.Exit(1)
-		} else if version == "versionInfo" {
-			if templateVersionMap == nil {
-				config.VersionInfo(templateVersionMap[lastKey], false, "")
-			} else {
-				config.VersionInfo(templatePathMap[lastKey], false, "")
-			}
-			os.Exit(1)
+		if config.WantCerts { //Remove unneeded template paths
+			templatePaths = certPaths
 		} else {
-			var versions []string //Check available version bounds for regular diff or config
-			for version := range templatePathMap[lastKey] {
-				versions = append(versions, version)
-				sort.Slice(versions, func(i, j int) bool {
-					numA, _ := strconv.Atoi(versions[i])
-					numB, _ := strconv.Atoi(versions[j])
-					return numA < numB
-				})
-			}
+			templatePaths = noCertPaths
+		}
 
-			if len(versions) >= 1 {
-				latestVersion, _ := strconv.Atoi(versions[len(versions)-1])
-				oldestVersion, _ := strconv.Atoi(versions[0])
-				userVersion, _ := strconv.Atoi(version)
-				if userVersion > latestVersion || userVersion < oldestVersion && len(versions) != 1 {
-					fmt.Println(Cyan + "This version " + env + "_" + version + " is not available as the latest version is " + versions[len(versions)-1] + " and oldest version available is " + versions[0] + Reset)
-					os.Exit(1)
+		project := ""
+		if len(config.VersionFilter) > 0 {
+			project = config.VersionFilter[0]
+		}
+		for _, templatePath := range templatePaths {
+			_, service, _ := utils.GetProjectService(templatePath) //This checks for nested project names
+
+			config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
+		}
+
+		if config.WantCerts { //For cert version history  -> Maybe not needed
+			config.VersionFilter = append(config.VersionFilter, "Common")
+		}
+
+		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
+		mod.VersionFilter = config.VersionFilter
+		versionMetadataMap := utils.GetProjectVersionInfo(config, mod)
+
+		if versionMetadataMap == nil {
+			fmt.Println("No version data found - this filter was applied during search: ", config.VersionFilter)
+			os.Exit(1)
+		} else if version == "versionInfo" { //Version flag
+			var masterKey string
+			first := true
+			for key := range versionMetadataMap {
+				passed := false
+				if config.WantCerts {
+					for _, service := range mod.VersionFilter {
+						if !passed && strings.Contains(key, "Common") && strings.Contains(key, service) && !strings.Contains(key, project) && !strings.HasSuffix(key, "Common") {
+							if len(key) > 0 {
+								keySplit := strings.Split(key, "/")
+								config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1], first)
+								passed = true
+								first = false
+							}
+						}
+					}
+				} else {
+					if len(key) > 0 && len(masterKey) < 1 {
+						masterKey = key
+						config.VersionInfo(versionMetadataMap[masterKey], false, "", false)
+						os.Exit(1)
+					}
 				}
-			} else {
-				fmt.Println(Cyan + "No version data found" + Reset)
-				os.Exit(1)
 			}
+			os.Exit(1)
+		} else { //Version bound check
+			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
+			utils.BoundCheck(config, versionNumbers, version)
 		}
 	}
 
@@ -191,7 +194,6 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			var service string
 			_, service, templatePath = vcutils.GetProjectService(templatePath)
 			//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
-
 			if strings.Contains(mod.Env, ".") && !serviceFound {
 				listValues, err := mod.ListEnv("values/" + mod.Env + "/") //Fix values to add to project to directory
 				if err != nil {
@@ -268,9 +270,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			}
 
 			innerProject := "Not Found"
-			if len(goMod.ProjectVersionFilter) >= 1 && strings.Contains(goMod.ProjectVersionFilter[len(goMod.ProjectVersionFilter)-1], "!=!") {
-				innerProject = strings.Split(goMod.ProjectVersionFilter[len(goMod.ProjectVersionFilter)-1], "!=!")[1]
-				goMod.ProjectVersionFilter = goMod.ProjectVersionFilter[:len(goMod.ProjectVersionFilter)-1]
+			if len(goMod.VersionFilter) >= 1 && strings.Contains(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!") {
+				innerProject = strings.Split(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!")[1]
+				goMod.VersionFilter = goMod.VersionFilter[:len(goMod.VersionFilter)-1]
 			}
 			if innerProject != "Not Found" {
 				project = innerProject
@@ -404,11 +406,26 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		return nil
 	}
 
-	if strings.HasSuffix(config.Env, "_0") {
-		config.Env = strings.Split(config.Env, "_")[0]
+	if strings.Contains(config.Env, "_0") {
+		config.Env = strings.Split(config.Env, "_0")[0]
+	}
+
+	suffixRemoved := ""
+	if strings.Contains(config.Env, ".") {
+		envSplit := strings.Split(config.Env, ".")
+		config.Env = envSplit[0]
+		suffixRemoved = "." + envSplit[1]
+	} else if strings.Contains(config.Env, "_") {
+		envSplit := strings.Split(config.Env, "_")
+		config.Env = envSplit[0]
+		suffixRemoved = "_" + envSplit[1]
 	}
 
 	envBasePath, _, _ := kv.PreCheckEnvironment(config.Env)
+
+	if suffixRemoved != "" {
+		config.Env = config.Env + suffixRemoved
+	}
 
 	if multiService {
 		if strings.HasPrefix(config.Env, "local") {
@@ -419,7 +436,6 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	} else {
 		endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 	}
-
 	//generate template or certificate
 	if config.WantCerts {
 		var certData map[int]string
@@ -474,10 +490,17 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	}
 
 	if config.Diff {
-		config.Update(&seedData, envBasePath+"||"+config.Env+"_seed.yml")
+		config.Update(&seedData, config.Env+"||"+config.Env+"_seed.yml")
 	} else {
 		writeToFile(seedData, endPath)
 		// Print that we're done
+		if strings.Contains(config.Env, "_0") {
+			config.Env = strings.Split(config.Env, "_")[0]
+		}
+		if strings.Contains(envBasePath, "_") {
+			envBasePath = strings.Split(envBasePath, "_")[0]
+		}
+
 		fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + envBasePath + string(os.PathSeparator) + config.Env + "_seed.yml")
 	}
 
