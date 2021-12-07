@@ -22,14 +22,14 @@ var noEnvironments = map[string]bool{
 // can be changed to alter where in the vault the key,value
 // pair is stored
 type Modifier struct {
-	httpClient           *http.Client // Handle to http client.
-	client               *api.Client  // Client connected to vault
-	logical              *api.Logical // Logical used for read/write options
-	Env                  string       // Environment (local/dev/QA; Initialized to secrets)
-	Regions              []string     // Supported regions
-	SecretDictionary     *api.Secret  // Current Secret Dictionary Cache.
-	Version              string       // Version for data
-	ProjectVersionFilter []string     // Used to filter vault paths
+	httpClient       *http.Client // Handle to http client.
+	client           *api.Client  // Client connected to vault
+	logical          *api.Logical // Logical used for read/write options
+	Env              string       // Environment (local/dev/QA; Initialized to secrets)
+	Regions          []string     // Supported regions
+	SecretDictionary *api.Secret  // Current Secret Dictionary Cache.
+	Version          string       // Version for data
+	VersionFilter    []string     // Used to filter vault paths
 }
 
 func PreCheckEnvironment(environment string) (string, string, error) {
@@ -387,6 +387,17 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 		for _, interfacePath := range userPath.([]interface{}) {
 			path := interfacePath.(string)
 			if path != "" {
+				foundService := false
+				for _, service := range mod.VersionFilter {
+					if strings.HasSuffix(path, service) && !foundService {
+						foundService = true
+					}
+				}
+
+				if !foundService {
+					continue
+				}
+
 				path = enginePath + "/" + path
 				metadataValue, err := mod.ReadTemplateVersions(path)
 				if err != nil {
@@ -428,7 +439,14 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 		}
 
 		for _, servicePath := range servicePaths {
-			if !strings.Contains(projectPath, mod.ProjectVersionFilter[0]) {
+			foundService := false
+			for _, service := range mod.VersionFilter {
+				if strings.HasSuffix(servicePath, service) && !foundService {
+					foundService = true
+				}
+			}
+
+			if !foundService {
 				continue
 			}
 			//get a list of files under project
@@ -468,12 +486,24 @@ func (m *Modifier) GetVersionValues(mod *Modifier, enginePath string) (map[strin
 			}
 		}
 	}
+
+	if len(versionDataMap) < 1 {
+		fmt.Println("No version data available for this env")
+		os.Exit(1)
+	}
 	return versionDataMap, nil
 }
 
 func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[string]map[string]interface{}) {
 	for _, filePath := range filePaths {
-		if len(mod.ProjectVersionFilter) > 0 && !strings.Contains(filePath, mod.ProjectVersionFilter[0]) {
+		foundService := false
+		for _, service := range mod.VersionFilter {
+			if strings.Contains(filePath, service) && !foundService {
+				foundService = true
+			}
+		}
+
+		if !foundService {
 			continue
 		}
 
