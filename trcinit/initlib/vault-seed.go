@@ -114,8 +114,12 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 			}
 
 			for _, fileSteppedInto := range filesSteppedInto {
-				if !normalEnv {	//Enterprise ID 
-					dotSplit := strings.Split(strings.Split(fileSteppedInto.Name(), "_")[0], ".")	//Checks if file name only has digits for enterprise
+				if strings.Count(fileSteppedInto.Name(), "_") >= 2 { //Check if file name is a versioned seed file -> 2 underscores "_"
+					continue
+				}
+
+				if !normalEnv { //Enterprise ID
+					dotSplit := strings.Split(strings.Split(fileSteppedInto.Name(), "_")[0], ".") //Checks if file name only has digits for enterprise
 					_, err := strconv.Atoi(dotSplit[len(dotSplit)-1])
 					if err != nil {
 						continue
