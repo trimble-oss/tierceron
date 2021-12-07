@@ -15,7 +15,7 @@ func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier) map[string]map
 	mod.VersionFilter = config.VersionFilter
 	secretMetadataMap, err := mod.GetVersionValues(mod, "super-secrets")
 	if secretMetadataMap == nil || config.WantCerts { //Certs are in values, not super secrets
-		secretMetadataMap, _ = mod.GetVersionValues(mod, "values")
+		secretMetadataMap, err = mod.GetVersionValues(mod, "values")
 	}
 	var foundKey string
 	for key, value := range secretMetadataMap {
@@ -36,6 +36,7 @@ func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier) map[string]map
 		os.Exit(1)
 	}
 	if err != nil {
+		fmt.Println("No version data available for this env")
 		panic(err)
 	}
 	return versionMetadataMap
