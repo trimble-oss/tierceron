@@ -223,7 +223,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	return result
 }
 
-func VersionHelper(versionData map[string]interface{}, templateOrValues bool, valuePath string) {
+func VersionHelper(versionData map[string]interface{}, templateOrValues bool, valuePath string, first bool) {
 	Reset := "\033[0m"
 	Cyan := "\033[36m"
 	Red := "\033[31m"
@@ -297,12 +297,13 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 
 	printOutput:
 		if len(valuePath) > 0 {
-			fmt.Println(Cyan + "======================================================================================")
+			if first {
+				fmt.Println(Cyan + "======================================================================================" + Reset)
+			}
 			fmt.Println(valuePath)
-			fmt.Println("======================================================================================" + Reset)
-		} else {
-			fmt.Println(Cyan + "======================================================================================" + Reset)
 		}
+
+		fmt.Println(Cyan + "======================================================================================" + Reset)
 
 		keys := make([]int, 0, len(versionData))
 		for versionNumber := range versionData {

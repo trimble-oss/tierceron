@@ -114,6 +114,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			os.Exit(1)
 		} else if version == "versionInfo" { //Version flag
 			var masterKey string
+			first := true
 			for key := range versionMetadataMap {
 				passed := false
 				if config.WantCerts {
@@ -121,15 +122,16 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 						if !passed && strings.Contains(key, "Common") && strings.Contains(key, service) && !strings.Contains(key, project) && !strings.HasSuffix(key, "Common") {
 							if len(key) > 0 {
 								keySplit := strings.Split(key, "/")
-								config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1])
+								config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1], first)
 								passed = true
+								first = false
 							}
 						}
 					}
 				} else {
 					if len(key) > 0 && len(masterKey) < 1 {
 						masterKey = key
-						config.VersionInfo(versionMetadataMap[masterKey], false, "")
+						config.VersionInfo(versionMetadataMap[masterKey], false, "", false)
 						os.Exit(1)
 					}
 				}
