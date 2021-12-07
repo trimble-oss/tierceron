@@ -122,7 +122,16 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		for key := range versionMetadataMap {
 			passed := false
 			if config.WantCerts {
-				for _, service := range config.VersionFilter {
+				//If paths were clean - this would be logic
+				/*
+					if len(key) > 0 {
+						keySplit := strings.Split(key, "/")
+						config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1], neverPrinted)
+						neverPrinted = false
+					}
+				*/
+				//This is happening because of garbage paths that look like this -> values/{projectName}/{service}/Common/{file.cer}
+				for _, service := range config.VersionFilter { //The following for loop could be removed if vault paths were clean
 					if !passed && strings.Contains(key, "Common") && strings.Contains(key, service) && !strings.Contains(key, project) && !strings.HasSuffix(key, "Common") {
 						if len(key) > 0 {
 							keySplit := strings.Split(key, "/")
