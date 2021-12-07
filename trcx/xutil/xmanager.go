@@ -406,14 +406,26 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		return nil
 	}
 
+	if strings.Contains(config.Env, "_0") {
+		config.Env = strings.Split(config.Env, "_0")[0]
+	}
+
 	suffixRemoved := ""
-	if strings.Contains(config.Env, "_") {
+	if strings.Contains(config.Env, ".") {
+		envSplit := strings.Split(config.Env, ".")
+		config.Env = envSplit[0]
+		suffixRemoved = "." + envSplit[1]
+	} else if strings.Contains(config.Env, "_") {
 		envSplit := strings.Split(config.Env, "_")
 		config.Env = envSplit[0]
-		suffixRemoved = envSplit[1]
+		suffixRemoved = "_" + envSplit[1]
 	}
 
 	envBasePath, _, _ := kv.PreCheckEnvironment(config.Env)
+
+	if suffixRemoved != "" {
+		config.Env = config.Env + suffixRemoved
+	}
 
 	if multiService {
 		if strings.HasPrefix(config.Env, "local") {
@@ -424,11 +436,6 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	} else {
 		endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 	}
-
-	if suffixRemoved != "" {
-		config.Env = config.Env + "_" + suffixRemoved
-	}
-
 	//generate template or certificate
 	if config.WantCerts {
 		var certData map[int]string
@@ -487,7 +494,13 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	} else {
 		writeToFile(seedData, endPath)
 		// Print that we're done
-		config.Env = strings.Split(config.Env, "_")[0]
+		if strings.Contains(config.Env, "_0") {
+			config.Env = strings.Split(config.Env, "_")[0]
+		}
+		if strings.Contains(envBasePath, "_") {
+			envBasePath = strings.Split(envBasePath, "_")[0]
+		}
+
 		fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + envBasePath + string(os.PathSeparator) + config.Env + "_seed.yml")
 	}
 
