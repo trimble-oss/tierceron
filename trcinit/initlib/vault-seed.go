@@ -44,6 +44,7 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 	files, err := ioutil.ReadDir(dir)
 	utils.LogErrorObject(err, logger, true)
 
+	templateWritten = make(map[string]bool)
 	if len(files) == 1 && files[0].Name() == "certs" && uploadCert {
 		// Cert rotation support without templates
 		logger.Printf("No templates available, Common service requested.: %s\n", dir)
@@ -80,7 +81,6 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 
 	seeded := false
 	starEnv := false
-	templateWritten = make(map[string]bool)
 	if strings.Contains(env, "*") {
 		starEnv = true
 		env = strings.Split(env, "*")[0]
