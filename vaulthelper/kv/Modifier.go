@@ -57,7 +57,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	if len(address) == 0 {
 		address = "http://127.0.0.1:8020" // Default address
 	}
-	httpClient, err := CreateHTTPClient(insecure, address, env)
+	httpClient, err := CreateHTTPClient(insecure, address, env, false)
 	if err != nil {
 		return nil, err
 	}

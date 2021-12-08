@@ -33,6 +33,23 @@ var vaultHost string // Plugin will only communicate locally with a vault instan
 var environments []string = []string{"dev", "QA"}
 var environmentConfigs map[string]*EnvConfig
 
+func initVaultHost() error {
+	if vaultHost == "" {
+		logger.Println("Begin finding vault.")
+
+		v, lvherr := trcvutil.GetLocalVaultHost()
+		if lvherr != nil {
+			logger.Println("Couldn't find local vault: " + lvherr.Error())
+			return lvherr
+		} else {
+			logger.Println("Found vault at: " + v)
+		}
+		vaultHost = v
+		logger.Println("End finding vault.")
+	}
+	return nil
+}
+
 func parseToken(envConfigData []byte) (map[string]interface{}, error) {
 	tokenMap := map[string]interface{}{}
 	type tokenWrapper struct {
@@ -109,15 +126,7 @@ func processEnvConfig(env string, config map[string]interface{}) error {
 }
 
 func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) error {
-
-	if vaultHost == "" {
-		v, lvherr := trcvutil.GetLocalVaultHost()
-		if lvherr != nil {
-			logger.Println("Couldn't find local vault: " + lvherr.Error())
-			return lvherr
-		}
-		vaultHost = v
-	}
+	initVaultHost()
 
 	for _, env := range environments {
 		tokenData, sgErr := req.Storage.Get(ctx, "config/"+env)
@@ -152,6 +161,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 
 func TrcCreateUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcCreateUpdate")
+	initVaultHost()
 
 	path := data.Get("path")
 
