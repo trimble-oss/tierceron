@@ -490,6 +490,9 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	}
 
 	if config.Diff {
+		if !strings.Contains(config.Env, "_") {
+			config.Env = config.Env + "_0"
+		}
 		config.Update(&seedData, config.Env+"||"+config.Env+"_seed.yml")
 	} else {
 		writeToFile(seedData, endPath)
