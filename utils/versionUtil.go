@@ -79,7 +79,7 @@ func BoundCheck(config DriverConfig, versionNumbers []int, version string) {
 		oldestVersion := versionNumbers[0]
 		userVersion, _ := strconv.Atoi(version)
 		if userVersion > latestVersion || userVersion < oldestVersion && len(versionNumbers) != 1 {
-			fmt.Println(Cyan + "This version " + config.Env + "_" + version + " is not available as the latest version is " + strconv.Itoa(versionNumbers[len(versionNumbers)-1]) + " and oldest version available is " + strconv.Itoa(versionNumbers[0]) + Reset)
+			fmt.Println(Cyan + "This version " + config.Env + " is not available as the latest version is " + strconv.Itoa(versionNumbers[len(versionNumbers)-1]) + " and oldest version available is " + strconv.Itoa(versionNumbers[0]) + Reset)
 			os.Exit(1)
 		}
 	} else {
