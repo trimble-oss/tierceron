@@ -28,8 +28,9 @@ func GetLocalVaultHost() (string, error) {
 	}
 
 	// Now, look for vault.
-	for i := 8000; i < 9000; i++ {
-		_, err := sys.NewVault(true, vaultHost+":"+strconv.Itoa(i), "", false, true)
+	for i := 8190; i < 8300; i++ {
+		vh := vaultHost + ":" + strconv.Itoa(i)
+		_, err := sys.NewVault(true, vh, "", false, true, true)
 		if err == nil {
 			vaultHost = vaultHost + ":" + strconv.Itoa(i)
 			vaultErr = nil

@@ -45,7 +45,7 @@ func main() {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			utils.CheckError(fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
 		}
-		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr)
+		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr, false)
 		utils.CheckError(err, true)
 
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)

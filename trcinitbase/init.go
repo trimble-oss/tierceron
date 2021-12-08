@@ -118,7 +118,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	}
 
 	// Create a new vault system connection
-	v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr)
+	v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr, false)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
 			fmt.Printf("Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
