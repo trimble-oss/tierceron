@@ -1,8 +1,8 @@
 package factory
 
 type EnvConfig struct {
-	env      string
-	dbuser   string `yaml:"dbuser,omitempty"`
-	dbpasswd string `yaml:"dbpassword,omitempty"`
-	maxconn  string `yaml:"maxconn,omitempty"` // Maximum allowed db connections
+	Env      string `yaml:"-"`
+	Dbuser   string `yaml:"dbuser,omitempty"`
+	Dbpasswd string `yaml:"dbpassword,omitempty"`
+	Maxconn  string `yaml:"maxconn,omitempty"` // Maximum allowed db connections
 }
