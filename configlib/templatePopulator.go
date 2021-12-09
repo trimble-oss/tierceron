@@ -19,7 +19,7 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 		panic(err)
 	}
 
-	configuredTemplate, _, _ := utils.ConfigTemplate(mod, templatePath, true, project, service, false, true)
+	configuredTemplate, _, _, err := utils.ConfigTemplate(mod, templatePath, true, project, service, false, true)
 
 	mod.Close()
 
@@ -35,7 +35,7 @@ func ConfigCertLib(token string, address string, env string, templatePath string
 		panic(err)
 	}
 
-	_, configuredCert, _ := utils.ConfigTemplate(mod, templatePath, true, project, service, true, true)
+	_, configuredCert, _, err := utils.ConfigTemplate(mod, templatePath, true, project, service, true, true)
 
 	mod.Close()
 
