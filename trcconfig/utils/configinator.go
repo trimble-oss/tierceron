@@ -250,7 +250,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 				} else {
 					var ctErr error
 					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
-					eUtils.CheckError(ctErr, true)
+					if ctErr != nil {
+						if !strings.Contains(ctErr.Error(), "Missing .certData") {
+							eUtils.CheckError(ctErr, true)
+						}
+					}
 				}
 				//generate template or certificate
 				if config.WantCerts && certLoaded {
@@ -296,7 +300,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 				} else {
 					var ctErr error
 					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
-					eUtils.CheckError(ctErr, true)
+					if ctErr != nil {
+						if !strings.Contains(ctErr.Error(), "Missing .certData") {
+							eUtils.CheckError(ctErr, true)
+						}
+					}
 				}
 				if config.WantCerts && certLoaded {
 					certDestination := config.EndDir + "/" + certData[0]
