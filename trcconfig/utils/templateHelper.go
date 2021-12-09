@@ -124,7 +124,7 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool
 	// cert map
 	certData := make(map[int]string)
 	if cert && !strings.Contains(template, ".certData") {
-		return "", certData, false, errors.New("Missing .certData.")
+		return "", certData, false, errors.New("Missing .certData")
 	} else if !cert && strings.Contains(template, ".certData") {
 		return "", certData, false, errors.New("Template with cert provided, but cert not requested.")
 	}

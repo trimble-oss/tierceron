@@ -461,7 +461,11 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 
 			var ctErr error
 			_, certData, certLoaded, ctErr = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
-			eUtils.CheckError(ctErr, true)
+			if ctErr != nil {
+				if !strings.Contains(ctErr.Error(), "Missing .certData") {
+					eUtils.CheckError(ctErr, true)
+				}
+			}
 
 			if len(certData) == 0 {
 				if certLoaded {
