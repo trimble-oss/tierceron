@@ -3,11 +3,14 @@ package factory
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
+	"strings"
 	"tierceron/trcconfig/utils"
 	trcvutil "tierceron/trcvault/util"
 	helperkv "tierceron/vaulthelper/kv"
 
+	"github.com/davecgh/go-spew/spew"
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"gopkg.in/yaml.v2"
 
@@ -27,7 +30,6 @@ func Init(l *log.Logger) {
 
 var KvInitialize func(context.Context, *logical.InitializationRequest) error
 var KvCreateUpdate framework.OperationFunc
-var KvReadFunction framework.OperationFunc
 
 var vaultHost string // Plugin will only communicate locally with a vault instance.
 var environments []string = []string{"dev", "QA"}
@@ -66,41 +68,51 @@ func parseToken(envConfigData []byte) (map[string]interface{}, error) {
 }
 
 func populateTrcVaultDbConfigs(addr string, token string, env string) error {
+	logger.Println("Begin populateTrcVaultDbConfigs for env: " + env)
 	var goMod *helperkv.Modifier
-	goMod, errModInit := helperkv.NewModifier(true, token, addr, "", []string{})
+	goMod, errModInit := helperkv.NewModifier(true, token, addr, env, []string{})
+	goMod.Env = env
+
 	if errModInit != nil {
+		logger.Println("Vault connect failure")
 		return errModInit
 	}
 
-	configuredTemplate, _, _ := utils.ConfigTemplate(goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true)
+	logger.Println("Begin config lookup: " + goMod.Env)
+	configuredTemplate, _, _, ctErr := utils.ConfigTemplate(goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true)
+	if ctErr != nil {
+		logger.Println("Config template lookup failure: " + spew.Sdump(ctErr))
+		return ctErr
+	}
+
+	logger.Println("End config lookup")
+	logger.Println(spew.Sdump(configuredTemplate))
+	configuredTemplate = strings.ReplaceAll(configuredTemplate, "\\n", "\n")
+	logger.Println(spew.Sdump(configuredTemplate))
 
 	var vaultEnvConfig EnvConfig
 
 	errYaml := yaml.Unmarshal([]byte(configuredTemplate), &vaultEnvConfig)
 	if errYaml != nil {
+		logger.Println("Vault config lookup failure")
 		return errYaml
 	}
+	logger.Println(spew.Sdump(vaultEnvConfig))
+
 	vaultEnvConfig.env = env
 	environmentConfigs[env] = &vaultEnvConfig
+	logger.Println(spew.Sdump(vaultEnvConfig))
+	logger.Println("End populateTrcVaultDbConfigs")
 	return nil
 }
 
 func processEnvConfig(env string, config map[string]interface{}) error {
 	token, rOk := config["token"]
-	if !rOk {
+	if !rOk || token.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env + ".  Missing token.")
+		return errors.New("missing token")
 	}
-
-	// TODO: Pull this addr...  do we go with localhost???  But that won't work with certs
-	// and we'll have to go insecure...
-	// if vaultHost == "" {
-	// 	v, lvherr := trcvutil.GetLocalVaultHost()
-	// 	if lvherr != nil {
-	// 		logger.Println("Couldn't find local vault: " + lvherr.Error())
-	// 		return lvherr
-	// 	}
-	// 	vaultHost = v
-	// }
+	logger.Println("Token for env: " + env + ".  token: " + spew.Sdump(token))
 
 	ptvError := populateTrcVaultDbConfigs(vaultHost, token.(string), env)
 	if ptvError != nil {
@@ -111,6 +123,7 @@ func processEnvConfig(env string, config map[string]interface{}) error {
 	//
 	// TODO: kick off singleton of enterprise registration...
 	// 1. ETL from mysql -> vault?  Either in memory or mysql->file->Vault
+	//
 	// 2. Pull enterprises from vault --> local queryable manageable mysql db.
 	// 3. Query each enterprise and look for eid.
 	// 4. If no eid, then -- register enterprise...
@@ -126,21 +139,27 @@ func processEnvConfig(env string, config map[string]interface{}) error {
 }
 
 func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) error {
-	initVaultHost()
-
 	for _, env := range environments {
-		tokenData, sgErr := req.Storage.Get(ctx, "config/"+env)
+		logger.Println("Processing env: " + env)
+		tokenData, sgErr := req.Storage.Get(ctx, "vaultdb/"+env)
 
 		if sgErr != nil || tokenData == nil {
-			logger.Println("Missing configuration data for env: " + env + " error: " + sgErr.Error())
+			if sgErr != nil {
+				logger.Println("Missing configuration data for env: " + env + " error: " + sgErr.Error())
+			} else {
+				logger.Println("Missing configuration data for env: " + env)
+			}
 			continue
 		}
+		logger.Println("Parsing token for env: " + env)
 		tokenMap, ptError := parseToken(tokenData.Value)
 		if ptError != nil {
 			logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())
 			continue
 		}
+		initVaultHost()
 
+		logger.Println("Getting configs for env: " + env)
 		pecError := processEnvConfig(env, tokenMap)
 
 		if pecError != nil {
@@ -162,16 +181,17 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 func TrcCreateUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcCreateUpdate")
 	initVaultHost()
+	environmentConfigs = map[string]*EnvConfig{}
 
 	path := data.Get("path")
 
-	switch path {
-	case "config/dev":
+	switch path.(string) {
+	case "dev":
 		pecError := processEnvConfig("dev", data.Raw)
 		if pecError != nil {
 			return nil, pecError
 		}
-	case "config/QA":
+	case "QA":
 		pecError := processEnvConfig("QA", data.Raw)
 		if pecError != nil {
 			return nil, pecError
@@ -192,9 +212,8 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 	bkv.(*kv.PassthroughBackend).InitializeFunc = TrcInitialize
 
 	KvCreateUpdate = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation]
-	KvReadFunction = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.ReadOperation]
-
 	bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation] = TrcCreateUpdate
+	bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.UpdateOperation] = TrcCreateUpdate
 
 	logger.Println("Factory initialization complete.")
 
