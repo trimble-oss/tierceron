@@ -190,7 +190,7 @@ func CreateEngine(config eUtils.DriverConfig,
 		}
 		goMod.Env = ""
 		versionMetadata = versionMetadata[:0]
-		fileMetadata, err := goMod.GetVersionValues(goMod, "values/"+envEnterprise)
+		fileMetadata, err := goMod.GetVersionValues(goMod, config.WantCerts, "values/"+envEnterprise)
 		if err != nil {
 			fmt.Println(err)
 			return nil, err
