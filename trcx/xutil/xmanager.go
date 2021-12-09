@@ -459,7 +459,9 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			mod.Env = envVersion[0]
 			mod.Version = envVersion[1]
 
-			_, certData, certLoaded = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+			var ctErr error
+			_, certData, certLoaded, ctErr = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+			eUtils.CheckError(ctErr, true)
 
 			if len(certData) == 0 {
 				if certLoaded {
