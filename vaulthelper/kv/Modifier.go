@@ -413,78 +413,44 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 
 	if wantCerts {
 		//get a list of projects under values
-		projectPaths, err := getPaths(mod, enginePath+"/")
+		certPaths, err := getPaths(mod, "values/Common/")
 		if err != nil {
 			return nil, err
 		}
 
-		for _, projectPath := range projectPaths {
-			//get a list of files under project
-			servicePaths, err := getPaths(mod, projectPath)
-			//fmt.Println("servicePaths")
-			//fmt.Println(servicePaths)
-			if err != nil {
-				return nil, err
+		for i, service := range mod.VersionFilter { //Cleans filter for cert metadata search
+			if strings.Contains(service, "Common") {
+				mod.VersionFilter[i] = strings.Replace(service, "Common", "Common/", 1)
 			}
+		}
 
-			if len(projectPaths) > 0 {
-				recursivePathFinder(mod, servicePaths, versionDataMap)
-			}
-			metadataValue, err := mod.ReadTemplateVersions(projectPath)
-			if err != nil {
-				err := fmt.Errorf("Unable to fetch data from %s", projectPath)
-				return nil, err
-			}
-			if len(metadataValue) != 0 {
-				versionDataMap[projectPath] = metadataValue
-			}
-
-			for _, servicePath := range servicePaths {
+		var filteredCertPaths []string
+		for _, certPath := range certPaths { //Filter paths for optimization
+			if certPath != "" {
 				foundService := false
 				for _, service := range mod.VersionFilter {
-					if strings.HasSuffix(servicePath, service) && !foundService {
+					if strings.HasSuffix(certPath, service) && !foundService {
 						foundService = true
 					}
 				}
 
 				if !foundService {
 					continue
+				} else {
+					filteredCertPaths = append(filteredCertPaths, certPath)
 				}
-				//get a list of files under project
-				filePaths, err := getPaths(mod, servicePath)
-				if err != nil {
-					return nil, err
-				}
+			}
+		}
 
-				if len(servicePaths) > 0 {
-					recursivePathFinder(mod, servicePaths, versionDataMap)
-				}
-				metadataValue, err := mod.ReadTemplateVersions(servicePath)
-				if err != nil {
-					err := fmt.Errorf("Unable to fetch data from %s", servicePath)
-					return nil, err
-				}
-				if len(metadataValue) == 0 {
-					continue
-				}
-				versionDataMap[servicePath] = metadataValue
-
-				for _, filePath := range filePaths {
-					subFilePaths, err := getPaths(mod, filePath)
-					//get a list of values
-					if len(subFilePaths) > 0 {
-						recursivePathFinder(mod, subFilePaths, versionDataMap)
-					}
-					metadataValue, err := mod.ReadTemplateVersions(filePath)
-					if err != nil {
-						err := fmt.Errorf("Unable to fetch data from %s", filePath)
-						return nil, err
-					}
-					if len(metadataValue) == 0 {
-						continue
-					}
-					versionDataMap[filePath] = metadataValue
-				}
+		certPaths = filteredCertPaths
+		for _, certPath := range certPaths {
+			metadataValue, err := mod.ReadTemplateVersions(certPath)
+			if err != nil {
+				err := fmt.Errorf("Unable to fetch data from %s", certPath)
+				return nil, err
+			}
+			if len(metadataValue) != 0 {
+				versionDataMap[certPath] = metadataValue
 			}
 		}
 	}
