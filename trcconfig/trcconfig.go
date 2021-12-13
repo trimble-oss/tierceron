@@ -93,7 +93,7 @@ func main() {
 	diffPtr := flag.Bool("diff", false, "Diff files")
 	fileFilterPtr := flag.String("filter", "", "Filter files for diff")
 	templateInfoPtr := flag.Bool("templateInfo", false, "Version information about templates")
-	valueInfoPtr := flag.Bool("versions", false, "Version information about values")
+	versionInfoPtr := flag.Bool("versions", false, "Version information about values")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 
 	args := os.Args[1:]
@@ -121,11 +121,11 @@ func main() {
 	if *templateInfoPtr && *diffPtr {
 		fmt.Println("Cannot use -diff flag and -templateInfo flag together")
 		os.Exit(1)
-	} else if *valueInfoPtr && *diffPtr {
-		fmt.Println("Cannot use -diff flag and -valueInfo flag together")
+	} else if *versionInfoPtr && *diffPtr {
+		fmt.Println("Cannot use -diff flag and -versionInfo flag together")
 		os.Exit(1)
-	} else if *valueInfoPtr && *templateInfoPtr {
-		fmt.Println("Cannot use -templateInfo flag and -valueInfo flag together")
+	} else if *versionInfoPtr && *templateInfoPtr {
+		fmt.Println("Cannot use -templateInfo flag and -versionInfo flag together")
 		os.Exit(1)
 	} else if *diffPtr {
 		if strings.ContainsAny(*envPtr, ",") { //Multiple environments
@@ -179,7 +179,7 @@ func main() {
 	}
 
 	//Check if version is added on, process without it for versions & templateInfo flag
-	if *valueInfoPtr || *templateInfoPtr {
+	if *versionInfoPtr || *templateInfoPtr {
 		envVersion := strings.Split(*envPtr, "_")
 		if len(envVersion) > 1 && envVersion[1] != "" && envVersion[1] != "0" {
 			Yellow := "\033[33m"
@@ -292,9 +292,9 @@ func main() {
 		if *templateInfoPtr {
 			envVersion := strings.Split(*envPtr, "_")
 			*envPtr = envVersion[0] + "_templateInfo"
-		} else if *valueInfoPtr {
+		} else if *versionInfoPtr {
 			envVersion := strings.Split(*envPtr, "_")
-			*envPtr = envVersion[0] + "_valueInfo"
+			*envPtr = envVersion[0] + "_versionInfo"
 		}
 		envVersion := strings.Split(*envPtr, "_")
 		if len(envVersion) < 2 {
