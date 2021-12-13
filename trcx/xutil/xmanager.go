@@ -101,7 +101,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 		}
 
-		if config.WantCerts { //For cert version history  -> Maybe not needed
+		if config.WantCerts { //For cert version history
 			config.VersionFilter = append(config.VersionFilter, "Common")
 		}
 
