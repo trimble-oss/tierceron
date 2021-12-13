@@ -34,13 +34,13 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 
 	//Check if templateInfo is selected for template or values
 	templateInfo := false
-	valueInfo := false
+	versionInfo := false
 	if strings.Contains(config.Env, "_") {
 		envAndVersion := strings.Split(config.Env, "_")
 		config.Env = envAndVersion[0]
 		version = envAndVersion[1]
-		if version == "valueInfo" {
-			valueInfo = true
+		if version == "versionInfo" {
+			versionInfo = true
 		} else if version == "templateInfo" {
 			templateInfo = true
 		}
@@ -94,7 +94,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		endPaths = fileEndPaths
 	}
 
-	if valueInfo {
+	if versionInfo {
 		versionDataMap := make(map[string]map[string]interface{})
 		//Gets version metadata for super secrets or values if super secrets don't exist.
 		if strings.Contains(modCheck.Env, ".") {
