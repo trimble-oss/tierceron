@@ -442,16 +442,17 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 					if !foundService {
 						continue
 					}
-
 					path = enginePath + "/" + path
-					metadataValue, err := mod.ReadTemplateVersions(path)
-					if err != nil {
-						fmt.Println("Couldn't read version data at " + path)
+					if _, ok := versionDataMap[path]; !ok {
+						metadataValue, err := mod.ReadTemplateVersions(path)
+						if err != nil {
+							fmt.Println("Couldn't read version data at " + path)
+						}
+						if len(metadataValue) == 0 {
+							continue
+						}
+						versionDataMap[path] = metadataValue
 					}
-					if len(metadataValue) == 0 {
-						continue
-					}
-					versionDataMap[path] = metadataValue
 				}
 			}
 		}
