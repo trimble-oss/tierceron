@@ -382,37 +382,6 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 		return nil, err
 	}
 
-	if !wantCerts {
-		//Finds additional paths outside of nested dirs
-		for _, userPath := range userPaths.Data {
-			for _, interfacePath := range userPath.([]interface{}) {
-				path := interfacePath.(string)
-				if path != "" {
-					foundService := false
-					for _, service := range mod.VersionFilter {
-						if strings.HasSuffix(path, service) && !foundService {
-							foundService = true
-						}
-					}
-
-					if !foundService {
-						continue
-					}
-
-					path = enginePath + "/" + path
-					metadataValue, err := mod.ReadTemplateVersions(path)
-					if err != nil {
-						fmt.Println("Couldn't read version data at " + path)
-					}
-					if len(metadataValue) == 0 {
-						continue
-					}
-					versionDataMap[path] = metadataValue
-				}
-			}
-		}
-	}
-
 	if wantCerts {
 		//get a list of projects under values
 		certPaths, err := getPaths(mod, "values/Common/")
@@ -446,13 +415,44 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 
 		certPaths = filteredCertPaths
 		for _, certPath := range certPaths {
-			metadataValue, err := mod.ReadTemplateVersions(certPath)
-			if err != nil {
-				err := fmt.Errorf("Unable to fetch data from %s", certPath)
-				return nil, err
+			if _, ok := versionDataMap[certPath]; !ok {
+				metadataValue, err := mod.ReadTemplateVersions(certPath)
+				if err != nil {
+					err := fmt.Errorf("Unable to fetch data from %s", certPath)
+					return nil, err
+				}
+				if len(metadataValue) != 0 {
+					versionDataMap[certPath] = metadataValue
+				}
 			}
-			if len(metadataValue) != 0 {
-				versionDataMap[certPath] = metadataValue
+		}
+	} else {
+		//Finds additional paths outside of nested dirs
+		for _, userPath := range userPaths.Data {
+			for _, interfacePath := range userPath.([]interface{}) {
+				path := interfacePath.(string)
+				if path != "" {
+					foundService := false
+					for _, service := range mod.VersionFilter {
+						if strings.HasSuffix(path, service) && !foundService {
+							foundService = true
+						}
+					}
+
+					if !foundService {
+						continue
+					}
+
+					path = enginePath + "/" + path
+					metadataValue, err := mod.ReadTemplateVersions(path)
+					if err != nil {
+						fmt.Println("Couldn't read version data at " + path)
+					}
+					if len(metadataValue) == 0 {
+						continue
+					}
+					versionDataMap[path] = metadataValue
+				}
 			}
 		}
 	}
