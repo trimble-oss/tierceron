@@ -382,31 +382,33 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 		return nil, err
 	}
 
-	//Finds additional paths outside of nested dirs
-	for _, userPath := range userPaths.Data {
-		for _, interfacePath := range userPath.([]interface{}) {
-			path := interfacePath.(string)
-			if path != "" {
-				foundService := false
-				for _, service := range mod.VersionFilter {
-					if strings.HasSuffix(path, service) && !foundService {
-						foundService = true
+	if !wantCerts {
+		//Finds additional paths outside of nested dirs
+		for _, userPath := range userPaths.Data {
+			for _, interfacePath := range userPath.([]interface{}) {
+				path := interfacePath.(string)
+				if path != "" {
+					foundService := false
+					for _, service := range mod.VersionFilter {
+						if strings.HasSuffix(path, service) && !foundService {
+							foundService = true
+						}
 					}
-				}
 
-				if !foundService {
-					continue
-				}
+					if !foundService {
+						continue
+					}
 
-				path = enginePath + "/" + path
-				metadataValue, err := mod.ReadTemplateVersions(path)
-				if err != nil {
-					fmt.Println("Couldn't read version data at " + path)
+					path = enginePath + "/" + path
+					metadataValue, err := mod.ReadTemplateVersions(path)
+					if err != nil {
+						fmt.Println("Couldn't read version data at " + path)
+					}
+					if len(metadataValue) == 0 {
+						continue
+					}
+					versionDataMap[path] = metadataValue
 				}
-				if len(metadataValue) == 0 {
-					continue
-				}
-				versionDataMap[path] = metadataValue
 			}
 		}
 	}
