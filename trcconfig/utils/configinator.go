@@ -94,6 +94,21 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		endPaths = fileEndPaths
 	}
 
+	for _, templatePath := range templatePaths {
+		if !config.WantCerts && strings.Contains(templatePath, "Common") {
+			continue
+		}
+		_, service, _ := GetProjectService(templatePath)             //This checks for nested project names
+		config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
+	}
+
+	if config.WantCerts && versionInfo { //For cert version history
+		config.VersionFilter = append(config.VersionFilter, "Common")
+	}
+
+	config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
+	modCheck.VersionFilter = config.VersionFilter
+
 	if versionInfo {
 		versionDataMap := make(map[string]map[string]interface{})
 		//Gets version metadata for super secrets or values if super secrets don't exist.
@@ -102,16 +117,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			modCheck.Env = strings.Split(modCheck.Env, "_")[0]
 		}
 
-		for _, templatePath := range templatePaths {
-			_, service, _ := utils.GetProjectService(templatePath) //This checks for nested project names
-			config.VersionFilter = append(config.VersionFilter, service)
-		}
-
-		if config.WantCerts { //For cert version history
-			config.VersionFilter = append(config.VersionFilter, "Common")
-		}
-
-		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
 		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
 		var masterKey string
 		project := ""
@@ -178,12 +183,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		return nil //End of -versions flag
 	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
-			for _, templatePath := range templatePaths {
-				_, service, _ := GetProjectService(templatePath)             //This checks for nested project names
-				config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
-			}
-			config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
-
 			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
 			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
 
