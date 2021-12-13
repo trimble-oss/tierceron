@@ -489,7 +489,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			}
 
 			certDestination := config.EndDir + "/" + certPath
-			strings.ReplaceAll(certDestination, "//", "/")
+			certDestination = strings.ReplaceAll(certDestination, "//", "/")
 			writeToFile(certData[1], certDestination)
 			fmt.Println("certificate written to ", certDestination)
 		}
