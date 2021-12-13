@@ -98,7 +98,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		if !config.WantCerts && strings.Contains(templatePath, "Common") {
 			continue
 		}
-		_, service, _ := GetProjectService(templatePath)             //This checks for nested project names
+		_, service, _ := utils.GetProjectService(templatePath)             //This checks for nested project names
 		config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 	}
 
