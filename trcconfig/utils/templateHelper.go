@@ -18,6 +18,7 @@ import (
 // templateFile - full path to template file
 // returns project, service, templatePath
 func GetProjectService(templateFile string) (string, string, string) {
+	templateFile = strings.ReplaceAll(templateFile, "\\", "/")
 	splitDir := strings.Split(templateFile, "/")
 	var project, service string
 	offsetBase := 0
