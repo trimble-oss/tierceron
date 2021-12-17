@@ -297,9 +297,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	wg.Wait()
 
 	// Combine values of slice
-	combineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
-	combineSection(sliceValueSection, -1, valueCombinedSection)
-	combineSection(sliceSecretSection, -1, secretCombinedSection)
+	CombineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
+	CombineSection(sliceValueSection, -1, valueCombinedSection)
+	CombineSection(sliceSecretSection, -1, secretCombinedSection)
 
 	var authYaml []byte
 	var errA error
@@ -638,7 +638,7 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 //	- slice to combine
 //	- template slice to combine
 //	- depth of map (-1 for value/secret sections)
-func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
+func CombineSection(sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
 	_, okMap := sliceSectionInterface.([]map[string]map[string]map[string]string)
 
 	// Value/secret slice section
