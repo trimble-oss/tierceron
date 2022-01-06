@@ -459,8 +459,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 	}
 
 	if len(versionDataMap) < 1 {
-		fmt.Println("No version data available for this env")
-		os.Exit(1)
+		return nil, fmt.Errorf("No version data available for this env")
 	}
 	return versionDataMap, nil
 }
