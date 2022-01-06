@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"tierceron/trcconfig/utils"
+	"tierceron/trcvault/util"
 	trcvutil "tierceron/trcvault/util"
 	helperkv "tierceron/vaulthelper/kv"
 
@@ -94,7 +95,8 @@ func populateTrcVaultDbConfigs(addr string, token string, env string) error {
 	return nil
 }
 
-func processEnvConfig(env string, config map[string]interface{}) error {
+func ProcessEnvConfig(env string, config map[string]interface{}) error {
+
 	token, rOk := config["token"]
 	if !rOk || token.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env + ".  Missing token.")
@@ -107,23 +109,8 @@ func processEnvConfig(env string, config map[string]interface{}) error {
 		return ptvError
 	}
 
-	//
-	// TODO: kick off singleton of enterprise registration...
-	// If all went well, everything we need should be in:
-	//     environmentConfigs
-	// 1. ETL from mysql -> vault?  Either in memory or mysql->file->Vault
-	//
-	// 2. Pull enterprises from vault --> local queryable manageable mysql db.
-	// 3. Query each enterprise and look for eid.
-	// 4. If no eid, then -- register enterprise...
-	//     a. Query Team (one or multiple)  See auto registration.
-	//        -- we will probably need to update config.tmpl with more configs for
-	//           interacting with Team.
-	//     b. Update TrcDb enterprise row with eid returned by sequence of Team calls.
-	//     c. Update TrcDb enterprise row back to vault.
-	//  Expose mysql port and begin testing for load and stability.
-	//     d. Optionally update TrcDb enterprise back to mysql.
-	//
+	util.DoProcessEnvConfig(env, config)
+
 	return nil
 }
 
@@ -147,7 +134,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 		}
 		initVaultHost()
 
-		pecError := processEnvConfig(env, tokenMap)
+		pecError := ProcessEnvConfig(env, tokenMap)
 
 		if pecError != nil {
 			logger.Println("Bad configuration data for env: " + env + " error: " + pecError.Error())
@@ -171,12 +158,12 @@ func TrcCreateUpdate(ctx context.Context, req *logical.Request, data *framework.
 
 	switch path.(string) {
 	case "dev":
-		pecError := processEnvConfig("dev", data.Raw)
+		pecError := ProcessEnvConfig("dev", data.Raw)
 		if pecError != nil {
 			return nil, pecError
 		}
 	case "QA":
-		pecError := processEnvConfig("QA", data.Raw)
+		pecError := ProcessEnvConfig("QA", data.Raw)
 		if pecError != nil {
 			return nil, pecError
 		}
