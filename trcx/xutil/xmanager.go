@@ -553,7 +553,7 @@ func GenerateSeedsFromVaultToDb(config eUtils.DriverConfig) interface{} {
 	}
 
 	tierceronEngine, err := xdb.CreateEngine(config,
-		templatePaths)
+		templatePaths, config.Env, config.VersionFilter[0])
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
