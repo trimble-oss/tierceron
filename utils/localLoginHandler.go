@@ -2,14 +2,13 @@ package utils
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"os"
 	"strings"
 	"syscall"
 
 	"tierceron/vaulthelper/kv"
-	pb "tierceron/webapi/rpc/apinator"
+	//pb "tierceron/webapi/rpc/apinator"
 
 	configcore "VaultConfig.Bootstrap/configcore"
 	tm "golang.org/x/crypto/ssh/terminal"
@@ -17,9 +16,6 @@ import (
 
 // LoginToLocal prompts the user to enter credentials from the terminal and resolves granular local environment
 func LoginToLocal() (string, error) {
-	if true {
-		return "local/dev/JR", nil
-	}
 	var username, environment string
 	var err error
 	httpsClient, err := kv.CreateHTTPClient(false, configcore.VaultHost, "nonprod", false)
@@ -27,7 +23,7 @@ func LoginToLocal() (string, error) {
 		return "", err
 	}
 
-	client := pb.NewEnterpriseServiceBrokerProtobufClient(configcore.VaultHost, httpsClient)
+	//client := pb.NewEnterpriseServiceBrokerProtobufClient(configcore.VaultHost, httpsClient)
 	console := bufio.NewReader(os.Stdin)
 	fmt.Println("Login needed to use a local environment")
 	for {
@@ -55,11 +51,11 @@ func LoginToLocal() (string, error) {
 			return "", err
 		}
 
-		resp, err := client.APILogin(context.Background(), &pb.LoginReq{
-			Environment: environment,
-			Username:    username,
-			Password:    string(password),
-		})
+		// resp, err := client.APILogin(context.Background(), &pb.LoginReq{
+		// 	Environment: environment,
+		// 	Username:    username,
+		// 	Password:    string(password),
+		// })
 		for i := 0; i < len(password); i++ {
 			password[i] = 0
 		}
@@ -69,7 +65,7 @@ func LoginToLocal() (string, error) {
 			return "", err
 		}
 
-		if resp.Success {
+		if false /* resp.Success */ {
 			break
 		} else {
 			fmt.Printf("Could not login for user %s in %s\n", username, environment)
