@@ -6,6 +6,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"sync"
 
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
@@ -157,15 +158,17 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 
 // CreateEngine - creates a Tierceron query engine for query of configurations.
 func CreateEngine(config eUtils.DriverConfig,
-	templatePaths []string) (*TierceronEngine, error) {
+	templatePaths []string, env string, dbname string) (*TierceronEngine, error) {
 
-	te := &TierceronEngine{Database: memory.NewDatabase("TierceronDB"), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext(), Config: config}
+	te := &TierceronEngine{Database: memory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext(), Config: config}
 
 	var goMod *kv.Modifier
 	goMod, errModInit := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions)
 	if errModInit != nil {
 		return nil, errModInit
 	}
+	goMod.Env = env
+
 	projectServiceMap, err := goMod.GetProjectServicesMap()
 	if err != nil {
 		return nil, err
@@ -184,38 +187,47 @@ func CreateEngine(config eUtils.DriverConfig,
 
 	// Fun stuff here....
 	var versionMetadata []string
+	var wg sync.WaitGroup
 	for _, envEnterprise := range envEnterprises {
-		if !strings.Contains(envEnterprise, ".") {
-			continue
-		}
-		goMod.Env = ""
-		versionMetadata = versionMetadata[:0]
-		fileMetadata, err := goMod.GetVersionValues(goMod, config.WantCerts, "values/"+envEnterprise)
-		if err != nil {
-			fmt.Println(err)
-			return nil, err
-		}
-
-		var first map[string]interface{}
-		for _, file := range fileMetadata {
-			if first == nil {
-				first = file
-				break
+		go func() {
+			defer wg.Done()
+			wg.Add(1)
+			if !strings.Contains(envEnterprise, ".") {
+				return
 			}
-		}
+			goMod.Env = ""
+			versionMetadata = versionMetadata[:0]
+			fileMetadata, err := goMod.GetVersionValues(goMod, config.WantCerts, "values/"+envEnterprise)
+			if fileMetadata == nil {
+				return
+			}
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 
-		for versionNumber, _ := range first {
-			versionMetadata = append(versionMetadata, versionNumber)
-		}
-
-		for _, versionNo := range versionMetadata {
-			for project, services := range projectServiceMap {
-				for _, service := range services {
-					TransformConfig(goMod, te, envEnterprise, versionNo, project, service, config)
+			var first map[string]interface{}
+			for _, file := range fileMetadata {
+				if first == nil {
+					first = file
+					break
 				}
 			}
-		}
+
+			for versionNumber, _ := range first {
+				versionMetadata = append(versionMetadata, versionNumber)
+			}
+
+			for _, versionNo := range versionMetadata {
+				for project, services := range projectServiceMap {
+					for _, service := range services {
+						TransformConfig(goMod, te, envEnterprise, versionNo, project, service, config)
+					}
+				}
+			}
+		}()
 	}
+	wg.Wait()
 	te.Engine = sqle.NewDefault(sql.NewDatabaseProvider(te.Database))
 
 	return te, nil
@@ -226,10 +238,11 @@ func CreateEngine(config eUtils.DriverConfig,
 func Query(te *TierceronEngine, query string) (string, []string, [][]string, error) {
 	// Create a test memory database and register it to the default engine.
 
-	//  ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
-	ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
-
-	schema, r, err := te.Engine.Query(ctx, query)
+	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
+	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
+	ctx := sql.NewContext(context.Background())
+	te.Context = ctx
+	schema, r, err := te.Engine.Query(ctx, query) //This query not working anymore for inserts???
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -242,6 +255,7 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 		if tableName == "" {
 			tableName = col.Source
 		}
+
 		columns = append(columns, col.Name)
 	}
 
@@ -252,6 +266,9 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 			break
 		}
 		rowData := []string{}
+		if len(columns) == 1 && columns[0] == "__ok_result__" {   //This is for insert statements 
+			return "ok", nil, nil, nil
+		}
 		for _, col := range row {
 			rowData = append(rowData, col.(string))
 		}
