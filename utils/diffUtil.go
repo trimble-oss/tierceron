@@ -355,6 +355,37 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		fmt.Println("Couldn't find any data to diff")
 		os.Exit(1)
 	}
+
+	var baseEnv []string
+	diffEnvFound := false
+	if len(envDiffSlice) > 0 {
+		baseEnv = strings.Split(envDiffSlice[0], "_")
+	}
+	//Sort Diff Slice if env are the same
+	for i, env := range envDiffSlice { //Arranges keys for ordered output
+		base := strings.Split(env, "_")
+		if base[1] == "0" { //Special case for latest, so sort adds latest to the back of ordered slice
+			base[1] = "_999999"
+			envDiffSlice[i] = base[0] +  base[1]
+		}
+
+		if len(base) > 0 && len(baseEnv) > 0 && baseEnv[0] != base[0] {
+			diffEnvFound = true
+		}
+	}
+
+	if !diffEnvFound {
+		sort.Strings(envDiffSlice)
+	}
+
+	for i, env := range envDiffSlice { //Changes latest back - special case
+		base := strings.Split(env, "_")
+		if base[1] == "999999" { 
+			base[1] = "_0"
+			envDiffSlice[i] = base[0] + base[1]
+		}
+	}
+
 	fileList := make([]string, len(resultMap)/envLength)
 	mutex.Unlock()
 

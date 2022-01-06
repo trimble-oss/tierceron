@@ -13,9 +13,17 @@ import (
 func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier) map[string]map[string]interface{} {
 	versionMetadataMap := make(map[string]map[string]interface{})
 	mod.VersionFilter = config.VersionFilter
-	secretMetadataMap, err := mod.GetVersionValues(mod, "super-secrets")
-	if secretMetadataMap == nil || config.WantCerts { //Certs are in values, not super secrets
-		secretMetadataMap, err = mod.GetVersionValues(mod, "values")
+	var secretMetadataMap map[string]map[string]interface{}
+	var err error
+
+	if !config.WantCerts {
+		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "super-secrets")
+		if secretMetadataMap == nil {
+		    secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values")
+		}
+	} else {
+		//Certs are in values, not super secrets
+		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values")
 	}
 	var foundKey string
 	for key, value := range secretMetadataMap {

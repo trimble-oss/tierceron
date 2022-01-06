@@ -18,6 +18,7 @@ import (
 // templateFile - full path to template file
 // returns project, service, templatePath
 func GetProjectService(templateFile string) (string, string, string) {
+	templateFile = strings.ReplaceAll(templateFile, "\\", "/")
 	splitDir := strings.Split(templateFile, "/")
 	var project, service string
 	offsetBase := 0
@@ -100,16 +101,20 @@ func ConfigTemplateRaw(modifier *kv.Modifier, emptyFilePath string, configuredFi
 
 //ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.
 //It configures the template and writes it to the specified file path.
-func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool, project string, service string, cert bool, zc bool) (string, map[int]string, bool) {
+func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool, project string, service string, cert bool, zc bool) (string, map[int]string, bool, error) {
 	var template string
 	var err error
 
 	if zc {
 		var templateEncoded string
 		templateEncoded, err = GetTemplate(modifier, emptyFilePath)
-		utils.CheckError(err, true)
-		templateBytes, decodeErr := base64.StdEncoding.DecodeString(templateEncoded)
-		utils.CheckError(decodeErr, true)
+		if err != nil {
+			return "", nil, false, err
+		}
+		templateBytes, dcErr := base64.StdEncoding.DecodeString(templateEncoded)
+		if dcErr != nil {
+			return "", nil, false, dcErr
+		}
 
 		template = string(templateBytes)
 	} else {
@@ -120,9 +125,9 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool
 	// cert map
 	certData := make(map[int]string)
 	if cert && !strings.Contains(template, ".certData") {
-		return "", certData, false
+		return "", certData, false, errors.New("Missing .certData")
 	} else if !cert && strings.Contains(template, ".certData") {
-		return "", certData, false
+		return "", certData, false, errors.New("Template with cert provided, but cert not requested.")
 	}
 
 	// Construct path for vault
@@ -156,7 +161,7 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool
 	}
 	//populate template
 	template, certData = PopulateTemplate(template, modifier, secretMode, project, service, filename, cert)
-	return template, certData, true
+	return template, certData, true, nil
 }
 
 func getTemplateVersionData(modifier *kv.Modifier, secretMode bool, project string, service string, file string) map[string]interface{} {

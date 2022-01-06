@@ -101,7 +101,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 		}
 
-		if config.WantCerts { //For cert version history  -> Maybe not needed
+		if config.WantCerts { //For cert version history
 			config.VersionFilter = append(config.VersionFilter, "Common")
 		}
 
@@ -297,9 +297,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	wg.Wait()
 
 	// Combine values of slice
-	combineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
-	combineSection(sliceValueSection, -1, valueCombinedSection)
-	combineSection(sliceSecretSection, -1, secretCombinedSection)
+	CombineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
+	CombineSection(sliceValueSection, -1, valueCombinedSection)
+	CombineSection(sliceSecretSection, -1, secretCombinedSection)
 
 	var authYaml []byte
 	var errA error
@@ -459,7 +459,13 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			mod.Env = envVersion[0]
 			mod.Version = envVersion[1]
 
-			_, certData, certLoaded = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+			var ctErr error
+			_, certData, certLoaded, ctErr = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+			if ctErr != nil {
+				if !strings.Contains(ctErr.Error(), "Missing .certData") {
+					eUtils.CheckError(ctErr, true)
+				}
+			}
 
 			if len(certData) == 0 {
 				if certLoaded {
@@ -483,6 +489,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			}
 
 			certDestination := config.EndDir + "/" + certPath
+			certDestination = strings.ReplaceAll(certDestination, "//", "/")
 			writeToFile(certData[1], certDestination)
 			fmt.Println("certificate written to ", certDestination)
 		}
@@ -546,7 +553,7 @@ func GenerateSeedsFromVaultToDb(config eUtils.DriverConfig) interface{} {
 	}
 
 	tierceronEngine, err := xdb.CreateEngine(config,
-		templatePaths)
+		templatePaths, config.Env, config.VersionFilter[0])
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -631,7 +638,7 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 //	- slice to combine
 //	- template slice to combine
 //	- depth of map (-1 for value/secret sections)
-func combineSection(sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
+func CombineSection(sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
 	_, okMap := sliceSectionInterface.([]map[string]map[string]map[string]string)
 
 	// Value/secret slice section
