@@ -34,13 +34,13 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 
 	//Check if templateInfo is selected for template or values
 	templateInfo := false
-	valueInfo := false
+	versionInfo := false
 	if strings.Contains(config.Env, "_") {
 		envAndVersion := strings.Split(config.Env, "_")
 		config.Env = envAndVersion[0]
 		version = envAndVersion[1]
-		if version == "valueInfo" {
-			valueInfo = true
+		if version == "versionInfo" {
+			versionInfo = true
 		} else if version == "templateInfo" {
 			templateInfo = true
 		}
@@ -94,7 +94,22 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		endPaths = fileEndPaths
 	}
 
-	if valueInfo {
+	for _, templatePath := range templatePaths {
+		if !config.WantCerts && strings.Contains(templatePath, "Common") {
+			continue
+		}
+		_, service, _ := utils.GetProjectService(templatePath)             //This checks for nested project names
+		config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
+	}
+
+	if config.WantCerts && versionInfo { //For cert version history
+		config.VersionFilter = append(config.VersionFilter, "Common")
+	}
+
+	config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
+	modCheck.VersionFilter = config.VersionFilter
+
+	if versionInfo {
 		versionDataMap := make(map[string]map[string]interface{})
 		//Gets version metadata for super secrets or values if super secrets don't exist.
 		if strings.Contains(modCheck.Env, ".") {
@@ -102,16 +117,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			modCheck.Env = strings.Split(modCheck.Env, "_")[0]
 		}
 
-		for _, templatePath := range templatePaths {
-			_, service, _ := utils.GetProjectService(templatePath) //This checks for nested project names
-			config.VersionFilter = append(config.VersionFilter, service)
-		}
-
-		if config.WantCerts { //For cert version history
-			config.VersionFilter = append(config.VersionFilter, "Common")
-		}
-
-		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
 		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
 		var masterKey string
 		project := ""
@@ -178,12 +183,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		return nil //End of -versions flag
 	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
-			for _, templatePath := range templatePaths {
-				_, service, _ := GetProjectService(templatePath)             //This checks for nested project names
-				config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
-			}
-			config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
-
 			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
 			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
 
@@ -248,7 +247,13 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					mutex.Unlock()
 					goto wait
 				} else {
-					configuredTemplate, certData, certLoaded = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+					var ctErr error
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+					if ctErr != nil {
+						if !strings.Contains(ctErr.Error(), "Missing .certData") {
+							eUtils.CheckError(ctErr, true)
+						}
+					}
 				}
 				//generate template or certificate
 				if config.WantCerts && certLoaded {
@@ -292,7 +297,13 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 					versionData[endPaths[i]] = data
 					goto wait
 				} else {
-					configuredTemplate, certData, certLoaded = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+					var ctErr error
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+					if ctErr != nil {
+						if !strings.Contains(ctErr.Error(), "Missing .certData") {
+							eUtils.CheckError(ctErr, true)
+						}
+					}
 				}
 				if config.WantCerts && certLoaded {
 					certDestination := config.EndDir + "/" + certData[0]

@@ -30,8 +30,8 @@ type KeyTokenWrapper struct {
 }
 
 // NewVault Constructs a new vault at the given address with the given access token
-func NewVault(insecure bool, address string, env string, newVault bool, pingVault bool) (*Vault, error) {
-	httpClient, err := kv.CreateHTTPClient(insecure, address, env)
+func NewVault(insecure bool, address string, env string, newVault bool, pingVault bool, scanVault bool) (*Vault, error) {
+	httpClient, err := kv.CreateHTTPClient(insecure, address, env, scanVault)
 	if err != nil {
 		fmt.Println("Connection to vault couldn't be made - vaultHost: " + address)
 		return nil, err
