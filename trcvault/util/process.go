@@ -71,8 +71,8 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 	configDriver := eUtils.DriverConfig{
 		Regions:      emptySlice,
 		Insecure:     true,
-		Token:        config["token"].(string),
-		VaultAddress: config["address"].(string),
+		Token:        configMap["token"].(string),
+		VaultAddress: configMap["address"].(string),
 		Env:          env,
 	}
 
@@ -81,7 +81,7 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 	project, service, templateFile = utils.GetProjectService(configMap["templatePath"].(string))
 	templateSplit := strings.Split(templateFile, service+"/")
 	templateFile = strings.Split(templateSplit[len(templateSplit)-1], ".")[0]
-	templatePaths := []string{config["templatePath"].(string)}
+	templatePaths := []string{configMap["templatePath"].(string)}
 	tierceronEngine, err := db.CreateEngine(configDriver, templatePaths, env, service)
 	if err != nil {
 		log.Println(err)
