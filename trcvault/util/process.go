@@ -29,20 +29,20 @@ import (
 	//	"gopkg.in/yaml.v2"
 )
 
-func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
+func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	// TODO: kick off singleton of enterprise registration...
 	// If all went well, everything we need should be in:
 	//     environmentConfigs
 	// 1. ETL from mysql -> vault?  Either in memory or mysql->file->Vault
-	project, service, templateFile := utils.GetProjectService(configMap["connectionPath"].(string))
-	goMod, _ := helperkv.NewModifier(true, configMap["token"].(string), configMap["address"].(string), env, []string{})
+	project, service, templateFile := utils.GetProjectService(pluginConfig["connectionPath"].(string))
+	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), env, []string{})
 	goMod.Env = env
 	goMod.Version = "0"
-	v, err := sys.NewVault(true, configMap["address"].(string), goMod.Env, false, false, false)
+	v, err := sys.NewVault(true, pluginConfig["address"].(string), goMod.Env, false, false, false)
 	if err != nil {
 		log.Println(err)
 	}
-	v.SetToken(configMap["token"].(string))
+	v.SetToken(pluginConfig["token"].(string))
 	properties, err := NewProperties(v, goMod, env, project, service)
 	if err != nil {
 		log.Println(err)
@@ -74,17 +74,17 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 	configDriver := eUtils.DriverConfig{
 		Regions:      emptySlice,
 		Insecure:     true,
-		Token:        configMap["token"].(string),
-		VaultAddress: configMap["address"].(string),
+		Token:        pluginConfig["token"].(string),
+		VaultAddress: pluginConfig["address"].(string),
 		Env:          env,
 	}
 
 	// d. Upload tenants into a mysql table
 	// 	i. Init engine
-	project, service, templateFile = utils.GetProjectService(configMap["templatePath"].(string))
+	project, service, templateFile = utils.GetProjectService(pluginConfig["templatePath"].(string))
 	templateSplit := strings.Split(templateFile, service+"/")
 	templateFile = strings.Split(templateSplit[len(templateSplit)-1], ".")[0]
-	templatePaths := []string{configMap["templatePath"].(string)}
+	templatePaths := []string{pluginConfig["templatePath"].(string)}
 	tierceronEngine, err := db.CreateEngine(configDriver, templatePaths, env, service)
 	if err != nil {
 		log.Println(err)
@@ -182,7 +182,7 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 
 	_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
 		cds,
-		configMap["templatePath"].(string),
+		pluginConfig["templatePath"].(string),
 		&log.Logger{},
 		project,
 		service,
@@ -250,7 +250,7 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 				log.Println(err)
 			}
 
-			il.SeedVaultFromData(true, []byte(seedData), configMap["address"].(string), v.GetToken(), goMod.Env, log.Default(), service, false, "dev."+tenantConfiguration["enterpriseId"])
+			il.SeedVaultFromData(true, []byte(seedData), pluginConfig["address"].(string), v.GetToken(), goMod.Env, log.Default(), service, false, "dev."+tenantConfiguration["enterpriseId"])
 		}(templateResult)
 	}
 	//wg.Wait()
