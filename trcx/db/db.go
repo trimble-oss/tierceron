@@ -181,53 +181,56 @@ func CreateEngine(config eUtils.DriverConfig,
 		fmt.Println(err)
 		return nil, err
 	}
-	for _, enterprise := range tempEnterprises.Data["keys"].([]interface{}) {
-		envEnterprises = append(envEnterprises, strings.Replace(enterprise.(string), "/", "", 1))
-	}
+	if tempEnterprises != nil {
+		for _, enterprise := range tempEnterprises.Data["keys"].([]interface{}) {
+			envEnterprises = append(envEnterprises, strings.Replace(enterprise.(string), "/", "", 1))
+		}
 
-	// Fun stuff here....
-	var versionMetadata []string
-	var wg sync.WaitGroup
-	for _, envEnterprise := range envEnterprises {
-		go func() {
-			defer wg.Done()
-			wg.Add(1)
-			if !strings.Contains(envEnterprise, ".") {
-				return
-			}
-			goMod.Env = ""
-			versionMetadata = versionMetadata[:0]
-			fileMetadata, err := goMod.GetVersionValues(goMod, config.WantCerts, "values/"+envEnterprise)
-			if fileMetadata == nil {
-				return
-			}
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			var first map[string]interface{}
-			for _, file := range fileMetadata {
-				if first == nil {
-					first = file
-					break
+		// Fun stuff here....
+		var versionMetadata []string
+		var wg sync.WaitGroup
+		for _, envEnterprise := range envEnterprises {
+			go func() {
+				defer wg.Done()
+				wg.Add(1)
+				if !strings.Contains(envEnterprise, ".") {
+					return
 				}
-			}
+				goMod.Env = ""
+				versionMetadata = versionMetadata[:0]
+				fileMetadata, err := goMod.GetVersionValues(goMod, config.WantCerts, "values/"+envEnterprise)
+				if fileMetadata == nil {
+					return
+				}
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
 
-			for versionNumber, _ := range first {
-				versionMetadata = append(versionMetadata, versionNumber)
-			}
-
-			for _, versionNo := range versionMetadata {
-				for project, services := range projectServiceMap {
-					for _, service := range services {
-						TransformConfig(goMod, te, envEnterprise, versionNo, project, service, config)
+				var first map[string]interface{}
+				for _, file := range fileMetadata {
+					if first == nil {
+						first = file
+						break
 					}
 				}
-			}
-		}()
+
+				for versionNumber, _ := range first {
+					versionMetadata = append(versionMetadata, versionNumber)
+				}
+
+				for _, versionNo := range versionMetadata {
+					for project, services := range projectServiceMap {
+						for _, service := range services {
+							TransformConfig(goMod, te, envEnterprise, versionNo, project, service, config)
+						}
+					}
+				}
+			}()
+		}
+		wg.Wait()
 	}
-	wg.Wait()
+
 	te.Engine = sqle.NewDefault(sql.NewDatabaseProvider(te.Database))
 
 	return te, nil
@@ -266,7 +269,7 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 			break
 		}
 		rowData := []string{}
-		if len(columns) == 1 && columns[0] == "__ok_result__" {   //This is for insert statements 
+		if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
 			return "ok", nil, nil, nil
 		}
 		for _, col := range row {
