@@ -5,10 +5,11 @@ import (
 	"time"
 
 	vcutils "tierceron/trcconfig/utils"
-	il "tierceron/trcinit/initlib"
+	//il "tierceron/trcinit/initlib"
 	"tierceron/trcx/db"
 	extract "tierceron/trcx/extract"
-	"tierceron/trcx/xutil"
+
+	//	"tierceron/trcx/xutil"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
@@ -22,17 +23,35 @@ import (
 	sys "tierceron/vaulthelper/system"
 
 	"github.com/dolthub/go-mysql-server/sql"
-
-	"gopkg.in/yaml.v2"
+	//	"gopkg.in/yaml.v2"
 )
 
-func DoProcessEnvConfig(env string, config map[string]interface{}) error {
+func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 	// TODO: kick off singleton of enterprise registration...
 	// If all went well, everything we need should be in:
 	//     environmentConfigs
 	// 1. ETL from mysql -> vault?  Either in memory or mysql->file->Vault
+	project, service, templateFile := utils.GetProjectService(configMap["connectionPath"].(string))
+	goMod, _ := helperkv.NewModifier(true, configMap["token"].(string), configMap["address"].(string), env, []string{})
+	goMod.Env = env
+	goMod.Version = "0"
+	v, err := sys.NewVault(true, configMap["address"].(string), goMod.Env, false, false, false)
+	if err != nil {
+		log.Println(err)
+	}
+	v.SetToken(configMap["token"].(string))
+	properties, err := NewProperties(v, goMod, env, project, service)
+	if err != nil {
+		log.Println(err)
+	}
+
+	config, ok := properties.GetConfigValues(service, "config")
+	if !ok {
+		log.Println("Couldn't get config values.")
+	}
+
 	// a. Establish mysql connection
-	mysqlConn, err := OpenDirectConnection(config["MysqlDburl"].(string), config["MysqlDbuser"].(string), config["MysqlDbpasswd"].(string))
+	mysqlConn, err := OpenDirectConnection(config["mysqldburl"].(string), config["mysqldbuser"].(string), config["mysqldbpassword"].(string))
 	if mysqlConn != nil {
 		defer mysqlConn.Close()
 	}
@@ -59,7 +78,7 @@ func DoProcessEnvConfig(env string, config map[string]interface{}) error {
 
 	// d. Upload tenants into a mysql table
 	// 	i. Init engine
-	project, service, templateFile := utils.GetProjectService(config["templatePath"].(string)) //Wrong one
+	project, service, templateFile = utils.GetProjectService(configMap["templatePath"].(string))
 	templateSplit := strings.Split(templateFile, service+"/")
 	templateFile = strings.Split(templateSplit[len(templateSplit)-1], ".")[0]
 	templatePaths := []string{config["templatePath"].(string)}
@@ -116,9 +135,6 @@ func DoProcessEnvConfig(env string, config map[string]interface{}) error {
 	}
 
 	// 2. Pull enterprises from vault --> local queryable manageable mysql db.
-	goMod, _ := helperkv.NewModifier(true, config["token"].(string), config["address"].(string), env, []string{})
-	goMod.Env = env
-	goMod.Version = "0"
 	/* //UNCOMMENT THIS LATER***
 		listValues, err := goMod.ListEnv("values/")
 		if err != nil { //This call only works if vault has permission to list metadata at values/
@@ -173,73 +189,69 @@ func DoProcessEnvConfig(env string, config map[string]interface{}) error {
 		&(templateResult.SecretSection),
 	)
 
-	v, err := sys.NewVault(true, config["address"].(string), goMod.Env, false, false, false)
-	if err != nil {
-		log.Println(err)
-	}
-	v.SetToken(config["token"].(string))
-	//var wg sync.WaitGroup
-	//Puts tenant configurations inside generated seed template.
-	for _, tenantConfiguration := range enterpriseTenants {
-		/*
-			go func(templateResult extract.TemplateResultData) {
-				defer wg.Done()
-				wg.Add(1)
-		*/
-		valueCombinedSection := map[string]map[string]map[string]string{}
-		valueCombinedSection["values"] = map[string]map[string]string{}
+	/*
+		//var wg sync.WaitGroup
+		//Puts tenant configurations inside generated seed template.
+		for _, tenantConfiguration := range enterpriseTenants {
 
-		secretCombinedSection := map[string]map[string]map[string]string{}
-		secretCombinedSection["super-secrets"] = map[string]map[string]string{}
+				go func(templateResult extract.TemplateResultData) {
+					defer wg.Done()
+					wg.Add(1)
 
-		// Declare local variables
-		templateCombinedSection := map[string]interface{}{}
-		sliceTemplateSection := []interface{}{}
-		sliceValueSection := []map[string]map[string]map[string]string{}
-		sliceSecretSection := []map[string]map[string]map[string]string{}
-		for key, value := range tenantConfiguration {
-			templateResult.SecretSection["super-secrets"][service][key] = value
+			valueCombinedSection := map[string]map[string]map[string]string{}
+			valueCombinedSection["values"] = map[string]map[string]string{}
+
+			secretCombinedSection := map[string]map[string]map[string]string{}
+			secretCombinedSection["super-secrets"] = map[string]map[string]string{}
+
+			// Declare local variables
+			templateCombinedSection := map[string]interface{}{}
+			sliceTemplateSection := []interface{}{}
+			sliceValueSection := []map[string]map[string]map[string]string{}
+			sliceSecretSection := []map[string]map[string]map[string]string{}
+			for key, value := range tenantConfiguration {
+				templateResult.SecretSection["super-secrets"][service][key] = value
+			}
+			maxDepth := templateResult.TemplateDepth
+			// Combine values of slice
+
+			sliceTemplateSection = append(sliceTemplateSection, templateResult.InterfaceTemplateSection)
+			sliceValueSection = append(sliceValueSection, templateResult.ValueSection)
+			sliceSecretSection = append(sliceSecretSection, templateResult.SecretSection)
+
+			xutil.CombineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
+			xutil.CombineSection(sliceValueSection, -1, valueCombinedSection)
+			xutil.CombineSection(sliceSecretSection, -1, secretCombinedSection)
+
+			template, errT := yaml.Marshal(templateCombinedSection)
+			value, errV := yaml.Marshal(valueCombinedSection)
+			secret, errS := yaml.Marshal(secretCombinedSection)
+
+			if errT != nil {
+				fmt.Println(errT)
+			}
+
+			if errV != nil {
+				fmt.Println(errV)
+			}
+
+			if errS != nil {
+				fmt.Println(errS)
+			}
+			templateData := string(template)
+			// Remove single quotes generated by Marshal
+			templateData = strings.ReplaceAll(templateData, "'", "")
+			seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n"
+			//VaultX Section Ends
+			//VaultInit Section Begins
+			if err != nil {
+				log.Println(err)
+			}
+
+			il.SeedVaultFromData(true, []byte(seedData), config["address"].(string), v.GetToken(), goMod.Env, log.Default(), service, false, "dev."+tenantConfiguration["enterpriseId"])
+			//}(templateResult)
 		}
-		maxDepth := templateResult.TemplateDepth
-		// Combine values of slice
-
-		sliceTemplateSection = append(sliceTemplateSection, templateResult.InterfaceTemplateSection)
-		sliceValueSection = append(sliceValueSection, templateResult.ValueSection)
-		sliceSecretSection = append(sliceSecretSection, templateResult.SecretSection)
-
-		xutil.CombineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
-		xutil.CombineSection(sliceValueSection, -1, valueCombinedSection)
-		xutil.CombineSection(sliceSecretSection, -1, secretCombinedSection)
-
-		template, errT := yaml.Marshal(templateCombinedSection)
-		value, errV := yaml.Marshal(valueCombinedSection)
-		secret, errS := yaml.Marshal(secretCombinedSection)
-
-		if errT != nil {
-			fmt.Println(errT)
-		}
-
-		if errV != nil {
-			fmt.Println(errV)
-		}
-
-		if errS != nil {
-			fmt.Println(errS)
-		}
-		templateData := string(template)
-		// Remove single quotes generated by Marshal
-		templateData = strings.ReplaceAll(templateData, "'", "")
-		seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n"
-		//VaultX Section Ends
-		//VaultInit Section Begins
-		if err != nil {
-			log.Println(err)
-		}
-
-		il.SeedVaultFromData(true, []byte(seedData), config["address"].(string), v.GetToken(), goMod.Env, log.Default(), service, false, "dev."+tenantConfiguration["enterpriseId"])
-		//}(templateResult)
-	}
-
+	*/
 	//	wg.Wait()
 
 	//
