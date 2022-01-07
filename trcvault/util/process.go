@@ -183,7 +183,7 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 		&log.Logger{},
 		project,
 		service,
-		false,
+		true,
 		&(templateResult.InterfaceTemplateSection),
 		&(templateResult.ValueSection),
 		&(templateResult.SecretSection),
@@ -275,11 +275,10 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 	//              if not yet registered with team...
 	//              goto AutoRegistration...
 
-	spectrumDB := ""
 	for _, tenantConfiguration := range nonEnterpriseTenants {
-		mysqlConn, err := OpenDirectConnection(spectrumDB, tenantConfiguration["Username"], tenantConfiguration["EncryptedPassword"])
-		if mysqlConn != nil {
-			defer mysqlConn.Close()
+		spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"], tenantConfiguration["username"], tenantConfiguration["encrypted_password"])
+		if spectrumConn != nil {
+			defer spectrumConn.Close()
 		}
 
 		if err != nil {
@@ -288,7 +287,7 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 		}
 
 		sqlstr := "SELECT *"
-		rows, err := mysqlConn.Query(sqlstr)
+		rows, err := spectrumConn.Query(sqlstr)
 		if err != nil {
 			log.Println(err)
 		}
