@@ -179,7 +179,7 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 
 	_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
 		cds,
-		config["templatePath"].(string),
+		configMap["templatePath"].(string),
 		&log.Logger{},
 		project,
 		service,
