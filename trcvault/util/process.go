@@ -2,12 +2,14 @@ package util
 
 import (
 	//	"sync"
+
 	"time"
 
 	vcutils "tierceron/trcconfig/utils"
-	//il "tierceron/trcinit/initlib"
+	il "tierceron/trcinit/initlib"
 	"tierceron/trcx/db"
 	extract "tierceron/trcx/extract"
+	"tierceron/trcx/xutil"
 
 	//	"tierceron/trcx/xutil"
 	"tierceron/utils"
@@ -15,6 +17,7 @@ import (
 	helperkv "tierceron/vaulthelper/kv"
 
 	tcutil "VaultConfig.TenantConfig/util"
+	"gopkg.in/yaml.v2"
 
 	"fmt"
 	"log"
@@ -189,14 +192,13 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 		&(templateResult.SecretSection),
 	)
 
-	/*
-		//var wg sync.WaitGroup
-		//Puts tenant configurations inside generated seed template.
-		for _, tenantConfiguration := range enterpriseTenants {
+	//var wg sync.WaitGroup
+	//Puts tenant configurations inside generated seed template.
+	for _, tenantConfiguration := range enterpriseTenants {
 
-				go func(templateResult extract.TemplateResultData) {
-					defer wg.Done()
-					wg.Add(1)
+		func(templateResult extract.TemplateResultData) {
+			//defer wg.Done()
+			//wg.Add(1)
 
 			valueCombinedSection := map[string]map[string]map[string]string{}
 			valueCombinedSection["values"] = map[string]map[string]string{}
@@ -248,11 +250,10 @@ func DoProcessEnvConfig(env string, configMap map[string]interface{}) error {
 				log.Println(err)
 			}
 
-			il.SeedVaultFromData(true, []byte(seedData), config["address"].(string), v.GetToken(), goMod.Env, log.Default(), service, false, "dev."+tenantConfiguration["enterpriseId"])
-			//}(templateResult)
-		}
-	*/
-	//	wg.Wait()
+			il.SeedVaultFromData(true, []byte(seedData), configMap["address"].(string), v.GetToken(), goMod.Env, log.Default(), service, false, "dev."+tenantConfiguration["enterpriseId"])
+		}(templateResult)
+	}
+	//wg.Wait()
 
 	//
 	// 1. ETL from mysql -> vault?  Either in memory or mysql->file->Vault
