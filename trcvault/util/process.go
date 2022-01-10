@@ -25,6 +25,7 @@ import (
 
 	sys "tierceron/vaulthelper/system"
 
+	configcore "VaultConfig.Bootstrap/configcore"
 	"github.com/dolthub/go-mysql-server/sql"
 	//	"gopkg.in/yaml.v2"
 )
@@ -277,7 +278,10 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	//              goto AutoRegistration...
 
 	for _, tenantConfiguration := range nonEnterpriseTenants {
-		spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"], tenantConfiguration["username"], tenantConfiguration["encrypted_password"])
+		spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
+			tenantConfiguration["username"],
+			configcore.DecryptSecretConfig(tenantConfiguration, config))
+
 		if spectrumConn != nil {
 			defer spectrumConn.Close()
 		}
