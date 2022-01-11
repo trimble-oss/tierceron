@@ -93,19 +93,7 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 
 	tierceronEngine.Context = sql.NewEmptyContext()
 	//	ii. Init database and table in engine
-	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, templateFile, sql.Schema{
-		{Name: "tenantId", Type: sql.Text, Source: project},
-		{Name: "spectrumUri", Type: sql.Text, Source: project},
-		{Name: "jdbcUrl", Type: sql.Text, Source: project},
-		{Name: "driverClass", Type: sql.Text, Source: project},
-		{Name: "username", Type: sql.Text, Source: project},
-		{Name: "encrypted_password", Type: sql.Text, Source: project},
-		{Name: "salt", Type: sql.Text, Source: project},
-		{Name: "initial_value", Type: sql.Text, Source: project},
-		{Name: "wsAuthId", Type: sql.Text, Source: project},
-		{Name: "enterpriseId", Type: sql.Text, Source: project},
-		{Name: "region", Type: sql.Text, Source: project},
-	})
+	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, templateFile, tcutil.GetTenantSchema(project))
 	if err != nil {
 		log.Println(err)
 	}
