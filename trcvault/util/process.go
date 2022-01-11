@@ -239,7 +239,7 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 				log.Println(err)
 			}
 
-			il.SeedVaultFromData(true, []byte(seedData), pluginConfig["address"].(string), v.GetToken(), goMod.Env, log.Default(), service, false, "dev."+tenantConfiguration["enterpriseId"])
+			il.SeedVaultFromData(true, []byte(seedData), pluginConfig["address"].(string), v.GetToken(), goMod.Env, log.Default(), service, false, goMod.Env+"."+tenantConfiguration["enterpriseId"])
 		}(templateResult)
 	}
 	//wg.Wait()
@@ -266,25 +266,36 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	//              goto AutoRegistration...
 
 	for _, tenantConfiguration := range nonEnterpriseTenants {
-		spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
-			tenantConfiguration["username"],
-			configcore.DecryptSecretConfig(tenantConfiguration, config))
+		if strings.Contains(tenantConfiguration["jdbcUrl"], "Spectrum_QA") {
+			spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
+				tenantConfiguration["username"],
+				configcore.DecryptSecretConfig(tenantConfiguration, config))
 
-		if spectrumConn != nil {
-			defer spectrumConn.Close()
-		}
+			if spectrumConn != nil {
+				defer spectrumConn.Close()
+			}
 
-		if err != nil {
-			log.Println(err)
-			continue
-		}
+			if err != nil {
+				log.Println(err)
+				continue
+			}
 
-		sqlstr := "SELECT *"
-		rows, err := spectrumConn.Query(sqlstr)
-		if err != nil {
-			log.Println(err)
+			rows, err := spectrumConn.Query(tcutil.GetSFIDQuery())
+			if err != nil {
+				log.Println(err)
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var eID string
+				if err := rows.Scan(&eID); err != nil {
+					log.Fatal(err)
+				}
+				fmt.Printf("%s is %s\n", tenantConfiguration["username"], eID)
+			}
+			if err := rows.Err(); err != nil {
+				log.Fatal(err)
+			}
 		}
-		fmt.Println(rows)
 	}
 	// Work with enterprise data stuff... to register enterprises...
 
