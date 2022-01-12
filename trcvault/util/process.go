@@ -266,7 +266,7 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	//              goto AutoRegistration...
 
 	for _, tenantConfiguration := range nonEnterpriseTenants {
-		if strings.Contains(tenantConfiguration["jdbcUrl"], "Spectrum_QA") {
+		if strings.Contains(tenantConfiguration["tenantId"], "INSERT HERE") {
 			spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
 				tenantConfiguration["username"],
 				configcore.DecryptSecretConfig(tenantConfiguration, config))
@@ -280,23 +280,20 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 				continue
 			}
 
-			rows, err := spectrumConn.Query(tcutil.GetSFIDQuery())
+			var SFID string
+			err = spectrumConn.QueryRow(tcutil.GetSFIDQuery()).Scan(&SFID)
 			if err != nil {
 				log.Println(err)
 			}
-			defer rows.Close()
-			for rows.Next() {
-				var eID string
-				if err := rows.Scan(&eID); err != nil {
-					log.Fatal(err)
-				}
-				fmt.Printf("%s is %s\n", tenantConfiguration["username"], eID)
-			}
-			if err := rows.Err(); err != nil {
-				log.Fatal(err)
-			}
+			fmt.Println(SFID)
 		}
 	}
+
+	httpClient, err := helperkv.CreateHTTPClient(false, pluginConfig["address"].(string), env, false)
+	data := tcutil.GetJSONFromClient(httpClient, pluginConfig["address"].(string))
+	fmt.Println(data)
+	//Something that can create a http client and query a json from it.
+
 	// Work with enterprise data stuff... to register enterprises...
 
 	// 4. Write a go routine that periodically runs 3a...
