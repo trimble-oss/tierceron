@@ -3,6 +3,7 @@ package util
 import (
 	//	"sync"
 
+	"io"
 	"time"
 
 	vcutils "tierceron/trcconfig/utils"
@@ -290,7 +291,8 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	}
 
 	httpClient, err := helperkv.CreateHTTPClient(false, pluginConfig["address"].(string), env, false)
-	data := tcutil.GetJSONFromClient(httpClient, pluginConfig["address"].(string))
+	var body io.Reader
+	data := GetJSONFromClient(httpClient, pluginConfig["address"].(string), body)
 	fmt.Println(data)
 	//Something that can create a http client and query a json from it.
 
