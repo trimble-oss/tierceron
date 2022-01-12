@@ -1,7 +1,11 @@
 package util
 
 import (
+	"encoding/json"
 	"errors"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -39,4 +43,34 @@ func GetLocalVaultHost() (string, error) {
 	}
 
 	return vaultHost, vaultErr
+}
+
+func GetJSONFromClient(httpClient *http.Client, address string, body io.Reader) map[string]interface{} {
+	var jsonData map[string]interface{}
+	request, err := http.NewRequest("POST", address, body)
+	if err != nil {
+		panic(err)
+	}
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Content-Type", "application/json")
+	response, err := httpClient.Do(request)
+	if err != nil {
+		panic(err)
+	}
+	defer response.Body.Close()
+
+	// read json http response
+	jsonDataFromHttp, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return jsonData
 }
