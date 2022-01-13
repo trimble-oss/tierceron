@@ -1,17 +1,13 @@
 package util
 
 import (
-	//	"sync"
-
 	"io"
 	"time"
 
 	"tierceron/trcx/db"
 	extract "tierceron/trcx/extract"
 
-	//	"tierceron/trcx/xutil"
 	"tierceron/utils"
-	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
 	tcutil "VaultConfig.TenantConfig/util"
@@ -23,7 +19,6 @@ import (
 
 	configcore "VaultConfig.Bootstrap/configcore"
 	"github.com/dolthub/go-mysql-server/sql"
-	//	"gopkg.in/yaml.v2"
 )
 
 func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
@@ -68,7 +63,7 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 
 	// c. Create config for engine for queries
 	emptySlice := []string{""}
-	configDriver := eUtils.DriverConfig{
+	configDriver := utils.DriverConfig{
 		Regions:      emptySlice,
 		Insecure:     true,
 		Token:        pluginConfig["token"].(string),
@@ -181,12 +176,13 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	//              goto AutoRegistration...
 
 	authComponents := tcutil.GetAuthComponents(config)
-	// Start refactor
 	httpClient, err := helperkv.CreateHTTPClient(false, authComponents["authDomain"].(string), env, false)
-	var body io.Reader
+	if err != nil {
+		log.Println(err)
+	}
 
+	var body io.Reader
 	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), body)
-	// End refactor
 
 	for _, tenantConfiguration := range nonEnterpriseTenants {
 		if strings.Contains(tenantConfiguration["tenantId"], "INSERT HERE") {
@@ -207,10 +203,12 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 			err = spectrumConn.QueryRow(tcutil.GetRegistrationReferenceIdQuery()).Scan(&registrationReferenceId)
 			if err != nil {
 				log.Println(err)
+			} else {
+				authData["refId"] = registrationReferenceId
 			}
 			sourceIdComponents := tcutil.GetSourceIdComponents(config, authData)
 
-			clientData := GetJSONFromClient(httpClient, sourceIdComponents["apiAuthHeaders"].(map[string]string), sourceIdComponents["apiEndpoint"].(string), body)
+			clientData := GetJSONFromClient(httpClient, sourceIdComponents["apiAuthHeaders"].(map[string]string), sourceIdComponents["apiEndpoint"].(string), sourceIdComponents["bodyData"].(io.Reader))
 			// End Refactor
 			// TODO: write client data to tenant config?
 
