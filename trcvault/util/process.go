@@ -16,7 +16,6 @@ import (
 
 	tcutil "VaultConfig.TenantConfig/util"
 
-	"fmt"
 	"log"
 	"strings"
 
@@ -181,6 +180,14 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	//              if not yet registered with team...
 	//              goto AutoRegistration...
 
+	authComponents := tcutil.GetAuthComponents(config)
+	// Start refactor
+	httpClient, err := helperkv.CreateHTTPClient(false, authComponents["authDomain"].(string), env, false)
+	var body io.Reader
+
+	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), body)
+	// End refactor
+
 	for _, tenantConfiguration := range nonEnterpriseTenants {
 		if strings.Contains(tenantConfiguration["tenantId"], "INSERT HERE") {
 			spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
@@ -196,19 +203,19 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 				continue
 			}
 
-			var SFID string
-			err = spectrumConn.QueryRow(tcutil.GetSFIDQuery()).Scan(&SFID)
+			var registrationReferenceId string
+			err = spectrumConn.QueryRow(tcutil.GetRegistrationReferenceIdQuery()).Scan(&registrationReferenceId)
 			if err != nil {
 				log.Println(err)
 			}
-			fmt.Println(SFID)
+			sourceIdComponents := tcutil.GetSourceIdComponents(config, authData)
+
+			clientData := GetJSONFromClient(httpClient, sourceIdComponents["apiAuthHeaders"].(map[string]string), sourceIdComponents["apiEndpoint"].(string), body)
+			// End Refactor
+			// TODO: write client data to tenant config?
+
 		}
 	}
-
-	httpClient, err := helperkv.CreateHTTPClient(false, pluginConfig["address"].(string), env, false)
-	var body io.Reader
-	data := GetJSONFromClient(httpClient, pluginConfig["address"].(string), body)
-	fmt.Println(data)
 	//Something that can create a http client and query a json from it.
 
 	// Work with enterprise data stuff... to register enterprises...
