@@ -57,14 +57,17 @@ func GetLocalVaultHost() (string, error) {
 	return vaultHost, vaultErr
 }
 
-func GetJSONFromClient(httpClient *http.Client, address string, body io.Reader) map[string]interface{} {
+func GetJSONFromClient(httpClient *http.Client, headers map[string]string, address string, body io.Reader) map[string]interface{} {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {
 		panic(err)
 	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Content-Type", "application/json")
+	for headerkey, headervalue := range headers {
+		request.Header.Set(headerkey, headervalue)
+	}
+	// request.Header.Set("Accept", "application/json")
+	// request.Header.Set("Content-Type", "application/json")
 	response, err := httpClient.Do(request)
 	if err != nil {
 		panic(err)
