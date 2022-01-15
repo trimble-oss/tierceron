@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
 	"strings"
 
@@ -74,20 +74,30 @@ func GetJSONFromClient(httpClient *http.Client, headers map[string]string, addre
 	}
 	defer response.Body.Close()
 
-	// read json http response
-	jsonDataFromHttp, err := ioutil.ReadAll(response.Body)
+	if response.StatusCode == http.StatusOK {
+		responseData, err := httputil.DumpResponse(response, true)
+		responseString := string(responseData)
 
-	if err != nil {
-		panic(err)
+		jsonStartIndex := strings.Index(responseString, "{\"")
+
+		jsonDataFromHttp := responseString[jsonStartIndex:]
+		//		r.Body = http.MaxBytesReader(w, r.Body, 1048576)
+
+		//		err := json.NewDecoder(response.Body).Decode(&jsonData)
+
+		if err != nil {
+			panic(err)
+		}
+
+		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
+
+		if err != nil {
+			panic(err)
+		}
+
+		return jsonData
 	}
-
-	err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return jsonData
+	return nil
 }
 
 func GetSeedTemplate(templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) {
