@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/http/httputil"
 	"strconv"
 	"strings"
 
@@ -75,15 +74,7 @@ func GetJSONFromClient(httpClient *http.Client, headers map[string]string, addre
 	defer response.Body.Close()
 
 	if response.StatusCode == http.StatusOK {
-		responseData, err := httputil.DumpResponse(response, true)
-		responseString := string(responseData)
-
-		jsonStartIndex := strings.Index(responseString, "{\"")
-
-		jsonDataFromHttp := responseString[jsonStartIndex:]
-		//		r.Body = http.MaxBytesReader(w, r.Body, 1048576)
-
-		//		err := json.NewDecoder(response.Body).Decode(&jsonData)
+		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
 			panic(err)
