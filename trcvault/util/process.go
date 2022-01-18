@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"io"
 	"time"
 
@@ -18,7 +19,6 @@ import (
 	sys "tierceron/vaulthelper/system"
 
 	configcore "VaultConfig.Bootstrap/configcore"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -184,36 +184,33 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 
 	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
 
-	for _, tenantConfiguration := range enterpriseTenants {
-		if strings.Contains(tenantConfiguration["tenantId"], "INSERT HERE") {
-			spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
-				tenantConfiguration["username"],
-				configcore.DecryptSecretConfig(tenantConfiguration, config))
+	for _, tenantConfiguration := range nonEnterpriseTenants {
+		spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
+			tenantConfiguration["username"],
+			configcore.DecryptSecretConfig(tenantConfiguration, config))
 
-			if spectrumConn != nil {
-				defer spectrumConn.Close()
-			}
-
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			var registrationReferenceId string
-			err = spectrumConn.QueryRow(tcutil.GetRegistrationReferenceIdQuery()).Scan(&registrationReferenceId)
-			if err != nil {
-				log.Println(err)
-			} else {
-				authData["refId"] = registrationReferenceId
-			}
-			sourceIdComponents := tcutil.GetSourceIdComponents(config, authData)
-
-			clientData := GetJSONFromClient(httpClient, sourceIdComponents["apiAuthHeaders"].(map[string]string), sourceIdComponents["apiEndpoint"].(string), sourceIdComponents["bodyData"].(io.Reader))
-			// End Refactor
-			// TODO: write client data to tenant config?
-			spew.Dump(clientData)
-
+		if spectrumConn != nil {
+			defer spectrumConn.Close()
 		}
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		var registrationReferenceId string
+		err = spectrumConn.QueryRow(tcutil.GetRegistrationReferenceIdQuery()).Scan(&registrationReferenceId)
+		if err != nil {
+			log.Println(err)
+		} else {
+			authData["refId"] = registrationReferenceId
+		}
+		sourceIdComponents := tcutil.GetSourceIdComponents(config, authData)
+
+		clientData := GetJSONFromClient(httpClient, sourceIdComponents["apiAuthHeaders"].(map[string]string), sourceIdComponents["apiEndpoint"].(string), sourceIdComponents["bodyData"].(io.Reader))
+		// End Refactor
+		enterpriseMap := clientData["items"].([]interface{})[0].(map[string]interface{})
+		tenantConfiguration["enterpriseId"] = fmt.Sprintf("%.0f", enterpriseMap["id"].(float64))
 	}
 	//Something that can create a http client and query a json from it.
 
