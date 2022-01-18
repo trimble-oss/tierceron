@@ -84,8 +84,22 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	}
 
 	tierceronEngine.Context = sql.NewEmptyContext()
-	//	ii. Init database and table in engine
+	//	ii. Init database and tables in engine
 	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, templateFile, tcutil.GetTenantSchema(project))
+	if err != nil {
+		log.Println(err)
+	}
+
+	changeTable := templateFile + "_Changes"
+	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTable, sql.Schema{
+		{Name: "id", Type: sql.Text, Source: changeTable},
+		{Name: "updateTime", Type: sql.Time, Source: changeTable},
+	})
+	if err != nil {
+		log.Println(err)
+	}
+
+	_, _, _, err = db.Query(tierceronEngine, tcutil.GetUpdateTrigger(tierceronEngine.Database.Name(), templateFile))
 	if err != nil {
 		log.Println(err)
 	}
@@ -184,48 +198,49 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 
 	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
 
-	for _, tenantConfiguration := range enterpriseTenants {
-		if tenantConfiguration["tenantId"] == "qa14p8" {
-			spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
-				tenantConfiguration["username"],
-				configcore.DecryptSecretConfig(tenantConfiguration, config))
+	for _, tenantConfiguration := range nonEnterpriseTenants {
+		//if tenantConfiguration["tenantId"] == "INSERT HERE" {
+		spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
+			tenantConfiguration["username"],
+			configcore.DecryptSecretConfig(tenantConfiguration, config))
 
-			if spectrumConn != nil {
-				defer spectrumConn.Close()
-			}
+		if spectrumConn != nil {
+			defer spectrumConn.Close()
+		}
 
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		var registrationReferenceId string
+		err = spectrumConn.QueryRow(tcutil.GetRegistrationReferenceIdQuery()).Scan(&registrationReferenceId)
+		if err != nil {
+			log.Println(err)
+		} else {
+			authData["refId"] = registrationReferenceId
+		}
+		sourceIdComponents := tcutil.GetSourceIdComponents(config, authData)
+
+		clientData := GetJSONFromClient(httpClient, sourceIdComponents["apiAuthHeaders"].(map[string]string), sourceIdComponents["apiEndpoint"].(string), sourceIdComponents["bodyData"].(io.Reader))
+		// End Refactor
+		enterpriseMap := clientData["items"].([]interface{})[0].(map[string]interface{})
+		if enterpriseMap["id"].(float64) != 0 {
+			tenantConfiguration["enterpriseId"] = fmt.Sprintf("%.0f", enterpriseMap["id"].(float64))
+
+			//SQL update row
+			_, _, _, err := db.Query(tierceronEngine, tcutil.GetTenantConfigurationUpdate(tenantConfiguration, tierceronEngine.Database.Name(), templateFile))
 			if err != nil {
 				log.Println(err)
-				continue
 			}
 
-			var registrationReferenceId string
-			err = spectrumConn.QueryRow(tcutil.GetRegistrationReferenceIdQuery()).Scan(&registrationReferenceId)
-			if err != nil {
-				log.Println(err)
-			} else {
-				authData["refId"] = registrationReferenceId
-			}
-			sourceIdComponents := tcutil.GetSourceIdComponents(config, authData)
-
-			clientData := GetJSONFromClient(httpClient, sourceIdComponents["apiAuthHeaders"].(map[string]string), sourceIdComponents["apiEndpoint"].(string), sourceIdComponents["bodyData"].(io.Reader))
-			// End Refactor
-			enterpriseMap := clientData["items"].([]interface{})[0].(map[string]interface{})
-			if enterpriseMap["id"].(float64) != 0 {
-				tenantConfiguration["enterpriseId"] = fmt.Sprintf("%.0f", enterpriseMap["id"].(float64))
-
-				//SQL update row
-				_, _, _, err := db.Query(tierceronEngine, tcutil.GetTenantConfigurationUpdate(tenantConfiguration, tierceronEngine.Database.Name(), templateFile))
-				if err != nil {
-					log.Println(err)
-				}
-
-				err1 := SeedVaultWithTenant(templateResult, goMod, tenantConfiguration, service, pluginConfig["address"].(string), v.GetToken())
-				if err1 != nil {
-					log.Println(err1)
-				}
+			//Use trigger to make another table
+			err1 := SeedVaultWithTenant(templateResult, goMod, tenantConfiguration, service, pluginConfig["address"].(string), v.GetToken())
+			if err1 != nil {
+				log.Println(err1)
 			}
 		}
+		//	}
 	}
 	//Write back to SQL engine
 	//Upload the tenant to vault with new id ->
