@@ -184,35 +184,53 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 
 	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
 
-	for _, tenantConfiguration := range nonEnterpriseTenants {
-		spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
-			tenantConfiguration["username"],
-			configcore.DecryptSecretConfig(tenantConfiguration, config))
+	for _, tenantConfiguration := range enterpriseTenants {
+		if tenantConfiguration["tenantId"] == "qa14p8" {
+			spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
+				tenantConfiguration["username"],
+				configcore.DecryptSecretConfig(tenantConfiguration, config))
 
-		if spectrumConn != nil {
-			defer spectrumConn.Close()
+			if spectrumConn != nil {
+				defer spectrumConn.Close()
+			}
+
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			var registrationReferenceId string
+			err = spectrumConn.QueryRow(tcutil.GetRegistrationReferenceIdQuery()).Scan(&registrationReferenceId)
+			if err != nil {
+				log.Println(err)
+			} else {
+				authData["refId"] = registrationReferenceId
+			}
+			sourceIdComponents := tcutil.GetSourceIdComponents(config, authData)
+
+			clientData := GetJSONFromClient(httpClient, sourceIdComponents["apiAuthHeaders"].(map[string]string), sourceIdComponents["apiEndpoint"].(string), sourceIdComponents["bodyData"].(io.Reader))
+			// End Refactor
+			enterpriseMap := clientData["items"].([]interface{})[0].(map[string]interface{})
+			if enterpriseMap["id"].(float64) != 0 {
+				tenantConfiguration["enterpriseId"] = fmt.Sprintf("%.0f", enterpriseMap["id"].(float64))
+
+				//SQL update row
+				_, _, _, err := db.Query(tierceronEngine, tcutil.GetTenantConfigurationUpdate(tenantConfiguration, tierceronEngine.Database.Name(), templateFile))
+				if err != nil {
+					log.Println(err)
+				}
+
+				err1 := SeedVaultWithTenant(templateResult, goMod, tenantConfiguration, service, pluginConfig["address"].(string), v.GetToken())
+				if err1 != nil {
+					log.Println(err1)
+				}
+			}
 		}
-
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		var registrationReferenceId string
-		err = spectrumConn.QueryRow(tcutil.GetRegistrationReferenceIdQuery()).Scan(&registrationReferenceId)
-		if err != nil {
-			log.Println(err)
-		} else {
-			authData["refId"] = registrationReferenceId
-		}
-		sourceIdComponents := tcutil.GetSourceIdComponents(config, authData)
-
-		clientData := GetJSONFromClient(httpClient, sourceIdComponents["apiAuthHeaders"].(map[string]string), sourceIdComponents["apiEndpoint"].(string), sourceIdComponents["bodyData"].(io.Reader))
-		// End Refactor
-		enterpriseMap := clientData["items"].([]interface{})[0].(map[string]interface{})
-		tenantConfiguration["enterpriseId"] = fmt.Sprintf("%.0f", enterpriseMap["id"].(float64))
 	}
-	//Something that can create a http client and query a json from it.
+	//Write back to SQL engine
+	//Upload the tenant to vault with new id ->
+	//start up mysql instance locally -> can leave this commented out
+	// point db.dex at vault.dex : sql port
 
 	// Work with enterprise data stuff... to register enterprises...
 
