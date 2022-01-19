@@ -99,6 +99,11 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 		log.Println(err)
 	}
 
+	_, _, _, err = db.Query(tierceronEngine, tcutil.GetInsertTrigger(tierceronEngine.Database.Name(), templateFile))
+	if err != nil {
+		log.Println(err)
+	}
+
 	_, _, _, err = db.Query(tierceronEngine, tcutil.GetUpdateTrigger(tierceronEngine.Database.Name(), templateFile))
 	if err != nil {
 		log.Println(err)
