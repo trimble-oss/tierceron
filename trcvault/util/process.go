@@ -151,23 +151,13 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	changeTable := tenantTable + "_Changes"
 	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTable, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "id", Type: sql.Text, Source: changeTable},
-		{Name: "updateTime", Type: sql.Time, Source: changeTable},
+		{Name: "updateTime", Type: sql.Timestamp, Source: changeTable},
 	}))
 	if err != nil {
 		log.Println(err)
 	}
 
-	/*
-		_, _, _, err = db.Query(tierceronEngine, tcutil.GetInsertTrigger(tierceronEngine.Database.Name(), templateFile))
-		if err != nil {
-			log.Println(err)
-		}
-
-		_, _, _, err = db.Query(tierceronEngine, tcutil.GetUpdateTrigger(tierceronEngine.Database.Name(), templateFile))
-		if err != nil {
-			log.Println(err)
-		}
-	*/
+	//Create triggers
 	var updTrigger sql.TriggerDefinition
 	var insTrigger sql.TriggerDefinition
 	insTrigger.Name = "tcInsertTrigger"
