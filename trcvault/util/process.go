@@ -115,7 +115,7 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	insTrigger.Name = "tcInsertTrigger"
 	updTrigger.Name = "tcUpdateTrigger"
 	updTrigger.CreateStatement = tcutil.GetUpdateTrigger(tierceronEngine.Database.Name(), templateFile)
-	insTrigger.CreateStatement = tcutil.GetUpdateTrigger(tierceronEngine.Database.Name(), templateFile)
+	insTrigger.CreateStatement = tcutil.GetInsertTrigger(tierceronEngine.Database.Name(), templateFile)
 	tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
 	tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
 
@@ -216,7 +216,6 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 
 	for _, tenantConfiguration := range nonEnterpriseTenants {
 		if tenantConfiguration["tenantId"] == "qa14p8" {
-
 			spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
 				tenantConfiguration["username"],
 				configcore.DecryptSecretConfig(tenantConfiguration, config))
