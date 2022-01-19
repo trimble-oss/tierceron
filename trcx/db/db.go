@@ -47,7 +47,7 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 
 		if tierceronTable == nil {
 			// This is cacheable...
-			tierceronTable = &TierceronTable{Table: nil, Schema: []*sql.Column{}}
+			tierceronTable = &TierceronTable{Table: nil, Schema: sql.NewPrimaryKeySchema([]*sql.Column{})}
 
 			columnKeys := []string{}
 
@@ -64,7 +64,7 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 
 			for _, columnKey := range columnKeys {
 				column := sql.Column{Name: columnKey, Type: sql.Text, Source: tableName}
-				tierceronTable.Schema = append(tierceronTable.Schema, &column)
+				tierceronTable.Schema.Schema = append(tierceronTable.Schema.Schema, &column)
 			}
 
 			table := memory.NewTable(tableName, tierceronTable.Schema)
@@ -77,7 +77,7 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 
 		// TODO: Add Enterprise, Environment, and Version....
 
-		for _, column := range tierceronTable.Schema {
+		for _, column := range tierceronTable.Schema.Schema {
 			if value, ok := valueColumns[column.Name]; ok {
 				row = append(row, value)
 			} else if secretValue, svOk := secretColumns[column.Name]; svOk {
@@ -231,7 +231,7 @@ func CreateEngine(config eUtils.DriverConfig,
 		wg.Wait()
 	}
 
-	te.Engine = sqle.NewDefault(sql.NewDatabaseProvider(te.Database))
+	te.Engine = sqle.NewDefault(memory.NewMemoryDBProvider(te.Database))
 
 	return te, nil
 }
@@ -262,20 +262,23 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 		columns = append(columns, col.Name)
 	}
 
-	// Iterate results and print them.
-	for {
-		row, err := r.Next()
-		if err == io.EOF {
-			break
+	if len(columns) > 0 {
+		// Iterate results and print them.
+		for {
+			row, err := r.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			rowData := []string{}
+			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
+				return "ok", nil, nil, nil
+			}
+			for _, col := range row {
+				rowData = append(rowData, col.(string))
+			}
+			matrix = append(matrix, rowData)
 		}
-		rowData := []string{}
-		if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
-			return "ok", nil, nil, nil
-		}
-		for _, col := range row {
-			rowData = append(rowData, col.(string))
-		}
-		matrix = append(matrix, rowData)
 	}
+
 	return tableName, columns, matrix, nil
 }
