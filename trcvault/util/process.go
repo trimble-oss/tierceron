@@ -10,6 +10,7 @@ import (
 
 	"tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
+	"tierceron/vaulthelper/system"
 
 	tcutil "VaultConfig.TenantConfig/util"
 
@@ -22,12 +23,69 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+var changedChannel = make(chan bool, 5)
+
+var changeTable string
+
+func getChangeIdQuery() string {
+	return "SELECT id FROM " + changeTable
+}
+
+func getDeleteChangeQuery(id string) string {
+	return "DELETE FROM " + changeTable + " WHERE id = '" + id + "'"
+}
+
+func GetUpdateTrigger(databaseName string, tableName string, idColumnName string) string {
+	return `CREATE TRIGGER tcUpdateTrigger BEFORE UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+		` BEGIN` +
+		` UPDATE ` + databaseName + `.` + tableName + `_Changes SET id=new.tenantId, updateTime=current_timestamp() WHERE EXISTS (select id from ` + databaseName + `.` + tableName + `_Changes where id=new.` + idColumnName + `);` +
+		` END;`
+}
+
+func GetInsertTrigger(databaseName string, tableName string, idColumnName string) string {
+	return `CREATE TRIGGER tcInsertTrigger BEFORE UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+		` BEGIN` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnName + `, current_timestamp());` +
+		` END;`
+}
+
+func SeedVaultFromChanges(tierceronEngine *db.TierceronEngine, goMod *helperkv.Modifier, pluginConfig map[string]interface{}, templateResult *extract.TemplateResultData, service string, v *system.Vault) {
+
+	changeIdQuery := getChangeIdQuery()
+	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changeIdQuery)
+	if err != nil {
+		log.Println(err)
+	}
+
+	for _, changedEntry := range matrixChangedEntries {
+		changedId := changedEntry[0]
+
+		changedTenantsQuery := "" // TODO: Implement query using changedId
+
+		_, tenantColumns, tenantData, err := db.Query(tierceronEngine, changedTenantsQuery)
+
+		// Convert matrix/slice to tenantConfiguration map
+		// Columns are keys, values in tenantData
+
+		//Use trigger to make another table
+		err1 := SeedVaultWithTenant(templateResult, goMod, tenantConfiguration, service, pluginConfig["address"].(string), v.GetToken())
+		if err1 != nil {
+			log.Println(err1)
+		}
+
+		if err != nil {
+			log.Println(err)
+		}
+
+	}
+}
+
 func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	// TODO: kick off singleton of enterprise registration...
 	// If all went well, everything we need should be in:
 	//     environmentConfigs
 	// 1. ETL from mysql -> vault?  Either in memory or mysql->file->Vault
-	project, service, templateFile := utils.GetProjectService(pluginConfig["connectionPath"].(string))
+	project, service, tenantTable := utils.GetProjectService(pluginConfig["connectionPath"].(string))
 	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), env, []string{})
 	goMod.Env = env
 	goMod.Version = "0"
@@ -74,9 +132,9 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 
 	// d. Upload tenants into a mysql table
 	// 	i. Init engine
-	project, service, templateFile = utils.GetProjectService(pluginConfig["templatePath"].(string))
-	templateSplit := strings.Split(templateFile, service+"/")
-	templateFile = strings.Split(templateSplit[len(templateSplit)-1], ".")[0]
+	project, service, tenantTable = utils.GetProjectService(pluginConfig["templatePath"].(string))
+	templateSplit := strings.Split(tenantTable, service+"/")
+	tenantTable = strings.Split(templateSplit[len(templateSplit)-1], ".")[0]
 	templatePaths := []string{pluginConfig["templatePath"].(string)}
 	tierceronEngine, err := db.CreateEngine(configDriver, templatePaths, env, service)
 	if err != nil {
@@ -85,12 +143,12 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 
 	tierceronEngine.Context = sql.NewEmptyContext()
 	//	ii. Init database and tables in engine
-	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, templateFile, tcutil.GetTenantSchema(project))
+	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, tenantTable, tcutil.GetTenantSchema(project))
 	if err != nil {
 		log.Println(err)
 	}
 
-	changeTable := templateFile + "_Changes"
+	changeTable := tenantTable + "_Changes"
 	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTable, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "id", Type: sql.Text, Source: changeTable},
 		{Name: "updateTime", Type: sql.Time, Source: changeTable},
@@ -114,14 +172,14 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	var insTrigger sql.TriggerDefinition
 	insTrigger.Name = "tcInsertTrigger"
 	updTrigger.Name = "tcUpdateTrigger"
-	updTrigger.CreateStatement = tcutil.GetUpdateTrigger(tierceronEngine.Database.Name(), templateFile)
-	insTrigger.CreateStatement = tcutil.GetInsertTrigger(tierceronEngine.Database.Name(), templateFile)
+	updTrigger.CreateStatement = GetUpdateTrigger(tierceronEngine.Database.Name(), tenantTable, tcutil.GetTenantIdColumnName())
+	insTrigger.CreateStatement = GetInsertTrigger(tierceronEngine.Database.Name(), tenantTable, tcutil.GetTenantIdColumnName())
 	tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
 	tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
 
 	for _, tenant := range tenantConfigurations { //Loop through tenant configs and add to mysql table
 		tenant["enterpriseId"] = ""
-		_, _, _, err := db.Query(tierceronEngine, tcutil.GetTenantConfigurationInsert(tenant, tierceronEngine.Database.Name(), templateFile))
+		_, _, _, err := db.Query(tierceronEngine, tcutil.GetTenantConfigurationInsert(tenant, tierceronEngine.Database.Name(), tenantTable))
 		if err != nil {
 			log.Println(err)
 		}
@@ -179,7 +237,7 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 
 	//Puts tenant configurations inside generated seed template.
 	for _, tenantConfiguration := range enterpriseTenants {
-		err := SeedVaultWithTenant(templateResult, goMod, tenantConfiguration, service, pluginConfig["address"].(string), v.GetToken())
+		err := SeedVaultWithTenant(&templateResult, goMod, tenantConfiguration, service, pluginConfig["address"].(string), v.GetToken())
 		if err != nil {
 			log.Println(err)
 		}
@@ -250,16 +308,12 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 					tenantConfiguration["enterpriseId"] = fmt.Sprintf("%.0f", enterpriseMap["id"].(float64))
 
 					//SQL update row
-					_, _, _, err := db.Query(tierceronEngine, tcutil.GetTenantConfigurationUpdate(tenantConfiguration, tierceronEngine.Database.Name(), templateFile))
+					_, _, _, err := db.Query(tierceronEngine, tcutil.GetTenantConfigurationUpdate(tenantConfiguration, tierceronEngine.Database.Name(), tenantTable))
 					if err != nil {
 						log.Println(err)
 					}
 
-					//Use trigger to make another table
-					err1 := SeedVaultWithTenant(templateResult, goMod, tenantConfiguration, service, pluginConfig["address"].(string), v.GetToken())
-					if err1 != nil {
-						log.Println(err1)
-					}
+					changedChannel <- true
 				}
 			}
 		}
@@ -274,7 +328,14 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	// 4. Write a go routine that periodically runs 3a...
 	//    -- for now this can be a no-op (does nothing)...  with a sleep...
 	go func() {
-		time.Sleep(time.Second * 3)
+		for {
+			select {
+			case <-changedChannel:
+				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &templateResult, service, v)
+			case <-time.After(time.Minute * 3):
+				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &templateResult, service, v)
+			}
+		}
 	}()
 	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...
 	//    somehow you need to track if something is a new entry...  like a rowChangedSlice...

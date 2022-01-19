@@ -119,7 +119,7 @@ func GetSeedTemplate(templateResult *extract.TemplateResultData, goMod *helperkv
 	)
 }
 
-func SeedVaultWithTenant(templateResult extract.TemplateResultData, goMod *kv.Modifier, tenantConfiguration map[string]string, service string, address string, token string) error {
+func SeedVaultWithTenant(templateResult *extract.TemplateResultData, goMod *kv.Modifier, tenantConfiguration map[string]string, service string, address string, token string) error {
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
 
