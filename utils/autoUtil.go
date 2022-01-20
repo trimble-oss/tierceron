@@ -46,7 +46,7 @@ func (c *cert) getCert() *cert {
 	return c
 }
 
-// AutoAuth attempts to
+// AutoAuth attempts to authenticate a user.
 func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, tokenNamePtr *string, envPtr *string, addrPtr *string, ping bool) {
 	// Declare local variables
 	var override bool
