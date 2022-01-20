@@ -32,19 +32,25 @@ type Modifier struct {
 	VersionFilter    []string     // Used to filter vault paths
 }
 
-func PreCheckEnvironment(environment string) (string, string, error) {
+// PreCheckEnvironment
+// Returns: env, parts, true if parts is path, false if part of file name, error
+func PreCheckEnvironment(environment string) (string, string, bool, error) {
 	envParts := strings.Split(environment, ".")
 	if len(envParts) == 2 {
 		if envParts[1] != "*" {
 			_, idErr := strconv.Atoi(envParts[1])
-			if idErr != nil {
-				return "", "", idErr
+			if idErr != nil && len(envParts[1]) == 3 {
+				return envParts[0], envParts[1], true, nil
+			} else if idErr != nil {
+				return "", "", false, idErr
 			}
 		}
-		return envParts[0], envParts[1], nil
+		return envParts[0], envParts[1], false, nil
+	} else if len(envParts) == 3 {
+		return envParts[0], envParts[1], true, nil
 	}
 
-	return environment, "", nil
+	return environment, "", false, nil
 }
 
 // NewModifier Constructs a new modifier struct and connects to the vault
@@ -80,7 +86,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 
 // ValidateEnvironment Ensures token has access to requested data.
 func (m *Modifier) ValidateEnvironment(environment string, init bool) bool {
-	env, sub, envErr := PreCheckEnvironment(environment)
+	env, sub, _, envErr := PreCheckEnvironment(environment)
 
 	if envErr != nil {
 		fmt.Printf("Environment format error: %v\n", envErr)
