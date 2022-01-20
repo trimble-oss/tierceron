@@ -253,7 +253,7 @@ skipDiff:
 	var waitg sync.WaitGroup
 	if len(envSlice) == 1 {
 		if strings.Contains(envSlice[0], "*") {
-			//Ask vault for list of dev.* environments, add to envSlice
+			//Ask vault for list of dev.<id>.* environments, add to envSlice
 			testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions)
 			testMod.Env = strings.Split(envSlice[0], ".")[0]
 			listValues, err := testMod.ListEnv("values/")
@@ -281,8 +281,8 @@ skipDiff:
 	for _, env := range envSlice {
 		envVersion := strings.Split(env, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
-		if strings.Contains(*envPtr, ".") {
-			*envPtr = strings.Split(*envPtr, ".")[0]
+		if strings.Count(*envPtr, ".") == 2 {
+			*envPtr = strings.SplitN(*envPtr, ".", 2)[0]
 		}
 		if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
 			*tokenPtr = ""

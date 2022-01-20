@@ -417,7 +417,7 @@ func WriteData(path string, data map[string]interface{}, mod *kv.Modifier, logge
 	// Update value metrics to reflect credential use
 	if root == "templates" {
 		//Printing out path of each entry so that users can verify that folder structure in seed files are correct
-		logger.Println("vault_" + path + ".*.tmpl")
+		logger.Println("vault_" + path + ".<idkey>.*.tmpl")
 		for _, v := range data {
 			if templateKey, ok := v.([]interface{}); ok {
 				metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
