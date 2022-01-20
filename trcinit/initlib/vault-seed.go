@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
@@ -79,6 +80,8 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 		return
 	}
 
+	_, suffix, enterpriseOrNot, _ := kv.PreCheckEnvironment(env)
+
 	seeded := false
 	starEnv := false
 	if strings.Contains(env, "*") {
@@ -88,8 +91,12 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 	for _, envDir := range files {
 		if strings.HasPrefix(env, envDir.Name()) || (strings.HasPrefix(env, "local") && envDir.Name() == "local") {
 			logger.Println("\tStepping into: " + envDir.Name())
-
-			filesSteppedInto, err := ioutil.ReadDir(dir + "/" + envDir.Name())
+			var filesSteppedInto []fs.FileInfo
+			if enterpriseOrNot {
+				filesSteppedInto, err = ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + suffix)
+			} else {
+				filesSteppedInto, err = ioutil.ReadDir(dir + "/" + envDir.Name())
+			}
 			utils.LogErrorObject(err, logger, true)
 
 			conflictingFile := false
@@ -120,9 +127,11 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 
 				if !normalEnv { //Enterprise ID
 					dotSplit := strings.Split(strings.Split(fileSteppedInto.Name(), "_")[0], ".") //Checks if file name only has digits for enterprise
-					_, err := strconv.Atoi(dotSplit[len(dotSplit)-1])
-					if err != nil {
-						continue
+					if len(dotSplit) > 2 {
+						_, err := strconv.Atoi(dotSplit[len(dotSplit)-1])
+						if err != nil {
+							continue
+						}
 					}
 				}
 
@@ -142,7 +151,12 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 				if strings.HasPrefix(fileSteppedInto.Name(), env) && (ext == ".yaml" || ext == ".yml") { // Only read YAML config files
 					logger.Println("\t\t" + fileSteppedInto.Name())
 					logger.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
-					path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name()
+					var path string
+					if enterpriseOrNot {
+						path = dir + "/" + envDir.Name() + "/" + suffix + "/" + fileSteppedInto.Name()
+					} else {
+						path = dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name()
+					}
 					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
 					fileNameSplit := strings.Split(fileSteppedInto.Name(), "_")
 					foundconfigIdDelimiter := ""
