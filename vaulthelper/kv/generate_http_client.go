@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -13,7 +14,7 @@ import (
 func CreateHTTPClient(insecure bool, address string, env string, scan bool) (client *http.Client, err error) {
 	// // create a pool of trusted certs
 	certPath := "../../certs/cert_files/dcidevpublic.pem"
-	if env == "prod" || env == "staging" {
+	if strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "staging") {
 		certPath = "../../certs/cert_files/dcipublic.pem"
 	}
 
