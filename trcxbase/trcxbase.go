@@ -116,7 +116,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if *diffPtr && *versionPtr {
 		fmt.Println("-version flag cannot be used with -diff flag")
 		os.Exit(1)
-	} else if (*envPtr == "staging" || *envPtr == "prod") && *addrPtr == "" {
+	} else if (strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")) && *addrPtr == "" {
 		fmt.Println("The -addr flag must be used with staging/prod environment")
 		os.Exit(1)
 	}

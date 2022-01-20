@@ -84,12 +84,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	}
 
 	if *prodPtr {
-		if *envPtr != "staging" && *envPtr != "prod" {
+		if !strings.HasPrefix(*envPtr, "staging") && !strings.HasPrefix(*envPtr, "prod") {
 			flag.Usage()
 			os.Exit(1)
 		}
 	} else {
-		if *envPtr == "staging" || *envPtr == "prod" {
+		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") {
 			flag.Usage()
 			os.Exit(1)
 		}
@@ -217,19 +217,24 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	}
 
-	if !*newPtr && (*rotateTokens || *tokenExpiration) {
+	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration) {
 		if *tokenExpiration {
 			fmt.Println("Checking token expiration.")
 			roleId, lease, err := v.GetRoleID("bamboo")
 			utils.LogErrorObject(err, logger, false)
 			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
 		} else {
-			fmt.Println("Rotating tokens.")
+			if *rotateTokens {
+				fmt.Println("Rotating tokens.")
+			}
 		}
-		getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
-		if getOrRevokeError != nil {
-			fmt.Println("Token revocation or access failure.  Cannot continue.")
-			os.Exit(-1)
+
+		if *rotateTokens || *tokenExpiration {
+			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
+			if getOrRevokeError != nil {
+				fmt.Println("Token revocation or access failure.  Cannot continue.")
+				os.Exit(-1)
+			}
 		}
 
 		if *updateRole {
@@ -256,7 +261,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			}
 		}
 
-		if !*tokenExpiration {
+		if *rotateTokens && !*tokenExpiration {
 			fmt.Println("Rotating tokens.")
 
 			// Create new tokens.
