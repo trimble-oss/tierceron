@@ -117,6 +117,11 @@ func main() {
 		*wantCertsPtr = false
 	}
 
+	if strings.Contains(*envPtr, "*") {
+		fmt.Println("* is not available as an environment suffix.")
+		os.Exit(1)
+	}
+
 	//Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
 		fmt.Println("Cannot use -diff flag and -templateInfo flag together")
