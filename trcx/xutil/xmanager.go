@@ -43,6 +43,20 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	var mod *kv.Modifier
 	noVault := false
 
+	filteredTemplatePaths := templatePaths[:0]
+	if len(config.FileFilter) != 0 {
+		for _, filter := range config.FileFilter {
+			for _, templatePath := range templatePaths {
+				if strings.Contains(templatePath, filter) {
+					filteredTemplatePaths = append(filteredTemplatePaths, templatePath)
+				}
+			}
+		}
+	}
+	if len(filteredTemplatePaths) > 0 {
+		templatePaths = filteredTemplatePaths
+	}
+
 	envVersion := strings.Split(config.Env, "_")
 	if len(envVersion) != 2 {
 		// Make it so.

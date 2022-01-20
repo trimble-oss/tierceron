@@ -77,6 +77,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	diffPtr := flag.Bool("diff", false, "Diff files")
 	versionPtr := flag.Bool("versions", false, "Gets version metadata information")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
+	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
 
 	// Checks for proper flag input
 	args := os.Args[1:]
@@ -96,6 +97,11 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	if runtime.GOOS == "windows" {
 		Reset = ""
 		Yellow = ""
+	}
+
+	var fileFilter []string
+	if len(*filterTemplatePtr) != 0 {
+		fileFilter = strings.Split(*filterTemplatePtr, ",")
 	}
 
 	//check for clean + env flag
@@ -317,6 +323,7 @@ skipDiff:
 			Diff:           *diffPtr,
 			Update:         messenger,
 			VersionInfo:    eUtils.VersionHelper,
+			FileFilter:     fileFilter,
 		}
 		waitg.Add(1)
 		go func() {
