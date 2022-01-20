@@ -46,8 +46,11 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	filteredTemplatePaths := templatePaths[:0]
 	if len(config.FileFilter) != 0 {
 		for _, filter := range config.FileFilter {
+			if !strings.HasSuffix(filter, ".tmpl") {
+				filter = filter + ".tmpl"
+			}
 			for _, templatePath := range templatePaths {
-				if strings.Contains(templatePath, filter) {
+				if strings.HasSuffix(templatePath, filter) {
 					filteredTemplatePaths = append(filteredTemplatePaths, templatePath)
 				}
 			}
@@ -424,17 +427,13 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	}
 
 	suffixRemoved := ""
-	if strings.Contains(config.Env, ".") {
-		envSplit := strings.Split(config.Env, ".")
-		config.Env = envSplit[0]
-		suffixRemoved = "." + envSplit[1]
-	} else if strings.Contains(config.Env, "_") {
+	if strings.Contains(config.Env, "_") {
 		envSplit := strings.Split(config.Env, "_")
 		config.Env = envSplit[0]
 		suffixRemoved = "_" + envSplit[1]
 	}
 
-	envBasePath, _, _ := kv.PreCheckEnvironment(config.Env)
+	envBasePath, pathPart, pathInclude, _ := kv.PreCheckEnvironment(config.Env)
 
 	if suffixRemoved != "" {
 		config.Env = config.Env + suffixRemoved
@@ -444,10 +443,18 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		if strings.HasPrefix(config.Env, "local") {
 			endPath = config.EndDir + "local/local_seed.yml"
 		} else {
-			endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
+			if pathInclude {
+				endPath = config.EndDir + envBasePath + "/" + pathPart + "/" + config.Env + "_seed.yml"
+			} else {
+				endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
+			}
 		}
 	} else {
-		endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
+		if pathInclude {
+			endPath = config.EndDir + envBasePath + "/" + pathPart + "/" + config.Env + "_seed.yml"
+		} else {
+			endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
+		}
 	}
 	//generate template or certificate
 	if config.WantCerts {
@@ -524,7 +531,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			envBasePath = strings.Split(envBasePath, "_")[0]
 		}
 
-		fmt.Println("Seed created and written to " + strings.Replace(config.EndDir, "\\", "/", -1) + envBasePath + string(os.PathSeparator) + config.Env + "_seed.yml")
+		fmt.Println("Seed created and written to " + endPath)
 	}
 
 	return nil

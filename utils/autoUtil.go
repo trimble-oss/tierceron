@@ -213,7 +213,7 @@ func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr
 
 	//if using appRole
 	if *secretIDPtr != "" || *appRoleIDPtr != "" || *tokenNamePtr != "" {
-		env, _, envErr := kv.PreCheckEnvironment(*envPtr)
+		env, _, _, envErr := kv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
 			fmt.Printf("Environment format error: %v\n", envErr)
 			os.Exit(-1)
