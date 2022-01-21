@@ -437,6 +437,9 @@ func GetPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error)
 			paths = append(paths, innerService)
 		}
 		//paths = getPaths(mod, availProjects, paths)
+		if paths == nil {
+			return nil, errors.New("no available projects found")
+		}
 		return paths, err
 	} else {
 		return nil, errors.New("no paths found from templates engine")
