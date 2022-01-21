@@ -80,7 +80,7 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 		return
 	}
 
-	_, suffix, enterpriseOrNot, _ := kv.PreCheckEnvironment(env)
+	_, suffix, indexedEnvNot, _ := kv.PreCheckEnvironment(env)
 
 	seeded := false
 	starEnv := false
@@ -92,7 +92,7 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 		if strings.HasPrefix(env, envDir.Name()) || (strings.HasPrefix(env, "local") && envDir.Name() == "local") {
 			logger.Println("\tStepping into: " + envDir.Name())
 			var filesSteppedInto []fs.FileInfo
-			if enterpriseOrNot {
+			if indexedEnvNot {
 				filesSteppedInto, err = ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + suffix)
 			} else {
 				filesSteppedInto, err = ioutil.ReadDir(dir + "/" + envDir.Name())
@@ -152,7 +152,7 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 					logger.Println("\t\t" + fileSteppedInto.Name())
 					logger.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
 					var path string
-					if enterpriseOrNot {
+					if indexedEnvNot {
 						path = dir + "/" + envDir.Name() + "/" + suffix + "/" + fileSteppedInto.Name()
 					} else {
 						path = dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name()
