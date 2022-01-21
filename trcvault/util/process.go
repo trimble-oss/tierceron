@@ -1,6 +1,7 @@
 package util
 
 import (
+	"database/sql"
 	"fmt"
 	"io"
 	"time"
@@ -20,7 +21,7 @@ import (
 	sys "tierceron/vaulthelper/system"
 
 	configcore "VaultConfig.Bootstrap/configcore"
-	"github.com/dolthub/go-mysql-server/sql"
+	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
 var changedChannel = make(chan bool, 5)
@@ -79,52 +80,13 @@ func SeedVaultFromChanges(tierceronEngine *db.TierceronEngine, goMod *helperkv.M
 	}
 }
 
-func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
-	// 1. Get Plugin configurations.
-	project, service, _ := utils.GetProjectService(pluginConfig["connectionPath"].(string))
-	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), env, []string{})
-	goMod.Env = env
-	goMod.Version = "0"
-	v, err := sys.NewVault(true, pluginConfig["address"].(string), goMod.Env, false, false, false)
-	if err != nil {
-		log.Println(err)
-	}
-	v.SetToken(pluginConfig["token"].(string))
-	properties, err := NewProperties(v, goMod, env, project, service)
-	if err != nil {
-		log.Println(err)
-	}
-
-	config, ok := properties.GetConfigValues(service, "config")
-	if !ok {
-		log.Println("Couldn't get config values.")
-	}
-
-	// 2. Establish mysql connection to remote mysql instance.
-	mysqlConn, err := OpenDirectConnection(config["mysqldburl"].(string), config["mysqldbuser"].(string), config["mysqldbpassword"].(string))
-	if mysqlConn != nil {
-		defer mysqlConn.Close()
-	}
-
-	if err != nil {
-		return err
-	}
-	// 3. Retrieve tenant configurations from mysql.
-	tenantConfigurations, err := tcutil.GetTenantConfigurations(mysqlConn)
-
-	if err != nil {
-		return err
-	}
-
-	// 4. Create config for vault for queries to vault.
-	emptySlice := []string{""}
-	configDriver := utils.DriverConfig{
-		Regions:      emptySlice,
-		Insecure:     true,
-		Token:        pluginConfig["token"].(string),
-		VaultAddress: pluginConfig["address"].(string),
-		Env:          env,
-	}
+func ProcessTable(pluginConfig map[string]interface{},
+	configDriver *utils.DriverConfig,
+	config map[string]interface{},
+	goMod *helperkv.Modifier,
+	mysqlConn *sql.DB,
+	vault *sys.Vault,
+	env string, templateTablePath string) {
 
 	// 5. Upload tenants into a mysql table
 	// 	i. Init engine
@@ -138,25 +100,28 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 		log.Println(err)
 	}
 
-	tierceronEngine.Context = sql.NewEmptyContext()
+	tierceronEngine.Context = sqle.NewEmptyContext()
 	//	ii. Init database and tables in local mysql engine instance.
 	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tcutil.GetTenantSchema(project))
 	if err != nil {
 		log.Println(err)
 	}
 
+	// 3. Retrieve tenant configurations from mysql.
+	tenantConfigurations, err := tcutil.GetTenantConfigurations(mysqlConn)
+
 	changeTableName := tableName + "_Changes"
-	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "id", Type: sql.Text, Source: changeTableName},
-		{Name: "updateTime", Type: sql.Timestamp, Source: changeTableName},
+	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
+		{Name: "id", Type: sqle.Text, Source: changeTableName},
+		{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 	}))
 	if err != nil {
 		log.Println(err)
 	}
 
 	//Create triggers
-	var updTrigger sql.TriggerDefinition
-	var insTrigger sql.TriggerDefinition
+	var updTrigger sqle.TriggerDefinition
+	var insTrigger sqle.TriggerDefinition
 	insTrigger.Name = "tcInsertTrigger"
 	updTrigger.Name = "tcUpdateTrigger"
 	updTrigger.CreateStatement = GetUpdateTrigger(tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName())
@@ -224,7 +189,7 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 
 	//Puts tenant configurations inside generated seed template.
 	for _, tableData := range enterpriseTenants {
-		err := SeedVaultById(goMod, service, pluginConfig["address"].(string), v.GetToken(), &baseTableTemplate, tableData, tableData["enterpriseId"])
+		err := SeedVaultById(goMod, service, pluginConfig["address"].(string), vault.GetToken(), &baseTableTemplate, tableData, tableData["enterpriseId"])
 		if err != nil {
 			log.Println(err)
 		}
@@ -320,12 +285,67 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 		for {
 			select {
 			case <-changedChannel:
-				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, v, tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName(), changeTableName)
+				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName(), changeTableName)
 			case <-time.After(time.Minute * 3):
-				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, v, tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName(), changeTableName)
+				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName(), changeTableName)
 			}
 		}
 	}()
+}
+
+func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
+	// 1. Get Plugin configurations.
+	project, service, _ := utils.GetProjectService(pluginConfig["connectionPath"].(string))
+	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), env, []string{})
+	goMod.Env = env
+	goMod.Version = "0"
+	vault, err := sys.NewVault(true, pluginConfig["address"].(string), goMod.Env, false, false, false)
+	if err != nil {
+		log.Println(err)
+	}
+	vault.SetToken(pluginConfig["token"].(string))
+	properties, err := NewProperties(vault, goMod, env, project, service)
+	if err != nil {
+		log.Println(err)
+	}
+
+	config, ok := properties.GetConfigValues(service, "config")
+	if !ok {
+		log.Println("Couldn't get config values.")
+	}
+
+	// 2. Establish mysql connection to remote mysql instance.
+	mysqlConn, err := OpenDirectConnection(config["mysqldburl"].(string), config["mysqldbuser"].(string), config["mysqldbpassword"].(string))
+	if mysqlConn != nil {
+		defer mysqlConn.Close()
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// 4. Create config for vault for queries to vault.
+	emptySlice := []string{""}
+	configDriver := utils.DriverConfig{
+		Regions:      emptySlice,
+		Insecure:     true,
+		Token:        pluginConfig["token"].(string),
+		VaultAddress: pluginConfig["address"].(string),
+		Env:          env,
+	}
+
+	ProcessTable(pluginConfig,
+		&configDriver,
+		config,
+		goMod,
+		mysqlConn,
+		vault,
+		env,
+		pluginConfig["templatePath"].(string))
 	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...
 	//    somehow you need to track if something is a new entry...  like a rowChangedSlice...
 
