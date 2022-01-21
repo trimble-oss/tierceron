@@ -63,6 +63,18 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		endPaths = append(endPaths, ep...)
 	}
 
+	_, _, indexedEnv, _ := kv.PreCheckEnvironment(config.Env)
+	if indexedEnv {
+		templatePaths, err = kv.GetAcceptedTemplatePaths(modCheck, templatePaths)
+		if err != nil {
+			fmt.Println(err)
+		}
+		endPaths, err = kv.GetAcceptedTemplatePaths(modCheck, endPaths)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
 	//File filter
 	fileFound := true
 	fileFilterIndex := make([]int, len(config.FileFilter))
@@ -189,17 +201,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			utils.BoundCheck(config, versionNumbers, version)
 		}
 	}
-
-	_, _, enterpriseOrNot, _ := kv.PreCheckEnvironment(config.Env)
-
-	if enterpriseOrNot {
-		templatePaths, err = kv.GetAcceptedTemplatePaths(modCheck, templatePaths)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-	//modCheck.ListFilteredEnv(mod, templatePaths) acceptedTemplateLIist
-	//<- put into map
 
 	var wg sync.WaitGroup
 	//configure each template in directory
