@@ -590,3 +590,35 @@ func getPathEnd(path string) string {
 	}
 	return strs[len(strs)-1]
 }
+
+func GetAcceptedTemplatePaths(modCheck *Modifier, templatePaths []string) ([]string, error) {
+	preEnv := modCheck.Env
+	modCheck.Env = strings.Split(modCheck.Env, "_")[0]
+	serviceInterface, err := modCheck.ListEnv("super-secrets/" + modCheck.Env)
+	modCheck.Env = preEnv
+	if err != nil {
+		return nil, err
+	}
+
+	serviceList := serviceInterface.Data["keys"]
+	serviceMap := make(map[string]bool)
+	for _, data := range serviceList.([]interface{}) {
+		serviceMap[data.(string)] = true
+	}
+
+	var acceptedTemplatePaths []string
+	for key, _ := range serviceMap {
+		for _, templatePath := range templatePaths {
+			templatePathParts := strings.Split(templatePath, "/")
+			service := templatePathParts[len(templatePathParts)-2]
+			if strings.Contains(service, key) {
+				acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
+			}
+		}
+	}
+
+	if len(acceptedTemplatePaths) > 0 {
+		templatePaths = acceptedTemplatePaths
+	}
+	return templatePaths, nil
+}
