@@ -11,6 +11,8 @@ import (
 
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
+
+	"github.com/hashicorp/vault/api"
 )
 
 type ResultData struct {
@@ -267,8 +269,17 @@ skipDiff:
 		if strings.Contains(envSlice[0], "*") {
 			//Ask vault for list of dev.<id>.* environments, add to envSlice
 			testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions)
+			if err != nil {
+				logger.Printf(err.Error())
+			}
+			_, suffix, indexed, _ := kv.PreCheckEnvironment(envSlice[0])
 			testMod.Env = strings.Split(envSlice[0], ".")[0]
-			listValues, err := testMod.ListEnv("values/")
+			var listValues *api.Secret
+			if indexed {
+				listValues, err = testMod.ListEnv("super-secrets/")
+			} else {
+				listValues, err = testMod.ListEnv("values/")
+			}
 			if err != nil {
 				logger.Printf(err.Error())
 			}
@@ -280,7 +291,7 @@ skipDiff:
 			for _, valuesPath := range listValues.Data {
 				for _, envInterface := range valuesPath.([]interface{}) {
 					env := envInterface.(string)
-					if strings.Contains(env, ".") && strings.Contains(env, testMod.Env) {
+					if (indexed && strings.HasPrefix(env, testMod.Env+"."+suffix+".")) || strings.HasPrefix(env, testMod.Env+".") { //Check for env.eid/tid.id OR env.id
 						env = strings.ReplaceAll(env, "/", "")
 						newEnvSlice = append(newEnvSlice, env)
 					}
