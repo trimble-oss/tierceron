@@ -599,6 +599,9 @@ func GetAcceptedTemplatePaths(modCheck *Modifier, templatePaths []string) ([]str
 	if err != nil {
 		return nil, err
 	}
+	if serviceInterface == nil || serviceInterface.Data["keys"] == nil {
+		return templatePaths, nil
+	}
 
 	serviceList := serviceInterface.Data["keys"]
 	serviceMap := make(map[string]bool)
