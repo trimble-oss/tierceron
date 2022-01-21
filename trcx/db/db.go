@@ -101,7 +101,7 @@ func removeDuplicateValues(slice []string) []string {
 	return list
 }
 
-func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, service string, config eUtils.DriverConfig) error {
+func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, service string, config *eUtils.DriverConfig) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath)
 	if err != nil {
@@ -222,7 +222,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 				for _, versionNo := range versionMetadata {
 					for project, services := range projectServiceMap {
 						for _, service := range services {
-							TransformConfig(goMod, te, envEnterprise, versionNo, project, service, *config)
+							TransformConfig(goMod, te, envEnterprise, versionNo, project, service, config)
 						}
 					}
 				}
