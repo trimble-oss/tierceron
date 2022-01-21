@@ -291,7 +291,7 @@ skipDiff:
 			for _, valuesPath := range listValues.Data {
 				for _, envInterface := range valuesPath.([]interface{}) {
 					env := envInterface.(string)
-					if (indexed && strings.HasPrefix(env, testMod.Env+"."+suffix+".")) || strings.HasPrefix(env, testMod.Env+".") { //Check for env.eid/tid.id OR env.id
+					if (indexed && strings.HasPrefix(env, testMod.Env+"."+suffix+".")) || (!indexed && strings.HasPrefix(env, testMod.Env+".")) { //Check for env.eid/tid.id OR env.id
 						env = strings.ReplaceAll(env, "/", "")
 						newEnvSlice = append(newEnvSlice, env)
 					}
