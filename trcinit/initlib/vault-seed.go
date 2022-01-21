@@ -416,6 +416,9 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 //WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
 func WriteData(path string, data map[string]interface{}, mod *kv.Modifier, logger *log.Logger) {
 	root := strings.Split(path, "/")[0]
+	if templateWritten == nil {
+		templateWritten = make(map[string]bool)
+	}
 	if root == "templates" { //Check if templates have already been written in this init call.
 		_, ok := templateWritten[path]
 		if !ok {
