@@ -416,6 +416,21 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		}
 	}
 
+	_, _, indexedEnv, _ := kv.PreCheckEnvironment(config.Env)
+
+	if indexedEnv {
+		// Get filtered using mod and templates.
+		mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		mod.Env = config.Env
+
+		templatePathsAccepted, err := kv.GetAcceptedTemplatePaths(mod, templatePaths)
+		templatePaths = templatePathsAccepted
+	}
+
 	endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 
 	if endPath == "" && !multiService && seedData == "" {
