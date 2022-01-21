@@ -47,8 +47,7 @@ func GetInsertTrigger(databaseName string, tableName string, idColumnName string
 		` END;`
 }
 
-func SeedVaultFromChanges(tierceronEngine *db.TierceronEngine, goMod *helperkv.Modifier, pluginConfig map[string]interface{}, templateResult *extract.TemplateResultData, service string, v *system.Vault, databaseName string, tableName string, idColumnName string, changeTable string) {
-
+func SeedVaultFromChanges(tierceronEngine *db.TierceronEngine, goMod *helperkv.Modifier, pluginConfig map[string]interface{}, baseTableTemplate *extract.TemplateResultData, service string, v *system.Vault, databaseName string, tableName string, idColumnName string, changeTable string) {
 	changeIdQuery := getChangeIdQuery(databaseName, changeTable)
 	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changeIdQuery)
 	if err != nil {
@@ -58,22 +57,22 @@ func SeedVaultFromChanges(tierceronEngine *db.TierceronEngine, goMod *helperkv.M
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
 
-		changedTenantsQuery := `SELECT * FROM ` + databaseName + `.` + tableName + ` WHERE ` + idColumnName + `='` + changedId + `'` // TODO: Implement query using changedId
+		changedTableQuery := `SELECT * FROM ` + databaseName + `.` + tableName + ` WHERE ` + idColumnName + `='` + changedId + `'` // TODO: Implement query using changedId
 
-		_, tenantColumns, tenantData, err := db.Query(tierceronEngine, changedTenantsQuery)
+		_, changedTableColumns, changedTableData, err := db.Query(tierceronEngine, changedTableQuery)
 		if err != nil {
 			log.Println(err)
 		}
 
-		tenantConfiguration := map[string]string{}
-		for i, column := range tenantColumns {
-			tenantConfiguration[column] = tenantData[0][i]
+		tableDataMap := map[string]string{}
+		for i, column := range changedTableColumns {
+			tableDataMap[column] = changedTableData[0][i]
 		}
 		// Convert matrix/slice to tenantConfiguration map
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
-		seedError := SeedVaultWithTenant(templateResult, goMod, tenantConfiguration, service, pluginConfig["address"].(string), v.GetToken())
+		seedError := SeedVaultById(goMod, service, pluginConfig["address"].(string), v.GetToken(), baseTableTemplate, tableDataMap, tableDataMap["enterpriseId"])
 		if seedError != nil {
 			log.Println(seedError)
 		}
@@ -314,14 +313,16 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 	// Work with enterprise data stuff... to register enterprises...
 
 	// 4. Write a go routine that periodically runs 3a...
+	//    This is basically a 'watcher' routine that periodically updates Vault if the internal
+	//    mysql table changes in any way...
 	//    -- for now this can be a no-op (does nothing)...  with a sleep...
 	func() {
 		for {
 			select {
 			case <-changedChannel:
-				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &templateResult, service, v, tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName(), changeTableName)
+				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, v, tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName(), changeTableName)
 			case <-time.After(time.Minute * 3):
-				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &templateResult, service, v, tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName(), changeTableName)
+				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, v, tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName(), changeTableName)
 			}
 		}
 	}()
