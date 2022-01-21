@@ -98,7 +98,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		if !config.WantCerts && strings.Contains(templatePath, "Common") {
 			continue
 		}
-		_, service, _ := utils.GetProjectService(templatePath)             //This checks for nested project names
+		_, service, _ := utils.GetProjectService(templatePath)       //This checks for nested project names
 		config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 	}
 
@@ -189,6 +189,17 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 			utils.BoundCheck(config, versionNumbers, version)
 		}
 	}
+
+	_, _, enterpriseOrNot, _ := kv.PreCheckEnvironment(config.Env)
+
+	if enterpriseOrNot {
+		templatePaths, err = kv.GetAcceptedTemplatePaths(modCheck, templatePaths)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+	//modCheck.ListFilteredEnv(mod, templatePaths) acceptedTemplateLIist
+	//<- put into map
 
 	var wg sync.WaitGroup
 	//configure each template in directory
