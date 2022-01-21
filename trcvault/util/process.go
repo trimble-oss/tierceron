@@ -225,7 +225,7 @@ func ProcessTable(pluginConfig map[string]interface{},
 	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
 
 	for _, tenantConfiguration := range nonEnterpriseTenants {
-		if tenantConfiguration["tenantId"] == "qa14p8" {
+		if tenantConfiguration["tenantId"] == "INSERT HERE" {
 			spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
 				tenantConfiguration["username"],
 				configcore.DecryptSecretConfig(tenantConfiguration, config))
@@ -268,10 +268,14 @@ func ProcessTable(pluginConfig map[string]interface{},
 					changedChannel <- true
 				}
 			}
+
+			//TODO: Write back to SQL engine - Upload the tenant to vault with new id
+			t := tcutil.GetTenantFromMap(tenantConfiguration)
+			err = t.Update(sqle.NewEmptyContext(), spectrumConn)
+			fmt.Println(err)
 		}
 	}
-	//Write back to SQL engine
-	//Upload the tenant to vault with new id ->
+
 	//start up mysql instance locally -> can leave this commented out
 	// point db.dex at vault.dex : sql port
 
