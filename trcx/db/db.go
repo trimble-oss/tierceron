@@ -157,7 +157,7 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 }
 
 // CreateEngine - creates a Tierceron query engine for query of configurations.
-func CreateEngine(config eUtils.DriverConfig,
+func CreateEngine(config *eUtils.DriverConfig,
 	templatePaths []string, env string, dbname string) (*TierceronEngine, error) {
 
 	te := &TierceronEngine{Database: memory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext(), Config: config}
