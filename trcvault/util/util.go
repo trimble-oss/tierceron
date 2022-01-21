@@ -91,7 +91,7 @@ func GetJSONFromClient(httpClient *http.Client, headers map[string]string, addre
 	return nil
 }
 
-func GetSeedTemplate(templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) {
+func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) {
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
 	templateResult.ValueSection["values"] = map[string]map[string]string{}
 
@@ -119,7 +119,9 @@ func GetSeedTemplate(templateResult *extract.TemplateResultData, goMod *helperkv
 	)
 }
 
-func SeedVaultWithTenant(templateResult *extract.TemplateResultData, goMod *kv.Modifier, tenantConfiguration map[string]string, service string, address string, token string) error {
+func SeedVaultById(goMod *kv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]string, tableId string) error {
+	// Copy the base template
+	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
 
@@ -131,7 +133,7 @@ func SeedVaultWithTenant(templateResult *extract.TemplateResultData, goMod *kv.M
 	sliceTemplateSection := []interface{}{}
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
-	for key, value := range tenantConfiguration {
+	for key, value := range tableData {
 		templateResult.SecretSection["super-secrets"][service][key] = value
 	}
 	maxDepth := templateResult.TemplateDepth
@@ -166,6 +168,6 @@ func SeedVaultWithTenant(templateResult *extract.TemplateResultData, goMod *kv.M
 	seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n"
 	//VaultX Section Ends
 	//VaultInit Section Begins
-	il.SeedVaultFromData(true, []byte(seedData), address, token, goMod.Env, log.Default(), service, false, goMod.Env+"."+tenantConfiguration["enterpriseId"])
+	il.SeedVaultFromData(true, []byte(seedData), address, token, goMod.Env, log.Default(), service, false, goMod.Env+"."+tableId)
 	return nil
 }
