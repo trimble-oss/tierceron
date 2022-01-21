@@ -607,13 +607,12 @@ func GetAcceptedTemplatePaths(modCheck *Modifier, templatePaths []string) ([]str
 	}
 
 	var acceptedTemplatePaths []string
-	for key, _ := range serviceMap {
-		for _, templatePath := range templatePaths {
-			templatePathParts := strings.Split(templatePath, "/")
-			service := templatePathParts[len(templatePathParts)-2]
-			if strings.Contains(service, key) {
-				acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
-			}
+	for _, templatePath := range templatePaths {
+		templatePathParts := strings.Split(templatePath, "/")
+		service := templatePathParts[len(templatePathParts)-2]
+
+		if _, ok := serviceMap[service]; ok {
+			acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
 		}
 	}
 
