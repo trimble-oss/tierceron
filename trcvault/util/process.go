@@ -271,7 +271,7 @@ func ProcessTable(pluginConfig map[string]interface{},
 
 			//TODO: Write back to SQL engine - Upload the tenant to vault with new id
 			t := tcutil.GetTenantFromMap(tenantConfiguration)
-			err = t.Update(sqle.NewEmptyContext(), spectrumConn)
+			err = t.Update(sqle.NewEmptyContext(), mysqlConn)
 			fmt.Println(err)
 		}
 	}
