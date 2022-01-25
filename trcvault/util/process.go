@@ -2,7 +2,6 @@ package util
 
 import (
 	"database/sql"
-	"fmt"
 	"io"
 	"time"
 
@@ -23,8 +22,6 @@ import (
 	configcore "VaultConfig.Bootstrap/configcore"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
-
-var changedChannel = make(chan bool, 5)
 
 func getChangeIdQuery(databaseName string, changeTable string) string {
 	return "SELECT id FROM " + databaseName + `.` + changeTable
@@ -48,7 +45,17 @@ func GetInsertTrigger(databaseName string, tableName string, idColumnName string
 		` END;`
 }
 
-func SeedVaultFromChanges(tierceronEngine *db.TierceronEngine, goMod *helperkv.Modifier, pluginConfig map[string]interface{}, baseTableTemplate *extract.TemplateResultData, service string, v *system.Vault, databaseName string, tableName string, idColumnName string, changeTable string) {
+func SeedVaultFromChanges(tierceronEngine *db.TierceronEngine,
+	goMod *helperkv.Modifier,
+	pluginConfig map[string]interface{},
+	baseTableTemplate *extract.TemplateResultData,
+	service string,
+	v *system.Vault,
+	databaseName string,
+	tableName string,
+	identityColumnName string,
+	changeTable string,
+	changedColumnName string) {
 	changeIdQuery := getChangeIdQuery(databaseName, changeTable)
 	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changeIdQuery)
 	if err != nil {
@@ -58,14 +65,14 @@ func SeedVaultFromChanges(tierceronEngine *db.TierceronEngine, goMod *helperkv.M
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
 
-		changedTableQuery := `SELECT * FROM ` + databaseName + `.` + tableName + ` WHERE ` + idColumnName + `='` + changedId + `'` // TODO: Implement query using changedId
+		changedTableQuery := `SELECT * FROM ` + databaseName + `.` + tableName + ` WHERE ` + identityColumnName + `='` + changedId + `'` // TODO: Implement query using changedId
 
 		_, changedTableColumns, changedTableData, err := db.Query(tierceronEngine, changedTableQuery)
 		if err != nil {
 			log.Println(err)
 		}
 
-		tableDataMap := map[string]string{}
+		tableDataMap := map[string]interface{}{}
 		for i, column := range changedTableColumns {
 			tableDataMap[column] = changedTableData[0][i]
 		}
@@ -73,7 +80,7 @@ func SeedVaultFromChanges(tierceronEngine *db.TierceronEngine, goMod *helperkv.M
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
-		seedError := SeedVaultById(goMod, service, pluginConfig["address"].(string), v.GetToken(), baseTableTemplate, tableDataMap, tableDataMap["enterpriseId"])
+		seedError := SeedVaultById(goMod, service, pluginConfig["address"].(string), v.GetToken(), baseTableTemplate, tableDataMap, tableDataMap[changedColumnName].(string))
 		if seedError != nil {
 			log.Println(seedError)
 		}
@@ -86,9 +93,10 @@ func ProcessTable(pluginConfig map[string]interface{},
 	goMod *helperkv.Modifier,
 	mysqlConn *sql.DB,
 	vault *sys.Vault,
-	env string, templateTablePath string) {
+	env string,
+	templateTablePath string,
+	changedChannel chan bool) {
 
-	// 5. Upload tenants into a mysql table
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
 	project, service, tableTemplateName := utils.GetProjectService(pluginConfig["templatePath"].(string))
@@ -100,16 +108,8 @@ func ProcessTable(pluginConfig map[string]interface{},
 		log.Println(err)
 	}
 
+	// 2. Initialize Engine and create changes table.
 	tierceronEngine.Context = sqle.NewEmptyContext()
-	//	ii. Init database and tables in local mysql engine instance.
-	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tcutil.GetTenantSchema(project))
-	if err != nil {
-		log.Println(err)
-	}
-
-	// 3. Retrieve tenant configurations from mysql.
-	tenantConfigurations, err := tcutil.GetTenantConfigurations(mysqlConn)
-
 	changeTableName := tableName + "_Changes"
 	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
 		{Name: "id", Type: sqle.Text, Source: changeTableName},
@@ -119,103 +119,66 @@ func ProcessTable(pluginConfig map[string]interface{},
 		log.Println(err)
 	}
 
-	//Create triggers
-	var updTrigger sqle.TriggerDefinition
-	var insTrigger sqle.TriggerDefinition
-	insTrigger.Name = "tcInsertTrigger"
-	updTrigger.Name = "tcUpdateTrigger"
-	updTrigger.CreateStatement = GetUpdateTrigger(tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName())
-	insTrigger.CreateStatement = GetInsertTrigger(tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName())
-	tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
-	tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
-
-	for _, tenant := range tenantConfigurations { //Loop through tenant configs and add to mysql table
-		tenant["enterpriseId"] = ""
-		_, _, _, err := db.Query(tierceronEngine, tcutil.GetTenantConfigurationInsert(tenant, tierceronEngine.Database.Name(), tableName))
+	// Set up schema callback for table to track.
+	initTableSchemaCB := func(tableSchema sqle.PrimaryKeySchema) {
+		//	ii. Init database and tables in local mysql engine instance.
+		err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tableSchema)
 		if err != nil {
 			log.Println(err)
 		}
 	}
-	/*
-		// e. Query for enterprise vs no-enterprise id in mysql table
-			//sql query
-			sqlstr := "SELECT * FROM " + tierceronEngine.Database.Name() + "." + project + " WHERE enterpriseId = ''"
-			tierceronEngine.Context = tierceronEngine.Context.WithCurrentDB(tierceronEngine.Database.Name())
-			_, _, _, err = vaultvutil.Query(tierceronEngine, sqlstr)
-			if err != nil {
-				log.Println(err)
-			}
-	*/
 
-	//easier way to query?
-	var enterpriseTenants []map[string]string
-	var nonEnterpriseTenants []map[string]string
-	for _, tenant := range tenantConfigurations {
-		if tenant["enterpriseId"] != "" {
-			enterpriseTenants = append(enterpriseTenants, tenant)
-		} else {
-			nonEnterpriseTenants = append(nonEnterpriseTenants, tenant)
+	// Set up call back to enable a trigger to track
+	// whenever a row in a table changes...
+	createTableTriggersCB := func(identityColumnName string) {
+		//Create triggers
+		var updTrigger sqle.TriggerDefinition
+		var insTrigger sqle.TriggerDefinition
+		insTrigger.Name = "tcInsertTrigger"
+		updTrigger.Name = "tcUpdateTrigger"
+		updTrigger.CreateStatement = GetUpdateTrigger(tierceronEngine.Database.Name(), tableName, identityColumnName)
+		insTrigger.CreateStatement = GetInsertTrigger(tierceronEngine.Database.Name(), tableName, identityColumnName)
+		tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
+		tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
+	}
+
+	// Make a call on Call back to insert or update using the provided query.
+	// If this is expected to result in a change to an existing table, thern trigger
+	// something to the changed channel.
+	applyDBQueryCB := func(query string, changed bool) {
+		_, _, _, err := db.Query(tierceronEngine, query)
+		if err != nil {
+			log.Println(err)
+		}
+		if changed {
+			changedChannel <- true
 		}
 	}
 
-	// 2. Pull enterprises from vault --> local queryable manageable mysql db.
-	/* //UNCOMMENT THIS LATER***
-		listValues, err := goMod.ListEnv("values/")
-		if err != nil { //This call only works if vault has permission to list metadata at values/
-			log.Println(err) //otherwise permission denied.
-		} else if listValues == nil {
-			log.Println("No environments were found when querying vault.")
-		} else {
-			for _, valuesPath := range listValues.Data {
-				for _, envInterface := range valuesPath.([]interface{}) {
-					if strings.Contains(envInterface.(string), goMod.Env) && strings.Contains(envInterface.(string), ".") {
-						eidStr := strings.Split(envInterface.(string), ".")[1]
-						eidStr = strings.ReplaceAll(eidStr, "/", "")
-						eid, err := svaultonv.Atoi(eidStr)
-						if err != nil {
-							fmt.Printf("Failed to convert eid to an integer: %s \n", eidStr)
-						}
-						availEids = append(availEids, eid)
-					}
-				}
-			}
-		}
+	// Open a database connection to the provided source using provided
+	// source configurations.
+	getSourceDBConn := func(dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
+		return OpenDirectConnection(dbUrl,
+			username,
+			configcore.DecryptSecretConfig(sourceDBConfig, config))
 	}
-	*/
 
 	// 3. Write seed data to vault
 	var baseTableTemplate extract.TemplateResultData
 	LoadBaseTemplate(&baseTableTemplate, goMod, project, service, pluginConfig["templatePath"].(string))
 
-	//Puts tenant configurations inside generated seed template.
-	for _, tableData := range enterpriseTenants {
-		err := SeedVaultById(goMod, service, pluginConfig["address"].(string), vault.GetToken(), &baseTableTemplate, tableData, tableData["enterpriseId"])
+	// Generates a seed configuration utilizing the current tableName and provided id
+	// This is equivalent to a 'row' in a table.
+	seedVaultCB := func(tableData map[string]interface{}, id string) {
+		err := SeedVaultById(goMod, service, pluginConfig["address"].(string), vault.GetToken(), &baseTableTemplate, tableData, id)
 		if err != nil {
 			log.Println(err)
 		}
 	}
 
-	//
-	// 1. ETL from mysql -> vault?  Either in memory or mysql->file->Vault
-	//     Templates have file directory format: Project/Service/config
-	//     Database will have:  Database = Service, table = config
-	//     Further factoring can put Project->mysql instance by port...
-	//     We want another configuration file..  that would have port numbers by id?
-	//         this config would have a name(Project) and a port (mysql port)
-	//     Multiples would be queryably -- so, each instance of the config would get its own id (like an enterprise)
-	//
-	// 2. Pull enterprises from vault --> local queryable manageable mysql db.  *done*  *milestone*  Just check in the method that returns slice of enterprises.
-	// 3. Write seed data to vault... if it has an enterprise...		*done*
-	//     a. if it doesn't have an enterprise id... then write it directly to mysql database... but do this after
-	//        happy path is done.
-	//        -- Connect to spectrum db (using data in each enterprise)
-	//        -- Query table PA_VALUE_VARIABLES for salesforceId
-	//        -- If there is a salesforceId -- query over to Team with sfid.. and get list of enterprises registered.
-	//           -- take returned enterprise id and dump it into this row..
-	//           -- if no enterpriseid returned...  they are not yet registered!
-	//              if not yet registered with team...
-	//              goto AutoRegistration...
-
+	// Http query resources include:
+	// 1. Auth -- Auth is provided by the external library tcutil.
+	// 2. Get json by Api call.
 	authComponents := tcutil.GetAuthComponents(config)
 	httpClient, err := helperkv.CreateHTTPClient(false, authComponents["authDomain"].(string), env, false)
 	if err != nil {
@@ -224,77 +187,40 @@ func ProcessTable(pluginConfig map[string]interface{},
 
 	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
 
-	for _, tenantConfiguration := range nonEnterpriseTenants {
-		if tenantConfiguration["tenantId"] == "INSERT HERE" {
-			spectrumConn, err := OpenDirectConnection(tenantConfiguration["jdbcUrl"],
-				tenantConfiguration["username"],
-				configcore.DecryptSecretConfig(tenantConfiguration, config))
-
-			if spectrumConn != nil {
-				defer spectrumConn.Close()
-			}
-
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			var registrationReferenceId string
-			err = spectrumConn.QueryRow(tcutil.GetRegistrationReferenceIdQuery()).Scan(&registrationReferenceId)
-			if err != nil {
-				log.Println(err)
-				continue
-			} else if registrationReferenceId == "" {
-				log.Println("No eid found.")
-				continue
-			} else {
-				authData["refId"] = strings.TrimSpace(registrationReferenceId)
-			}
-			sourceIdComponents := tcutil.GetSourceIdComponents(config, authData)
-
-			clientData := GetJSONFromClient(httpClient, sourceIdComponents["apiAuthHeaders"].(map[string]string), sourceIdComponents["apiEndpoint"].(string), sourceIdComponents["bodyData"].(io.Reader))
-			// End Refactor
-			if len(clientData["items"].([]interface{})) > 0 {
-				enterpriseMap := clientData["items"].([]interface{})[0].(map[string]interface{})
-				if enterpriseMap["id"].(float64) != 0 {
-					tenantConfiguration["enterpriseId"] = fmt.Sprintf("%.0f", enterpriseMap["id"].(float64))
-
-					//SQL update row
-					_, _, _, err := db.Query(tierceronEngine, tcutil.GetTenantConfigurationUpdate(tenantConfiguration, tierceronEngine.Database.Name(), tableName))
-					if err != nil {
-						log.Println(err)
-					}
-
-					changedChannel <- true
-				}
-			}
-
-			//TODO: Write back to SQL engine - Upload the tenant to vault with new id
-			t := tcutil.GetTenantFromMap(tenantConfiguration)
-			err = t.Update(sqle.NewEmptyContext(), mysqlConn)
-			fmt.Println(err)
-		}
+	// Utilizing provided api auth headers, endpoint, and body data
+	// this CB makes a call on behalf of the caller and returns a map
+	// representation of json data provided by the endpoint.
+	getSourceByAPICB := func(apiAuthHeaders map[string]string, apiEndpoint string, bodyData io.Reader) map[string]interface{} {
+		return GetJSONFromClient(httpClient, apiAuthHeaders, apiEndpoint, bodyData)
 	}
 
-	//start up mysql instance locally -> can leave this commented out
-	// point db.dex at vault.dex : sql port
-
-	// Work with enterprise data stuff... to register enterprises...
-
-	// 4. Write a go routine that periodically runs 3a...
-	//    This is basically a 'watcher' routine that periodically updates Vault if the internal
-	//    mysql table changes in any way...
-	//    -- for now this can be a no-op (does nothing)...  with a sleep...
-	func() {
+	// When called sets up an infinite loop listening for changes on either
+	// the changedChannel or checks itself every 3 minutes for changes to
+	// its own tables.
+	seedVaultDeltaCB := func(idColumnName string, changedColumnName string) {
 		for {
 			select {
 			case <-changedChannel:
-				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName(), changeTableName)
+				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
 			case <-time.After(time.Minute * 3):
-				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, tcutil.GetTenantIdColumnName(), changeTableName)
+				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
 			}
 		}
-	}()
+	}
+
+	tcutil.ProcessTableController(config,
+		authData,
+		mysqlConn,
+		getSourceByAPICB,
+		project,
+		tierceronEngine.Database.Name(),
+		tableName,
+		getSourceDBConn,
+		initTableSchemaCB,
+		createTableTriggersCB,
+		applyDBQueryCB,
+		seedVaultCB,
+		seedVaultDeltaCB)
 }
 
 func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
@@ -349,7 +275,9 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 		mysqlConn,
 		vault,
 		env,
-		pluginConfig["templatePath"].(string))
+		pluginConfig["templatePath"].(string),
+		make(chan bool, 5), // changedChannel
+	)
 	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...
 	//    somehow you need to track if something is a new entry...  like a rowChangedSlice...
 
