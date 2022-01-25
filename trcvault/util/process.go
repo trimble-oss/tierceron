@@ -47,7 +47,7 @@ func getInsertTrigger(databaseName string, tableName string, idColumnName string
 
 func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	goMod *helperkv.Modifier,
-	pluginConfig map[string]interface{},
+	vaultAddress string,
 	baseTableTemplate *extract.TemplateResultData,
 	service string,
 	v *system.Vault,
@@ -80,16 +80,15 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
-		seedError := SeedVaultById(goMod, service, pluginConfig["address"].(string), v.GetToken(), baseTableTemplate, tableDataMap, tableDataMap[changedColumnName].(string))
+		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, tableDataMap, tableDataMap[changedColumnName].(string))
 		if seedError != nil {
 			log.Println(seedError)
 		}
 	}
 }
 
-func ProcessTable(pluginConfig map[string]interface{},
-	configDriver *utils.DriverConfig,
-	config map[string]interface{},
+func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interface{},
+	vaultAddress string,
 	goMod *helperkv.Modifier,
 	mysqlConn *sql.DB,
 	vault *sys.Vault,
@@ -100,19 +99,12 @@ func ProcessTable(pluginConfig map[string]interface{},
 
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
-	project, service, tableTemplateName := utils.GetProjectService(pluginConfig["templatePath"].(string))
+	project, service, tableTemplateName := utils.GetProjectService(templateTablePath)
 	templateSplit := strings.Split(tableTemplateName, service+"/")
 	tableName := strings.Split(templateSplit[len(templateSplit)-1], ".")[0]
-	templatePaths := []string{pluginConfig["templatePath"].(string)}
-	tierceronEngine, err := db.CreateEngine(configDriver, templatePaths, env, service)
-	if err != nil {
-		log.Println(err)
-	}
-
-	// 2. Initialize Engine and create changes table.
-	tierceronEngine.Context = sqle.NewEmptyContext()
 	changeTableName := tableName + "_Changes"
-	err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
+
+	err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
 		{Name: "id", Type: sqle.Text, Source: changeTableName},
 		{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 	}))
@@ -166,12 +158,12 @@ func ProcessTable(pluginConfig map[string]interface{},
 
 	// 3. Write seed data to vault
 	var baseTableTemplate extract.TemplateResultData
-	LoadBaseTemplate(&baseTableTemplate, goMod, project, service, pluginConfig["templatePath"].(string))
+	LoadBaseTemplate(&baseTableTemplate, goMod, project, service, templateTablePath)
 
 	// Generates a seed configuration utilizing the current tableName and provided id
 	// This is equivalent to a 'row' in a table.
 	seedVaultCB := func(tableData map[string]interface{}, id string) {
-		err := SeedVaultById(goMod, service, pluginConfig["address"].(string), vault.GetToken(), &baseTableTemplate, tableData, id)
+		err := SeedVaultById(goMod, service, vaultAddress, vault.GetToken(), &baseTableTemplate, tableData, id)
 		if err != nil {
 			log.Println(err)
 		}
@@ -195,9 +187,9 @@ func ProcessTable(pluginConfig map[string]interface{},
 		for {
 			select {
 			case <-changedChannel:
-				seedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
+				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
 			case <-time.After(time.Minute * 3):
-				seedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
+				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
 			}
 		}
 	}
@@ -275,10 +267,18 @@ func ProcessTables(env string, pluginConfig map[string]interface{}) error {
 
 	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
 
+	tierceronEngine, err := db.CreateEngine(&configDriver, tableList, env, tcutil.GetDatabaseName())
+	if err != nil {
+		log.Println(err)
+	}
+
+	// 2. Initialize Engine and create changes table.
+	tierceronEngine.Context = sqle.NewEmptyContext()
+
 	for _, table := range tableList {
-		ProcessTable(pluginConfig,
-			&configDriver,
+		ProcessTable(tierceronEngine,
 			config,
+			pluginConfig["address"].(string),
 			goMod,
 			mysqlConn,
 			vault,
