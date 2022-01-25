@@ -5,8 +5,7 @@ import (
 	"errors"
 	"log"
 	"tierceron/trcconfig/utils"
-	"tierceron/trcvault/util"
-	trcvutil "tierceron/trcvault/util"
+	vscutils "tierceron/trcvault/util"
 	helperkv "tierceron/vaulthelper/kv"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
@@ -37,7 +36,7 @@ func initVaultHost() error {
 	if vaultHost == "" {
 		logger.Println("Begin finding vault.")
 
-		v, lvherr := trcvutil.GetLocalVaultHost()
+		v, lvherr := vscutils.GetLocalVaultHost()
 		if lvherr != nil {
 			logger.Println("Couldn't find local vault: " + lvherr.Error())
 			return lvherr
@@ -109,7 +108,17 @@ func ProcessEnvConfig(env string, config map[string]interface{}) error {
 		return ptvError
 	}
 
-	util.DoProcessEnvConfig(env, config)
+	// Adding additional configurations the plugin needs to know which tables to process
+	// and where to get additional configurations.
+	config["templatePath"] = []string{
+		"trc_templates/TenantDatabase/TenantConfiguration/TenantConfiguration.tmpl",           // implemented
+		"trc_templates/TenantDatabase/SpectrumEnterpriseConfig/SpectrumEnterpriseConfig.tmpl", // not yet implemented.
+		//		"trc_templates/TenantDatabase/KafkaTableConfiguration/KafkaTableConfiguration.tmpl",   // not yet implemented.
+		//		"trc_templates/TenantDatabase/Mysqlfile/Mysqlfile.tmpl",                               // not yet implemented.
+	}
+	config["connectionPath"] = "trc_templates/TrcVault/Database/config.tmpl"
+
+	vscutils.ProcessTables(env, config)
 
 	return nil
 }
