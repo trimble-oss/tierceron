@@ -93,6 +93,7 @@ func ProcessTable(pluginConfig map[string]interface{},
 	goMod *helperkv.Modifier,
 	mysqlConn *sql.DB,
 	vault *sys.Vault,
+	authData map[string]interface{},
 	env string,
 	templateTablePath string,
 	changedChannel chan bool) {
@@ -176,16 +177,9 @@ func ProcessTable(pluginConfig map[string]interface{},
 		}
 	}
 
-	// Http query resources include:
-	// 1. Auth -- Auth is provided by the external library tcutil.
-	// 2. Get json by Api call.
-	authComponents := tcutil.GetAuthComponents(config)
-	httpClient, err := helperkv.CreateHTTPClient(false, authComponents["authDomain"].(string), env, false)
-	if err != nil {
-		log.Println(err)
-	}
-
-	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
+	// TODO: cms Construction Management Services - presently our only source for enriching our internal tables.
+	// Is this truly the only other source?
+	httpClient, err := helperkv.CreateHTTPClient(false, config["cmsDomain"].(string), env, false)
 
 	// Utilizing provided api auth headers, endpoint, and body data
 	// this CB makes a call on behalf of the caller and returns a map
@@ -223,7 +217,7 @@ func ProcessTable(pluginConfig map[string]interface{},
 		seedVaultDeltaCB)
 }
 
-func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
+func ProcessTables(env string, pluginConfig map[string]interface{}) error {
 	// 1. Get Plugin configurations.
 	project, service, _ := utils.GetProjectService(pluginConfig["connectionPath"].(string))
 	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), env, []string{})
@@ -268,16 +262,32 @@ func DoProcessEnvConfig(env string, pluginConfig map[string]interface{}) error {
 		Env:          env,
 	}
 
-	ProcessTable(pluginConfig,
-		&configDriver,
-		config,
-		goMod,
-		mysqlConn,
-		vault,
-		env,
-		pluginConfig["templatePath"].(string),
-		make(chan bool, 5), // changedChannel
-	)
+	tableList := pluginConfig["templatePath"].([]string)
+
+	// Http query resources include:
+	// 1. Auth -- Auth is provided by the external library tcutil.
+	// 2. Get json by Api call.
+	authComponents := tcutil.GetAuthComponents(config)
+	httpClient, err := helperkv.CreateHTTPClient(false, authComponents["authDomain"].(string), env, false)
+	if err != nil {
+		log.Println(err)
+	}
+
+	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
+
+	for _, table := range tableList {
+		ProcessTable(pluginConfig,
+			&configDriver,
+			config,
+			goMod,
+			mysqlConn,
+			vault,
+			authData,
+			env,
+			table,
+			make(chan bool, 5), // tableChangedChannel
+		)
+	}
 	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...
 	//    somehow you need to track if something is a new entry...  like a rowChangedSlice...
 
