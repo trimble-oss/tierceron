@@ -6,12 +6,12 @@ dbuser: {{.dbuser}}
 dbpassword: {{.dbpassword}}
 maxconn: {{or .maxconn "100"}}
 # Secret used for decrypting 
-encryptionSecret = {{.encryptionSecret}}
+encryptionSecret: {{.encryptionSecret}}
 
 # Trimble Domain, client id, and client secret
-trimbleDomain = {{.trimbleIdDomain}}
-trimbleClientId = {{.trimbleClientId}}
-trimbleClientSecret = {{.trimbleClientSecret}}
+trimbleDomain: {{.trimbleIdDomain}}
+trimbleClientId: {{.trimbleClientId}}
+trimbleClientSecret: {{.trimbleClientSecret}}
 
 # Construction Management Services
-cmsDomain = {{.cmsDomain}}
+cmsDomain: {{.cmsDomain}}
