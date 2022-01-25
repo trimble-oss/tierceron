@@ -31,21 +31,21 @@ func getDeleteChangeQuery(databaseName string, changeTable string, id string) st
 	return "DELETE FROM " + databaseName + `.` + changeTable + " WHERE id = '" + id + "'"
 }
 
-func GetUpdateTrigger(databaseName string, tableName string, idColumnName string) string {
+func getUpdateTrigger(databaseName string, tableName string, idColumnName string) string {
 	return `CREATE TRIGGER tcUpdateTrigger BEFORE UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
 		` UPDATE ` + databaseName + `.` + tableName + `_Changes SET id=new.tenantId, updateTime=current_timestamp() WHERE EXISTS (select id from ` + databaseName + `.` + tableName + `_Changes where id=new.` + idColumnName + `);` +
 		` END;`
 }
 
-func GetInsertTrigger(databaseName string, tableName string, idColumnName string) string {
+func getInsertTrigger(databaseName string, tableName string, idColumnName string) string {
 	return `CREATE TRIGGER tcInsertTrigger BEFORE UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
 		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnName + `, current_timestamp());` +
 		` END;`
 }
 
-func SeedVaultFromChanges(tierceronEngine *db.TierceronEngine,
+func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	goMod *helperkv.Modifier,
 	pluginConfig map[string]interface{},
 	baseTableTemplate *extract.TemplateResultData,
@@ -136,8 +136,8 @@ func ProcessTable(pluginConfig map[string]interface{},
 		var insTrigger sqle.TriggerDefinition
 		insTrigger.Name = "tcInsertTrigger"
 		updTrigger.Name = "tcUpdateTrigger"
-		updTrigger.CreateStatement = GetUpdateTrigger(tierceronEngine.Database.Name(), tableName, identityColumnName)
-		insTrigger.CreateStatement = GetInsertTrigger(tierceronEngine.Database.Name(), tableName, identityColumnName)
+		updTrigger.CreateStatement = getUpdateTrigger(tierceronEngine.Database.Name(), tableName, identityColumnName)
+		insTrigger.CreateStatement = getInsertTrigger(tierceronEngine.Database.Name(), tableName, identityColumnName)
 		tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
 		tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
 	}
@@ -201,9 +201,9 @@ func ProcessTable(pluginConfig map[string]interface{},
 		for {
 			select {
 			case <-changedChannel:
-				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
+				seedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
 			case <-time.After(time.Minute * 3):
-				SeedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
+				seedVaultFromChanges(tierceronEngine, goMod, pluginConfig, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
 			}
 		}
 	}
