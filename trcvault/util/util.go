@@ -25,7 +25,7 @@ import (
 	"log"
 )
 
-func GetLocalVaultHost() (string, error) {
+func GetLocalVaultHost(withPort bool) (string, error) {
 	vaultHost := "https://"
 	vaultErr := errors.New("No usable local vault found.")
 	hostFileLines, pherr := txeh.ParseHosts("/etc/hosts")
@@ -42,15 +42,19 @@ func GetLocalVaultHost() (string, error) {
 		}
 	}
 
-	// Now, look for vault.
-	for i := 8190; i < 8300; i++ {
-		vh := vaultHost + ":" + strconv.Itoa(i)
-		_, err := sys.NewVault(true, vh, "", false, true, true)
-		if err == nil {
-			vaultHost = vaultHost + ":" + strconv.Itoa(i)
-			vaultErr = nil
-			break
+	if withPort {
+		// Now, look for vault.
+		for i := 8190; i < 8300; i++ {
+			vh := vaultHost + ":" + strconv.Itoa(i)
+			_, err := sys.NewVault(true, vh, "", false, true, true)
+			if err == nil {
+				vaultHost = vaultHost + ":" + strconv.Itoa(i)
+				vaultErr = nil
+				break
+			}
 		}
+	} else {
+		vaultErr = nil
 	}
 
 	return vaultHost, vaultErr

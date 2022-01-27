@@ -3,6 +3,9 @@ package util
 import (
 	"database/sql"
 	"io"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"tierceron/trcx/db"
@@ -95,7 +98,8 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 	authData map[string]interface{},
 	env string,
 	templateTablePath string,
-	changedChannel chan bool) {
+	changedChannel chan bool,
+	signalChannel chan os.Signal) {
 
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
@@ -186,6 +190,9 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 	seedVaultDeltaCB := func(idColumnName string, changedColumnName string) {
 		for {
 			select {
+			case <-signalChannel:
+				log.Println("Receiving shutdown presumably from vault.")
+				os.Exit(0)
 			case <-changedChannel:
 				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
 			case <-time.After(time.Minute * 3):
@@ -274,6 +281,12 @@ func ProcessTables(env string, pluginConfig map[string]interface{}) error {
 
 	// 2. Initialize Engine and create changes table.
 	tierceronEngine.Context = sqle.NewEmptyContext()
+	signalChannel := make(chan os.Signal, 1)
+	signal.Notify(signalChannel,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
 
 	for _, table := range tableList {
 		ProcessTable(tierceronEngine,
@@ -286,6 +299,7 @@ func ProcessTables(env string, pluginConfig map[string]interface{}) error {
 			env,
 			table,
 			make(chan bool, 5), // tableChangedChannel
+			signalChannel,
 		)
 	}
 	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...

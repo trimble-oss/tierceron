@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"os"
 	"tierceron/trcconfig/utils"
 	vscutils "tierceron/trcvault/util"
 	helperkv "tierceron/vaulthelper/kv"
@@ -36,7 +37,7 @@ func initVaultHost() error {
 	if vaultHost == "" {
 		logger.Println("Begin finding vault.")
 
-		v, lvherr := vscutils.GetLocalVaultHost()
+		v, lvherr := vscutils.GetLocalVaultHost(true)
 		if lvherr != nil {
 			logger.Println("Couldn't find local vault: " + lvherr.Error())
 			return lvherr
@@ -82,7 +83,7 @@ func populateTrcVaultDbConfigs(addr string, token string, env string) error {
 
 	errYaml := yaml.Unmarshal([]byte(configuredTemplate), &vaultEnvConfig)
 	if errYaml != nil {
-		logger.Println("Vault config lookup failure")
+		logger.Println("Vault config lookup failure: " + configuredTemplate)
 		return errYaml
 	}
 
@@ -118,12 +119,14 @@ func ProcessEnvConfig(env string, config map[string]interface{}) error {
 	}
 	config["connectionPath"] = "trc_templates/TrcVault/Database/config.tmpl"
 
-	vscutils.ProcessTables(env, config)
+	go vscutils.ProcessTables(env, config)
 
 	return nil
 }
 
 func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) error {
+	logger.Println("TrcInitialize begun.")
+
 	for _, env := range environments {
 		logger.Println("Processing env: " + env)
 		tokenData, sgErr := req.Storage.Get(ctx, env)
@@ -141,17 +144,22 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 			logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())
 			continue
 		}
-		initVaultHost()
+		go func() {
+			logger.Println("Config engine init begun: " + env)
 
-		pecError := ProcessEnvConfig(env, tokenMap)
+			initVaultHost()
 
-		if pecError != nil {
-			logger.Println("Bad configuration data for env: " + env + " error: " + pecError.Error())
-			continue
-		}
+			pecError := ProcessEnvConfig(env, tokenMap)
+
+			if pecError != nil {
+				logger.Println("Bad configuration data for env: " + env + " error: " + pecError.Error())
+			}
+			logger.Println("Config engine setup complete for env: " + env)
+		}()
 	}
 
 	if KvInitialize != nil {
+		logger.Println("Entering KvInitialize...")
 		return KvInitialize(ctx, req)
 	}
 
@@ -184,19 +192,40 @@ func TrcCreateUpdate(ctx context.Context, req *logical.Request, data *framework.
 
 // TrcFactory configures and returns Mock backends
 func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-	logger.Println("Factory initialization begun.")
+	env, err := conf.System.PluginEnv(ctx)
+	if env != nil {
+		logger.Println("=============== Initializing Vault Tierceron Plugin ===============")
+		logger.Println("Factory initialization begun.")
+	}
 	environmentConfigs = map[string]*EnvConfig{}
 
+	if err != nil {
+		logger.Println("Factory init failure: " + err.Error())
+		os.Exit(-1)
+	}
+
 	bkv, err := kv.Factory(ctx, conf)
+	if err != nil {
+		logger.Println("Something wrong: " + err.Error())
+	} else {
+		if env != nil {
+			logger.Println("Kv initialization begun.")
+		}
+		KvInitialize = bkv.(*kv.PassthroughBackend).InitializeFunc
+		bkv.(*kv.PassthroughBackend).InitializeFunc = TrcInitialize
+		if env != nil {
+			logger.Println("Kv initialization complete.")
+		}
 
-	KvInitialize = bkv.(*kv.PassthroughBackend).InitializeFunc
-	bkv.(*kv.PassthroughBackend).InitializeFunc = TrcInitialize
+		KvCreateUpdate = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation]
+		bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation] = TrcCreateUpdate
+		bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.UpdateOperation] = TrcCreateUpdate
+	}
 
-	KvCreateUpdate = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation]
-	bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation] = TrcCreateUpdate
-	bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.UpdateOperation] = TrcCreateUpdate
-
-	logger.Println("Factory initialization complete.")
+	if env != nil {
+		logger.Println("Factory initialization complete.")
+		logger.Println("=============== Vault Tierceron Plugin Initialization complete ===============")
+	}
 
 	return bkv, err
 }
