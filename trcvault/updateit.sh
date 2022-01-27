@@ -16,6 +16,12 @@ vault plugin register \
           -args=`backendUUID=4` \
           trc-vault-plugin
 
+vault secrets enable \
+          -path=vaultdb \
+          -plugin-name=trc-vault-plugin \
+          -description="Tierceron Vault Plugin" \
+          plugin
+
 curl \
     --header "X-Vault-Token: $VAULT_TOKEN" \
     --request PUT \
