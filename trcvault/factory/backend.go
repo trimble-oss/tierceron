@@ -169,25 +169,29 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 
 func TrcCreateUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcCreateUpdate")
+	tokenPathMap := map[string]interface{}{}
+	tokenPathMap["path"] = data.Get("path")
+	tokenPathMap["token"] = data.Get("token")
 	initVaultHost()
 
-	path := data.Get("path")
+	path := tokenPathMap["path"]
 
 	switch path.(string) {
 	case "dev":
-		pecError := ProcessEnvConfig("dev", data.Raw)
+		pecError := ProcessEnvConfig("dev", tokenPathMap)
 		if pecError != nil {
 			return nil, pecError
 		}
 	case "QA":
-		pecError := ProcessEnvConfig("QA", data.Raw)
+		pecError := ProcessEnvConfig("QA", tokenPathMap)
 		if pecError != nil {
 			return nil, pecError
 		}
 	default:
 		break
 	}
-	return KvCreateUpdate(ctx, req, data)
+	response, errKvCreateUpdate := KvCreateUpdate(ctx, req, data)
+	return response, errKvCreateUpdate
 }
 
 // TrcFactory configures and returns Mock backends
