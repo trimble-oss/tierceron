@@ -1,17 +1,26 @@
 package main
 
 import (
+	"flag"
+	"log"
+	"os"
 	vscutils "tierceron/trcvault/util"
+	eUtils "tierceron/utils"
 )
 
 // This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
 func main() {
-	tokenMap := map[string]interface{}{}
-	tokenMap["address"] = "https://vault.whoboot.org:8200" //This should be local
-	tokenMap["token"] = "s.cXIsCveFbqldF8kwz9aaBU6A"
+	logFilePtr := flag.String("log", "./trcdbplugin.log", "Output path for log file")
+	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	eUtils.CheckError(err, true)
+	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
+
+	tokenEnvMap := map[string]interface{}{}
+	tokenEnvMap["address"] = "https://vault.whoboot.org:8200" //This should be local
+	tokenEnvMap["token"] = "s.cXIsCveFbqldF8kwz9aaBU6A"
 	// TenantConfiguration, SpectrumEnterpriseConfig, Mysqlfile
-	tokenMap["templatePath"] = []string{
+	tokenEnvMap["templatePath"] = []string{
 		"trc_templates/TenantDatabase/TenantConfiguration/TenantConfiguration.tmpl", // implemented
 		//		"trc_templates/TenantDatabase/SpectrumEnterpriseConfig/SpectrumEnterpriseConfig.tmpl", // not yet implemented.
 		//		"trc_templates/TenantDatabase/KafkaTableConfiguration/KafkaTableConfiguration.tmpl",   // not yet implemented.
@@ -19,6 +28,7 @@ func main() {
 	}
 
 	// plugin configs here...
-	tokenMap["connectionPath"] = "trc_templates/TrcVault/Database/config.tmpl"
-	vscutils.ProcessTables("QA", tokenMap)
+	tokenEnvMap["connectionPath"] = "trc_templates/TrcVault/Database/config.tmpl"
+	tokenEnvMap["env"] = "QA"
+	vscutils.ProcessTables(tokenEnvMap, logger)
 }

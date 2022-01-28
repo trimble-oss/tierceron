@@ -5,8 +5,9 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
-	"fmt"
 	"io/ioutil"
+	"log"
+	eUtils "tierceron/utils"
 
 	pkcs "golang.org/x/crypto/pkcs12"
 )
@@ -19,7 +20,7 @@ const (
 )
 
 //ValidateKeyStore validates the sendgrid API key.
-func ValidateKeyStore(filename string, pass string) (bool, error) {
+func ValidateKeyStore(filename string, pass string, logger *log.Logger) (bool, error) {
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return false, err
@@ -44,7 +45,7 @@ func ValidateKeyStore(filename string, pass string) (bool, error) {
 
 			isCertValid, err := VerifyCertificate(&cert, "")
 			if err != nil {
-				fmt.Println("Certificate validation failure.")
+				eUtils.LogInfo("Certificate validation failure.", logger)
 			}
 			isValid = isCertValid
 		} else if (*pemBlock).Type == privateKeyType {
@@ -55,7 +56,7 @@ func ValidateKeyStore(filename string, pass string) (bool, error) {
 			}
 
 			if err := key.Validate(); err != nil {
-				fmt.Println("key validation didn't work")
+				eUtils.LogInfo("key validation didn't work", logger)
 			}
 		}
 	}

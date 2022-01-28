@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 	"sort"
@@ -10,20 +11,20 @@ import (
 	"tierceron/vaulthelper/kv"
 )
 
-func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier) map[string]map[string]interface{} {
+func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier, logger *log.Logger) map[string]map[string]interface{} {
 	versionMetadataMap := make(map[string]map[string]interface{})
 	mod.VersionFilter = config.VersionFilter
 	var secretMetadataMap map[string]map[string]interface{}
 	var err error
 
 	if !config.WantCerts {
-		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "super-secrets")
+		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "super-secrets", logger)
 		if secretMetadataMap == nil {
-		    secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values")
+			secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values", logger)
 		}
 	} else {
 		//Certs are in values, not super secrets
-		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values")
+		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values", logger)
 	}
 	var foundKey string
 	for key, value := range secretMetadataMap {

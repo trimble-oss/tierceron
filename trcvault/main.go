@@ -13,18 +13,17 @@ import (
 )
 
 func main() {
-	mlock.Mlock()
-
 	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	eUtils.CheckError(logErr, true)
 	logger := log.New(f, "[trcvault]", log.LstdFlags)
+	mlock.Mlock(logger)
 	factory.Init(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
 
 	args := os.Args
-	vaultHost, lvherr := vscutils.GetLocalVaultHost(false)
+	vaultHost, lvherr := vscutils.GetLocalVaultHost(false, logger)
 	if lvherr != nil {
 		logger.Println("Host lookup failure.")
 		os.Exit(-1)
@@ -39,7 +38,9 @@ func main() {
 	}
 
 	argErr := flags.Parse(args[1:])
-	eUtils.LogErrorObject(argErr, logger, true)
+	if argErr != nil {
+		logger.Fatal(argErr)
+	}
 	logger.Print("Warming up...")
 
 	tlsConfig := apiClientMeta.GetTLSConfig()
@@ -57,8 +58,8 @@ func main() {
 			for {
 				select {
 				case s := <-signalChannel:
-					log.Println("Got signal:", s)
-					log.Println("Received shutdown presumably from vault.")
+					logger.Println("Got signal:", s)
+					logger.Println("Received shutdown presumably from vault.")
 					os.Exit(0)
 				}
 			}
@@ -70,7 +71,6 @@ func main() {
 		TLSProviderFunc:    tlsProviderFunc,
 	})
 	if err != nil {
-		logger.Println("Plugin shutting down")
-		os.Exit(1)
+		logger.Fatal("Plugin shutting down")
 	}
 }

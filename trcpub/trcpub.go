@@ -45,13 +45,13 @@ func main() {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			utils.CheckError(fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
 		}
-		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr, false)
+		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr, false, logger)
 		utils.CheckError(err, true)
 
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		utils.CheckError(err, true)
 
-		mod, err := kv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil)
+		mod, err := kv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, logger)
 		utils.CheckError(err, true)
 		mod.Env = "bamboo"
 
@@ -69,7 +69,7 @@ func main() {
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 
-	mod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil)
+	mod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
 	utils.CheckError(err, true)
 	mod.Env = *envPtr
 
@@ -98,7 +98,7 @@ func uploadTemplates(insecure bool, addr string, token string, dirName string, e
 	logger.Println(subDir)
 
 	// Create modifier
-	mod, err := kv.NewModifier(insecure, token, addr, env, nil)
+	mod, err := kv.NewModifier(insecure, token, addr, env, nil, logger)
 	utils.CheckError(err, true)
 	mod.Env = env
 
