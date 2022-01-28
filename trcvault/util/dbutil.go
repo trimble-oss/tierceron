@@ -37,9 +37,9 @@ func OpenDirectConnection(url string, username string, password string) (*sql.DB
 	if driver == "mysql" {
 		if len(port) == 0 {
 			// protocol+transport://user:pass@host/dbname?option1=a&option2=b
-			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + "/" + dbname + "?tls=skip-verify")
+			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + "/" + dbname + "?tls=skip-verify&parseTime=true")
 		} else {
-			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify")
+			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify&parseTime=true")
 		}
 	} else if driver == "sqlserver" {
 		if len(port) == 0 {
