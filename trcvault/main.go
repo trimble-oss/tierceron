@@ -8,6 +8,7 @@ import (
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
 
+	tclib "VaultConfig.TenantConfig/lib"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
 )
@@ -17,6 +18,7 @@ func main() {
 	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	eUtils.CheckError(logErr, true)
 	logger := log.New(f, "[trcvault]", log.LstdFlags)
+	tclib.SetLogger(logger.Writer())
 	factory.Init(logger)
 	mlock.Mlock(logger)
 
