@@ -204,6 +204,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 			case <-changedChannel:
 				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName, logger)
 			case <-time.After(time.Minute * 3):
+				eUtils.LogInfo("3 minutes... checking for changes.", logger)
 				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName, logger)
 			}
 		}
