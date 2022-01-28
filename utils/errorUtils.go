@@ -70,8 +70,10 @@ func LogError(err error, f *os.File, exit bool) {
 		if exit {
 			if !headlessService {
 				fmt.Printf("Errors encountered, exiting and writing to log file: %s\n", f.Name())
+				log.Fatal(err)
+			} else {
+				os.Exit(-1)
 			}
-			log.Fatal(err)
 		} else {
 			if !headlessService {
 				log.Println(err)
@@ -87,8 +89,10 @@ func LogWarnings(warnings []string, f *os.File, exit bool) {
 		_prefix := log.Prefix()
 		log.SetOutput(f)
 		log.SetPrefix("[WARNS]")
-		for _, w := range warnings {
-			log.Println(w)
+		if !headlessService {
+			for _, w := range warnings {
+				log.Println(w)
+			}
 		}
 		if exit {
 			if !headlessService {
