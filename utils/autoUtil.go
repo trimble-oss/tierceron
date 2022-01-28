@@ -94,7 +94,7 @@ func AutoAuth(insecure bool,
 
 			if *tokenPtr == "" {
 				if !override {
-					fmt.Println("Grabbing config IDs from cert file.")
+					LogInfo("Grabbing config IDs from cert file.", logger)
 					if c.SecretID != "" && secretIDPtr != nil {
 						*secretIDPtr = c.SecretID
 					}
@@ -119,30 +119,30 @@ func AutoAuth(insecure bool,
 			// Enter ID tokens
 			LogInfo("No cert file found, please enter config IDs", logger)
 			if addrPtr != nil && *addrPtr != "" {
-				fmt.Println("vaultHost: " + *addrPtr)
+				LogInfo("vaultHost: "+*addrPtr, logger)
 				vaultHost = *addrPtr
 			} else {
-				fmt.Print("vaultHost: ")
+				LogInfo("vaultHost: ", logger)
 				scanner.Scan()
 				vaultHost = scanner.Text()
 			}
 
 			if *tokenPtr == "" {
 				if secretIDPtr != nil && *secretIDPtr != "" {
-					fmt.Println("secretID: " + *secretIDPtr)
+					LogInfo("secretID: "+*secretIDPtr, logger)
 					secretID = *secretIDPtr
 				} else if secretIDPtr != nil {
-					fmt.Print("secretID: ")
+					LogInfo("secretID: ", logger)
 					scanner.Scan()
 					secretID = scanner.Text()
 					*secretIDPtr = secretID
 				}
 
 				if appRoleIDPtr != nil && *appRoleIDPtr != "" {
-					fmt.Println("approleID: " + *appRoleIDPtr)
+					LogInfo("approleID: "+*appRoleIDPtr, logger)
 					approleID = *appRoleIDPtr
 				} else if appRoleIDPtr != nil {
-					fmt.Print("approleID: ")
+					LogInfo("approleID: ", logger)
 					scanner.Scan()
 					approleID = scanner.Text()
 					*appRoleIDPtr = approleID
@@ -173,9 +173,9 @@ func AutoAuth(insecure bool,
 
 			dump = []byte(certConfigData)
 		} else if override && !exists {
-			fmt.Println("No cert file exists, continuing without saving config IDs")
+			LogInfo("No cert file exists, continuing without saving config IDs", logger)
 		} else {
-			fmt.Printf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n")
+			LogInfo(fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"), logger)
 			certConfigData := "vaultHost: " + vaultHost + "\n"
 			if appRoleIDPtr != nil && secretIDPtr != nil {
 				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
@@ -198,7 +198,7 @@ func AutoAuth(insecure bool,
 			// Create cert file
 			writeErr := ioutil.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
 			if writeErr != nil {
-				fmt.Printf("Unable to write file: %v\n", writeErr)
+				LogInfo(fmt.Sprintf("Unable to write file: %v\n", writeErr), logger)
 			}
 		}
 
@@ -223,7 +223,7 @@ func AutoAuth(insecure bool,
 	if *secretIDPtr != "" || *appRoleIDPtr != "" || *tokenNamePtr != "" {
 		env, _, _, envErr := kv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
-			fmt.Printf("Environment format error: %v\n", envErr)
+			LogErrorMessage(fmt.Sprintf("Environment format error: %v\n", envErr), logger, false)
 			os.Exit(-1)
 		}
 

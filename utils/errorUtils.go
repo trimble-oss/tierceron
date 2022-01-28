@@ -140,13 +140,13 @@ func LogErrorObject(err error, logger *log.Logger, exit bool) {
 }
 
 //LogErrorObject writes errors to the passed logger object and exits
-func LogInfo(info string, logger *log.Logger) {
+func LogInfo(msg string, logger *log.Logger) {
 	if !headlessService {
-		fmt.Println(info)
+		fmt.Println(msg)
 	}
 	_prefix := logger.Prefix()
 	logger.SetPrefix("[INFO]")
-	logger.Println(info)
+	logger.Println(msg)
 	logger.SetPrefix(_prefix)
 }
 
