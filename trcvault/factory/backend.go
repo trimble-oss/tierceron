@@ -191,6 +191,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 	}
 
 	logger.Println("TrcInitialize complete.")
+	ctx.Done()
 	return nil
 }
 
@@ -219,6 +220,7 @@ func handleWrite(ctx context.Context, req *logical.Request, data *framework.Fiel
 	if err := req.Storage.Put(ctx, entry); err != nil {
 		return nil, fmt.Errorf("failed to write: %v", err)
 	}
+	ctx.Done()
 
 	return nil, nil
 }
@@ -233,6 +235,8 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	} else {
 		return nil, errors.New("Token required.")
 	}
+
+	tokenEnvMap["address"] = vaultHost
 
 	key := req.Path //data.Get("path").(string)
 	if key == "" {
@@ -260,8 +264,13 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	tokenEnvChan <- tokenEnvMap
+	ctx.Done()
 
-	return nil, nil
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"message": "Token created.",
+		},
+	}, nil
 }
 
 func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -274,6 +283,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	} else {
 		return nil, errors.New("Token required.")
 	}
+	tokenEnvMap["address"] = vaultHost
 
 	key := req.Path
 	if key == "" {
@@ -301,8 +311,13 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	tokenEnvChan <- tokenEnvMap
+	ctx.Done()
 
-	return nil, nil
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"message": "Token updated.",
+		},
+	}, nil
 }
 
 // TrcFactory configures and returns Mock backends
