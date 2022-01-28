@@ -3,6 +3,7 @@ package xutil
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,7 +25,7 @@ var wg2 sync.WaitGroup
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string) {
+func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string, logger *log.Logger) (string, bool, string) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -72,7 +73,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 	if config.Token != "" {
 		var err error
-		mod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions)
+		mod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions, logger)
 		if err != nil {
 			panic(err)
 		}
@@ -86,7 +87,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	if config.GenAuth && mod != nil {
 		_, err := mod.ReadData("apiLogins/meta")
 		if err != nil {
-			fmt.Println("Cannot genAuth with provided token.")
+			eUtils.LogInfo("Cannot genAuth with provided token.", logger)
 			os.Exit(1)
 		}
 	}
@@ -124,10 +125,10 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
 		mod.VersionFilter = config.VersionFilter
-		versionMetadataMap := utils.GetProjectVersionInfo(config, mod)
+		versionMetadataMap := utils.GetProjectVersionInfo(config, mod, logger)
 
 		if versionMetadataMap == nil {
-			fmt.Println("No version data found - this filter was applied during search: ", config.VersionFilter)
+			eUtils.LogInfo(fmt.Sprintf("No version data found - this filter was applied during search: %v\n", config.VersionFilter), logger)
 			os.Exit(1)
 		} else if version == "versionInfo" { //Version flag
 			var masterKey string
@@ -188,7 +189,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	if config.Token != "" {
 		var commonMod *kv.Modifier
 		var err error
-		commonMod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
+		commonMod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
 		if err != nil {
 			panic(err)
 		}
@@ -197,7 +198,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		commonMod.Version = envVersion[1]
 		commonMod.Version = commonMod.Version + "***X-Mode"
 
-		commonPaths, err = vcutils.GetPathsFromProject(commonMod, "Common")
+		commonPaths, err = vcutils.GetPathsFromProject(commonMod, logger, "Common")
 		if len(commonPaths) > 0 && strings.Contains(commonPaths[len(commonPaths)-1], "!=!") {
 			commonPaths = commonPaths[:len(commonPaths)-1]
 		}
@@ -221,9 +222,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 					listValues, err = mod.ListEnv("values/" + mod.Env + "/") //Fix values to add to project to directory
 				}
 				if err != nil {
-					fmt.Println(err)
+					eUtils.LogErrorObject(err, logger, false)
 				} else if listValues == nil {
-					fmt.Println("No values were returned under values/.")
+					eUtils.LogInfo("No values were returned under values/.", logger)
 				} else {
 					serviceSlice := make([]string, 0)
 					for _, valuesPath := range listValues.Data {
@@ -265,7 +266,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 			if c.Token != "" {
 				var err error
-				goMod, err = kv.NewModifier(c.Insecure, c.Token, c.VaultAddress, c.Env, c.Regions)
+				goMod, err = kv.NewModifier(c.Insecure, c.Token, c.VaultAddress, c.Env, c.Regions, logger)
 				if err != nil {
 					panic(err)
 				}
@@ -277,7 +278,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			if c.GenAuth && goMod != nil {
 				_, err := mod.ReadData("apiLogins/meta")
 				if err != nil {
-					fmt.Println("Cannot genAuth with provided token.")
+					eUtils.LogInfo("Cannot genAuth with provided token.", logger)
 					os.Exit(1)
 				}
 			}
@@ -290,7 +291,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			if goMod != nil && !noVault {
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				cds.Init(goMod, c.SecretMode, true, project, commonPaths, service)
+				cds.Init(goMod, c.SecretMode, true, project, commonPaths, logger, service)
 			}
 
 			innerProject := "Not Found"
@@ -306,13 +307,13 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
 				cds,
 				templatePath,
-				config.Log,
 				project,
 				service,
 				fromVault,
 				&(templateResult.InterfaceTemplateSection),
 				&(templateResult.ValueSection),
 				&(templateResult.SecretSection),
+				config.Log,
 			)
 			templateResult.Env = goMod.Env + "_" + requestedVersion
 			templateResultChan <- &templateResult
@@ -321,9 +322,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	wg.Wait()
 
 	// Combine values of slice
-	CombineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
-	CombineSection(sliceValueSection, -1, valueCombinedSection)
-	CombineSection(sliceSecretSection, -1, secretCombinedSection)
+	CombineSection(sliceTemplateSection, maxDepth, templateCombinedSection, logger)
+	CombineSection(sliceValueSection, -1, valueCombinedSection, logger)
+	CombineSection(sliceSecretSection, -1, secretCombinedSection, logger)
 
 	var authYaml []byte
 	var errA error
@@ -338,10 +339,10 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				authSection["apiLogins"].(map[string]interface{})["meta"] = connInfo
 				authYaml, errA = yaml.Marshal(authSection)
 				if errA != nil {
-					fmt.Println(errA)
+					eUtils.LogErrorObject(errA, logger, false)
 				}
 			} else {
-				fmt.Println("Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.")
+				eUtils.LogInfo("Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", logger)
 				os.Exit(1)
 			}
 		} else {
@@ -357,7 +358,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			authSection["apiLogins"].(map[string]interface{})["meta"] = authConfigurations
 			authYaml, errA = yaml.Marshal(authSection)
 			if errA != nil {
-				fmt.Println(errA)
+				eUtils.LogErrorObject(errA, logger, false)
 			}
 		}
 	}
@@ -368,15 +369,15 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	secret, errS := yaml.Marshal(secretCombinedSection)
 
 	if errT != nil {
-		fmt.Println(errT)
+		eUtils.LogErrorObject(errT, logger, false)
 	}
 
 	if errV != nil {
-		fmt.Println(errV)
+		eUtils.LogErrorObject(errV, logger, false)
 	}
 
 	if errS != nil {
-		fmt.Println(errS)
+		eUtils.LogErrorObject(errS, logger, false)
 	}
 	templateData := string(template)
 	// Remove single quotes generated by Marshal
@@ -387,7 +388,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfig) interface{} {
+func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfig, logger *log.Logger) interface{} {
 	if config.Clean { //Clean flag in trcx
 		if strings.HasSuffix(config.Env, "_0") {
 			config.Env = strings.Split(config.Env, "_")[0]
@@ -396,12 +397,12 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		err := os.RemoveAll(config.EndDir + config.Env)
 
 		if err != nil {
-			fmt.Println(err)
+			eUtils.LogErrorObject(err, logger, false)
 			os.Exit(1)
 		}
 
 		if err1 == nil {
-			fmt.Println("Seed removed from", config.EndDir+config.Env)
+			eUtils.LogInfo("Seed removed from"+config.EndDir+config.Env, logger)
 		}
 		return nil
 	}
@@ -428,9 +429,9 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 
 	if indexedEnv {
 		// Get filtered using mod and templates.
-		mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
+		mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
 		if err != nil {
-			fmt.Println(err)
+			eUtils.LogErrorObject(err, logger, false)
 			os.Exit(1)
 		}
 		mod.Env = config.Env
@@ -439,7 +440,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		templatePaths = templatePathsAccepted
 	}
 
-	endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
+	endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths, logger)
 
 	if endPath == "" && !multiService && seedData == "" {
 		return nil
@@ -495,7 +496,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 				envVersion = strings.Split(config.Env, "_")
 			}
 
-			mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions)
+			mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
 			if err != nil {
 				panic(err)
 			}
@@ -503,7 +504,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			mod.Version = envVersion[1]
 
 			var ctErr error
-			_, certData, certLoaded, ctErr = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+			_, certData, certLoaded, ctErr = vcutils.ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false, logger)
 			if ctErr != nil {
 				if !strings.Contains(ctErr.Error(), "Missing .certData") {
 					eUtils.CheckError(ctErr, true)
@@ -512,7 +513,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 
 			if len(certData) == 0 {
 				if certLoaded {
-					fmt.Println("Could not load cert ", templatePath)
+					eUtils.LogInfo("Could not load cert "+templatePath, logger)
 					continue
 				} else {
 					continue
@@ -520,7 +521,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			}
 
 			certPath := fmt.Sprintf("%s", certData[2])
-			fmt.Println("Writing certificate: " + certPath + ".")
+			eUtils.LogInfo("Writing certificate: "+certPath+".", logger)
 
 			if strings.Contains(certPath, "ENV") {
 				if len(mod.Env) >= 5 && (mod.Env)[:5] == "local" {
@@ -534,7 +535,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			certDestination := config.EndDir + "/" + certPath
 			certDestination = strings.ReplaceAll(certDestination, "//", "/")
 			writeToFile(certData[1], certDestination)
-			fmt.Println("certificate written to ", certDestination)
+			eUtils.LogInfo("certificate written to "+certDestination, logger)
 		}
 		return nil
 	}
@@ -554,7 +555,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			envBasePath = strings.Split(envBasePath, "_")[0]
 		}
 
-		fmt.Println("Seed created and written to " + endPath)
+		eUtils.LogInfo("Seed created and written to "+endPath, logger)
 	}
 
 	return nil
@@ -636,7 +637,7 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 //	- slice to combine
 //	- template slice to combine
 //	- depth of map (-1 for value/secret sections)
-func CombineSection(sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
+func CombineSection(sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}, logger *log.Logger) {
 	_, okMap := sliceSectionInterface.([]map[string]map[string]map[string]string)
 
 	// Value/secret slice section
@@ -661,7 +662,7 @@ func CombineSection(sliceSectionInterface interface{}, maxDepth int, combinedSec
 		// template slice section
 	} else {
 		if maxDepth < 0 && !okMap {
-			fmt.Printf("Env failed to gen.  MaxDepth: %d, okMap: %t\n", maxDepth, okMap)
+			eUtils.LogInfo(fmt.Sprintf("Env failed to gen.  MaxDepth: %d, okMap: %t\n", maxDepth, okMap), logger)
 		}
 		sliceSection := sliceSectionInterface.([]interface{})
 

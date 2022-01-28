@@ -9,6 +9,7 @@ import (
 	"os"
 	"tierceron/trcconfig/utils"
 	vscutils "tierceron/trcvault/util"
+	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
@@ -25,7 +26,30 @@ var _ logical.Factory = TrcFactory
 var logger *log.Logger
 
 func Init(l *log.Logger) {
+	eUtils.InitHeadless(true)
 	logger = l
+
+	tokenEnvChan = make(chan map[string]interface{}, 5)
+
+	// Set up a table process runner.
+	initVaultHost()
+
+	go func() {
+		for {
+			select {
+			case tokenEnvMap := <-tokenEnvChan:
+
+				logger.Println("Config engine init begun: " + tokenEnvMap["env"].(string))
+				pecError := ProcessEnvConfig(tokenEnvMap)
+
+				if pecError != nil {
+					logger.Println("Bad configuration data for env: " + tokenEnvMap["env"].(string) + " error: " + pecError.Error())
+				}
+				logger.Println("Config engine setup complete for env: " + tokenEnvMap["env"].(string))
+			}
+		}
+
+	}()
 }
 
 var KvInitialize func(context.Context, *logical.InitializationRequest) error
@@ -36,11 +60,13 @@ var vaultHost string // Plugin will only communicate locally with a vault instan
 var environments []string = []string{"dev", "QA"}
 var environmentConfigs map[string]*EnvConfig
 
+var tokenEnvChan chan map[string]interface{}
+
 func initVaultHost() error {
 	if vaultHost == "" {
 		logger.Println("Begin finding vault.")
 
-		v, lvherr := vscutils.GetLocalVaultHost(true)
+		v, lvherr := vscutils.GetLocalVaultHost(true, logger)
 		if lvherr != nil {
 			logger.Println("Couldn't find local vault: " + lvherr.Error())
 			return lvherr
@@ -68,7 +94,7 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 func populateTrcVaultDbConfigs(addr string, token string, env string) error {
 	logger.Println("Begin populateTrcVaultDbConfigs for env: " + env)
 	var goMod *helperkv.Modifier
-	goMod, errModInit := helperkv.NewModifier(true, token, addr, env, []string{})
+	goMod, errModInit := helperkv.NewModifier(true, token, addr, env, []string{}, logger)
 	goMod.Env = env
 
 	if errModInit != nil {
@@ -76,7 +102,7 @@ func populateTrcVaultDbConfigs(addr string, token string, env string) error {
 		return errModInit
 	}
 
-	configuredTemplate, _, _, ctErr := utils.ConfigTemplate(goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true)
+	configuredTemplate, _, _, ctErr := utils.ConfigTemplate(goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true, logger)
 	if ctErr != nil {
 		logger.Println("Config template lookup failure: " + ctErr.Error())
 		return ctErr
@@ -98,17 +124,22 @@ func populateTrcVaultDbConfigs(addr string, token string, env string) error {
 	return nil
 }
 
-func ProcessEnvConfig(env string, config map[string]interface{}) error {
-
-	token, rOk := config["token"]
-	if !rOk || token.(string) == "" {
-		logger.Println("Bad configuration data for env: " + env + ".  Missing token.")
+func ProcessEnvConfig(config map[string]interface{}) error {
+	env, eOk := config["env"]
+	if !eOk || env.(string) == "" {
+		logger.Println("Bad configuration data.  Missing env.")
 		return errors.New("missing token")
 	}
 
-	ptvError := populateTrcVaultDbConfigs(vaultHost, token.(string), env)
+	token, rOk := config["token"]
+	if !rOk || token.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing token.")
+		return errors.New("missing token")
+	}
+
+	ptvError := populateTrcVaultDbConfigs(vaultHost, token.(string), env.(string))
 	if ptvError != nil {
-		logger.Println("Bad configuration data for env: " + env + ".  error: " + ptvError.Error())
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  error: " + ptvError.Error())
 		return ptvError
 	}
 
@@ -122,7 +153,7 @@ func ProcessEnvConfig(env string, config map[string]interface{}) error {
 	}
 	config["connectionPath"] = "trc_templates/TrcVault/Database/config.tmpl"
 
-	go vscutils.ProcessTables(env, config)
+	vscutils.ProcessTables(config, logger)
 
 	return nil
 }
@@ -143,22 +174,15 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 			continue
 		}
 		tokenMap, ptError := parseToken(tokenData)
+
 		if ptError != nil {
 			logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())
-			continue
-		}
-		go func() {
-			logger.Println("Config engine init begun: " + env)
-
-			initVaultHost()
-
-			pecError := ProcessEnvConfig(env, tokenMap)
-
-			if pecError != nil {
-				logger.Println("Bad configuration data for env: " + env + " error: " + pecError.Error())
+		} else {
+			if _, ok := tokenMap["token"]; ok {
+				tokenMap["env"] = env
+				tokenEnvChan <- tokenMap
 			}
-			logger.Println("Config engine setup complete for env: " + env)
-		}()
+		}
 	}
 
 	if KvInitialize != nil {
@@ -167,26 +191,6 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 	}
 
 	logger.Println("TrcInitialize complete.")
-	return nil
-}
-
-func trcCreateUpdateHelper(tokenPathMap map[string]interface{}) error {
-	initVaultHost()
-
-	switch tokenPathMap["path"].(string) {
-	case "dev":
-		pecError := ProcessEnvConfig("dev", tokenPathMap)
-		if pecError != nil {
-			return pecError
-		}
-	case "QA":
-		pecError := ProcessEnvConfig("QA", tokenPathMap)
-		if pecError != nil {
-			return pecError
-		}
-	default:
-		break
-	}
 	return nil
 }
 
@@ -221,11 +225,11 @@ func handleWrite(ctx context.Context, req *logical.Request, data *framework.Fiel
 
 func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcCreateUpdate")
-	tokenPathMap := map[string]interface{}{}
-	tokenPathMap["path"] = req.Path
+	tokenEnvMap := map[string]interface{}{}
+	tokenEnvMap["env"] = req.Path
 
 	if token, tokenOk := data.GetOk("token"); tokenOk {
-		tokenPathMap["token"] = token
+		tokenEnvMap["token"] = token
 	} else {
 		return nil, errors.New("Token required.")
 	}
@@ -255,21 +259,18 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, fmt.Errorf("failed to write: %v", err)
 	}
 
-	createUpdateErr := trcCreateUpdateHelper(tokenPathMap)
-	if createUpdateErr != nil {
-		return nil, createUpdateErr
-	}
+	tokenEnvChan <- tokenEnvMap
 
 	return nil, nil
 }
 
 func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcUpdate")
-	tokenPathMap := map[string]interface{}{}
-	tokenPathMap["path"] = req.Path
+	tokenEnvMap := map[string]interface{}{}
+	tokenEnvMap["env"] = req.Path
 
 	if token, tokenOk := data.GetOk("token"); tokenOk {
-		tokenPathMap["token"] = token
+		tokenEnvMap["token"] = token
 	} else {
 		return nil, errors.New("Token required.")
 	}
@@ -299,10 +300,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, fmt.Errorf("failed to write: %v", err)
 	}
 
-	createUpdateErr := trcCreateUpdateHelper(tokenPathMap)
-	if createUpdateErr != nil {
-		return nil, createUpdateErr
-	}
+	tokenEnvChan <- tokenEnvMap
 
 	return nil, nil
 }

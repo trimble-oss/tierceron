@@ -121,6 +121,9 @@ func main() {
 		fmt.Println("* is not available as an environment suffix.")
 		os.Exit(1)
 	}
+	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	eUtils.CheckError(err, true)
+	logger := log.New(f, "[trcconfig]", log.LstdFlags)
 
 	//Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
@@ -171,7 +174,7 @@ func main() {
 		}
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
-		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
 		if len(envVersion) >= 2 { //Put back env+version together
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
@@ -214,9 +217,6 @@ func main() {
 		}
 	}
 
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(err, true)
-	logger := log.New(f, "[trcconfig]", log.LstdFlags)
 	services := []string{}
 	if *servicesWanted != "" {
 		services = strings.Split(*servicesWanted, ",")
@@ -258,7 +258,7 @@ func main() {
 			envVersion := strings.Split(env, "_") //Break apart env+version for token
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
-			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
 			if len(envVersion) >= 2 { //Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]
 				if envVersion[1] == "" {
@@ -290,7 +290,7 @@ func main() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				eUtils.ConfigControl(nil, configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault)
+				eUtils.ConfigControl(nil, configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault, logger)
 			}()
 		}
 	} else {
@@ -326,7 +326,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			eUtils.ConfigControl(nil, config, utils.GenerateConfigsFromVault)
+			eUtils.ConfigControl(nil, config, utils.GenerateConfigsFromVault, logger)
 		}()
 	}
 	wg.Wait() //Wait for templates

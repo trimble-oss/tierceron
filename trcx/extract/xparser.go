@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"text/template/parse"
+	eUtils "tierceron/utils"
 
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/vaulthelper/kv"
@@ -35,13 +36,13 @@ type TemplateResultData struct {
 func ToSeed(mod *kv.Modifier,
 	cds *vcutils.ConfigDataStore,
 	templatePath string,
-	logger *log.Logger,
 	project string,
 	service string,
 	fromVault bool,
 	interfaceTemplateSection *interface{},
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
+	logger *log.Logger,
 ) (*interface{}, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int) {
 
 	// TODO: replace string sections with maps
@@ -88,7 +89,7 @@ func ToSeed(mod *kv.Modifier,
 			for _, arg := range fields.Cmds[0].Args {
 				templateParameter := strings.ReplaceAll(arg.String(), "\\\"", "\"")
 				if strings.Contains(templateParameter, "~") {
-					fmt.Println("Unsupported parameter name character ~: " + templateParameter)
+					eUtils.LogInfo("Unsupported parameter name character ~: "+templateParameter, logger)
 					os.Exit(1)
 				}
 				args = append(args, templateParameter)
@@ -293,7 +294,7 @@ func Parse(cds *vcutils.ConfigDataStore,
 		}
 	} else {
 		parseMsg := fmt.Sprintf("Template: %s Incorrect template element count: %d Syntax error: %v", templatePathSlice[templateDir+3:len(templatePathSlice)], len(args), args)
-		fmt.Printf(parseMsg)
+		eUtils.LogInfo(parseMsg, logger)
 		logger.Fatal(errors.New(parseMsg))
 	}
 }

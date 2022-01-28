@@ -2,8 +2,8 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"io"
+	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -135,19 +135,19 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 			cds = new(vcutils.ConfigDataStore)
 			goMod.Env = envEnterprise
 			goMod.Version = version
-			cds.Init(goMod, config.SecretMode, true, project, nil, service)
+			cds.Init(goMod, config.SecretMode, true, project, nil, config.Log, service)
 		}
 
 		_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
 			cds,
 			templatePath,
-			config.Log,
 			project,
 			service,
 			true,
 			&(templateResult.InterfaceTemplateSection),
 			&(templateResult.ValueSection),
 			&(templateResult.SecretSection),
+			config.Log,
 		)
 
 		writeToTable(te, envEnterprise, version, project, service, &templateResult)
@@ -158,12 +158,12 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 
 // CreateEngine - creates a Tierceron query engine for query of configurations.
 func CreateEngine(config *eUtils.DriverConfig,
-	templatePaths []string, env string, dbname string) (*TierceronEngine, error) {
+	templatePaths []string, env string, dbname string, logger *log.Logger) (*TierceronEngine, error) {
 
 	te := &TierceronEngine{Database: memory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext(), Config: *config}
 
 	var goMod *kv.Modifier
-	goMod, errModInit := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions)
+	goMod, errModInit := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions, logger)
 	if errModInit != nil {
 		return nil, errModInit
 	}
@@ -178,7 +178,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 	goMod.Env = ""
 	tempEnterprises, err := goMod.List("values")
 	if err != nil {
-		fmt.Println(err)
+		eUtils.LogErrorObject(err, logger, false)
 		return nil, err
 	}
 	if tempEnterprises != nil {
@@ -198,12 +198,12 @@ func CreateEngine(config *eUtils.DriverConfig,
 				}
 				goMod.Env = ""
 				versionMetadata = versionMetadata[:0]
-				fileMetadata, err := goMod.GetVersionValues(goMod, config.WantCerts, "values/"+envEnterprise)
+				fileMetadata, err := goMod.GetVersionValues(goMod, config.WantCerts, "values/"+envEnterprise, logger)
 				if fileMetadata == nil {
 					return
 				}
 				if err != nil {
-					fmt.Println(err)
+					eUtils.LogErrorObject(err, logger, false)
 					return
 				}
 

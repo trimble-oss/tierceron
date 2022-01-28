@@ -3,9 +3,11 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 )
 
@@ -20,6 +22,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 	useDirs bool,
 	project string,
 	commonPaths []string,
+	logger *log.Logger,
 	servicesWanted ...string) {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
@@ -30,14 +33,14 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 		dataPathsFull = commonPaths
 	} else {
 		//get paths where the data is stored
-		dp, err := GetPathsFromProject(mod, project)
+		dp, err := GetPathsFromProject(mod, logger, project)
 		if len(dp) > 1 && strings.Contains(dp[len(dp)-1], "!=!") {
 			mod.VersionFilter = append(mod.VersionFilter, strings.Split(dp[len(dp)-1], "!=!")[0])
 			dp = dp[:len(dp)-1]
 		}
 
 		if err != nil {
-			fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
+			eUtils.LogInfo(fmt.Sprintf("Uninitialized environment.  Please initialize environment. %v\n", err), logger)
 			os.Exit(1)
 		}
 		dataPathsFull = dp
@@ -52,7 +55,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 		}
 	}
 	if len(dataPaths) < len(dataPathsFull)/3 && len(dataPaths) != len(dataPathsFull) {
-		fmt.Println("Unexpected vault pathing.  Dropping optimization.")
+		eUtils.LogInfo("Unexpected vault pathing.  Dropping optimization.", logger)
 		dataPaths = dataPathsFull
 	}
 
@@ -242,17 +245,17 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 	}
 }
 
-func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode bool, useDirs bool, project string, file string, servicesWanted ...string) map[string]interface{} {
+func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode bool, useDirs bool, project string, file string, logger *log.Logger, servicesWanted ...string) map[string]interface{} {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
-	dataPathsFull, err := GetPathsFromProject(mod, project)
+	dataPathsFull, err := GetPathsFromProject(mod, logger, project)
 	if len(dataPathsFull) > 0 && strings.Contains(dataPathsFull[len(dataPathsFull)-1], "!=!") {
 		dataPathsFull = dataPathsFull[:len(dataPathsFull)-1]
 	}
 
 	if err != nil {
-		fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
+		eUtils.LogInfo(fmt.Sprintf("Uninitialized environment.  Please initialize environment. %v\n", err), logger)
 		os.Exit(1)
 	}
 
@@ -281,7 +284,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode
 			deeperData, _ = mod.ReadTemplateVersions(path + "template-file")
 		}
 		if err != nil || deeperData == nil && data == nil {
-			fmt.Printf("Couldn't read version data for %s\n", path)
+			eUtils.LogInfo(fmt.Sprintf("Couldn't read version data for %s\n", path), logger)
 		}
 	}
 
@@ -376,7 +379,7 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 	return "", false
 }
 
-func GetPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error) {
+func GetPathsFromProject(mod *kv.Modifier, logger *log.Logger, projects ...string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
 	var err error
@@ -402,7 +405,7 @@ func GetPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error)
 					}
 					innerPathList, err := mod.List("templates/" + availProject.(string)) //Looks for services one path deeper
 					if err != nil {
-						fmt.Println("Unable to read into nested template path: " + err.Error())
+						eUtils.LogInfo("Unable to read into nested template path: "+err.Error(), logger)
 					}
 					if innerPathList == nil || availProject.(string) == "Common/" {
 						continue
@@ -420,7 +423,7 @@ func GetPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error)
 				if !projectAvailable {
 					if !projectAvailable {
 						if len(projects) > 1 || project != "Common/" {
-							fmt.Println(project + " is not an available project. No values found.")
+							eUtils.LogInfo(project+" is not an available project. No values found.", logger)
 						}
 					}
 				}

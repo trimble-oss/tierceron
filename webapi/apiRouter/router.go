@@ -176,7 +176,6 @@ var prodEnvironments = []string{"staging", "prod"}
 var webAPIProdEnvironments = []string{"staging"}
 
 func main() {
-	mlock.Mlock()
 	fmt.Println("Version: " + "1.1")
 	addrPtr := flag.String("addr", configcore.VaultHostPort, "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
@@ -194,6 +193,7 @@ func main() {
 	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	utils.CheckError(err, true)
 	s.Log.SetOutput(f)
+	mlock.Mlock(s.Log)
 
 	status, err := s.GetStatus(context.Background(), nil)
 	utils.LogErrorObject(err, s.Log, true)

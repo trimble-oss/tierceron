@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 	"text/template"
 
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 )
 
@@ -92,16 +94,23 @@ func ConfigTemplateRaw(modifier *kv.Modifier, emptyFilePath string, configuredFi
 
 	var templateEncoded string
 	templateEncoded, err = GetTemplate(modifier, emptyFilePath)
-	utils.CheckError(err, true)
+	eUtils.CheckError(err, true)
 	templateBytes, decodeErr := base64.StdEncoding.DecodeString(templateEncoded)
-	utils.CheckError(decodeErr, true)
+	eUtils.CheckError(decodeErr, true)
 
 	return templateBytes, decodeErr
 }
 
 //ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.
 //It configures the template and writes it to the specified file path.
-func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool, project string, service string, cert bool, zc bool) (string, map[int]string, bool, error) {
+func ConfigTemplate(modifier *kv.Modifier,
+	emptyFilePath string,
+	secretMode bool,
+	project string,
+	service string,
+	cert bool,
+	zc bool,
+	logger *log.Logger) (string, map[int]string, bool, error) {
 	var template string
 	var err error
 
@@ -160,22 +169,29 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool
 		filename = extra + "/" + filename
 	}
 	//populate template
-	template, certData = PopulateTemplate(template, modifier, secretMode, project, service, filename, cert)
+	template, certData = PopulateTemplate(template, modifier, secretMode, project, service, filename, cert, logger)
 	return template, certData, true, nil
 }
 
-func getTemplateVersionData(modifier *kv.Modifier, secretMode bool, project string, service string, file string) map[string]interface{} {
+func getTemplateVersionData(modifier *kv.Modifier, secretMode bool, project string, service string, file string, logger *log.Logger) map[string]interface{} {
 	cds := new(ConfigDataStore)
-	versionData := cds.InitTemplateVersionData(modifier, secretMode, true, project, file, service)
+	versionData := cds.InitTemplateVersionData(modifier, secretMode, true, project, file, logger, service)
 	return versionData
 }
 
 //PopulateTemplate takes an empty template and a modifier.
 //It populates the template and returns it in a string.
-func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bool, project string, service string, filename string, cert bool) (string, map[int]string) {
+func PopulateTemplate(emptyTemplate string,
+	modifier *kv.Modifier,
+	secretMode bool,
+	project string,
+	service string,
+	filename string,
+	cert bool,
+	logger *log.Logger) (string, map[int]string) {
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
-	cds.Init(modifier, secretMode, true, project, nil, service)
+	cds.Init(modifier, secretMode, true, project, nil, logger, service)
 	certData := make(map[int]string)
 	serviceLookup := service
 	i := strings.Index(service, ".")
@@ -199,7 +215,7 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 
 		_, data := values[filename]
 		if data == false {
-			fmt.Println(filename + " does not exist in values. Please check seed files to verify that folder structures are correct.")
+			eUtils.LogInfo(filename+" does not exist in values. Please check seed files to verify that folder structures are correct.", logger)
 		}
 
 		if len(cds.Regions) > 0 {
@@ -226,13 +242,13 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 				certSourcePath, hasCertSourcePath := valueData["certSourcePath"].(interface{})
 				if hasCertDefinition && hasCertSourcePath {
 					if !ok {
-						fmt.Println("No certDestPath in config template section of seed for this service. Unable to generate cert.pfx")
+						eUtils.LogErrorMessage("No certDestPath in config template section of seed for this service. Unable to generate cert.pfx", logger, false)
 						os.Exit(1)
 					}
 					certData[0] = certDestPath.(string)
 					data, ok := valueData["certData"].(interface{})
 					if !ok {
-						fmt.Println("No certData in config template section of seed for this service. Unable to generate cert.pfx")
+						eUtils.LogInfo("No certData in config template section of seed for this service. Unable to generate cert.pfx", logger)
 						os.Exit(1)
 					}
 					encoded := fmt.Sprintf("%s", data)

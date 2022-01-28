@@ -19,6 +19,8 @@ import (
 	"tierceron/validator"
 	"tierceron/vaulthelper/kv"
 
+	eUtils "tierceron/utils"
+
 	configcore "VaultConfig.Bootstrap/configcore"
 	"gopkg.in/yaml.v2"
 )
@@ -72,7 +74,7 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 			Log:            logger,
 		}
 
-		_, _, seedData := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
+		_, _, seedData := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths, logger)
 
 		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
 
@@ -171,7 +173,7 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 		}
 	}
 	if !seeded {
-		fmt.Println("Environment is not valid - Environment:", env)
+		eUtils.LogInfo("Environment is not valid - Environment: "+env, logger)
 	}
 }
 
@@ -191,14 +193,14 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 	// Unmarshal
 	var rawYaml interface{}
 	if bytes.Contains(fData, []byte("<Enter Secret Here>")) {
-		fmt.Println("Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.")
+		eUtils.LogInfo("Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", logger)
 		os.Exit(1)
 	}
 	err := yaml.Unmarshal(fData, &rawYaml)
 	utils.LogErrorObject(err, logger, true)
 	seed, ok := rawYaml.(map[interface{}]interface{})
 	if ok == false {
-		fmt.Println("Invalid yaml file.  Refusing to continue.")
+		eUtils.LogInfo("Invalid yaml file.  Refusing to continue.", logger)
 		os.Exit(1)
 	}
 
@@ -243,7 +245,7 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 	logger.Println("Seeding configuration data for the following templates:")
 	logger.Println("Please verify that these templates exist in each service")
 
-	mod, err := kv.NewModifier(insecure, token, vaultAddr, env, nil) // Connect to vault
+	mod, err := kv.NewModifier(insecure, token, vaultAddr, env, nil, logger) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	if configId == "" {
 		mod.Env = env
@@ -259,7 +261,7 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 					continue
 				}
 				certPath := fmt.Sprintf("%s", certPathData)
-				fmt.Println("Inspecting certificate: " + certPath + ".")
+				eUtils.LogInfo(fmt.Sprintf("Inspecting certificate: "+certPath+"."), logger)
 
 				if strings.Contains(certPath, "ENV") {
 					if len(env) >= 5 && (env)[:5] == "local" {
@@ -275,28 +277,28 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 				if err == nil {
 					//if pfx file size greater than 25 KB, print warning
 					if len(cert) > 32000 {
-						fmt.Println("Unreasonable size for certificate type file. Not written to vault")
+						eUtils.LogInfo("Unreasonable size for certificate type file. Not written to vault", logger)
 						continue
 					}
 
 					isValidCert := false
 					var certValidationErr error
 					if strings.HasSuffix(certPath, ".pfx") {
-						fmt.Println("Inspecting pfx: " + certPath + ".")
+						eUtils.LogInfo("Inspecting pfx: "+certPath+".", logger)
 						isValidCert, certValidationErr = validator.IsPfxRfc7292(cert)
 					} else if strings.HasSuffix(certPath, ".cer") {
-						fmt.Println("Inspecting cer: " + certPath + ".")
+						eUtils.LogInfo("Inspecting cer: "+certPath+".", logger)
 						cert, certValidationErr := x509.ParseCertificate(cert)
 						if certValidationErr == nil {
 							isValidCert = true
 						} else {
-							fmt.Println("failed to parse and verify certificate: " + certValidationErr.Error())
+							eUtils.LogInfo("failed to parse and verify certificate: "+certValidationErr.Error(), logger)
 						}
 						var certHost string
 						if certHostData, certHostOk := entry.data["certHost"]; certHostOk {
 							certHost = fmt.Sprintf("%s", certHostData)
 						} else {
-							fmt.Println("Missing certHost, cannot validate cert.  Not written to vault")
+							eUtils.LogInfo("Missing certHost, cannot validate cert.  Not written to vault", logger)
 							continue
 						}
 						switch env {
@@ -317,15 +319,15 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 
 						if _, err := cert.Verify(opts); err != nil {
 							if _, isUnknownAuthority := err.(x509.UnknownAuthorityError); !isUnknownAuthority {
-								fmt.Println("Unknown authority: failed to verify certificate: " + err.Error())
+								eUtils.LogInfo("Unknown authority: failed to verify certificate: "+err.Error(), logger)
 								continue
 							}
 						}
 					} else if strings.HasSuffix(certPath, ".pem") {
-						fmt.Println("Inspecting pem: " + certPath + ".")
+						eUtils.LogInfo("Inspecting pem: "+certPath+".", logger)
 						pemBlock, _ := pem.Decode(cert)
 						if pemBlock == nil {
-							fmt.Println("failed to verify certificate PEM.")
+							eUtils.LogInfo("failed to verify certificate PEM.", logger)
 						} else {
 							isValidCert = true
 						}
@@ -333,12 +335,12 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 						isValidCert = true
 					}
 					if isValidCert {
-						fmt.Println("Certificate passed validation: " + certPath + ".")
+						eUtils.LogInfo("Certificate passed validation: "+certPath+".", logger)
 						certBase64 := base64.StdEncoding.EncodeToString(cert)
 						if _, ok := entry.data["certData"]; ok {
 							// insecure value entry.
 							entry.data["certData"] = certBase64
-							fmt.Println("Public cert updated: " + certPath + ".")
+							eUtils.LogInfo("Public cert updated: "+certPath+".", logger)
 						} else {
 							entryPathParts := strings.Split(entry.path, "/")
 							if len(entryPathParts) == 2 {
@@ -356,7 +358,7 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 										}
 									}
 								}
-								fmt.Println("Cert loaded from: " + certPath + ".")
+								eUtils.LogInfo("Cert loaded from: "+certPath+".", logger)
 
 								if done {
 									continue
@@ -364,7 +366,7 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 							}
 						}
 					} else {
-						fmt.Println("Cert validation failure.  Cert will not be loaded.", certValidationErr)
+						eUtils.LogInfo("Cert validation failure.  Cert will not be loaded."+certValidationErr.Error(), logger)
 						delete(entry.data, "certData")
 						delete(entry.data, "certHost")
 						delete(entry.data, "certSourcePath")
@@ -372,7 +374,7 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 						continue
 					}
 				} else {
-					fmt.Println("Missing expected cert at: " + certPath + ".  Cert will not be loaded.")
+					eUtils.LogInfo("Missing expected cert at: "+certPath+".  Cert will not be loaded.", logger)
 					continue
 				}
 			} else {
@@ -410,7 +412,7 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 	warn, err := verify(mod, verificationData, logger)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
-	fmt.Printf("\nInitialization complete for %s.\n", mod.Env)
+	eUtils.LogInfo("\nInitialization complete for %s.\n"+mod.Env, logger)
 }
 
 //WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault

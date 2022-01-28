@@ -81,6 +81,11 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
 
+	// Initialize logging
+	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	eUtils.CheckError(err, true)
+	logger := log.New(f, "[trcx]", log.LstdFlags)
+
 	// Checks for proper flag input
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -178,12 +183,12 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
 		if !*noVaultPtr {
-			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
 		} else {
 			*tokenPtr = "novault"
 		}
 
-		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
 		if len(envVersion) >= 2 { //Put back env+version together
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
@@ -240,7 +245,7 @@ skipDiff:
 		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 			regions = eUtils.GetSupportedProdRegions()
 		}
-		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
 	}
 
 	if (tokenPtr == nil || *tokenPtr == "") && !*noVaultPtr && len(envSlice) == 1 {
@@ -255,10 +260,6 @@ skipDiff:
 		eUtils.CheckError(err, true)
 	}
 
-	// Initialize logging
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(err, true)
-	logger := log.New(f, "[trcx]", log.LstdFlags)
 	logger.Println("=============== Initializing Seed Generator ===============")
 
 	logger.SetPrefix("[trcx]")
@@ -268,7 +269,7 @@ skipDiff:
 	if len(envSlice) == 1 {
 		if strings.Contains(envSlice[0], "*") {
 			//Ask vault for list of dev.<id>.* environments, add to envSlice
-			testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions)
+			testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions, logger)
 			if err != nil {
 				logger.Printf(err.Error())
 			}
@@ -311,7 +312,7 @@ skipDiff:
 			*tokenPtr = ""
 		}
 		if !*noVaultPtr {
-			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
 		} else {
 			*tokenPtr = "novault"
 		}
@@ -345,7 +346,7 @@ skipDiff:
 		waitg.Add(1)
 		go func() {
 			defer waitg.Done()
-			eUtils.ConfigControl(ctx, config, configDriver)
+			eUtils.ConfigControl(ctx, config, configDriver, logger)
 		}()
 	}
 	waitg.Wait()
