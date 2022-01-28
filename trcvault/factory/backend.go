@@ -2,7 +2,9 @@ package factory
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"tierceron/trcconfig/utils"
@@ -27,7 +29,8 @@ func Init(l *log.Logger) {
 }
 
 var KvInitialize func(context.Context, *logical.InitializationRequest) error
-var KvCreateUpdate framework.OperationFunc
+var KvCreate framework.OperationFunc
+var KvUpdate framework.OperationFunc
 
 var vaultHost string // Plugin will only communicate locally with a vault instance.
 var environments []string = []string{"dev", "QA"}
@@ -167,31 +170,141 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 	return nil
 }
 
-func TrcCreateUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	logger.Println("TrcCreateUpdate")
-	tokenPathMap := map[string]interface{}{}
-	tokenPathMap["path"] = data.Get("path")
-	tokenPathMap["token"] = data.Get("token")
+func trcCreateUpdateHelper(tokenPathMap map[string]interface{}) error {
 	initVaultHost()
 
-	path := tokenPathMap["path"]
-
-	switch path.(string) {
+	switch tokenPathMap["path"].(string) {
 	case "dev":
 		pecError := ProcessEnvConfig("dev", tokenPathMap)
 		if pecError != nil {
-			return nil, pecError
+			return pecError
 		}
 	case "QA":
 		pecError := ProcessEnvConfig("QA", tokenPathMap)
 		if pecError != nil {
-			return nil, pecError
+			return pecError
 		}
 	default:
 		break
 	}
-	response, errKvCreateUpdate := KvCreateUpdate(ctx, req, data)
-	return response, errKvCreateUpdate
+	return nil
+}
+
+func handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	key := data.Get("path").(string)
+	if key == "" {
+		return logical.ErrorResponse("missing path"), nil
+	}
+
+	// Check that some fields are given
+	if len(req.Data) == 0 {
+		return logical.ErrorResponse("missing data fields"), nil
+	}
+
+	// JSON encode the data
+	buf, err := json.Marshal(req.Data)
+	if err != nil {
+		return nil, fmt.Errorf("json encoding failed: %v", err)
+	}
+
+	// Write out a new key
+	entry := &logical.StorageEntry{
+		Key:   key,
+		Value: buf,
+	}
+	if err := req.Storage.Put(ctx, entry); err != nil {
+		return nil, fmt.Errorf("failed to write: %v", err)
+	}
+
+	return nil, nil
+}
+
+func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	logger.Println("TrcCreateUpdate")
+	tokenPathMap := map[string]interface{}{}
+	tokenPathMap["path"] = req.Path
+
+	if token, tokenOk := data.GetOk("token"); tokenOk {
+		tokenPathMap["token"] = token
+	} else {
+		return nil, errors.New("Token required.")
+	}
+
+	key := req.Path //data.Get("path").(string)
+	if key == "" {
+		return logical.ErrorResponse("missing path"), nil
+	}
+
+	// Check that some fields are given
+	if len(req.Data) == 0 {
+		return logical.ErrorResponse("missing data fields"), nil
+	}
+
+	// JSON encode the data
+	buf, err := json.Marshal(req.Data)
+	if err != nil {
+		return nil, fmt.Errorf("json encoding failed: %v", err)
+	}
+
+	// Write out a new key
+	entry := &logical.StorageEntry{
+		Key:   key,
+		Value: buf,
+	}
+	if err := req.Storage.Put(ctx, entry); err != nil {
+		return nil, fmt.Errorf("failed to write: %v", err)
+	}
+
+	createUpdateErr := trcCreateUpdateHelper(tokenPathMap)
+	if createUpdateErr != nil {
+		return nil, createUpdateErr
+	}
+
+	return nil, nil
+}
+
+func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	logger.Println("TrcUpdate")
+	tokenPathMap := map[string]interface{}{}
+	tokenPathMap["path"] = req.Path
+
+	if token, tokenOk := data.GetOk("token"); tokenOk {
+		tokenPathMap["token"] = token
+	} else {
+		return nil, errors.New("Token required.")
+	}
+
+	key := req.Path
+	if key == "" {
+		return logical.ErrorResponse("missing path"), nil
+	}
+
+	// Check that some fields are given
+	if len(req.Data) == 0 {
+		return logical.ErrorResponse("missing data fields"), nil
+	}
+
+	// JSON encode the data
+	buf, err := json.Marshal(req.Data)
+	if err != nil {
+		return nil, fmt.Errorf("json encoding failed: %v", err)
+	}
+
+	// Write out a new key
+	entry := &logical.StorageEntry{
+		Key:   key,
+		Value: buf,
+	}
+	if err := req.Storage.Put(ctx, entry); err != nil {
+		return nil, fmt.Errorf("failed to write: %v", err)
+	}
+
+	createUpdateErr := trcCreateUpdateHelper(tokenPathMap)
+	if createUpdateErr != nil {
+		return nil, createUpdateErr
+	}
+
+	return nil, nil
 }
 
 // TrcFactory configures and returns Mock backends
@@ -221,9 +334,31 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 			logger.Println("Kv initialization complete.")
 		}
 
-		KvCreateUpdate = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation]
-		bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation] = TrcCreateUpdate
-		bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.UpdateOperation] = TrcCreateUpdate
+		KvCreate = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation]
+		KvUpdate = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.UpdateOperation]
+		bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation] = TrcCreate
+		bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.UpdateOperation] = TrcUpdate
+	}
+
+	bkv.(*kv.PassthroughBackend).Paths = []*framework.Path{
+		&framework.Path{
+			Pattern:         "(dev|QA|staging|prod)",
+			HelpSynopsis:    "Configure an access token.",
+			HelpDescription: "Use this endpoint to configure the auth tokens required by trcvault.",
+
+			Fields: map[string]*framework.FieldSchema{
+				"token": &framework.FieldSchema{
+					Type:        framework.TypeString,
+					Description: "Token used for specified environment.",
+				},
+			},
+
+			Callbacks: map[logical.Operation]framework.OperationFunc{
+				logical.ReadOperation:   bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.ReadOperation],
+				logical.CreateOperation: TrcCreate,
+				logical.UpdateOperation: TrcUpdate,
+			},
+		},
 	}
 
 	if env != nil {
