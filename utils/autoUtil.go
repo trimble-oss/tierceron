@@ -27,15 +27,15 @@ func GetSupportedProdRegions() []string {
 	return prodRegions
 }
 
-func (c *cert) getCert() *cert {
+func (c *cert) getCert(logger *log.Logger) *cert {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
-		log.Printf("User home directory #%v ", err)
+		logger.Printf("User home directory #%v ", err)
 	}
 
 	yamlFile, err := ioutil.ReadFile(userHome + "/.tierceron/config.yml")
 	if err != nil {
-		log.Printf("yamlFile.Get err #%v ", err)
+		logger.Printf("yamlFile.Get err #%v ", err)
 	}
 
 	err = yaml.Unmarshal(yamlFile, c)
@@ -70,7 +70,7 @@ func AutoAuth(insecure bool,
 	// Get current user's home directory
 	userHome, err := os.UserHomeDir()
 	if err != nil {
-		log.Printf("User home directory #%v ", err)
+		logger.Printf("User home directory #%v ", err)
 	}
 
 	// New values available for the cert file
@@ -87,7 +87,7 @@ func AutoAuth(insecure bool,
 	} else {
 		if _, err := os.Stat(userHome + "/.tierceron/config.yml"); !os.IsNotExist(err) {
 			exists = true
-			c.getCert()
+			c.getCert(logger)
 			if addrPtr == nil || *addrPtr == "" {
 				*addrPtr = c.VaultHost
 			}

@@ -13,11 +13,12 @@ import (
 )
 
 func main() {
+	eUtils.InitHeadless(true)
 	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	eUtils.CheckError(logErr, true)
 	logger := log.New(f, "[trcvault]", log.LstdFlags)
-	mlock.Mlock(logger)
 	factory.Init(logger)
+	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
