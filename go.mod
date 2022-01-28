@@ -12,9 +12,9 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/graphql-go/graphql v0.7.9
-	github.com/hashicorp/vault-plugin-secrets-kv v0.10.1
-	github.com/hashicorp/vault/api v1.3.0
-	github.com/hashicorp/vault/sdk v0.3.0
+	github.com/hashicorp/vault-plugin-secrets-kv v0.9.0
+	github.com/hashicorp/vault/api v1.1.0
+	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221838-e0cfd64bc267
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/rs/cors v1.7.0
 	github.com/sendgrid/sendgrid-go v3.6.1+incompatible
@@ -28,7 +28,7 @@ require (
 )
 
 require (
-	github.com/armon/go-metrics v0.3.9 // indirect
+	github.com/armon/go-metrics v0.3.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
@@ -94,6 +94,6 @@ require (
 
 replace VaultConfig.Bootstrap => ../../Azure/VaultConfig.Bootstrap
 
-replace VaultConfig.TenantConfig => ./../Azure/VaultConfig.TenantConfig
+replace VaultConfig.TenantConfig => ../../Azure/VaultConfig.TenantConfig
 
 replace github.com/dolthub/go-mysql-server => ../../Github/go-mysql-server
