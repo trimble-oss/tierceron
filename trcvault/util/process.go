@@ -125,7 +125,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 	}
 
 	// Set up schema callback for table to track.
-	initTableSchemaCB := func(tableSchema sqle.PrimaryKeySchema) {
+	initTableSchemaCB := func(tableSchema sqle.PrimaryKeySchema, tableName string) {
 		//	ii. Init database and tables in local mysql engine instance.
 		err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tableSchema)
 		if err != nil {
