@@ -10,7 +10,7 @@ import (
 
 // Mlock - provides locking hook for OS's that don't support mlock
 func Mlock(logger *log.Logger) error {
-	log.Println("Mlock not supported.")
+	logger.Println("Mlock not supported.")
 	os.Exit(1)
 	return nil
 }
