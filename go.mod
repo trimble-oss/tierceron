@@ -92,8 +92,8 @@ require (
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
 
-replace VaultConfig.Bootstrap => ../VaultConfig.Bootstrap
+replace VaultConfig.Bootstrap => ../../Azure/VaultConfig.Bootstrap
 
-replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
+replace VaultConfig.TenantConfig => ./../Azure/VaultConfig.TenantConfig
 
-replace github.com/dolthub/go-mysql-server => ../../go-mysql-server
+replace github.com/dolthub/go-mysql-server => ../../Github/go-mysql-server
