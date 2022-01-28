@@ -3,6 +3,7 @@ package util
 import (
 	"database/sql"
 	"io"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,9 +16,10 @@ import (
 	helperkv "tierceron/vaulthelper/kv"
 	"tierceron/vaulthelper/system"
 
+	eUtils "tierceron/utils"
+
 	tcutil "VaultConfig.TenantConfig/util"
 
-	"log"
 	"strings"
 
 	sys "tierceron/vaulthelper/system"
@@ -58,11 +60,12 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	tableName string,
 	identityColumnName string,
 	changeTable string,
-	changedColumnName string) {
+	changedColumnName string,
+	logger *log.Logger) error {
 	changeIdQuery := getChangeIdQuery(databaseName, changeTable)
 	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changeIdQuery)
 	if err != nil {
-		log.Println(err)
+		eUtils.LogErrorObject(err, logger, false)
 	}
 
 	for _, changedEntry := range matrixChangedEntries {
@@ -72,7 +75,8 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 
 		_, changedTableColumns, changedTableData, err := db.Query(tierceronEngine, changedTableQuery)
 		if err != nil {
-			log.Println(err)
+			eUtils.LogErrorObject(err, logger, false)
+			return err
 		}
 
 		tableDataMap := map[string]interface{}{}
@@ -83,11 +87,13 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
-		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, tableDataMap, tableDataMap[changedColumnName].(string))
+		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, tableDataMap, tableDataMap[changedColumnName].(string), logger)
 		if seedError != nil {
-			log.Println(seedError)
+			eUtils.LogErrorObject(seedError, logger, false)
+			return seedError
 		}
 	}
+	return nil
 }
 
 func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interface{},
@@ -99,7 +105,8 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 	env string,
 	templateTablePath string,
 	changedChannel chan bool,
-	signalChannel chan os.Signal) {
+	signalChannel chan os.Signal,
+	logger *log.Logger) error {
 
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
@@ -113,7 +120,8 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 		{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 	}))
 	if err != nil {
-		log.Println(err)
+		eUtils.LogErrorObject(err, logger, false)
+		return err
 	}
 
 	// Set up schema callback for table to track.
@@ -121,7 +129,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 		//	ii. Init database and tables in local mysql engine instance.
 		err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tableSchema)
 		if err != nil {
-			log.Println(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 	}
 
@@ -145,7 +153,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 	applyDBQueryCB := func(query string, changed bool) {
 		_, _, _, err := db.Query(tierceronEngine, query)
 		if err != nil {
-			log.Println(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 		if changed {
 			changedChannel <- true
@@ -162,14 +170,14 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 
 	// 3. Write seed data to vault
 	var baseTableTemplate extract.TemplateResultData
-	LoadBaseTemplate(&baseTableTemplate, goMod, project, service, templateTablePath)
+	LoadBaseTemplate(&baseTableTemplate, goMod, project, service, templateTablePath, logger)
 
 	// Generates a seed configuration utilizing the current tableName and provided id
 	// This is equivalent to a 'row' in a table.
 	seedVaultCB := func(tableData map[string]interface{}, id string) {
-		err := SeedVaultById(goMod, service, vaultAddress, vault.GetToken(), &baseTableTemplate, tableData, id)
+		err := SeedVaultById(goMod, service, vaultAddress, vault.GetToken(), &baseTableTemplate, tableData, id, logger)
 		if err != nil {
-			log.Println(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 	}
 
@@ -191,12 +199,12 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 		for {
 			select {
 			case <-signalChannel:
-				log.Println("Receiving shutdown presumably from vault.")
+				eUtils.LogErrorMessage("Receiving shutdown presumably from vault.", logger, true)
 				os.Exit(0)
 			case <-changedChannel:
-				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
+				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName, logger)
 			case <-time.After(time.Minute * 3):
-				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName)
+				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName, logger)
 			}
 		}
 	}
@@ -214,27 +222,31 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 		applyDBQueryCB,
 		seedVaultCB,
 		seedVaultDeltaCB)
+	return nil
 }
 
-func ProcessTables(env string, pluginConfig map[string]interface{}) error {
+func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	// 1. Get Plugin configurations.
 	project, service, _ := utils.GetProjectService(pluginConfig["connectionPath"].(string))
-	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), env, []string{})
-	goMod.Env = env
+	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), pluginConfig["env"].(string), []string{}, logger)
+	goMod.Env = pluginConfig["env"].(string)
 	goMod.Version = "0"
-	vault, err := sys.NewVault(true, pluginConfig["address"].(string), goMod.Env, false, false, false)
+	vault, err := sys.NewVault(true, pluginConfig["address"].(string), goMod.Env, false, false, false, logger)
 	if err != nil {
-		log.Println(err)
+		eUtils.LogErrorObject(err, logger, false)
+		return err
 	}
 	vault.SetToken(pluginConfig["token"].(string))
-	properties, err := NewProperties(vault, goMod, env, project, service)
+	properties, err := NewProperties(vault, goMod, pluginConfig["env"].(string), project, service, logger)
 	if err != nil {
-		log.Println(err)
+		eUtils.LogErrorObject(err, logger, false)
+		return err
 	}
 
 	config, ok := properties.GetConfigValues(service, "config")
 	if !ok {
-		log.Println("Couldn't get config values.")
+		eUtils.LogErrorMessage("Couldn't get config values.", logger, false)
+		return err
 	}
 
 	// 2. Establish mysql connection to remote mysql instance.
@@ -244,10 +256,7 @@ func ProcessTables(env string, pluginConfig map[string]interface{}) error {
 	}
 
 	if err != nil {
-		return err
-	}
-
-	if err != nil {
+		eUtils.LogErrorMessage("Couldn't get sql connection.", logger, false)
 		return err
 	}
 
@@ -258,7 +267,7 @@ func ProcessTables(env string, pluginConfig map[string]interface{}) error {
 		Insecure:     true,
 		Token:        pluginConfig["token"].(string),
 		VaultAddress: pluginConfig["address"].(string),
-		Env:          env,
+		Env:          pluginConfig["env"].(string),
 	}
 
 	tableList := pluginConfig["templatePath"].([]string)
@@ -267,16 +276,18 @@ func ProcessTables(env string, pluginConfig map[string]interface{}) error {
 	// 1. Auth -- Auth is provided by the external library tcutil.
 	// 2. Get json by Api call.
 	authComponents := tcutil.GetAuthComponents(config)
-	httpClient, err := helperkv.CreateHTTPClient(false, authComponents["authDomain"].(string), env, false)
+	httpClient, err := helperkv.CreateHTTPClient(false, authComponents["authDomain"].(string), pluginConfig["env"].(string), false)
 	if err != nil {
-		log.Println(err)
+		eUtils.LogErrorObject(err, logger, false)
+		return err
 	}
 
 	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
 
-	tierceronEngine, err := db.CreateEngine(&configDriver, tableList, env, tcutil.GetDatabaseName())
+	tierceronEngine, err := db.CreateEngine(&configDriver, tableList, pluginConfig["env"].(string), tcutil.GetDatabaseName(), logger)
 	if err != nil {
-		log.Println(err)
+		eUtils.LogErrorMessage("Couldn't build engine.", logger, false)
+		return err
 	}
 
 	// 2. Initialize Engine and create changes table.
@@ -296,10 +307,11 @@ func ProcessTables(env string, pluginConfig map[string]interface{}) error {
 			mysqlConn,
 			vault,
 			authData,
-			env,
+			pluginConfig["env"].(string),
 			table,
 			make(chan bool, 5), // tableChangedChannel
 			signalChannel,
+			logger,
 		)
 	}
 	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...
@@ -319,6 +331,5 @@ func ProcessTables(env string, pluginConfig map[string]interface{}) error {
 	//     I don't wanna do this...
 	//     d. Optionally update fieldtech TenantConfiguration back to mysql.
 	//
-	time.Sleep(15 * time.Second)
 	return nil
 }

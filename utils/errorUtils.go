@@ -6,6 +6,16 @@ import (
 	"os"
 )
 
+var headlessService bool
+
+func init() {
+	headlessService = false
+}
+
+func InitHeadless(headless bool) {
+	headlessService = headless
+}
+
 // CheckError Simplifies the error checking process
 func CheckError(err error, exit bool) {
 	if err != nil && exit {
@@ -16,7 +26,9 @@ func CheckError(err error, exit bool) {
 // CheckErrorNoStack Simplifies the error checking process
 func CheckErrorNoStack(err error, exit bool) {
 	if err != nil {
-		fmt.Println(err)
+		if !headlessService {
+			fmt.Println(err)
+		}
 		if exit {
 			os.Exit(1)
 		}
@@ -26,7 +38,9 @@ func CheckErrorNoStack(err error, exit bool) {
 // CheckWarnings Checks warnings returned from various vault relation operations
 func CheckWarning(warning string, exit bool) {
 	if len(warning) > 0 {
-		fmt.Println(warning)
+		if !headlessService {
+			fmt.Println(warning)
+		}
 		if exit {
 			os.Exit(1)
 		}
@@ -36,8 +50,10 @@ func CheckWarning(warning string, exit bool) {
 // CheckWarnings Checks warnings returned from various vault relation operations
 func CheckWarnings(warnings []string, exit bool) {
 	if len(warnings) > 0 {
-		for _, w := range warnings {
-			fmt.Println(w)
+		if !headlessService {
+			for _, w := range warnings {
+				fmt.Println(w)
+			}
 		}
 		if exit {
 			os.Exit(1)
@@ -52,10 +68,14 @@ func LogError(err error, f *os.File, exit bool) {
 		log.SetOutput(f)
 		log.SetPrefix("[ERROR]")
 		if exit {
-			fmt.Printf("Errors encountered, exiting and writing to log file: %s\n", f.Name())
+			if !headlessService {
+				fmt.Printf("Errors encountered, exiting and writing to log file: %s\n", f.Name())
+			}
 			log.Fatal(err)
 		} else {
-			log.Println(err)
+			if !headlessService {
+				log.Println(err)
+			}
 			log.SetPrefix(_prefix)
 		}
 	}
@@ -71,11 +91,28 @@ func LogWarnings(warnings []string, f *os.File, exit bool) {
 			log.Println(w)
 		}
 		if exit {
-			fmt.Printf("Warnings encountered, exiting and writing to log file: %s\n", f.Name())
+			if !headlessService {
+				fmt.Printf("Warnings encountered, exiting and writing to log file: %s\n", f.Name())
+			}
 			os.Exit(1)
 		} else {
 			log.SetPrefix(_prefix)
 		}
+	}
+}
+
+//LogErrorObject writes errors to the passed logger object and exits
+func LogErrorMessage(errorMessage string, logger *log.Logger, exit bool) {
+	_prefix := logger.Prefix()
+	logger.SetPrefix("[ERROR]")
+	if exit {
+		if !headlessService {
+			fmt.Printf("Errors encountered, exiting and writing to log file\n")
+		}
+		logger.Fatal(errorMessage)
+	} else {
+		logger.Println(errorMessage)
+		logger.SetPrefix(_prefix)
 	}
 }
 
@@ -85,13 +122,28 @@ func LogErrorObject(err error, logger *log.Logger, exit bool) {
 		_prefix := logger.Prefix()
 		logger.SetPrefix("[ERROR]")
 		if exit {
-			fmt.Printf("Errors encountered, exiting and writing to log file: %v\n", err)
+			if !headlessService {
+				fmt.Printf("Errors encountered, exiting and writing to log file: %v\n", err)
+			}
 			logger.Fatal(err)
 		} else {
-			logger.Println(err)
+			if !headlessService {
+				logger.Println(err)
+			}
 			logger.SetPrefix(_prefix)
 		}
 	}
+}
+
+//LogErrorObject writes errors to the passed logger object and exits
+func LogInfo(info string, logger *log.Logger) {
+	if !headlessService {
+		fmt.Println(info)
+	}
+	_prefix := logger.Prefix()
+	logger.SetPrefix("[INFO]")
+	logger.Println(info)
+	logger.SetPrefix(_prefix)
 }
 
 //LogWarningsObject writes warnings to the passed logger object and exits
@@ -103,7 +155,9 @@ func LogWarningsObject(warnings []string, logger *log.Logger, exit bool) {
 			logger.Println(w)
 		}
 		if exit {
-			fmt.Println("Warnings encountered, exiting and writing to log file")
+			if !headlessService {
+				fmt.Println("Warnings encountered, exiting and writing to log file")
+			}
 			os.Exit(1)
 		} else {
 			logger.SetPrefix(_prefix)

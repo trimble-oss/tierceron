@@ -1,7 +1,6 @@
 package xdbutil
 
 import (
-	"fmt"
 	"os"
 	xdb "tierceron/trcx/db"
 	xUtils "tierceron/trcx/xutil"
@@ -15,12 +14,12 @@ func GenerateSeedsFromVaultToDb(config eUtils.DriverConfig) interface{} {
 		err := os.RemoveAll(config.EndDir + config.Env)
 
 		if err != nil {
-			fmt.Println(err)
+			eUtils.LogErrorObject(err, config.Log, false)
 			os.Exit(1)
 		}
 
 		if err1 == nil {
-			fmt.Println("Seed removed from", config.EndDir+config.Env)
+			eUtils.LogInfo("Seed removed from"+config.EndDir+config.Env, config.Log)
 		}
 		return nil
 	}
@@ -44,9 +43,9 @@ func GenerateSeedsFromVaultToDb(config eUtils.DriverConfig) interface{} {
 	}
 
 	tierceronEngine, err := xdb.CreateEngine(&config,
-		templatePaths, config.Env, config.VersionFilter[0])
+		templatePaths, config.Env, config.VersionFilter[0], config.Log)
 	if err != nil {
-		fmt.Println(err)
+		eUtils.LogErrorObject(err, config.Log, false)
 		os.Exit(1)
 	}
 

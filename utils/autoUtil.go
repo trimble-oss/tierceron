@@ -47,7 +47,15 @@ func (c *cert) getCert() *cert {
 }
 
 // AutoAuth attempts to authenticate a user.
-func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr *string, tokenNamePtr *string, envPtr *string, addrPtr *string, ping bool) {
+func AutoAuth(insecure bool,
+	secretIDPtr *string,
+	appRoleIDPtr *string,
+	tokenPtr *string,
+	tokenNamePtr *string,
+	envPtr *string,
+	addrPtr *string,
+	ping bool,
+	logger *log.Logger) {
 	// Declare local variables
 	var override bool
 	var exists bool
@@ -109,7 +117,7 @@ func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
-			fmt.Println("No cert file found, please enter config IDs")
+			LogInfo("No cert file found, please enter config IDs", logger)
 			if addrPtr != nil && *addrPtr != "" {
 				fmt.Println("vaultHost: " + *addrPtr)
 				vaultHost = *addrPtr
@@ -153,7 +161,7 @@ func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr
 				log.Fatal(err)
 			}
 		}
-		v, err = sys.NewVault(insecure, *addrPtr, *envPtr, false, ping, false)
+		v, err = sys.NewVault(insecure, *addrPtr, *envPtr, false, ping, false, logger)
 		CheckErrorNoStack(err, true)
 
 		// Get dump
@@ -202,7 +210,7 @@ func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr
 			}
 		}
 	} else {
-		v, err = sys.NewVault(insecure, *addrPtr, *envPtr, false, ping, false)
+		v, err = sys.NewVault(insecure, *addrPtr, *envPtr, false, ping, false, logger)
 		CheckErrorNoStack(err, true)
 	}
 
@@ -263,7 +271,7 @@ func AutoAuth(insecure bool, secretIDPtr *string, appRoleIDPtr *string, tokenPtr
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		CheckError(err, true)
 
-		mod, err := kv.NewModifier(insecure, master, *addrPtr, *envPtr, nil)
+		mod, err := kv.NewModifier(insecure, master, *addrPtr, *envPtr, nil, logger)
 		CheckError(err, true)
 		mod.Env = "bamboo"
 

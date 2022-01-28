@@ -3,6 +3,7 @@ package kv
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -59,7 +60,7 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 // @param env   	The environment currently connecting to.
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 // 		   			Any errors generated in creating the client
-func NewModifier(insecure bool, token string, address string, env string, regions []string) (*Modifier, error) {
+func NewModifier(insecure bool, token string, address string, env string, regions []string, logger *log.Logger) (*Modifier, error) {
 	if len(address) == 0 {
 		address = "http://127.0.0.1:8020" // Default address
 	}
@@ -73,7 +74,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 		HttpClient: httpClient,
 	})
 	if err != nil {
-		fmt.Println("vaultHost: " + modClient.Address())
+		logger.Println("vaultHost: "+modClient.Address(), logger)
 		return nil, err
 	}
 
@@ -85,11 +86,11 @@ func NewModifier(insecure bool, token string, address string, env string, region
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
-func (m *Modifier) ValidateEnvironment(environment string, init bool) bool {
+func (m *Modifier) ValidateEnvironment(environment string, init bool, logger *log.Logger) bool {
 	env, sub, _, envErr := PreCheckEnvironment(environment)
 
 	if envErr != nil {
-		fmt.Printf("Environment format error: %v\n", envErr)
+		logger.Println(fmt.Sprintf("Environment format error: %v\n", envErr))
 		os.Exit(-1)
 	} else {
 		if sub != "" {
@@ -109,7 +110,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool) bool {
 	secret, err := m.client.Auth().Token().LookupSelf()
 
 	if err != nil {
-		fmt.Printf("LookupSelf Auth failure: %v\n", err)
+		logger.Println(fmt.Sprintf("LookupSelf Auth failure: %v\n", err))
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)
 		}
@@ -278,13 +279,16 @@ func (m *Modifier) List(path string) (*api.Secret, error) {
 		pathBlocks[0] += "/"
 	}
 
-	fullPath := pathBlocks[0] + "metadata/"
+	fullPath := pathBlocks[0] + "metadata"
 	if !noEnvironments[pathBlocks[0]] {
-		fullPath += m.Env + "/"
+		fullPath += "/" + m.Env + "/"
 	} else if strings.HasPrefix(m.Env, "local") { //if local environment, add env to fullpath
-		fullPath += m.Env + "/"
+		fullPath += "/" + m.Env + "/"
 	}
 	if len(pathBlocks) > 1 {
+		if !strings.HasSuffix(fullPath, "/") {
+			fullPath += "/"
+		}
 		fullPath += pathBlocks[1]
 	}
 	return m.logical.List(fullPath)
@@ -375,7 +379,7 @@ func (m *Modifier) GetProjectServicesMap() (map[string][]string, error) {
 }
 
 //GetVersionValues gets filepath for values and grabs metadata for those paths.
-func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath string) (map[string]map[string]interface{}, error) {
+func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath string, logger *log.Logger) (map[string]map[string]interface{}, error) {
 	envCheck := strings.Split(mod.Env, "_")
 	mod.Env = envCheck[0]
 	userPaths, err := mod.List(enginePath + "/")
@@ -452,7 +456,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 					if _, ok := versionDataMap[path]; !ok {
 						metadataValue, err := mod.ReadTemplateVersions(path)
 						if err != nil {
-							fmt.Println("Couldn't read version data at " + path)
+							logger.Println("Couldn't read version data at " + path)
 						}
 						if len(metadataValue) == 0 {
 							continue
@@ -470,7 +474,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 	return versionDataMap, nil
 }
 
-func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[string]map[string]interface{}) {
+func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[string]map[string]interface{}, logger *log.Logger) {
 	for _, filePath := range filePaths {
 		foundService := false
 		for _, service := range mod.VersionFilter {
@@ -486,11 +490,11 @@ func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[s
 		subFilePaths, err := getPaths(mod, filePath)
 
 		if len(subFilePaths) > 0 {
-			recursivePathFinder(mod, subFilePaths, versionDataMap)
+			recursivePathFinder(mod, subFilePaths, versionDataMap, logger)
 		}
 
 		if err != nil {
-			fmt.Println(err)
+			logger.Println(err.Error())
 		}
 
 		metadataValue, err := mod.ReadTemplateVersions(filePath)
@@ -503,16 +507,16 @@ func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[s
 
 func getPaths(mod *Modifier, pathName string) ([]string, error) {
 	secrets, err := mod.List(pathName)
-	//fmt.Println("secrets " + pathName)
-	//fmt.Println(secrets)
+	//logger.Println("secrets " + pathName)
+	//logger.Println(secrets)
 	pathList := []string{}
 	if err != nil {
 		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
-		//fmt.Println("secrets are")
-		//fmt.Println(slicey)
+		//logger.Println("secrets are")
+		//logger.Println(slicey)
 		for _, pathEnd := range slicey {
 			// skip local path if environment is not local
 			if pathEnd != "local/" {
@@ -521,8 +525,8 @@ func getPaths(mod *Modifier, pathName string) ([]string, error) {
 				pathList = append(pathList, path)
 			}
 		}
-		//fmt.Println("pathList")
-		//fmt.Println(pathList)
+		//logger.Println("pathList")
+		//logger.Println(pathList)
 		return pathList, nil
 	}
 	return pathList, nil

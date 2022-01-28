@@ -1,6 +1,7 @@
 package util
 
 import (
+	"log"
 	"tierceron/trcconfig/utils"
 
 	"tierceron/vaulthelper/kv"
@@ -44,14 +45,14 @@ func NewProperties(tokenNamePtr *string, authTokenNamePtr *string, appRoleIDPtr 
 	return &properties, nil
 }
 */
-func NewProperties(v *sys.Vault, mod *kv.Modifier, env string, project string, service string) (*Properties, error) {
+func NewProperties(v *sys.Vault, mod *kv.Modifier, env string, project string, service string, logger *log.Logger) (*Properties, error) {
 	properties := Properties{}
 	properties.mod = mod
 	properties.mod.Env = env
 
 	properties.cds = new(utils.ConfigDataStore)
 	var commonPaths []string
-	properties.cds.Init(properties.mod, true, true, project, commonPaths, service)
+	properties.cds.Init(properties.mod, true, true, project, commonPaths, logger, service)
 
 	return &properties, nil
 }

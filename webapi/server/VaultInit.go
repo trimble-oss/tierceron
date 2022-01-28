@@ -25,7 +25,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	fmt.Println("Initing vault")
 
-	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false)
+	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, logger)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		utils.LogErrorObject(err, logger, false)
@@ -86,7 +86,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		tokenMap[token.Name] = token.Value
 	}
 
-	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil)
+	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	utils.LogErrorObject(err, logger, false)
 
 	mod.Env = "bamboo"
@@ -176,7 +176,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 		AuthToken: "",
 	}
 
-	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil)
+	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return &result, err
@@ -202,7 +202,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 
 //GetStatus requests version info and whether the vault has been initailized
 func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStatus, error) {
-	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false)
+	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, s.Log)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err
@@ -222,7 +222,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 
 //Unseal passes the unseal key to the vault and tries to unseal the vault
 func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp, error) {
-	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false)
+	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
 	if err != nil {
 		utils.LogErrorObject(err, s.Log, false)
 		return nil, err

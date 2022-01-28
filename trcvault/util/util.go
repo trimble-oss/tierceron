@@ -25,7 +25,7 @@ import (
 	"log"
 )
 
-func GetLocalVaultHost(withPort bool) (string, error) {
+func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 	vaultHost := "https://"
 	vaultErr := errors.New("No usable local vault found.")
 	hostFileLines, pherr := txeh.ParseHosts("/etc/hosts")
@@ -46,7 +46,7 @@ func GetLocalVaultHost(withPort bool) (string, error) {
 		// Now, look for vault.
 		for i := 8190; i < 8300; i++ {
 			vh := vaultHost + ":" + strconv.Itoa(i)
-			_, err := sys.NewVault(true, vh, "", false, true, true)
+			_, err := sys.NewVault(true, vh, "", false, true, true, logger)
 			if err == nil {
 				vaultHost = vaultHost + ":" + strconv.Itoa(i)
 				vaultErr = nil
@@ -95,7 +95,7 @@ func GetJSONFromClient(httpClient *http.Client, headers map[string]string, addre
 	return nil
 }
 
-func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) {
+func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string, logger *log.Logger) {
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
 	templateResult.ValueSection["values"] = map[string]map[string]string{}
 
@@ -107,23 +107,23 @@ func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperk
 	if goMod != nil {
 		cds = new(vcutils.ConfigDataStore)
 		goMod.Version = goMod.Version + "***X-Mode"
-		cds.Init(goMod, true, true, project, commonPaths, service) //CommonPaths = "" - empty - not needed for tenant config
+		cds.Init(goMod, true, true, project, commonPaths, logger, service) //CommonPaths = "" - empty - not needed for tenant config
 	}
 
 	_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
 		cds,
 		templatePath,
-		&log.Logger{},
 		project,
 		service,
 		true,
 		&(templateResult.InterfaceTemplateSection),
 		&(templateResult.ValueSection),
 		&(templateResult.SecretSection),
+		logger,
 	)
 }
 
-func SeedVaultById(goMod *kv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, tableId string) error {
+func SeedVaultById(goMod *kv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, tableId string, logger *log.Logger) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -147,9 +147,9 @@ func SeedVaultById(goMod *kv.Modifier, service string, address string, token str
 	sliceValueSection = append(sliceValueSection, templateResult.ValueSection)
 	sliceSecretSection = append(sliceSecretSection, templateResult.SecretSection)
 
-	xutil.CombineSection(sliceTemplateSection, maxDepth, templateCombinedSection)
-	xutil.CombineSection(sliceValueSection, -1, valueCombinedSection)
-	xutil.CombineSection(sliceSecretSection, -1, secretCombinedSection)
+	xutil.CombineSection(sliceTemplateSection, maxDepth, templateCombinedSection, logger)
+	xutil.CombineSection(sliceValueSection, -1, valueCombinedSection, logger)
+	xutil.CombineSection(sliceSecretSection, -1, secretCombinedSection, logger)
 
 	template, errT := yaml.Marshal(templateCombinedSection)
 	value, errV := yaml.Marshal(valueCombinedSection)
