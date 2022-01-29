@@ -55,6 +55,7 @@ func Init(l *log.Logger) {
 var KvInitialize func(context.Context, *logical.InitializationRequest) error
 var KvCreate framework.OperationFunc
 var KvUpdate framework.OperationFunc
+var KvRead framework.OperationFunc
 
 var vaultHost string // Plugin will only communicate locally with a vault instance.
 var environments []string = []string{"dev", "QA"}
@@ -225,10 +226,52 @@ func handleWrite(ctx context.Context, req *logical.Request, data *framework.Fiel
 	return nil, nil
 }
 
+func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	logger.Println("TrcRead")
+
+	key := req.Path //data.Get("path").(string)
+	if key == "" {
+		return logical.ErrorResponse("missing path"), nil
+	}
+
+	// Write out a new key
+	if entry, err := req.Storage.Get(ctx, key); err != nil || entry == nil {
+		return &logical.Response{
+			Data: map[string]interface{}{
+				"message": "Entry missing.",
+			},
+		}, nil
+	} else {
+		vData := map[string]interface{}{}
+		if err := json.Unmarshal(entry.Value, &vData); err != nil {
+			return nil, err
+		}
+		tokenEnvMap := map[string]interface{}{}
+		tokenEnvMap["env"] = req.Path
+		tokenEnvMap["address"] = vaultHost
+		if vData["token"] != nil {
+			logger.Println("Env queued: " + req.Path)
+		}
+		tokenEnvMap["token"] = vData["token"]
+		tokenEnvChan <- tokenEnvMap
+		ctx.Done()
+	}
+	logger.Println("TrcRead complete.")
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"message": "Nice try.",
+		},
+	}, nil
+}
+
 func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcCreateUpdate")
 	tokenEnvMap := map[string]interface{}{}
-	tokenEnvMap["env"] = req.Path
+	key := req.Path //data.Get("path").(string)
+	if key == "" {
+		return logical.ErrorResponse("missing path"), nil
+	}
 
 	if token, tokenOk := data.GetOk("token"); tokenOk {
 		tokenEnvMap["token"] = token
@@ -236,12 +279,8 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, errors.New("Token required.")
 	}
 
+	tokenEnvMap["env"] = req.Path
 	tokenEnvMap["address"] = vaultHost
-
-	key := req.Path //data.Get("path").(string)
-	if key == "" {
-		return logical.ErrorResponse("missing path"), nil
-	}
 
 	// Check that some fields are given
 	if len(req.Data) == 0 {
@@ -265,6 +304,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	tokenEnvChan <- tokenEnvMap
 	ctx.Done()
+	logger.Println("TrcCreateUpdate complete.")
 
 	return &logical.Response{
 		Data: map[string]interface{}{
@@ -349,8 +389,10 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 
 		KvCreate = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation]
 		KvUpdate = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.UpdateOperation]
+		KvRead = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.ReadOperation]
 		bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.CreateOperation] = TrcCreate
 		bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.UpdateOperation] = TrcUpdate
+		bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.ReadOperation] = TrcRead
 	}
 
 	bkv.(*kv.PassthroughBackend).Paths = []*framework.Path{
