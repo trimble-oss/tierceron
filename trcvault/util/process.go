@@ -222,7 +222,13 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 		createTableTriggersCB,
 		applyDBQueryCB,
 		seedVaultCB,
-		seedVaultDeltaCB)
+		seedVaultDeltaCB, func(msg string, err error) {
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			} else {
+				eUtils.LogInfo(msg, logger)
+			}
+		})
 	return nil
 }
 
