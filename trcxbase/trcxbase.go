@@ -57,7 +57,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	}
 	startDirPtr := flag.String("startDir", "trc_templates", "Pull templates from this directory")
 	endDirPtr := flag.String("endDir", "./trc_seeds/", "Write generated seed files to this directory")
-	logFilePtr := flag.String("log", "./var/log/trcx.log", "Output path for log file")
+	logFilePtr := flag.String("log", "./trcx.log", "Output path for log file")
 	helpPtr := flag.Bool("h", false, "Provide options for trcx")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
@@ -231,7 +231,7 @@ skipDiff:
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("./var/log/"); os.IsNotExist(err) && *logFilePtr == "./var/log/trcx.log" {
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/trcx.log" {
 		*logFilePtr = "./trcx.log"
 	}
 

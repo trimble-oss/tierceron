@@ -31,7 +31,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	namespaceVariable := flag.String("namespace", "", "name of the namespace")
 
-	logFilePtr := flag.String("log", "./var/log/trcinit.log", "Output path for log files")
+	logFilePtr := flag.String("log", "./trcinit.log", "Output path for log files")
 	servicePtr := flag.String("service", "", "Seeding vault with a single service")
 	prodPtr := flag.Bool("prod", false, "Prod only seeds vault with staging environment")
 	uploadCertPtr := flag.Bool("certs", false, "Upload certs if provided")
@@ -99,7 +99,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("./var/log/"); os.IsNotExist(err) && *logFilePtr == "./var/log/trcinit.log" {
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/trcinit.log" {
 		*logFilePtr = "./trcinit.log"
 	}
 
