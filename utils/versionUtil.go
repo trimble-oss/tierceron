@@ -97,6 +97,22 @@ func BoundCheck(config DriverConfig, versionNumbers []int, version string) {
 	}
 }
 
+func GetProjectServices(templateFiles []string) ([]string, []string, []string) {
+	projects := []string{}
+	services := []string{}
+	templateFilesContents := []string{}
+
+	for _, templateFile := range templateFiles {
+		project, service, templateFileContent := GetProjectService(templateFile)
+
+		projects = append(projects, project)
+		services = append(services, service)
+		templateFilesContents = append(templateFilesContents, templateFileContent)
+	}
+
+	return projects, services, templateFilesContents
+}
+
 func GetProjectService(templateFile string) (string, string, string) {
 	templateFile = strings.ReplaceAll(strings.ReplaceAll(templateFile, "\\\\", "/"), "\\", "/")
 	splitDir := strings.Split(templateFile, "/")
