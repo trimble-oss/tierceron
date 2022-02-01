@@ -96,10 +96,12 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	return nil
 }
 
-func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interface{},
+func ProcessTable(tierceronEngine *db.TierceronEngine,
+	identityConfig map[string]interface{},
+	vaultDatabaseConfig map[string]interface{},
 	vaultAddress string,
 	goMod *helperkv.Modifier,
-	mysqlConn *sql.DB,
+	sourceDatabaseConnectionMap map[string]interface{},
 	vault *sys.Vault,
 	authData map[string]interface{},
 	env string,
@@ -165,7 +167,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 	getSourceDBConn := func(dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
 		return OpenDirectConnection(dbUrl,
 			username,
-			configcore.DecryptSecretConfig(sourceDBConfig, config))
+			configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionMap))
 	}
 
 	// 3. Write seed data to vault
@@ -183,7 +185,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 
 	// TODO: cms Construction Management Services - presently our only source for enriching our internal tables.
 	// Is this truly the only other source?
-	httpClient, err := helperkv.CreateHTTPClient(false, config["cmsDomain"].(string), env, false)
+	httpClient, err := helperkv.CreateHTTPClient(false, vaultDatabaseConfig["cmsDomain"].(string), env, false)
 
 	// Utilizing provided api auth headers, endpoint, and body data
 	// this CB makes a call on behalf of the caller and returns a map
@@ -210,9 +212,9 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 		}
 	}
 
-	tcutil.ProcessTableController(config,
+	tcutil.ProcessTableController(identityConfig,
 		authData,
-		mysqlConn,
+		sourceDatabaseConnectionMap["connection"].(*sql.DB),
 		getSourceByAPICB,
 		project,
 		tierceronEngine.Database.Name(),
@@ -234,7 +236,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine, config map[string]interfa
 
 func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	// 1. Get Plugin configurations.
-	project, service, _ := utils.GetProjectService(pluginConfig["connectionPath"].(string))
+	projects, services, _ := utils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), pluginConfig["env"].(string), []string{}, logger)
 	goMod.Env = pluginConfig["env"].(string)
 	goMod.Version = "0"
@@ -244,27 +246,76 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 		return err
 	}
 	vault.SetToken(pluginConfig["token"].(string))
-	properties, err := NewProperties(vault, goMod, pluginConfig["env"].(string), project, service, logger)
-	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
-		return err
-	}
+	var sourceDatabaseConfigs []map[string]interface{}
+	var vaultDatabaseConfig map[string]interface{}
+	var identityConfig map[string]interface{}
+	var sourceDatabaseConnectionsMap map[string]map[string]interface{}
 
-	config, ok := properties.GetConfigValues(service, "config")
-	if !ok {
-		eUtils.LogErrorMessage("Couldn't get config values.", logger, false)
-		return err
+	for i := 0; i < len(projects); i++ {
+
+		var idEnvironments []string
+
+		if services[i] == "Database" {
+			// This could be an api call list list what's available with rid's.
+			// East and west...
+			idEnvironments = []string{".rid.1", ".rid.2"}
+		} else {
+			idEnvironments = []string{""}
+		}
+
+		for _, idEnvironment := range idEnvironments {
+			ok := false
+			properties, err := NewProperties(vault, goMod, pluginConfig["env"].(string)+idEnvironment, projects[i], services[i], logger)
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+				return err
+			}
+
+			switch services[i] {
+			case "Database":
+				var sourceDatabaseConfig map[string]interface{}
+				sourceDatabaseConfig, ok = properties.GetConfigValues(services[i], "config.yml")
+				if !ok {
+					// Just ignore this one and go to the next one.
+					eUtils.LogWarningMessage("Expected database configuration does not exist: "+idEnvironment, logger, false)
+					continue
+				}
+				sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
+
+			case "Identity":
+				identityConfig, ok = properties.GetConfigValues(services[i], "config.yml")
+				if !ok {
+					eUtils.LogErrorMessage("Couldn't get config values.", logger, false)
+					return err
+				}
+			case "VaultDatabase":
+				vaultDatabaseConfig, ok = properties.GetConfigValues(services[i], "config.yml")
+				if !ok {
+					eUtils.LogErrorMessage("Couldn't get config values.", logger, false)
+					return err
+				}
+			}
+		}
+
 	}
 
 	// 2. Establish mysql connection to remote mysql instance.
-	mysqlConn, err := OpenDirectConnection(config["mysqldburl"].(string), config["mysqldbuser"].(string), config["mysqldbpassword"].(string))
-	if mysqlConn != nil {
-		defer mysqlConn.Close()
-	}
+	for _, sourceDatabaseConfig := range sourceDatabaseConfigs {
+		dbsourceConn, err := OpenDirectConnection(sourceDatabaseConfig["dbsourceurl"].(string), sourceDatabaseConfig["dbsourceuser"].(string), sourceDatabaseConfig["dbsourcepassword"].(string))
 
-	if err != nil {
-		eUtils.LogErrorMessage("Couldn't get sql connection.", logger, false)
-		return err
+		if err != nil {
+			eUtils.LogErrorMessage("Couldn't get database connection.", logger, false)
+			return err
+		}
+
+		if dbsourceConn != nil {
+			defer dbsourceConn.Close()
+		}
+		dbSourceConnBundle := map[string]interface{}{}
+		dbSourceConnBundle["connection"] = dbsourceConn
+		dbSourceConnBundle["encryptionSecret"] = sourceDatabaseConfig["dbencryptionSecret"].(string)
+
+		sourceDatabaseConnectionsMap[sourceDatabaseConfig["dbsourceregion"].(string)] = dbSourceConnBundle
 	}
 
 	// 4. Create config for vault for queries to vault.
@@ -282,7 +333,7 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 	// Http query resources include:
 	// 1. Auth -- Auth is provided by the external library tcutil.
 	// 2. Get json by Api call.
-	authComponents := tcutil.GetAuthComponents(config)
+	authComponents := tcutil.GetAuthComponents(identityConfig)
 	httpClient, err := helperkv.CreateHTTPClient(false, authComponents["authDomain"].(string), pluginConfig["env"].(string), false)
 	if err != nil {
 		eUtils.LogErrorObject(err, logger, false)
@@ -306,20 +357,23 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
-	for _, table := range tableList {
-		ProcessTable(tierceronEngine,
-			config,
-			pluginConfig["address"].(string),
-			goMod,
-			mysqlConn,
-			vault,
-			authData,
-			pluginConfig["env"].(string),
-			table,
-			make(chan bool, 5), // tableChangedChannel
-			signalChannel,
-			logger,
-		)
+	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
+		for _, table := range tableList {
+			ProcessTable(tierceronEngine,
+				identityConfig,
+				vaultDatabaseConfig,
+				pluginConfig["address"].(string),
+				goMod,
+				sourceDatabaseConnectionMap,
+				vault,
+				authData,
+				pluginConfig["env"].(string),
+				table,
+				make(chan bool, 5), // tableChangedChannel
+				signalChannel,
+				logger,
+			)
+		}
 	}
 	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...
 	//    somehow you need to track if something is a new entry...  like a rowChangedSlice...

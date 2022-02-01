@@ -152,7 +152,11 @@ func ProcessEnvConfig(config map[string]interface{}) error {
 		//		"trc_templates/TenantDatabase/KafkaTableConfiguration/KafkaTableConfiguration.tmpl",   // not yet implemented.
 		//		"trc_templates/TenantDatabase/Mysqlfile/Mysqlfile.tmpl",                               // not yet implemented.
 	}
-	config["connectionPath"] = "trc_templates/TrcVault/Database/config.tmpl"
+	config["connectionPath"] = []string{
+		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // implemented
+		"trc_templates/TrcVault/Database/config.yml.tmpl",      // implemented
+		"trc_templates/TrcVault/Identity/config.yml.tmpl",      // implemented
+	}
 
 	vscutils.ProcessTables(config, logger)
 

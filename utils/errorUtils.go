@@ -106,6 +106,21 @@ func LogWarnings(warnings []string, f *os.File, exit bool) {
 }
 
 //LogErrorObject writes errors to the passed logger object and exits
+func LogWarningMessage(errorMessage string, logger *log.Logger, exit bool) {
+	_prefix := logger.Prefix()
+	logger.SetPrefix("[WARN]")
+	if exit {
+		if !headlessService {
+			fmt.Printf("Errors encountered, exiting and writing to log file\n")
+		}
+		logger.Fatal(errorMessage)
+	} else {
+		logger.Println(errorMessage)
+		logger.SetPrefix(_prefix)
+	}
+}
+
+//LogErrorObject writes errors to the passed logger object and exits
 func LogErrorMessage(errorMessage string, logger *log.Logger, exit bool) {
 	_prefix := logger.Prefix()
 	logger.SetPrefix("[ERROR]")
