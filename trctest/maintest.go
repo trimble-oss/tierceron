@@ -28,7 +28,15 @@ func main() {
 	}
 
 	// plugin configs here...
-	tokenEnvMap["connectionPath"] = "trc_templates/TrcVault/Database/config.tmpl"
+	// plugin configs here...
+	tokenEnvMap["connectionPath"] = []string{
+		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // implemented
+		"trc_templates/TrcVault/Database/config.yml.tmpl",      // implemented
+		"trc_templates/TrcVault/Identity/config.yml.tmpl",      // implemented
+		//		"trc_templates/TenantDatabase/SpectrumEnterpriseConfig/SpectrumEnterpriseConfig.tmpl", // not yet implemented.
+		//		"trc_templates/TenantDatabase/KafkaTableConfiguration/KafkaTableConfiguration.tmpl",   // not yet implemented.
+		//		"trc_templates/TenantDatabase/Mysqlfile/Mysqlfile.tmpl",                               // not yet implemented.
+	}
 	tokenEnvMap["env"] = "QA"
 	vscutils.ProcessTables(tokenEnvMap, logger)
 }
