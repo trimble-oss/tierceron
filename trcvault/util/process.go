@@ -170,6 +170,17 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 			configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionMap))
 	}
 
+	getFlowConfiguration := func(flowTemplatePath string) (map[string]interface{}, bool) {
+		flowProject, flowService, flowConfigTemplateName := utils.GetProjectService(flowTemplatePath)
+
+		properties, err := NewProperties(vault, goMod, env, flowProject, flowService, logger)
+		if err != nil {
+			return nil, false
+		}
+
+		return properties.GetConfigValues(service, flowConfigTemplateName)
+	}
+
 	// 3. Write seed data to vault
 	var baseTableTemplate extract.TemplateResultData
 	LoadBaseTemplate(&baseTableTemplate, goMod, project, service, templateTablePath, logger)
@@ -214,6 +225,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 
 	tcutil.ProcessTableController(identityConfig,
 		authData,
+		getFlowConfiguration,
 		sourceDatabaseConnectionMap["connection"].(*sql.DB),
 		getSourceByAPICB,
 		project,
