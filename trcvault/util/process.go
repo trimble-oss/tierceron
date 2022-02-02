@@ -149,14 +149,23 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 	// Make a call on Call back to insert or update using the provided query.
 	// If this is expected to result in a change to an existing table, thern trigger
 	// something to the changed channel.
-	applyDBQueryCB := func(query string, changed bool) {
-		_, _, _, err := db.Query(tierceronEngine, query)
-		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
+	applyDBQueryCB := func(query string, changed bool, operation string) [][]string {
+		if operation == "INSERT" {
+			_, _, _, err := db.Query(tierceronEngine, query)
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			}
+			if changed {
+				changedChannel <- true
+			}
+		} else if operation == "SELECT" {
+			_, _, matrixChangedEntries, err := db.Query(tierceronEngine, query)
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			}
+			return matrixChangedEntries
 		}
-		if changed {
-			changedChannel <- true
-		}
+		return nil
 	}
 
 	// Open a database connection to the provided source using provided
