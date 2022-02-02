@@ -60,7 +60,7 @@ func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 	return vaultHost, vaultErr
 }
 
-func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, address string, body io.Reader) map[string]interface{} {
+func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("GET", address, nil)
 	if err != nil {
@@ -81,7 +81,7 @@ func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, 
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
@@ -90,12 +90,12 @@ func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, 
 			panic(err)
 		}
 
-		return jsonData
+		return jsonData, nil
 	}
-	return nil
+	return nil, errors.New("http status failure")
 }
 
-func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string, address string, body io.Reader) map[string]interface{} {
+func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {
@@ -108,7 +108,7 @@ func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string,
 	// request.Header.Set("Content-Type", "application/json")
 	response, err := httpClient.Do(request)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer response.Body.Close()
 
@@ -125,9 +125,9 @@ func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string,
 			panic(err)
 		}
 
-		return jsonData
+		return jsonData, nil
 	}
-	return nil
+	return nil, errors.New("http status failure")
 }
 
 func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string, logger *log.Logger) {

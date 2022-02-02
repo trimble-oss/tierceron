@@ -192,14 +192,14 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 		}
 	}
 
-	// TODO: cms Construction Management Services - presently our only source for enriching our internal tables.
-	// Is this truly the only other source?
-	httpClient, err := helperkv.CreateHTTPClient(false, vaultDatabaseConfig["cmsDomain"].(string), env, false)
-
 	// Utilizing provided api auth headers, endpoint, and body data
 	// this CB makes a call on behalf of the caller and returns a map
 	// representation of json data provided by the endpoint.
-	getSourceByAPICB := func(apiAuthHeaders map[string]string, apiEndpoint string, bodyData io.Reader, getOrPost bool) map[string]interface{} {
+	getSourceByAPICB := func(apiAuthHeaders map[string]string, host string, apiEndpoint string, bodyData io.Reader, getOrPost bool) (map[string]interface{}, error) {
+		httpClient, err := helperkv.CreateHTTPClient(false, host, env, false)
+		if err != nil {
+			return nil, err
+		}
 		if getOrPost {
 			return GetJSONFromClientByGet(httpClient, apiAuthHeaders, apiEndpoint, bodyData)
 		}
@@ -353,7 +353,11 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 		return err
 	}
 
-	authData := GetJSONFromClientByPost(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
+	authData, errPost := GetJSONFromClientByPost(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
+	if errPost != nil {
+		eUtils.LogErrorObject(errPost, logger, false)
+		return errPost
+	}
 
 	tierceronEngine, err := db.CreateEngine(&configDriver, tableList, pluginConfig["env"].(string), tcutil.GetDatabaseName(), logger)
 	if err != nil {
