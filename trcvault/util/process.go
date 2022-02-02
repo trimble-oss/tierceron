@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -163,6 +164,14 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 			if changed {
 				changedChannel <- true
 			}
+		} else if operation == "UPDATE" {
+			_, _, _, err := db.Query(tierceronEngine, query)
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			}
+			if changed {
+				changedChannel <- true
+			}
 		} else if operation == "SELECT" {
 			_, _, matrixChangedEntries, err := db.Query(tierceronEngine, query)
 			if err != nil {
@@ -223,7 +232,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 	// When called sets up an infinite loop listening for changes on either
 	// the changedChannel or checks itself every 3 minutes for changes to
 	// its own tables.
-	seedVaultDeltaCB := func(idColumnName string, changedColumnName string) {
+	initSeedVaultListenerCB := func(idColumnName string, changedColumnName string) {
 		for {
 			select {
 			case <-signalChannel:
@@ -242,6 +251,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 		authData,
 		getFlowConfiguration,
 		sourceDatabaseConnectionMap["dbsourceregion"].(string),
+		sourceDatabaseConnectionMap["dbingestinterval"].(time.Duration),
 		sourceDatabaseConnectionMap["connection"].(*sql.DB),
 		getSourceByAPICB,
 		project,
@@ -252,7 +262,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 		createTableTriggersCB,
 		applyDBQueryCB,
 		seedVaultCB,
-		seedVaultDeltaCB, func(msg string, err error) {
+		initSeedVaultListenerCB, func(msg string, err error) {
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			} else {
@@ -342,6 +352,16 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 		dbSourceConnBundle := map[string]interface{}{}
 		dbSourceConnBundle["connection"] = dbsourceConn
 		dbSourceConnBundle["encryptionSecret"] = sourceDatabaseConfig["dbencryptionSecret"].(string)
+		if dbIngestInterval, ok := sourceDatabaseConfig["dbingestinterval"]; ok {
+			ingestInterval, err := strconv.ParseInt(dbIngestInterval.(string), 10, 64)
+			if err == nil {
+				eUtils.LogInfo("Ingest interval: "+dbIngestInterval.(string), logger)
+				dbSourceConnBundle["dbingestinterval"] = ingestInterval
+			} else {
+				eUtils.LogErrorMessage("Ingest interval invalid: "+dbIngestInterval.(string)+" Defaulting to 60 minutes.", logger, false)
+				dbSourceConnBundle["dbingestinterval"] = 60000
+			}
+		}
 
 		sourceDatabaseConnectionsMap[sourceDatabaseConfig["dbsourceregion"].(string)] = dbSourceConnBundle
 	}
