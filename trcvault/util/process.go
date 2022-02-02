@@ -201,8 +201,11 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 	// Utilizing provided api auth headers, endpoint, and body data
 	// this CB makes a call on behalf of the caller and returns a map
 	// representation of json data provided by the endpoint.
-	getSourceByAPICB := func(apiAuthHeaders map[string]string, apiEndpoint string, bodyData io.Reader) map[string]interface{} {
-		return GetJSONFromClient(httpClient, apiAuthHeaders, apiEndpoint, bodyData)
+	getSourceByAPICB := func(apiAuthHeaders map[string]string, apiEndpoint string, bodyData io.Reader, getOrPost bool) map[string]interface{} {
+		if getOrPost {
+			return GetJSONFromClientByGet(httpClient, apiAuthHeaders, apiEndpoint, bodyData)
+		}
+		return GetJSONFromClientByPost(httpClient, apiAuthHeaders, apiEndpoint, bodyData)
 	}
 
 	// When called sets up an infinite loop listening for changes on either
@@ -352,7 +355,7 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 		return err
 	}
 
-	authData := GetJSONFromClient(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
+	authData := GetJSONFromClientByPost(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
 
 	tierceronEngine, err := db.CreateEngine(&configDriver, tableList, pluginConfig["env"].(string), tcutil.GetDatabaseName(), logger)
 	if err != nil {
