@@ -60,7 +60,42 @@ func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 	return vaultHost, vaultErr
 }
 
-func GetJSONFromClient(httpClient *http.Client, headers map[string]string, address string, body io.Reader) map[string]interface{} {
+func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, address string, body io.Reader) map[string]interface{} {
+	var jsonData map[string]interface{}
+	request, err := http.NewRequest("GET", address, nil)
+	if err != nil {
+		panic(err)
+	}
+	for headerkey, headervalue := range headers {
+		request.Header.Set(headerkey, headervalue)
+	}
+	// request.Header.Set("Accept", "application/json")
+	// request.Header.Set("Content-Type", "application/json")
+	response, err := httpClient.Do(request)
+	if err != nil {
+		panic(err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == http.StatusOK {
+		jsonDataFromHttp, err := io.ReadAll(response.Body)
+
+		if err != nil {
+			panic(err)
+		}
+
+		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
+
+		if err != nil {
+			panic(err)
+		}
+
+		return jsonData
+	}
+	return nil
+}
+
+func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string, address string, body io.Reader) map[string]interface{} {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {
