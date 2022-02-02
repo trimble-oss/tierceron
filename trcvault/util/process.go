@@ -20,8 +20,6 @@ import (
 
 	tcutil "VaultConfig.TenantConfig/util"
 
-	"strings"
-
 	sys "tierceron/vaulthelper/system"
 
 	configcore "VaultConfig.Bootstrap/configcore"
@@ -113,8 +111,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
 	project, service, tableTemplateName := utils.GetProjectService(templateTablePath)
-	templateSplit := strings.Split(tableTemplateName, service+"/")
-	tableName := strings.Split(templateSplit[len(templateSplit)-1], ".")[0]
+	tableName := utils.GetTemplateFileName(tableTemplateName, service)
 	changeTableName := tableName + "_Changes"
 
 	err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
@@ -171,14 +168,15 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 	}
 
 	getFlowConfiguration := func(flowTemplatePath string) (map[string]interface{}, bool) {
-		flowProject, flowService, flowConfigTemplateName := utils.GetProjectService(flowTemplatePath)
+		flowProject, flowService, flowConfigTemplatePath := utils.GetProjectService(flowTemplatePath)
+		flowConfigTemplateName := utils.GetTemplateFileName(flowConfigTemplatePath, flowService)
 
 		properties, err := NewProperties(vault, goMod, env, flowProject, flowService, logger)
 		if err != nil {
 			return nil, false
 		}
 
-		return properties.GetConfigValues(service, flowConfigTemplateName)
+		return properties.GetConfigValues(flowService, flowConfigTemplateName)
 	}
 
 	// 3. Write seed data to vault
@@ -264,7 +262,6 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 	var sourceDatabaseConfigs []map[string]interface{}
 	var vaultDatabaseConfig map[string]interface{}
 	var identityConfig map[string]interface{}
-	var sourceDatabaseConnectionsMap map[string]map[string]interface{}
 
 	for i := 0; i < len(projects); i++ {
 
@@ -289,7 +286,7 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 			switch services[i] {
 			case "Database":
 				var sourceDatabaseConfig map[string]interface{}
-				sourceDatabaseConfig, ok = properties.GetConfigValues(services[i], "config.yml")
+				sourceDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok {
 					// Just ignore this one and go to the next one.
 					eUtils.LogWarningMessage("Expected database configuration does not exist: "+idEnvironment, logger, false)
@@ -298,13 +295,13 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 				sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
 
 			case "Identity":
-				identityConfig, ok = properties.GetConfigValues(services[i], "config.yml")
+				identityConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok {
 					eUtils.LogErrorMessage("Couldn't get config values.", logger, false)
 					return err
 				}
 			case "VaultDatabase":
-				vaultDatabaseConfig, ok = properties.GetConfigValues(services[i], "config.yml")
+				vaultDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok {
 					eUtils.LogErrorMessage("Couldn't get config values.", logger, false)
 					return err
@@ -313,6 +310,7 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 		}
 
 	}
+	sourceDatabaseConnectionsMap := map[string]map[string]interface{}{}
 
 	// 2. Establish mysql connection to remote mysql instance.
 	for _, sourceDatabaseConfig := range sourceDatabaseConfigs {
