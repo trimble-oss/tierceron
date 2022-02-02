@@ -90,7 +90,12 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 			eUtils.LogErrorObject(seedError, logger, false)
 			return seedError
 		}
+		_, _, _, err = db.Query(tierceronEngine, getDeleteChangeQuery(databaseName, changeTable, changedId))
+		if err != nil {
+			eUtils.LogErrorObject(err, logger, false)
+		}
 	}
+
 	return nil
 }
 
