@@ -142,6 +142,13 @@ func GetProjectService(templateFile string) (string, string, string) {
 	return project, service, templateFile
 }
 
+func GetTemplateFileName(templateFile string, service string) string {
+	templateSplit := strings.Split(templateFile, service+"/")
+	templateFileName := strings.Split(templateSplit[len(templateSplit)-1], ".")[0]
+
+	return templateFileName
+}
+
 func RemoveDuplicates(versionFilter []string) []string {
 	keys := make(map[string]bool) //Removes any duplicates
 	cleanedFilter := []string{}
