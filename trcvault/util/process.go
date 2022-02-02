@@ -111,12 +111,12 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
 	project, service, tableTemplateName := utils.GetProjectService(templateTablePath)
-	tableName := utils.GetTemplateFileName(tableTemplateName, service)
-	changeTableName := tableName + "_Changes"
+	flowName := utils.GetTemplateFileName(tableTemplateName, service)
+	changeFlowName := flowName + "_Changes"
 
-	err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
-		{Name: "id", Type: sqle.Text, Source: changeTableName},
-		{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
+	err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeFlowName, sqle.NewPrimaryKeySchema(sqle.Schema{
+		{Name: "id", Type: sqle.Text, Source: changeFlowName},
+		{Name: "updateTime", Type: sqle.Timestamp, Source: changeFlowName},
 	}))
 	if err != nil {
 		eUtils.LogErrorObject(err, logger, false)
@@ -140,8 +140,8 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 		var insTrigger sqle.TriggerDefinition
 		insTrigger.Name = "tcInsertTrigger"
 		updTrigger.Name = "tcUpdateTrigger"
-		updTrigger.CreateStatement = getUpdateTrigger(tierceronEngine.Database.Name(), tableName, identityColumnName)
-		insTrigger.CreateStatement = getInsertTrigger(tierceronEngine.Database.Name(), tableName, identityColumnName)
+		updTrigger.CreateStatement = getUpdateTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
+		insTrigger.CreateStatement = getInsertTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
 		tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
 		tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
 	}
@@ -216,22 +216,22 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 				eUtils.LogErrorMessage("Receiving shutdown presumably from vault.", logger, true)
 				os.Exit(0)
 			case <-changedChannel:
-				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName, logger)
+				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), flowName, idColumnName, changeFlowName, changedColumnName, logger)
 			case <-time.After(time.Minute * 3):
 				eUtils.LogInfo("3 minutes... checking for changes.", logger)
-				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), tableName, idColumnName, changeTableName, changedColumnName, logger)
+				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), flowName, idColumnName, changeFlowName, changedColumnName, logger)
 			}
 		}
 	}
 
-	tcutil.ProcessTableController(identityConfig,
+	tcutil.ProcessFlowController(identityConfig,
 		authData,
 		getFlowConfiguration,
 		sourceDatabaseConnectionMap["connection"].(*sql.DB),
 		getSourceByAPICB,
 		project,
 		tierceronEngine.Database.Name(),
-		tableName,
+		flowName,
 		getSourceDBConn,
 		initTableSchemaCB,
 		createTableTriggersCB,
