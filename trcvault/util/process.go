@@ -61,7 +61,7 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	changeTable string,
 	vaultIndexColumnName string,
 	remoteDataSource map[string]interface{},
-	pushRemote func(map[string]interface{}, map[string]interface{}) error,
+	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
 	logger *log.Logger) error {
 	changeIdQuery := getChangeIdQuery(databaseName, changeTable)
 	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changeIdQuery)
@@ -93,7 +93,9 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 			eUtils.LogErrorObject(seedError, logger, false)
 			return seedError
 		}
-		pushError := pushRemote(remoteDataSource, rowDataMap)
+
+		// Push this change to the flow for delivery to remote data source.
+		pushError := flowPushRemote(remoteDataSource, rowDataMap)
 		if pushError != nil {
 			eUtils.LogErrorObject(err, logger, false)
 		}
