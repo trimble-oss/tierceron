@@ -406,10 +406,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			if err == nil {
 				eUtils.LogInfo("Ingest interval: "+dbIngestInterval.(string), logger)
 				dbSourceConnBundle["dbingestinterval"] = ingestInterval
-			} else {
-				eUtils.LogErrorMessage("Ingest interval invalid: "+dbIngestInterval.(string)+" Defaulting to 60 minutes.", logger, false)
-				dbSourceConnBundle["dbingestinterval"] = 60000
 			}
+		} else {
+			eUtils.LogErrorMessage("Ingest interval invalid - Defaulting to 60 minutes.", logger, false)
+			dbSourceConnBundle["dbingestinterval"] = 60000
 		}
 
 		sourceDatabaseConnectionsMap[sourceDatabaseConfig["dbsourceregion"].(string)] = dbSourceConnBundle
