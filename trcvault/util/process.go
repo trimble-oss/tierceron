@@ -59,7 +59,9 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	tableName string,
 	identityColumnName string,
 	changeTable string,
-	changedColumnName string,
+	vaultIndexColumnName string,
+	remoteDataSource map[string]interface{},
+	pushRemote func(map[string]interface{}, map[string]interface{}) error,
 	logger *log.Logger) error {
 	changeIdQuery := getChangeIdQuery(databaseName, changeTable)
 	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changeIdQuery)
@@ -72,25 +74,30 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 
 		changedTableQuery := `SELECT * FROM ` + databaseName + `.` + tableName + ` WHERE ` + identityColumnName + `='` + changedId + `'` // TODO: Implement query using changedId
 
-		_, changedTableColumns, changedTableData, err := db.Query(tierceronEngine, changedTableQuery)
+		_, changedTableColumns, changedTableRowData, err := db.Query(tierceronEngine, changedTableQuery)
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
 			return err
 		}
 
-		tableDataMap := map[string]interface{}{}
+		rowDataMap := map[string]interface{}{}
 		for i, column := range changedTableColumns {
-			tableDataMap[column] = changedTableData[0][i]
+			rowDataMap[column] = changedTableRowData[0][i]
 		}
 		// Convert matrix/slice to tenantConfiguration map
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
-		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, tableDataMap, tableDataMap[changedColumnName].(string), logger)
+		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, rowDataMap[vaultIndexColumnName].(string), logger)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
 			return seedError
 		}
+		pushError := pushRemote(remoteDataSource, rowDataMap)
+		if pushError != nil {
+			eUtils.LogErrorObject(err, logger, false)
+		}
+
 		_, _, _, err = db.Query(tierceronEngine, getDeleteChangeQuery(databaseName, changeTable, changedId))
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
@@ -206,15 +213,6 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 	var baseTableTemplate extract.TemplateResultData
 	LoadBaseTemplate(&baseTableTemplate, goMod, project, service, templateTablePath, logger)
 
-	// Generates a seed configuration utilizing the current tableName and provided id
-	// This is equivalent to a 'row' in a table.
-	seedVaultCB := func(tableData map[string]interface{}, id string) {
-		err := SeedVaultById(goMod, service, vaultAddress, vault.GetToken(), &baseTableTemplate, tableData, id, logger)
-		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
-		}
-	}
-
 	// Utilizing provided api auth headers, endpoint, and body data
 	// this CB makes a call on behalf of the caller and returns a map
 	// representation of json data provided by the endpoint.
@@ -232,27 +230,57 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 	// When called sets up an infinite loop listening for changes on either
 	// the changedChannel or checks itself every 3 minutes for changes to
 	// its own tables.
-	initSeedVaultListenerCB := func(idColumnName string, changedColumnName string) {
+	initSeedVaultListenerCB := func(remoteDataSource map[string]interface{}, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 		for {
 			select {
 			case <-signalChannel:
 				eUtils.LogErrorMessage("Receiving shutdown presumably from vault.", logger, true)
 				os.Exit(0)
 			case <-changedChannel:
-				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), flowName, idColumnName, changeFlowName, changedColumnName, logger)
+				seedVaultFromChanges(tierceronEngine,
+					goMod,
+					vaultAddress,
+					&baseTableTemplate,
+					service,
+					vault,
+					tierceronEngine.Database.Name(),
+					flowName,
+					identityColumnName,
+					changeFlowName,
+					vaultIndexColumnName,
+					remoteDataSource,
+					flowPushRemote,
+					logger)
 			case <-time.After(time.Minute * 3):
-				eUtils.LogInfo("3 minutes... checking for changes.", logger)
-				seedVaultFromChanges(tierceronEngine, goMod, vaultAddress, &baseTableTemplate, service, vault, tierceronEngine.Database.Name(), flowName, idColumnName, changeFlowName, changedColumnName, logger)
+				eUtils.LogInfo("3 minutes... checking local mysql for changes.", logger)
+				seedVaultFromChanges(tierceronEngine,
+					goMod,
+					vaultAddress,
+					&baseTableTemplate,
+					service,
+					vault,
+					tierceronEngine.Database.Name(),
+					flowName,
+					identityColumnName,
+					changeFlowName,
+					vaultIndexColumnName,
+					remoteDataSource,
+					flowPushRemote,
+					logger)
 			}
 		}
 	}
 
+	// Create remote data source with only what is needed.
+	remoteDataSource := map[string]interface{}{}
+	remoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
+	remoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
+	remoteDataSource["connection"] = sourceDatabaseConnectionMap["connection"]
+
 	tcutil.ProcessFlowController(identityConfig,
 		authData,
 		getFlowConfiguration,
-		sourceDatabaseConnectionMap["dbsourceregion"].(string),
-		sourceDatabaseConnectionMap["dbingestinterval"].(time.Duration),
-		sourceDatabaseConnectionMap["connection"].(*sql.DB),
+		remoteDataSource,
 		getSourceByAPICB,
 		project,
 		tierceronEngine.Database.Name(),
@@ -261,7 +289,6 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 		initTableSchemaCB,
 		createTableTriggersCB,
 		applyDBQueryCB,
-		seedVaultCB,
 		initSeedVaultListenerCB, func(msg string, err error) {
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
