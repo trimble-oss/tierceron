@@ -3,4 +3,4 @@ dbsourceurl: {{.dbsourceurl}}
 dbsourceuser: {{.dbsourceuser}}
 dbsourcepassword: {{.dbsourcepassword}}
 dbencryptionSecret: {{.dbencryptionSecret}}
-dbingestinterval: {{.dbingestinterval or "60000"}}
+dbingestinterval: {{or .dbingestinterval "60000"}}
