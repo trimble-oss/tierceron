@@ -18,7 +18,7 @@ func main() {
 
 	tokenEnvMap := map[string]interface{}{}
 	tokenEnvMap["address"] = "https://vault.whoboot.org:8200" //This should be local
-	tokenEnvMap["token"] = "s.cXIsCveFbqldF8kwz9aaBU6A"
+	tokenEnvMap["token"] = "s.KnIlXXqTY5QFe54JE1Oypttr"
 	// TenantConfiguration, SpectrumEnterpriseConfig, Mysqlfile
 	tokenEnvMap["templatePath"] = []string{
 		"trc_templates/TenantDatabase/TenantConfiguration/TenantConfiguration.tmpl", // implemented
@@ -38,5 +38,5 @@ func main() {
 		//		"trc_templates/TenantDatabase/Mysqlfile/Mysqlfile.tmpl",                               // not yet implemented.
 	}
 	tokenEnvMap["env"] = "QA"
-	vscutils.ProcessTables(tokenEnvMap, logger)
+	vscutils.ProcessFlows(tokenEnvMap, logger)
 }
