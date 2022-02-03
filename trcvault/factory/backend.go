@@ -158,7 +158,7 @@ func ProcessEnvConfig(config map[string]interface{}) error {
 		"trc_templates/TrcVault/Identity/config.yml.tmpl",      // implemented
 	}
 
-	vscutils.ProcessTables(config, logger)
+	vscutils.ProcessFlows(config, logger)
 
 	return nil
 }

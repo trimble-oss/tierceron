@@ -27,6 +27,13 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
+type FlowType int64
+
+const (
+	TableSyncFlow FlowType = iota
+	TableEnrichFlow
+)
+
 func getChangeIdQuery(databaseName string, changeTable string) string {
 	return "SELECT id FROM " + databaseName + `.` + changeTable
 }
@@ -109,7 +116,7 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	return nil
 }
 
-func ProcessTable(tierceronEngine *db.TierceronEngine,
+func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	identityConfig map[string]interface{},
 	vaultDatabaseConfig map[string]interface{},
 	vaultAddress string,
@@ -118,77 +125,150 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 	vault *sys.Vault,
 	authData map[string]interface{},
 	env string,
-	templateTablePath string,
+	flow string,
+	flowType FlowType,
 	changedChannel chan bool,
 	signalChannel chan os.Signal,
 	logger *log.Logger) error {
 
+	var flowSource string
+	var flowName string
+	var initTableSchemaCB func(tableSchema sqle.PrimaryKeySchema, tableName string)
+	var createTableTriggersCB func(identityColumnName string)
+	var applyDBQueryCB func(query string, changed bool, operation string) [][]string
+	var getFlowConfiguration func(flowTemplatePath string) (map[string]interface{}, bool)
+	var initSeedVaultListenerCB func(remoteDataSource map[string]interface{}, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error)
+
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
-	project, service, tableTemplateName := utils.GetProjectService(templateTablePath)
-	flowName := utils.GetTemplateFileName(tableTemplateName, service)
-	changeFlowName := flowName + "_Changes"
+	if flowType == TableSyncFlow {
+		flowSource, service, tableTemplateName := utils.GetProjectService(flow)
+		flowName = utils.GetTemplateFileName(tableTemplateName, service)
+		changeFlowName := flowName + "_Changes"
 
-	err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeFlowName, sqle.NewPrimaryKeySchema(sqle.Schema{
-		{Name: "id", Type: sqle.Text, Source: changeFlowName},
-		{Name: "updateTime", Type: sqle.Timestamp, Source: changeFlowName},
-	}))
-	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
-		return err
-	}
-
-	// Set up schema callback for table to track.
-	initTableSchemaCB := func(tableSchema sqle.PrimaryKeySchema, tableName string) {
-		//	ii. Init database and tables in local mysql engine instance.
-		err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tableSchema)
+		err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeFlowName, sqle.NewPrimaryKeySchema(sqle.Schema{
+			{Name: "id", Type: sqle.Text, Source: changeFlowName},
+			{Name: "updateTime", Type: sqle.Timestamp, Source: changeFlowName},
+		}))
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
+			return err
 		}
-	}
 
-	// Set up call back to enable a trigger to track
-	// whenever a row in a table changes...
-	createTableTriggersCB := func(identityColumnName string) {
-		//Create triggers
-		var updTrigger sqle.TriggerDefinition
-		var insTrigger sqle.TriggerDefinition
-		insTrigger.Name = "tcInsertTrigger"
-		updTrigger.Name = "tcUpdateTrigger"
-		updTrigger.CreateStatement = getUpdateTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
-		insTrigger.CreateStatement = getInsertTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
-		tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
-		tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
-	}
-
-	// Make a call on Call back to insert or update using the provided query.
-	// If this is expected to result in a change to an existing table, thern trigger
-	// something to the changed channel.
-	applyDBQueryCB := func(query string, changed bool, operation string) [][]string {
-		if operation == "INSERT" {
-			_, _, _, err := db.Query(tierceronEngine, query)
+		// Set up schema callback for table to track.
+		initTableSchemaCB = func(tableSchema sqle.PrimaryKeySchema, tableName string) {
+			//	ii. Init database and tables in local mysql engine instance.
+			err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tableSchema)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			}
-			if changed {
-				changedChannel <- true
-			}
-		} else if operation == "UPDATE" {
-			_, _, _, err := db.Query(tierceronEngine, query)
-			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
-			}
-			if changed {
-				changedChannel <- true
-			}
-		} else if operation == "SELECT" {
-			_, _, matrixChangedEntries, err := db.Query(tierceronEngine, query)
-			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
-			}
-			return matrixChangedEntries
 		}
-		return nil
+
+		// Set up call back to enable a trigger to track
+		// whenever a row in a table changes...
+		createTableTriggersCB = func(identityColumnName string) {
+			//Create triggers
+			var updTrigger sqle.TriggerDefinition
+			var insTrigger sqle.TriggerDefinition
+			insTrigger.Name = "tcInsertTrigger"
+			updTrigger.Name = "tcUpdateTrigger"
+			updTrigger.CreateStatement = getUpdateTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
+			insTrigger.CreateStatement = getInsertTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
+			tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
+			tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
+		}
+
+		// Make a call on Call back to insert or update using the provided query.
+		// If this is expected to result in a change to an existing table, thern trigger
+		// something to the changed channel.
+		applyDBQueryCB = func(query string, changed bool, operation string) [][]string {
+			if operation == "INSERT" {
+				_, _, _, err := db.Query(tierceronEngine, query)
+				if err != nil {
+					eUtils.LogErrorObject(err, logger, false)
+				}
+				if changed {
+					changedChannel <- true
+				}
+			} else if operation == "UPDATE" {
+				_, _, _, err := db.Query(tierceronEngine, query)
+				if err != nil {
+					eUtils.LogErrorObject(err, logger, false)
+				}
+				if changed {
+					changedChannel <- true
+				}
+			} else if operation == "SELECT" {
+				_, _, matrixChangedEntries, err := db.Query(tierceronEngine, query)
+				if err != nil {
+					eUtils.LogErrorObject(err, logger, false)
+				}
+				return matrixChangedEntries
+			}
+			return nil
+		}
+
+		getFlowConfiguration = func(flowTemplatePath string) (map[string]interface{}, bool) {
+			flowProject, flowService, flowConfigTemplatePath := utils.GetProjectService(flowTemplatePath)
+			flowConfigTemplateName := utils.GetTemplateFileName(flowConfigTemplatePath, flowService)
+
+			properties, err := NewProperties(vault, goMod, env, flowProject, flowService, logger)
+			if err != nil {
+				return nil, false
+			}
+
+			return properties.GetConfigValues(flowService, flowConfigTemplateName)
+		}
+
+		// 3. Write seed data to vault
+		var baseTableTemplate extract.TemplateResultData
+		LoadBaseTemplate(&baseTableTemplate, goMod, flowSource, service, flow, logger)
+
+		// When called sets up an infinite loop listening for changes on either
+		// the changedChannel or checks itself every 3 minutes for changes to
+		// its own tables.
+		initSeedVaultListenerCB = func(remoteDataSource map[string]interface{}, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
+			for {
+				select {
+				case <-signalChannel:
+					eUtils.LogErrorMessage("Receiving shutdown presumably from vault.", logger, true)
+					os.Exit(0)
+				case <-changedChannel:
+					seedVaultFromChanges(tierceronEngine,
+						goMod,
+						vaultAddress,
+						&baseTableTemplate,
+						service,
+						vault,
+						tierceronEngine.Database.Name(),
+						flowName,
+						identityColumnName,
+						changeFlowName,
+						vaultIndexColumnName,
+						remoteDataSource,
+						flowPushRemote,
+						logger)
+				case <-time.After(time.Minute * 3):
+					eUtils.LogInfo("3 minutes... checking local mysql for changes.", logger)
+					seedVaultFromChanges(tierceronEngine,
+						goMod,
+						vaultAddress,
+						&baseTableTemplate,
+						service,
+						vault,
+						tierceronEngine.Database.Name(),
+						flowName,
+						identityColumnName,
+						changeFlowName,
+						vaultIndexColumnName,
+						remoteDataSource,
+						flowPushRemote,
+						logger)
+				}
+			}
+		}
+	} else {
+
 	}
 
 	// Open a database connection to the provided source using provided
@@ -198,22 +278,6 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 			username,
 			configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionMap))
 	}
-
-	getFlowConfiguration := func(flowTemplatePath string) (map[string]interface{}, bool) {
-		flowProject, flowService, flowConfigTemplatePath := utils.GetProjectService(flowTemplatePath)
-		flowConfigTemplateName := utils.GetTemplateFileName(flowConfigTemplatePath, flowService)
-
-		properties, err := NewProperties(vault, goMod, env, flowProject, flowService, logger)
-		if err != nil {
-			return nil, false
-		}
-
-		return properties.GetConfigValues(flowService, flowConfigTemplateName)
-	}
-
-	// 3. Write seed data to vault
-	var baseTableTemplate extract.TemplateResultData
-	LoadBaseTemplate(&baseTableTemplate, goMod, project, service, templateTablePath, logger)
 
 	// Utilizing provided api auth headers, endpoint, and body data
 	// this CB makes a call on behalf of the caller and returns a map
@@ -229,50 +293,6 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 		return GetJSONFromClientByPost(httpClient, apiAuthHeaders, apiEndpoint, bodyData)
 	}
 
-	// When called sets up an infinite loop listening for changes on either
-	// the changedChannel or checks itself every 3 minutes for changes to
-	// its own tables.
-	initSeedVaultListenerCB := func(remoteDataSource map[string]interface{}, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
-		for {
-			select {
-			case <-signalChannel:
-				eUtils.LogErrorMessage("Receiving shutdown presumably from vault.", logger, true)
-				os.Exit(0)
-			case <-changedChannel:
-				seedVaultFromChanges(tierceronEngine,
-					goMod,
-					vaultAddress,
-					&baseTableTemplate,
-					service,
-					vault,
-					tierceronEngine.Database.Name(),
-					flowName,
-					identityColumnName,
-					changeFlowName,
-					vaultIndexColumnName,
-					remoteDataSource,
-					flowPushRemote,
-					logger)
-			case <-time.After(time.Minute * 3):
-				eUtils.LogInfo("3 minutes... checking local mysql for changes.", logger)
-				seedVaultFromChanges(tierceronEngine,
-					goMod,
-					vaultAddress,
-					&baseTableTemplate,
-					service,
-					vault,
-					tierceronEngine.Database.Name(),
-					flowName,
-					identityColumnName,
-					changeFlowName,
-					vaultIndexColumnName,
-					remoteDataSource,
-					flowPushRemote,
-					logger)
-			}
-		}
-	}
-
 	// Create remote data source with only what is needed.
 	remoteDataSource := map[string]interface{}{}
 	remoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
@@ -284,7 +304,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 		getFlowConfiguration,
 		remoteDataSource,
 		getSourceByAPICB,
-		project,
+		flowSource,
 		tierceronEngine.Database.Name(),
 		flowName,
 		getSourceDBConn,
@@ -301,7 +321,7 @@ func ProcessTable(tierceronEngine *db.TierceronEngine,
 	return nil
 }
 
-func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) error {
+func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	// 1. Get Plugin configurations.
 	projects, services, _ := utils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), pluginConfig["env"].(string), []string{}, logger)
@@ -440,7 +460,7 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range tableList {
-			ProcessTable(tierceronEngine,
+			ProcessFlow(tierceronEngine,
 				identityConfig,
 				vaultDatabaseConfig,
 				pluginConfig["address"].(string),
@@ -450,12 +470,31 @@ func ProcessTables(pluginConfig map[string]interface{}, logger *log.Logger) erro
 				authData,
 				pluginConfig["env"].(string),
 				table,
+				TableSyncFlow,
+				make(chan bool, 5), // tableChangedChannel
+				signalChannel,
+				logger,
+			)
+		}
+		for _, flowName := range tcutil.GetAdditionalFlows() {
+			ProcessFlow(tierceronEngine,
+				identityConfig,
+				vaultDatabaseConfig,
+				pluginConfig["address"].(string),
+				goMod,
+				sourceDatabaseConnectionMap,
+				vault,
+				authData,
+				pluginConfig["env"].(string),
+				flowName,
+				TableEnrichFlow,
 				make(chan bool, 5), // tableChangedChannel
 				signalChannel,
 				logger,
 			)
 		}
 	}
+
 	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...
 	//    somehow you need to track if something is a new entry...  like a rowChangedSlice...
 
