@@ -178,48 +178,6 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 			tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
 		}
 
-		// Make a call on Call back to insert or update using the provided query.
-		// If this is expected to result in a change to an existing table, thern trigger
-		// something to the changed channel.
-		applyDBQueryCB = func(query string, changed bool, operation string) [][]string {
-			if operation == "INSERT" {
-				_, _, _, err := db.Query(tierceronEngine, query)
-				if err != nil {
-					eUtils.LogErrorObject(err, logger, false)
-				}
-				if changed {
-					changedChannel <- true
-				}
-			} else if operation == "UPDATE" {
-				_, _, _, err := db.Query(tierceronEngine, query)
-				if err != nil {
-					eUtils.LogErrorObject(err, logger, false)
-				}
-				if changed {
-					changedChannel <- true
-				}
-			} else if operation == "SELECT" {
-				_, _, matrixChangedEntries, err := db.Query(tierceronEngine, query)
-				if err != nil {
-					eUtils.LogErrorObject(err, logger, false)
-				}
-				return matrixChangedEntries
-			}
-			return nil
-		}
-
-		getFlowConfiguration = func(flowTemplatePath string) (map[string]interface{}, bool) {
-			flowProject, flowService, flowConfigTemplatePath := utils.GetProjectService(flowTemplatePath)
-			flowConfigTemplateName := utils.GetTemplateFileName(flowConfigTemplatePath, flowService)
-
-			properties, err := NewProperties(vault, goMod, env, flowProject, flowService, logger)
-			if err != nil {
-				return nil, false
-			}
-
-			return properties.GetConfigValues(flowService, flowConfigTemplateName)
-		}
-
 		// 3. Write seed data to vault
 		var baseTableTemplate extract.TemplateResultData
 		LoadBaseTemplate(&baseTableTemplate, goMod, flowSource, service, flow, logger)
@@ -267,8 +225,48 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 				}
 			}
 		}
-	} else {
+	}
 
+	getFlowConfiguration = func(flowTemplatePath string) (map[string]interface{}, bool) {
+		flowProject, flowService, flowConfigTemplatePath := utils.GetProjectService(flowTemplatePath)
+		flowConfigTemplateName := utils.GetTemplateFileName(flowConfigTemplatePath, flowService)
+
+		properties, err := NewProperties(vault, goMod, env, flowProject, flowService, logger)
+		if err != nil {
+			return nil, false
+		}
+
+		return properties.GetConfigValues(flowService, flowConfigTemplateName)
+	}
+
+	// Make a call on Call back to insert or update using the provided query.
+	// If this is expected to result in a change to an existing table, thern trigger
+	// something to the changed channel.
+	applyDBQueryCB = func(query string, changed bool, operation string) [][]string {
+		if operation == "INSERT" {
+			_, _, _, err := db.Query(tierceronEngine, query)
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			}
+			if changed {
+				changedChannel <- true
+			}
+		} else if operation == "UPDATE" {
+			_, _, _, err := db.Query(tierceronEngine, query)
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			}
+			if changed {
+				changedChannel <- true
+			}
+		} else if operation == "SELECT" {
+			_, _, matrixChangedEntries, err := db.Query(tierceronEngine, query)
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			}
+			return matrixChangedEntries
+		}
+		return nil
 	}
 
 	// Open a database connection to the provided source using provided
