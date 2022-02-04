@@ -28,6 +28,8 @@ import (
 
 type FlowType int64
 
+var m sync.Mutex
+
 const (
 	TableSyncFlow FlowType = iota
 	TableEnrichFlow
@@ -483,10 +485,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 		if _, ok, _ := tierceronEngine.Database.GetTableInsensitive(tierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo("Creating tierceron sql table: "+changeTableName, logger)
+			m.Lock()
 			err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
 				{Name: "id", Type: sqle.Text, Source: changeTableName},
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 			}))
+			m.Unlock()
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 				return err
