@@ -3,10 +3,8 @@ package db
 import (
 	"context"
 	"io"
-	"log"
 	"sort"
 	"strings"
-	"sync"
 
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
@@ -158,12 +156,12 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 
 // CreateEngine - creates a Tierceron query engine for query of configurations.
 func CreateEngine(config *eUtils.DriverConfig,
-	templatePaths []string, env string, dbname string, logger *log.Logger) (*TierceronEngine, error) {
+	templatePaths []string, env string, dbname string) (*TierceronEngine, error) {
 
 	te := &TierceronEngine{Database: memory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext(), Config: *config}
 
 	var goMod *kv.Modifier
-	goMod, errModInit := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions, logger)
+	goMod, errModInit := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions, config.Log)
 	if errModInit != nil {
 		return nil, errModInit
 	}
@@ -178,7 +176,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 	goMod.Env = ""
 	tempEnterprises, err := goMod.List("values")
 	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
+		eUtils.LogErrorObject(err, config.Log, false)
 		return nil, err
 	}
 	if tempEnterprises != nil {
@@ -188,47 +186,65 @@ func CreateEngine(config *eUtils.DriverConfig,
 
 		// Fun stuff here....
 		var versionMetadata []string
-		var wg sync.WaitGroup
+		//		var wgEnterprise sync.WaitGroup
+		// Load all vault table data into tierceron sql engine.
 		for _, envEnterprise := range envEnterprises {
-			go func() {
-				defer wg.Done()
-				wg.Add(1)
-				if !strings.Contains(envEnterprise, ".") {
-					return
-				}
-				goMod.Env = ""
-				versionMetadata = versionMetadata[:0]
-				fileMetadata, err := goMod.GetVersionValues(goMod, config.WantCerts, "values/"+envEnterprise, logger)
-				if fileMetadata == nil {
-					return
-				}
-				if err != nil {
-					eUtils.LogErrorObject(err, logger, false)
-					return
-				}
+			enterpriseEnv := envEnterprise
+			//go func(config *eUtils.DriverConfig, enterpriseEnv string) {
+			//	defer wgEnterprise.Done()
+			//		wgEnterprise.Add(1)
+			if !strings.Contains(enterpriseEnv, ".") {
+				continue
+				//return
+			}
 
-				var first map[string]interface{}
-				for _, file := range fileMetadata {
-					if first == nil {
-						first = file
-						break
-					}
-				}
+			tableMod, _, err := eUtils.InitVaultMod(config)
+			if err != nil {
+				eUtils.LogErrorMessage("Could not access vault.  Failure to start.", config.Log, false)
+				continue
+				//return
+			}
 
-				for versionNumber, _ := range first {
-					versionMetadata = append(versionMetadata, versionNumber)
-				}
+			tableMod.Env = ""
+			versionMetadata = versionMetadata[:0]
+			fileMetadata, err := tableMod.GetVersionValues(tableMod, config.WantCerts, "values/"+enterpriseEnv, config.Log)
+			if fileMetadata == nil {
+				continue
+				//return
+			}
+			if err != nil {
+				eUtils.LogErrorObject(err, config.Log, false)
+				continue
+				//return
+			}
 
-				for _, versionNo := range versionMetadata {
-					for project, services := range projectServiceMap {
-						for _, service := range services {
-							TransformConfig(goMod, te, envEnterprise, versionNo, project, service, config)
+			var first map[string]interface{}
+			for _, file := range fileMetadata {
+				if first == nil {
+					first = file
+					break
+				}
+			}
+
+			for versionNumber, _ := range first {
+				versionMetadata = append(versionMetadata, versionNumber)
+			}
+
+			for _, versionNo := range versionMetadata {
+				for project, services := range projectServiceMap {
+					// TODO: optimize this for scale.
+					for _, service := range services {
+						for _, filter := range config.VersionFilter {
+							if filter == service {
+								TransformConfig(tableMod, te, enterpriseEnv, versionNo, project, service, config)
+							}
 						}
 					}
 				}
-			}()
+			}
+			//}(config, envEnterprise)
 		}
-		wg.Wait()
+		//wgEnterprise.Wait()
 	}
 
 	te.Engine = sqle.NewDefault(memory.NewMemoryDBProvider(te.Database))
