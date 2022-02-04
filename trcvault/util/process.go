@@ -154,24 +154,18 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	//     a. Get project, service, and table config template name.
 	if flowType == TableSyncFlow {
 		flowSource, service, tableTemplateName := eUtils.GetProjectService(flow)
-		flowName = eUtils.GetTemplateFileName(tableTemplateName, service)
-		changeFlowName := flowName + "_Changes"
-
-		err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeFlowName, sqle.NewPrimaryKeySchema(sqle.Schema{
-			{Name: "id", Type: sqle.Text, Source: changeFlowName},
-			{Name: "updateTime", Type: sqle.Timestamp, Source: changeFlowName},
-		}))
-		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
-			return err
-		}
+		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
+		changeFlowName := tableName + "_Changes"
 
 		// Set up schema callback for table to track.
 		initTableSchemaCB = func(tableSchema sqle.PrimaryKeySchema, tableName string) {
-			//	ii. Init database and tables in local mysql engine instance.
-			err = tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tableSchema)
-			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
+			// Create table if necessary.
+			if _, ok, _ := tierceronEngine.Database.GetTableInsensitive(tierceronEngine.Context, tableName); !ok {
+				//	ii. Init database and tables in local mysql engine instance.
+				err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tableSchema)
+				if err != nil {
+					eUtils.LogErrorObject(err, logger, false)
+				}
 			}
 		}
 
@@ -312,7 +306,15 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	remoteDataSource := map[string]interface{}{}
 	remoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
 	remoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
-	remoteDataSource["connection"] = sourceDatabaseConnectionMap["connection"]
+
+	dbsourceConn, err := OpenDirectConnection(sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+
+	if err != nil {
+		eUtils.LogErrorMessage("Couldn't get dedicated database connection.", logger, false)
+	}
+	defer dbsourceConn.Close()
+
+	remoteDataSource["connection"] = dbsourceConn
 
 	tcutil.ProcessFlowController(identityConfig,
 		authData,
@@ -401,20 +403,32 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 	sourceDatabaseConnectionsMap := map[string]map[string]interface{}{}
 
+	// 4. Create config for vault for queries to vault.
+	emptySlice := []string{""}
+
+	configDriver := eUtils.DriverConfig{
+		Regions:      emptySlice,
+		Insecure:     true,
+		Token:        pluginConfig["token"].(string),
+		VaultAddress: pluginConfig["address"].(string),
+		Env:          pluginConfig["env"].(string),
+	}
+
+	tableList := pluginConfig["templatePath"].([]string)
+
+	tierceronEngine, err := db.CreateEngine(&configDriver, tableList, pluginConfig["env"].(string), tcutil.GetDatabaseName(), logger)
+	if err != nil {
+		eUtils.LogErrorMessage("Couldn't build engine.", logger, false)
+		return err
+	}
+
 	// 2. Establish mysql connection to remote mysql instance.
 	for _, sourceDatabaseConfig := range sourceDatabaseConfigs {
-		dbsourceConn, err := OpenDirectConnection(sourceDatabaseConfig["dbsourceurl"].(string), sourceDatabaseConfig["dbsourceuser"].(string), sourceDatabaseConfig["dbsourcepassword"].(string))
-
-		if err != nil {
-			eUtils.LogErrorMessage("Couldn't get database connection.", logger, false)
-			return err
-		}
-
-		if dbsourceConn != nil {
-			defer dbsourceConn.Close()
-		}
 		dbSourceConnBundle := map[string]interface{}{}
-		dbSourceConnBundle["connection"] = dbsourceConn
+		dbSourceConnBundle["dbsourceurl"] = sourceDatabaseConfig["dbsourceurl"].(string)
+		dbSourceConnBundle["dbsourceuser"] = sourceDatabaseConfig["dbsourceuser"].(string)
+		dbSourceConnBundle["dbsourcepassword"] = sourceDatabaseConfig["dbsourcepassword"].(string)
+
 		dbSourceConnBundle["encryptionSecret"] = sourceDatabaseConfig["dbencryptionSecret"].(string)
 		if dbIngestInterval, ok := sourceDatabaseConfig["dbingestinterval"]; ok {
 			ingestInterval, err := strconv.ParseInt(dbIngestInterval.(string), 10, 64)
@@ -429,18 +443,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 		sourceDatabaseConnectionsMap[sourceDatabaseConfig["dbsourceregion"].(string)] = dbSourceConnBundle
 	}
-
-	// 4. Create config for vault for queries to vault.
-	emptySlice := []string{""}
-	configDriver := eUtils.DriverConfig{
-		Regions:      emptySlice,
-		Insecure:     true,
-		Token:        pluginConfig["token"].(string),
-		VaultAddress: pluginConfig["address"].(string),
-		Env:          pluginConfig["env"].(string),
-	}
-
-	tableList := pluginConfig["templatePath"].([]string)
 
 	// Http query resources include:
 	// 1. Auth -- Auth is provided by the external library tcutil.
@@ -458,12 +460,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		return errPost
 	}
 
-	tierceronEngine, err := db.CreateEngine(&configDriver, tableList, pluginConfig["env"].(string), tcutil.GetDatabaseName(), logger)
-	if err != nil {
-		eUtils.LogErrorMessage("Couldn't build engine.", logger, false)
-		return err
-	}
-
 	// 2. Initialize Engine and create changes table.
 	tierceronEngine.Context = sqle.NewEmptyContext()
 	signalChannel := make(chan os.Signal, 1)
@@ -473,9 +469,29 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
+	//	var wg sync.WaitGroup
+
+	for _, table := range tableList {
+		_, service, tableTemplateName := eUtils.GetProjectService(table)
+		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
+		changeTableName := tableName + "_Changes"
+
+		if _, ok, _ := tierceronEngine.Database.GetTableInsensitive(tierceronEngine.Context, changeTableName); !ok {
+			err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
+				{Name: "id", Type: sqle.Text, Source: changeTableName},
+				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
+			}))
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+				return err
+			}
+		}
+	}
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range tableList {
-			go ProcessFlow(tierceronEngine,
+			//			wg.Add(1)
+			//			go func(t string) {
+			ProcessFlow(tierceronEngine,
 				identityConfig,
 				vaultDatabaseConfig,
 				pluginConfig["address"].(string),
@@ -490,8 +506,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				signalChannel,
 				logger,
 			)
+			//			}(table)
 		}
 		for _, flowName := range tcutil.GetAdditionalFlows() {
+			// wg.Add(1)
+			// go func(f string) {
 			ProcessFlow(tierceronEngine,
 				identityConfig,
 				vaultDatabaseConfig,
@@ -507,8 +526,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				signalChannel,
 				logger,
 			)
+			//			}(flowName)
 		}
 	}
+
+	//	wg.Wait()
 
 	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...
 	//    somehow you need to track if something is a new entry...  like a rowChangedSlice...
