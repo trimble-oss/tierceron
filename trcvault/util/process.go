@@ -67,11 +67,21 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	identityColumnName string,
 	changeTable string,
 	vaultIndexColumnName string,
+	isInit bool,
 	remoteDataSource map[string]interface{},
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
 	logger *log.Logger) error {
-	changeIdQuery := getChangeIdQuery(databaseName, changeTable)
-	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changeIdQuery)
+
+	var matrixChangedEntries [][]string
+	var changedEntriesQuery string
+
+	if isInit {
+		changedEntriesQuery = `SELECT ` + identityColumnName + ` FROM ` + databaseName + `.` + tableName
+	} else {
+		changedEntriesQuery = getChangeIdQuery(databaseName, changeTable)
+	}
+
+	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changedEntriesQuery)
 	if err != nil {
 		eUtils.LogErrorObject(err, logger, false)
 	}
@@ -102,15 +112,18 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		}
 
 		// Push this change to the flow for delivery to remote data source.
-		pushError := flowPushRemote(remoteDataSource, rowDataMap)
-		if pushError != nil {
-			eUtils.LogErrorObject(err, logger, false)
+		if !isInit {
+			pushError := flowPushRemote(remoteDataSource, rowDataMap)
+			if pushError != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			}
+
+			_, _, _, err = db.Query(tierceronEngine, getDeleteChangeQuery(databaseName, changeTable, changedId))
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			}
 		}
 
-		_, _, _, err = db.Query(tierceronEngine, getDeleteChangeQuery(databaseName, changeTable, changedId))
-		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
-		}
 	}
 
 	return nil
@@ -186,6 +199,8 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 		// the changedChannel or checks itself every 3 minutes for changes to
 		// its own tables.
 		initSeedVaultListenerCB = func(remoteDataSource map[string]interface{}, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
+			afterTime := time.Duration(time.Second * 10)
+			isInit := true
 			for {
 				select {
 				case <-signalChannel:
@@ -203,10 +218,12 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 						identityColumnName,
 						changeFlowName,
 						vaultIndexColumnName,
+						false,
 						remoteDataSource,
 						flowPushRemote,
 						logger)
-				case <-time.After(time.Minute * 3):
+				case <-time.After(afterTime):
+					afterTime = time.Minute * 3
 					eUtils.LogInfo("3 minutes... checking local mysql for changes.", logger)
 					seedVaultFromChanges(tierceronEngine,
 						goMod,
@@ -219,9 +236,11 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 						identityColumnName,
 						changeFlowName,
 						vaultIndexColumnName,
+						isInit,
 						remoteDataSource,
 						flowPushRemote,
 						logger)
+					isInit = false
 				}
 			}
 		}
@@ -340,7 +359,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		var idEnvironments []string
 
 		if services[i] == "Database" {
-			// This could be an api call list list what's available with rid's.
+			// TODO: This could be an api call vault list - to list what's available with rid's.
 			// East and west...
 			idEnvironments = []string{".rid.1", ".rid.2"}
 		} else {
