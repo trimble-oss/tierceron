@@ -446,6 +446,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 					for _, service := range mod.VersionFilter {
 						if strings.HasSuffix(path, service) && !foundService {
 							foundService = true
+							break
 						}
 					}
 

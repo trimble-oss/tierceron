@@ -339,27 +339,13 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	return nil
 }
 
-func initVaultMod(pluginConfig map[string]interface{}, logger *log.Logger) (*helperkv.Modifier, *sys.Vault, error) {
-	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), pluginConfig["env"].(string), []string{}, logger)
-	goMod.Env = pluginConfig["env"].(string)
-	goMod.Version = "0"
-	vault, err := sys.NewVault(true, pluginConfig["address"].(string), goMod.Env, false, false, false, logger)
-	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
-		return nil, nil, err
-	}
-	vault.SetToken(pluginConfig["token"].(string))
-
-	return goMod, vault, nil
-}
-
 func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	// 1. Get Plugin configurations.
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
 	var vaultDatabaseConfig map[string]interface{}
 	var identityConfig map[string]interface{}
-	goMod, vault, err := initVaultMod(pluginConfig, logger)
+	goMod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if err != nil {
 		eUtils.LogErrorMessage("Could not access vault.  Failure to start.", logger, false)
 		return err
@@ -423,11 +409,18 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		Token:        pluginConfig["token"].(string),
 		VaultAddress: pluginConfig["address"].(string),
 		Env:          pluginConfig["env"].(string),
+		Log:          logger,
 	}
 
 	tableList := pluginConfig["templatePath"].([]string)
 
-	tierceronEngine, err := db.CreateEngine(&configDriver, tableList, pluginConfig["env"].(string), tcutil.GetDatabaseName(), logger)
+	for _, table := range tableList {
+		_, service, tableTemplateName := eUtils.GetProjectService(table)
+		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
+		configDriver.VersionFilter = append(configDriver.VersionFilter, tableName)
+	}
+
+	tierceronEngine, err := db.CreateEngine(&configDriver, tableList, pluginConfig["env"].(string), tcutil.GetDatabaseName())
 	if err != nil {
 		eUtils.LogErrorMessage("Couldn't build engine.", logger, false)
 		return err
@@ -504,7 +497,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(t string) {
 				defer wg.Done()
 				wg.Add(1)
-				flowMod, flowVault, err := initVaultMod(pluginConfig, logger)
+				flowMod, flowVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
 					eUtils.LogErrorMessage("Could not access vault.  Failure to start flow.", logger, false)
 					return
@@ -531,7 +524,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(f string) {
 				defer wg.Done()
 				wg.Add(1)
-				flowMod, flowVault, err := initVaultMod(pluginConfig, logger)
+				flowMod, flowVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
 					eUtils.LogErrorMessage("Could not access vault.  Failure to start flow.", logger, false)
 					return
