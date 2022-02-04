@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -154,8 +155,8 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	//     a. Get project, service, and table config template name.
 	if flowType == TableSyncFlow {
 		flowSource, service, tableTemplateName := eUtils.GetProjectService(flow)
-		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
-		changeFlowName := tableName + "_Changes"
+		flowName = eUtils.GetTemplateFileName(tableTemplateName, service)
+		changeFlowName := flowName + "_Changes"
 
 		// Set up schema callback for table to track.
 		initTableSchemaCB = func(tableSchema sqle.PrimaryKeySchema, tableName string) {
@@ -469,7 +470,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
-	//	var wg sync.WaitGroup
+	var wg sync.WaitGroup
 
 	for _, table := range tableList {
 		_, service, tableTemplateName := eUtils.GetProjectService(table)
@@ -489,48 +490,50 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range tableList {
-			//			wg.Add(1)
-			//			go func(t string) {
-			ProcessFlow(tierceronEngine,
-				identityConfig,
-				vaultDatabaseConfig,
-				pluginConfig["address"].(string),
-				goMod,
-				sourceDatabaseConnectionMap,
-				vault,
-				authData,
-				pluginConfig["env"].(string),
-				table,
-				TableSyncFlow,
-				make(chan bool, 5), // tableChangedChannel
-				signalChannel,
-				logger,
-			)
-			//			}(table)
+			go func(t string) {
+				defer wg.Done()
+				wg.Add(1)
+				ProcessFlow(tierceronEngine,
+					identityConfig,
+					vaultDatabaseConfig,
+					pluginConfig["address"].(string),
+					goMod,
+					sourceDatabaseConnectionMap,
+					vault,
+					authData,
+					pluginConfig["env"].(string),
+					t,
+					TableSyncFlow,
+					make(chan bool, 5), // tableChangedChannel
+					signalChannel,
+					logger,
+				)
+			}(table)
 		}
 		for _, flowName := range tcutil.GetAdditionalFlows() {
-			// wg.Add(1)
-			// go func(f string) {
-			ProcessFlow(tierceronEngine,
-				identityConfig,
-				vaultDatabaseConfig,
-				pluginConfig["address"].(string),
-				goMod,
-				sourceDatabaseConnectionMap,
-				vault,
-				authData,
-				pluginConfig["env"].(string),
-				flowName,
-				TableEnrichFlow,
-				make(chan bool, 5), // tableChangedChannel
-				signalChannel,
-				logger,
-			)
-			//			}(flowName)
+			go func(f string) {
+				defer wg.Done()
+				wg.Add(1)
+				ProcessFlow(tierceronEngine,
+					identityConfig,
+					vaultDatabaseConfig,
+					pluginConfig["address"].(string),
+					goMod,
+					sourceDatabaseConnectionMap,
+					vault,
+					authData,
+					pluginConfig["env"].(string),
+					f,
+					TableEnrichFlow,
+					make(chan bool, 5), // tableChangedChannel
+					signalChannel,
+					logger,
+				)
+			}(flowName)
 		}
 	}
 
-	//	wg.Wait()
+	wg.Wait()
 
 	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...
 	//    somehow you need to track if something is a new entry...  like a rowChangedSlice...
