@@ -13,9 +13,7 @@ import (
 	"tierceron/trcx/db"
 	extract "tierceron/trcx/extract"
 
-	"tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
-	"tierceron/vaulthelper/system"
 
 	eUtils "tierceron/utils"
 
@@ -61,7 +59,7 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	vaultAddress string,
 	baseTableTemplate *extract.TemplateResultData,
 	service string,
-	v *system.Vault,
+	v *sys.Vault,
 	databaseName string,
 	tableName string,
 	identityColumnName string,
@@ -155,8 +153,8 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
 	if flowType == TableSyncFlow {
-		flowSource, service, tableTemplateName := utils.GetProjectService(flow)
-		flowName = utils.GetTemplateFileName(tableTemplateName, service)
+		flowSource, service, tableTemplateName := eUtils.GetProjectService(flow)
+		flowName = eUtils.GetTemplateFileName(tableTemplateName, service)
 		changeFlowName := flowName + "_Changes"
 
 		err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeFlowName, sqle.NewPrimaryKeySchema(sqle.Schema{
@@ -247,8 +245,8 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	}
 
 	getFlowConfiguration = func(flowTemplatePath string) (map[string]interface{}, bool) {
-		flowProject, flowService, flowConfigTemplatePath := utils.GetProjectService(flowTemplatePath)
-		flowConfigTemplateName := utils.GetTemplateFileName(flowConfigTemplatePath, flowService)
+		flowProject, flowService, flowConfigTemplatePath := eUtils.GetProjectService(flowTemplatePath)
+		flowConfigTemplateName := eUtils.GetTemplateFileName(flowConfigTemplatePath, flowService)
 
 		properties, err := NewProperties(vault, goMod, env, flowProject, flowService, logger)
 		if err != nil {
@@ -340,7 +338,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 
 func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	// 1. Get Plugin configurations.
-	projects, services, _ := utils.GetProjectServices(pluginConfig["connectionPath"].([]string))
+	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), pluginConfig["env"].(string), []string{}, logger)
 	goMod.Env = pluginConfig["env"].(string)
 	goMod.Version = "0"
@@ -434,7 +432,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	// 4. Create config for vault for queries to vault.
 	emptySlice := []string{""}
-	configDriver := utils.DriverConfig{
+	configDriver := eUtils.DriverConfig{
 		Regions:      emptySlice,
 		Insecure:     true,
 		Token:        pluginConfig["token"].(string),
@@ -477,7 +475,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range tableList {
-			ProcessFlow(tierceronEngine,
+			go ProcessFlow(tierceronEngine,
 				identityConfig,
 				vaultDatabaseConfig,
 				pluginConfig["address"].(string),
