@@ -153,6 +153,7 @@ func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperk
 		&(templateResult.InterfaceTemplateSection),
 		&(templateResult.ValueSection),
 		&(templateResult.SecretSection),
+		exitOnFailure,
 		logger,
 	)
 }
