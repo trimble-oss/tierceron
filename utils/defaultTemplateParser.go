@@ -37,6 +37,7 @@ type DriverConfig struct {
 	FileFilter     []string
 	VersionInfo    func(map[string]interface{}, bool, string, bool)
 	VersionFilter  []string
+	ExitOnFailure  bool // Exit on a failure or try to continue
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.

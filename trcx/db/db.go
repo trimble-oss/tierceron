@@ -149,6 +149,7 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 			&(templateResult.InterfaceTemplateSection),
 			&(templateResult.ValueSection),
 			&(templateResult.SecretSection),
+			config.ExitOnFailure,
 			config.Log,
 		)
 
