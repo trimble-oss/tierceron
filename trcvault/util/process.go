@@ -145,6 +145,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	signalChannel chan os.Signal,
 	logger *log.Logger) error {
 
+	var m sync.Mutex
 	var flowSource string
 	var flowName string
 	var initTableSchemaCB func(tableSchema sqle.PrimaryKeySchema, tableName string)
@@ -163,6 +164,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 		// Set up schema callback for table to track.
 		initTableSchemaCB = func(tableSchema sqle.PrimaryKeySchema, tableName string) {
 			// Create table if necessary.
+			m.Lock()
 			if _, ok, _ := tierceronEngine.Database.GetTableInsensitive(tierceronEngine.Context, tableName); !ok {
 				//	ii. Init database and tables in local mysql engine instance.
 				err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tableSchema)
@@ -170,6 +172,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 					eUtils.LogErrorObject(err, logger, false)
 				}
 			}
+			m.Unlock()
 		}
 
 		// Set up call back to enable a trigger to track
