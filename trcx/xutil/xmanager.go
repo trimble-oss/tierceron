@@ -313,6 +313,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				&(templateResult.InterfaceTemplateSection),
 				&(templateResult.ValueSection),
 				&(templateResult.SecretSection),
+				config.ExitOnFailure,
 				config.Log,
 			)
 			templateResult.Env = goMod.Env + "_" + requestedVersion
