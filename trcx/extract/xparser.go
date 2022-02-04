@@ -42,6 +42,7 @@ func ToSeed(mod *kv.Modifier,
 	interfaceTemplateSection *interface{},
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
+	exitOnFailure bool,
 	logger *log.Logger,
 ) (*interface{}, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int) {
 
@@ -64,7 +65,7 @@ func ToSeed(mod *kv.Modifier,
 			templatePathExtended = strings.Replace(templatePath, "trc_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
-		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true)
+		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, exitOnFailure)
 		newTemplate = string(templateFile)
 	} else {
 		templateFile, err := ioutil.ReadFile(templatePath)
