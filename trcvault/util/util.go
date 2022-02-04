@@ -129,7 +129,7 @@ func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string,
 	return nil, errors.New("http status failure")
 }
 
-func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string, logger *log.Logger) {
+func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string, exitOnFailure bool, logger *log.Logger) {
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
 	templateResult.ValueSection["values"] = map[string]map[string]string{}
 
@@ -153,6 +153,7 @@ func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperk
 		&(templateResult.InterfaceTemplateSection),
 		&(templateResult.ValueSection),
 		&(templateResult.SecretSection),
+		exitOnFailure,
 		logger,
 	)
 }
