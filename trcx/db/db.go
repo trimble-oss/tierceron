@@ -244,7 +244,7 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sql.NewContext(context.Background())
-	te.Context = ctx
+	//	te.Context = ctx
 	schema, r, err := te.Engine.Query(ctx, query) //This query not working anymore for inserts???
 	if err != nil {
 		return "", nil, nil, err

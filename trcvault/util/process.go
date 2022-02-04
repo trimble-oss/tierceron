@@ -339,21 +339,31 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	return nil
 }
 
-func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error {
-	// 1. Get Plugin configurations.
-	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
+func initVaultMod(pluginConfig map[string]interface{}, logger *log.Logger) (*helperkv.Modifier, *sys.Vault, error) {
 	goMod, _ := helperkv.NewModifier(true, pluginConfig["token"].(string), pluginConfig["address"].(string), pluginConfig["env"].(string), []string{}, logger)
 	goMod.Env = pluginConfig["env"].(string)
 	goMod.Version = "0"
 	vault, err := sys.NewVault(true, pluginConfig["address"].(string), goMod.Env, false, false, false, logger)
 	if err != nil {
 		eUtils.LogErrorObject(err, logger, false)
-		return err
+		return nil, nil, err
 	}
 	vault.SetToken(pluginConfig["token"].(string))
+
+	return goMod, vault, nil
+}
+
+func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error {
+	// 1. Get Plugin configurations.
+	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
 	var vaultDatabaseConfig map[string]interface{}
 	var identityConfig map[string]interface{}
+	goMod, vault, err := initVaultMod(pluginConfig, logger)
+	if err != nil {
+		eUtils.LogErrorMessage("Could not access vault.  Failure to start.", logger, false)
+		return err
+	}
 
 	for i := 0; i < len(projects); i++ {
 
@@ -478,6 +488,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		changeTableName := tableName + "_Changes"
 
 		if _, ok, _ := tierceronEngine.Database.GetTableInsensitive(tierceronEngine.Context, changeTableName); !ok {
+			eUtils.LogInfo("Creating tierceron sql table: "+changeTableName, logger)
 			err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
 				{Name: "id", Type: sqle.Text, Source: changeTableName},
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
@@ -493,13 +504,19 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(t string) {
 				defer wg.Done()
 				wg.Add(1)
+				flowMod, flowVault, err := initVaultMod(pluginConfig, logger)
+				if err != nil {
+					eUtils.LogErrorMessage("Could not access vault.  Failure to start flow.", logger, false)
+					return
+				}
+
 				ProcessFlow(tierceronEngine,
 					identityConfig,
 					vaultDatabaseConfig,
 					pluginConfig["address"].(string),
-					goMod,
+					flowMod,
 					sourceDatabaseConnectionMap,
-					vault,
+					flowVault,
 					authData,
 					pluginConfig["env"].(string),
 					t,
@@ -514,13 +531,19 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(f string) {
 				defer wg.Done()
 				wg.Add(1)
+				flowMod, flowVault, err := initVaultMod(pluginConfig, logger)
+				if err != nil {
+					eUtils.LogErrorMessage("Could not access vault.  Failure to start flow.", logger, false)
+					return
+				}
+
 				ProcessFlow(tierceronEngine,
 					identityConfig,
 					vaultDatabaseConfig,
 					pluginConfig["address"].(string),
-					goMod,
+					flowMod,
 					sourceDatabaseConnectionMap,
-					vault,
+					flowVault,
 					authData,
 					pluginConfig["env"].(string),
 					f,
