@@ -145,7 +145,6 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	signalChannel chan os.Signal,
 	logger *log.Logger) error {
 
-	var m sync.Mutex
 	var flowSource string
 	var flowName string
 	var initTableSchemaCB func(tableSchema sqle.PrimaryKeySchema, tableName string)
