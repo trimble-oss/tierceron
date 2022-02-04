@@ -61,15 +61,13 @@ func UploadTemplates(mod *kv.Modifier, dirName string, logger *log.Logger) (erro
 
 		if ext == ".tmpl" { // Only upload template files
 			fmt.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
-			logger.Println("Found template file %s for %s\n", file.Name(), mod.Env)
+			logger.Println(fmt.Sprintf("Found template file %s for %s", file.Name(), mod.Env))
 
 			// Seperate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
 			name = name[0 : len(name)-len(ext)]
-			logger.Println("dirName")
-			logger.Println(dirName)
-			logger.Println("file name")
-			logger.Println(file.Name())
+			logger.Printf("dirName: %s\n", dirName)
+			logger.Printf("file name: %s\n", file.Name())
 			// Extract values
 			extractedValues, err := utils.Parse(dirName+"/"+file.Name(), subDir, name)
 			if err != nil {

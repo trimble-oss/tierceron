@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -35,11 +34,17 @@ func main() {
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcpub to access the vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-
-	logBuffer := new(bytes.Buffer)
-	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
+	logFilePtr := flag.String("log", "./trcpub.log", "Output path for log files")
 
 	flag.Parse()
+
+	// If logging production directory does not exist and is selected log to local directory
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/trcpub.log" {
+		*logFilePtr = "./trcpub.log"
+	}
+	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	utils.CheckError(err, true)
+	logger := log.New(f, "[INIT]", log.LstdFlags)
 
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
@@ -85,8 +90,7 @@ func main() {
 }
 
 func uploadTemplates(insecure bool, addr string, token string, dirName string, env string, logger *log.Logger) {
-	logger.Println("dirName")
-	logger.Println(dirName)
+	logger.Printf("dirName: %s\n", dirName)
 	// Open directory
 	files, err := ioutil.ReadDir(dirName)
 	utils.CheckError(err, true)
@@ -94,8 +98,7 @@ func uploadTemplates(insecure bool, addr string, token string, dirName string, e
 	// Use name of containing directory as the template subdirectory
 	splitDir := strings.SplitAfterN(dirName, "/", 2)
 	subDir := splitDir[len(splitDir)-1]
-	logger.Println("subDir")
-	logger.Println(subDir)
+	logger.Printf("subDir: %s\n", subDir)
 
 	// Create modifier
 	mod, err := kv.NewModifier(insecure, token, addr, env, nil, logger)
@@ -118,7 +121,7 @@ func uploadTemplates(insecure bool, addr string, token string, dirName string, e
 
 		if ext == ".tmpl" { // Only upload template files
 			fmt.Printf("Found template file %s\n", file.Name())
-			logger.Println("Found template file %s\n", file.Name())
+			logger.Println(fmt.Sprintf("Found template file %s", file.Name()))
 			// Seperate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
 			name = name[0 : len(name)-len(ext)]
