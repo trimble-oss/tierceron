@@ -21,9 +21,9 @@ func main() {
 	tokenEnvMap["token"] = "s.KnIlXXqTY5QFe54JE1Oypttr"
 	// TenantConfiguration, SpectrumEnterpriseConfig, Mysqlfile
 	tokenEnvMap["templatePath"] = []string{
-		"trc_templates/TenantDatabase/TenantConfiguration/TenantConfiguration.tmpl", // implemented
-		//		"trc_templates/TenantDatabase/SpectrumEnterpriseConfig/SpectrumEnterpriseConfig.tmpl", // not yet implemented.
-		//		"trc_templates/TenantDatabase/KafkaTableConfiguration/KafkaTableConfiguration.tmpl",   // not yet implemented.
+		"trc_templates/TenantDatabase/TenantConfiguration/TenantConfiguration.tmpl",           // implemented
+		"trc_templates/TenantDatabase/SpectrumEnterpriseConfig/SpectrumEnterpriseConfig.tmpl", // not yet implemented.
+		"trc_templates/TenantDatabase/KafkaTableConfiguration/KafkaTableConfiguration.tmpl",   // not yet implemented.
 		//		"trc_templates/TenantDatabase/Mysqlfile/Mysqlfile.tmpl",                               // not yet implemented.
 	}
 
