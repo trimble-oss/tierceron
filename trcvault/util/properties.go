@@ -77,22 +77,16 @@ func ResolveTokenName(env string) string {
 	switch env {
 	case "local":
 		tokenNamePtr = "config_token_local"
-		break
 	case "dev":
 		tokenNamePtr = "config_token_dev"
-		break
 	case "QA":
 		tokenNamePtr = "config_token_QA"
-		break
 	case "RQA":
 		tokenNamePtr = "config_token_RQA"
-		break
 	case "staging":
 		tokenNamePtr = "config_token_staging"
-		break
 	default:
 		tokenNamePtr = "config_token_local"
-		break
 	}
 	return tokenNamePtr
 }

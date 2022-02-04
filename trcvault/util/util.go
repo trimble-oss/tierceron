@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 
@@ -27,7 +26,7 @@ import (
 
 func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 	vaultHost := "https://"
-	vaultErr := errors.New("No usable local vault found.")
+	vaultErr := errors.New("no usable local vault found")
 	hostFileLines, pherr := txeh.ParseHosts("/etc/hosts")
 	if pherr != nil {
 		return "", pherr
@@ -138,7 +137,7 @@ func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperk
 	templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
 
 	var cds *vcutils.ConfigDataStore
-	commonPaths := make([]string, 1, 1)
+	commonPaths := make([]string, 1)
 	if goMod != nil {
 		cds = new(vcutils.ConfigDataStore)
 		goMod.Version = goMod.Version + "***X-Mode"
@@ -158,7 +157,7 @@ func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperk
 	)
 }
 
-func SeedVaultById(goMod *kv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, tableId string, logger *log.Logger) error {
+func SeedVaultById(goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, tableId string, logger *log.Logger) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
