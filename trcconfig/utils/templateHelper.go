@@ -89,14 +89,14 @@ func GetTemplate(modifier *kv.Modifier, templatePath string) (string, error) {
 }
 
 //ConfigTemplateRaw - gets a raw unpopulated template.
-func ConfigTemplateRaw(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, project string, service string, cert bool, zc bool) ([]byte, error) {
+func ConfigTemplateRaw(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, project string, service string, cert bool, zc bool, exitOnFailure bool) ([]byte, error) {
 	var err error
 
 	var templateEncoded string
 	templateEncoded, err = GetTemplate(modifier, emptyFilePath)
-	eUtils.CheckError(err, true)
+	eUtils.CheckError(err, exitOnFailure)
 	templateBytes, decodeErr := base64.StdEncoding.DecodeString(templateEncoded)
-	eUtils.CheckError(decodeErr, true)
+	eUtils.CheckError(decodeErr, exitOnFailure)
 
 	return templateBytes, decodeErr
 }
