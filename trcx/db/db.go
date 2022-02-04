@@ -2,9 +2,11 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sort"
 	"strings"
+	"sync"
 
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
@@ -15,6 +17,8 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+var m sync.Mutex
 
 func writeToTable(te *TierceronEngine, envEnterprise string, version string, project string, service string, templateResult *extract.TemplateResultData) {
 
@@ -243,6 +247,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 				}
 			}
 			//}(config, envEnterprise)
+			fmt.Println("done")
 		}
 		//wgEnterprise.Wait()
 	}
@@ -259,7 +264,9 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
+	m.Lock()
 	ctx := sql.NewContext(context.Background())
+	m.Unlock()
 	//	te.Context = ctx
 	schema, r, err := te.Engine.Query(ctx, query) //This query not working anymore for inserts???
 	if err != nil {
