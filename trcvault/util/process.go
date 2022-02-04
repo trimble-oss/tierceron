@@ -186,7 +186,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 
 		// 3. Write seed data to vault
 		var baseTableTemplate extract.TemplateResultData
-		LoadBaseTemplate(&baseTableTemplate, goMod, flowSource, service, flow, logger)
+		LoadBaseTemplate(&baseTableTemplate, goMod, flowSource, service, flow, false, logger)
 
 		// When called sets up an infinite loop listening for changes on either
 		// the changedChannel or checks itself every 3 minutes for changes to
@@ -237,6 +237,9 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 				}
 			}
 		}
+	} else {
+		// Use the flow name directly.
+		flowName = flow
 	}
 
 	getFlowConfiguration = func(flowTemplatePath string) (map[string]interface{}, bool) {
@@ -475,9 +478,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	var wg sync.WaitGroup
 
-	for _, table := range tableList {
-		_, service, tableTemplateName := eUtils.GetProjectService(table)
-		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
+	for _, tableName := range configDriver.VersionFilter {
 		changeTableName := tableName + "_Changes"
 
 		if _, ok, _ := tierceronEngine.Database.GetTableInsensitive(tierceronEngine.Context, changeTableName); !ok {
