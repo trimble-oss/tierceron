@@ -499,11 +499,14 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}
 		}
 	}
+	eUtils.LogInfo("Tables creation completed.", logger)
+
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range tableList {
+			wg.Add(1)
 			go func(t string) {
+				eUtils.LogInfo("Beginning flow: "+t, logger)
 				defer wg.Done()
-				wg.Add(1)
 				flowMod, flowVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
 					eUtils.LogErrorMessage("Could not access vault.  Failure to start flow.", logger, false)
@@ -528,9 +531,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(table)
 		}
 		for _, flowName := range tcutil.GetAdditionalFlows() {
+			wg.Add(1)
 			go func(f string) {
+				eUtils.LogInfo("Beginning flow: "+f, logger)
 				defer wg.Done()
-				wg.Add(1)
 				flowMod, flowVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
 					eUtils.LogErrorMessage("Could not access vault.  Failure to start flow.", logger, false)
