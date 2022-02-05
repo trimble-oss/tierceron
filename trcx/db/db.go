@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -87,7 +86,9 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 			}
 		}
 
+		m.Lock()
 		tierceronTable.Table.Insert(te.Context, sql.NewRow(row...))
+		m.Unlock()
 	}
 }
 
@@ -191,66 +192,60 @@ func CreateEngine(config *eUtils.DriverConfig,
 
 		// Fun stuff here....
 		var versionMetadata []string
-		//		var wgEnterprise sync.WaitGroup
+		var wgEnterprise sync.WaitGroup
 		// Load all vault table data into tierceron sql engine.
 		for _, envEnterprise := range envEnterprises {
-			enterpriseEnv := envEnterprise
-			//go func(config *eUtils.DriverConfig, enterpriseEnv string) {
-			//	defer wgEnterprise.Done()
-			//		wgEnterprise.Add(1)
-			if !strings.Contains(enterpriseEnv, ".") {
-				continue
-				//return
-			}
-
-			tableMod, _, err := eUtils.InitVaultMod(config)
-			if err != nil {
-				eUtils.LogErrorMessage("Could not access vault.  Failure to start.", config.Log, false)
-				continue
-				//return
-			}
-
-			tableMod.Env = ""
-			versionMetadata = versionMetadata[:0]
-			fileMetadata, err := tableMod.GetVersionValues(tableMod, config.WantCerts, "values/"+enterpriseEnv, config.Log)
-			if fileMetadata == nil {
-				continue
-				//return
-			}
-			if err != nil {
-				eUtils.LogErrorObject(err, config.Log, false)
-				continue
-				//return
-			}
-
-			var first map[string]interface{}
-			for _, file := range fileMetadata {
-				if first == nil {
-					first = file
-					break
+			wgEnterprise.Add(1)
+			go func(config *eUtils.DriverConfig, enterpriseEnv string) {
+				defer wgEnterprise.Done()
+				if !strings.Contains(enterpriseEnv, ".") {
+					return
 				}
-			}
 
-			for versionNumber, _ := range first {
-				versionMetadata = append(versionMetadata, versionNumber)
-			}
+				tableMod, _, err := eUtils.InitVaultMod(config)
+				if err != nil {
+					eUtils.LogErrorMessage("Could not access vault.  Failure to start.", config.Log, false)
+					return
+				}
 
-			for _, versionNo := range versionMetadata {
-				for project, services := range projectServiceMap {
-					// TODO: optimize this for scale.
-					for _, service := range services {
-						for _, filter := range config.VersionFilter {
-							if filter == service {
-								TransformConfig(tableMod, te, enterpriseEnv, versionNo, project, service, config)
+				tableMod.Env = ""
+				versionMetadata = versionMetadata[:0]
+				fileMetadata, err := tableMod.GetVersionValues(tableMod, config.WantCerts, "values/"+enterpriseEnv, config.Log)
+				if fileMetadata == nil {
+					return
+				}
+				if err != nil {
+					eUtils.LogErrorObject(err, config.Log, false)
+					return
+				}
+
+				var first map[string]interface{}
+				for _, file := range fileMetadata {
+					if first == nil {
+						first = file
+						break
+					}
+				}
+
+				for versionNumber, _ := range first {
+					versionMetadata = append(versionMetadata, versionNumber)
+				}
+
+				for _, versionNo := range versionMetadata {
+					for project, services := range projectServiceMap {
+						// TODO: optimize this for scale.
+						for _, service := range services {
+							for _, filter := range config.VersionFilter {
+								if filter == service {
+									TransformConfig(tableMod, te, enterpriseEnv, versionNo, project, service, config)
+								}
 							}
 						}
 					}
 				}
-			}
-			//}(config, envEnterprise)
-			fmt.Println("done")
+			}(config, envEnterprise)
 		}
-		//wgEnterprise.Wait()
+		wgEnterprise.Wait()
 	}
 
 	te.Engine = sqle.NewDefault(memory.NewMemoryDBProvider(te.Database))
