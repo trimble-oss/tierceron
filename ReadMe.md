@@ -40,3 +40,6 @@ See [Contributing](CONTRIBUTING.MD).
 
 ## Code review 📝
 Check the [code review](CODE_REVIEW.MD) information to find out how a **Pull Request** is evaluated for this project and what other coding standards you should consider when you want to contribute.
+
+## Current effort
+Create indexing pathing in vault for easy indexing of vault data by desired variable.
