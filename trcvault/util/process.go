@@ -18,6 +18,7 @@ import (
 
 	eUtils "tierceron/utils"
 
+	"VaultConfig.TenantConfig/lib"
 	tcutil "VaultConfig.TenantConfig/util"
 
 	sys "tierceron/vaulthelper/system"
@@ -106,7 +107,10 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
-		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, rowDataMap[vaultIndexColumnName].(string), logger)
+		//Check for tenantId
+		_, _, matrixRows, err := db.Query(tierceronEngine, tcutil.GetTenantIdByEnterpriseId(databaseName, tcutil.GetTenantDBName(), rowDataMap[vaultIndexColumnName].(string)))
+		tableId := lib.CheckPrimaryColumn(rowDataMap, matrixRows)
+		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, tableId, logger)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
 			return seedError
