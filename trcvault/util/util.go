@@ -61,7 +61,7 @@ func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 
 func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
 	var jsonData map[string]interface{}
-	request, err := http.NewRequest("GET", address, nil)
+	request, err := http.NewRequest("GET", address, body)
 	if err != nil {
 		panic(err)
 	}
