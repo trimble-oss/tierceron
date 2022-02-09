@@ -77,7 +77,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		templatePaths = filteredTemplatePaths
 	}
 
-	config.Env = strings.Replace(config.Env, "eid", "0", 1) //This is to cover eid's with _ in them
+	config.Env = strings.Replace(config.Env, "eid", "0", 1) //This is to cover eid's with _ in them -> special case
 	envVersion := strings.Split(config.Env, "_")
 
 	if len(envVersion) != 2 {
@@ -229,18 +229,18 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	}
 
 	// Configure each template in directory
-	if strings.Contains(config.EnvRaw, ".*") {
+	if strings.Contains(config.EnvRaw, ".*") || len(config.Index) > 0 {
 		serviceFound := false
 		for _, templatePath := range templatePaths {
 			var service string
 			_, service, templatePath = vcutils.GetProjectService(templatePath)
 			_, _, indexed, _ := kv.PreCheckEnvironment(mod.Env)
 			//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
-			if (strings.Contains(mod.Env, ".") || strings.Contains(config.EnvRaw, "eid")) && !serviceFound {
+			if (strings.Contains(mod.Env, ".") || len(config.Index) > 0) && !serviceFound {
 				var listValues *api.Secret
 				var err error
-				if strings.Contains(config.EnvRaw, "eid") { //If eid -> look inside Index and grab all environments
-					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + strings.Split(config.Env, "_")[0] + "/")
+				if len(config.Index) > 0 { //If eid -> look inside Index and grab all environments
+					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.Index[0] + "/" + config.IndexName + "/" + strings.Split(config.Env, "_")[0] + "/")
 				} else if indexed {
 					listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
 				} else {
@@ -318,8 +318,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			if goMod != nil && !noVault {
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				if strings.Contains(config.EnvRaw, "eid") {
+				if len(config.Index) > 0 {
 					goMod.RawEnv = strings.Split(config.EnvRaw, ".")[0]
+					goMod.IndexName = config.IndexName
 				}
 				cds.Init(goMod, c.SecretMode, true, project, commonPaths, logger, service)
 			}
@@ -507,6 +508,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	} else {
 		if pathInclude {
 			endPath = config.EndDir + envBasePath + "/" + pathPart + "/" + config.Env + "_seed.yml"
+		} else if len(config.Index) > 0 {
+			envBasePath, _, _, _ := kv.PreCheckEnvironment(config.EnvRaw)
+
+			endPath = config.EndDir + envBasePath + "/Index/" + config.Index[0] + "/" + config.IndexName + "/" + config.Env + "_seed.yml"
 		} else {
 			endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 		}
