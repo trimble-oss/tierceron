@@ -72,7 +72,8 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	isInit bool,
 	remoteDataSource map[string]interface{},
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
-	logger *log.Logger) error {
+	logger *log.Logger,
+	flowSource string) error {
 
 	var matrixChangedEntries [][]string
 	var changedEntriesQuery string
@@ -110,7 +111,7 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		//Check for tenantId
 		_, _, matrixRows, err := db.Query(tierceronEngine, tcutil.GetTenantIdByEnterpriseId(databaseName, tcutil.GetTenantDBName(), rowDataMap[vaultIndexColumnName].(string)))
 		tableId := lib.CheckPrimaryColumn(rowDataMap, matrixRows)
-		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, tableId, logger)
+		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, tableId, logger, flowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
 			return seedError
@@ -222,7 +223,8 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 						false,
 						remoteDataSource,
 						flowPushRemote,
-						logger)
+						logger,
+						flowSource)
 				case <-time.After(afterTime):
 					afterTime = time.Minute * 3
 					eUtils.LogInfo("3 minutes... checking local mysql for changes.", logger)
@@ -240,7 +242,8 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 						isInit,
 						remoteDataSource,
 						flowPushRemote,
-						logger)
+						logger,
+						flowSource)
 					isInit = false
 				}
 			}
@@ -248,6 +251,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	} else {
 		// Use the flow name directly.
 		flowName = flow
+		flowSource = flow
 	}
 
 	getFlowConfiguration = func(flowTemplatePath string) (map[string]interface{}, bool) {
