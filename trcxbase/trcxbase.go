@@ -329,7 +329,10 @@ skipDiff:
 	}
 	go reciever() //Channel reciever
 	for _, env := range envSlice {
-		envVersion := strings.Split(env, "_") //Break apart env+version for token
+		envVersion := make([]string, 2)
+		lastIndex := strings.LastIndex(env, "_")
+		envVersion[0] = env[0:lastIndex]
+		envVersion[1] = env[lastIndex+1:]
 		*envPtr = envVersion[0]
 		if strings.Count(*envPtr, ".") == 2 {
 			*envPtr = strings.SplitN(*envPtr, ".", 2)[0]
