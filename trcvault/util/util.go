@@ -158,7 +158,7 @@ func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperk
 	)
 }
 
-func SeedVaultById(goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexName string, indexId string, tableId string, logger *log.Logger, project string) error {
+func SeedVaultById(goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, logger *log.Logger, project string) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -207,6 +207,6 @@ func SeedVaultById(goMod *helperkv.Modifier, service string, address string, tok
 	seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n"
 	//VaultX Section Ends
 	//VaultInit Section Begins
-	il.SeedVaultFromData(true, []byte(seedData), address, token, goMod.Env, log.Default(), service, false, goMod.Env+"/Index/"+project+"/"+indexName+"/"+indexId+"/"+tableId)
+	il.SeedVaultFromData(true, []byte(seedData), address, token, goMod.Env, log.Default(), service, false, goMod.Env+"/Index/"+project+"/"+indexPath)
 	return nil
 }
