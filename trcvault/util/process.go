@@ -109,9 +109,12 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 
 		//Use trigger to make another table
 		//Check for tenantId
+
+		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace below
 		_, _, matrixRows, err := db.Query(tierceronEngine, tcutil.GetTenantIdByEnterpriseId(databaseName, tcutil.GetTenantDBName(), rowDataMap[vaultIndexColumnName].(string)))
 		tableId := lib.CheckPrimaryColumn(rowDataMap, matrixRows)
-		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, tableId, logger, flowSource)
+		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
+		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, indexName, indexId, tableId, logger, flowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
 			return seedError
