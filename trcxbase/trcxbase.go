@@ -22,6 +22,7 @@ type ResultData struct {
 
 var resultMap = make(map[string]*string)
 var envSlice = make([]string, 0)
+var indexSlice = make([]string, 0)
 var resultChannel = make(chan *ResultData, 5)
 var envLength int
 var mutex = &sync.Mutex{}
@@ -80,6 +81,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	versionPtr := flag.Bool("versions", false, "Gets version metadata information")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
+	indexPtr := flag.String("index", "", "Specifies which projects are indexed")
 
 	// Initialize logging
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
@@ -109,6 +111,11 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	var fileFilter []string
 	if len(*filterTemplatePtr) != 0 {
 		fileFilter = strings.Split(*filterTemplatePtr, ",")
+	}
+
+	//Checks for indexed projects
+	if len(*indexPtr) > 0 {
+		indexSlice = append(indexSlice, strings.Split(*indexPtr, ",")...)
 	}
 
 	//check for clean + env flag
@@ -267,6 +274,7 @@ skipDiff:
 	var waitg sync.WaitGroup
 	if len(envSlice) == 1 {
 		if strings.Contains(envSlice[0], "*") {
+			newEnvSlice := make([]string, 0)
 			//Ask vault for list of dev.<id>.* environments, add to envSlice
 			testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions, logger)
 			if err != nil {
@@ -275,7 +283,15 @@ skipDiff:
 			_, suffix, indexed, _ := kv.PreCheckEnvironment(envSlice[0])
 			testMod.Env = strings.Split(envSlice[0], ".")[0]
 			var listValues *api.Secret
-			if indexed {
+			if len(*indexPtr) > 0 { //If eid -> look inside Index and grab all environments
+				listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + "/Index/" + indexSlice[0] + "/")
+				for k, valuesPath := range listValues.Data {
+					for _, envInterface := range valuesPath.([]interface{}) {
+						newEnvSlice = append(newEnvSlice, strings.ReplaceAll(envInterface.(string), "/", "")+"_0")
+					}
+					delete(listValues.Data, k) //delete it so it doesn't repeat below
+				}
+			} else if indexed {
 				listValues, err = testMod.ListEnv("super-secrets/")
 			} else {
 				listValues, err = testMod.ListEnv("values/")
@@ -283,7 +299,7 @@ skipDiff:
 			if err != nil {
 				logger.Printf(err.Error())
 			}
-			newEnvSlice := make([]string, 0)
+
 			if listValues == nil {
 				fmt.Println("No enterprise IDs were found.")
 				os.Exit(1)
@@ -293,7 +309,7 @@ skipDiff:
 					env := envInterface.(string)
 					if (indexed && strings.HasPrefix(env, testMod.Env+"."+suffix+".")) || (!indexed && strings.HasPrefix(env, testMod.Env+".")) { //Check for env.eid/tid.id OR env.id
 						env = strings.ReplaceAll(env, "/", "")
-						newEnvSlice = append(newEnvSlice, env)
+						newEnvSlice = append(newEnvSlice, env+"_0")
 					}
 				}
 			}
@@ -311,6 +327,9 @@ skipDiff:
 			*tokenPtr = ""
 		}
 		if !*noVaultPtr {
+			if strings.Contains(envRaw, ".") {
+				envPtr = &strings.Split(envRaw, ".")[0]
+			}
 			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
 		} else {
 			*tokenPtr = "novault"
@@ -341,6 +360,7 @@ skipDiff:
 			Update:         messenger,
 			VersionInfo:    eUtils.VersionHelper,
 			FileFilter:     fileFilter,
+			Index:          indexSlice,
 		}
 		waitg.Add(1)
 		go func() {
