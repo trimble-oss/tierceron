@@ -63,27 +63,12 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		filteredTemplatePaths = filteredTemplatePaths[:0]
 	}
 
-	if len(config.Index) > 0 {
-		for _, indexed := range config.Index {
-			for _, templatePath := range templatePaths {
-				if strings.Contains(templatePath, indexed) {
-					filteredTemplatePaths = append(filteredTemplatePaths, templatePath)
-				}
-			}
-		}
-	}
-
-	if len(filteredTemplatePaths) > 0 {
-		templatePaths = filteredTemplatePaths
-	}
-
-	config.Env = strings.Replace(config.Env, "eid", "0", 1) //This is to cover eid's with _ in them -> special case
 	envVersion := strings.Split(config.Env, "_")
-
 	if len(envVersion) != 2 {
 		// Make it so.
-		config.Env = config.Env + "_0"
-		envVersion = strings.Split(config.Env, "_")
+		lastIndex := strings.LastIndex(config.Env, "_")
+		envVersion[0] = config.Env[0:lastIndex]
+		envVersion[1] = config.Env[lastIndex+1:]
 	}
 	env := envVersion[0]
 	version := envVersion[1]
@@ -102,6 +87,47 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		if config.Token == "novault" {
 			noVault = true
 		}
+	}
+
+	serviceSlice := make([]string, 0)
+	if len(config.Index) > 0 { //Filter by project
+		for _, indexed := range config.Index {
+			for _, templatePath := range templatePaths {
+				if strings.Contains(templatePath, indexed) {
+					filteredTemplatePaths = append(filteredTemplatePaths, templatePath)
+					envAndVersion := make([]string, 2)
+					lastIndex := strings.LastIndex(config.Env, "_")
+					envAndVersion[0] = config.Env[0:lastIndex]
+					envAndVersion[1] = config.Env[lastIndex+1:]
+					listValues, err := mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.Index[0] + "/" + config.IndexName + "/" + envAndVersion[0])
+					if err != nil {
+						eUtils.LogInfo("Couldn't list services for indexed path", logger)
+					}
+					for _, valuesPath := range listValues.Data {
+						for _, service := range valuesPath.([]interface{}) {
+							serviceSlice = append(serviceSlice, service.(string))
+						}
+					}
+				}
+			}
+		}
+
+		var filteredTempPaths []string
+		for _, service := range serviceSlice { //Filter by available service as well
+			for _, templatePath := range filteredTemplatePaths {
+				if strings.Contains(templatePath, service) {
+					filteredTempPaths = append(filteredTempPaths, templatePath)
+				}
+			}
+		}
+		if len(filteredTempPaths) > 0 {
+			filteredTemplatePaths = filteredTempPaths
+		}
+	}
+
+	if len(filteredTemplatePaths) > 0 {
+		filteredTemplatePaths = utils.RemoveDuplicates(filteredTemplatePaths)
+		templatePaths = filteredTemplatePaths
 	}
 
 	if config.GenAuth && mod != nil {
@@ -239,8 +265,12 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			if (strings.Contains(mod.Env, ".") || len(config.Index) > 0) && !serviceFound {
 				var listValues *api.Secret
 				var err error
+				envAndVersion := make([]string, 2)
+				lastIndex := strings.LastIndex(config.Env, "_")
+				envAndVersion[0] = config.Env[0:lastIndex]
+				envAndVersion[1] = config.Env[lastIndex+1:]
 				if len(config.Index) > 0 { //If eid -> look inside Index and grab all environments
-					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.Index[0] + "/" + config.IndexName + "/" + strings.Split(config.Env, "_")[0] + "/")
+					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.Index[0] + "/" + config.IndexName + "/" + envAndVersion[0] + "/")
 				} else if indexed {
 					listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
 				} else {
@@ -296,9 +326,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				if err != nil {
 					panic(err)
 				}
-				envVersion := strings.Split(config.Env, "_")
-				goMod.Env = envVersion[0]
-				goMod.Version = envVersion[1]
+				lastIndex := strings.LastIndex(config.Env, "_")
+				goMod.Env = config.Env[0:lastIndex]
+				goMod.Version = config.Env[lastIndex+1:]
 				goMod.Index = config.Index
 			}
 
@@ -423,7 +453,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfig, logger *log.Logger) interface{} {
 	if config.Clean { //Clean flag in trcx
 		if strings.HasSuffix(config.Env, "_0") {
-			config.Env = strings.Split(config.Env, "_")[0]
+			lastIndex := strings.LastIndex(config.Env, "_")
+			config.Env = config.Env[0:lastIndex]
 		}
 		_, err1 := os.Stat(config.EndDir + config.Env)
 		err := os.RemoveAll(config.EndDir + config.Env)
@@ -479,7 +510,8 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	}
 
 	if strings.Contains(config.Env, "_0") {
-		config.Env = strings.Split(config.Env, "_0")[0]
+		lastIndex := strings.LastIndex(config.Env, "_0")
+		config.Env = config.Env[0:lastIndex]
 	}
 
 	suffixRemoved := ""
@@ -525,11 +557,16 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 
 			project, service, templatePath := vcutils.GetProjectService(templatePath)
 
-			envVersion := strings.Split(config.Env, "_")
+			envVersion := make([]string, 2)
+			lastIndex := strings.LastIndex(config.Env, "_")
+			envVersion[0] = config.Env[0:lastIndex]
+			envVersion[1] = config.Env[lastIndex+1:]
 			if len(envVersion) != 2 {
 				// Make it so.
 				config.Env = config.Env + "_0"
-				envVersion = strings.Split(config.Env, "_")
+				lastIndex := strings.LastIndex(config.Env, "_")
+				envVersion[0] = config.Env[0:lastIndex]
+				envVersion[1] = config.Env[lastIndex+1:]
 			}
 
 			mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
