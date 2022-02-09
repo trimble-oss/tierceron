@@ -31,6 +31,8 @@ type Modifier struct {
 	SecretDictionary *api.Secret  // Current Secret Dictionary Cache.
 	Version          string       // Version for data
 	VersionFilter    []string     // Used to filter vault paths
+	RawEnv           string
+	Index            []string
 }
 
 // PreCheckEnvironment
@@ -196,6 +198,25 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 		versionSlice := []string{m.Version}
 		versionMap["version"] = versionSlice
 		secret, err = m.logical.ReadWithData(fullPath, versionMap)
+		if secret == nil && len(m.Index) > 0 {
+			//THis looks inside QA/Index/tid/... for a project
+			pathSplit := strings.Split(fullPath, "/")
+			pathSplit[2] = m.RawEnv + "/Index/" + m.Index[0] + "/" + pathSplit[2]
+			tempPath := ""
+			for _, v := range pathSplit {
+				tempPath = tempPath + v + "/"
+			}
+			secret, err = m.logical.ReadWithData(strings.TrimSuffix(tempPath, "/"), versionMap)
+		} else if secret == nil {
+			//This looks inside QA, outside of index for a project
+			pathSplit := strings.Split(fullPath, "/")
+			pathSplit[2] = m.RawEnv
+			tempPath := ""
+			for _, v := range pathSplit {
+				tempPath = tempPath + v + "/"
+			}
+			secret, err = m.logical.ReadWithData(strings.TrimSuffix(tempPath, "/"), versionMap)
+		}
 	} else {
 		secret, err = m.logical.Read(fullPath)
 	}
@@ -382,6 +403,11 @@ func (m *Modifier) GetProjectServicesMap() (map[string][]string, error) {
 func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath string, logger *log.Logger) (map[string]map[string]interface{}, error) {
 	envCheck := strings.Split(mod.Env, "_")
 	mod.Env = envCheck[0]
+	realEnv := mod.Env
+	if len(mod.Index) > 0 {
+		enginePath = enginePath + "/Index/" + mod.Index[0] + "/" + mod.Env
+		mod.Env = mod.RawEnv
+	}
 	userPaths, err := mod.List(enginePath + "/")
 	versionDataMap := make(map[string]map[string]interface{}, 0)
 	//data := make([]string, 0)
@@ -469,6 +495,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 		}
 	}
 
+	mod.Env = realEnv
 	if len(versionDataMap) < 1 {
 		return nil, fmt.Errorf("No version data available for this env")
 	}
