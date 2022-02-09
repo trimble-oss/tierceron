@@ -33,6 +33,7 @@ type Modifier struct {
 	VersionFilter    []string     // Used to filter vault paths
 	RawEnv           string
 	Index            []string
+	IndexName        string
 }
 
 // PreCheckEnvironment
@@ -201,7 +202,7 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 		if secret == nil && len(m.Index) > 0 {
 			//THis looks inside QA/Index/tid/... for a project
 			pathSplit := strings.Split(fullPath, "/")
-			pathSplit[2] = m.RawEnv + "/Index/" + m.Index[0] + "/" + pathSplit[2]
+			pathSplit[2] = m.RawEnv + "/Index/" + m.Index[0] + "/" + m.IndexName + "/" + pathSplit[2] + "/" + pathSplit[3]
 			tempPath := ""
 			for _, v := range pathSplit {
 				tempPath = tempPath + v + "/"
