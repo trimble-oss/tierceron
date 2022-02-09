@@ -69,7 +69,9 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 			}
 
 			table := memory.NewTable(tableName, tierceronTable.Schema)
+			m.Lock()
 			te.Database.AddTable(tableName, table)
+			m.Unlock()
 			tierceronTable.Table = table
 			te.TableCache[tableName] = tierceronTable
 		}
