@@ -18,7 +18,6 @@ import (
 
 	eUtils "tierceron/utils"
 
-	"VaultConfig.TenantConfig/lib"
 	tcutil "VaultConfig.TenantConfig/util"
 
 	sys "tierceron/vaulthelper/system"
@@ -111,10 +110,11 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		//Check for tenantId
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace below
-		_, _, matrixRows, err := db.Query(tierceronEngine, tcutil.GetTenantIdByEnterpriseId(databaseName, tcutil.GetTenantDBName(), rowDataMap[vaultIndexColumnName].(string)))
-		tableId := lib.CheckPrimaryColumn(rowDataMap, matrixRows)
+		indexPath := tcutil.GetIndexedPathExt(tierceronEngine, rowDataMap, vaultIndexColumnName, databaseName, tableName, func(engine interface{}, query string) (string, []string, [][]string, error) {
+			return db.Query(engine.(*db.TierceronEngine), query)
+		})
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
-		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, indexName, indexId, tableId, logger, flowSource)
+		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, indexPath, logger, flowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
 			return seedError
