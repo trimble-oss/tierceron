@@ -402,7 +402,10 @@ func (m *Modifier) GetProjectServicesMap() (map[string][]string, error) {
 
 //GetVersionValues gets filepath for values and grabs metadata for those paths.
 func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath string, logger *log.Logger) (map[string]map[string]interface{}, error) {
-	envCheck := strings.Split(mod.Env, "_")
+	var envCheck []string
+	lastIndex := strings.LastIndex(mod.Env, "_")
+	envCheck[0] = mod.Env[0:lastIndex]
+	envCheck[1] = mod.Env[lastIndex+1:]
 	mod.Env = envCheck[0]
 	realEnv := mod.Env
 	if len(mod.Index) > 0 {
@@ -626,7 +629,10 @@ func getPathEnd(path string) string {
 
 func GetAcceptedTemplatePaths(modCheck *Modifier, templatePaths []string) ([]string, error) {
 	preEnv := modCheck.Env
-	modCheck.Env = strings.Split(modCheck.Env, "_")[0]
+	var envCheck []string
+	lastIndex := strings.LastIndex(modCheck.Env, "_")
+	envCheck[0] = modCheck.Env[0:lastIndex]
+	envCheck[1] = modCheck.Env[lastIndex+1:]
 	serviceInterface, err := modCheck.ListEnv("super-secrets/" + modCheck.Env)
 	modCheck.Env = preEnv
 	if err != nil {
