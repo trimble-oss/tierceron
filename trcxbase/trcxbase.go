@@ -271,9 +271,10 @@ skipDiff:
 	logger.SetPrefix("[trcx]")
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
+	var indexName string
 	var waitg sync.WaitGroup
 	if len(envSlice) == 1 {
-		if strings.Contains(envSlice[0], "*") {
+		if strings.Contains(envSlice[0], "*") || len(*indexPtr) > 0 {
 			newEnvSlice := make([]string, 0)
 			//Ask vault for list of dev.<id>.* environments, add to envSlice
 			testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions, logger)
@@ -286,8 +287,18 @@ skipDiff:
 			if len(*indexPtr) > 0 { //If eid -> look inside Index and grab all environments
 				listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + "/Index/" + indexSlice[0] + "/")
 				for k, valuesPath := range listValues.Data {
-					for _, envInterface := range valuesPath.([]interface{}) {
-						newEnvSlice = append(newEnvSlice, strings.ReplaceAll(envInterface.(string), "/", "")+"_0")
+					for _, indexNameInterface := range valuesPath.([]interface{}) {
+						indexName = strings.TrimSuffix(indexNameInterface.(string), "/")
+						indexList, err := testMod.ListEnv("super-secrets/" + testMod.Env + "/Index/" + indexSlice[0] + "/" + indexNameInterface.(string))
+						if err != nil {
+							logger.Printf(err.Error())
+						}
+
+						for _, indexPath := range indexList.Data {
+							for _, indexInterface := range indexPath.([]interface{}) {
+								newEnvSlice = append(newEnvSlice, strings.ReplaceAll(indexInterface.(string), "/", "")+"_0")
+							}
+						}
 					}
 					delete(listValues.Data, k) //delete it so it doesn't repeat below
 				}
@@ -327,8 +338,8 @@ skipDiff:
 			*tokenPtr = ""
 		}
 		if !*noVaultPtr {
-			if strings.Contains(envRaw, ".") {
-				envPtr = &strings.Split(envRaw, ".")[0]
+			if strings.Contains(envRaw, ".") || len(indexName) > 1 {
+				*envPtr = strings.Split(envRaw, ".")[0]
 			}
 			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
 		} else {
@@ -347,6 +358,7 @@ skipDiff:
 			VaultAddress:   *addrPtr,
 			EnvRaw:         envRaw,
 			Env:            *envPtr,
+			IndexName:      indexName,
 			Regions:        regions,
 			SecretMode:     *secretMode,
 			ServicesWanted: []string{},
