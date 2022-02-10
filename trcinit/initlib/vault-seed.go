@@ -303,7 +303,7 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 	mod, err := kv.NewModifier(insecure, token, vaultAddr, env, nil, logger) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
-	if strings.HasPrefix(filepath, "Index/") {
+	if strings.Contains(filepath, "Index/") {
 		mod.IndexPath = strings.TrimSuffix(filepath, "_seed.yml")
 	}
 
@@ -460,6 +460,9 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 			}
 		} else {
 			//			/Index/TrcVault/regionId/<regionEnv>
+			if mod.IndexPath != "" {
+				entry.path = mod.IndexPath
+			}
 			WriteData(entry.path, entry.data, mod, logger)
 		}
 	}
@@ -468,7 +471,7 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 	warn, err := verify(mod, verificationData, logger)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
-	eUtils.LogInfo("\nInitialization complete for "+mod.Env+".\n", logger)
+	eUtils.LogInfo("\nInitialization complete for "+strings.Split(mod.IndexPath, "/")[strings.Count(mod.IndexPath, "/")]+".\n", logger)
 }
 
 //WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
