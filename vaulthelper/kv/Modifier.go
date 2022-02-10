@@ -669,3 +669,17 @@ func GetAcceptedTemplatePaths(modCheck *Modifier, templatePaths []string) ([]str
 	}
 	return templatePaths, nil
 }
+
+func (m *Modifier) ListRegions(project string) ([]string, error) {
+	var regions []string
+	secret, err := m.List("super-secrets/Index/" + project + ) // + indexName
+	if secret != nil {
+		if _, ok := secret.Data["keys"].([]interface{}); ok {
+			for _, region := range secret.Data["keys"].([]interface{}) {
+				regions = append(regions, strings.TrimSuffix(region.(string), "/"))
+			}
+			return regions, err
+		}
+	}
+	return nil, errors.New("no regions were found")
+}
