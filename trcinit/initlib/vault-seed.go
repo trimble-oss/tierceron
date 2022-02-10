@@ -275,13 +275,16 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 				if hasEmptyValues {
 					// Scrub variables that were not initialized.
 					removeKeys := []string{}
-					for dataKey, dataValue := range v.(writeCollection).data {
-						if !strings.Contains(dataValue.(string), "<Enter Secret Here>") {
-							removeKeys = append(removeKeys, dataKey)
+					switch v.(type) {
+					case writeCollection:
+						for dataKey, dataValue := range v.(writeCollection).data {
+							if !strings.Contains(dataValue.(string), "<Enter Secret Here>") {
+								removeKeys = append(removeKeys, dataKey)
+							}
 						}
-					}
-					for _, removeKey := range removeKeys {
-						delete(v.(writeCollection).data, removeKey)
+						for _, removeKey := range removeKeys {
+							delete(v.(writeCollection).data, removeKey)
+						}
 					}
 				}
 				writeVals.data[k.(string)] = v
