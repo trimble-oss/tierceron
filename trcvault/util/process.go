@@ -371,25 +371,26 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	for i := 0; i < len(projects); i++ {
 
-		var idEnvironments []string
+		var indexValues []string
 
 		if services[i] == "Database" {
 			// TODO: This could be an api call vault list - to list what's available with rid's.
 			// East and west...
-			regions, err := goMod.ListRegions(projects[i])
+			goMod.IndexName = "regionId"
+			regions, err := goMod.ListIndexes(projects[i], goMod.IndexName)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 				return err
 			}
-			idEnvironments = regions
-			idEnvironments = []string{"east", "west"}
+			indexValues = regions
 		} else {
-			idEnvironments = []string{""}
+			indexValues = []string{""}
 		}
 
-		for _, idEnvironment := range idEnvironments {
+		for _, indexValue := range indexValues {
+			goMod.IndexValue = indexValue
 			ok := false
-			properties, err := NewProperties(vault, goMod, pluginConfig["env"].(string)+idEnvironment, projects[i], services[i], logger)
+			properties, err := NewProperties(vault, goMod, pluginConfig["env"].(string), projects[i], services[i], logger)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 				return err
@@ -401,7 +402,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				sourceDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok {
 					// Just ignore this one and go to the next one.
-					eUtils.LogWarningMessage("Expected database configuration does not exist: "+idEnvironment, logger, false)
+					eUtils.LogWarningMessage("Expected database configuration does not exist: "+indexValue, logger, false)
 					continue
 				}
 				sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
