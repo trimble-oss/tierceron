@@ -255,10 +255,7 @@ func main() {
 	if *diffPtr {
 		configSlice := make([]eUtils.DriverConfig, 0, len(envDiffSlice)-1)
 		for _, env := range envDiffSlice {
-			envVersion := make([]string, 2)
-			lastIndex := strings.LastIndex(env, "_")
-			envVersion[0] = env[0:lastIndex]
-			envVersion[1] = env[lastIndex+1:]
+			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
 			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)

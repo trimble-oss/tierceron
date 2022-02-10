@@ -36,12 +36,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 	templateInfo := false
 	versionInfo := false
 	if strings.Contains(config.Env, "_") {
-		envAndVersion := make([]string, 2)
-		lastIndex := strings.LastIndex(config.Env, "_")
-		envAndVersion[0] = config.Env[0:lastIndex]
-		envAndVersion[1] = config.Env[lastIndex+1:]
-		config.Env = envAndVersion[0]
-		version = envAndVersion[1]
+		envVersion := eUtils.SplitEnv(config.Env)
+
+		config.Env = envVersion[0]
+		version = envVersion[1]
 		if version == "versionInfo" {
 			versionInfo = true
 		} else if version == "templateInfo" {
@@ -128,9 +126,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 		versionDataMap := make(map[string]map[string]interface{})
 		//Gets version metadata for super secrets or values if super secrets don't exist.
 		if strings.Contains(modCheck.Env, ".") {
-			lastIndex := strings.LastIndex(modCheck.Env, "_")
-			config.VersionFilter = append(config.VersionFilter, modCheck.Env[0:lastIndex])
-			modCheck.Env = modCheck.Env[0:lastIndex]
+			envVersion := eUtils.SplitEnv(modCheck.Env)
+			config.VersionFilter = append(config.VersionFilter, envVersion[0])
+			modCheck.Env = envVersion[0]
 		}
 
 		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck, logger)
