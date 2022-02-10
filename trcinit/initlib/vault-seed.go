@@ -39,7 +39,7 @@ type writeCollection struct {
 
 var templateWritten map[string]bool
 
-// SeedVault seeds the vault with seed files in the given directory
+// SeedVault seeds the vault with seed files in the given directory -> only init uses this
 func SeedVault(insecure bool, dir string, addr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
 	logger.SetPrefix("[SEED]")
 	logger.Printf("Seeding vault from seeds in: %s\n", dir)
@@ -123,6 +123,28 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 			}
 
 			for _, fileSteppedInto := range filesSteppedInto {
+				if fileSteppedInto.Name() == "Index" {
+					projectFiles, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
+					if err != nil {
+						logger.Printf("Couldn't read into: %s \n", fileSteppedInto.Name())
+					}
+					for _, projectFilesInto := range projectFiles {
+						projectFilesSteppedInto, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectFilesInto.Name())
+						if err != nil {
+							logger.Printf("Couldn't read into: %s \n", projectFilesInto.Name())
+						}
+						for _, projectFileSteppedInto := range projectFilesSteppedInto {
+							configFiles, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectFilesInto.Name() + "/" + projectFileSteppedInto.Name())
+							if err != nil {
+								logger.Printf("Couldn't read into: %s \n", projectFileSteppedInto.Name())
+							}
+							for _, configFile := range configFiles {
+								path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectFilesInto.Name() + "/" + projectFileSteppedInto.Name() + "/" + configFile.Name()
+								SeedVaultFromFile(insecure, path, addr, token, strings.TrimSuffix(configFile.Name(), "_seed.yml"), logger, service, uploadCert, "Indexed")
+							}
+						}
+					}
+				}
 				if strings.Count(fileSteppedInto.Name(), "_") >= 2 { //Check if file name is a versioned seed file -> 2 underscores "_"
 					continue
 				}
@@ -192,7 +214,7 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
 	// Unmarshal
 	var rawYaml interface{}
-	if bytes.Contains(fData, []byte("<Enter Secret Here>")) {
+	if bytes.Contains(fData, []byte("<Enter Secret Here>")) && configId != "Indexed" {
 		eUtils.LogInfo("Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", logger)
 		os.Exit(1)
 	}
