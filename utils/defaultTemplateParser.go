@@ -38,7 +38,7 @@ type DriverConfig struct {
 	VersionInfo    func(map[string]interface{}, bool, string, bool)
 	VersionFilter  []string
 	ExitOnFailure  bool // Exit on a failure or try to continue
-	Index          []string
+	ProjectIndex   []string
 	IndexName      string
 }
 

@@ -44,6 +44,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
+	indexPtr := flag.String("index", "", "Specifies which projects are indexed")
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -64,6 +65,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if *namespaceVariable == "" && *newPtr {
 		fmt.Println("Namespace (-namespace) required to initialize a new vault.")
 		os.Exit(1)
+	}
+
+	var indexSlice = make([]string, 0)
+	//Checks for indexed projects
+	if len(*indexPtr) > 0 {
+		indexSlice = append(indexSlice, strings.Split(*indexPtr, ",")...)
 	}
 
 	namespaceTokenConfigs := "vault_namespaces" + string(os.PathSeparator) + "token_files"
@@ -99,7 +106,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/trcinit.log" {
+	if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/trcinit.log" && os.IsNotExist(err) {
 		*logFilePtr = "./trcinit.log"
 	}
 
@@ -430,7 +437,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Invalid token - token: ", *tokenPtr)
 			os.Exit(1)
 		}
-		il.SeedVault(*insecurePtr, *seedPtr, *addrPtr, v.GetToken(), *envPtr, logger, *servicePtr, *uploadCertPtr)
+		il.SeedVault(*insecurePtr, *seedPtr, *addrPtr, v.GetToken(), *envPtr, indexSlice, logger, *servicePtr, *uploadCertPtr)
 	}
 
 	logger.SetPrefix("[INIT]")

@@ -40,7 +40,16 @@ type writeCollection struct {
 var templateWritten map[string]bool
 
 // SeedVault seeds the vault with seed files in the given directory -> only init uses this
-func SeedVault(insecure bool, dir string, addr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
+func SeedVault(insecure bool,
+	dir string,
+	addr string,
+	token string,
+	env string,
+	indexSlice []string,
+	logger *log.Logger,
+	service string,
+	uploadCert bool) {
+
 	logger.SetPrefix("[SEED]")
 	logger.Printf("Seeding vault from seeds in: %s\n", dir)
 
@@ -78,7 +87,7 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 
 		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
 
-		SeedVaultFromData(config.Insecure, []byte(seedData), addr, token, env, logger, service, true, "")
+		SeedVaultFromData(config.Insecure, "", []byte(seedData), addr, token, env, logger, service, true)
 		return
 	}
 
@@ -124,23 +133,36 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 
 			for _, fileSteppedInto := range filesSteppedInto {
 				if fileSteppedInto.Name() == "Index" {
-					projectFiles, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
+					projectDirectories, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
 					if err != nil {
 						logger.Printf("Couldn't read into: %s \n", fileSteppedInto.Name())
 					}
-					for _, projectFilesInto := range projectFiles {
-						projectFilesSteppedInto, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectFilesInto.Name())
-						if err != nil {
-							logger.Printf("Couldn't read into: %s \n", projectFilesInto.Name())
-						}
-						for _, projectFileSteppedInto := range projectFilesSteppedInto {
-							configFiles, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectFilesInto.Name() + "/" + projectFileSteppedInto.Name())
-							if err != nil {
-								logger.Printf("Couldn't read into: %s \n", projectFileSteppedInto.Name())
+					// Iterate of projects...
+					for _, projectDirectory := range projectDirectories {
+						if len(indexSlice) > 0 {
+							acceptProject := false
+							for _, index := range indexSlice {
+								if index == projectDirectory.Name() {
+									acceptProject = true
+									break
+								}
 							}
-							for _, configFile := range configFiles {
-								path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectFilesInto.Name() + "/" + projectFileSteppedInto.Name() + "/" + configFile.Name()
-								SeedVaultFromFile(insecure, path, addr, token, strings.TrimSuffix(configFile.Name(), "_seed.yml"), logger, service, uploadCert, "Indexed")
+							if !acceptProject {
+								continue
+							}
+						}
+						indexNames, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name())
+						if err != nil {
+							logger.Printf("Couldn't read into: %s \n", projectDirectory.Name())
+						}
+						for _, indexName := range indexNames {
+							indexConfigFiles, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + indexName.Name())
+							if err != nil {
+								logger.Printf("Couldn't read into: %s \n", indexName.Name())
+							}
+							for _, indexConfigFile := range indexConfigFiles {
+								path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + indexName.Name() + "/" + indexConfigFile.Name()
+								SeedVaultFromFile(insecure, path, addr, token, env, logger, service, uploadCert)
 							}
 						}
 					}
@@ -182,13 +204,8 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 						path = dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name()
 					}
 					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
-					fileNameSplit := strings.Split(fileSteppedInto.Name(), "_")
-					foundconfigIdDelimiter := ""
-					if strings.Contains(fileNameSplit[0], ".") {
-						foundconfigIdDelimiter = fileNameSplit[0]
-					}
 
-					SeedVaultFromFile(insecure, path, addr, token, env, logger, service, uploadCert, foundconfigIdDelimiter)
+					SeedVaultFromFile(insecure, path, addr, token, env, logger, service, uploadCert)
 					seeded = true
 				}
 			}
@@ -200,21 +217,22 @@ func SeedVault(insecure bool, dir string, addr string, token string, env string,
 }
 
 //SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(insecure bool, filepath string, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool, configId string) {
+func SeedVaultFromFile(insecure bool, filepath string, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	utils.LogErrorObject(err, logger, true)
-	SeedVaultFromData(insecure, rawFile, vaultAddr, token, env, logger, service, uploadCert, configId)
+	SeedVaultFromData(insecure, strings.SplitAfterN(filepath, "/", 3)[2], rawFile, vaultAddr, token, env, logger, service, uploadCert)
 }
 
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool, configId string) {
+func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr string, token string, env string, logger *log.Logger, service string, uploadCert bool) {
 	logger.SetPrefix("[SEED]")
 	logger.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
 	// Unmarshal
 	var rawYaml interface{}
-	if bytes.Contains(fData, []byte("<Enter Secret Here>")) && configId != "Indexed" {
+	hasEmptyValues := bytes.Contains(fData, []byte("<Enter Secret Here>"))
+	if hasEmptyValues && !strings.HasPrefix(filepath, "Index/") {
 		eUtils.LogInfo("Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", logger)
 		os.Exit(1)
 	}
@@ -254,6 +272,18 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 				}
 				mapStack = append([]seedCollection{decomp}, mapStack...)
 			} else { // Found a key value pair, add to working writeVal
+				if hasEmptyValues {
+					// Scrub variables that were not initialized.
+					removeKeys := []string{}
+					for dataKey, dataValue := range v.(writeCollection).data {
+						if !strings.Contains(dataValue.(string), "<Enter Secret Here>") {
+							removeKeys = append(removeKeys, dataKey)
+						}
+					}
+					for _, removeKey := range removeKeys {
+						delete(v.(writeCollection).data, removeKey)
+					}
+				}
 				writeVals.data[k.(string)] = v
 				hasLeafNodes = true
 			}
@@ -269,11 +299,11 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 
 	mod, err := kv.NewModifier(insecure, token, vaultAddr, env, nil, logger) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
-	if configId == "" {
-		mod.Env = env
-	} else {
-		mod.Env = configId
+	mod.Env = env
+	if strings.HasPrefix(filepath, "Index/") {
+		mod.IndexPath = strings.TrimSuffix(filepath, "_seed.yml")
 	}
+
 	for _, entry := range writeStack {
 		// Output data being written
 		// Write data and ouput any errors
@@ -426,6 +456,7 @@ func SeedVaultFromData(insecure bool, fData []byte, vaultAddr string, token stri
 				WriteData(entry.path, entry.data, mod, logger)
 			}
 		} else {
+			//			/Index/TrcVault/regionId/<regionEnv>
 			WriteData(entry.path, entry.data, mod, logger)
 		}
 	}

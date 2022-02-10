@@ -32,8 +32,9 @@ type Modifier struct {
 	Version          string       // Version for data
 	VersionFilter    []string     // Used to filter vault paths
 	RawEnv           string
-	Index            []string
-	IndexName        string
+	ProjectIndex     []string // Which projects are indexed.
+	IndexName        string   // The name of the actual index.
+	IndexPath        string   // The path to the Index (both seed and vault)
 }
 
 // PreCheckEnvironment
@@ -158,6 +159,10 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 	} else if strings.HasPrefix(m.Env, "local") { //if local environment, add env to fullpath
 		fullPath += m.Env + "/"
 	}
+
+	if m.IndexPath != "" && !strings.HasPrefix(fullPath, "templates") {
+		fullPath += m.IndexPath + "/"
+	}
 	if len(pathBlocks) > 1 {
 		fullPath += pathBlocks[1]
 	}
@@ -199,10 +204,10 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 		versionSlice := []string{m.Version}
 		versionMap["version"] = versionSlice
 		secret, err = m.logical.ReadWithData(fullPath, versionMap)
-		if secret == nil && len(m.Index) > 0 {
-			//THis looks inside QA/Index/tid/... for a project
+		if secret == nil && len(m.ProjectIndex) > 0 {
+			//THis looks inside QA/Index/... for a project
 			pathSplit := strings.Split(fullPath, "/")
-			pathSplit[2] = m.RawEnv + "/Index/" + m.Index[0] + "/" + m.IndexName + "/" + pathSplit[2] + "/" + pathSplit[3]
+			pathSplit[2] = m.RawEnv + "/Index/" + m.ProjectIndex[0] + "/" + m.IndexName + "/" + pathSplit[2] + "/" + pathSplit[3]
 			tempPath := ""
 			for _, v := range pathSplit {
 				tempPath = tempPath + v + "/"
@@ -408,8 +413,8 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 	envCheck[1] = mod.Env[lastIndex+1:]
 	mod.Env = envCheck[0]
 	realEnv := mod.Env
-	if len(mod.Index) > 0 {
-		enginePath = enginePath + "/Index/" + mod.Index[0] + "/" + mod.Env
+	if len(mod.ProjectIndex) > 0 {
+		enginePath = enginePath + "/Index/" + mod.ProjectIndex[0] + "/" + mod.Env
 		mod.Env = mod.RawEnv
 	}
 	userPaths, err := mod.List(enginePath + "/")
