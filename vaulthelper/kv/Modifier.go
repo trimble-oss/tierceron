@@ -34,6 +34,7 @@ type Modifier struct {
 	RawEnv           string
 	ProjectIndex     []string // Which projects are indexed.
 	IndexName        string   // The name of the actual index.
+	IndexValue       string   // The actual value for the index
 	IndexPath        string   // The path to the Index (both seed and vault)
 }
 
@@ -179,6 +180,9 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 //			errors generated from reading
 func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	// Create full path
+	if len(m.IndexPath) > 0 {
+		path = strings.TrimSuffix(m.IndexPath, "/")
+	}
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	fullPath := pathBlocks[0] + "data/"
 	if !noEnvironments[pathBlocks[0]] {
@@ -204,25 +208,6 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 		versionSlice := []string{m.Version}
 		versionMap["version"] = versionSlice
 		secret, err = m.logical.ReadWithData(fullPath, versionMap)
-		if secret == nil && len(m.ProjectIndex) > 0 {
-			//THis looks inside QA/Index/... for a project
-			pathSplit := strings.Split(fullPath, "/")
-			pathSplit[2] = m.RawEnv + "/Index/" + m.ProjectIndex[0] + "/" + m.IndexName + "/" + pathSplit[2] + "/" + pathSplit[3]
-			tempPath := ""
-			for _, v := range pathSplit {
-				tempPath = tempPath + v + "/"
-			}
-			secret, err = m.logical.ReadWithData(strings.TrimSuffix(tempPath, "/"), versionMap)
-		} else if secret == nil {
-			//This looks inside QA, outside of index for a project
-			pathSplit := strings.Split(fullPath, "/")
-			pathSplit[2] = m.RawEnv
-			tempPath := ""
-			for _, v := range pathSplit {
-				tempPath = tempPath + v + "/"
-			}
-			secret, err = m.logical.ReadWithData(strings.TrimSuffix(tempPath, "/"), versionMap)
-		}
 	} else {
 		secret, err = m.logical.Read(fullPath)
 	}
@@ -670,15 +655,15 @@ func GetAcceptedTemplatePaths(modCheck *Modifier, templatePaths []string) ([]str
 	return templatePaths, nil
 }
 
-func (m *Modifier) ListRegions(project string) ([]string, error) {
-	var regions []string
-	secret, err := m.List("super-secrets/Index/" + project + ) // + indexName
+func (m *Modifier) ListIndexes(project string, indexName string) ([]string, error) {
+	var indexes []string
+	secret, err := m.List("super-secrets/Index/" + project + "/" + indexName)
 	if secret != nil {
 		if _, ok := secret.Data["keys"].([]interface{}); ok {
-			for _, region := range secret.Data["keys"].([]interface{}) {
-				regions = append(regions, strings.TrimSuffix(region.(string), "/"))
+			for _, index := range secret.Data["keys"].([]interface{}) {
+				indexes = append(indexes, strings.TrimSuffix(index.(string), "/"))
 			}
-			return regions, err
+			return indexes, err
 		}
 	}
 	return nil, errors.New("no regions were found")
