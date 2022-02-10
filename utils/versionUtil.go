@@ -11,6 +11,20 @@ import (
 	"tierceron/vaulthelper/kv"
 )
 
+func SplitEnv(env string) []string {
+	envVersion := make([]string, 2)
+	lastIndex := strings.LastIndex(env, "_")
+	if lastIndex == -1 {
+		envVersion[0] = env
+		envVersion[1] = "0"
+	} else {
+		envVersion[0] = env[0:lastIndex]
+		envVersion[1] = env[lastIndex+1:]
+	}
+
+	return envVersion
+}
+
 func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier, logger *log.Logger) map[string]map[string]interface{} {
 	versionMetadataMap := make(map[string]map[string]interface{})
 	mod.VersionFilter = config.VersionFilter

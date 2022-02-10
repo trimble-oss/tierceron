@@ -633,6 +633,7 @@ func GetAcceptedTemplatePaths(modCheck *Modifier, templatePaths []string) ([]str
 	lastIndex := strings.LastIndex(modCheck.Env, "_")
 	envCheck[0] = modCheck.Env[0:lastIndex]
 	envCheck[1] = modCheck.Env[lastIndex+1:]
+	modCheck.Env = envCheck[0]
 	serviceInterface, err := modCheck.ListEnv("super-secrets/" + modCheck.Env)
 	modCheck.Env = preEnv
 	if err != nil {
