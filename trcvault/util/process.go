@@ -376,7 +376,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		if services[i] == "Database" {
 			// TODO: This could be an api call vault list - to list what's available with rid's.
 			// East and west...
-			idEnvironments = []string{".rid.1", ".rid.2"}
+			regions, err := goMod.ListRegions(projects[i])
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+				return err
+			}
+			idEnvironments = regions
+			idEnvironments = []string{"east", "west"}
 		} else {
 			idEnvironments = []string{""}
 		}
