@@ -79,8 +79,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 		mod.Env = env
 		mod.Version = version
-		if len(config.Index) > 0 {
-			mod.Index = config.Index
+		if len(config.ProjectIndex) > 0 {
+			mod.ProjectIndex = config.ProjectIndex
 		}
 		if config.Token == "novault" {
 			noVault = true
@@ -88,13 +88,13 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	}
 
 	serviceSlice := make([]string, 0)
-	if len(config.Index) > 0 { //Filter by project
-		for _, indexed := range config.Index {
+	if len(config.ProjectIndex) > 0 { //Filter by project
+		for _, indexed := range config.ProjectIndex {
 			for _, templatePath := range templatePaths {
 				if strings.Contains(templatePath, indexed) {
 					filteredTemplatePaths = append(filteredTemplatePaths, templatePath)
 					envVersion := eUtils.SplitEnv(config.Env)
-					listValues, err := mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.Index[0] + "/" + config.IndexName + "/" + envVersion[0])
+					listValues, err := mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + envVersion[0])
 					if err != nil {
 						eUtils.LogInfo("Couldn't list services for indexed path", logger)
 					}
@@ -250,20 +250,20 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	}
 
 	// Configure each template in directory
-	if strings.Contains(config.EnvRaw, ".*") || len(config.Index) > 0 {
+	if strings.Contains(config.EnvRaw, ".*") || len(config.ProjectIndex) > 0 {
 		serviceFound := false
 		for _, templatePath := range templatePaths {
 			var service string
 			_, service, templatePath = vcutils.GetProjectService(templatePath)
 			_, _, indexed, _ := kv.PreCheckEnvironment(mod.Env)
 			//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
-			if (strings.Contains(mod.Env, ".") || len(config.Index) > 0) && !serviceFound {
+			if (strings.Contains(mod.Env, ".") || len(config.ProjectIndex) > 0) && !serviceFound {
 				var listValues *api.Secret
 				var err error
 				envVersion := eUtils.SplitEnv(config.Env)
 
-				if len(config.Index) > 0 { //If eid -> look inside Index and grab all environments
-					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.Index[0] + "/" + config.IndexName + "/" + envVersion[0] + "/")
+				if len(config.ProjectIndex) > 0 { //If eid -> look inside Index and grab all environments
+					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + envVersion[0] + "/")
 				} else if indexed {
 					listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
 				} else {
@@ -322,7 +322,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				envVersion := eUtils.SplitEnv(config.Env)
 				goMod.Env = envVersion[0]
 				goMod.Version = envVersion[1]
-				goMod.Index = config.Index
+				goMod.ProjectIndex = config.ProjectIndex
 			}
 
 			if c.GenAuth && goMod != nil {
@@ -341,7 +341,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			if goMod != nil && !noVault {
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				if len(config.Index) > 0 {
+				if len(config.ProjectIndex) > 0 {
 					goMod.RawEnv = strings.Split(config.EnvRaw, ".")[0]
 					goMod.IndexName = config.IndexName
 				}
@@ -528,10 +528,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	} else {
 		if pathInclude {
 			endPath = config.EndDir + envBasePath + "/" + pathPart + "/" + config.Env + "_seed.yml"
-		} else if len(config.Index) > 0 {
+		} else if len(config.ProjectIndex) > 0 {
 			envBasePath, _, _, _ := kv.PreCheckEnvironment(config.EnvRaw)
 
-			endPath = config.EndDir + envBasePath + "/Index/" + config.Index[0] + "/" + config.IndexName + "/" + config.Env + "_seed.yml"
+			endPath = config.EndDir + envBasePath + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + config.Env + "_seed.yml"
 		} else {
 			endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 		}

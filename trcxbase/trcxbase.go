@@ -372,7 +372,7 @@ skipDiff:
 			Update:         messenger,
 			VersionInfo:    eUtils.VersionHelper,
 			FileFilter:     fileFilter,
-			Index:          indexSlice,
+			ProjectIndex:   indexSlice,
 		}
 		waitg.Add(1)
 		go func() {

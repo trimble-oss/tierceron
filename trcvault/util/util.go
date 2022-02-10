@@ -207,6 +207,6 @@ func SeedVaultById(goMod *helperkv.Modifier, service string, address string, tok
 	seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n"
 	//VaultX Section Ends
 	//VaultInit Section Begins
-	il.SeedVaultFromData(true, []byte(seedData), address, token, goMod.Env, log.Default(), service, false, goMod.Env+"/Index/"+project+indexPath)
+	il.SeedVaultFromData(true, "/Index/"+project+indexPath, []byte(seedData), address, token, goMod.Env, log.Default(), service, false)
 	return nil
 }
