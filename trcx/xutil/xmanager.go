@@ -112,7 +112,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		var filteredTempPaths []string
 		for _, service := range serviceSlice { //Filter by available service as well
 			for _, templatePath := range filteredTemplatePaths {
-				if strings.Contains(templatePath, service) {
+				templateParts := strings.Split(templatePath, "/")
+				if templateParts[len(templateParts)-2] == service {
 					filteredTempPaths = append(filteredTempPaths, templatePath)
 				}
 			}
@@ -282,7 +283,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 						}
 					}
 					for _, listedService := range serviceSlice {
-						if strings.Contains(listedService, service) {
+						if listedService == service {
 							serviceFound = true
 						}
 					}
@@ -298,7 +299,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(templatePath string, multiService bool, c eUtils.DriverConfig, noVault bool) {
+		go func(tp string, multiService bool, c eUtils.DriverConfig, noVault bool) {
 			project := ""
 			service := ""
 
@@ -317,7 +318,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				var err error
 				goMod, err = kv.NewModifier(c.Insecure, c.Token, c.VaultAddress, c.Env, c.Regions, logger)
 				if err != nil {
-					panic(err)
+					eUtils.LogErrorObject(err, logger, false)
+					return
 				}
 				envVersion := eUtils.SplitEnv(config.Env)
 				goMod.Env = envVersion[0]
@@ -339,11 +341,12 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			}
 
 			//check for template_files directory here
-			project, service, templatePath = vcutils.GetProjectService(templatePath)
+			project, service, tp = vcutils.GetProjectService(tp)
 
-			requestedVersion := goMod.Version
 			var cds *vcutils.ConfigDataStore
+			var requestedVersion string
 			if goMod != nil && !noVault {
+				requestedVersion = goMod.Version
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
 				if goMod.IndexName != "" && goMod.IndexValue != "" {
@@ -364,7 +367,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 			_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
 				cds,
-				templatePath,
+				tp,
 				project,
 				service,
 				fromVault,
