@@ -180,7 +180,7 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 //			errors generated from reading
 func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	// Create full path
-	if len(m.IndexPath) > 0 {
+	if len(m.IndexPath) > 0 && !strings.HasPrefix(path, "templates") { //Template paths are not indexed -> values & super-secrets are
 		path = strings.TrimSuffix(m.IndexPath, "/")
 	}
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
