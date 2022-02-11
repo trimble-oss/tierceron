@@ -110,9 +110,14 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		//Check for tenantId
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace below
-		indexPath := tcutil.GetIndexedPathExt(tierceronEngine, rowDataMap, vaultIndexColumnName, databaseName, tableName, func(engine interface{}, query string) (string, []string, [][]string, error) {
+		indexPath, indexPathErr := tcutil.GetIndexedPathExt(tierceronEngine, rowDataMap, vaultIndexColumnName, databaseName, tableName, func(engine interface{}, query string) (string, []string, [][]string, error) {
 			return db.Query(engine.(*db.TierceronEngine), query)
 		})
+		if indexPathErr != nil {
+			eUtils.LogErrorObject(indexPathErr, logger, false)
+			return indexPathErr
+		}
+
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
 		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, indexPath, logger, flowSource)
 		if seedError != nil {
@@ -330,12 +335,13 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 
 	if err != nil {
 		eUtils.LogErrorMessage("Couldn't get dedicated database connection.", logger, false)
+		return err
 	}
 	defer dbsourceConn.Close()
 
 	remoteDataSource["connection"] = dbsourceConn
 
-	tcutil.ProcessFlowController(identityConfig,
+	flowError := tcutil.ProcessFlowController(identityConfig,
 		authData,
 		getFlowConfiguration,
 		remoteDataSource,
@@ -354,6 +360,9 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 				eUtils.LogInfo(msg, logger)
 			}
 		})
+	if flowError != nil {
+		eUtils.LogErrorObject(flowError, logger, true)
+	}
 	return nil
 }
 
