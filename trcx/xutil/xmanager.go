@@ -93,8 +93,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			for _, templatePath := range templatePaths {
 				if strings.Contains(templatePath, indexed) {
 					filteredTemplatePaths = append(filteredTemplatePaths, templatePath)
-					envVersion := eUtils.SplitEnv(config.Env)
-					listValues, err := mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + envVersion[0])
+					listValues, err := mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + config.IndexValue)
 					if err != nil {
 						eUtils.LogInfo("Couldn't list services for indexed path", logger)
 					}
@@ -260,10 +259,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			if (strings.Contains(mod.Env, ".") || len(config.ProjectIndex) > 0) && !serviceFound {
 				var listValues *api.Secret
 				var err error
-				envVersion := eUtils.SplitEnv(config.Env)
-
 				if len(config.ProjectIndex) > 0 { //If eid -> look inside Index and grab all environments
-					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + envVersion[0] + "/")
+					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + config.IndexValue + "/")
 				} else if indexed {
 					listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
 				} else {
@@ -326,6 +323,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				if len(goMod.ProjectIndex) > 0 {
 					goMod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
 					goMod.IndexName = config.IndexName
+					goMod.IndexValue = config.IndexValue
 				}
 			}
 
@@ -532,7 +530,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		} else if len(config.ProjectIndex) > 0 {
 			envBasePath, _, _, _ := kv.PreCheckEnvironment(config.EnvRaw)
 
-			endPath = config.EndDir + envBasePath + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + config.Env + "_seed.yml"
+			endPath = config.EndDir + envBasePath + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + config.IndexValue + "_seed.yml"
 		} else {
 			endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 		}
