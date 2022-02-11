@@ -323,6 +323,10 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				goMod.Env = envVersion[0]
 				goMod.Version = envVersion[1]
 				goMod.ProjectIndex = config.ProjectIndex
+				if len(goMod.ProjectIndex) > 0 {
+					goMod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
+					goMod.IndexName = config.IndexName
+				}
 			}
 
 			if c.GenAuth && goMod != nil {
@@ -341,10 +345,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			if goMod != nil && !noVault {
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				if len(config.ProjectIndex) > 0 {
-					goMod.RawEnv = strings.Split(config.EnvRaw, ".")[0]
-					goMod.IndexName = config.IndexName
-				}
+				goMod.IndexPath = "super-secrets/Index/" + project + "/" + goMod.IndexName + "/" + goMod.IndexValue + "/" + service
 				cds.Init(goMod, c.SecretMode, true, project, commonPaths, logger, service)
 			}
 
