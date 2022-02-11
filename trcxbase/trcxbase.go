@@ -271,18 +271,19 @@ skipDiff:
 	logger.SetPrefix("[trcx]")
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
+	indexValueSlice := []string{""}
 	var indexName string
 	var waitg sync.WaitGroup
 	if len(envSlice) == 1 {
 		if strings.Contains(envSlice[0], "*") || len(*indexPtr) > 0 {
-			newEnvSlice := make([]string, 0)
+			newIndexValueSlice := make([]string, 0)
 			//Ask vault for list of dev.<id>.* environments, add to envSlice
 			testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions, logger)
 			if err != nil {
 				logger.Printf(err.Error())
 			}
-			_, suffix, indexed, _ := kv.PreCheckEnvironment(envSlice[0])
-			testMod.Env = strings.Split(envSlice[0], ".")[0]
+			// Only look at index values....
+			testMod.Env = envSlice[0]
 			var listValues *api.Secret
 			if len(*indexPtr) > 0 { //If eid -> look inside Index and grab all environments
 				listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + "/Index/" + indexSlice[0] + "/")
@@ -296,14 +297,12 @@ skipDiff:
 
 						for _, indexPath := range indexList.Data {
 							for _, indexInterface := range indexPath.([]interface{}) {
-								newEnvSlice = append(newEnvSlice, strings.ReplaceAll(indexInterface.(string), "/", "")+"_0")
+								newIndexValueSlice = append(newIndexValueSlice, strings.ReplaceAll(indexInterface.(string), "/", ""))
 							}
 						}
 					}
 					delete(listValues.Data, k) //delete it so it doesn't repeat below
 				}
-			} else if indexed {
-				listValues, err = testMod.ListEnv("super-secrets/")
 			} else {
 				listValues, err = testMod.ListEnv("values/")
 			}
@@ -315,70 +314,59 @@ skipDiff:
 				fmt.Println("No enterprise IDs were found.")
 				os.Exit(1)
 			}
-			for _, valuesPath := range listValues.Data {
-				for _, envInterface := range valuesPath.([]interface{}) {
-					env := envInterface.(string)
-					if (indexed && strings.HasPrefix(env, testMod.Env+"."+suffix+".")) || (!indexed && strings.HasPrefix(env, testMod.Env+".")) { //Check for env.eid/tid.id OR env.id
-						env = strings.ReplaceAll(env, "/", "")
-						newEnvSlice = append(newEnvSlice, env+"_0")
-					}
-				}
-			}
-			envSlice = newEnvSlice
+			indexValueSlice = newIndexValueSlice
 		}
 	}
 	go reciever() //Channel reciever
 	for _, env := range envSlice {
-		envVersion := eUtils.SplitEnv(env)
-		*envPtr = envVersion[0]
-		if strings.Count(*envPtr, ".") == 2 {
-			*envPtr = strings.SplitN(*envPtr, ".", 2)[0]
-		}
-		if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
-			*tokenPtr = ""
-		}
-		if !*noVaultPtr {
-			if strings.Contains(envRaw, ".") || len(indexName) > 1 {
-				*envPtr = strings.Split(envRaw, ".")[0]
-			}
-			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
-		} else {
-			*tokenPtr = "novault"
-		}
+		for _, indexValue := range indexValueSlice {
+			envVersion := eUtils.SplitEnv(env)
+			*envPtr = envVersion[0]
 
-		if len(envVersion) >= 2 { //Put back env+version together
-			*envPtr = envVersion[0] + "_" + envVersion[1]
-		} else {
-			*envPtr = envVersion[0] + "_0"
+			if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
+				*tokenPtr = ""
+			}
+			if !*noVaultPtr {
+				eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
+			} else {
+				*tokenPtr = "novault"
+			}
+
+			if len(envVersion) >= 2 { //Put back env+version together
+				*envPtr = envVersion[0] + "_" + envVersion[1]
+			} else {
+				*envPtr = envVersion[0] + "_0"
+			}
+			config := eUtils.DriverConfig{
+				Context:        ctx,
+				Insecure:       *insecurePtr,
+				Token:          *tokenPtr,
+				VaultAddress:   *addrPtr,
+				EnvRaw:         envRaw,
+				Env:            *envPtr,
+				IndexName:      indexName,
+				IndexValue:     indexValue,
+				Regions:        regions,
+				SecretMode:     *secretMode,
+				ServicesWanted: []string{},
+				StartDir:       append([]string{}, *startDirPtr),
+				EndDir:         *endDirPtr,
+				WantCerts:      *wantCertsPtr,
+				GenAuth:        *genAuth,
+				Log:            logger,
+				Clean:          *cleanPtr,
+				Diff:           *diffPtr,
+				Update:         messenger,
+				VersionInfo:    eUtils.VersionHelper,
+				FileFilter:     fileFilter,
+				ProjectIndex:   indexSlice,
+			}
+			waitg.Add(1)
+			go func() {
+				defer waitg.Done()
+				eUtils.ConfigControl(ctx, config, configDriver, logger)
+			}()
 		}
-		config := eUtils.DriverConfig{
-			Context:        ctx,
-			Insecure:       *insecurePtr,
-			Token:          *tokenPtr,
-			VaultAddress:   *addrPtr,
-			EnvRaw:         envRaw,
-			Env:            *envPtr,
-			IndexName:      indexName,
-			Regions:        regions,
-			SecretMode:     *secretMode,
-			ServicesWanted: []string{},
-			StartDir:       append([]string{}, *startDirPtr),
-			EndDir:         *endDirPtr,
-			WantCerts:      *wantCertsPtr,
-			GenAuth:        *genAuth,
-			Log:            logger,
-			Clean:          *cleanPtr,
-			Diff:           *diffPtr,
-			Update:         messenger,
-			VersionInfo:    eUtils.VersionHelper,
-			FileFilter:     fileFilter,
-			ProjectIndex:   indexSlice,
-		}
-		waitg.Add(1)
-		go func() {
-			defer waitg.Done()
-			eUtils.ConfigControl(ctx, config, configDriver, logger)
-		}()
 	}
 	waitg.Wait()
 	close(resultChannel)

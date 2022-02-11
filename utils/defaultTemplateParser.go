@@ -40,6 +40,7 @@ type DriverConfig struct {
 	ExitOnFailure  bool // Exit on a failure or try to continue
 	ProjectIndex   []string
 	IndexName      string
+	IndexValue     string
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
