@@ -25,6 +25,7 @@ type TemplateResultData struct {
 	SecretSection            map[string]map[string]map[string]string
 	TemplateDepth            int
 	Env                      string
+	IndexValue               string
 }
 
 // ToSeed parses a <foo>.yml.tmpl file into a <foo>.yml file which then can be used for seeding vault
