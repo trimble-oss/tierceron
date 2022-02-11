@@ -81,6 +81,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		mod.Version = version
 		if len(config.ProjectIndex) > 0 {
 			mod.ProjectIndex = config.ProjectIndex
+			mod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
+			mod.IndexName = config.IndexName
+			mod.IndexValue = config.IndexValue
 		}
 		if config.Token == "novault" {
 			noVault = true
@@ -206,7 +209,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		for {
 			select {
 			case tResult := <-templateResultChan:
-				if config.Env == tResult.Env {
+				if config.Env == tResult.Env || config.IndexValue == tResult.IndexValue {
 					sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
 					sliceValueSection = append(sliceValueSection, tResult.ValueSection)
 					sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
@@ -370,6 +373,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				config.Log,
 			)
 			templateResult.Env = goMod.Env + "_" + requestedVersion
+			templateResult.IndexValue = config.IndexValue
 			templateResultChan <- &templateResult
 		}(templatePath, multiService, config, noVault)
 	}
