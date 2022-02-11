@@ -23,7 +23,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 	project string,
 	commonPaths []string,
 	logger *log.Logger,
-	servicesWanted ...string) {
+	servicesWanted ...string) error {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 
@@ -79,7 +79,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 
 		secrets, err := mod.ReadData(path)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		//get the keys and values in secrets
@@ -199,7 +199,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 			for i, valueMap := range valueMaps {
 				//these should be [path, key] maps
 				if len(valueMap) != 2 {
-					panic(errors.New("value path is not the correct length"))
+					return errors.New("value path is not the correct length")
 				} else {
 					//first element is the path
 					bucket := valueMap[0]
@@ -243,6 +243,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 		}
 
 	}
+	return nil
 }
 
 func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode bool, useDirs bool, project string, file string, logger *log.Logger, servicesWanted ...string) map[string]interface{} {
@@ -430,10 +431,14 @@ func GetPathsFromProject(mod *kv.Modifier, logger *log.Logger, projects ...strin
 			}
 			availProjects = projectsUsed
 		}
+		var pathErr error
 		for _, project := range availProjects {
 			path := "templates/" + project.(interface{}).(string)
-			paths = getPaths(mod, path, paths)
+			paths, pathErr = getPaths(mod, path, paths)
 			//don't add on to paths until you're sure it's an END path
+			if pathErr != nil {
+				return nil, pathErr
+			}
 		}
 
 		if strings.HasPrefix(innerService, "!=!") {
@@ -448,12 +453,12 @@ func GetPathsFromProject(mod *kv.Modifier, logger *log.Logger, projects ...strin
 		return nil, errors.New("no paths found from templates engine")
 	}
 }
-func getPaths(mod *kv.Modifier, pathName string, pathList []string) []string {
+func getPaths(mod *kv.Modifier, pathName string, pathList []string) ([]string, error) {
 	secrets, err := mod.List(pathName)
 	if err != nil {
 		secrets, err = mod.List(pathName + "template-file")
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	} else if secrets != nil {
 		//add paths
@@ -469,10 +474,10 @@ func getPaths(mod *kv.Modifier, pathName string, pathList []string) []string {
 				//don't add on to paths until you're sure it's an END path
 				pathList = append(pathList, path)
 			} else {
-				pathList = getPaths(mod, path, pathList)
+				pathList, err = getPaths(mod, path, pathList)
 			}
 		}
-		return pathList
+		return pathList, err
 	}
-	return pathList
+	return pathList, err
 }
