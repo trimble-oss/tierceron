@@ -209,7 +209,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		for {
 			select {
 			case tResult := <-templateResultChan:
-				if config.Env == tResult.Env || config.IndexValue == tResult.IndexValue {
+				if config.Env == tResult.Env && config.IndexValue == tResult.IndexValue {
 					sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
 					sliceValueSection = append(sliceValueSection, tResult.ValueSection)
 					sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
