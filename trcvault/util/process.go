@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -543,8 +544,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 	eUtils.LogInfo("Tables creation completed.", logger)
 
+	channelMap = make(map[string]chan bool)
 	for _, table := range tableList {
-		channelMap[table] = make(chan bool, 5)
+		channelMap[strings.Split(strings.Split(table, "/")[strings.Count(table, "/")], ".")[0]] = make(chan bool, 5)
 	}
 
 	for _, flowName := range tcutil.GetAdditionalFlows() {
