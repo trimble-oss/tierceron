@@ -30,6 +30,8 @@ type FlowType int64
 
 var m sync.Mutex
 
+var channelMap map[string]chan bool
+
 const (
 	TableSyncFlow FlowType = iota
 	TableEnrichFlow
@@ -162,7 +164,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	var flowName string
 	var initTableSchemaCB func(tableSchema sqle.PrimaryKeySchema, tableName string)
 	var createTableTriggersCB func(identityColumnName string)
-	var applyDBQueryCB func(query string, changed bool, operation string) [][]string
+	var applyDBQueryCB func(query string, changed bool, operation string, flowNotifications []string) [][]string
 	var getFlowConfiguration func(flowTemplatePath string) (map[string]interface{}, bool)
 	var initSeedVaultListenerCB func(remoteDataSource map[string]interface{}, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error)
 
@@ -277,7 +279,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	// Make a call on Call back to insert or update using the provided query.
 	// If this is expected to result in a change to an existing table, thern trigger
 	// something to the changed channel.
-	applyDBQueryCB = func(query string, changed bool, operation string) [][]string {
+	applyDBQueryCB = func(query string, changed bool, operation string, flowNotifications []string) [][]string {
 		if operation == "INSERT" {
 			_, _, _, err := db.Query(tierceronEngine, query)
 			if err != nil {
@@ -285,6 +287,12 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 			}
 			if changed {
 				changedChannel <- true
+				if flowNotifications != nil && len(flowNotifications) > 0 {
+					// look up channels and notify them too.
+					for _, flowNotification := range flowNotifications {
+						channelMap[flowNotification] <- true
+					}
+				}
 			}
 		} else if operation == "UPDATE" {
 			_, _, _, err := db.Query(tierceronEngine, query)
@@ -293,6 +301,13 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 			}
 			if changed {
 				changedChannel <- true
+
+				if flowNotifications != nil && len(flowNotifications) > 0 {
+					// look up channels and notify them too.
+					for _, flowNotification := range flowNotifications {
+						channelMap[flowNotification] <- true
+					}
+				}
 			}
 		} else if operation == "SELECT" {
 			_, _, matrixChangedEntries, err := db.Query(tierceronEngine, query)
@@ -528,6 +543,14 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 	eUtils.LogInfo("Tables creation completed.", logger)
 
+	for _, table := range tableList {
+		channelMap[table] = make(chan bool, 5)
+	}
+
+	for _, flowName := range tcutil.GetAdditionalFlows() {
+		channelMap[flowName] = make(chan bool, 5)
+	}
+
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range tableList {
 			wg.Add(1)
@@ -551,7 +574,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					pluginConfig["env"].(string),
 					t,
 					TableSyncFlow,
-					make(chan bool, 5), // tableChangedChannel
+					channelMap[table], // tableChangedChannel
 					signalChannel,
 					logger,
 				)
@@ -579,7 +602,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					pluginConfig["env"].(string),
 					f,
 					TableEnrichFlow,
-					make(chan bool, 5), // tableChangedChannel
+					channelMap[flowName], // tableChangedChannel
 					signalChannel,
 					logger,
 				)
