@@ -39,7 +39,7 @@ func verify(mod *kv.Modifier, v map[interface{}]interface{}, logger *log.Logger)
 			if url, ok := serviceData["url"].(string); ok {
 				if user, ok := serviceData["user"].(string); ok {
 					if pass, ok := serviceData["pass"].(string); ok {
-						isValid, err = validator.Heartbeat(url, user, pass)
+						isValid, err = validator.Heartbeat(url, user, pass, logger)
 						utils.LogErrorObject(err, logger, false)
 					} else {
 						utils.LogErrorObject(fmt.Errorf("Password field is not a string value"), logger, false)
