@@ -299,7 +299,7 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 	mod, err := kv.NewModifier(insecure, token, vaultAddr, env, nil, logger) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
-	if strings.HasPrefix(filepath, "/Index/") {
+	if strings.HasPrefix(filepath, "Index/") {
 		mod.IndexPath = strings.TrimSuffix(filepath, "_seed.yml")
 		logger.Println("Seeding configuration data for the following templates:" + mod.IndexPath)
 	} else {
