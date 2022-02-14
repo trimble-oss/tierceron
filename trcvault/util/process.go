@@ -53,7 +53,7 @@ func getUpdateTrigger(databaseName string, tableName string, idColumnName string
 }
 
 func getInsertTrigger(databaseName string, tableName string, idColumnName string) string {
-	return `CREATE TRIGGER tcInsertTrigger BEFORE UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+	return `CREATE TRIGGER tcInsertTrigger BEFORE INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
 		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnName + `, current_timestamp());` +
 		` END;`
@@ -197,10 +197,24 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 			var insTrigger sqle.TriggerDefinition
 			insTrigger.Name = "tcInsertTrigger"
 			updTrigger.Name = "tcUpdateTrigger"
-			updTrigger.CreateStatement = getUpdateTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
-			insTrigger.CreateStatement = getInsertTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
-			tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
-			tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
+			//Prevent duplicate triggers from existing
+			existingTriggers, err := tierceronEngine.Database.GetTriggers(tierceronEngine.Context)
+			if err != nil {
+				eUtils.CheckError(err, false)
+			}
+
+			triggerExist := false
+			for _, trigger := range existingTriggers {
+				if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name {
+					triggerExist = true
+				}
+			}
+			if !triggerExist {
+				updTrigger.CreateStatement = getUpdateTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
+				insTrigger.CreateStatement = getInsertTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
+				tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
+				tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
+			}
 		}
 
 		// 3. Write seed data to vault
