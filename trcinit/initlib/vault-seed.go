@@ -463,8 +463,6 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 			//			/Index/TrcVault/regionId/<regionEnv>
 			if mod.IndexPath != "" {
 				entry.path = mod.IndexPath
-			} else {
-				mod.IndexPath = mod.Env
 			}
 			WriteData(entry.path, entry.data, mod, logger)
 		}
@@ -474,7 +472,9 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 	warn, err := verify(mod, verificationData, logger)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
-
+	if mod.IndexPath == "" {
+		mod.IndexPath = mod.Env
+	}
 	eUtils.LogInfo("\nInitialization complete for "+strings.Split(mod.IndexPath, "/")[strings.Count(mod.IndexPath, "/")]+".\n", logger)
 }
 
