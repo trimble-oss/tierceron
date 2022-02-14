@@ -75,7 +75,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		var err error
 		mod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions, logger)
 		if err != nil {
-			panic(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 		mod.Env = env
 		mod.Version = version
@@ -235,7 +235,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		var err error
 		commonMod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
 		if err != nil {
-			panic(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 		envVersion := strings.Split(config.Env, "_")
 		commonMod.Env = envVersion[0]
@@ -244,7 +244,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 
 		commonPaths, err = vcutils.GetPathsFromProject(commonMod, logger, "Common")
 		if err != nil {
-			panic(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 		if len(commonPaths) > 0 && strings.Contains(commonPaths[len(commonPaths)-1], "!=!") {
 			commonPaths = commonPaths[:len(commonPaths)-1]
@@ -557,7 +557,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 
 			mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
 			if err != nil {
-				panic(err)
+				eUtils.LogErrorObject(err, logger, false)
 			}
 			mod.Env = envVersion[0]
 			mod.Version = envVersion[1]

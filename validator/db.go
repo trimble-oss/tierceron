@@ -3,19 +3,22 @@ package validator
 import (
 	"database/sql"
 	"errors"
+	"log"
 	"regexp"
 
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
+
+	eUtils "tierceron/utils"
 )
 
 //need mssql for spectrum
 
 //Heartbeat validates the database connection
-func Heartbeat(url string, username string, password string) (bool, error) {
+func Heartbeat(url string, username string, password string, logger *log.Logger) (bool, error) {
 	//extract driver, server, port and dbname with regex
-	driver, server, port, dbname := ParseURL(url)
+	driver, server, port, dbname := ParseURL(url, logger)
 	var err error
 	var conn *sql.DB
 	if driver == "mysql" {
@@ -42,12 +45,12 @@ func Heartbeat(url string, username string, password string) (bool, error) {
 	}
 	return true, nil
 }
-func ParseURL(url string) (string, string, string, string) {
+func ParseURL(url string, logger *log.Logger) (string, string, string, string) {
 	//only works with jdbc:mysql or jdbc:sqlserver.
 	regex := regexp.MustCompile(`(?i)(?:jdbc:(mysql|sqlserver))://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+).*`)
 	m := regex.FindStringSubmatch(url)
 	if m == nil {
-		panic(errors.New("incorrect URL format"))
+		eUtils.LogErrorObject(errors.New("incorrect URL format"), logger, false)
 	}
 	return m[1], m[2], m[3], m[4]
 }

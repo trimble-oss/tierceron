@@ -28,7 +28,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 	modCheck.Env = config.Env
 	version := ""
 	if err != nil {
-		panic(err)
+		eUtils.LogErrorObject(err, logger, false)
 	}
 	modCheck.VersionFilter = config.VersionFilter
 

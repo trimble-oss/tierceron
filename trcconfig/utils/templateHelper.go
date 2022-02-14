@@ -206,7 +206,7 @@ func PopulateTemplate(emptyTemplate string,
 		t := template.New("template")
 		t, err := t.Parse(emptyTemplate)
 		if err != nil {
-			panic(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 		var doc bytes.Buffer
 		//configure the template
@@ -255,7 +255,7 @@ func PopulateTemplate(emptyTemplate string,
 					//Decode cert as it was encoded in trcinit
 					decoded, err := base64.StdEncoding.DecodeString(encoded)
 					if err != nil {
-						panic(err)
+						eUtils.LogErrorObject(err, logger, false)
 					}
 					certData[1] = fmt.Sprintf("%s", decoded)
 					certData[2] = certSourcePath.(string)
@@ -266,7 +266,7 @@ func PopulateTemplate(emptyTemplate string,
 		err = t.Execute(&doc, values[filename])
 		str = doc.String()
 		if err != nil {
-			panic(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 	}
 	return str, certData
