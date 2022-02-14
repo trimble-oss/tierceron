@@ -296,16 +296,17 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 		}
 	}
 
-	// Write values to vault
-	logger.Println("Seeding configuration data for the following templates:")
-	logger.Println("Please verify that these templates exist in each service")
-
 	mod, err := kv.NewModifier(insecure, token, vaultAddr, env, nil, logger) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
-	if strings.HasPrefix(filepath, "Index/") {
+	if strings.HasPrefix(filepath, "/Index/") {
 		mod.IndexPath = strings.TrimSuffix(filepath, "_seed.yml")
+		logger.Println("Seeding configuration data for the following templates:" + mod.IndexPath)
+	} else {
+		logger.Println("Seeding configuration data for the following templates:" + filepath)
 	}
+	// Write values to vault
+	logger.Println("Please verify that these templates exist in each service")
 
 	for _, entry := range writeStack {
 		// Output data being written
