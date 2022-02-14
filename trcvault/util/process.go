@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -291,7 +290,9 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 				if flowNotifications != nil && len(flowNotifications) > 0 {
 					// look up channels and notify them too.
 					for _, flowNotification := range flowNotifications {
-						channelMap[flowNotification] <- true
+						if _, ok := channelMap[flowNotification]; ok {
+							channelMap[flowNotification] <- true
+						}
 					}
 				}
 			}
@@ -546,7 +547,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	channelMap = make(map[string]chan bool)
 	for _, table := range tableList {
-		channelMap[strings.Split(strings.Split(table, "/")[strings.Count(table, "/")], ".")[0]] = make(chan bool, 5)
+		channelMap[table] = make(chan bool, 5)
 	}
 
 	for _, flowName := range tcutil.GetAdditionalFlows() {
