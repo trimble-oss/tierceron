@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 
@@ -59,11 +60,11 @@ func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 	return vaultHost, vaultErr
 }
 
-func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
+func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, address string, body io.Reader, logger *log.Logger) (map[string]interface{}, error) {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("GET", address, body)
 	if err != nil {
-		panic(err)
+		eUtils.LogErrorObject(err, logger, false)
 	}
 	for headerkey, headervalue := range headers {
 		request.Header.Set(headerkey, headervalue)
@@ -72,7 +73,7 @@ func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, 
 	// request.Header.Set("Content-Type", "application/json")
 	response, err := httpClient.Do(request)
 	if err != nil {
-		panic(err)
+		eUtils.LogErrorObject(err, logger, false)
 	}
 	defer response.Body.Close()
 
@@ -86,7 +87,7 @@ func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, 
 		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
 
 		if err != nil {
-			panic(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 
 		return jsonData, nil
@@ -94,11 +95,11 @@ func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, 
 	return nil, errors.New("http status failure")
 }
 
-func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
+func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string, address string, body io.Reader, logger *log.Logger) (map[string]interface{}, error) {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {
-		panic(err)
+		eUtils.LogErrorObject(err, logger, false)
 	}
 	for headerkey, headervalue := range headers {
 		request.Header.Set(headerkey, headervalue)
@@ -115,13 +116,13 @@ func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string,
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
-			panic(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 
 		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
 
 		if err != nil {
-			panic(err)
+			eUtils.LogErrorObject(err, logger, false)
 		}
 
 		return jsonData, nil

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 
 	"tierceron/trcconfig/utils"
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 )
 import (
@@ -21,7 +22,7 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 	mod, err := kv.NewModifier(false, token, address, env, nil, logger)
 	mod.Env = env
 	if err != nil {
-		panic(err)
+		eUtils.LogErrorObject(err, logger, false)
 	}
 
 	configuredTemplate, _, _, err := utils.ConfigTemplate(mod, templatePath, true, project, service, false, true, logger)

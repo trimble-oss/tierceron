@@ -340,7 +340,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	getSourceDBConn := func(dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
 		return OpenDirectConnection(dbUrl,
 			username,
-			configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionMap))
+			configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionMap), logger)
 	}
 
 	// Utilizing provided api auth headers, endpoint, and body data
@@ -352,9 +352,9 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 			return nil, err
 		}
 		if getOrPost {
-			return GetJSONFromClientByGet(httpClient, apiAuthHeaders, apiEndpoint, bodyData)
+			return GetJSONFromClientByGet(httpClient, apiAuthHeaders, apiEndpoint, bodyData, logger)
 		}
-		return GetJSONFromClientByPost(httpClient, apiAuthHeaders, apiEndpoint, bodyData)
+		return GetJSONFromClientByPost(httpClient, apiAuthHeaders, apiEndpoint, bodyData, logger)
 	}
 
 	// Create remote data source with only what is needed.
@@ -362,7 +362,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	remoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
 	remoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
 
-	dbsourceConn, err := OpenDirectConnection(sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+	dbsourceConn, err := OpenDirectConnection(sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string), logger)
 
 	if err != nil {
 		eUtils.LogErrorMessage("Couldn't get dedicated database connection.", logger, false)
@@ -523,7 +523,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		return err
 	}
 
-	authData, errPost := GetJSONFromClientByPost(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader))
+	authData, errPost := GetJSONFromClientByPost(httpClient, authComponents["authHeaders"].(map[string]string), authComponents["authUrl"].(string), authComponents["bodyData"].(io.Reader), logger)
 	if errPost != nil {
 		eUtils.LogErrorObject(errPost, logger, false)
 		return errPost
