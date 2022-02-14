@@ -303,7 +303,7 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 	mod, err := kv.NewModifier(insecure, token, vaultAddr, env, nil, logger) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
-	if strings.HasPrefix(filepath, "/Index/") {
+	if strings.HasPrefix(filepath, "Index/") {
 		mod.IndexPath = strings.TrimSuffix(filepath, "_seed.yml")
 	}
 
@@ -462,6 +462,8 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 			//			/Index/TrcVault/regionId/<regionEnv>
 			if mod.IndexPath != "" {
 				entry.path = mod.IndexPath
+			} else {
+				mod.IndexPath = mod.Env
 			}
 			WriteData(entry.path, entry.data, mod, logger)
 		}
@@ -471,6 +473,7 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 	warn, err := verify(mod, verificationData, logger)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
+
 	eUtils.LogInfo("\nInitialization complete for "+strings.Split(mod.IndexPath, "/")[strings.Count(mod.IndexPath, "/")]+".\n", logger)
 }
 
