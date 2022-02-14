@@ -461,9 +461,6 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 			}
 		} else {
 			//			/Index/TrcVault/regionId/<regionEnv>
-			if mod.IndexPath != "" {
-				entry.path = mod.IndexPath
-			}
 			WriteData(entry.path, entry.data, mod, logger)
 		}
 	}
@@ -492,6 +489,7 @@ func WriteData(path string, data map[string]interface{}, mod *kv.Modifier, logge
 			return
 		}
 	}
+
 	warn, err := mod.Write(path, data)
 
 	utils.LogWarningsObject(warn, logger, false)
