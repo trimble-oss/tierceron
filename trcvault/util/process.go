@@ -384,15 +384,15 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 
 func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	// 1. Get Plugin configurations.
-	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
-	var sourceDatabaseConfigs []map[string]interface{}
-	var vaultDatabaseConfig map[string]interface{}
-	var identityConfig map[string]interface{}
 	goMod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if err != nil {
 		eUtils.LogErrorMessage("Could not access vault.  Failure to start.", logger, false)
 		return err
 	}
+	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
+	var sourceDatabaseConfigs []map[string]interface{}
+	var vaultDatabaseConfig map[string]interface{}
+	var identityConfig map[string]interface{}
 
 	for i := 0; i < len(projects); i++ {
 

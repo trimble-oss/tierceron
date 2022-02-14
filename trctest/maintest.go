@@ -18,7 +18,7 @@ func main() {
 
 	pluginConfig := map[string]interface{}{}
 	pluginConfig["address"] = "https://vault.whoboot.org:8200" //This should be local
-	pluginConfig["token"] = "s.KnIlXXqTY5QFe54JE1Oypttr"
+	pluginConfig["token"] = "s.2OamEH93aN4psYH7XmtWODCy"
 	// TenantConfiguration, SpectrumEnterpriseConfig, Mysqlfile
 	pluginConfig["templatePath"] = []string{
 		"trc_templates/TenantDatabase/TenantConfiguration/TenantConfiguration.tmpl",           // implemented
@@ -40,6 +40,7 @@ func main() {
 	pluginConfig["env"] = "QA"
 	pluginConfig["regions"] = []string{}
 	pluginConfig["insecure"] = true
+	pluginConfig["exitOnFailure"] = true
 
 	vscutils.ProcessFlows(pluginConfig, logger)
 }
