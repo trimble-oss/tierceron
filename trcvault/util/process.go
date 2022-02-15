@@ -28,7 +28,8 @@ import (
 
 type FlowType int64
 
-var m sync.Mutex
+var tableCreationLock sync.Mutex
+var changesLock sync.Mutex
 
 var channelMap map[string]chan bool
 
@@ -46,14 +47,14 @@ func getDeleteChangeQuery(databaseName string, changeTable string, id string) st
 }
 
 func getUpdateTrigger(databaseName string, tableName string, idColumnName string) string {
-	return `CREATE TRIGGER tcUpdateTrigger BEFORE UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+	return `CREATE TRIGGER tcUpdateTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
 		` UPDATE ` + databaseName + `.` + tableName + `_Changes SET id=new.tenantId, updateTime=current_timestamp() WHERE EXISTS (select id from ` + databaseName + `.` + tableName + `_Changes where id=new.` + idColumnName + `);` +
 		` END;`
 }
 
 func getInsertTrigger(databaseName string, tableName string, idColumnName string) string {
-	return `CREATE TRIGGER tcInsertTrigger BEFORE INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+	return `CREATE TRIGGER tcInsertTrigger AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
 		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnName + `, current_timestamp());` +
 		` END;`
@@ -79,13 +80,14 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	var matrixChangedEntries [][]string
 	var changedEntriesQuery string
 
-	if isInit {
-		changedEntriesQuery = `SELECT ` + identityColumnName + ` FROM ` + databaseName + `.` + tableName
-	} else {
-		changedEntriesQuery = getChangeIdQuery(databaseName, changeTable)
-	}
+	changesLock.Lock()
 
-	//	Lock
+	/*if isInit {
+		changedEntriesQuery = `SELECT ` + identityColumnName + ` FROM ` + databaseName + `.` + tableName
+	} else { */
+	changedEntriesQuery = getChangeIdQuery(databaseName, changeTable)
+	//}
+
 	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changedEntriesQuery)
 	if err != nil {
 		eUtils.LogErrorObject(err, logger, false)
@@ -97,7 +99,7 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 			eUtils.LogErrorObject(err, logger, false)
 		}
 	}
-	// Unlock
+	changesLock.Unlock()
 
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
@@ -184,7 +186,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 		// Set up schema callback for table to track.
 		initTableSchemaCB = func(tableSchema sqle.PrimaryKeySchema, tableName string) {
 			// Create table if necessary.
-			m.Lock()
+			tableCreationLock.Lock()
 			if _, ok, _ := tierceronEngine.Database.GetTableInsensitive(tierceronEngine.Context, tableName); !ok {
 				//	ii. Init database and tables in local mysql engine instance.
 				err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tableSchema)
@@ -192,7 +194,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 					eUtils.LogErrorObject(err, logger, false)
 				}
 			}
-			m.Unlock()
+			tableCreationLock.Unlock()
 		}
 
 		// Set up call back to enable a trigger to track
@@ -201,8 +203,8 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 			//Create triggers
 			var updTrigger sqle.TriggerDefinition
 			var insTrigger sqle.TriggerDefinition
-			insTrigger.Name = "tcInsertTrigger"
-			updTrigger.Name = "tcUpdateTrigger"
+			insTrigger.Name = "tcInsertTrigger_" + flowName
+			updTrigger.Name = "tcUpdateTrigger_" + flowName
 			//Prevent duplicate triggers from existing
 			existingTriggers, err := tierceronEngine.Database.GetTriggers(tierceronEngine.Context)
 			if err != nil {
@@ -231,7 +233,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 		// the changedChannel or checks itself every 3 minutes for changes to
 		// its own tables.
 		initSeedVaultListenerCB = func(remoteDataSource map[string]interface{}, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
-			afterTime := time.Duration(time.Second * 10)
+			afterTime := time.Duration(time.Second * 20)
 			isInit := true
 			for {
 				select {
@@ -551,12 +553,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 		if _, ok, _ := tierceronEngine.Database.GetTableInsensitive(tierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo("Creating tierceron sql table: "+changeTableName, logger)
-			m.Lock()
+			tableCreationLock.Lock()
 			err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
-				{Name: "id", Type: sqle.Text, Source: changeTableName},
+				{Name: "id", Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 			}))
-			m.Unlock()
+			tableCreationLock.Unlock()
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 				return err
