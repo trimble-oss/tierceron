@@ -161,6 +161,8 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	logger *log.Logger) error {
 
 	var flowSource string
+	var service string
+	var tableTemplateName string
 	var flowName string
 	var initTableSchemaCB func(tableSchema sqle.PrimaryKeySchema, tableName string)
 	var createTableTriggersCB func(identityColumnName string)
@@ -171,7 +173,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
 	if flowType == TableSyncFlow {
-		flowSource, service, tableTemplateName := eUtils.GetProjectService(flow)
+		flowSource, service, tableTemplateName = eUtils.GetProjectService(flow)
 		flowName = eUtils.GetTemplateFileName(tableTemplateName, service)
 		changeFlowName := flowName + "_Changes"
 
