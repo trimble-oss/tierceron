@@ -469,10 +469,7 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 	warn, err := verify(mod, verificationData, logger)
 	utils.LogErrorObject(err, logger, false)
 	utils.LogWarningsObject(warn, logger, false)
-	if mod.IndexPath == "" {
-		mod.IndexPath = mod.Env
-	}
-	eUtils.LogInfo("\nInitialization complete for "+strings.Split(mod.IndexPath, "/")[strings.Count(mod.IndexPath, "/")]+".\n", logger)
+	eUtils.LogInfo("\nInitialization complete for "+mod.Env+".\n", logger)
 }
 
 //WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
