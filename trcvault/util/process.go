@@ -109,7 +109,7 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		_, changedTableColumns, changedTableRowData, err := db.Query(tierceronEngine, changedTableQuery)
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
-			return err
+			continue
 		}
 
 		rowDataMap := map[string]interface{}{}
@@ -128,14 +128,16 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		})
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(indexPathErr, logger, false)
-			return indexPathErr
+			// Re-inject into changes because it might not be here yet...
+
+			continue
 		}
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
 		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, indexPath, logger, flowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
-			return seedError
+			continue
 		}
 
 		// Push this change to the flow for delivery to remote data source.
