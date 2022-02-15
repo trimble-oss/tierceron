@@ -85,10 +85,19 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		changedEntriesQuery = getChangeIdQuery(databaseName, changeTable)
 	}
 
+	//	Lock
 	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changedEntriesQuery)
 	if err != nil {
 		eUtils.LogErrorObject(err, logger, false)
 	}
+	for _, changedEntry := range matrixChangedEntries {
+		changedId := changedEntry[0]
+		_, _, _, err = db.Query(tierceronEngine, getDeleteChangeQuery(databaseName, changeTable, changedId))
+		if err != nil {
+			eUtils.LogErrorObject(err, logger, false)
+		}
+	}
+	// Unlock
 
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
@@ -131,11 +140,6 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		if !isInit {
 			pushError := flowPushRemote(remoteDataSource, rowDataMap)
 			if pushError != nil {
-				eUtils.LogErrorObject(err, logger, false)
-			}
-
-			_, _, _, err = db.Query(tierceronEngine, getDeleteChangeQuery(databaseName, changeTable, changedId))
-			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			}
 		}
