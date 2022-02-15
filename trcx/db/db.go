@@ -289,6 +289,7 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 
 	if len(columns) > 0 {
 		// Iterate results and print them.
+		okResult := false
 		for {
 			row, err := r.Next(ctx)
 			if err == io.EOF {
@@ -296,12 +297,23 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 			}
 			rowData := []string{}
 			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
-				return "ok", nil, nil, nil
+				okResult = true
+				if len(row) > 0 {
+					if sqlOkResult, ok := row[0].(sql.OkResult); ok {
+						if sqlOkResult.RowsAffected > 0 {
+							matrix = append(matrix, rowData)
+						}
+					}
+				}
+			} else {
+				for _, col := range row {
+					rowData = append(rowData, col.(string))
+				}
+				matrix = append(matrix, rowData)
 			}
-			for _, col := range row {
-				rowData = append(rowData, col.(string))
-			}
-			matrix = append(matrix, rowData)
+		}
+		if okResult {
+			return "ok", nil, matrix, nil
 		}
 	}
 

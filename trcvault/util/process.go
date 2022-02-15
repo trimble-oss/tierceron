@@ -297,11 +297,11 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	// something to the changed channel.
 	applyDBQueryCB = func(query string, changed bool, operation string, flowNotifications []string) [][]string {
 		if operation == "INSERT" {
-			_, _, _, err := db.Query(tierceronEngine, query)
+			_, _, matrix, err := db.Query(tierceronEngine, query)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			}
-			if changed {
+			if changed && len(matrix) > 0 {
 				changedChannel <- true
 				if flowNotifications != nil && len(flowNotifications) > 0 {
 					// look up channels and notify them too.
@@ -313,11 +313,11 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 				}
 			}
 		} else if operation == "UPDATE" {
-			_, _, _, err := db.Query(tierceronEngine, query)
+			_, _, matrix, err := db.Query(tierceronEngine, query)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			}
-			if changed {
+			if changed && len(matrix) > 0 {
 				changedChannel <- true
 
 				if flowNotifications != nil && len(flowNotifications) > 0 {
