@@ -399,25 +399,36 @@ func GetPathsFromProject(mod *kv.Modifier, logger *log.Logger, projects ...strin
 			for _, project := range projects {
 				project = project + "/"
 				projectAvailable := false
-				for _, availProject := range availProjects {
+				for _, availProject := range availProjects { //Look for project in top path
+					if projectAvailable {
+						break
+					}
 					if project == availProject.(string) {
 						projectsUsed = append(projectsUsed, availProject)
 						projectAvailable = true
 					}
-					innerPathList, err := mod.List("templates/" + availProject.(string)) //Looks for services one path deeper
-					if err != nil {
-						eUtils.LogInfo("Unable to read into nested template path: "+err.Error(), logger)
-					}
-					if innerPathList == nil || availProject.(string) == "Common/" {
-						continue
-					}
-					innerPaths := innerPathList.Data["keys"].([]interface{})
-					for _, innerPath := range innerPaths {
-						if project == innerPath.(string) {
-							innerPath = availProject.(string) + innerPath.(string)
-							innerService = "!=!" + innerPath.(string) //Pass project back somehow?
-							projectsUsed = append(projectsUsed, innerPath)
-							projectAvailable = true
+				}
+
+				if !projectAvailable { //If project not found, search one path deeper
+					for _, availProject := range availProjects {
+						innerPathList, err := mod.List("templates/" + availProject.(string)) //Looks for services one path deeper
+						if err != nil {
+							eUtils.LogInfo("Unable to read into nested template path: "+err.Error(), logger)
+						}
+						if innerPathList == nil || availProject.(string) == "Common/" {
+							continue
+						}
+						innerPaths := innerPathList.Data["keys"].([]interface{})
+						for _, innerPath := range innerPaths {
+							if projectAvailable {
+								break
+							}
+							if project == innerPath.(string) {
+								innerPath = availProject.(string) + innerPath.(string)
+								innerService = "!=!" + innerPath.(string) //Pass project back somehow?
+								projectsUsed = append(projectsUsed, innerPath)
+								projectAvailable = true
+							}
 						}
 					}
 				}
