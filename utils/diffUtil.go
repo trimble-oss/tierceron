@@ -413,7 +413,11 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		for _, env := range envDiffSlice { //Arranges keys for ordered output
 			keys = append(keys, env+"||"+env+"_seed.yml")
 		}
-		fileList[0] = "placeHolder"
+		if len(fileList) > 0 {
+			fileList[0] = "placeHolder"
+		} else {
+			fileList = append(fileList, "placeHolder")
+		}
 	}
 
 	//Diff resultMap using fileList
