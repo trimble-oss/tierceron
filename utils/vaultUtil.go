@@ -8,7 +8,7 @@ import (
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultMod(config *DriverConfig) (*helperkv.Modifier, *sys.Vault, error) {
-	vault, err := sys.NewVault(true, config.VaultAddress, config.Env, false, false, config.ExitOnFailure, config.Log)
+	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, config.ExitOnFailure, config.Log)
 	if err != nil {
 		LogErrorObject(err, config.Log, false)
 		return nil, nil, err
