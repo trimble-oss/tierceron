@@ -393,8 +393,8 @@ func (m *Modifier) GetProjectServicesMap() (map[string][]string, error) {
 
 //GetVersionValues gets filepath for values and grabs metadata for those paths.
 func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath string, logger *log.Logger) (map[string]map[string]interface{}, error) {
-	var realEnv string
 	envCheck := make([]string, 2)
+	var realEnv string
 	lastIndex := strings.LastIndex(mod.Env, "_")
 	if lastIndex != -1 {
 		envCheck[0] = mod.Env[:lastIndex]
