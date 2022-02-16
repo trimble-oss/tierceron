@@ -229,8 +229,15 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		}
 	}(config)
 
+	commonPathFound := false
+	for _, tPath := range templatePaths {
+		if strings.Contains(tPath, "Common") {
+			commonPathFound = true
+		}
+	}
+
 	commonPaths := []string{}
-	if config.Token != "" {
+	if config.Token != "" && commonPathFound {
 		var commonMod *kv.Modifier
 		var err error
 		commonMod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
@@ -299,7 +306,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(tp string, multiService bool, c eUtils.DriverConfig, noVault bool) {
+		go func(tp string, multiService bool, c eUtils.DriverConfig, noVault bool, cPaths []string) {
 			project := ""
 			service := ""
 
@@ -352,7 +359,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				if goMod.IndexName != "" && goMod.IndexValue != "" {
 					goMod.IndexPath = "super-secrets/Index/" + project + "/" + goMod.IndexName + "/" + goMod.IndexValue + "/" + service
 				}
-				cds.Init(goMod, c.SecretMode, true, project, commonPaths, logger, service)
+				cds.Init(goMod, c.SecretMode, true, project, cPaths, logger, service)
 			}
 
 			innerProject := "Not Found"
@@ -380,7 +387,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			templateResult.Env = goMod.Env + "_" + requestedVersion
 			templateResult.IndexValue = config.IndexValue
 			templateResultChan <- &templateResult
-		}(templatePath, multiService, config, noVault)
+		}(templatePath, multiService, config, noVault, commonPaths)
 	}
 	wg.Wait()
 
