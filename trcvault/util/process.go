@@ -46,6 +46,10 @@ func getDeleteChangeQuery(databaseName string, changeTable string, id string) st
 	return "DELETE FROM " + databaseName + `.` + changeTable + " WHERE id = '" + id + "'"
 }
 
+func getInsertChangeQuery(databaseName string, changeTable string, id string) string {
+	return `INSERT IGNORE INTO ` + databaseName + `.` + changeTable + `VALUES (` + id + `, current_timestamp());`
+}
+
 func getUpdateTrigger(databaseName string, tableName string, idColumnName string) string {
 	return `CREATE TRIGGER tcUpdateTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
@@ -129,7 +133,10 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(indexPathErr, logger, false)
 			// Re-inject into changes because it might not be here yet...
-
+			_, _, _, err = db.Query(tierceronEngine, getInsertChangeQuery(databaseName, changeTable, changedId))
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			}
 			continue
 		}
 
@@ -137,6 +144,11 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, indexPath, logger, flowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
+			// Re-inject into changes because it might not be here yet...
+			_, _, _, err = db.Query(tierceronEngine, getInsertChangeQuery(databaseName, changeTable, changedId))
+			if err != nil {
+				eUtils.LogErrorObject(err, logger, false)
+			}
 			continue
 		}
 
