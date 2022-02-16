@@ -23,6 +23,7 @@ var noEnvironments = map[string]bool{
 // can be changed to alter where in the vault the key,value
 // pair is stored
 type Modifier struct {
+	Insecure         bool         // Indicates if connections to vault should be secure
 	httpClient       *http.Client // Handle to http client.
 	client           *api.Client  // Client connected to vault
 	logical          *api.Logical // Logical used for read/write options
@@ -87,7 +88,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	modClient.SetToken(token)
 
 	// Return the modifier
-	return &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions, Version: ""}, nil
+	return &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions, Version: "", Insecure: insecure}, nil
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
