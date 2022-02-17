@@ -437,6 +437,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			// TODO: This could be an api call vault list - to list what's available with rid's.
 			// East and west...
 			goMod.SectionName = "regionId"
+			goMod.SectionKey = "/Index/"
 			regions, err := goMod.ListSubsection("/Index/", projects[i], goMod.SectionName)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
