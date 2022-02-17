@@ -22,8 +22,7 @@ type ResultData struct {
 
 var resultMap = make(map[string]*string)
 var envSlice = make([]string, 0)
-var indexSlice = make([]string, 0)
-var restrictedSlice = make([]string, 0)
+var projectSectionsSlice = make([]string, 0)
 var resultChannel = make(chan *ResultData, 5)
 var envLength int
 var mutex = &sync.Mutex{}
@@ -117,11 +116,11 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 
 	//Checks for indexed projects
 	if len(*indexPtr) > 0 {
-		indexSlice = append(indexSlice, strings.Split(*indexPtr, ",")...)
+		projectSectionsSlice = append(projectSectionsSlice, strings.Split(*indexPtr, ",")...)
 	}
 
 	if len(*restrictedPtr) > 0 {
-		restrictedSlice = append(indexSlice, strings.Split(*restrictedPtr, ",")...)
+		projectSectionsSlice = append(projectSectionsSlice, strings.Split(*restrictedPtr, ",")...)
 	}
 
 	//check for clean + env flag
@@ -310,7 +309,7 @@ skipDiff:
 					subSectionPath := ""
 
 					if len(*indexPtr) > 0 {
-						subSectionPath = indexSlice[0] + "/"
+						subSectionPath = projectSectionsSlice[0] + "/"
 					}
 					listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath)
 					if len(*indexPtr) > 0 {
@@ -387,7 +386,7 @@ skipDiff:
 				Update:          messenger,
 				VersionInfo:     eUtils.VersionHelper,
 				FileFilter:      fileFilter,
-				ProjectIndex:    indexSlice,
+				ProjectSections: projectSectionsSlice,
 			}
 			waitg.Add(1)
 			go func() {
