@@ -56,7 +56,10 @@ func NewProperties(v *sys.Vault, mod *kv.Modifier, env string, project string, s
 	}
 	properties.cds = new(utils.ConfigDataStore)
 	var commonPaths []string
-	properties.cds.Init(properties.mod, true, true, project, commonPaths, logger, service)
+	propertyerr := properties.cds.Init(properties.mod, true, true, project, commonPaths, logger, service)
+	if propertyerr != nil {
+		return nil, propertyerr
+	}
 
 	return &properties, nil
 }
