@@ -47,14 +47,46 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 		for _, data := range serviceList.([]interface{}) {
 			serviceMap[data.(string)] = true
 		}
+
+		if len(config.ProjectSections) > 0 { //Filter by project
+			for _, indexed := range config.ProjectSections {
+				for _, templatePath := range templatePaths {
+					if strings.Contains(templatePath, indexed) {
+						listValues, err := modCheck.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue)
+						if err != nil {
+							LogInfo("Couldn't list services for indexed path", config.Log)
+						}
+						for _, valuesPath := range listValues.Data {
+							for _, service := range valuesPath.([]interface{}) {
+								serviceMap[service.(string)] = true
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 	for _, templatePath := range templatePaths {
 		templatePathParts := strings.Split(templatePath, "/")
 		service := templatePathParts[len(templatePathParts)-2]
 
 		if _, ok := serviceMap[service]; ok {
-			if config.SectionKey == "" || strings.Contains(templatePath, config.SectionKey) {
+			if config.SectionKey == "" {
 				acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
+			} else {
+				for _, sectionProject := range config.ProjectSections {
+					if strings.Contains(templatePath, sectionProject) {
+						acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
+					}
+				}
+			}
+		} else {
+			if config.SectionKey != "" {
+				for _, sectionProject := range config.ProjectSections {
+					if strings.Contains(templatePath, "/"+sectionProject+"/") {
+						acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
+					}
+				}
 			}
 		}
 	}
