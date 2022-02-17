@@ -624,44 +624,6 @@ func getPathEnd(path string) string {
 	return strs[len(strs)-1]
 }
 
-func GetAcceptedTemplatePaths(modCheck *Modifier, templatePaths []string) ([]string, error) {
-	preEnv := modCheck.Env
-	var envCheck []string
-	lastIndex := strings.LastIndex(modCheck.Env, "_")
-	envCheck[0] = modCheck.Env[0:lastIndex]
-	envCheck[1] = modCheck.Env[lastIndex+1:]
-	modCheck.Env = envCheck[0]
-	serviceInterface, err := modCheck.ListEnv("super-secrets/" + modCheck.Env)
-	modCheck.Env = preEnv
-	if err != nil {
-		return nil, err
-	}
-	if serviceInterface == nil || serviceInterface.Data["keys"] == nil {
-		return templatePaths, nil
-	}
-
-	serviceList := serviceInterface.Data["keys"]
-	serviceMap := make(map[string]bool)
-	for _, data := range serviceList.([]interface{}) {
-		serviceMap[data.(string)] = true
-	}
-
-	var acceptedTemplatePaths []string
-	for _, templatePath := range templatePaths {
-		templatePathParts := strings.Split(templatePath, "/")
-		service := templatePathParts[len(templatePathParts)-2]
-
-		if _, ok := serviceMap[service]; ok {
-			acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
-		}
-	}
-
-	if len(acceptedTemplatePaths) > 0 {
-		templatePaths = acceptedTemplatePaths
-	}
-	return templatePaths, nil
-}
-
 func (m *Modifier) ListSubsection(sectionKey string, project string, indexName string) ([]string, error) {
 	var indexes []string
 	secret, err := m.List("super-secrets" + sectionKey + project + "/" + indexName)

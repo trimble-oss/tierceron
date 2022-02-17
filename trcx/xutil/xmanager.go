@@ -25,7 +25,7 @@ var wg2 sync.WaitGroup
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templatePaths []string, logger *log.Logger) (string, bool, string) {
+func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string, logger *log.Logger) (string, bool, string) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -206,7 +206,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	}
 
 	//Reciever for configs
-	go func(c eUtils.DriverConfig) {
+	go func(c *eUtils.DriverConfig) {
 		for {
 			select {
 			case tResult := <-templateResultChan:
@@ -306,7 +306,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(tp string, multiService bool, c eUtils.DriverConfig, noVault bool, cPaths []string) {
+		go func(tp string, multiService bool, c *eUtils.DriverConfig, noVault bool, cPaths []string) {
 			var project, service, env, version, innerProject string
 			project = ""
 			service = ""
@@ -459,7 +459,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfig, logger *log.Logger) interface{} {
+func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig, logger *log.Logger) interface{} {
 	if config.Clean { //Clean flag in trcx
 		if strings.HasSuffix(config.Env, "_0") {
 			envVersion := eUtils.SplitEnv(config.Env)
@@ -470,7 +470,9 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
-			os.Exit(1)
+			if config.ExitOnFailure {
+				os.Exit(1)
+			}
 		}
 
 		if err1 == nil {
@@ -496,10 +498,9 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			templatePaths = append(templatePaths, path)
 		}
 	}
+	var mod *kv.Modifier
 
-	_, _, indexedEnv, _ := kv.PreCheckEnvironment(config.Env)
-
-	if indexedEnv {
+	if config.Token != "novault" {
 		// TODO: Redo/deleted the indexedEnv work...
 		// Get filtered using mod and templates.
 		mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
@@ -508,10 +509,15 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 			os.Exit(1)
 		}
 		mod.Env = config.Env
-
-		templatePathsAccepted, err := kv.GetAcceptedTemplatePaths(mod, templatePaths)
-		templatePaths = templatePathsAccepted
 	}
+	templatePathsAccepted, err := eUtils.GetAcceptedTemplatePaths(config, mod, templatePaths)
+	if err != nil {
+		eUtils.LogErrorObject(err, logger, false)
+		if config.ExitOnFailure {
+			os.Exit(1)
+		}
+	}
+	templatePaths = templatePathsAccepted
 
 	endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths, logger)
 
