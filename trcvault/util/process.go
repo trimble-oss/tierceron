@@ -460,7 +460,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			case "Database":
 				var sourceDatabaseConfig map[string]interface{}
 				sourceDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
-				if !ok {
+				if !ok || len(sourceDatabaseConfig) > 0 {
 					// Just ignore this one and go to the next one.
 					eUtils.LogWarningMessage("Expected database configuration does not exist: "+indexValue, logger, false)
 					continue
