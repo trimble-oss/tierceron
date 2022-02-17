@@ -16,31 +16,32 @@ type ProcessContext interface{}
 type ConfigDriver func(ctx ProcessContext, config DriverConfig, logger *log.Logger) interface{}
 
 type DriverConfig struct {
-	Context        ProcessContext
-	Insecure       bool
-	Token          string
-	VaultAddress   string
-	EnvRaw         string
-	Env            string
-	Regions        []string
-	SecretMode     bool
-	ServicesWanted []string
-	StartDir       []string // Starting directory... possibly multiple
-	EndDir         string
-	WantCerts      bool
-	ZeroConfig     bool
-	GenAuth        bool
-	Clean          bool
-	Log            *log.Logger
-	Diff           bool
-	Update         func(*string, string)
-	FileFilter     []string
-	VersionInfo    func(map[string]interface{}, bool, string, bool)
-	VersionFilter  []string
-	ExitOnFailure  bool // Exit on a failure or try to continue
-	ProjectIndex   []string
-	IndexName      string
-	IndexValue     string
+	Context         ProcessContext
+	Insecure        bool
+	Token           string
+	VaultAddress    string
+	EnvRaw          string
+	Env             string
+	Regions         []string
+	SecretMode      bool
+	ServicesWanted  []string
+	StartDir        []string // Starting directory... possibly multiple
+	EndDir          string
+	WantCerts       bool
+	ZeroConfig      bool
+	GenAuth         bool
+	Clean           bool
+	Log             *log.Logger
+	Diff            bool
+	Update          func(*string, string)
+	FileFilter      []string
+	VersionInfo     func(map[string]interface{}, bool, string, bool)
+	VersionFilter   []string
+	ExitOnFailure   bool // Exit on a failure or try to continue
+	ProjectIndex    []string
+	SectionKey      string // Restricted or Index
+	SectionName     string // extension provided name
+	SubSectionValue string
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.

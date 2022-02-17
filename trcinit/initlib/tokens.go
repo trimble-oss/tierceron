@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"strings"
 
 	"tierceron/utils"
 	sys "tierceron/vaulthelper/system"
@@ -12,7 +13,7 @@ import (
 )
 
 //UploadTokens accepts a file directory and vault object to upload tokens to. Logs to pased logger
-func UploadTokens(dir string, v *sys.Vault, logger *log.Logger) []*pb.InitResp_Token {
+func UploadTokens(dir string, fileFilterPtr *string, v *sys.Vault, logger *log.Logger) []*pb.InitResp_Token {
 	tokens := []*pb.InitResp_Token{}
 	logger.SetPrefix("[TOKEN]")
 	logger.Printf("Writing tokens from %s\n", dir)
@@ -26,6 +27,9 @@ func UploadTokens(dir string, v *sys.Vault, logger *log.Logger) []*pb.InitResp_T
 		filename = filename[0 : len(filename)-len(ext)]
 
 		if ext == ".yml" || ext == ".yaml" { // Request token from vault
+			if *fileFilterPtr != "" && !strings.Contains(file.Name(), *fileFilterPtr) {
+				continue
+			}
 			logger.Printf("\tFound token file: %s\n", file.Name())
 			tokenName, err := v.CreateTokenFromFile(dir + "/" + file.Name())
 			utils.LogErrorObject(err, logger, true)
