@@ -43,7 +43,6 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 	endPath := ""
 	multiService := false
 	var mod *kv.Modifier
-	noVault := false
 
 	filteredTemplatePaths := templatePaths[:0]
 	if len(config.FileFilter) != 0 {
@@ -71,7 +70,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 	env := envVersion[0]
 	version := envVersion[1]
 
-	if config.Token != "" {
+	if config.Token != "" && config.Token != "novault" {
 		var err error
 		mod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions, logger)
 		if err != nil {
@@ -79,47 +78,11 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		}
 		mod.Env = env
 		mod.Version = version
-		if len(config.ProjectIndex) > 0 {
-			mod.ProjectIndex = config.ProjectIndex
+		if len(config.ProjectSections) > 0 {
+			mod.ProjectIndex = config.ProjectSections
 			mod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
 			mod.SectionName = config.SectionName
 			mod.SubSectionValue = config.SubSectionValue
-		}
-		if config.Token == "novault" {
-			noVault = true
-		}
-	}
-
-	serviceSlice := make([]string, 0)
-	if len(config.ProjectIndex) > 0 { //Filter by project
-		for _, indexed := range config.ProjectIndex {
-			for _, templatePath := range templatePaths {
-				if strings.Contains(templatePath, indexed) {
-					filteredTemplatePaths = append(filteredTemplatePaths, templatePath)
-					listValues, err := mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectIndex[0] + "/" + config.SectionName + "/" + config.SubSectionValue)
-					if err != nil {
-						eUtils.LogInfo("Couldn't list services for indexed path", logger)
-					}
-					for _, valuesPath := range listValues.Data {
-						for _, service := range valuesPath.([]interface{}) {
-							serviceSlice = append(serviceSlice, service.(string))
-						}
-					}
-				}
-			}
-		}
-
-		var filteredTempPaths []string
-		for _, service := range serviceSlice { //Filter by available service as well
-			for _, templatePath := range filteredTemplatePaths {
-				templateParts := strings.Split(templatePath, "/")
-				if templateParts[len(templateParts)-2] == service {
-					filteredTempPaths = append(filteredTempPaths, templatePath)
-				}
-			}
-		}
-		if len(filteredTempPaths) > 0 {
-			filteredTemplatePaths = filteredTempPaths
 		}
 	}
 
@@ -136,7 +99,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		}
 	}
 
-	if mod.Version != "0" { //If version isn't latest or is a flag
+	if config.Token != "novault" && mod.Version != "0" { //If version isn't latest or is a flag
 		var noCertPaths []string
 		var certPaths []string
 		for _, templatePath := range templatePaths { //Seperate cert vs normal paths
@@ -260,53 +223,58 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 	}
 
 	// Configure each template in directory
-	if strings.Contains(config.EnvRaw, ".*") || len(config.ProjectIndex) > 0 {
-		serviceFound := false
-		for _, templatePath := range templatePaths {
-			var service string
-			_, service, templatePath = vcutils.GetProjectService(templatePath)
-			_, _, indexed, _ := kv.PreCheckEnvironment(mod.Env)
-			//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
-			if (strings.Contains(mod.Env, ".") || len(config.ProjectIndex) > 0) && !serviceFound {
-				var listValues *api.Secret
-				var err error
-				if len(config.ProjectIndex) > 0 { //If eid -> look inside Index and grab all environments
-					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectIndex[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/")
-				} else if indexed {
-					listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
-				} else {
-					listValues, err = mod.ListEnv("values/" + mod.Env + "/") //Fix values to add to project to directory
-				}
-				if err != nil {
-					eUtils.LogErrorObject(err, logger, false)
-				} else if listValues == nil {
-					eUtils.LogInfo("No values were returned under values/.", logger)
-				} else {
-					serviceSlice := make([]string, 0)
-					for _, valuesPath := range listValues.Data {
-						for _, envInterface := range valuesPath.([]interface{}) {
-							env := envInterface.(string)
-							serviceSlice = append(serviceSlice, env)
-						}
+	if config.Token != "novault" {
+		//
+		// Checking for existence of values for service in vault.
+		//
+		if strings.Contains(config.EnvRaw, ".*") || len(config.ProjectSections) > 0 {
+			serviceFound := false
+			for _, templatePath := range templatePaths {
+				var service string
+				_, service, templatePath = vcutils.GetProjectService(templatePath)
+				_, _, indexed, _ := kv.PreCheckEnvironment(mod.Env)
+				//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
+				if (strings.Contains(mod.Env, ".") || len(config.ProjectSections) > 0) && !serviceFound {
+					var listValues *api.Secret
+					var err error
+					if len(config.ProjectSections) > 0 { //If eid -> look inside Index and grab all environments
+						listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/")
+					} else if indexed {
+						listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
+					} else {
+						listValues, err = mod.ListEnv("values/" + mod.Env + "/") //Fix values to add to project to directory
 					}
-					for _, listedService := range serviceSlice {
-						if listedService == service {
-							serviceFound = true
+					if err != nil {
+						eUtils.LogErrorObject(err, logger, false)
+					} else if listValues == nil {
+						eUtils.LogInfo("No values were returned under values/.", logger)
+					} else {
+						serviceSlice := make([]string, 0)
+						for _, valuesPath := range listValues.Data {
+							for _, envInterface := range valuesPath.([]interface{}) {
+								env := envInterface.(string)
+								serviceSlice = append(serviceSlice, env)
+							}
+						}
+						for _, listedService := range serviceSlice {
+							if listedService == service {
+								serviceFound = true
+							}
 						}
 					}
 				}
 			}
-		}
-		if !serviceFound { //Exit for irrelevant enterprises
-			eUtils.LogInfo("No relevant services were found for this environment -"+mod.Env, logger)
-			return "", false, ""
+			if !serviceFound { //Exit for irrelevant enterprises
+				eUtils.LogInfo("No relevant services were found for this environment -"+mod.Env, logger)
+				return "", false, ""
+			}
 		}
 	}
 
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(tp string, multiService bool, c *eUtils.DriverConfig, noVault bool, cPaths []string) {
+		go func(tp string, multiService bool, c *eUtils.DriverConfig, cPaths []string) {
 			var project, service, env, version, innerProject string
 			project = ""
 			service = ""
@@ -330,7 +298,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			//check for template_files directory here
 			project, service, tp = vcutils.GetProjectService(tp)
 
-			if c.Token != "" && !noVault {
+			if c.Token != "" && c.Token != "novault" {
 				var err error
 				goMod, err = kv.NewModifier(c.Insecure, c.Token, c.VaultAddress, c.Env, c.Regions, logger)
 				if err != nil {
@@ -339,7 +307,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				}
 				goMod.Env = env
 				goMod.Version = version
-				goMod.ProjectIndex = config.ProjectIndex
+				goMod.ProjectIndex = config.ProjectSections
 				if len(goMod.ProjectIndex) > 0 {
 					goMod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
 					goMod.SectionKey = config.SectionKey
@@ -388,7 +356,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			templateResult.Env = env + "_" + version
 			templateResult.SubSectionValue = config.SubSectionValue
 			templateResultChan <- &templateResult
-		}(templatePath, multiService, config, noVault, commonPaths)
+		}(templatePath, multiService, config, commonPaths)
 	}
 	wg.Wait()
 
@@ -551,10 +519,18 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	} else {
 		if pathInclude {
 			endPath = config.EndDir + envBasePath + "/" + pathPart + "/" + config.Env + "_seed.yml"
-		} else if len(config.ProjectIndex) > 0 {
+		} else if len(config.ProjectSections) > 0 {
 			envBasePath, _, _, _ := kv.PreCheckEnvironment(config.EnvRaw)
+			sectionNamePath := "/"
+			subSectionValuePath := ""
+			if config.SectionKey == "/Index/" {
+				sectionNamePath = "/" + config.SectionName + "/"
+				subSectionValuePath = config.SubSectionValue
+			} else if config.SectionKey == "/Restricted/" {
+				subSectionValuePath = config.Env
+			}
 
-			endPath = config.EndDir + envBasePath + config.SectionKey + config.ProjectIndex[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "_seed.yml"
+			endPath = config.EndDir + envBasePath + config.SectionKey + config.ProjectSections[0] + sectionNamePath + subSectionValuePath + "_seed.yml"
 		} else {
 			endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 		}
