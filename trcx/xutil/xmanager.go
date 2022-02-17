@@ -307,30 +307,38 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
 		go func(tp string, multiService bool, c eUtils.DriverConfig, noVault bool, cPaths []string) {
-			project := ""
-			service := ""
+			var project, service, env, version, innerProject string
+			project = ""
+			service = ""
+			env = ""
+			version = ""
+			innerProject = "Not Found"
 
 			// Map Subsections
 			var templateResult extract.TemplateResultData
+			var cds *vcutils.ConfigDataStore
+			var goMod *kv.Modifier
 
 			templateResult.ValueSection = map[string]map[string]map[string]string{}
 			templateResult.ValueSection["values"] = map[string]map[string]string{}
 
 			templateResult.SecretSection = map[string]map[string]map[string]string{}
 			templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
+			envVersion := eUtils.SplitEnv(config.Env)
+			env = envVersion[0]
+			version = envVersion[1]
+			//check for template_files directory here
+			project, service, tp = vcutils.GetProjectService(tp)
 
-			var goMod *kv.Modifier
-
-			if c.Token != "" {
+			if c.Token != "" && !noVault {
 				var err error
 				goMod, err = kv.NewModifier(c.Insecure, c.Token, c.VaultAddress, c.Env, c.Regions, logger)
 				if err != nil {
 					eUtils.LogErrorObject(err, logger, false)
 					return
 				}
-				envVersion := eUtils.SplitEnv(config.Env)
-				goMod.Env = envVersion[0]
-				goMod.Version = envVersion[1]
+				goMod.Env = env
+				goMod.Version = version
 				goMod.ProjectIndex = config.ProjectIndex
 				if len(goMod.ProjectIndex) > 0 {
 					goMod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
@@ -338,39 +346,31 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 					goMod.SectionName = config.SectionName
 					goMod.SubSectionValue = config.SubSectionValue
 				}
-			}
-
-			if c.GenAuth && goMod != nil {
-				_, err := mod.ReadData("apiLogins/meta")
-				if err != nil {
-					eUtils.LogInfo("Cannot genAuth with provided token.", logger)
-					os.Exit(1)
+				if c.GenAuth {
+					_, err := mod.ReadData("apiLogins/meta")
+					if err != nil {
+						eUtils.LogInfo("Cannot genAuth with provided token.", logger)
+						os.Exit(1)
+					}
 				}
-			}
 
-			//check for template_files directory here
-			project, service, tp = vcutils.GetProjectService(tp)
-
-			var cds *vcutils.ConfigDataStore
-			var requestedVersion string
-			if goMod != nil && !noVault {
-				requestedVersion = goMod.Version
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
 				if goMod.SectionName != "" && goMod.SubSectionValue != "" {
 					goMod.IndexPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service
 				}
 				cds.Init(goMod, c.SecretMode, true, project, cPaths, logger, service)
-			}
 
-			innerProject := "Not Found"
-			if len(goMod.VersionFilter) >= 1 && strings.Contains(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!") {
-				innerProject = strings.Split(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!")[1]
-				goMod.VersionFilter = goMod.VersionFilter[:len(goMod.VersionFilter)-1]
-			}
-			if innerProject != "Not Found" {
-				project = innerProject
-				service = project
+				if len(goMod.VersionFilter) >= 1 && strings.Contains(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!") {
+					// TODO: should this be before cds.Init???
+					innerProject = strings.Split(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!")[1]
+					goMod.VersionFilter = goMod.VersionFilter[:len(goMod.VersionFilter)-1]
+					if innerProject != "Not Found" {
+						project = innerProject
+						service = project
+					}
+				}
+
 			}
 
 			_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
@@ -385,7 +385,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				config.ExitOnFailure,
 				config.Log,
 			)
-			templateResult.Env = goMod.Env + "_" + requestedVersion
+			templateResult.Env = env + "_" + version
 			templateResult.SubSectionValue = config.SubSectionValue
 			templateResultChan <- &templateResult
 		}(templatePath, multiService, config, noVault, commonPaths)
@@ -500,6 +500,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 	_, _, indexedEnv, _ := kv.PreCheckEnvironment(config.Env)
 
 	if indexedEnv {
+		// TODO: Redo/deleted the indexedEnv work...
 		// Get filtered using mod and templates.
 		mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
 		if err != nil {
