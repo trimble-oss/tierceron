@@ -275,7 +275,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			}
 
 			if !anyServiceFound { //Exit for irrelevant enterprises
-				eUtils.LogInfo("No relevant services were found for this environment -"+mod.Env, logger)
+				eUtils.LogInfo("No relevant services were found for this environment: "+mod.Env, logger)
 				return "", false, ""
 			} else {
 				if len(acceptedTemplatePaths) > 0 {
