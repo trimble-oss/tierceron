@@ -23,6 +23,7 @@ type ResultData struct {
 var resultMap = make(map[string]*string)
 var envSlice = make([]string, 0)
 var indexSlice = make([]string, 0)
+var restrictedSlice = make([]string, 0)
 var resultChannel = make(chan *ResultData, 5)
 var envLength int
 var mutex = &sync.Mutex{}
@@ -82,6 +83,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
 	indexPtr := flag.String("index", "", "Specifies which projects are indexed")
+	restrictedPtr := flag.String("restricted", "", "Specifies which projects have restricted access.")
 
 	// Initialize logging
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
@@ -118,6 +120,10 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		indexSlice = append(indexSlice, strings.Split(*indexPtr, ",")...)
 	}
 
+	if len(*restrictedPtr) > 0 {
+		restrictedSlice = append(indexSlice, strings.Split(*restrictedPtr, ",")...)
+	}
+
 	//check for clean + env flag
 	cleanPresent := false
 	envPresent := false
@@ -139,8 +145,8 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if *diffPtr && len(*indexPtr) > 0 {
 		fmt.Println("-index flag cannot be used with -diff flag")
 		os.Exit(1)
-	} else if *versionPtr && len(*indexPtr) > 0 {
-		fmt.Println("-index flag cannot be used with -version flag")
+	} else if *versionPtr && (len(*indexPtr) > 0 || len(*restrictedPtr) > 0) {
+		fmt.Println("-index and -restricted flags cannot be used with -version flag")
 		os.Exit(1)
 	} else if (strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")) && *addrPtr == "" {
 		fmt.Println("The -addr flag must be used with staging/prod environment")
@@ -277,55 +283,72 @@ skipDiff:
 	logger.SetPrefix("[trcx]")
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
-	indexValueSlice := []string{""}
-	var indexName string
+	sectionSlice := []string{""}
+	var subSectionName string
 	var waitg sync.WaitGroup
+	sectionKey := "/"
 	if len(envSlice) == 1 {
-		if strings.Contains(envSlice[0], "*") || len(*indexPtr) > 0 {
-			newIndexValueSlice := make([]string, 0)
-			//Ask vault for list of dev.<id>.* environments, add to envSlice
-			testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions, logger)
-			if err != nil {
-				logger.Printf(err.Error())
-			}
-			// Only look at index values....
-			testMod.Env = envSlice[0]
-			var listValues *api.Secret
-			if len(*indexPtr) > 0 { //If eid -> look inside Index and grab all environments
-				listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + "/Index/" + indexSlice[0] + "/")
-				for k, valuesPath := range listValues.Data {
-					for _, indexNameInterface := range valuesPath.([]interface{}) {
-						indexName = strings.TrimSuffix(indexNameInterface.(string), "/")
-						indexList, err := testMod.ListEnv("super-secrets/" + testMod.Env + "/Index/" + indexSlice[0] + "/" + indexNameInterface.(string))
-						if err != nil {
-							logger.Printf(err.Error())
-						}
+		if strings.Contains(envSlice[0], "*") || len(*indexPtr) > 0 || len(*restrictedPtr) > 0 {
 
-						for _, indexPath := range indexList.Data {
-							for _, indexInterface := range indexPath.([]interface{}) {
-								newIndexValueSlice = append(newIndexValueSlice, strings.ReplaceAll(indexInterface.(string), "/", ""))
+			if len(*indexPtr) > 0 {
+				sectionKey = "/Index/"
+			} else if len(*restrictedPtr) > 0 {
+				sectionKey = "/Restricted/"
+			}
+
+			newSectionSlice := make([]string, 0)
+			if !*noVaultPtr {
+				//Ask vault for list of dev.<id>.* environments, add to envSlice
+				testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions, logger)
+				if err != nil {
+					logger.Printf(err.Error())
+				}
+				// Only look at index values....
+				testMod.Env = envSlice[0]
+				var listValues *api.Secret
+				if len(*indexPtr) > 0 || len(*restrictedPtr) > 0 { //If eid -> look inside Index and grab all environments
+					subSectionPath := ""
+
+					if len(*indexPtr) > 0 {
+						subSectionPath = indexSlice[0] + "/"
+					}
+					listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath)
+					if len(*indexPtr) > 0 {
+						// Further path modifications needed.
+						for k, valuesPath := range listValues.Data {
+							for _, indexNameInterface := range valuesPath.([]interface{}) {
+								subSectionName = strings.TrimSuffix(indexNameInterface.(string), "/")
+								indexList, err := testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath + "/" + indexNameInterface.(string))
+								if err != nil {
+									logger.Printf(err.Error())
+								}
+
+								for _, indexPath := range indexList.Data {
+									for _, indexInterface := range indexPath.([]interface{}) {
+										newSectionSlice = append(newSectionSlice, strings.ReplaceAll(indexInterface.(string), "/", ""))
+									}
+								}
 							}
+							delete(listValues.Data, k) //delete it so it doesn't repeat below
 						}
 					}
-					delete(listValues.Data, k) //delete it so it doesn't repeat below
+				} else {
+					listValues, err = testMod.ListEnv("values/")
 				}
-			} else {
-				listValues, err = testMod.ListEnv("values/")
+				if err != nil {
+					logger.Printf(err.Error())
+				}
+				if listValues == nil {
+					fmt.Println("No values found.")
+					os.Exit(1)
+				}
+				sectionSlice = newSectionSlice
 			}
-			if err != nil {
-				logger.Printf(err.Error())
-			}
-
-			if listValues == nil {
-				fmt.Println("No enterprise IDs were found.")
-				os.Exit(1)
-			}
-			indexValueSlice = newIndexValueSlice
 		}
 	}
 	go reciever() //Channel reciever
 	for _, env := range envSlice {
-		for _, indexValue := range indexValueSlice {
+		for _, section := range sectionSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 
@@ -344,28 +367,29 @@ skipDiff:
 				*envPtr = envVersion[0] + "_0"
 			}
 			config := eUtils.DriverConfig{
-				Context:        ctx,
-				Insecure:       *insecurePtr,
-				Token:          *tokenPtr,
-				VaultAddress:   *addrPtr,
-				EnvRaw:         envRaw,
-				Env:            *envPtr,
-				IndexName:      indexName,
-				IndexValue:     indexValue,
-				Regions:        regions,
-				SecretMode:     *secretMode,
-				ServicesWanted: []string{},
-				StartDir:       append([]string{}, *startDirPtr),
-				EndDir:         *endDirPtr,
-				WantCerts:      *wantCertsPtr,
-				GenAuth:        *genAuth,
-				Log:            logger,
-				Clean:          *cleanPtr,
-				Diff:           *diffPtr,
-				Update:         messenger,
-				VersionInfo:    eUtils.VersionHelper,
-				FileFilter:     fileFilter,
-				ProjectIndex:   indexSlice,
+				Context:         ctx,
+				Insecure:        *insecurePtr,
+				Token:           *tokenPtr,
+				VaultAddress:    *addrPtr,
+				EnvRaw:          envRaw,
+				Env:             *envPtr,
+				SectionKey:      sectionKey,
+				SectionName:     subSectionName,
+				SubSectionValue: section,
+				Regions:         regions,
+				SecretMode:      *secretMode,
+				ServicesWanted:  []string{},
+				StartDir:        append([]string{}, *startDirPtr),
+				EndDir:          *endDirPtr,
+				WantCerts:       *wantCertsPtr,
+				GenAuth:         *genAuth,
+				Log:             logger,
+				Clean:           *cleanPtr,
+				Diff:            *diffPtr,
+				Update:          messenger,
+				VersionInfo:     eUtils.VersionHelper,
+				FileFilter:      fileFilter,
+				ProjectIndex:    indexSlice,
 			}
 			waitg.Add(1)
 			go func() {

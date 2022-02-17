@@ -46,6 +46,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
 	indexPtr := flag.String("index", "", "Specifies which projects are indexed")
 	restrictedPtr := flag.String("restricted", "", "Specfies which projects have restricted access.")
+	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -219,7 +220,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 			// Upload tokens from the given token directory
 			fmt.Println("Creating tokens")
-			tokens := il.UploadTokens(namespaceTokenConfigs, v, logger)
+			tokens := il.UploadTokens(namespaceTokenConfigs, fileFilterPtr, v, logger)
 			if len(tokens) > 0 {
 				logger.Println(*namespaceVariable + " tokens successfully created.")
 			} else {
@@ -242,11 +243,15 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
 		} else {
 			if *rotateTokens {
-				fmt.Println("Rotating tokens.")
+				if *fileFilterPtr == "" {
+					fmt.Println("Rotating tokens.")
+				} else {
+					fmt.Println("Adding token: " + *fileFilterPtr)
+				}
 			}
 		}
 
-		if *rotateTokens || *tokenExpiration {
+		if (*rotateTokens || *tokenExpiration) && *fileFilterPtr == "" {
 			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
 			if getOrRevokeError != nil {
 				fmt.Println("Token revocation or access failure.  Cannot continue.")
@@ -268,22 +273,20 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 		if *updatePolicy {
 			// Upload Create/Update policies from the given policy directory
-			fmt.Println("Updating policy")
+			fmt.Println("Updating policies")
 			errTokenPolicy := il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
 			if errTokenPolicy != nil {
 				fmt.Println("Policy update failed.  Cannot continue.")
 				os.Exit(-1)
 			} else {
-				fmt.Println("Policy updated")
+				fmt.Println("Policies updated")
 			}
 		}
 
 		if *rotateTokens && !*tokenExpiration {
-			fmt.Println("Rotating tokens.")
-
 			// Create new tokens.
-			tokens := il.UploadTokens(namespaceTokenConfigs, v, logger)
-			if !*prodPtr && *namespaceVariable == "vault" {
+			tokens := il.UploadTokens(namespaceTokenConfigs, fileFilterPtr, v, logger)
+			if !*prodPtr && *namespaceVariable == "vault" && *fileFilterPtr == "" {
 				//
 				// Dev, QA specific token creation.
 				//
@@ -323,7 +326,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				// Overwrite new.
 				for _, token := range tokens {
 					// Everything but webapp give access by app role and secret.
-					if token.Name != "webapp" {
+					if token.Name != "admin" && token.Name != "webapp" && !strings.Contains(token.Name, "unrestricted") {
 						tokenMap[token.Name] = token.Value
 					}
 				}
@@ -402,7 +405,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		// Upload policies from the given policy directory
 		il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
 		// Upload tokens from the given token directory
-		tokens := il.UploadTokens(namespaceTokenConfigs, v, logger)
+		tokens := il.UploadTokens(namespaceTokenConfigs, nil, v, logger)
 		if !*prodPtr {
 			tokenMap := map[string]interface{}{}
 			for _, token := range tokens {
