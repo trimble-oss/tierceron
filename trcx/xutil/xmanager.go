@@ -82,8 +82,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		if len(config.ProjectIndex) > 0 {
 			mod.ProjectIndex = config.ProjectIndex
 			mod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
-			mod.IndexName = config.IndexName
-			mod.IndexValue = config.IndexValue
+			mod.SectionName = config.SectionName
+			mod.SubSectionValue = config.SubSectionValue
 		}
 		if config.Token == "novault" {
 			noVault = true
@@ -96,7 +96,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 			for _, templatePath := range templatePaths {
 				if strings.Contains(templatePath, indexed) {
 					filteredTemplatePaths = append(filteredTemplatePaths, templatePath)
-					listValues, err := mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + config.IndexValue)
+					listValues, err := mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectIndex[0] + "/" + config.SectionName + "/" + config.SubSectionValue)
 					if err != nil {
 						eUtils.LogInfo("Couldn't list services for indexed path", logger)
 					}
@@ -210,7 +210,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 		for {
 			select {
 			case tResult := <-templateResultChan:
-				if config.Env == tResult.Env && config.IndexValue == tResult.IndexValue {
+				if config.Env == tResult.Env && config.SubSectionValue == tResult.SubSectionValue {
 					sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
 					sliceValueSection = append(sliceValueSection, tResult.ValueSection)
 					sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
@@ -271,7 +271,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				var listValues *api.Secret
 				var err error
 				if len(config.ProjectIndex) > 0 { //If eid -> look inside Index and grab all environments
-					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + config.IndexValue + "/")
+					listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectIndex[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/")
 				} else if indexed {
 					listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
 				} else {
@@ -334,8 +334,9 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				goMod.ProjectIndex = config.ProjectIndex
 				if len(goMod.ProjectIndex) > 0 {
 					goMod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
-					goMod.IndexName = config.IndexName
-					goMod.IndexValue = config.IndexValue
+					goMod.SectionKey = config.SectionKey
+					goMod.SectionName = config.SectionName
+					goMod.SubSectionValue = config.SubSectionValue
 				}
 			}
 
@@ -356,8 +357,8 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				requestedVersion = goMod.Version
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				if goMod.IndexName != "" && goMod.IndexValue != "" {
-					goMod.IndexPath = "super-secrets/Index/" + project + "/" + goMod.IndexName + "/" + goMod.IndexValue + "/" + service
+				if goMod.SectionName != "" && goMod.SubSectionValue != "" {
+					goMod.IndexPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service
 				}
 				cds.Init(goMod, c.SecretMode, true, project, cPaths, logger, service)
 			}
@@ -385,7 +386,7 @@ func GenerateSeedsFromVaultRaw(config eUtils.DriverConfig, fromVault bool, templ
 				config.Log,
 			)
 			templateResult.Env = goMod.Env + "_" + requestedVersion
-			templateResult.IndexValue = config.IndexValue
+			templateResult.SubSectionValue = config.SubSectionValue
 			templateResultChan <- &templateResult
 		}(templatePath, multiService, config, noVault, commonPaths)
 	}
@@ -546,7 +547,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfi
 		} else if len(config.ProjectIndex) > 0 {
 			envBasePath, _, _, _ := kv.PreCheckEnvironment(config.EnvRaw)
 
-			endPath = config.EndDir + envBasePath + "/Index/" + config.ProjectIndex[0] + "/" + config.IndexName + "/" + config.IndexValue + "_seed.yml"
+			endPath = config.EndDir + envBasePath + config.SectionKey + config.ProjectIndex[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "_seed.yml"
 		} else {
 			endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 		}

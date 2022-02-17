@@ -49,8 +49,8 @@ func NewProperties(v *sys.Vault, mod *kv.Modifier, env string, project string, s
 	properties := Properties{}
 	properties.mod = mod
 	properties.mod.Env = env
-	if mod.IndexName != "" && mod.IndexValue != "" {
-		properties.mod.IndexPath = "super-secrets/Index/" + project + "/" + mod.IndexName + "/" + mod.IndexValue + "/" + service
+	if mod.SectionName != "" && mod.SubSectionValue != "" {
+		properties.mod.IndexPath = "super-secrets" + mod.SectionKey + project + "/" + mod.SectionName + "/" + mod.SubSectionValue + "/" + service
 	} else {
 		properties.mod.IndexPath = ""
 	}

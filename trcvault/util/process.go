@@ -436,8 +436,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		if services[i] == "Database" {
 			// TODO: This could be an api call vault list - to list what's available with rid's.
 			// East and west...
-			goMod.IndexName = "regionId"
-			regions, err := goMod.ListIndexes(projects[i], goMod.IndexName)
+			goMod.SectionName = "regionId"
+			regions, err := goMod.ListSubsection("/Index/", projects[i], goMod.SectionName)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 				return err
@@ -448,7 +448,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 
 		for _, indexValue := range indexValues {
-			goMod.IndexValue = indexValue
+			goMod.SubSectionValue = indexValue
 			ok := false
 			properties, err := NewProperties(vault, goMod, pluginConfig["env"].(string), projects[i], services[i], logger)
 			if err != nil {

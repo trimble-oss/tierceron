@@ -34,8 +34,9 @@ type Modifier struct {
 	VersionFilter    []string     // Used to filter vault paths
 	RawEnv           string
 	ProjectIndex     []string // Which projects are indexed.
-	IndexName        string   // The name of the actual index.
-	IndexValue       string   // The actual value for the index
+	SectionKey       string   // The section key: Index or Restricted.
+	SectionName      string   // The name of the actual subsection.
+	SubSectionValue  string   // The actual value for the sub section.
 	IndexPath        string   // The path to the Index (both seed and vault)
 }
 
@@ -661,9 +662,9 @@ func GetAcceptedTemplatePaths(modCheck *Modifier, templatePaths []string) ([]str
 	return templatePaths, nil
 }
 
-func (m *Modifier) ListIndexes(project string, indexName string) ([]string, error) {
+func (m *Modifier) ListSubsection(sectionKey string, project string, indexName string) ([]string, error) {
 	var indexes []string
-	secret, err := m.List("super-secrets/Index/" + project + "/" + indexName)
+	secret, err := m.List("super-secrets" + sectionKey + project + "/" + indexName)
 	if secret != nil {
 		if _, ok := secret.Data["keys"].([]interface{}); ok {
 			for _, index := range secret.Data["keys"].([]interface{}) {
