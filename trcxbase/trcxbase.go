@@ -305,31 +305,26 @@ skipDiff:
 				// Only look at index values....
 				testMod.Env = envSlice[0]
 				var listValues *api.Secret
-				if len(*indexPtr) > 0 || len(*restrictedPtr) > 0 { //If eid -> look inside Index and grab all environments
-					subSectionPath := ""
+				if len(projectSectionsSlice) > 0 { //If eid -> look inside Index and grab all environments
+					subSectionPath := projectSectionsSlice[0] + "/"
 
-					if len(*indexPtr) > 0 {
-						subSectionPath = projectSectionsSlice[0] + "/"
-					}
 					listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath)
-					if len(*indexPtr) > 0 {
-						// Further path modifications needed.
-						for k, valuesPath := range listValues.Data {
-							for _, indexNameInterface := range valuesPath.([]interface{}) {
-								subSectionName = strings.TrimSuffix(indexNameInterface.(string), "/")
-								indexList, err := testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath + "/" + indexNameInterface.(string))
-								if err != nil {
-									logger.Printf(err.Error())
-								}
+					// Further path modifications needed.
+					for k, valuesPath := range listValues.Data {
+						for _, indexNameInterface := range valuesPath.([]interface{}) {
+							subSectionName = strings.TrimSuffix(indexNameInterface.(string), "/")
+							indexList, err := testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath + "/" + indexNameInterface.(string))
+							if err != nil {
+								logger.Printf(err.Error())
+							}
 
-								for _, indexPath := range indexList.Data {
-									for _, indexInterface := range indexPath.([]interface{}) {
-										newSectionSlice = append(newSectionSlice, strings.ReplaceAll(indexInterface.(string), "/", ""))
-									}
+							for _, indexPath := range indexList.Data {
+								for _, indexInterface := range indexPath.([]interface{}) {
+									newSectionSlice = append(newSectionSlice, strings.ReplaceAll(indexInterface.(string), "/", ""))
 								}
 							}
-							delete(listValues.Data, k) //delete it so it doesn't repeat below
 						}
+						delete(listValues.Data, k) //delete it so it doesn't repeat below
 					}
 				} else {
 					listValues, err = testMod.ListEnv("values/")

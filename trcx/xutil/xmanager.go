@@ -238,7 +238,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					var listValues *api.Secret
 					var err error
 					if len(config.ProjectSections) > 0 { //If eid -> look inside Index and grab all environments
-						listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/")
+						listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName)
 					} else if indexed {
 						listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
 					} else {
