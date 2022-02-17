@@ -50,9 +50,9 @@ func NewProperties(v *sys.Vault, mod *kv.Modifier, env string, project string, s
 	properties.mod = mod
 	properties.mod.Env = env
 	if mod.SectionName != "" && mod.SubSectionValue != "" {
-		properties.mod.IndexPath = "super-secrets" + mod.SectionKey + project + "/" + mod.SectionName + "/" + mod.SubSectionValue + "/" + service
+		properties.mod.SectionPath = "super-secrets" + mod.SectionKey + project + "/" + mod.SectionName + "/" + mod.SubSectionValue + "/" + service
 	} else {
-		properties.mod.IndexPath = ""
+		properties.mod.SectionPath = ""
 	}
 	properties.cds = new(utils.ConfigDataStore)
 	var commonPaths []string
