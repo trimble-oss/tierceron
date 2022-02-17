@@ -159,10 +159,15 @@ func LogInfo(msg string, logger *log.Logger) {
 	if !headlessService {
 		fmt.Println(msg)
 	}
-	_prefix := logger.Prefix()
-	logger.SetPrefix("[INFO]")
-	logger.Println(msg)
-	logger.SetPrefix(_prefix)
+	if logger != nil {
+		_prefix := logger.Prefix()
+		logger.SetPrefix("[INFO]")
+		logger.Println(msg)
+		logger.SetPrefix(_prefix)
+	} else if headlessService {
+		fmt.Println(msg)
+		os.Exit(1)
+	}
 }
 
 //LogWarningsObject writes warnings to the passed logger object and exits
