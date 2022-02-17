@@ -41,7 +41,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 
 		if err != nil {
 			eUtils.LogInfo(fmt.Sprintf("Uninitialized environment.  Please initialize environment. %v\n", err), logger)
-			os.Exit(1)
+			return err
 		}
 		dataPathsFull = dp
 	}
