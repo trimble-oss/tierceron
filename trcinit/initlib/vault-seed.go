@@ -45,7 +45,7 @@ func SeedVault(insecure bool,
 	addr string,
 	token string,
 	env string,
-	indexSlice []string,
+	slice []string,
 	logger *log.Logger,
 	service string,
 	uploadCert bool) {
@@ -132,16 +132,16 @@ func SeedVault(insecure bool,
 			}
 
 			for _, fileSteppedInto := range filesSteppedInto {
-				if fileSteppedInto.Name() == "Index" {
+				if fileSteppedInto.Name() == "Index" || fileSteppedInto.Name() == "Restricted" {
 					projectDirectories, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
 					if err != nil {
 						logger.Printf("Couldn't read into: %s \n", fileSteppedInto.Name())
 					}
 					// Iterate of projects...
 					for _, projectDirectory := range projectDirectories {
-						if len(indexSlice) > 0 {
+						if len(slice) > 0 {
 							acceptProject := false
-							for _, index := range indexSlice {
+							for _, index := range slice {
 								if index == projectDirectory.Name() {
 									acceptProject = true
 									break
@@ -151,17 +151,17 @@ func SeedVault(insecure bool,
 								continue
 							}
 						}
-						indexNames, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name())
+						sectionNames, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name())
 						if err != nil {
 							logger.Printf("Couldn't read into: %s \n", projectDirectory.Name())
 						}
-						for _, indexName := range indexNames {
-							indexConfigFiles, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + indexName.Name())
+						for _, sectionName := range sectionNames {
+							sectionConfigFiles, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name())
 							if err != nil {
-								logger.Printf("Couldn't read into: %s \n", indexName.Name())
+								logger.Printf("Couldn't read into: %s \n", sectionName.Name())
 							}
-							for _, indexConfigFile := range indexConfigFiles {
-								path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + indexName.Name() + "/" + indexConfigFile.Name()
+							for _, sectionConfigFile := range sectionConfigFiles {
+								path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
 								SeedVaultFromFile(insecure, path, addr, token, env, logger, service, uploadCert)
 							}
 						}
@@ -236,6 +236,12 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 		eUtils.LogInfo("Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", logger)
 		os.Exit(1)
 	}
+
+	if strings.HasPrefix(filepath, "Restricted/") { //Fix incoming pathing for restricted projects
+		i := strings.LastIndex(filepath, "/"+env)
+		filepath = filepath[:i]
+	}
+
 	err := yaml.Unmarshal(fData, &rawYaml)
 	utils.LogErrorObject(err, logger, true)
 	seed, ok := rawYaml.(map[interface{}]interface{})
@@ -299,7 +305,7 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 	mod, err := kv.NewModifier(insecure, token, vaultAddr, env, nil, logger) // Connect to vault
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
-	if strings.HasPrefix(filepath, "Index/") {
+	if strings.HasPrefix(filepath, "Index/") || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
 		mod.IndexPath = strings.TrimSuffix(filepath, "_seed.yml")
 		logger.Println("Seeding configuration data for the following templates:" + mod.IndexPath)
 	} else {
