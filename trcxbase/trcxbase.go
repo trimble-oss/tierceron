@@ -81,7 +81,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	versionPtr := flag.Bool("versions", false, "Gets version metadata information")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
-	indexPtr := flag.String("index", "", "Specifies which projects are indexed")
+	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")
 	restrictedPtr := flag.String("restricted", "", "Specifies which projects have restricted access.")
 
 	// Initialize logging
@@ -115,8 +115,8 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	}
 
 	//Checks for indexed projects
-	if len(*indexPtr) > 0 {
-		projectSectionsSlice = append(projectSectionsSlice, strings.Split(*indexPtr, ",")...)
+	if len(*indexedPtr) > 0 {
+		projectSectionsSlice = append(projectSectionsSlice, strings.Split(*indexedPtr, ",")...)
 	}
 
 	if len(*restrictedPtr) > 0 {
@@ -141,10 +141,10 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if *diffPtr && *versionPtr {
 		fmt.Println("-version flag cannot be used with -diff flag")
 		os.Exit(1)
-	} else if *diffPtr && len(*indexPtr) > 0 {
+	} else if *diffPtr && len(*indexedPtr) > 0 {
 		fmt.Println("-index flag cannot be used with -diff flag")
 		os.Exit(1)
-	} else if *versionPtr && (len(*indexPtr) > 0 || len(*restrictedPtr) > 0) {
+	} else if *versionPtr && (len(*indexedPtr) > 0 || len(*restrictedPtr) > 0) {
 		fmt.Println("-index and -restricted flags cannot be used with -version flag")
 		os.Exit(1)
 	} else if (strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")) && *addrPtr == "" {
@@ -287,9 +287,9 @@ skipDiff:
 	var waitg sync.WaitGroup
 	sectionKey := "/"
 	if len(envSlice) == 1 {
-		if strings.Contains(envSlice[0], "*") || len(*indexPtr) > 0 || len(*restrictedPtr) > 0 {
+		if strings.Contains(envSlice[0], "*") || len(*indexedPtr) > 0 || len(*restrictedPtr) > 0 {
 
-			if len(*indexPtr) > 0 {
+			if len(*indexedPtr) > 0 {
 				sectionKey = "/Index/"
 			} else if len(*restrictedPtr) > 0 {
 				sectionKey = "/Restricted/"

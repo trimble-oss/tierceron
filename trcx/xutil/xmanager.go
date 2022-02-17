@@ -228,7 +228,9 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		// Checking for existence of values for service in vault.
 		//
 		if strings.Contains(config.EnvRaw, ".*") || len(config.ProjectSections) > 0 {
+			anyServiceFound := false
 			serviceFound := false
+			var acceptedTemplatePaths []string
 			for _, templatePath := range templatePaths {
 				var service string
 				_, service, templatePath = vcutils.GetProjectService(templatePath)
@@ -237,7 +239,9 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				if (strings.Contains(mod.Env, ".") || len(config.ProjectSections) > 0) && !serviceFound {
 					var listValues *api.Secret
 					var err error
-					if len(config.ProjectSections) > 0 { //If eid -> look inside Index and grab all environments
+					if config.SectionKey == "/Index/" && len(config.ProjectSections) > 0 {
+						listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/")
+					} else if len(config.ProjectSections) > 0 { //If eid -> look inside Index and grab all environments
 						listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName)
 					} else if indexed {
 						listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
@@ -263,10 +267,21 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 						}
 					}
 				}
+				if serviceFound { //Exit for irrelevant enterprises
+					acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
+					anyServiceFound = true
+					serviceFound = false
+				}
 			}
-			if !serviceFound { //Exit for irrelevant enterprises
+
+			if !anyServiceFound { //Exit for irrelevant enterprises
 				eUtils.LogInfo("No relevant services were found for this environment -"+mod.Env, logger)
 				return "", false, ""
+			} else {
+				if len(acceptedTemplatePaths) > 0 {
+					// template paths further trimmed by vault.
+					templatePaths = acceptedTemplatePaths
+				}
 			}
 		}
 	}
@@ -325,7 +340,11 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
 				if goMod.SectionName != "" && goMod.SubSectionValue != "" {
-					goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service
+					if goMod.SectionKey == "/Index/" {
+						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service
+					} else {
+						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
+					}
 				}
 				cds.Init(goMod, c.SecretMode, true, project, cPaths, logger, service)
 
