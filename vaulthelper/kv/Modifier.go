@@ -37,7 +37,7 @@ type Modifier struct {
 	SectionKey       string   // The section key: Index or Restricted.
 	SectionName      string   // The name of the actual subsection.
 	SubSectionValue  string   // The actual value for the sub section.
-	IndexPath        string   // The path to the Index (both seed and vault)
+	SectionPath      string   // The path to the Index (both seed and vault)
 }
 
 // PreCheckEnvironment
@@ -163,8 +163,8 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 		fullPath += m.Env + "/"
 	}
 
-	if m.IndexPath != "" && !strings.HasPrefix(fullPath, "templates") {
-		fullPath += m.IndexPath + "/"
+	if m.SectionPath != "" && !strings.HasPrefix(fullPath, "templates") {
+		fullPath += m.SectionPath + "/"
 	}
 	if len(pathBlocks) > 1 {
 		fullPath += pathBlocks[1]
@@ -182,8 +182,8 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 //			errors generated from reading
 func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	// Create full path
-	if len(m.IndexPath) > 0 && !strings.HasPrefix(path, "templates") { //Template paths are not indexed -> values & super-secrets are
-		path = strings.TrimSuffix(m.IndexPath, "/")
+	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") { //Template paths are not indexed -> values & super-secrets are
+		path = strings.TrimSuffix(m.SectionPath, "/")
 	}
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	fullPath := pathBlocks[0] + "data/"

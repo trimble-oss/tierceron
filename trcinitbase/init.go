@@ -44,7 +44,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
-	indexPtr := flag.String("index", "", "Specifies which projects are indexed")
+	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")
 	restrictedPtr := flag.String("restricted", "", "Specfies which projects have restricted access.")
 	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
 
@@ -69,14 +69,14 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		os.Exit(1)
 	}
 
-	if len(*indexPtr) > 0 && len(*restrictedPtr) > 0 {
+	if len(*indexedPtr) > 0 && len(*restrictedPtr) > 0 {
 		fmt.Println("-index and -restricted flag cannot be used together.")
 		os.Exit(1)
 	}
 
 	var indexSlice = make([]string, 0) //Checks for indexed projects
-	if len(*indexPtr) > 0 {
-		indexSlice = append(indexSlice, strings.Split(*indexPtr, ",")...)
+	if len(*indexedPtr) > 0 {
+		indexSlice = append(indexSlice, strings.Split(*indexedPtr, ",")...)
 	}
 
 	var restrictedSlice = make([]string, 0) //Checks for restricted projects
