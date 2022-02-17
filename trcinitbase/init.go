@@ -45,6 +45,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
 	indexPtr := flag.String("index", "", "Specifies which projects are indexed")
+	restrictedPtr := flag.String("restricted", "", "Specfies which projects have restricted access.")
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -67,10 +68,19 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		os.Exit(1)
 	}
 
-	var indexSlice = make([]string, 0)
-	//Checks for indexed projects
+	if len(*indexPtr) > 0 && len(*restrictedPtr) > 0 {
+		fmt.Println("-index and -restricted flag cannot be used together.")
+		os.Exit(1)
+	}
+
+	var indexSlice = make([]string, 0) //Checks for indexed projects
 	if len(*indexPtr) > 0 {
 		indexSlice = append(indexSlice, strings.Split(*indexPtr, ",")...)
+	}
+
+	var restrictedSlice = make([]string, 0) //Checks for restricted projects
+	if len(*restrictedPtr) > 0 {
+		restrictedSlice = append(restrictedSlice, strings.Split(*restrictedPtr, ",")...)
 	}
 
 	namespaceTokenConfigs := "vault_namespaces" + string(os.PathSeparator) + "token_files"
@@ -437,7 +447,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Invalid token - token: ", *tokenPtr)
 			os.Exit(1)
 		}
-		il.SeedVault(*insecurePtr, *seedPtr, *addrPtr, v.GetToken(), *envPtr, indexSlice, logger, *servicePtr, *uploadCertPtr)
+		var slice = make([]string, 0) //Assign slice with the appriopiate slice
+		if len(restrictedSlice) > 0 {
+			slice = restrictedSlice
+		} else if len(indexSlice) > 0 {
+			slice = indexSlice
+		}
+		il.SeedVault(*insecurePtr, *seedPtr, *addrPtr, v.GetToken(), *envPtr, slice, logger, *servicePtr, *uploadCertPtr)
 	}
 
 	logger.SetPrefix("[INIT]")
