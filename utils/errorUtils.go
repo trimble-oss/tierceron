@@ -164,8 +164,7 @@ func LogInfo(msg string, logger *log.Logger) {
 		logger.SetPrefix("[INFO]")
 		logger.Println(msg)
 		logger.SetPrefix(_prefix)
-	} else if headlessService {
-		fmt.Println(msg)
+	} else if !headlessService {
 		os.Exit(1)
 	}
 }
