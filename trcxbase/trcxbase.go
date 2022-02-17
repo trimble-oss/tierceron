@@ -309,6 +309,12 @@ skipDiff:
 					subSectionPath := projectSectionsSlice[0] + "/"
 
 					listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath)
+					if err != nil {
+						if strings.Contains(err.Error(), "permission denied") {
+							eUtils.LogErrorMessage("Attempt to access restricted section of the vault denied.", logger, true)
+						}
+					}
+
 					// Further path modifications needed.
 					for k, valuesPath := range listValues.Data {
 						for _, indexNameInterface := range valuesPath.([]interface{}) {
