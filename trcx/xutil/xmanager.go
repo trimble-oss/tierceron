@@ -325,7 +325,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
 				if goMod.SectionName != "" && goMod.SubSectionValue != "" {
-					goMod.IndexPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service
+					goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service
 				}
 				cds.Init(goMod, c.SecretMode, true, project, cPaths, logger, service)
 
@@ -469,9 +469,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	var mod *kv.Modifier
 
 	if config.Token != "novault" {
+		var err error
 		// TODO: Redo/deleted the indexedEnv work...
 		// Get filtered using mod and templates.
-		mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
+		mod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
 			os.Exit(1)

@@ -306,8 +306,8 @@ func SeedVaultFromData(insecure bool, filepath string, fData []byte, vaultAddr s
 	utils.LogErrorObject(err, logger, true)
 	mod.Env = env
 	if strings.HasPrefix(filepath, "Index/") || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
-		mod.IndexPath = strings.TrimSuffix(filepath, "_seed.yml")
-		logger.Println("Seeding configuration data for the following templates:" + mod.IndexPath)
+		mod.SectionPath = strings.TrimSuffix(filepath, "_seed.yml")
+		logger.Println("Seeding configuration data for the following templates:" + mod.SectionPath)
 	} else {
 		logger.Println("Seeding configuration data for the following templates:" + filepath)
 	}
