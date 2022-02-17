@@ -34,7 +34,8 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 	serviceMap := make(map[string]bool)
 
 	if modCheck != nil {
-		serviceInterface, err := modCheck.ListEnv("super-secrets/" + modCheck.Env)
+		envVersion := SplitEnv(config.Env)
+		serviceInterface, err := modCheck.ListEnv("super-secrets/" + envVersion[0])
 		modCheck.Env = config.Env
 		if err != nil {
 			return nil, err
@@ -48,13 +49,13 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 			serviceMap[data.(string)] = true
 		}
 
-		if len(config.ProjectSections) > 0 { //Filter by project
-			for _, indexed := range config.ProjectSections {
-				for _, templatePath := range templatePaths {
-					if strings.Contains(templatePath, indexed) {
-						listValues, err := modCheck.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue)
+		for _, templatePath := range templatePaths {
+			if len(config.ProjectSections) > 0 { //Filter by project
+				for _, projectSection := range config.ProjectSections {
+					if strings.Contains(templatePath, "/"+projectSection+"/") {
+						listValues, err := modCheck.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName)
 						if err != nil {
-							LogInfo("Couldn't list services for indexed path", config.Log)
+							LogInfo("Couldn't list services for project path", config.Log)
 						}
 						for _, valuesPath := range listValues.Data {
 							for _, service := range valuesPath.([]interface{}) {
@@ -71,7 +72,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 		service := templatePathParts[len(templatePathParts)-2]
 
 		if _, ok := serviceMap[service]; ok {
-			if config.SectionKey == "" {
+			if config.SectionKey == "" || config.SectionKey == "/" {
 				acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
 			} else {
 				for _, sectionProject := range config.ProjectSections {
@@ -81,7 +82,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 				}
 			}
 		} else {
-			if config.SectionKey != "" {
+			if config.SectionKey != "" && config.SectionKey != "/" {
 				for _, sectionProject := range config.ProjectSections {
 					if strings.Contains(templatePath, "/"+sectionProject+"/") {
 						acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
