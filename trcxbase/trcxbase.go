@@ -338,11 +338,9 @@ skipDiff:
 				if err != nil {
 					logger.Printf(err.Error())
 				}
-				if listValues == nil {
-					fmt.Println("No values found.")
-					os.Exit(1)
+				if len(newSectionSlice) > 0 {
+					sectionSlice = newSectionSlice
 				}
-				sectionSlice = newSectionSlice
 			}
 		}
 	}
@@ -394,7 +392,7 @@ skipDiff:
 			waitg.Add(1)
 			go func() {
 				defer waitg.Done()
-				eUtils.ConfigControl(ctx, config, configDriver, logger)
+				eUtils.ConfigControl(ctx, &config, configDriver, logger)
 			}()
 		}
 	}

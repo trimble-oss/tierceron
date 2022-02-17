@@ -2,6 +2,8 @@ package utils
 
 import (
 	"log"
+	"strings"
+	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 )
@@ -25,6 +27,43 @@ func InitVaultMod(config *DriverConfig) (*helperkv.Modifier, *sys.Vault, error) 
 	mod.VersionFilter = config.VersionFilter
 
 	return mod, vault, nil
+}
+
+func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templatePaths []string) ([]string, error) {
+	var acceptedTemplatePaths []string
+	serviceMap := make(map[string]bool)
+
+	if modCheck != nil {
+		serviceInterface, err := modCheck.ListEnv("super-secrets/" + modCheck.Env)
+		modCheck.Env = config.Env
+		if err != nil {
+			return nil, err
+		}
+		if serviceInterface == nil || serviceInterface.Data["keys"] == nil {
+			return templatePaths, nil
+		}
+
+		serviceList := serviceInterface.Data["keys"]
+		for _, data := range serviceList.([]interface{}) {
+			serviceMap[data.(string)] = true
+		}
+	}
+	for _, templatePath := range templatePaths {
+		templatePathParts := strings.Split(templatePath, "/")
+		service := templatePathParts[len(templatePathParts)-2]
+
+		if _, ok := serviceMap[service]; ok {
+			if config.SectionKey == "" || strings.Contains(templatePath, config.SectionKey) {
+				acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
+			}
+		}
+	}
+
+	if len(acceptedTemplatePaths) > 0 {
+		templatePaths = acceptedTemplatePaths
+	}
+
+	return templatePaths, nil
 }
 
 // Helper to easiliy intialize a vault and a mod all at once.

@@ -25,7 +25,7 @@ func SplitEnv(env string) []string {
 	return envVersion
 }
 
-func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier, logger *log.Logger) map[string]map[string]interface{} {
+func GetProjectVersionInfo(config *DriverConfig, mod *kv.Modifier, logger *log.Logger) map[string]map[string]interface{} {
 	versionMetadataMap := make(map[string]map[string]interface{})
 	mod.VersionFilter = config.VersionFilter
 	var secretMetadataMap map[string]map[string]interface{}
@@ -66,7 +66,7 @@ func GetProjectVersionInfo(config DriverConfig, mod *kv.Modifier, logger *log.Lo
 	return versionMetadataMap
 }
 
-func GetProjectVersions(config DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
+func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
 	var versionNumbers []int
 	for valuePath, data := range versionMetadataMap {
 		projectFound := false
@@ -91,7 +91,7 @@ func GetProjectVersions(config DriverConfig, versionMetadataMap map[string]map[s
 	return versionNumbers
 }
 
-func BoundCheck(config DriverConfig, versionNumbers []int, version string) {
+func BoundCheck(config *DriverConfig, versionNumbers []int, version string) {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if runtime.GOOS == "windows" {

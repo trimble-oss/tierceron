@@ -17,7 +17,7 @@ import (
 var mutex = &sync.Mutex{}
 
 //GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverConfig, logger *log.Logger) interface{} {
+func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig, logger *log.Logger) interface{} {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if runtime.GOOS == "windows" {
@@ -66,11 +66,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config eUtils.DriverCon
 
 	_, _, indexedEnv, _ := kv.PreCheckEnvironment(config.Env)
 	if indexedEnv {
-		templatePaths, err = kv.GetAcceptedTemplatePaths(modCheck, templatePaths)
+		templatePaths, err = eUtils.GetAcceptedTemplatePaths(config, modCheck, templatePaths)
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
 		}
-		endPaths, err = kv.GetAcceptedTemplatePaths(modCheck, endPaths)
+		endPaths, err = eUtils.GetAcceptedTemplatePaths(config, modCheck, endPaths)
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
 		}
