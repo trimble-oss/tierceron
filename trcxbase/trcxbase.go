@@ -316,6 +316,9 @@ skipDiff:
 					}
 
 					// Further path modifications needed.
+					if listValues == nil {
+						eUtils.LogInfo("No available indexes found for "+subSectionPath, nil)
+					}
 					for k, valuesPath := range listValues.Data {
 						for _, indexNameInterface := range valuesPath.([]interface{}) {
 							subSectionName = strings.TrimSuffix(indexNameInterface.(string), "/")
