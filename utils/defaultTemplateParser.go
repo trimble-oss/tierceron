@@ -13,7 +13,7 @@ const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
 type ProcessContext interface{}
 
-type ConfigDriver func(ctx ProcessContext, config DriverConfig, logger *log.Logger) interface{}
+type ConfigDriver func(ctx ProcessContext, config *DriverConfig, logger *log.Logger) interface{}
 
 type DriverConfig struct {
 	Context         ProcessContext
@@ -45,7 +45,7 @@ type DriverConfig struct {
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
-func ConfigControl(ctx ProcessContext, config DriverConfig, drive ConfigDriver, logger *log.Logger) {
+func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver, logger *log.Logger) {
 	multiProject := false
 
 	config.EndDir = strings.Replace(config.EndDir, "\\", "/", -1)

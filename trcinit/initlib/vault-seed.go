@@ -83,7 +83,7 @@ func SeedVault(insecure bool,
 			Log:            logger,
 		}
 
-		_, _, seedData := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths, logger)
+		_, _, seedData := xutil.GenerateSeedsFromVaultRaw(&config, true, templatePaths, logger)
 
 		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
 
