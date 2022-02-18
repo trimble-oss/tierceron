@@ -36,7 +36,9 @@ type TrcFlowContext struct {
 	RemoteDataSource map[string]interface{}
 	GoMod            *helperkv.Modifier
 	FlowSource       string // The name of the flow source identified by project.
+	FlowService      string // The name of the flow source identified by service.
 	FlowSourceAlias  string // May be a database name
 	FlowName         string // May be a table name.
+	FlowData         interface{}
 	ChangeFlowName   string // Change flow table name.
 }
