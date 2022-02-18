@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
-	vscutils "tierceron/trcvault/util"
+	trcflow "tierceron/trcflow/flumen"
 	eUtils "tierceron/utils"
 )
 
@@ -42,5 +42,5 @@ func main() {
 	pluginConfig["insecure"] = true
 	pluginConfig["exitOnFailure"] = true
 
-	vscutils.ProcessFlows(pluginConfig, logger)
+	trcflow.ProcessFlows(pluginConfig, logger)
 }
