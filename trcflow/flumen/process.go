@@ -172,7 +172,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 		trcFlowContext.FlowName = eUtils.GetTemplateFileName(trcFlowContext.FlowPath, trcFlowContext.FlowService)
 		trcFlowContext.ChangeFlowName = trcFlowContext.FlowName + "_Changes"
-
+		trcFlowMachineContext.FlowMap[trcFlowContext.FlowService] = trcFlowContext
 		// Set up schema callback for table to track.
 		trcFlowMachineContext.CallAddTableSchema = func(tableSchema sqle.PrimaryKeySchema, tableName string) {
 			// Create table if necessary.
@@ -290,8 +290,10 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 				if flowNotifications != nil && len(flowNotifications) > 0 {
 					// look up channels and notify them too.
 					for _, flowNotification := range flowNotifications {
-						if _, ok := channelMap[flowNotification]; ok {
-							channelMap[flowNotification] <- true
+						if notifFlowCxt, ok := trcFlowMachineContext.FlowMap[flowNotification]; ok {
+							if notificationFlowChannel, ok := channelMap[notifFlowCxt.(*flowcore.TrcFlowContext).FlowPath]; ok {
+								notificationFlowChannel <- true
+							}
 						}
 					}
 				}
@@ -303,11 +305,14 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 			}
 			if changed && len(matrix) > 0 {
 				changedChannel <- true
-
 				if flowNotifications != nil && len(flowNotifications) > 0 {
 					// look up channels and notify them too.
 					for _, flowNotification := range flowNotifications {
-						channelMap[flowNotification] <- true
+						if notifFlowCxt, ok := trcFlowMachineContext.FlowMap[flowNotification]; ok {
+							if notificationFlowChannel, ok := channelMap[notifFlowCxt.(*flowcore.TrcFlowContext).FlowPath]; ok {
+								notificationFlowChannel <- true
+							}
+						}
 					}
 				}
 			}
@@ -551,6 +556,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		channelMap[flowName] = make(chan bool, 5)
 	}
 
+	trcFlowMachineContext.FlowMap = make(map[string]interface{})
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range tableList {
 			wg.Add(1)
