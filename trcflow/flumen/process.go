@@ -129,7 +129,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		}
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
-		seedError := util.SeedVaultById(trcFlowContext.GoMod, trcFlowContext.FlowService, vaultAddress, v.GetToken(), trcFlowContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, logger, trcFlowContext.FlowSourceAlias)
+		seedError := util.SeedVaultById(trcFlowContext.GoMod, trcFlowContext.FlowService, vaultAddress, v.GetToken(), trcFlowContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, logger, trcFlowContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
 			// Re-inject into changes because it might not be here yet...
