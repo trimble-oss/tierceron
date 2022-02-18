@@ -1,4 +1,4 @@
-package util
+package flumen
 
 import (
 	"database/sql"
@@ -11,14 +11,16 @@ import (
 	"syscall"
 	"time"
 
+	"tierceron/trcvault/util"
 	"tierceron/trcx/db"
 	extract "tierceron/trcx/extract"
 
+	flowcore "tierceron/trcflow/core"
 	helperkv "tierceron/vaulthelper/kv"
 
-	eUtils "tierceron/utils"
+	flowimpl "VaultConfig.TenantConfig/util"
 
-	tcutil "VaultConfig.TenantConfig/util"
+	eUtils "tierceron/utils"
 
 	sys "tierceron/vaulthelper/system"
 
@@ -26,17 +28,10 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
-type FlowType int64
-
 var tableCreationLock sync.Mutex
 var changesLock sync.Mutex
 
 var channelMap map[string]chan bool
-
-const (
-	TableSyncFlow FlowType = iota
-	TableEnrichFlow
-)
 
 func getChangeIdQuery(databaseName string, changeTable string) string {
 	return "SELECT id FROM " + databaseName + `.` + changeTable
@@ -64,22 +59,17 @@ func getInsertTrigger(databaseName string, tableName string, idColumnName string
 		` END;`
 }
 
-func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
-	goMod *helperkv.Modifier,
+func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
+	trcFlowContext *flowcore.TrcFlowContext,
 	vaultAddress string,
 	baseTableTemplate *extract.TemplateResultData,
 	service string,
 	v *sys.Vault,
-	databaseName string,
-	tableName string,
 	identityColumnName string,
-	changeTable string,
 	vaultIndexColumnName string,
 	isInit bool,
-	trcRemoteDataSource map[string]interface{},
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
-	logger *log.Logger,
-	flowSource string) error {
+	logger *log.Logger) error {
 
 	var matrixChangedEntries [][]string
 	var changedEntriesQuery string
@@ -89,16 +79,16 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	/*if isInit {
 		changedEntriesQuery = `SELECT ` + identityColumnName + ` FROM ` + databaseName + `.` + tableName
 	} else { */
-	changedEntriesQuery = getChangeIdQuery(databaseName, changeTable)
+	changedEntriesQuery = getChangeIdQuery(trcFlowContext.FlowSourceAlias, trcFlowContext.ChangeFlowName)
 	//}
 
-	_, _, matrixChangedEntries, err := db.Query(tierceronEngine, changedEntriesQuery)
+	_, _, matrixChangedEntries, err := db.Query(trcFlowMachineContext.TierceronEngine, changedEntriesQuery)
 	if err != nil {
 		eUtils.LogErrorObject(err, logger, false)
 	}
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
-		_, _, _, err = db.Query(tierceronEngine, getDeleteChangeQuery(databaseName, changeTable, changedId))
+		_, _, _, err = db.Query(trcFlowMachineContext.TierceronEngine, getDeleteChangeQuery(trcFlowContext.FlowSourceAlias, trcFlowContext.ChangeFlowName, changedId))
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
 		}
@@ -108,9 +98,9 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
 
-		changedTableQuery := `SELECT * FROM ` + databaseName + `.` + tableName + ` WHERE ` + identityColumnName + `='` + changedId + `'` // TODO: Implement query using changedId
+		changedTableQuery := `SELECT * FROM ` + trcFlowContext.FlowSourceAlias + `.` + trcFlowContext.FlowName + ` WHERE ` + identityColumnName + `='` + changedId + `'` // TODO: Implement query using changedId
 
-		_, changedTableColumns, changedTableRowData, err := db.Query(tierceronEngine, changedTableQuery)
+		_, changedTableColumns, changedTableRowData, err := db.Query(trcFlowMachineContext.TierceronEngine, changedTableQuery)
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
 			continue
@@ -127,13 +117,13 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		//Check for tenantId
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace below
-		indexPath, indexPathErr := tcutil.GetIndexedPathExt(tierceronEngine, rowDataMap, vaultIndexColumnName, databaseName, tableName, func(engine interface{}, query string) (string, []string, [][]string, error) {
+		indexPath, indexPathErr := flowimpl.GetIndexedPathExt(trcFlowMachineContext.TierceronEngine, rowDataMap, vaultIndexColumnName, trcFlowContext.FlowSourceAlias, trcFlowContext.FlowName, func(engine interface{}, query string) (string, []string, [][]string, error) {
 			return db.Query(engine.(*db.TierceronEngine), query)
 		})
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(indexPathErr, logger, false)
 			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = db.Query(tierceronEngine, getInsertChangeQuery(databaseName, changeTable, changedId))
+			_, _, _, err = db.Query(trcFlowMachineContext.TierceronEngine, getInsertChangeQuery(trcFlowContext.FlowSourceAlias, trcFlowContext.ChangeFlowName, changedId))
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			}
@@ -141,11 +131,11 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 		}
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
-		seedError := SeedVaultById(goMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, indexPath, logger, flowSource)
+		seedError := util.SeedVaultById(trcFlowContext.GoMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, indexPath, logger, trcFlowContext.FlowSourceAlias)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
 			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = db.Query(tierceronEngine, getInsertChangeQuery(databaseName, changeTable, changedId))
+			_, _, _, err = db.Query(trcFlowMachineContext.TierceronEngine, getInsertChangeQuery(trcFlowContext.FlowSourceAlias, trcFlowContext.ChangeFlowName, changedId))
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			}
@@ -154,7 +144,7 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 
 		// Push this change to the flow for delivery to remote data source.
 		if !isInit {
-			pushError := flowPushRemote(trcRemoteDataSource, rowDataMap)
+			pushError := flowPushRemote(trcFlowContext.RemoteDataSource, rowDataMap)
 			if pushError != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			}
@@ -165,44 +155,35 @@ func seedVaultFromChanges(tierceronEngine *db.TierceronEngine,
 	return nil
 }
 
-func ProcessFlow(tierceronEngine *db.TierceronEngine,
+func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
+	trcFlowContext *flowcore.TrcFlowContext,
 	vaultDatabaseConfig map[string]interface{},
 	vaultAddress string,
-	goMod *helperkv.Modifier,
 	sourceDatabaseConnectionMap map[string]interface{},
 	vault *sys.Vault,
-	extensionAuthData map[string]interface{},
-	env string,
 	flow string,
-	flowType FlowType,
+	flowType flowcore.FlowType,
 	changedChannel chan bool,
 	signalChannel chan os.Signal,
 	logger *log.Logger) error {
 
-	var flowSource string
 	var service string
 	var tableTemplateName string
-	var flowName string
-	var callTrcAddTableSchema func(tableSchema sqle.PrimaryKeySchema, tableName string)
-	var callTrcCreateTableTriggers func(identityColumnName string)
-	var callTrcDBQuery func(query string, changed bool, operation string, flowNotifications []string) [][]string
-	var callTrcGetFlowConfiguration func(flowTemplatePath string) (map[string]interface{}, bool)
-	var callTrcSyncTableCycle func(trcRemoteDataSource map[string]interface{}, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error)
 
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
-	if flowType == TableSyncFlow {
-		flowSource, service, tableTemplateName = eUtils.GetProjectService(flow)
-		flowName = eUtils.GetTemplateFileName(tableTemplateName, service)
-		changeFlowName := flowName + "_Changes"
+	if flowType == flowcore.TableSyncFlow {
+		trcFlowContext.FlowSource, service, tableTemplateName = eUtils.GetProjectService(flow)
+		trcFlowContext.FlowName = eUtils.GetTemplateFileName(tableTemplateName, service)
+		trcFlowContext.ChangeFlowName = trcFlowContext.FlowName + "_Changes"
 
 		// Set up schema callback for table to track.
-		callTrcAddTableSchema = func(tableSchema sqle.PrimaryKeySchema, tableName string) {
+		trcFlowMachineContext.CallAddTableSchema = func(tableSchema sqle.PrimaryKeySchema, tableName string) {
 			// Create table if necessary.
 			tableCreationLock.Lock()
-			if _, ok, _ := tierceronEngine.Database.GetTableInsensitive(tierceronEngine.Context, tableName); !ok {
+			if _, ok, _ := trcFlowMachineContext.TierceronEngine.Database.GetTableInsensitive(trcFlowMachineContext.TierceronEngine.Context, tableName); !ok {
 				//	ii. Init database and tables in local mysql engine instance.
-				err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, tableName, tableSchema)
+				err := trcFlowMachineContext.TierceronEngine.Database.CreateTable(trcFlowMachineContext.TierceronEngine.Context, tableName, tableSchema)
 				if err != nil {
 					eUtils.LogErrorObject(err, logger, false)
 				}
@@ -212,14 +193,14 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 
 		// Set up call back to enable a trigger to track
 		// whenever a row in a table changes...
-		callTrcCreateTableTriggers = func(identityColumnName string) {
+		trcFlowMachineContext.CallCreateTableTriggers = func(trcfc *flowcore.TrcFlowContext, identityColumnName string) {
 			//Create triggers
 			var updTrigger sqle.TriggerDefinition
 			var insTrigger sqle.TriggerDefinition
-			insTrigger.Name = "tcInsertTrigger_" + flowName
-			updTrigger.Name = "tcUpdateTrigger_" + flowName
+			insTrigger.Name = "tcInsertTrigger_" + trcfc.FlowName
+			updTrigger.Name = "tcUpdateTrigger_" + trcfc.FlowName
 			//Prevent duplicate triggers from existing
-			existingTriggers, err := tierceronEngine.Database.GetTriggers(tierceronEngine.Context)
+			existingTriggers, err := trcFlowMachineContext.TierceronEngine.Database.GetTriggers(trcFlowMachineContext.TierceronEngine.Context)
 			if err != nil {
 				eUtils.CheckError(err, false)
 			}
@@ -231,21 +212,21 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 				}
 			}
 			if !triggerExist {
-				updTrigger.CreateStatement = getUpdateTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
-				insTrigger.CreateStatement = getInsertTrigger(tierceronEngine.Database.Name(), flowName, identityColumnName)
-				tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, updTrigger)
-				tierceronEngine.Database.CreateTrigger(tierceronEngine.Context, insTrigger)
+				updTrigger.CreateStatement = getUpdateTrigger(trcFlowMachineContext.TierceronEngine.Database.Name(), trcfc.FlowName, identityColumnName)
+				insTrigger.CreateStatement = getInsertTrigger(trcFlowMachineContext.TierceronEngine.Database.Name(), trcfc.FlowName, identityColumnName)
+				trcFlowMachineContext.TierceronEngine.Database.CreateTrigger(trcFlowMachineContext.TierceronEngine.Context, updTrigger)
+				trcFlowMachineContext.TierceronEngine.Database.CreateTrigger(trcFlowMachineContext.TierceronEngine.Context, insTrigger)
 			}
 		}
 
 		// 3. Write seed data to vault
 		var baseTableTemplate extract.TemplateResultData
-		LoadBaseTemplate(&baseTableTemplate, goMod, flowSource, service, flow, false, logger)
+		util.LoadBaseTemplate(&baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, service, flow, false, logger)
 
 		// When called sets up an infinite loop listening for changes on either
 		// the changedChannel or checks itself every 3 minutes for changes to
 		// its own tables.
-		callTrcSyncTableCycle = func(trcRemoteDataSource map[string]interface{}, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
+		trcFlowMachineContext.CallSyncTableCycle = func(trcfc *flowcore.TrcFlowContext, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 			afterTime := time.Duration(time.Second * 20)
 			isInit := true
 			for {
@@ -254,58 +235,48 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 					eUtils.LogErrorMessage("Receiving shutdown presumably from vault.", logger, true)
 					os.Exit(0)
 				case <-changedChannel:
-					seedVaultFromChanges(tierceronEngine,
-						goMod,
+					seedVaultFromChanges(trcFlowMachineContext,
+						trcfc,
 						vaultAddress,
 						&baseTableTemplate,
 						service,
 						vault,
-						tierceronEngine.Database.Name(),
-						flowName,
 						identityColumnName,
-						changeFlowName,
 						vaultIndexColumnName,
 						false,
-						trcRemoteDataSource,
 						flowPushRemote,
-						logger,
-						flowSource)
+						logger)
 				case <-time.After(afterTime):
 					afterTime = time.Minute * 3
 					eUtils.LogInfo("3 minutes... checking local mysql for changes.", logger)
-					seedVaultFromChanges(tierceronEngine,
-						goMod,
+					seedVaultFromChanges(trcFlowMachineContext,
+						trcfc,
 						vaultAddress,
 						&baseTableTemplate,
 						service,
 						vault,
-						tierceronEngine.Database.Name(),
-						flowName,
 						identityColumnName,
-						changeFlowName,
 						vaultIndexColumnName,
 						isInit,
-						trcRemoteDataSource,
 						flowPushRemote,
-						logger,
-						flowSource)
+						logger)
 					isInit = false
 				}
 			}
 		}
 	} else {
 		// Use the flow name directly.
-		flowName = flow
-		flowSource = flow
+		trcFlowContext.FlowName = flow
+		trcFlowContext.FlowSource = flow
 	}
 
-	callTrcGetFlowConfiguration = func(flowTemplatePath string) (map[string]interface{}, bool) {
+	trcFlowMachineContext.CallGetFlowConfiguration = func(trcfc *flowcore.TrcFlowContext, flowTemplatePath string) (map[string]interface{}, bool) {
 		flowProject, flowService, flowConfigTemplatePath := eUtils.GetProjectService(flowTemplatePath)
 		flowConfigTemplateName := eUtils.GetTemplateFileName(flowConfigTemplatePath, flowService)
-		goMod.SectionKey = "/Restricted/"
-		goMod.SectionName = flowService
-		goMod.SubSectionValue = flowService
-		properties, err := NewProperties(vault, goMod, env, flowProject, flowService, logger)
+		trcfc.GoMod.SectionKey = "/Restricted/"
+		trcfc.GoMod.SectionName = flowService
+		trcfc.GoMod.SubSectionValue = flowService
+		properties, err := util.NewProperties(vault, trcfc.GoMod, trcFlowMachineContext.Env, flowProject, flowService, logger)
 		if err != nil {
 			return nil, false
 		}
@@ -315,9 +286,9 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	// Make a call on Call back to insert or update using the provided query.
 	// If this is expected to result in a change to an existing table, thern trigger
 	// something to the changed channel.
-	callTrcDBQuery = func(query string, changed bool, operation string, flowNotifications []string) [][]string {
+	trcFlowMachineContext.CallDBQuery = func(trcfc *flowcore.TrcFlowContext, query string, changed bool, operation string, flowNotifications []string) [][]string {
 		if operation == "INSERT" {
-			_, _, matrix, err := db.Query(tierceronEngine, query)
+			_, _, matrix, err := db.Query(trcFlowMachineContext.TierceronEngine, query)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			}
@@ -333,7 +304,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 				}
 			}
 		} else if operation == "UPDATE" {
-			_, _, matrix, err := db.Query(tierceronEngine, query)
+			_, _, matrix, err := db.Query(trcFlowMachineContext.TierceronEngine, query)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			}
@@ -348,7 +319,7 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 				}
 			}
 		} else if operation == "SELECT" {
-			_, _, matrixChangedEntries, err := db.Query(tierceronEngine, query)
+			_, _, matrixChangedEntries, err := db.Query(trcFlowMachineContext.TierceronEngine, query)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 			}
@@ -359,8 +330,8 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 
 	// Open a database connection to the provided source using provided
 	// source configurations.
-	callTrcGetDbConn := func(dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
-		return OpenDirectConnection(dbUrl,
+	trcFlowMachineContext.CallGetDbConn = func(dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
+		return util.OpenDirectConnection(dbUrl,
 			username,
 			configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionMap), logger)
 	}
@@ -368,23 +339,22 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	// Utilizing provided api auth headers, endpoint, and body data
 	// this CB makes a call on behalf of the caller and returns a map
 	// representation of json data provided by the endpoint.
-	callTrcAPI := func(apiAuthHeaders map[string]string, host string, apiEndpoint string, bodyData io.Reader, getOrPost bool) (map[string]interface{}, error) {
-		httpClient, err := helperkv.CreateHTTPClient(false, host, env, false)
+	trcFlowMachineContext.CallAPI = func(apiAuthHeaders map[string]string, host string, apiEndpoint string, bodyData io.Reader, getOrPost bool) (map[string]interface{}, error) {
+		httpClient, err := helperkv.CreateHTTPClient(false, host, trcFlowMachineContext.Env, false)
 		if err != nil {
 			return nil, err
 		}
 		if getOrPost {
-			return GetJSONFromClientByGet(httpClient, apiAuthHeaders, apiEndpoint, bodyData, logger)
+			return util.GetJSONFromClientByGet(httpClient, apiAuthHeaders, apiEndpoint, bodyData, logger)
 		}
-		return GetJSONFromClientByPost(httpClient, apiAuthHeaders, apiEndpoint, bodyData, logger)
+		return util.GetJSONFromClientByPost(httpClient, apiAuthHeaders, apiEndpoint, bodyData, logger)
 	}
 
 	// Create remote data source with only what is needed.
-	trcRemoteDataSource := map[string]interface{}{}
-	trcRemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
-	trcRemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
+	trcFlowContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
+	trcFlowContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
 
-	dbsourceConn, err := OpenDirectConnection(sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string), logger)
+	dbsourceConn, err := util.OpenDirectConnection(sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string), logger)
 
 	if err != nil {
 		eUtils.LogErrorMessage("Couldn't get dedicated database connection.", logger, false)
@@ -392,26 +362,17 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	}
 	defer dbsourceConn.Close()
 
-	trcRemoteDataSource["connection"] = dbsourceConn
+	trcFlowContext.RemoteDataSource["connection"] = dbsourceConn
 
-	flowError := tcutil.ProcessFlowController(extensionAuthData,
-		callTrcGetFlowConfiguration,
-		trcRemoteDataSource,
-		callTrcAPI,
-		flowSource,
-		tierceronEngine.Database.Name(),
-		flowName,
-		callTrcGetDbConn,
-		callTrcAddTableSchema,
-		callTrcCreateTableTriggers,
-		callTrcDBQuery,
-		callTrcSyncTableCycle, func(msg string, err error) {
-			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
-			} else {
-				eUtils.LogInfo(msg, logger)
-			}
-		})
+	trcFlowMachineContext.CallLog = func(msg string, err error) {
+		if err != nil {
+			eUtils.LogErrorObject(err, logger, false)
+		} else {
+			eUtils.LogInfo(msg, logger)
+		}
+	}
+
+	flowError := flowimpl.ProcessFlowController(trcFlowMachineContext, trcFlowContext)
 	if flowError != nil {
 		eUtils.LogErrorObject(flowError, logger, true)
 	}
@@ -420,7 +381,13 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 
 func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	// 1. Get Plugin configurations.
-	goMod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	trcFlowMachineContext := flowcore.TrcFlowMachineContext{}
+	var vault *sys.Vault
+	var goMod *helperkv.Modifier
+	var err error
+
+	trcFlowMachineContext.Env = pluginConfig["env"].(string)
+	goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if err != nil {
 		eUtils.LogErrorMessage("Could not access vault.  Failure to start.", logger, false)
 		return err
@@ -452,7 +419,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		for _, indexValue := range indexValues {
 			goMod.SubSectionValue = indexValue
 			ok := false
-			properties, err := NewProperties(vault, goMod, pluginConfig["env"].(string), projects[i], services[i], logger)
+			properties, err := util.NewProperties(vault, goMod, pluginConfig["env"].(string), projects[i], services[i], logger)
 			if err != nil {
 				eUtils.LogErrorObject(err, logger, false)
 				return err
@@ -507,7 +474,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		configDriver.VersionFilter = append(configDriver.VersionFilter, tableName)
 	}
 
-	tierceronEngine, err := db.CreateEngine(&configDriver, tableList, pluginConfig["env"].(string), tcutil.GetDatabaseName())
+	trcFlowMachineContext.TierceronEngine, err = db.CreateEngine(&configDriver, tableList, pluginConfig["env"].(string), flowimpl.GetDatabaseName())
 	if err != nil {
 		eUtils.LogErrorMessage("Couldn't build engine.", logger, false)
 		return err
@@ -519,6 +486,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		dbSourceConnBundle["dbsourceurl"] = sourceDatabaseConfig["dbsourceurl"].(string)
 		dbSourceConnBundle["dbsourceuser"] = sourceDatabaseConfig["dbsourceuser"].(string)
 		dbSourceConnBundle["dbsourcepassword"] = sourceDatabaseConfig["dbsourcepassword"].(string)
+		dbSourceConnBundle["dbsourceregion"] = sourceDatabaseConfig["dbsourceregion"].(string)
 
 		dbSourceConnBundle["encryptionSecret"] = sourceDatabaseConfig["dbencryptionSecret"].(string)
 		if dbIngestInterval, ok := sourceDatabaseConfig["dbingestinterval"]; ok {
@@ -538,21 +506,21 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// Http query resources include:
 	// 1. Auth -- Auth is provided by the external library tcutil.
 	// 2. Get json by Api call.
-	extensionAuthComponents := tcutil.GetExtensionAuthComponents(trcIdentityConfig)
+	extensionAuthComponents := flowimpl.GetExtensionAuthComponents(trcIdentityConfig)
 	httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
 	if err != nil {
 		eUtils.LogErrorObject(err, logger, false)
 		return err
 	}
 
-	extensionAuthData, errPost := GetJSONFromClientByPost(httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader), logger)
-	if errPost != nil {
-		eUtils.LogErrorObject(errPost, logger, false)
-		return errPost
+	trcFlowMachineContext.ExtensionAuthData, err = util.GetJSONFromClientByPost(httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader), logger)
+	if err != nil {
+		eUtils.LogErrorObject(err, logger, false)
+		return err
 	}
 
 	// 2. Initialize Engine and create changes table.
-	tierceronEngine.Context = sqle.NewEmptyContext()
+	trcFlowMachineContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel,
 		syscall.SIGHUP,
@@ -565,10 +533,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	for _, tableName := range configDriver.VersionFilter {
 		changeTableName := tableName + "_Changes"
 
-		if _, ok, _ := tierceronEngine.Database.GetTableInsensitive(tierceronEngine.Context, changeTableName); !ok {
+		if _, ok, _ := trcFlowMachineContext.TierceronEngine.Database.GetTableInsensitive(trcFlowMachineContext.TierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo("Creating tierceron sql table: "+changeTableName, logger)
 			tableCreationLock.Lock()
-			err := tierceronEngine.Database.CreateTable(tierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
+			err := trcFlowMachineContext.TierceronEngine.Database.CreateTable(trcFlowMachineContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
 				{Name: "id", Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 			}))
@@ -586,7 +554,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		channelMap[table] = make(chan bool, 5)
 	}
 
-	for _, flowName := range tcutil.GetAdditionalFlows() {
+	for _, flowName := range flowimpl.GetAdditionalFlows() {
 		channelMap[flowName] = make(chan bool, 5)
 	}
 
@@ -596,49 +564,50 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(t string) {
 				eUtils.LogInfo("Beginning flow: "+t, logger)
 				defer wg.Done()
-				flowMod, flowVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				var flowVault *sys.Vault
+				trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
 					eUtils.LogErrorMessage("Could not access vault.  Failure to start flow.", logger, false)
 					return
 				}
+				trcFlowContext.FlowSourceAlias = flowimpl.GetDatabaseName()
 
-				ProcessFlow(tierceronEngine,
+				ProcessFlow(&trcFlowMachineContext,
+					&trcFlowContext,
 					vaultDatabaseConfig,
 					pluginConfig["address"].(string),
-					flowMod,
 					sourceDatabaseConnectionMap,
 					flowVault,
-					extensionAuthData,
-					pluginConfig["env"].(string),
 					t,
-					TableSyncFlow,
+					flowcore.TableSyncFlow,
 					channelMap[table], // tableChangedChannel
 					signalChannel,
 					logger,
 				)
 			}(table)
 		}
-		for _, flowName := range tcutil.GetAdditionalFlows() {
+		for _, flowName := range flowimpl.GetAdditionalFlows() {
 			wg.Add(1)
 			go func(f string) {
 				eUtils.LogInfo("Beginning flow: "+f, logger)
 				defer wg.Done()
-				flowMod, flowVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				var flowVault *sys.Vault
+				trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
 					eUtils.LogErrorMessage("Could not access vault.  Failure to start flow.", logger, false)
 					return
 				}
 
-				ProcessFlow(tierceronEngine,
+				ProcessFlow(&trcFlowMachineContext,
+					&trcFlowContext,
 					vaultDatabaseConfig,
 					pluginConfig["address"].(string),
-					flowMod,
 					sourceDatabaseConnectionMap,
 					flowVault,
-					extensionAuthData,
-					pluginConfig["env"].(string),
 					f,
-					TableEnrichFlow,
+					flowcore.TableEnrichFlow,
 					channelMap[flowName], // tableChangedChannel
 					signalChannel,
 					logger,
