@@ -48,7 +48,7 @@ func getInsertChangeQuery(databaseName string, changeTable string, id string) st
 func getUpdateTrigger(databaseName string, tableName string, idColumnName string) string {
 	return `CREATE TRIGGER tcUpdateTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
-		` UPDATE ` + databaseName + `.` + tableName + `_Changes SET id=new.tenantId, updateTime=current_timestamp() WHERE EXISTS (select id from ` + databaseName + `.` + tableName + `_Changes where id=new.` + idColumnName + `);` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnName + `, current_timestamp());` +
 		` END;`
 }
 
