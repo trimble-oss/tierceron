@@ -165,13 +165,12 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	signalChannel chan os.Signal,
 	logger *log.Logger) error {
 
-	var tableTemplateName string
-
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
 	if flowType == flowcore.TableSyncFlow {
-		trcFlowContext.FlowSource, trcFlowContext.FlowService, tableTemplateName = eUtils.GetProjectService(flow)
-		trcFlowContext.FlowName = eUtils.GetTemplateFileName(tableTemplateName, trcFlowContext.FlowService)
+		trcFlowContext.FlowSource, trcFlowContext.FlowService, trcFlowContext.FlowPath = eUtils.GetProjectService(flow)
+
+		trcFlowContext.FlowName = eUtils.GetTemplateFileName(trcFlowContext.FlowPath, trcFlowContext.FlowService)
 		trcFlowContext.ChangeFlowName = trcFlowContext.FlowName + "_Changes"
 
 		// Set up schema callback for table to track.
@@ -218,7 +217,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 		// 3. Create a base seed template for use in vault seed process.
 		var baseTableTemplate extract.TemplateResultData
-		util.LoadBaseTemplate(&baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.FlowService, flow, false, logger)
+		util.LoadBaseTemplate(&baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.FlowService, trcFlowContext.FlowPath, false, logger)
 		trcFlowContext.FlowData = &baseTableTemplate
 
 		// When called sets up an infinite loop listening for changes on either
