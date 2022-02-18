@@ -62,8 +62,6 @@ func getInsertTrigger(databaseName string, tableName string, idColumnName string
 func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	trcFlowContext *flowcore.TrcFlowContext,
 	vaultAddress string,
-	baseTableTemplate *extract.TemplateResultData,
-	service string,
 	v *sys.Vault,
 	identityColumnName string,
 	vaultIndexColumnName string,
@@ -131,7 +129,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		}
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
-		seedError := util.SeedVaultById(trcFlowContext.GoMod, service, vaultAddress, v.GetToken(), baseTableTemplate, rowDataMap, indexPath, logger, trcFlowContext.FlowSourceAlias)
+		seedError := util.SeedVaultById(trcFlowContext.GoMod, trcFlowContext.FlowService, vaultAddress, v.GetToken(), trcFlowContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, logger, trcFlowContext.FlowSourceAlias)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
 			// Re-inject into changes because it might not be here yet...
@@ -157,7 +155,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	trcFlowContext *flowcore.TrcFlowContext,
-	vaultDatabaseConfig map[string]interface{},
+	vaultDatabaseConfig map[string]interface{}, // TODO: actually use this to set up a mysql facade.
 	vaultAddress string,
 	sourceDatabaseConnectionMap map[string]interface{},
 	vault *sys.Vault,
@@ -167,14 +165,13 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	signalChannel chan os.Signal,
 	logger *log.Logger) error {
 
-	var service string
 	var tableTemplateName string
 
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
 	if flowType == flowcore.TableSyncFlow {
-		trcFlowContext.FlowSource, service, tableTemplateName = eUtils.GetProjectService(flow)
-		trcFlowContext.FlowName = eUtils.GetTemplateFileName(tableTemplateName, service)
+		trcFlowContext.FlowSource, trcFlowContext.FlowService, tableTemplateName = eUtils.GetProjectService(flow)
+		trcFlowContext.FlowName = eUtils.GetTemplateFileName(tableTemplateName, trcFlowContext.FlowService)
 		trcFlowContext.ChangeFlowName = trcFlowContext.FlowName + "_Changes"
 
 		// Set up schema callback for table to track.
@@ -219,9 +216,10 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 			}
 		}
 
-		// 3. Write seed data to vault
+		// 3. Create a base seed template for use in vault seed process.
 		var baseTableTemplate extract.TemplateResultData
-		util.LoadBaseTemplate(&baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, service, flow, false, logger)
+		util.LoadBaseTemplate(&baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.FlowService, flow, false, logger)
+		trcFlowContext.FlowData = &baseTableTemplate
 
 		// When called sets up an infinite loop listening for changes on either
 		// the changedChannel or checks itself every 3 minutes for changes to
@@ -238,8 +236,6 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 					seedVaultFromChanges(trcFlowMachineContext,
 						trcfc,
 						vaultAddress,
-						&baseTableTemplate,
-						service,
 						vault,
 						identityColumnName,
 						vaultIndexColumnName,
@@ -252,8 +248,6 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 					seedVaultFromChanges(trcFlowMachineContext,
 						trcfc,
 						vaultAddress,
-						&baseTableTemplate,
-						service,
 						vault,
 						identityColumnName,
 						vaultIndexColumnName,
