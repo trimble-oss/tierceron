@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"tierceron/trcconfig/utils"
+	"tierceron/trcflow/flumen"
 	vscutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
@@ -158,7 +159,7 @@ func ProcessEnvConfig(config map[string]interface{}) error {
 		"trc_templates/TrcVault/Identity/config.yml.tmpl",      // implemented
 	}
 
-	vscutils.ProcessFlows(config, logger)
+	flumen.ProcessFlows(config, logger)
 
 	return nil
 }
