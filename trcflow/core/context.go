@@ -22,6 +22,7 @@ type TrcFlowMachineContext struct {
 	Env                      string
 	TierceronEngine          *db.TierceronEngine
 	ExtensionAuthData        map[string]interface{}
+	FlowMap                  map[string]interface{}
 	CallGetFlowConfiguration func(trcFlowContext *TrcFlowContext, templatePath string) (map[string]interface{}, bool)
 	CallAPI                  func(apiAuthHeaders map[string]string, host string, apiEndpoint string, bodyData io.Reader, getOrPost bool) (map[string]interface{}, error)
 	CallGetDbConn            func(dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error)
