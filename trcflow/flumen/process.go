@@ -286,8 +286,10 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 				eUtils.LogErrorObject(err, logger, false)
 			}
 			if changed && len(matrix) > 0 {
-				changedChannel <- true
-				if flowNotifications != nil && len(flowNotifications) > 0 {
+				if changedChannel != nil {
+					changedChannel <- true
+				}
+				if len(flowNotifications) > 0 {
 					// look up channels and notify them too.
 					for _, flowNotification := range flowNotifications {
 						if notifFlowCxt, ok := trcFlowMachineContext.FlowMap[flowNotification]; ok {
@@ -304,8 +306,10 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 				eUtils.LogErrorObject(err, logger, false)
 			}
 			if changed && len(matrix) > 0 {
-				changedChannel <- true
-				if flowNotifications != nil && len(flowNotifications) > 0 {
+				if changedChannel != nil {
+					changedChannel <- true
+				}
+				if len(flowNotifications) > 0 {
 					// look up channels and notify them too.
 					for _, flowNotification := range flowNotifications {
 						if notifFlowCxt, ok := trcFlowMachineContext.FlowMap[flowNotification]; ok {
@@ -580,7 +584,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowVault,
 					t,
 					flowcore.TableSyncFlow,
-					channelMap[table], // tableChangedChannel
+					channelMap[t], // tableChangedChannel
 					signalChannel,
 					logger,
 				)
@@ -607,7 +611,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowVault,
 					f,
 					flowcore.TableEnrichFlow,
-					channelMap[flowName], // tableChangedChannel
+					channelMap[f], // tableChangedChannel
 					signalChannel,
 					logger,
 				)
