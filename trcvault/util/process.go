@@ -302,12 +302,13 @@ func ProcessFlow(tierceronEngine *db.TierceronEngine,
 	callTrcGetFlowConfiguration = func(flowTemplatePath string) (map[string]interface{}, bool) {
 		flowProject, flowService, flowConfigTemplatePath := eUtils.GetProjectService(flowTemplatePath)
 		flowConfigTemplateName := eUtils.GetTemplateFileName(flowConfigTemplatePath, flowService)
-
+		goMod.SectionKey = "/Restricted/"
+		goMod.SectionName = flowService
+		goMod.SubSectionValue = flowService
 		properties, err := NewProperties(vault, goMod, env, flowProject, flowService, logger)
 		if err != nil {
 			return nil, false
 		}
-
 		return properties.GetConfigValues(flowService, flowConfigTemplateName)
 	}
 
