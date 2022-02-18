@@ -39,6 +39,7 @@ type TrcFlowContext struct {
 	FlowService      string // The name of the flow source identified by service.
 	FlowSourceAlias  string // May be a database name
 	FlowName         string // May be a table name.
+	FlowPath         string
 	FlowData         interface{}
 	ChangeFlowName   string // Change flow table name.
 }
