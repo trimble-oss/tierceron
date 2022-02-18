@@ -547,6 +547,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 				sectionNamePath = "/" + config.SectionName + "/"
 				subSectionValuePath = config.SubSectionValue
 			} else if config.SectionKey == "/Restricted/" {
+				sectionNamePath = "/" + config.SectionName + "/"
 				subSectionValuePath = config.Env
 			}
 
