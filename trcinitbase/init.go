@@ -132,7 +132,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Address must be specified using -addr flag")
 			os.Exit(1)
 		}
-		eUtils.AutoAuth(*insecurePtr, nil, nil, tokenPtr, nil, envPtr, addrPtr, *pingPtr, logger)
+		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger}, nil, nil, tokenPtr, nil, envPtr, addrPtr, *pingPtr)
+		if autoErr != nil {
+			fmt.Println("Missing auth components.")
+			os.Exit(1)
+		}
 	}
 
 	// Create a new vault system connection
