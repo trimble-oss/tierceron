@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"tierceron/utils"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
@@ -130,7 +131,7 @@ func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string,
 	return nil, errors.New("http status failure")
 }
 
-func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string, exitOnFailure bool, logger *log.Logger) {
+func LoadBaseTemplate(config *utils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
 	templateResult.ValueSection["values"] = map[string]map[string]string{}
 
@@ -142,10 +143,11 @@ func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperk
 	if goMod != nil {
 		cds = new(vcutils.ConfigDataStore)
 		goMod.Version = goMod.Version + "***X-Mode"
-		cds.Init(goMod, true, true, project, commonPaths, logger, service) //CommonPaths = "" - empty - not needed for tenant config
+		cds.Init(goMod, true, true, project, commonPaths, config.Log, service) //CommonPaths = "" - empty - not needed for tenant config
 	}
 
-	_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
+	var errSeed error
+	_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(config, goMod,
 		cds,
 		templatePath,
 		project,
@@ -154,12 +156,12 @@ func LoadBaseTemplate(templateResult *extract.TemplateResultData, goMod *helperk
 		&(templateResult.InterfaceTemplateSection),
 		&(templateResult.ValueSection),
 		&(templateResult.SecretSection),
-		exitOnFailure,
-		logger,
 	)
+
+	return errSeed
 }
 
-func SeedVaultById(goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, logger *log.Logger, project string) error {
+func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, logger *log.Logger, project string) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -208,6 +210,6 @@ func SeedVaultById(goMod *helperkv.Modifier, service string, address string, tok
 	seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n"
 	//VaultX Section Ends
 	//VaultInit Section Begins
-	il.SeedVaultFromData(goMod.Insecure, "Index/"+project+indexPath, []byte(seedData), address, token, goMod.Env, log.Default(), service, false)
+	il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData), service, false)
 	return nil
 }

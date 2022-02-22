@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
@@ -93,12 +92,12 @@ func NewModifier(insecure bool, token string, address string, env string, region
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
-func (m *Modifier) ValidateEnvironment(environment string, init bool, logger *log.Logger) bool {
+func (m *Modifier) ValidateEnvironment(environment string, init bool, logger *log.Logger) (bool, error) {
 	env, sub, _, envErr := PreCheckEnvironment(environment)
 
 	if envErr != nil {
 		logger.Println(fmt.Sprintf("Environment format error: %v\n", envErr))
-		os.Exit(-1)
+		return false, envErr
 	} else {
 		if sub != "" {
 			environment = env
@@ -119,7 +118,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, logger *lo
 	if err != nil {
 		logger.Println(fmt.Sprintf("LookupSelf Auth failure: %v\n", err))
 		if strings.Contains(err.Error(), "x509: certificate") {
-			os.Exit(-1)
+			return false, err
 		}
 	}
 
@@ -137,7 +136,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, logger *lo
 		}
 
 	}
-	return valid
+	return valid, nil
 }
 
 // Writes the key,value pairs in data to the vault

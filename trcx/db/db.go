@@ -143,7 +143,10 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 			cds.Init(goMod, config.SecretMode, true, project, nil, config.Log, service)
 		}
 
-		_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
+		var errSeed error
+
+		_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(config,
+			goMod,
 			cds,
 			templatePath,
 			project,
@@ -152,9 +155,11 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 			&(templateResult.InterfaceTemplateSection),
 			&(templateResult.ValueSection),
 			&(templateResult.SecretSection),
-			config.ExitOnFailure,
-			config.Log,
 		)
+
+		if errSeed != nil {
+			return errSeed
+		}
 
 		writeToTable(te, envEnterprise, version, project, service, &templateResult)
 	}

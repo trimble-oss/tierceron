@@ -25,7 +25,7 @@ var wg2 sync.WaitGroup
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string) {
+func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string, error) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -95,7 +95,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		_, err := mod.ReadData("apiLogins/meta")
 		if err != nil {
 			eUtils.LogInfo("Cannot genAuth with provided token.", config.Log)
-			os.Exit(1)
+			return "", false, "", eUtils.LogAndSafeExit(config, "", 1)
 		}
 	}
 
@@ -135,8 +135,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		versionMetadataMap := utils.GetProjectVersionInfo(config, mod)
 
 		if versionMetadataMap == nil {
-			eUtils.LogInfo(fmt.Sprintf("No version data found - this filter was applied during search: %v\n", config.VersionFilter), config.Log)
-			os.Exit(1)
+			return "", false, "", eUtils.LogAndSafeExit(config, fmt.Sprintf("No version data found - this filter was applied during search: %v\n", config.VersionFilter), 1)
 		} else if version == "versionInfo" { //Version flag
 			var masterKey string
 			first := true
@@ -157,11 +156,11 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					if len(key) > 0 && len(masterKey) < 1 {
 						masterKey = key
 						config.VersionInfo(versionMetadataMap[masterKey], false, "", false)
-						os.Exit(1)
+						return "", false, "", eUtils.LogAndSafeExit(config, "Version info provided.", 1)
 					}
 				}
 			}
-			os.Exit(1)
+			return "", false, "", eUtils.LogAndSafeExit(config, "Version info provided.", 1)
 		} else { //Version bound check
 			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
 			utils.BoundCheck(config, versionNumbers, version)
@@ -275,8 +274,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			}
 
 			if !anyServiceFound { //Exit for irrelevant enterprises
-				eUtils.LogInfo("No relevant services were found for this environment: "+mod.Env, config.Log)
-				return "", false, ""
+				return "", false, "", eUtils.LogAndSafeExit(config, "No relevant services were found for this environment: "+mod.Env, 1)
 			} else {
 				if len(acceptedTemplatePaths) > 0 {
 					// template paths further trimmed by vault.
@@ -291,6 +289,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		wg.Add(1)
 		go func(tp string, multiService bool, c *eUtils.DriverConfig, cPaths []string) {
 			var project, service, env, version, innerProject string
+			var errSeed error
 			project = ""
 			service = ""
 			env = ""
@@ -332,8 +331,8 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				if c.GenAuth {
 					_, err := mod.ReadData("apiLogins/meta")
 					if err != nil {
-						eUtils.LogInfo("Cannot genAuth with provided token.", config.Log)
-						os.Exit(1)
+						eUtils.LogAndSafeExit(config, "Cannot genAuth with provided token.", -1)
+						return
 					}
 				}
 
@@ -360,7 +359,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 
 			}
 
-			_, _, _, templateResult.TemplateDepth = extract.ToSeed(goMod,
+			_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(config, goMod,
 				cds,
 				tp,
 				project,
@@ -369,9 +368,11 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				&(templateResult.InterfaceTemplateSection),
 				&(templateResult.ValueSection),
 				&(templateResult.SecretSection),
-				config.ExitOnFailure,
-				config.Log,
 			)
+			if errSeed != nil {
+				eUtils.LogAndSafeExit(config, errSeed.Error(), -1)
+				return
+			}
 			templateResult.Env = env + "_" + version
 			templateResult.SubSectionValue = config.SubSectionValue
 			templateResultChan <- &templateResult
@@ -400,8 +401,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					eUtils.LogErrorObject(errA, config.Log, false)
 				}
 			} else {
-				eUtils.LogInfo("Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", config.Log)
-				os.Exit(1)
+				return "", false, "", eUtils.LogAndSafeExit(config, "Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", 1)
 			}
 		} else {
 			authConfigurations := map[string]interface{}{}
@@ -442,7 +442,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 	templateData = strings.ReplaceAll(templateData, "'", "")
 	seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n" + string(authYaml)
 
-	return endPath, multiService, seedData
+	return endPath, multiService, seedData, nil
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
@@ -492,7 +492,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 		mod, err = kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
 		if err != nil {
 			eUtils.LogErrorObject(err, config.Log, false)
-			os.Exit(1)
+			return nil, eUtils.LogAndSafeExit(config, "", 1)
 		}
 		mod.Env = config.Env
 	}
@@ -503,7 +503,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	}
 	templatePaths = templatePathsAccepted
 
-	endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths)
+	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(config, false, templatePaths)
+	if errGenerateSeeds != nil {
+		return errGenerateSeeds, nil
+	}
 
 	if endPath == "" && !multiService && seedData == "" {
 		return nil, nil
