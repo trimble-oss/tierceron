@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	eUtils "tierceron/utils"
@@ -246,18 +245,17 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 	return nil
 }
 
-func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode bool, useDirs bool, project string, file string, logger *log.Logger, servicesWanted ...string) map[string]interface{} {
+func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig, mod *kv.Modifier, useDirs bool, project string, file string, servicesWanted ...string) (map[string]interface{}, error) {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
-	dataPathsFull, err := GetPathsFromProject(mod, logger, project)
+	dataPathsFull, err := GetPathsFromProject(mod, config.Log, project)
 	if len(dataPathsFull) > 0 && strings.Contains(dataPathsFull[len(dataPathsFull)-1], "!=!") {
 		dataPathsFull = dataPathsFull[:len(dataPathsFull)-1]
 	}
 
 	if err != nil {
-		eUtils.LogInfo(fmt.Sprintf("Uninitialized environment.  Please initialize environment. %v\n", err), logger)
-		os.Exit(1)
+		return nil, eUtils.LogAndSafeExit(config, fmt.Sprintf("Uninitialized environment.  Please initialize environment. %v\n", err), 1)
 	}
 
 	dataPaths := dataPathsFull
@@ -285,14 +283,14 @@ func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode
 			deeperData, _ = mod.ReadTemplateVersions(path + "template-file")
 		}
 		if err != nil || deeperData == nil && data == nil {
-			eUtils.LogInfo(fmt.Sprintf("Couldn't read version data for %s\n", path), logger)
+			eUtils.LogInfo(fmt.Sprintf("Couldn't read version data for %s\n", path), config.Log)
 		}
 	}
 
 	if deeperData != nil && data == nil {
-		return deeperData
+		return deeperData, nil
 	} else {
-		return data
+		return data, nil
 	}
 }
 

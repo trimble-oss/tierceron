@@ -2,7 +2,6 @@ package utils
 
 import (
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,18 +16,18 @@ import (
 var mutex = &sync.Mutex{}
 
 //GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig, logger *log.Logger) (interface{}, error) {
+func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig) (interface{}, error) {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if runtime.GOOS == "windows" {
 		Reset = ""
 		Cyan = ""
 	}
-	modCheck, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
+	modCheck, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
 	modCheck.Env = config.Env
 	version := ""
 	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
+		eUtils.LogErrorObject(err, config.Log, false)
 	}
 	modCheck.VersionFilter = config.VersionFilter
 
@@ -47,7 +46,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		}
 	}
 	versionData := make(map[string]interface{})
-	if !modCheck.ValidateEnvironment(config.Env, false, logger) {
+	if !modCheck.ValidateEnvironment(config.Env, false, config.Log) {
 		return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
 	}
 
@@ -67,11 +66,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	if indexedEnv {
 		templatePaths, err = eUtils.GetAcceptedTemplatePaths(config, modCheck, templatePaths)
 		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
+			eUtils.LogErrorObject(err, config.Log, false)
 		}
 		endPaths, err = eUtils.GetAcceptedTemplatePaths(config, modCheck, endPaths)
 		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
+			eUtils.LogErrorObject(err, config.Log, false)
 		}
 	}
 
@@ -129,7 +128,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 			modCheck.Env = envVersion[0]
 		}
 
-		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck, logger)
+		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
 		var masterKey string
 		project := ""
 		neverPrinted := true
@@ -166,7 +165,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 			}
 		}
 		if neverPrinted {
-			eUtils.LogInfo("No version data available for this env", logger)
+			eUtils.LogInfo("No version data available for this env", config.Log)
 		}
 		return nil, eUtils.LogAndSafeExit(config, "", 1)
 
@@ -190,12 +189,12 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		if versionDataMap != nil {
 			config.VersionInfo(versionDataMap[masterKey], false, masterKey, false)
 		} else if !initialized {
-			eUtils.LogInfo(Cyan+"No metadata found for this environment"+Reset, logger)
+			eUtils.LogInfo(Cyan+"No metadata found for this environment"+Reset, config.Log)
 		}
 		return nil, nil //End of -versions flag
 	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
-			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck, logger)
+			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
 			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
 
 			utils.BoundCheck(config, versionNumbers, version)
@@ -209,7 +208,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
-			mod, _ := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
+			mod, _ := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
 			mod.Env = config.Env
 			mod.Version = version
 			//check for template_files directory here
@@ -249,7 +248,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				var certData map[int]string
 				certLoaded := false
 				if templateInfo {
-					data := getTemplateVersionData(mod, config.SecretMode, project, service, endPaths[i], logger)
+					data, errTemplateVersion := getTemplateVersionData(config, mod, project, service, endPaths[i])
+					if errTemplateVersion != nil {
+						return errTemplateVersion
+					}
+
 					mutex.Lock()
 					if data == nil {
 						return eUtils.LogAndSafeExit(config, "Template version data could not be retrieved", 1)
@@ -259,7 +262,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 					goto wait
 				} else {
 					var ctErr error
-					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false, logger)
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false, config.Log)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
 							eUtils.CheckError(ctErr, true)
@@ -269,12 +272,12 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				//generate template or certificate
 				if config.WantCerts && certLoaded {
 					if len(certData) == 0 {
-						eUtils.LogInfo("Could not load cert "+endPaths[i], logger)
+						eUtils.LogInfo("Could not load cert "+endPaths[i], config.Log)
 						goto wait
 					}
 					certDestination := config.EndDir + "/" + certData[0]
 					writeToFile(certData[1], certDestination)
-					eUtils.LogInfo("certificate written to "+certDestination, logger)
+					eUtils.LogInfo("certificate written to "+certDestination, config.Log)
 					goto wait
 				} else {
 					if config.Diff {
@@ -304,12 +307,15 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				var certData map[int]string
 				certLoaded := false
 				if templateInfo {
-					data := getTemplateVersionData(mod, config.SecretMode, project, service, endPaths[i], logger)
+					data, errTemplateVersion := getTemplateVersionData(config, mod, project, service, endPaths[i])
+					if errTemplateVersion != nil {
+						return errTemplateVersion
+					}
 					versionData[endPaths[i]] = data
 					goto wait
 				} else {
 					var ctErr error
-					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false, logger)
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false, config.Log)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
 							eUtils.CheckError(ctErr, true)
@@ -319,7 +325,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				if config.WantCerts && certLoaded {
 					certDestination := config.EndDir + "/" + certData[0]
 					writeToFile(certData[1], certDestination)
-					eUtils.LogInfo("certificate written to "+certDestination, logger)
+					eUtils.LogInfo("certificate written to "+certDestination, config.Log)
 					goto wait
 				} else {
 					if config.Diff {
@@ -337,9 +343,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 			//print that we're done
 			if !config.Diff && !isCert && !templateInfo {
 				if runtime.GOOS == "windows" {
-					eUtils.LogInfo("template configured and written to "+endPaths[i], logger)
+					eUtils.LogInfo("template configured and written to "+endPaths[i], config.Log)
 				} else {
-					eUtils.LogInfo("\033[0;33m"+"template configured and written to "+endPaths[i]+"\033[0m", logger)
+					eUtils.LogInfo("\033[0;33m"+"template configured and written to "+endPaths[i]+"\033[0m", config.Log)
 				}
 			}
 

@@ -290,7 +290,7 @@ func main() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				eUtils.ConfigControl(nil, &configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault, logger)
+				eUtils.ConfigControl(nil, &configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault)
 			}()
 		}
 	} else {
@@ -326,7 +326,7 @@ func main() {
 		wg.Add(1)
 		go func(c *eUtils.DriverConfig) {
 			defer wg.Done()
-			eUtils.ConfigControl(nil, c, utils.GenerateConfigsFromVault, logger)
+			eUtils.ConfigControl(nil, c, utils.GenerateConfigsFromVault)
 		}(&config)
 	}
 	wg.Wait() //Wait for templates

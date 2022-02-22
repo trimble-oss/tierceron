@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"runtime"
 	"sort"
 	"strconv"
@@ -24,20 +23,20 @@ func SplitEnv(env string) []string {
 	return envVersion
 }
 
-func GetProjectVersionInfo(config *DriverConfig, mod *kv.Modifier, logger *log.Logger) map[string]map[string]interface{} {
+func GetProjectVersionInfo(config *DriverConfig, mod *kv.Modifier) map[string]map[string]interface{} {
 	versionMetadataMap := make(map[string]map[string]interface{})
 	mod.VersionFilter = config.VersionFilter
 	var secretMetadataMap map[string]map[string]interface{}
 	var err error
 	mod.RawEnv = strings.Split(config.EnvRaw, ".")[0]
 	if !config.WantCerts {
-		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "super-secrets", logger)
+		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "super-secrets", config.Log)
 		if secretMetadataMap == nil {
-			secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values", logger)
+			secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values", config.Log)
 		}
 	} else {
 		//Certs are in values, not super secrets
-		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values", logger)
+		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values", config.Log)
 	}
 	var foundKey string
 	for key, value := range secretMetadataMap {
@@ -55,11 +54,11 @@ func GetProjectVersionInfo(config *DriverConfig, mod *kv.Modifier, logger *log.L
 
 	if err != nil {
 		fmt.Println("No version data available for this env")
-		LogErrorObject(err, logger, false)
+		LogErrorObject(err, config.Log, false)
 	}
 	if len(versionMetadataMap) == 0 {
 		fmt.Println("No version data available for this env")
-		LogErrorObject(err, logger, false)
+		LogErrorObject(err, config.Log, false)
 	}
 
 	return versionMetadataMap
