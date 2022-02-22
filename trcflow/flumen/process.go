@@ -217,7 +217,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 		// 3. Create a base seed template for use in vault seed process.
 		var baseTableTemplate extract.TemplateResultData
-		util.LoadBaseTemplate(&baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.FlowService, trcFlowContext.FlowPath, false, logger)
+		util.LoadBaseTemplate(config, &baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.FlowService, trcFlowContext.FlowPath)
 		trcFlowContext.FlowData = &baseTableTemplate
 
 		// When called sets up an infinite loop listening for changes on either

@@ -445,8 +445,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		// Seed the vault with given seed directory
 		mod, _ := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger) // Connect to vault
 		mod.Env = *envPtr
-		validToken := mod.ValidateEnvironment(mod.Env, true, logger) //This is used to validate token
-		if !validToken {
+		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.Env, false, logger); errValidateEnvironment != nil || !valid {
 			fmt.Println("Invalid token - token: ", *tokenPtr)
 			os.Exit(1)
 		}

@@ -46,7 +46,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		}
 	}
 	versionData := make(map[string]interface{})
-	if !modCheck.ValidateEnvironment(config.Env, false, config.Log) {
+	if valid, errValidateEnvironment := modCheck.ValidateEnvironment(config.Env, false, config.Log); errValidateEnvironment != nil || !valid {
 		return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
 	}
 
