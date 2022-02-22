@@ -13,7 +13,7 @@ const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
 type ProcessContext interface{}
 
-type ConfigDriver func(ctx ProcessContext, config *DriverConfig, logger *log.Logger) (interface{}, error)
+type ConfigDriver func(ctx ProcessContext, config *DriverConfig) (interface{}, error)
 
 type DriverConfig struct {
 	Context         ProcessContext
@@ -45,7 +45,7 @@ type DriverConfig struct {
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
-func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver, logger *log.Logger) {
+func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver) {
 	multiProject := false
 
 	config.EndDir = strings.Replace(config.EndDir, "\\", "/", -1)
@@ -95,7 +95,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver,
 
 			config.StartDir = startDirs
 			// Drive this set of configurations.
-			drive(ctx, config, logger)
+			drive(ctx, config)
 
 			return
 		}
@@ -128,7 +128,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver,
 	}
 
 	// Drive this set of configurations.
-	drive(ctx, config, logger)
+	drive(ctx, config)
 }
 
 // Parse Extracts default values as key-value pairs from template files.

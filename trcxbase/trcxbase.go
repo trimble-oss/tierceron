@@ -395,7 +395,7 @@ skipDiff:
 			waitg.Add(1)
 			go func() {
 				defer waitg.Done()
-				eUtils.ConfigControl(ctx, &config, configDriver, logger)
+				eUtils.ConfigControl(ctx, &config, configDriver)
 			}()
 		}
 	}

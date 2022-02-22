@@ -172,10 +172,9 @@ func ConfigTemplate(modifier *kv.Modifier,
 	return template, certData, true, err
 }
 
-func getTemplateVersionData(modifier *kv.Modifier, secretMode bool, project string, service string, file string, logger *log.Logger) map[string]interface{} {
+func getTemplateVersionData(config *eUtils.DriverConfig, modifier *kv.Modifier, project string, service string, file string) (map[string]interface{}, error) {
 	cds := new(ConfigDataStore)
-	versionData := cds.InitTemplateVersionData(modifier, secretMode, true, project, file, logger, service)
-	return versionData
+	return cds.InitTemplateVersionData(config, modifier, true, project, file, service)
 }
 
 //PopulateTemplate takes an empty template and a modifier.
