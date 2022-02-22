@@ -253,9 +253,14 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					} else {
 						serviceSlice := make([]string, 0)
 						for _, valuesPath := range listValues.Data {
-							for _, envInterface := range valuesPath.([]interface{}) {
-								env := envInterface.(string)
-								serviceSlice = append(serviceSlice, env)
+							for _, serviceInterface := range valuesPath.([]interface{}) {
+								serviceFace := serviceInterface.(string)
+								if version != "0" {
+									versionMap := utils.GetProjectVersionInfo(config, mod) //("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/" + serviceFace)
+									versionNumbers := utils.GetProjectVersions(config, versionMap)
+									utils.BoundCheck(config, versionNumbers, version)
+								}
+								serviceSlice = append(serviceSlice, serviceFace)
 							}
 						}
 						for _, listedService := range serviceSlice {
@@ -281,6 +286,18 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				}
 			}
 		}
+	}
+
+	var iFilterTemplatePaths []string
+	if len(config.IndexFilter) > 0 {
+		for _, iFilter := range config.IndexFilter {
+			for _, tPath := range templatePaths {
+				if strings.Contains(tPath, iFilter) {
+					iFilterTemplatePaths = append(iFilterTemplatePaths, tPath)
+				}
+			}
+		}
+		templatePaths = iFilterTemplatePaths
 	}
 
 	// Configure each template in directory

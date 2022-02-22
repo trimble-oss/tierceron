@@ -42,6 +42,7 @@ type DriverConfig struct {
 	SectionKey      string // Restricted or Index
 	SectionName     string // extension provided name
 	SubSectionValue string
+	IndexFilter     []string
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.

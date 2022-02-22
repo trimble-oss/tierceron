@@ -182,7 +182,12 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	// Create full path
 	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") { //Template paths are not indexed -> values & super-secrets are
-		path = strings.TrimSuffix(m.SectionPath, "/")
+		if strings.Contains(path, "values") {
+			path = strings.Replace(m.SectionPath, "super-secrets", "values", -1)
+		} else {
+			path = m.SectionPath
+		}
+		path = strings.TrimSuffix(path, "/")
 	}
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	fullPath := pathBlocks[0] + "data/"
@@ -405,7 +410,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 	}
 
 	if len(mod.ProjectIndex) > 0 {
-		enginePath = enginePath + "/Index/" + mod.ProjectIndex[0] + "/" + mod.Env
+		enginePath = enginePath + "/Index/" + mod.ProjectIndex[0] + "/" + mod.SectionName + "/" + mod.SubSectionValue
 		mod.Env = mod.RawEnv
 	}
 	userPaths, err := mod.List(enginePath + "/")
