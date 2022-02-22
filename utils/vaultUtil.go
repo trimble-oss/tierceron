@@ -9,24 +9,24 @@ import (
 )
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultMod(config *DriverConfig) (*helperkv.Modifier, *sys.Vault, error) {
+func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, config.ExitOnFailure, config.Log)
 	if err != nil {
-		LogErrorObject(err, config.Log, false)
-		return nil, nil, err
+		LogErrorObject(config, err, false)
+		return config, nil, nil, err
 	}
 	vault.SetToken(config.Token)
 
 	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
 	if err != nil {
-		LogErrorObject(err, config.Log, false)
-		return nil, nil, err
+		LogErrorObject(config, err, false)
+		return config, nil, nil, err
 	}
 	mod.Env = config.Env
 	mod.Version = "0"
 	mod.VersionFilter = config.VersionFilter
 
-	return mod, vault, nil
+	return config, mod, vault, nil
 }
 
 func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templatePaths []string) ([]string, error) {
@@ -55,8 +55,8 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 					if strings.Contains(templatePath, "/"+projectSection+"/") {
 						listValues, err := modCheck.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName)
 						if err != nil {
-							LogErrorObject(err, config.Log, false)
-							LogInfo("Couldn't list services for project path", config.Log)
+							LogErrorObject(config, err, false)
+							LogInfo(config, "Couldn't list services for project path")
 							continue
 						}
 						for _, valuesPath := range listValues.Data {
@@ -102,7 +102,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 }
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*helperkv.Modifier, *sys.Vault, error) {
+func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	exitOnFailure := false
 	if _, ok := pluginConfig["exitOnFailure"]; ok {
 		exitOnFailure = pluginConfig["exitOnFailure"].(bool)

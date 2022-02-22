@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"tierceron/utils"
+	eUtils "tierceron/utils"
 	pb "tierceron/webapi/rpc/apinator"
 )
 
@@ -15,9 +15,10 @@ func main() {
 	apiClient := pb.NewEnterpriseServiceBrokerProtobufClient(*addrPtr, &http.Client{})
 
 	makeVaultReq := &pb.GetValuesReq{}
+	config := &eUtils.DriverConfig{ExitOnFailure: true}
 
 	vault, err := apiClient.GetValues(context.Background(), makeVaultReq)
-	utils.CheckError(err, true)
+	eUtils.CheckError(config, err, true)
 
 	fmt.Printf("Vault: \n")
 	for _, env := range vault.Envs {

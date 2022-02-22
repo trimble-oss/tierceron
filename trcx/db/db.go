@@ -140,7 +140,7 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 			cds = new(vcutils.ConfigDataStore)
 			goMod.Env = envEnterprise
 			goMod.Version = version
-			cds.Init(goMod, config.SecretMode, true, project, nil, config.Log, service)
+			cds.Init(config, goMod, config.SecretMode, true, project, nil, service)
 		}
 
 		var errSeed error
@@ -190,7 +190,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 	goMod.Env = ""
 	tempEnterprises, err := goMod.List("values")
 	if err != nil {
-		eUtils.LogErrorObject(err, config.Log, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	if tempEnterprises != nil {

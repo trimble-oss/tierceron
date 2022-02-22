@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"tierceron/utils"
+	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
 	twp "tierceron/webapi/rpc/apinator"
 	"tierceron/webapi/server"
@@ -189,14 +189,15 @@ func main() {
 
 	s = server.NewServer(*addrPtr, *tokenPtr)
 	localHost = *localPtr
+	config := &eUtils.DriverConfig{ExitOnFailure: true}
 
 	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	utils.CheckError(err, true)
+	eUtils.CheckError(config, err, true)
 	s.Log.SetOutput(f)
 	mlock.Mlock(s.Log)
 
 	status, err := s.GetStatus(context.Background(), nil)
-	utils.LogErrorObject(err, s.Log, true)
+	eUtils.LogErrorObject(config, err, true)
 
 	if !status.Sealed && s.VaultToken != "" {
 		s.Log.Println("Vault is unsealed. Initializing GQL")

@@ -98,7 +98,7 @@ func AutoAuth(config *DriverConfig,
 
 			if *tokenPtr == "" {
 				if !override {
-					LogInfo("Grabbing config IDs from cert file.", config.Log)
+					LogInfo(config, "Grabbing config IDs from cert file.")
 					if c.SecretID != "" && secretIDPtr != nil {
 						*secretIDPtr = c.SecretID
 					}
@@ -121,32 +121,32 @@ func AutoAuth(config *DriverConfig,
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
-			LogInfo("No cert file found, please enter config IDs", config.Log)
+			LogInfo(config, "No cert file found, please enter config IDs")
 			if addrPtr != nil && *addrPtr != "" {
-				LogInfo("vaultHost: "+*addrPtr, config.Log)
+				LogInfo(config, "vaultHost: "+*addrPtr)
 				vaultHost = *addrPtr
 			} else {
-				LogInfo("vaultHost: ", config.Log)
+				LogInfo(config, "vaultHost: ")
 				scanner.Scan()
 				vaultHost = scanner.Text()
 			}
 
 			if *tokenPtr == "" {
 				if secretIDPtr != nil && *secretIDPtr != "" {
-					LogInfo("secretID: "+*secretIDPtr, config.Log)
+					LogInfo(config, "secretID: "+*secretIDPtr)
 					secretID = *secretIDPtr
 				} else if secretIDPtr != nil {
-					LogInfo("secretID: ", config.Log)
+					LogInfo(config, "secretID: ")
 					scanner.Scan()
 					secretID = scanner.Text()
 					*secretIDPtr = secretID
 				}
 
 				if appRoleIDPtr != nil && *appRoleIDPtr != "" {
-					LogInfo("approleID: "+*appRoleIDPtr, config.Log)
+					LogInfo(config, "approleID: "+*appRoleIDPtr)
 					approleID = *appRoleIDPtr
 				} else if appRoleIDPtr != nil {
-					LogInfo("approleID: ", config.Log)
+					LogInfo(config, "approleID: ")
 					scanner.Scan()
 					approleID = scanner.Text()
 					*appRoleIDPtr = approleID
@@ -179,9 +179,9 @@ func AutoAuth(config *DriverConfig,
 
 			dump = []byte(certConfigData)
 		} else if override && !exists {
-			LogInfo("No cert file exists, continuing without saving config IDs", config.Log)
+			LogInfo(config, "No cert file exists, continuing without saving config IDs")
 		} else {
-			LogInfo(fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"), config.Log)
+			LogInfo(config, fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"))
 			certConfigData := "vaultHost: " + vaultHost + "\n"
 			if appRoleIDPtr != nil && secretIDPtr != nil {
 				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
@@ -204,7 +204,7 @@ func AutoAuth(config *DriverConfig,
 			// Create cert file
 			writeErr := ioutil.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
 			if writeErr != nil {
-				LogInfo(fmt.Sprintf("Unable to write file: %v\n", writeErr), config.Log)
+				LogInfo(config, fmt.Sprintf("Unable to write file: %v\n", writeErr))
 			}
 		}
 
@@ -231,7 +231,7 @@ func AutoAuth(config *DriverConfig,
 	if *secretIDPtr != "" || *appRoleIDPtr != "" || *tokenNamePtr != "" {
 		env, _, _, envErr := kv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
-			LogErrorMessage(fmt.Sprintf("Environment format error: %v\n", envErr), config.Log, false)
+			LogErrorMessage(config, fmt.Sprintf("Environment format error: %v\n", envErr), false)
 			os.Exit(-1)
 		}
 

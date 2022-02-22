@@ -3,23 +3,23 @@ package initlib
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 	"strings"
 
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	sys "tierceron/vaulthelper/system"
 	pb "tierceron/webapi/rpc/apinator"
 )
 
 //UploadTokens accepts a file directory and vault object to upload tokens to. Logs to pased logger
-func UploadTokens(dir string, fileFilterPtr *string, v *sys.Vault, logger *log.Logger) []*pb.InitResp_Token {
+func UploadTokens(config *eUtils.DriverConfig, dir string, fileFilterPtr *string, v *sys.Vault) []*pb.InitResp_Token {
 	tokens := []*pb.InitResp_Token{}
-	logger.SetPrefix("[TOKEN]")
-	logger.Printf("Writing tokens from %s\n", dir)
+	config.Log.SetPrefix("[TOKEN]")
+	config.Log.Printf("Writing tokens from %s\n", dir)
 	files, err := ioutil.ReadDir(dir)
 
-	utils.LogErrorObject(err, logger, true)
+	utils.LogErrorObject(config, err, true)
 	for _, file := range files {
 		// Extract and truncate file name
 		filename := file.Name()
@@ -30,9 +30,9 @@ func UploadTokens(dir string, fileFilterPtr *string, v *sys.Vault, logger *log.L
 			if *fileFilterPtr != "" && !strings.Contains(file.Name(), *fileFilterPtr) {
 				continue
 			}
-			logger.Printf("\tFound token file: %s\n", file.Name())
+			config.Log.Printf("\tFound token file: %s\n", file.Name())
 			tokenName, err := v.CreateTokenFromFile(dir + "/" + file.Name())
-			utils.LogErrorObject(err, logger, true)
+			utils.LogErrorObject(config, err, true)
 
 			if err == nil {
 				fmt.Printf("Created token %-30s %s\n", filename+":", tokenName)
