@@ -3,7 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	eUtils "tierceron/utils"
@@ -16,12 +15,12 @@ type ConfigDataStore struct {
 	Regions []string
 }
 
-func (cds *ConfigDataStore) Init(mod *kv.Modifier,
+func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
+	mod *kv.Modifier,
 	secretMode bool,
 	useDirs bool,
 	project string,
 	commonPaths []string,
-	logger *log.Logger,
 	servicesWanted ...string) error {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
@@ -32,14 +31,14 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 		dataPathsFull = commonPaths
 	} else {
 		//get paths where the data is stored
-		dp, err := GetPathsFromProject(mod, logger, project)
+		dp, err := GetPathsFromProject(config, mod, project)
 		if len(dp) > 1 && strings.Contains(dp[len(dp)-1], "!=!") {
 			mod.VersionFilter = append(mod.VersionFilter, strings.Split(dp[len(dp)-1], "!=!")[0])
 			dp = dp[:len(dp)-1]
 		}
 
 		if err != nil {
-			eUtils.LogInfo(fmt.Sprintf("Uninitialized environment.  Please initialize environment. %v\n", err), logger)
+			eUtils.LogInfo(config, fmt.Sprintf("Uninitialized environment.  Please initialize environment. %v\n", err))
 			return err
 		}
 		dataPathsFull = dp
@@ -54,7 +53,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier,
 		}
 	}
 	if len(dataPaths) < len(dataPathsFull)/3 && len(dataPaths) != len(dataPathsFull) {
-		eUtils.LogInfo("Unexpected vault pathing.  Dropping optimization.", logger)
+		eUtils.LogInfo(config, "Unexpected vault pathing.  Dropping optimization.")
 		dataPaths = dataPathsFull
 	}
 
@@ -249,7 +248,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig,
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
-	dataPathsFull, err := GetPathsFromProject(mod, config.Log, project)
+	dataPathsFull, err := GetPathsFromProject(config, mod, project)
 	if len(dataPathsFull) > 0 && strings.Contains(dataPathsFull[len(dataPathsFull)-1], "!=!") {
 		dataPathsFull = dataPathsFull[:len(dataPathsFull)-1]
 	}
@@ -283,7 +282,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig,
 			deeperData, _ = mod.ReadTemplateVersions(path + "template-file")
 		}
 		if err != nil || deeperData == nil && data == nil {
-			eUtils.LogInfo(fmt.Sprintf("Couldn't read version data for %s\n", path), config.Log)
+			eUtils.LogInfo(config, fmt.Sprintf("Couldn't read version data for %s\n", path))
 		}
 	}
 
@@ -378,7 +377,7 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 	return "", false
 }
 
-func GetPathsFromProject(mod *kv.Modifier, logger *log.Logger, projects ...string) ([]string, error) {
+func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects ...string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
 	var err error
@@ -411,7 +410,7 @@ func GetPathsFromProject(mod *kv.Modifier, logger *log.Logger, projects ...strin
 					for _, availProject := range availProjects {
 						innerPathList, err := mod.List("templates/" + availProject.(string)) //Looks for services one path deeper
 						if err != nil {
-							eUtils.LogInfo("Unable to read into nested template path: "+err.Error(), logger)
+							eUtils.LogInfo(config, "Unable to read into nested template path: "+err.Error())
 						}
 						if innerPathList == nil || availProject.(string) == "Common/" {
 							continue
@@ -433,7 +432,7 @@ func GetPathsFromProject(mod *kv.Modifier, logger *log.Logger, projects ...strin
 				if !projectAvailable {
 					if !projectAvailable {
 						if len(projects) > 1 || project != "Common/" {
-							eUtils.LogInfo(project+" is not an available project. No values found.", logger)
+							eUtils.LogInfo(config, project+" is not an available project. No values found.")
 						}
 					}
 				}

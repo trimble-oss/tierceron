@@ -84,10 +84,13 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")
 	restrictedPtr := flag.String("restricted", "", "Specifies which projects have restricted access.")
 
+	config := &eUtils.DriverConfig{ExitOnFailure: true, Insecure: *insecurePtr}
+
 	// Initialize logging
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(err, true)
+	eUtils.CheckError(config, err, true)
 	logger := log.New(f, "[trcx]", log.LstdFlags)
+	config.Log = logger
 
 	// Checks for proper flag input
 	args := os.Args[1:]
@@ -201,13 +204,12 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				os.Exit(1)
 			}
-
 		} else {
 			*tokenPtr = "novault"
 		}
@@ -284,7 +286,7 @@ skipDiff:
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(err, true)
+		eUtils.CheckError(config, err, true)
 	}
 
 	logger.Println("=============== Initializing Seed Generator ===============")
@@ -321,13 +323,13 @@ skipDiff:
 					listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath)
 					if err != nil {
 						if strings.Contains(err.Error(), "permission denied") {
-							eUtils.LogErrorMessage("Attempt to access restricted section of the vault denied.", logger, true)
+							eUtils.LogErrorMessage(config, "Attempt to access restricted section of the vault denied.", true)
 						}
 					}
 
 					// Further path modifications needed.
 					if listValues == nil {
-						eUtils.LogInfo("No available indexes found for "+subSectionPath, nil)
+						eUtils.LogInfo(config, "No available indexes found for "+subSectionPath)
 					}
 					for k, valuesPath := range listValues.Data {
 						for _, indexNameInterface := range valuesPath.([]interface{}) {

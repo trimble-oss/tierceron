@@ -63,7 +63,7 @@ func ToSeed(config *utils.DriverConfig, mod *kv.Modifier,
 			templatePathExtended = strings.Replace(templatePath, "trc_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
-		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, config.ExitOnFailure)
+		templateFile, _ := vcutils.ConfigTemplateRaw(config, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, config.ExitOnFailure)
 		newTemplate = string(templateFile)
 	} else {
 		templateFile, err := ioutil.ReadFile(templatePath)
@@ -88,7 +88,7 @@ func ToSeed(config *utils.DriverConfig, mod *kv.Modifier,
 			for _, arg := range fields.Cmds[0].Args {
 				templateParameter := strings.ReplaceAll(arg.String(), "\\\"", "\"")
 				if strings.Contains(templateParameter, "~") {
-					eUtils.LogInfo("Unsupported parameter name character ~: "+templateParameter, config.Log)
+					eUtils.LogInfo(config, "Unsupported parameter name character ~: "+templateParameter)
 					return nil, nil, nil, 0, errors.New("Unsupported parameter name character ~: " + templateParameter)
 				}
 				args = append(args, templateParameter)

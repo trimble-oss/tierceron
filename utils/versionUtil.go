@@ -54,11 +54,11 @@ func GetProjectVersionInfo(config *DriverConfig, mod *kv.Modifier) map[string]ma
 
 	if err != nil {
 		fmt.Println("No version data available for this env")
-		LogErrorObject(err, config.Log, false)
+		LogErrorObject(config, err, false)
 	}
 	if len(versionMetadataMap) == 0 {
 		fmt.Println("No version data available for this env")
-		LogErrorObject(err, config.Log, false)
+		LogErrorObject(config, err, false)
 	}
 
 	return versionMetadataMap

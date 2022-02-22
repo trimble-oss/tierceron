@@ -27,7 +27,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	modCheck.Env = config.Env
 	version := ""
 	if err != nil {
-		eUtils.LogErrorObject(err, config.Log, false)
+		eUtils.LogErrorObject(config, err, false)
 	}
 	modCheck.VersionFilter = config.VersionFilter
 
@@ -66,11 +66,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	if indexedEnv {
 		templatePaths, err = eUtils.GetAcceptedTemplatePaths(config, modCheck, templatePaths)
 		if err != nil {
-			eUtils.LogErrorObject(err, config.Log, false)
+			eUtils.LogErrorObject(config, err, false)
 		}
 		endPaths, err = eUtils.GetAcceptedTemplatePaths(config, modCheck, endPaths)
 		if err != nil {
-			eUtils.LogErrorObject(err, config.Log, false)
+			eUtils.LogErrorObject(config, err, false)
 		}
 	}
 
@@ -171,7 +171,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 
 		}
 		if neverPrinted {
-			eUtils.LogInfo("No version data available for this env", config.Log)
+			eUtils.LogInfo(config, "No version data available for this env")
 		}
 		return nil, nil //End of -versions flag
 		/*	we might need this commented code - but seems unnecessary
@@ -268,22 +268,22 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 					goto wait
 				} else {
 					var ctErr error
-					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false, config.Log)
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(config, mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
-							eUtils.CheckError(ctErr, true)
+							eUtils.CheckError(config, ctErr, true)
 						}
 					}
 				}
 				//generate template or certificate
 				if config.WantCerts && certLoaded {
 					if len(certData) == 0 {
-						eUtils.LogInfo("Could not load cert "+endPaths[i], config.Log)
+						eUtils.LogInfo(config, "Could not load cert "+endPaths[i])
 						goto wait
 					}
 					certDestination := config.EndDir + "/" + certData[0]
-					writeToFile(certData[1], certDestination)
-					eUtils.LogInfo("certificate written to "+certDestination, config.Log)
+					writeToFile(config, certData[1], certDestination)
+					eUtils.LogInfo(config, "certificate written to "+certDestination)
 					goto wait
 				} else {
 					if config.Diff {
@@ -293,7 +293,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 							config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
 						}
 					} else {
-						writeToFile(configuredTemplate, endPaths[i])
+						writeToFile(config, configuredTemplate, endPaths[i])
 					}
 				}
 			} else {
@@ -321,17 +321,17 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 					goto wait
 				} else {
 					var ctErr error
-					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(mod, templatePath, config.SecretMode, project, service, config.WantCerts, false, config.Log)
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(config, mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
-							eUtils.CheckError(ctErr, true)
+							eUtils.CheckError(config, ctErr, true)
 						}
 					}
 				}
 				if config.WantCerts && certLoaded {
 					certDestination := config.EndDir + "/" + certData[0]
-					writeToFile(certData[1], certDestination)
-					eUtils.LogInfo("certificate written to "+certDestination, config.Log)
+					writeToFile(config, certData[1], certDestination)
+					eUtils.LogInfo(config, "certificate written to "+certDestination)
 					goto wait
 				} else {
 					if config.Diff {
@@ -341,7 +341,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 							config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
 						}
 					} else {
-						writeToFile(configuredTemplate, endPaths[i])
+						writeToFile(config, configuredTemplate, endPaths[i])
 					}
 				}
 			}
@@ -349,9 +349,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 			//print that we're done
 			if !config.Diff && !isCert && !templateInfo {
 				if runtime.GOOS == "windows" {
-					eUtils.LogInfo("template configured and written to "+endPaths[i], config.Log)
+					eUtils.LogInfo(config, "template configured and written to "+endPaths[i])
 				} else {
-					eUtils.LogInfo("\033[0;33m"+"template configured and written to "+endPaths[i]+"\033[0m", config.Log)
+					eUtils.LogInfo(config, "\033[0;33m"+"template configured and written to "+endPaths[i]+"\033[0m")
 				}
 			}
 
@@ -368,21 +368,21 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	return nil, nil
 }
 
-func writeToFile(data string, path string) {
+func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	byteData := []byte(data)
 	//Ensure directory has been created
 
 	dirPath := filepath.Dir(path)
 	err := os.MkdirAll(dirPath, os.ModePerm)
-	utils.CheckError(err, true)
+	utils.CheckError(config, err, true)
 	//create new file
 	newFile, err := os.Create(path)
-	utils.CheckError(err, true)
+	utils.CheckError(config, err, true)
 	//write to file
 	_, err = newFile.Write(byteData)
-	utils.CheckError(err, true)
+	utils.CheckError(config, err, true)
 	err = newFile.Sync()
-	utils.CheckError(err, true)
+	utils.CheckError(config, err, true)
 	newFile.Close()
 }
 

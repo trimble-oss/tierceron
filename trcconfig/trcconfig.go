@@ -122,7 +122,8 @@ func main() {
 		os.Exit(1)
 	}
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(err, true)
+	config := eUtils.DriverConfig{ExitOnFailure: true}
+	eUtils.CheckError(&config, err, true)
 	logger := log.New(f, "[trcconfig]", log.LstdFlags)
 
 	//Dont allow these combinations of flags
@@ -218,7 +219,7 @@ func main() {
 			var err error
 			*envPtr, err = eUtils.LoginToLocal()
 			fmt.Println(*envPtr)
-			eUtils.CheckError(err, true)
+			eUtils.CheckError(&config, err, true)
 		}
 	}
 
