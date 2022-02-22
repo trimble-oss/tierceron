@@ -1,8 +1,8 @@
 package util
 
 import (
-	"log"
 	"tierceron/trcconfig/utils"
+	eUtils "tierceron/utils"
 
 	"tierceron/vaulthelper/kv"
 
@@ -45,7 +45,7 @@ func NewProperties(tokenNamePtr *string, authTokenNamePtr *string, appRoleIDPtr 
 	return &properties, nil
 }
 */
-func NewProperties(v *sys.Vault, mod *kv.Modifier, env string, project string, service string, logger *log.Logger) (*Properties, error) {
+func NewProperties(config *eUtils.DriverConfig, v *sys.Vault, mod *kv.Modifier, env string, project string, service string) (*Properties, error) {
 	properties := Properties{}
 	properties.mod = mod
 	properties.mod.Env = env
@@ -60,7 +60,7 @@ func NewProperties(v *sys.Vault, mod *kv.Modifier, env string, project string, s
 	}
 	properties.cds = new(utils.ConfigDataStore)
 	var commonPaths []string
-	propertyerr := properties.cds.Init(properties.mod, true, true, project, commonPaths, logger, service)
+	propertyerr := properties.cds.Init(config, properties.mod, true, true, project, commonPaths, service)
 	if propertyerr != nil {
 		return nil, propertyerr
 	}

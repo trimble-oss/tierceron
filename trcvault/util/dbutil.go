@@ -2,7 +2,6 @@ package util
 
 import (
 	"database/sql"
-	"log"
 
 	"tierceron/validator"
 
@@ -29,8 +28,8 @@ type TierceronEngine struct {
 }
 
 //OpenDirectConnection opens connection to a database using various sql urls used by Spectrum.
-func OpenDirectConnection(url string, username string, password string, logger *log.Logger) (*sql.DB, error) {
-	driver, server, port, dbname := validator.ParseURL(url, logger)
+func OpenDirectConnection(config *eUtils.DriverConfig, url string, username string, password string) (*sql.DB, error) {
+	driver, server, port, dbname := validator.ParseURL(config, url)
 
 	var conn *sql.DB
 	var err error
