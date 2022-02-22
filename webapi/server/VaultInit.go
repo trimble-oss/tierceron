@@ -9,6 +9,7 @@ import (
 
 	il "tierceron/trcinit/initlib"
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 	pb "tierceron/webapi/rpc/apinator"
@@ -27,8 +28,8 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, logger)
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		utils.LogErrorObject(err, logger, false)
+		eUtils.LogErrorObject(err, s.Log, false)
+		eUtils.LogErrorObject(err, logger, false)
 		return &pb.InitResp{
 			Success: false,
 			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
@@ -75,7 +76,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 				Tokens:  nil,
 			}, err
 		}
-		il.SeedVaultFromData(false, "", fBytes, s.VaultAddr, s.VaultToken, seed.Env, logger, "", true)
+		il.SeedVaultFromData(&eUtils.DriverConfig{Insecure: false, VaultAddress: s.VaultAddr, Token: s.VaultToken, Env: seed.Env, Log: logger, ExitOnFailure: true}, "", fBytes, "", true)
 	}
 
 	il.UploadPolicies(policyPath, v, false, logger)
