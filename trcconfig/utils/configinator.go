@@ -17,12 +17,12 @@ var mutex = &sync.Mutex{}
 
 //GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
 func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig) (interface{}, error) {
-	Cyan := "\033[36m"
+	/*Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if runtime.GOOS == "windows" {
 		Reset = ""
 		Cyan = ""
-	}
+	}*/
 	modCheck, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
 	modCheck.Env = config.Env
 	version := ""
@@ -50,7 +50,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
 	}
 
-	initialized := false
+	//initialized := false
 	templatePaths := []string{}
 	endPaths := []string{}
 
@@ -120,7 +120,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	modCheck.VersionFilter = config.VersionFilter
 
 	if versionInfo {
-		versionDataMap := make(map[string]map[string]interface{})
+		//versionDataMap := make(map[string]map[string]interface{})
 		//Gets version metadata for super secrets or values if super secrets don't exist.
 		if strings.Contains(modCheck.Env, ".") {
 			envVersion := eUtils.SplitEnv(modCheck.Env)
@@ -129,12 +129,13 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		}
 
 		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
-		var masterKey string
+		//var masterKey string
 		project := ""
 		neverPrinted := true
 		if len(config.VersionFilter) > 0 {
 			project = config.VersionFilter[0]
 		}
+		first := true
 		for key := range versionMetadataMap {
 			passed := false
 			if config.WantCerts {
@@ -159,39 +160,44 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				}
 			} else {
 				if len(key) > 0 {
-					config.VersionInfo(versionMetadataMap[key], false, "", false)
-					return nil, eUtils.LogAndSafeExit(config, "", 1)
+					config.VersionInfo(versionMetadataMap[key], false, key, first)
+					//return nil, eUtils.LogAndSafeExit(config, "", 1)
+					if first {
+						neverPrinted = false
+						first = false
+					}
 				}
 			}
+
 		}
 		if neverPrinted {
 			eUtils.LogInfo("No version data available for this env", config.Log)
 		}
-		return nil, eUtils.LogAndSafeExit(config, "", 1)
-
-		for valuePath, data := range versionMetadataMap {
-			projectFound := false
-			for _, project := range config.VersionFilter {
-				if strings.Contains(valuePath, project) {
-					projectFound = true
-					initialized = true
-					break
-				}
-			}
-			if !projectFound {
-				continue
-			}
-
-			versionDataMap[valuePath] = data
-			masterKey = valuePath
-		}
-
-		if versionDataMap != nil {
-			config.VersionInfo(versionDataMap[masterKey], false, masterKey, false)
-		} else if !initialized {
-			eUtils.LogInfo(Cyan+"No metadata found for this environment"+Reset, config.Log)
-		}
 		return nil, nil //End of -versions flag
+		/*	we might need this commented code - but seems unnecessary
+			for valuePath, data := range versionMetadataMap {
+				projectFound := false
+				for _, project := range config.VersionFilter {
+					if strings.Contains(valuePath, project) {
+						projectFound = true
+						initialized = true
+						break
+					}
+				}
+				if !projectFound {
+					continue
+				}
+
+				versionDataMap[valuePath] = data
+				masterKey = valuePath
+			}
+
+			if versionDataMap != nil {
+				config.VersionInfo(versionDataMap[masterKey], false, masterKey, false)
+			} else if !initialized {
+				eUtils.LogInfo(Cyan+"No metadata found for this environment"+Reset, config.Log)
+			}
+		*/
 	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
 			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
