@@ -17,7 +17,7 @@ import (
 var mutex = &sync.Mutex{}
 
 //GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig, logger *log.Logger) interface{} {
+func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig, logger *log.Logger) (interface{}, error) {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if runtime.GOOS == "windows" {
@@ -48,8 +48,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	}
 	versionData := make(map[string]interface{})
 	if !modCheck.ValidateEnvironment(config.Env, false, logger) {
-		eUtils.LogInfo("Mismatched token for requested environment: "+config.Env, logger)
-		os.Exit(1)
+		return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
 	}
 
 	initialized := false
@@ -92,8 +91,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 			}
 		}
 		if !fileFound {
-			eUtils.LogInfo("Could not find specified file in templates", logger)
-			os.Exit(1)
+			return nil, eUtils.LogAndSafeExit(config, "Could not find specified file in templates", 1)
 		}
 
 		fileTemplatePaths := []string{}
@@ -163,14 +161,14 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 			} else {
 				if len(key) > 0 {
 					config.VersionInfo(versionMetadataMap[key], false, "", false)
-					os.Exit(1)
+					return nil, eUtils.LogAndSafeExit(config, "", 1)
 				}
 			}
 		}
 		if neverPrinted {
 			eUtils.LogInfo("No version data available for this env", logger)
 		}
-		os.Exit(1)
+		return nil, eUtils.LogAndSafeExit(config, "", 1)
 
 		for valuePath, data := range versionMetadataMap {
 			projectFound := false
@@ -194,7 +192,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		} else if !initialized {
 			eUtils.LogInfo(Cyan+"No metadata found for this environment"+Reset, logger)
 		}
-		return nil //End of -versions flag
+		return nil, nil //End of -versions flag
 	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
 			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck, logger)
@@ -208,7 +206,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	//configure each template in directory
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(i int, templatePath string, version string, versionData map[string]interface{}) {
+		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
 			mod, _ := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, logger)
@@ -254,8 +252,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 					data := getTemplateVersionData(mod, config.SecretMode, project, service, endPaths[i], logger)
 					mutex.Lock()
 					if data == nil {
-						eUtils.LogInfo("Template version data could not be retrieved", logger)
-						os.Exit(1)
+						return eUtils.LogAndSafeExit(config, "Template version data could not be retrieved", 1)
 					}
 					versionData[endPaths[i]] = data
 					mutex.Unlock()
@@ -348,14 +345,17 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 
 		wait:
 			mod.Close()
+
+			return nil
 		}(i, templatePath, version, versionData)
 	}
 	wg.Wait()
 	if templateInfo {
 		config.VersionInfo(versionData, true, "", false)
 	}
-	return nil
+	return nil, nil
 }
+
 func writeToFile(data string, path string) {
 	byteData := []byte(data)
 	//Ensure directory has been created

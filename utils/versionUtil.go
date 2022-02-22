@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"log"
-	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -103,12 +102,10 @@ func BoundCheck(config *DriverConfig, versionNumbers []int, version string) {
 		oldestVersion := versionNumbers[0]
 		userVersion, _ := strconv.Atoi(version)
 		if userVersion > latestVersion || userVersion < oldestVersion && len(versionNumbers) != 1 {
-			fmt.Println(Cyan + "This version " + config.Env + " is not available as the latest version is " + strconv.Itoa(versionNumbers[len(versionNumbers)-1]) + " and oldest version available is " + strconv.Itoa(versionNumbers[0]) + Reset)
-			os.Exit(1)
+			LogAndSafeExit(config, Cyan+"This version "+config.Env+" is not available as the latest version is "+strconv.Itoa(versionNumbers[len(versionNumbers)-1])+" and oldest version available is "+strconv.Itoa(versionNumbers[0])+Reset, 1)
 		}
 	} else {
-		fmt.Println(Cyan + "No version data found" + Reset)
-		os.Exit(1)
+		LogAndSafeExit(config, Cyan+"No version data found"+Reset, 1)
 	}
 }
 
