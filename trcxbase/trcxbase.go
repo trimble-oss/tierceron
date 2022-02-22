@@ -201,7 +201,13 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
 		if !*noVaultPtr {
-			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
+			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+
+			if autoErr != nil {
+				fmt.Println("Missing auth components.")
+				os.Exit(1)
+			}
+
 		} else {
 			*tokenPtr = "novault"
 		}
@@ -262,7 +268,11 @@ skipDiff:
 		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 			regions = eUtils.GetSupportedProdRegions()
 		}
-		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
+		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		if autoErr != nil {
+			fmt.Println("Missing auth components.")
+			os.Exit(1)
+		}
 	}
 
 	if (tokenPtr == nil || *tokenPtr == "") && !*noVaultPtr && len(envSlice) == 1 {
@@ -357,7 +367,7 @@ skipDiff:
 				*tokenPtr = ""
 			}
 			if !*noVaultPtr {
-				eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
+				eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 			} else {
 				*tokenPtr = "novault"
 			}

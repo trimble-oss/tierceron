@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -27,7 +28,7 @@ func GetSupportedProdRegions() []string {
 	return prodRegions
 }
 
-func (c *cert) getCert(logger *log.Logger) *cert {
+func (c *cert) getCert(logger *log.Logger) (*cert, error) {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
 		logger.Printf("User home directory #%v ", err)
@@ -40,22 +41,21 @@ func (c *cert) getCert(logger *log.Logger) *cert {
 
 	err = yaml.Unmarshal(yamlFile, c)
 	if err != nil {
-		log.Fatalf("Unmarshal: %v", err)
+		return nil, err
 	}
 
-	return c
+	return c, err
 }
 
 // AutoAuth attempts to authenticate a user.
-func AutoAuth(insecure bool,
+func AutoAuth(config *DriverConfig,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
 	tokenPtr *string,
 	tokenNamePtr *string,
 	envPtr *string,
 	addrPtr *string,
-	ping bool,
-	logger *log.Logger) {
+	ping bool) error {
 	// Declare local variables
 	var override bool
 	var exists bool
@@ -64,13 +64,13 @@ func AutoAuth(insecure bool,
 
 	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" {
 		// For token based auth, auto auth not
-		return
+		return errors.New("Missing auth.")
 	}
 
 	// Get current user's home directory
 	userHome, err := os.UserHomeDir()
 	if err != nil {
-		logger.Printf("User home directory #%v ", err)
+		config.Log.Printf("User home directory #%v ", err)
 	}
 
 	// New values available for the cert file
@@ -87,14 +87,18 @@ func AutoAuth(insecure bool,
 	} else {
 		if _, err := os.Stat(userHome + "/.tierceron/config.yml"); !os.IsNotExist(err) {
 			exists = true
-			c.getCert(logger)
+			_, certErr := c.getCert(config.Log)
+			if certErr != nil {
+				return certErr
+			}
+
 			if addrPtr == nil || *addrPtr == "" {
 				*addrPtr = c.VaultHost
 			}
 
 			if *tokenPtr == "" {
 				if !override {
-					LogInfo("Grabbing config IDs from cert file.", logger)
+					LogInfo("Grabbing config IDs from cert file.", config.Log)
 					if c.SecretID != "" && secretIDPtr != nil {
 						*secretIDPtr = c.SecretID
 					}
@@ -117,32 +121,32 @@ func AutoAuth(insecure bool,
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
-			LogInfo("No cert file found, please enter config IDs", logger)
+			LogInfo("No cert file found, please enter config IDs", config.Log)
 			if addrPtr != nil && *addrPtr != "" {
-				LogInfo("vaultHost: "+*addrPtr, logger)
+				LogInfo("vaultHost: "+*addrPtr, config.Log)
 				vaultHost = *addrPtr
 			} else {
-				LogInfo("vaultHost: ", logger)
+				LogInfo("vaultHost: ", config.Log)
 				scanner.Scan()
 				vaultHost = scanner.Text()
 			}
 
 			if *tokenPtr == "" {
 				if secretIDPtr != nil && *secretIDPtr != "" {
-					LogInfo("secretID: "+*secretIDPtr, logger)
+					LogInfo("secretID: "+*secretIDPtr, config.Log)
 					secretID = *secretIDPtr
 				} else if secretIDPtr != nil {
-					LogInfo("secretID: ", logger)
+					LogInfo("secretID: ", config.Log)
 					scanner.Scan()
 					secretID = scanner.Text()
 					*secretIDPtr = secretID
 				}
 
 				if appRoleIDPtr != nil && *appRoleIDPtr != "" {
-					LogInfo("approleID: "+*appRoleIDPtr, logger)
+					LogInfo("approleID: "+*appRoleIDPtr, config.Log)
 					approleID = *appRoleIDPtr
 				} else if appRoleIDPtr != nil {
-					LogInfo("approleID: ", logger)
+					LogInfo("approleID: ", config.Log)
 					scanner.Scan()
 					approleID = scanner.Text()
 					*appRoleIDPtr = approleID
@@ -158,11 +162,13 @@ func AutoAuth(insecure bool,
 
 			// Checks that the scanner is working
 			if err := scanner.Err(); err != nil {
-				log.Fatal(err)
+				return err
 			}
 		}
-		v, err = sys.NewVault(insecure, *addrPtr, *envPtr, false, ping, false, logger)
-		CheckErrorNoStack(err, true)
+		v, err = sys.NewVault(config.Insecure, *addrPtr, *envPtr, false, ping, false, config.Log)
+		if err != nil {
+			return err
+		}
 
 		// Get dump
 		if override && exists {
@@ -173,9 +179,9 @@ func AutoAuth(insecure bool,
 
 			dump = []byte(certConfigData)
 		} else if override && !exists {
-			LogInfo("No cert file exists, continuing without saving config IDs", logger)
+			LogInfo("No cert file exists, continuing without saving config IDs", config.Log)
 		} else {
-			LogInfo(fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"), logger)
+			LogInfo(fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"), config.Log)
 			certConfigData := "vaultHost: " + vaultHost + "\n"
 			if appRoleIDPtr != nil && secretIDPtr != nil {
 				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
@@ -191,14 +197,14 @@ func AutoAuth(insecure bool,
 			if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {
 				err = os.MkdirAll(userHome+"/.tierceron", 0700)
 				if err != nil {
-					log.Fatal(err)
+					return err
 				}
 			}
 
 			// Create cert file
 			writeErr := ioutil.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
 			if writeErr != nil {
-				LogInfo(fmt.Sprintf("Unable to write file: %v\n", writeErr), logger)
+				LogInfo(fmt.Sprintf("Unable to write file: %v\n", writeErr), config.Log)
 			}
 		}
 
@@ -210,20 +216,22 @@ func AutoAuth(insecure bool,
 			}
 		}
 	} else {
-		v, err = sys.NewVault(insecure, *addrPtr, *envPtr, false, ping, false, logger)
-		CheckErrorNoStack(err, true)
+		v, err = sys.NewVault(config.Insecure, *addrPtr, *envPtr, false, ping, false, config.Log)
+		if err != nil {
+			return err
+		}
 	}
 
 	if secretIDPtr == nil || appRoleIDPtr == nil {
 		// Vaultinit and vaultx may take this path.
-		return
+		return nil
 	}
 
 	//if using appRole
 	if *secretIDPtr != "" || *appRoleIDPtr != "" || *tokenNamePtr != "" {
 		env, _, _, envErr := kv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
-			LogErrorMessage(fmt.Sprintf("Environment format error: %v\n", envErr), logger, false)
+			LogErrorMessage(fmt.Sprintf("Environment format error: %v\n", envErr), config.Log, false)
 			os.Exit(-1)
 		}
 
@@ -247,35 +255,42 @@ func AutoAuth(insecure bool,
 		}
 		//check that none are empty
 		if *secretIDPtr == "" {
-			CheckWarning(fmt.Sprintf("Missing required secretID"), true)
+			return LogAndSafeExit(config, "Missing required secretID", 1)
 		} else if *appRoleIDPtr == "" {
-			CheckWarning(fmt.Sprintf("Missing required appRoleID"), true)
+			return LogAndSafeExit(config, "Missing required appRoleID", 1)
 		} else if *tokenNamePtr == "" {
-			CheckWarning(fmt.Sprintf("Missing required tokenName"), true)
+			return LogAndSafeExit(config, "Missing required tokenName", 1)
 		} else if *tokenNamePtr == "Invalid environment" {
-			CheckWarning(fmt.Sprintf("Invalid environment:"+*envPtr), true)
+			return LogAndSafeExit(config, "Invalid environment:"+*envPtr, 1)
 		}
 		//check that token matches environment
 		tokenParts := strings.Split(*tokenNamePtr, "_")
 		tokenEnv := tokenParts[len(tokenParts)-1]
 		if env != tokenEnv {
-			CheckWarning(fmt.Sprintf("Token doesn't match environment"), true)
+			return LogAndSafeExit(config, "Token doesn't match environment", 1)
 		}
 	}
 
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
-			CheckError(fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
+			return errors.New("Need both public and secret app role to retrieve token from vault")
 		}
 
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
-		CheckError(err, true)
+		if err != nil {
+			return err
+		}
 
-		mod, err := kv.NewModifier(insecure, master, *addrPtr, *envPtr, nil, logger)
-		CheckError(err, true)
+		mod, err := kv.NewModifier(config.Insecure, master, *addrPtr, *envPtr, nil, config.Log)
+		if err != nil {
+			return err
+		}
 		mod.Env = "bamboo"
 
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
-		CheckError(err, true)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
