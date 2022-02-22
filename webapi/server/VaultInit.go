@@ -25,11 +25,12 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
 
 	fmt.Println("Initing vault")
+	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, logger)
 	if err != nil {
-		eUtils.LogErrorObject(err, s.Log, false)
-		eUtils.LogErrorObject(err, logger, false)
+		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return &pb.InitResp{
 			Success: false,
 			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
@@ -40,7 +41,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	// Init and unseal vault
 	keyToken, err := v.InitVault(3, 5)
 	if err != nil {
-		utils.LogErrorObject(err, logger, false)
+		utils.LogErrorObject(config, err, false)
 		return &pb.InitResp{
 			Success: false,
 			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
@@ -53,7 +54,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	//check error returned by unseal
 	v.Unseal()
 	if err != nil {
-		utils.LogErrorObject(err, logger, false)
+		utils.LogErrorObject(config, err, false)
 		return &pb.InitResp{
 			Success: false,
 			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
@@ -64,12 +65,12 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	logger.Printf("Succesfully connected to vault at %s\n", s.VaultAddr)
 
 	// Create engines
-	il.CreateEngines(v, logger)
+	il.CreateEngines(config, v)
 
 	for _, seed := range req.Files {
 		fBytes, err := b64.StdEncoding.DecodeString(seed.Data)
 		if err != nil {
-			utils.LogErrorObject(err, logger, false)
+			utils.LogErrorObject(config, err, false)
 			return &pb.InitResp{
 				Success: false,
 				Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
@@ -79,45 +80,45 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		il.SeedVaultFromData(&eUtils.DriverConfig{Insecure: false, VaultAddress: s.VaultAddr, Token: s.VaultToken, Env: seed.Env, Log: logger, ExitOnFailure: true}, "", fBytes, "", true)
 	}
 
-	il.UploadPolicies(policyPath, v, false, logger)
+	il.UploadPolicies(config, policyPath, v, false)
 
-	tokens := il.UploadTokens(tokenPath, nil, v, logger)
+	tokens := il.UploadTokens(config, tokenPath, nil, v)
 	tokenMap := map[string]interface{}{}
 	for _, token := range tokens {
 		tokenMap[token.Name] = token.Value
 	}
 
 	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
-	utils.LogErrorObject(err, logger, false)
+	utils.LogErrorObject(config, err, false)
 
 	mod.Env = "bamboo"
 	warn, err := mod.Write("super-secrets/tokens", tokenMap)
-	utils.LogErrorObject(err, logger, false)
-	utils.LogWarningsObject(warn, logger, false)
+	utils.LogErrorObject(config, err, false)
+	utils.LogWarningsObject(config, warn, false)
 
 	envStrings := SelectedEnvironment
 	for _, e := range envStrings {
 		mod.Env = e
 		err, warn = il.UploadTemplateDirectory(mod, templatePath, logger)
-		utils.LogErrorObject(err, logger, false)
-		utils.LogWarningsObject(warn, logger, false)
+		utils.LogErrorObject(config, err, false)
+		utils.LogWarningsObject(config, warn, false)
 	}
 
 	err = v.EnableAppRole()
-	utils.LogErrorObject(err, logger, false)
+	utils.LogErrorObject(config, err, false)
 
 	err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
 		TokenTTL:    "10m",
 		TokenMaxTTL: "15m",
 		Policies:    []string{"bamboo"},
 	})
-	utils.LogErrorObject(err, logger, false)
+	utils.LogErrorObject(config, err, false)
 
 	roleID, _, err := v.GetRoleID("bamboo")
-	utils.LogErrorObject(err, logger, false)
+	utils.LogErrorObject(config, err, false)
 
 	secretID, err := v.GetSecretID("bamboo")
-	utils.LogErrorObject(err, logger, false)
+	utils.LogErrorObject(config, err, false)
 
 	s.Log.Println("Init Log \n" + logBuffer.String())
 
@@ -136,11 +137,11 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 			break
 		}
 	}
-	s.InitConfig(targetEnv)
+	s.InitConfig(config, targetEnv)
 
 	res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password, Environment: targetEnv})
 	if err != nil {
-		utils.LogErrorObject(err, logger, false)
+		utils.LogErrorObject(config, err, false)
 		tokens = append(tokens, &pb.InitResp_Token{
 			Name:  "Auth",
 			Value: "invalid",
@@ -176,23 +177,24 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 		Success:   false,
 		AuthToken: "",
 	}
+	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 
 	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return &result, err
 	}
 	mod.Env = req.Environment
 
 	authSuccess, name, err := s.authUser(mod, req.Username, req.Password)
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return &result, err
 	}
 
 	token, errJwtGen := s.generateJWT(name, req.Environment+"/"+req.Username, mod)
 	if errJwtGen != nil {
-		utils.LogErrorObject(errJwtGen, s.Log, false)
+		utils.LogErrorObject(config, errJwtGen, false)
 		return &result, err
 	}
 	result.AuthToken = token
@@ -204,14 +206,15 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 //GetStatus requests version info and whether the vault has been initailized
 func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStatus, error) {
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, s.Log)
+	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
 	status, err := v.GetStatus()
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	return &pb.VaultStatus{
@@ -224,8 +227,9 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 //Unseal passes the unseal key to the vault and tries to unseal the vault
 func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp, error) {
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
+	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
@@ -233,7 +237,7 @@ func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp,
 	prog, need, sealed, err := v.Unseal()
 
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	if sealed {

@@ -61,14 +61,13 @@ func getInsertTrigger(databaseName string, tableName string, idColumnName string
 
 func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	trcFlowContext *flowcore.TrcFlowContext,
-	configDriver *eUtils.DriverConfig,
+	config *eUtils.DriverConfig,
 	vaultAddress string,
 	v *sys.Vault,
 	identityColumnName string,
 	vaultIndexColumnName string,
 	isInit bool,
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
-	logger *log.Logger) error {
+	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
 
 	var matrixChangedEntries [][]string
 	var changedEntriesQuery string
@@ -83,13 +82,13 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 	_, _, matrixChangedEntries, err := db.Query(trcFlowMachineContext.TierceronEngine, changedEntriesQuery)
 	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
+		eUtils.LogErrorObject(config, err, false)
 	}
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
 		_, _, _, err = db.Query(trcFlowMachineContext.TierceronEngine, getDeleteChangeQuery(trcFlowContext.FlowSourceAlias, trcFlowContext.ChangeFlowName, changedId))
 		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
+			eUtils.LogErrorObject(config, err, false)
 		}
 	}
 	changesLock.Unlock()
@@ -101,7 +100,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 		_, changedTableColumns, changedTableRowData, err := db.Query(trcFlowMachineContext.TierceronEngine, changedTableQuery)
 		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
+			eUtils.LogErrorObject(config, err, false)
 			continue
 		}
 
@@ -120,23 +119,23 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 			return db.Query(engine.(*db.TierceronEngine), query)
 		})
 		if indexPathErr != nil {
-			eUtils.LogErrorObject(indexPathErr, logger, false)
+			eUtils.LogErrorObject(config, indexPathErr, false)
 			// Re-inject into changes because it might not be here yet...
 			_, _, _, err = db.Query(trcFlowMachineContext.TierceronEngine, getInsertChangeQuery(trcFlowContext.FlowSourceAlias, trcFlowContext.ChangeFlowName, changedId))
 			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
+				eUtils.LogErrorObject(config, err, false)
 			}
 			continue
 		}
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
-		seedError := util.SeedVaultById(configDriver, trcFlowContext.GoMod, trcFlowContext.FlowService, vaultAddress, v.GetToken(), trcFlowContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, logger, trcFlowContext.FlowSource)
+		seedError := util.SeedVaultById(config, trcFlowContext.GoMod, trcFlowContext.FlowService, vaultAddress, v.GetToken(), trcFlowContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, trcFlowContext.FlowSource)
 		if seedError != nil {
-			eUtils.LogErrorObject(seedError, logger, false)
+			eUtils.LogErrorObject(config, seedError, false)
 			// Re-inject into changes because it might not be here yet...
 			_, _, _, err = db.Query(trcFlowMachineContext.TierceronEngine, getInsertChangeQuery(trcFlowContext.FlowSourceAlias, trcFlowContext.ChangeFlowName, changedId))
 			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
+				eUtils.LogErrorObject(config, err, false)
 			}
 			continue
 		}
@@ -145,7 +144,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		if !isInit {
 			pushError := flowPushRemote(trcFlowContext.RemoteDataSource, rowDataMap)
 			if pushError != nil {
-				eUtils.LogErrorObject(err, logger, false)
+				eUtils.LogErrorObject(config, err, false)
 			}
 		}
 
@@ -156,7 +155,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	trcFlowContext *flowcore.TrcFlowContext,
-	configDriver *eUtils.DriverConfig,
+	config *eUtils.DriverConfig,
 	vaultDatabaseConfig map[string]interface{}, // TODO: actually use this to set up a mysql facade.
 	vaultAddress string,
 	sourceDatabaseConnectionMap map[string]interface{},
@@ -164,8 +163,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	flow string,
 	flowType flowcore.FlowType,
 	changedChannel chan bool,
-	signalChannel chan os.Signal,
-	logger *log.Logger) error {
+	signalChannel chan os.Signal) error {
 
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
@@ -183,7 +181,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 				//	ii. Init database and tables in local mysql engine instance.
 				err := trcFlowMachineContext.TierceronEngine.Database.CreateTable(trcFlowMachineContext.TierceronEngine.Context, tableName, tableSchema)
 				if err != nil {
-					eUtils.LogErrorObject(err, logger, false)
+					eUtils.LogErrorObject(config, err, false)
 				}
 			}
 			tableCreationLock.Unlock()
@@ -200,7 +198,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 			//Prevent duplicate triggers from existing
 			existingTriggers, err := trcFlowMachineContext.TierceronEngine.Database.GetTriggers(trcFlowMachineContext.TierceronEngine.Context)
 			if err != nil {
-				eUtils.CheckError(err, false)
+				eUtils.CheckError(config, err, false)
 			}
 
 			triggerExist := false
@@ -219,7 +217,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 		// 3. Create a base seed template for use in vault seed process.
 		var baseTableTemplate extract.TemplateResultData
-		util.LoadBaseTemplate(configDriver, &baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.FlowService, trcFlowContext.FlowPath)
+		util.LoadBaseTemplate(config, &baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.FlowService, trcFlowContext.FlowPath)
 		trcFlowContext.FlowData = &baseTableTemplate
 
 		// When called sets up an infinite loop listening for changes on either
@@ -231,32 +229,30 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 			for {
 				select {
 				case <-signalChannel:
-					eUtils.LogErrorMessage("Receiving shutdown presumably from vault.", logger, true)
+					eUtils.LogErrorMessage(config, "Receiving shutdown presumably from vault.", true)
 					os.Exit(0)
 				case <-changedChannel:
 					seedVaultFromChanges(trcFlowMachineContext,
 						trcfc,
-						configDriver,
+						config,
 						vaultAddress,
 						vault,
 						identityColumnName,
 						vaultIndexColumnName,
 						false,
-						flowPushRemote,
-						logger)
+						flowPushRemote)
 				case <-time.After(afterTime):
 					afterTime = time.Minute * 3
-					eUtils.LogInfo("3 minutes... checking local mysql for changes.", logger)
+					eUtils.LogInfo(config, "3 minutes... checking local mysql for changes.")
 					seedVaultFromChanges(trcFlowMachineContext,
 						trcfc,
-						configDriver,
+						config,
 						vaultAddress,
 						vault,
 						identityColumnName,
 						vaultIndexColumnName,
 						isInit,
-						flowPushRemote,
-						logger)
+						flowPushRemote)
 					isInit = false
 				}
 			}
@@ -273,7 +269,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		trcfc.GoMod.SectionKey = "/Restricted/"
 		trcfc.GoMod.SectionName = flowService
 		trcfc.GoMod.SubSectionValue = flowService
-		properties, err := util.NewProperties(vault, trcfc.GoMod, trcFlowMachineContext.Env, flowProject, flowService, logger)
+		properties, err := util.NewProperties(config, vault, trcfc.GoMod, trcFlowMachineContext.Env, flowProject, flowService)
 		if err != nil {
 			return nil, false
 		}
@@ -287,7 +283,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		if operation == "INSERT" {
 			_, _, matrix, err := db.Query(trcFlowMachineContext.TierceronEngine, query)
 			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
+				eUtils.LogErrorObject(config, err, false)
 			}
 			if changed && len(matrix) > 0 {
 				if changedChannel != nil {
@@ -307,7 +303,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		} else if operation == "UPDATE" {
 			_, _, matrix, err := db.Query(trcFlowMachineContext.TierceronEngine, query)
 			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
+				eUtils.LogErrorObject(config, err, false)
 			}
 			if changed && len(matrix) > 0 {
 				if changedChannel != nil {
@@ -327,7 +323,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		} else if operation == "SELECT" {
 			_, _, matrixChangedEntries, err := db.Query(trcFlowMachineContext.TierceronEngine, query)
 			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
+				eUtils.LogErrorObject(config, err, false)
 			}
 			return matrixChangedEntries
 		}
@@ -337,9 +333,9 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	// Open a database connection to the provided source using provided
 	// source configurations.
 	trcFlowMachineContext.CallGetDbConn = func(dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
-		return util.OpenDirectConnection(dbUrl,
+		return util.OpenDirectConnection(config, dbUrl,
 			username,
-			configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionMap), logger)
+			configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionMap))
 	}
 
 	// Utilizing provided api auth headers, endpoint, and body data
@@ -351,19 +347,19 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 			return nil, err
 		}
 		if getOrPost {
-			return util.GetJSONFromClientByGet(httpClient, apiAuthHeaders, apiEndpoint, bodyData, logger)
+			return util.GetJSONFromClientByGet(config, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
 		}
-		return util.GetJSONFromClientByPost(httpClient, apiAuthHeaders, apiEndpoint, bodyData, logger)
+		return util.GetJSONFromClientByPost(config, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
 	}
 
 	// Create remote data source with only what is needed.
 	trcFlowContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
 	trcFlowContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
 
-	dbsourceConn, err := util.OpenDirectConnection(sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string), logger)
+	dbsourceConn, err := util.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
 	if err != nil {
-		eUtils.LogErrorMessage("Couldn't get dedicated database connection.", logger, false)
+		eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.", false)
 		return err
 	}
 	defer dbsourceConn.Close()
@@ -372,15 +368,15 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 	trcFlowMachineContext.CallLog = func(msg string, err error) {
 		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
+			eUtils.LogErrorObject(config, err, false)
 		} else {
-			eUtils.LogInfo(msg, logger)
+			eUtils.LogInfo(config, msg)
 		}
 	}
 
 	flowError := flowimpl.ProcessFlowController(trcFlowMachineContext, trcFlowContext)
 	if flowError != nil {
-		eUtils.LogErrorObject(flowError, logger, true)
+		eUtils.LogErrorObject(config, flowError, true)
 	}
 	return nil
 }
@@ -388,14 +384,15 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	// 1. Get Plugin configurations.
 	trcFlowMachineContext := flowcore.TrcFlowMachineContext{}
+	var config *eUtils.DriverConfig
 	var vault *sys.Vault
 	var goMod *helperkv.Modifier
 	var err error
 
 	trcFlowMachineContext.Env = pluginConfig["env"].(string)
-	goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if err != nil {
-		eUtils.LogErrorMessage("Could not access vault.  Failure to start.", logger, false)
+		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
 	}
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
@@ -414,7 +411,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			goMod.SectionKey = "/Index/"
 			regions, err := goMod.ListSubsection("/Index/", projects[i], goMod.SectionName)
 			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
+				eUtils.LogErrorObject(config, err, false)
 				return err
 			}
 			indexValues = regions
@@ -425,9 +422,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		for _, indexValue := range indexValues {
 			goMod.SubSectionValue = indexValue
 			ok := false
-			properties, err := util.NewProperties(vault, goMod, pluginConfig["env"].(string), projects[i], services[i], logger)
+			properties, err := util.NewProperties(config, vault, goMod, pluginConfig["env"].(string), projects[i], services[i])
 			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
+				eUtils.LogErrorObject(config, err, false)
 				return err
 			}
 
@@ -437,7 +434,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				sourceDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok || len(sourceDatabaseConfig) == 0 {
 					// Just ignore this one and go to the next one.
-					eUtils.LogWarningMessage("Expected database configuration does not exist: "+indexValue, logger, false)
+					eUtils.LogWarningMessage(config, "Expected database configuration does not exist: "+indexValue, false)
 					continue
 				}
 				sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
@@ -445,13 +442,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			case "Identity":
 				trcIdentityConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok {
-					eUtils.LogErrorMessage("Couldn't get config values.", logger, false)
+					eUtils.LogErrorMessage(config, "Couldn't get config values.", false)
 					return err
 				}
 			case "VaultDatabase":
 				vaultDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok {
-					eUtils.LogErrorMessage("Couldn't get config values.", logger, false)
+					eUtils.LogErrorMessage(config, "Couldn't get config values.", false)
 					return err
 				}
 			}
@@ -463,9 +460,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// 4. Create config for vault for queries to vault.
 	emptySlice := []string{""}
 
-	configDriver := eUtils.DriverConfig{
+	configBasis := eUtils.DriverConfig{
 		Regions:      emptySlice,
-		Insecure:     true,
+		Insecure:     pluginConfig["insecure"].(bool),
 		Token:        pluginConfig["token"].(string),
 		VaultAddress: pluginConfig["address"].(string),
 		Env:          pluginConfig["env"].(string),
@@ -477,12 +474,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	for _, table := range tableList {
 		_, service, tableTemplateName := eUtils.GetProjectService(table)
 		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
-		configDriver.VersionFilter = append(configDriver.VersionFilter, tableName)
+		configBasis.VersionFilter = append(configBasis.VersionFilter, tableName)
 	}
 
-	trcFlowMachineContext.TierceronEngine, err = db.CreateEngine(&configDriver, tableList, pluginConfig["env"].(string), flowimpl.GetDatabaseName())
+	trcFlowMachineContext.TierceronEngine, err = db.CreateEngine(&configBasis, tableList, pluginConfig["env"].(string), flowimpl.GetDatabaseName())
 	if err != nil {
-		eUtils.LogErrorMessage("Couldn't build engine.", logger, false)
+		eUtils.LogErrorMessage(config, "Couldn't build engine.", false)
 		return err
 	}
 
@@ -498,11 +495,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		if dbIngestInterval, ok := sourceDatabaseConfig["dbingestinterval"]; ok {
 			ingestInterval, err := strconv.ParseInt(dbIngestInterval.(string), 10, 64)
 			if err == nil {
-				eUtils.LogInfo("Ingest interval: "+dbIngestInterval.(string), logger)
+				eUtils.LogInfo(config, "Ingest interval: "+dbIngestInterval.(string))
 				dbSourceConnBundle["dbingestinterval"] = time.Duration(ingestInterval)
 			}
 		} else {
-			eUtils.LogErrorMessage("Ingest interval invalid - Defaulting to 60 minutes.", logger, false)
+			eUtils.LogErrorMessage(config, "Ingest interval invalid - Defaulting to 60 minutes.", false)
 			dbSourceConnBundle["dbingestinterval"] = time.Duration(60000)
 		}
 
@@ -515,13 +512,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	extensionAuthComponents := flowimpl.GetExtensionAuthComponents(trcIdentityConfig)
 	httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
 	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
+		eUtils.LogErrorObject(config, err, false)
 		return err
 	}
 
-	trcFlowMachineContext.ExtensionAuthData, err = util.GetJSONFromClientByPost(httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader), logger)
+	trcFlowMachineContext.ExtensionAuthData, err = util.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
 	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
+		eUtils.LogErrorObject(config, err, false)
 		return err
 	}
 
@@ -536,11 +533,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	var wg sync.WaitGroup
 
-	for _, tableName := range configDriver.VersionFilter {
+	for _, tableName := range configBasis.VersionFilter {
 		changeTableName := tableName + "_Changes"
 
 		if _, ok, _ := trcFlowMachineContext.TierceronEngine.Database.GetTableInsensitive(trcFlowMachineContext.TierceronEngine.Context, changeTableName); !ok {
-			eUtils.LogInfo("Creating tierceron sql table: "+changeTableName, logger)
+			eUtils.LogInfo(config, "Creating tierceron sql table: "+changeTableName)
 			tableCreationLock.Lock()
 			err := trcFlowMachineContext.TierceronEngine.Database.CreateTable(trcFlowMachineContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
 				{Name: "id", Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
@@ -548,12 +545,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}))
 			tableCreationLock.Unlock()
 			if err != nil {
-				eUtils.LogErrorObject(err, logger, false)
+				eUtils.LogErrorObject(config, err, false)
 				return err
 			}
 		}
 	}
-	eUtils.LogInfo("Tables creation completed.", logger)
+	eUtils.LogInfo(config, "Tables creation completed.")
 
 	channelMap = make(map[string]chan bool)
 	for _, table := range tableList {
@@ -569,20 +566,20 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		for _, table := range tableList {
 			wg.Add(1)
 			go func(t string) {
-				eUtils.LogInfo("Beginning flow: "+t, logger)
+				eUtils.LogInfo(config, "Beginning flow: "+t)
 				defer wg.Done()
 				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
 				var flowVault *sys.Vault
-				trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				config, trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
-					eUtils.LogErrorMessage("Could not access vault.  Failure to start flow.", logger, false)
+					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
 				trcFlowContext.FlowSourceAlias = flowimpl.GetDatabaseName()
 
 				ProcessFlow(&trcFlowMachineContext,
 					&trcFlowContext,
-					&configDriver,
+					config,
 					vaultDatabaseConfig,
 					pluginConfig["address"].(string),
 					sourceDatabaseConnectionMap,
@@ -591,26 +588,25 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowcore.TableSyncFlow,
 					channelMap[t], // tableChangedChannel
 					signalChannel,
-					logger,
 				)
 			}(table)
 		}
 		for _, flowName := range flowimpl.GetAdditionalFlows() {
 			wg.Add(1)
 			go func(f string) {
-				eUtils.LogInfo("Beginning flow: "+f, logger)
+				eUtils.LogInfo(config, "Beginning flow: "+f)
 				defer wg.Done()
 				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
 				var flowVault *sys.Vault
-				trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				config, trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
-					eUtils.LogErrorMessage("Could not access vault.  Failure to start flow.", logger, false)
+					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
 
 				ProcessFlow(&trcFlowMachineContext,
 					&trcFlowContext,
-					&configDriver,
+					config,
 					vaultDatabaseConfig,
 					pluginConfig["address"].(string),
 					sourceDatabaseConnectionMap,
@@ -619,7 +615,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowcore.TableEnrichFlow,
 					channelMap[f], // tableChangedChannel
 					signalChannel,
-					logger,
 				)
 			}(flowName)
 		}

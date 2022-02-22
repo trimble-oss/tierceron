@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 	pb "tierceron/webapi/rpc/apinator"
 )
@@ -17,8 +18,10 @@ import (
 // All template keys that reference public values will be populated with those values
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
@@ -50,23 +53,23 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 	for _, env := range envStrings {
 		mod.Env = env
 		projects := []*pb.ValuesRes_Env_Project{}
-		projectPaths, err := s.getPaths(mod, "templates/")
+		projectPaths, err := s.getPaths(config, mod, "templates/")
 		if err != nil {
-			utils.LogErrorObject(err, s.Log, false)
+			utils.LogErrorObject(config, err, false)
 			return nil, err
 		}
 		for _, projectPath := range projectPaths {
 			services := []*pb.ValuesRes_Env_Project_Service{}
-			servicePaths, err := s.getPaths(mod, projectPath)
+			servicePaths, err := s.getPaths(config, mod, projectPath)
 			if err != nil {
-				utils.LogErrorObject(err, s.Log, false)
+				utils.LogErrorObject(config, err, false)
 				return nil, err
 			}
 			for _, servicePath := range servicePaths {
 				files := []*pb.ValuesRes_Env_Project_Service_File{}
-				filePaths, err := s.getTemplateFilePaths(mod, servicePath)
+				filePaths, err := s.getTemplateFilePaths(config, mod, servicePath)
 				if err != nil {
-					utils.LogErrorObject(err, s.Log, false)
+					utils.LogErrorObject(config, err, false)
 					return nil, err
 				}
 				if len(filePaths) > 0 {

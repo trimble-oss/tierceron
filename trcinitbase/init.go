@@ -112,9 +112,6 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			os.Exit(1)
 		}
 	}
-	if !*pingPtr && !*newPtr && *tokenPtr == "" {
-		utils.CheckWarning("Missing auth tokens", true)
-	}
 
 	// If logging production directory does not exist and is selected log to local directory
 	if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/trcinit.log" && os.IsNotExist(err) {
@@ -123,9 +120,14 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	// Initialize logging
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	utils.CheckError(err, true)
 	logger := log.New(f, "[INIT]", log.LstdFlags)
 	logger.Println("==========Beginning Vault Initialization==========")
+	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+	utils.CheckError(config, err, true)
+
+	if !*pingPtr && !*newPtr && *tokenPtr == "" {
+		utils.CheckWarning(config, "Missing auth tokens", true)
+	}
 
 	if addrPtr == nil || *addrPtr == "" {
 		if *newPtr {
@@ -154,12 +156,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		os.Exit(0)
 	}
 
-	utils.LogErrorObject(err, logger, true)
+	utils.LogErrorObject(config, err, true)
 
 	// Trying to use local, prompt for username/password
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		*envPtr, err = utils.LoginToLocal()
-		utils.LogErrorObject(err, logger, true)
+		utils.LogErrorObject(config, err, true)
 		logger.Printf("Login successful, using local envronment: %s\n", *envPtr)
 	}
 
@@ -175,21 +177,21 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Unable to parse unsealShardPtr into int")
 		}
 		keyToken, err := v.InitVault(int(totalKeyShard), int(unsealShardPtr))
-		utils.LogErrorObject(err, logger, true)
+		utils.LogErrorObject(config, err, true)
 		v.SetToken(keyToken.Token)
 		v.SetShards(keyToken.Keys)
 		//check error returned by unseal
 		_, _, _, err = v.Unseal()
-		utils.LogErrorObject(err, logger, true)
+		utils.LogErrorObject(config, err, true)
 	}
 	logger.Printf("Succesfully connected to vault at %s\n", *addrPtr)
 
 	if !*newPtr && *namespaceVariable != "" && *namespaceVariable != "vault" && !(*rotateTokens || *updatePolicy || *updateRole || *tokenExpiration) {
 		if *initNamespace {
 			fmt.Println("Creating tokens, roles, and policies.")
-			policyExists, policyErr := il.GetExistsPolicies(namespacePolicyConfigs, v, logger)
+			policyExists, policyErr := il.GetExistsPolicies(config, namespacePolicyConfigs, v)
 			if policyErr != nil {
-				utils.LogErrorObject(policyErr, logger, false)
+				utils.LogErrorObject(config, policyErr, false)
 				fmt.Println("Cannot safely determine policy.")
 				os.Exit(-1)
 			}
@@ -199,9 +201,9 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				os.Exit(-1)
 			}
 
-			roleExists, roleErr := il.GetExistsRoles(namespaceRoleConfigs, v, logger)
+			roleExists, roleErr := il.GetExistsRoles(config, namespaceRoleConfigs, v)
 			if roleErr != nil {
-				utils.LogErrorObject(roleErr, logger, false)
+				utils.LogErrorObject(config, roleErr, false)
 				fmt.Println("Cannot safely determine role.")
 			}
 
@@ -216,15 +218,15 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 			// Upload Create/Update new cidr roles.
 			fmt.Println("Creating role")
-			il.UploadTokenCidrRoles(namespaceRoleConfigs, v, logger)
+			il.UploadTokenCidrRoles(config, namespaceRoleConfigs, v)
 			// Upload Create/Update policies from the given policy directory
 
 			fmt.Println("Creating policy")
-			il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
+			il.UploadPolicies(config, namespacePolicyConfigs, v, false)
 
 			// Upload tokens from the given token directory
 			fmt.Println("Creating tokens")
-			tokens := il.UploadTokens(namespaceTokenConfigs, fileFilterPtr, v, logger)
+			tokens := il.UploadTokens(config, namespaceTokenConfigs, fileFilterPtr, v)
 			if len(tokens) > 0 {
 				logger.Println(*namespaceVariable + " tokens successfully created.")
 			} else {
@@ -243,7 +245,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		if *tokenExpiration {
 			fmt.Println("Checking token expiration.")
 			roleId, lease, err := v.GetRoleID("bamboo")
-			utils.LogErrorObject(err, logger, false)
+			utils.LogErrorObject(config, err, false)
 			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
 		} else {
 			if *rotateTokens {
@@ -266,7 +268,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		if *updateRole {
 			// Upload Create/Update new cidr roles.
 			fmt.Println("Updating role")
-			errTokenCidr := il.UploadTokenCidrRoles(namespaceRoleConfigs, v, logger)
+			errTokenCidr := il.UploadTokenCidrRoles(config, namespaceRoleConfigs, v)
 			if errTokenCidr != nil {
 				fmt.Println("Role update failed.  Cannot continue.")
 				os.Exit(-1)
@@ -278,7 +280,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		if *updatePolicy {
 			// Upload Create/Update policies from the given policy directory
 			fmt.Println("Updating policies")
-			errTokenPolicy := il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
+			errTokenPolicy := il.UploadPolicies(config, namespacePolicyConfigs, v, false)
 			if errTokenPolicy != nil {
 				fmt.Println("Policy update failed.  Cannot continue.")
 				os.Exit(-1)
@@ -289,7 +291,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 		if *rotateTokens && !*tokenExpiration {
 			// Create new tokens.
-			tokens := il.UploadTokens(namespaceTokenConfigs, fileFilterPtr, v, logger)
+			tokens := il.UploadTokens(config, namespaceTokenConfigs, fileFilterPtr, v)
 			if !*prodPtr && *namespaceVariable == "vault" && *fileFilterPtr == "" {
 				//
 				// Dev, QA specific token creation.
@@ -297,7 +299,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				tokenMap := map[string]interface{}{}
 
 				mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
-				utils.LogErrorObject(err, logger, false)
+				utils.LogErrorObject(config, err, false)
 
 				mod.Env = "bamboo"
 
@@ -310,7 +312,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				existingTokens, err := mod.ReadData("super-secrets/tokens")
 				if err != nil {
 					fmt.Println("Read existing tokens failure.  Cannot continue.")
-					utils.LogErrorObject(err, logger, false)
+					utils.LogErrorObject(config, err, false)
 					os.Exit(-1)
 				}
 
@@ -340,11 +342,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				// Recreate the role.
 				//
 				resp, role_cleanup := v.DeleteRole("bamboo")
-				utils.LogErrorObject(role_cleanup, logger, false)
+				utils.LogErrorObject(config, role_cleanup, false)
 
 				if resp.StatusCode == 404 {
 					err = v.EnableAppRole()
-					utils.LogErrorObject(err, logger, true)
+					utils.LogErrorObject(config, err, true)
 				}
 
 				err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
@@ -352,13 +354,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 					TokenMaxTTL: "15m",
 					Policies:    []string{"bamboo"},
 				})
-				utils.LogErrorObject(err, logger, true)
+				utils.LogErrorObject(config, err, true)
 
 				roleID, _, err := v.GetRoleID("bamboo")
-				utils.LogErrorObject(err, logger, true)
+				utils.LogErrorObject(config, err, true)
 
 				secretID, err := v.GetSecretID("bamboo")
-				utils.LogErrorObject(err, logger, true)
+				utils.LogErrorObject(config, err, true)
 
 				fmt.Printf("Rotated role id and secret id.\n")
 				fmt.Printf("Role ID: %s\n", roleID)
@@ -366,8 +368,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 				// Store all new tokens to new appRole.
 				warn, err := mod.Write("super-secrets/tokens", tokenMap)
-				utils.LogErrorObject(err, logger, true)
-				utils.LogWarningsObject(warn, logger, true)
+				utils.LogErrorObject(config, err, true)
+				utils.LogWarningsObject(config, warn, true)
 			}
 		}
 		os.Exit(0)
@@ -377,7 +379,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if !*newPtr && len(*shardPtr) > 0 {
 		v.AddShard(*shardPtr)
 		prog, t, success, err := v.Unseal()
-		utils.LogErrorObject(err, logger, true)
+		utils.LogErrorObject(config, err, true)
 		if !success {
 			logger.Printf("Vault unseal progress: %d/%d key shards\n", prog, t)
 			logger.Println("============End Initialization Attempt============")
@@ -389,7 +391,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
 		mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
-		utils.LogErrorObject(err, logger, true)
+		utils.LogErrorObject(config, err, true)
 
 		mod.Env = "bamboo"
 
@@ -398,18 +400,18 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			os.Exit(1)
 		}
 
-		policyExists, err := il.GetExistsPolicies(namespacePolicyConfigs, v, logger)
+		policyExists, err := il.GetExistsPolicies(config, namespacePolicyConfigs, v)
 		if policyExists || err != nil {
 			fmt.Printf("Vault may be initialized already - Policies exists.\n")
 			os.Exit(1)
 		}
 
 		// Create secret engines
-		il.CreateEngines(v, logger)
+		il.CreateEngines(config, v)
 		// Upload policies from the given policy directory
-		il.UploadPolicies(namespacePolicyConfigs, v, false, logger)
+		il.UploadPolicies(config, namespacePolicyConfigs, v, false)
 		// Upload tokens from the given token directory
-		tokens := il.UploadTokens(namespaceTokenConfigs, fileFilterPtr, v, logger)
+		tokens := il.UploadTokens(config, namespaceTokenConfigs, fileFilterPtr, v)
 		if !*prodPtr {
 			tokenMap := map[string]interface{}{}
 			for _, token := range tokens {
@@ -417,20 +419,20 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			}
 
 			err = v.EnableAppRole()
-			utils.LogErrorObject(err, logger, true)
+			utils.LogErrorObject(config, err, true)
 
 			err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
 				TokenTTL:    "10m",
 				TokenMaxTTL: "15m",
 				Policies:    []string{"bamboo"},
 			})
-			utils.LogErrorObject(err, logger, true)
+			utils.LogErrorObject(config, err, true)
 
 			roleID, _, err := v.GetRoleID("bamboo")
-			utils.LogErrorObject(err, logger, true)
+			utils.LogErrorObject(config, err, true)
 
 			secretID, err := v.GetSecretID("bamboo")
-			utils.LogErrorObject(err, logger, true)
+			utils.LogErrorObject(config, err, true)
 
 			fmt.Printf("Rotated role id and secret id.\n")
 			fmt.Printf("Role ID: %s\n", roleID)
@@ -438,8 +440,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 			// Store all new tokens to new appRole.
 			warn, err := mod.Write("super-secrets/tokens", tokenMap)
-			utils.LogErrorObject(err, logger, true)
-			utils.LogWarningsObject(warn, logger, true)
+			utils.LogErrorObject(config, err, true)
+			utils.LogWarningsObject(config, warn, true)
 		}
 	}
 
