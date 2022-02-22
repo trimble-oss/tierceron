@@ -61,11 +61,11 @@ func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 	return vaultHost, vaultErr
 }
 
-func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, address string, body io.Reader, logger *log.Logger) (map[string]interface{}, error) {
+func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("GET", address, body)
 	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
+		eUtils.LogErrorObject(config, err, false)
 	}
 	for headerkey, headervalue := range headers {
 		request.Header.Set(headerkey, headervalue)
@@ -74,7 +74,7 @@ func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, 
 	// request.Header.Set("Content-Type", "application/json")
 	response, err := httpClient.Do(request)
 	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
+		eUtils.LogErrorObject(config, err, false)
 	}
 	defer response.Body.Close()
 
@@ -88,7 +88,7 @@ func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, 
 		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
 
 		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
+			eUtils.LogErrorObject(config, err, false)
 		}
 
 		return jsonData, nil
@@ -96,11 +96,11 @@ func GetJSONFromClientByGet(httpClient *http.Client, headers map[string]string, 
 	return nil, errors.New("http status failure")
 }
 
-func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string, address string, body io.Reader, logger *log.Logger) (map[string]interface{}, error) {
+func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {
-		eUtils.LogErrorObject(err, logger, false)
+		eUtils.LogErrorObject(config, err, false)
 	}
 	for headerkey, headervalue := range headers {
 		request.Header.Set(headerkey, headervalue)
@@ -117,13 +117,13 @@ func GetJSONFromClientByPost(httpClient *http.Client, headers map[string]string,
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
+			eUtils.LogErrorObject(config, err, false)
 		}
 
 		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
 
 		if err != nil {
-			eUtils.LogErrorObject(err, logger, false)
+			eUtils.LogErrorObject(config, err, false)
 		}
 
 		return jsonData, nil
@@ -143,7 +143,7 @@ func LoadBaseTemplate(config *utils.DriverConfig, templateResult *extract.Templa
 	if goMod != nil {
 		cds = new(vcutils.ConfigDataStore)
 		goMod.Version = goMod.Version + "***X-Mode"
-		cds.Init(goMod, true, true, project, commonPaths, config.Log, service) //CommonPaths = "" - empty - not needed for tenant config
+		cds.Init(config, goMod, true, true, project, commonPaths, service) //CommonPaths = "" - empty - not needed for tenant config
 	}
 
 	var errSeed error
@@ -161,7 +161,7 @@ func LoadBaseTemplate(config *utils.DriverConfig, templateResult *extract.Templa
 	return errSeed
 }
 
-func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, logger *log.Logger, project string) error {
+func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -185,9 +185,9 @@ func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service
 	sliceValueSection = append(sliceValueSection, templateResult.ValueSection)
 	sliceSecretSection = append(sliceSecretSection, templateResult.SecretSection)
 
-	xutil.CombineSection(sliceTemplateSection, maxDepth, templateCombinedSection, logger)
-	xutil.CombineSection(sliceValueSection, -1, valueCombinedSection, logger)
-	xutil.CombineSection(sliceSecretSection, -1, secretCombinedSection, logger)
+	xutil.CombineSection(config, sliceTemplateSection, maxDepth, templateCombinedSection)
+	xutil.CombineSection(config, sliceValueSection, -1, valueCombinedSection)
+	xutil.CombineSection(config, sliceSecretSection, -1, secretCombinedSection)
 
 	template, errT := yaml.Marshal(templateCombinedSection)
 	value, errV := yaml.Marshal(valueCombinedSection)
