@@ -446,7 +446,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig, logger *log.Logger) interface{} {
+func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig, logger *log.Logger) (interface{}, error) {
 	if config.Clean { //Clean flag in trcx
 		if strings.HasSuffix(config.Env, "_0") {
 			envVersion := eUtils.SplitEnv(config.Env)
@@ -457,15 +457,13 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 
 		if err != nil {
 			eUtils.LogErrorObject(err, logger, false)
-			if config.ExitOnFailure {
-				os.Exit(1)
-			}
+			eUtils.LogAndSafeExit(config, "", 1)
 		}
 
 		if err1 == nil {
 			eUtils.LogInfo("Seed removed from"+config.EndDir+config.Env, logger)
 		}
-		return nil
+		return nil, nil
 	}
 
 	// Get files from directory
@@ -501,16 +499,14 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	templatePathsAccepted, err := eUtils.GetAcceptedTemplatePaths(config, mod, templatePaths)
 	if err != nil {
 		eUtils.LogErrorObject(err, logger, false)
-		if config.ExitOnFailure {
-			os.Exit(1)
-		}
+		eUtils.LogAndSafeExit(config, "", 1)
 	}
 	templatePaths = templatePathsAccepted
 
 	endPath, multiService, seedData := GenerateSeedsFromVaultRaw(config, false, templatePaths, logger)
 
 	if endPath == "" && !multiService && seedData == "" {
-		return nil
+		return nil, nil
 	}
 
 	suffixRemoved := ""
@@ -608,7 +604,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 			writeToFile(certData[1], certDestination)
 			eUtils.LogInfo("certificate written to "+certDestination, logger)
 		}
-		return nil
+		return nil, nil
 	}
 
 	if config.Diff {
@@ -629,7 +625,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 		eUtils.LogInfo("Seed created and written to "+endPath, logger)
 	}
 
-	return nil
+	return nil, nil
 }
 
 func writeToFile(data string, path string) {

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 	"text/template"
 
@@ -161,7 +160,7 @@ func ConfigTemplate(modifier *kv.Modifier,
 			extra = extra + "/" + component
 		}
 	}
-	if strings.Index(filename, ".") != -1 {
+	if strings.Contains(filename, ".") {
 		filename = filename[0:strings.Index(filename, ".")]
 	}
 
@@ -169,8 +168,8 @@ func ConfigTemplate(modifier *kv.Modifier,
 		filename = extra + "/" + filename
 	}
 	//populate template
-	template, certData = PopulateTemplate(template, modifier, secretMode, project, service, filename, cert, logger)
-	return template, certData, true, nil
+	template, certData, err = PopulateTemplate(template, modifier, secretMode, project, service, filename, cert, logger)
+	return template, certData, true, err
 }
 
 func getTemplateVersionData(modifier *kv.Modifier, secretMode bool, project string, service string, file string, logger *log.Logger) map[string]interface{} {
@@ -188,7 +187,7 @@ func PopulateTemplate(emptyTemplate string,
 	service string,
 	filename string,
 	cert bool,
-	logger *log.Logger) (string, map[int]string) {
+	logger *log.Logger) (string, map[int]string, error) {
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
 	cds.Init(modifier, secretMode, true, project, nil, logger, service)
@@ -242,14 +241,16 @@ func PopulateTemplate(emptyTemplate string,
 				certSourcePath, hasCertSourcePath := valueData["certSourcePath"].(interface{})
 				if hasCertDefinition && hasCertSourcePath {
 					if !ok {
-						eUtils.LogErrorMessage("No certDestPath in config template section of seed for this service. Unable to generate cert.pfx", logger, false)
-						os.Exit(1)
+						vaultCertErr := errors.New("No certDestPath in config template section of seed for this service. Unable to generate cert.pfx")
+						eUtils.LogErrorMessage(vaultCertErr.Error(), logger, false)
+						return "", nil, vaultCertErr
 					}
 					certData[0] = certDestPath.(string)
 					data, ok := valueData["certData"].(interface{})
 					if !ok {
-						eUtils.LogInfo("No certData in config template section of seed for this service. Unable to generate cert.pfx", logger)
-						os.Exit(1)
+						vaultCertErr := errors.New("No certData in config template section of seed for this service. Unable to generate cert.pfx")
+						eUtils.LogInfo(vaultCertErr.Error(), logger)
+						return "", nil, vaultCertErr
 					}
 					encoded := fmt.Sprintf("%s", data)
 					//Decode cert as it was encoded in trcinit
@@ -259,7 +260,7 @@ func PopulateTemplate(emptyTemplate string,
 					}
 					certData[1] = fmt.Sprintf("%s", decoded)
 					certData[2] = certSourcePath.(string)
-					return "", certData
+					return "", certData, nil
 				}
 			}
 		}
@@ -269,5 +270,5 @@ func PopulateTemplate(emptyTemplate string,
 			eUtils.LogErrorObject(err, logger, false)
 		}
 	}
-	return str, certData
+	return str, certData, nil
 }

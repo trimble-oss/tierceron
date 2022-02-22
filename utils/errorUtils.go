@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -184,4 +185,17 @@ func LogWarningsObject(warnings []string, logger *log.Logger, exit bool) {
 			logger.SetPrefix(_prefix)
 		}
 	}
+}
+
+// LogAndSafeExit -- provides isolated location of os.Exit to ensure os.Exit properly processed.
+func LogAndSafeExit(config *DriverConfig, message string, code int) error {
+	if config.Log != nil && message != "" {
+		LogInfo(message, config.Log)
+	}
+
+	if config.ExitOnFailure {
+		os.Exit(code)
+	}
+
+	return errors.New(message)
 }
