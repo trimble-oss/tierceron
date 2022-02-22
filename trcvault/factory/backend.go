@@ -93,18 +93,18 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	return tokenMap, nil
 }
 
-func populateTrcVaultDbConfigs(addr string, token string, env string) error {
-	logger.Println("Begin populateTrcVaultDbConfigs for env: " + env)
+func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
+	logger.Println("Begin populateTrcVaultDbConfigs for env: " + config.Env)
 	var goMod *helperkv.Modifier
-	goMod, errModInit := helperkv.NewModifier(true, token, addr, env, []string{}, logger)
-	goMod.Env = env
+	goMod, errModInit := helperkv.NewModifier(true, config.Token, config.VaultAddress, config.Env, []string{}, logger)
+	goMod.Env = config.Env
 
 	if errModInit != nil {
 		logger.Println("Vault connect failure")
 		return errModInit
 	}
 
-	configuredTemplate, _, _, ctErr := utils.ConfigTemplate(goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true, logger)
+	configuredTemplate, _, _, ctErr := utils.ConfigTemplate(config, goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true)
 	if ctErr != nil {
 		logger.Println("Config template lookup failure: " + ctErr.Error())
 		return ctErr
@@ -118,28 +118,28 @@ func populateTrcVaultDbConfigs(addr string, token string, env string) error {
 		return errYaml
 	}
 
-	vaultEnvConfig.Env = env
-	environmentConfigs[env] = &vaultEnvConfig
-	logger.Println("Config created for env: " + env)
+	vaultEnvConfig.Env = config.Env
+	environmentConfigs[config.Env] = &vaultEnvConfig
+	logger.Println("Config created for env: " + config.Env)
 
 	logger.Println("End populateTrcVaultDbConfigs")
 	return nil
 }
 
-func ProcessEnvConfig(config map[string]interface{}) error {
-	env, eOk := config["env"]
+func ProcessEnvConfig(envConfig map[string]interface{}) error {
+	env, eOk := envConfig["env"]
 	if !eOk || env.(string) == "" {
 		logger.Println("Bad configuration data.  Missing env.")
 		return errors.New("missing token")
 	}
 
-	token, rOk := config["token"]
+	token, rOk := envConfig["token"]
 	if !rOk || token.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing token.")
 		return errors.New("missing token")
 	}
 
-	ptvError := populateTrcVaultDbConfigs(vaultHost, token.(string), env.(string))
+	ptvError := populateTrcVaultDbConfigs(&eUtils.DriverConfig{Env: env.(string), Token: token.(string), VaultAddress: vaultHost, ExitOnFailure: false})
 	if ptvError != nil {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  error: " + ptvError.Error())
 		return ptvError
@@ -147,19 +147,19 @@ func ProcessEnvConfig(config map[string]interface{}) error {
 
 	// Adding additional configurations the plugin needs to know which tables to process
 	// and where to get additional configurations.
-	config["templatePath"] = []string{
+	envConfig["templatePath"] = []string{
 		"trc_templates/TenantDatabase/TenantConfiguration/TenantConfiguration.tmpl",           // implemented
 		"trc_templates/TenantDatabase/SpectrumEnterpriseConfig/SpectrumEnterpriseConfig.tmpl", // not yet implemented.
 		//		"trc_templates/TenantDatabase/KafkaTableConfiguration/KafkaTableConfiguration.tmpl",   // not yet implemented.
 		//		"trc_templates/TenantDatabase/Mysqlfile/Mysqlfile.tmpl",                               // not yet implemented.
 	}
-	config["connectionPath"] = []string{
+	envConfig["connectionPath"] = []string{
 		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // implemented
 		"trc_templates/TrcVault/Database/config.yml.tmpl",      // implemented
 		"trc_templates/TrcVault/Identity/config.yml.tmpl",      // implemented
 	}
 
-	flumen.ProcessFlows(config, logger)
+	flumen.ProcessFlows(envConfig, logger)
 
 	return nil
 }
