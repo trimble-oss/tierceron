@@ -174,7 +174,12 @@ func main() {
 		}
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
-		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
+		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		if autoErr != nil {
+			fmt.Println("Missing auth components.")
+			os.Exit(1)
+		}
+
 		if len(envVersion) >= 2 { //Put back env+version together
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
@@ -258,7 +263,11 @@ func main() {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
-			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr, logger)
+			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			if autoErr != nil {
+				fmt.Println("Missing auth components.")
+				os.Exit(1)
+			}
 			if len(envVersion) >= 2 { //Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]
 				if envVersion[1] == "" {
