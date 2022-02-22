@@ -13,7 +13,7 @@ const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
 type ProcessContext interface{}
 
-type ConfigDriver func(ctx ProcessContext, config *DriverConfig, logger *log.Logger) interface{}
+type ConfigDriver func(ctx ProcessContext, config *DriverConfig, logger *log.Logger) (interface{}, error)
 
 type DriverConfig struct {
 	Context         ProcessContext
