@@ -81,6 +81,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	versionPtr := flag.Bool("versions", false, "Gets version metadata information")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
+	indexServiceFilterPtr := flag.String("indexFilter", "", "Specifies which services to filter to diff")
 	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")
 	restrictedPtr := flag.String("restricted", "", "Specifies which projects have restricted access.")
 
@@ -144,8 +145,8 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if *diffPtr && *versionPtr {
 		fmt.Println("-version flag cannot be used with -diff flag")
 		os.Exit(1)
-	} else if *diffPtr && len(*indexedPtr) > 0 {
-		fmt.Println("-index flag cannot be used with -diff flag")
+	} else if len(*filterTemplatePtr) == 0 && len(*indexedPtr) > 0 && *diffPtr && len(*indexServiceFilterPtr) == 0 {
+		fmt.Println("-templateFilter & -indexFilter must be specificed to use -index & -diff flag")
 		os.Exit(1)
 	} else if *versionPtr && (len(*indexedPtr) > 0 || len(*restrictedPtr) > 0) {
 		fmt.Println("-index and -restricted flags cannot be used with -version flag")
@@ -298,9 +299,8 @@ skipDiff:
 	var subSectionName string
 	var waitg sync.WaitGroup
 	sectionKey := "/"
-	if len(envSlice) == 1 {
+	if len(envSlice) == 1 || (len(*filterTemplatePtr) > 0 && len(*indexedPtr) > 0 && *diffPtr) {
 		if strings.Contains(envSlice[0], "*") || len(*indexedPtr) > 0 || len(*restrictedPtr) > 0 {
-
 			if len(*indexedPtr) > 0 {
 				sectionKey = "/Index/"
 			} else if len(*restrictedPtr) > 0 {
@@ -309,17 +309,24 @@ skipDiff:
 
 			newSectionSlice := make([]string, 0)
 			if !*noVaultPtr {
+				var baseEnv string
+				if strings.Contains(envSlice[0], "_") {
+					baseEnv = strings.Split(envSlice[0], "_")[0]
+				} else {
+					baseEnv = envSlice[0]
+				}
 				//Ask vault for list of dev.<id>.* environments, add to envSlice
-				testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, regions, logger)
+				eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, *pingPtr)
+				testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, logger)
+				testMod.Env = baseEnv
 				if err != nil {
 					logger.Printf(err.Error())
 				}
 				// Only look at index values....
-				testMod.Env = envSlice[0]
+
 				var listValues *api.Secret
 				if len(projectSectionsSlice) > 0 { //If eid -> look inside Index and grab all environments
 					subSectionPath := projectSectionsSlice[0] + "/"
-
 					listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath)
 					if err != nil {
 						if strings.Contains(err.Error(), "permission denied") {
@@ -359,6 +366,22 @@ skipDiff:
 			}
 		}
 	}
+
+	var filteredSectionSlice []string
+	var indexFilterSlice []string
+	if len(*filterTemplatePtr) > 0 && *diffPtr && len(*indexedPtr) > 0 {
+		filterSlice := strings.Split(*filterTemplatePtr, ",")
+		for _, filter := range filterSlice {
+			for _, section := range sectionSlice {
+				if filter == section {
+					filteredSectionSlice = append(filteredSectionSlice, section)
+				}
+			}
+		}
+		sectionSlice = filteredSectionSlice
+		indexFilterSlice = strings.Split(*indexServiceFilterPtr, ",")
+	}
+
 	go reciever() //Channel reciever
 	for _, env := range envSlice {
 		for _, section := range sectionSlice {
@@ -403,6 +426,8 @@ skipDiff:
 				VersionInfo:     eUtils.VersionHelper,
 				FileFilter:      fileFilter,
 				ProjectSections: projectSectionsSlice,
+				IndexFilter:     indexFilterSlice,
+				ExitOnFailure:   true,
 			}
 			waitg.Add(1)
 			go func() {

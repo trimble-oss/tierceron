@@ -33,6 +33,10 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 	var acceptedTemplatePaths []string
 	serviceMap := make(map[string]bool)
 
+	if strings.Contains(config.EnvRaw, "_") {
+		config.EnvRaw = strings.Split(config.EnvRaw, "_")[0]
+	}
+
 	if modCheck != nil {
 		envVersion := SplitEnv(config.Env)
 		serviceInterface, err := modCheck.ListEnv("super-secrets/" + envVersion[0])
