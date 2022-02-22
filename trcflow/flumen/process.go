@@ -61,6 +61,7 @@ func getInsertTrigger(databaseName string, tableName string, idColumnName string
 
 func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	trcFlowContext *flowcore.TrcFlowContext,
+	configDriver *eUtils.DriverConfig,
 	vaultAddress string,
 	v *sys.Vault,
 	identityColumnName string,
@@ -129,7 +130,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		}
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
-		seedError := util.SeedVaultById(trcFlowContext.GoMod, trcFlowContext.FlowService, vaultAddress, v.GetToken(), trcFlowContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, logger, trcFlowContext.FlowSource)
+		seedError := util.SeedVaultById(configDriver, trcFlowContext.GoMod, trcFlowContext.FlowService, vaultAddress, v.GetToken(), trcFlowContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, logger, trcFlowContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(seedError, logger, false)
 			// Re-inject into changes because it might not be here yet...
@@ -155,6 +156,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	trcFlowContext *flowcore.TrcFlowContext,
+	configDriver *eUtils.DriverConfig,
 	vaultDatabaseConfig map[string]interface{}, // TODO: actually use this to set up a mysql facade.
 	vaultAddress string,
 	sourceDatabaseConnectionMap map[string]interface{},
@@ -217,7 +219,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 		// 3. Create a base seed template for use in vault seed process.
 		var baseTableTemplate extract.TemplateResultData
-		util.LoadBaseTemplate(config, &baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.FlowService, trcFlowContext.FlowPath)
+		util.LoadBaseTemplate(configDriver, &baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.FlowService, trcFlowContext.FlowPath)
 		trcFlowContext.FlowData = &baseTableTemplate
 
 		// When called sets up an infinite loop listening for changes on either
@@ -234,6 +236,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 				case <-changedChannel:
 					seedVaultFromChanges(trcFlowMachineContext,
 						trcfc,
+						configDriver,
 						vaultAddress,
 						vault,
 						identityColumnName,
@@ -246,6 +249,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 					eUtils.LogInfo("3 minutes... checking local mysql for changes.", logger)
 					seedVaultFromChanges(trcFlowMachineContext,
 						trcfc,
+						configDriver,
 						vaultAddress,
 						vault,
 						identityColumnName,
@@ -578,6 +582,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 				ProcessFlow(&trcFlowMachineContext,
 					&trcFlowContext,
+					&configDriver,
 					vaultDatabaseConfig,
 					pluginConfig["address"].(string),
 					sourceDatabaseConnectionMap,
@@ -605,6 +610,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 				ProcessFlow(&trcFlowMachineContext,
 					&trcFlowContext,
+					&configDriver,
 					vaultDatabaseConfig,
 					pluginConfig["address"].(string),
 					sourceDatabaseConnectionMap,
