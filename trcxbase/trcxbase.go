@@ -209,7 +209,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 			autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 
 			if autoErr != nil {
-				fmt.Println("Missing auth componentsX.")
+				fmt.Println("Auth failure: " + autoErr.Error())
 				eUtils.LogErrorMessage(config, autoErr.Error(), true)
 			}
 		} else {
