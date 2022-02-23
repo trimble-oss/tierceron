@@ -52,7 +52,7 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *kv.Modifier, operato
 	return configcore.Authorize(db, operatorId, operatorPassword)
 }
 
-func (s *Server) getActiveSessions(env string) ([]configcore.Session, error) {
+func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]configcore.Session, error) {
 	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
 		return nil, err
@@ -74,7 +74,10 @@ func (s *Server) getActiveSessions(env string) ([]configcore.Session, error) {
 		return nil, fmt.Errorf("Password connection not a string or not found")
 	}
 
-	driver, server, port, dbname := parseURL(url)
+	driver, server, port, dbname, parseError := parseURL(config, url)
+	if err != nil {
+		return nil, parseError
+	}
 	if len(port) == 0 {
 		port = "1433"
 	}
