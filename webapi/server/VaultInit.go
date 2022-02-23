@@ -186,7 +186,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 	}
 	mod.Env = req.Environment
 
-	authSuccess, name, err := s.authUser(mod, req.Username, req.Password)
+	authSuccess, name, err := s.authUser(config, mod, req.Username, req.Password)
 	if err != nil {
 		utils.LogErrorObject(config, err, false)
 		return &result, err
