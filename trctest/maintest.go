@@ -13,12 +13,13 @@ import (
 func main() {
 	logFilePtr := flag.String("log", "./trcdbplugin.log", "Output path for log file")
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(err, true)
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
+	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	pluginConfig := map[string]interface{}{}
 	pluginConfig["address"] = "https://vault.whoboot.org:8200" //This should be local
 	pluginConfig["token"] = "s.2OamEH93aN4psYH7XmtWODCy"
+
 	// TenantConfiguration, SpectrumEnterpriseConfig, Mysqlfile
 	pluginConfig["templatePath"] = []string{
 		"trc_templates/TenantDatabase/TenantConfiguration/TenantConfiguration.tmpl",           // implemented
