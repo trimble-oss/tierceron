@@ -27,6 +27,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
+require VaultConfig.Test v0.0.0-00010101000000-000000000000
+
 require (
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
@@ -89,5 +91,7 @@ require (
 replace VaultConfig.Bootstrap => ../../Azure/VaultConfig.Bootstrap
 
 replace VaultConfig.TenantConfig => ../../Azure/VaultConfig.TenantConfig
+
+replace VaultConfig.Test => ../../Azure/VaultConfig.Test
 
 replace github.com/dolthub/go-mysql-server => ../../Github/go-mysql-server
