@@ -201,3 +201,16 @@ func LogAndSafeExit(config *DriverConfig, message string, code int) error {
 
 	return errors.New(message)
 }
+
+// LogErrorAndSafeExit -- provides isolated location of os.Exit to ensure os.Exit properly processed.
+func LogErrorAndSafeExit(config *DriverConfig, err error, code int) error {
+	if config.Log != nil && err != nil {
+		LogInfo(config, err.Error())
+	}
+
+	if err != nil && config.ExitOnFailure {
+		os.Exit(code)
+	}
+
+	return err
+}
