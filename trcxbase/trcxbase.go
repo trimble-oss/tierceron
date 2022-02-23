@@ -337,7 +337,7 @@ skipDiff:
 
 					// Further path modifications needed.
 					if listValues == nil {
-						eUtils.LogInfo(config, "No available indexes found for "+subSectionPath)
+						eUtils.LogAndSafeExit(config, "No available indexes found for "+subSectionPath, 1)
 					}
 					for k, valuesPath := range listValues.Data {
 						for _, indexNameInterface := range valuesPath.([]interface{}) {
