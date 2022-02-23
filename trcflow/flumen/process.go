@@ -19,6 +19,7 @@ import (
 	helperkv "tierceron/vaulthelper/kv"
 
 	flowimpl "VaultConfig.TenantConfig/util"
+	testflowimpl "VaultConfig.Test/util"
 
 	eUtils "tierceron/utils"
 
@@ -374,10 +375,13 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		}
 	}
 
-	flowError := flowimpl.ProcessFlowController(trcFlowMachineContext, trcFlowContext)
-	if flowError != nil {
-		eUtils.LogErrorObject(config, flowError, true)
+	if flowType == flowcore.TableSyncFlow || flowType == flowcore.TableEnrichFlow {
+		flowError := flowimpl.ProcessFlowController(trcFlowMachineContext, trcFlowContext)
+		if flowError != nil {
+			eUtils.LogErrorObject(config, flowError, true)
+		}
 	}
+
 	return nil
 }
 
@@ -592,6 +596,34 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(table)
 		}
 		for _, flowName := range flowimpl.GetAdditionalFlows() {
+			wg.Add(1)
+			go func(f string) {
+				eUtils.LogInfo(config, "Beginning flow: "+f)
+				defer wg.Done()
+				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				var flowVault *sys.Vault
+				config, trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				if err != nil {
+					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
+					return
+				}
+
+				ProcessFlow(&trcFlowMachineContext,
+					&trcFlowContext,
+					config,
+					vaultDatabaseConfig,
+					pluginConfig["address"].(string),
+					sourceDatabaseConnectionMap,
+					flowVault,
+					f,
+					flowcore.TableEnrichFlow,
+					channelMap[f], // tableChangedChannel
+					signalChannel,
+				)
+			}(flowName)
+		}
+
+		for _, flowName := range testflowimpl.GetAdditionalFlows() {
 			wg.Add(1)
 			go func(f string) {
 				eUtils.LogInfo(config, "Beginning flow: "+f)
