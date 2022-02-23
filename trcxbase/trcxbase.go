@@ -147,10 +147,10 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		fmt.Println("-version flag cannot be used with -diff flag")
 		os.Exit(1)
 	} else if (len(*filterTemplatePtr) == 0 || len(*indexServiceFilterPtr) == 0) && *diffPtr && len(*indexedPtr) != 0 {
-		fmt.Println("-templateFilter & -indexFilter must be specificed to use -index & -diff flag")
+		fmt.Println("-templateFilter & -indexFilter must be specificed to use -indexed & -diff flag")
 		os.Exit(1)
 	} else if *versionPtr && (len(*indexedPtr) > 0 || len(*restrictedPtr) > 0) {
-		fmt.Println("-index and -restricted flags cannot be used with -version flag")
+		fmt.Println("-indexed and -restricted flags cannot be used with -version flag")
 		os.Exit(1)
 	} else if (strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")) && *addrPtr == "" {
 		fmt.Println("The -addr flag must be used with staging/prod environment")
