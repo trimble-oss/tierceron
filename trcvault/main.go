@@ -16,8 +16,9 @@ import (
 func main() {
 	eUtils.InitHeadless(true)
 	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(logErr, true)
 	logger := log.New(f, "[trcvault]", log.LstdFlags)
+	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
+
 	tclib.SetLogger(logger.Writer())
 	factory.Init(logger)
 	mlock.Mlock(logger)
