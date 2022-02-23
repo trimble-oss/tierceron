@@ -232,7 +232,7 @@ func AutoAuth(config *DriverConfig,
 		env, _, _, envErr := kv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
 			LogErrorMessage(config, fmt.Sprintf("Environment format error: %v\n", envErr), false)
-			os.Exit(-1)
+			return envErr
 		}
 
 		switch env {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 
 	configcore "VaultConfig.Bootstrap/configcore"
@@ -17,7 +18,7 @@ import (
 	_ "github.com/denisenkom/go-mssqldb"
 )
 
-func (s *Server) authUser(mod *kv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
+func (s *Server) authUser(config *eUtils.DriverConfig, mod *kv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
 	connInfo, err := mod.ReadData("apiLogins/meta")
 
 	var url, username, password string
@@ -34,7 +35,11 @@ func (s *Server) authUser(mod *kv.Modifier, operatorId string, operatorPassword 
 		return false, "", fmt.Errorf("Password connection not a string or not found")
 	}
 
-	driver, server, port, dbname := parseURL(url)
+	driver, server, port, dbname, parseError := parseURL(config, url)
+	if parseError != nil {
+		return false, "", parseError
+	}
+
 	if len(port) == 0 {
 		port = "1433"
 	}
@@ -82,14 +87,16 @@ func (s *Server) getActiveSessions(env string) ([]configcore.Session, error) {
 	return configcore.ActiveSessions(db)
 }
 
-func parseURL(url string) (string, string, string, string) {
+func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, string, error) {
 	//only works with jdbc:mysql or jdbc:sqlserver.
 	regex := regexp.MustCompile(`(?i)(mysql|sqlserver)://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+).*`)
 	m := regex.FindStringSubmatch(url)
 	if m == nil {
-		panic(errors.New("incorrect URL format"))
+		parseFailureErr := errors.New("incorrect URL format")
+		eUtils.LogErrorMessage(config, parseFailureErr.Error(), true)
+		return "", "", "", "", parseFailureErr
 	}
-	return m[1], m[2], m[3], m[4]
+	return m[1], m[2], m[3], m[4], nil
 }
 
 func (s *Server) getVaultSessions(env string) ([]configcore.Session, error) {

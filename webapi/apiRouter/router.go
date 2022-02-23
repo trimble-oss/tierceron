@@ -129,7 +129,7 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 		GQLReq.Header = r.Header
 		if err != nil {
 			s.Log.Println(err)
-			os.Exit(1)
+			return
 		}
 		GQLReq.Header["Content-Type"] = []string{"application/json"}
 		ctx := GQLReq.Context()

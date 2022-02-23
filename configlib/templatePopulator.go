@@ -43,12 +43,13 @@ func ConfigCertLib(token string, address string, env string, templatePath string
 	logger.Println("NCLib Version: " + "1.12")
 	mod, err := kv.NewModifier(false, token, address, env, nil, logger)
 	mod.Env = env
-	if err != nil {
-		panic(err)
-	}
 	config := &eUtils.DriverConfig{
 		Insecure: false,
 		Log:      logger,
+	}
+	if err != nil {
+		eUtils.LogErrorMessage(config, err.Error(), false)
+		return C.CString("")
 	}
 	_, configuredCert, _, err := utils.ConfigTemplate(config, mod, templatePath, true, project, service, true, true)
 

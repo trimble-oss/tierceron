@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -102,7 +101,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	timeOut := time.Date(9999, 1, 1, 12, 0, 0, 0, time.UTC)
 	if stringA == nil || stringB == nil {
 		fmt.Println("A null string was found while diffing")
-		os.Exit(1)
+		return ""
 	}
 	diffs := dmp.DiffBisect(*stringA, *stringB, timeOut)
 	diffs = dmp.DiffCleanupSemantic(diffs)
@@ -235,7 +234,7 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 
 	if versionData == nil {
 		fmt.Println("No version data found for this environment")
-		os.Exit(1)
+		return
 	}
 
 	//template == true
@@ -353,7 +352,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 	mutex.Lock()
 	if len(resultMap) == 0 {
 		fmt.Println("Couldn't find any data to diff")
-		os.Exit(1)
+		return
 	}
 
 	var baseEnv []string
