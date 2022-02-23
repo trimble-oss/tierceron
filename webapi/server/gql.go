@@ -126,7 +126,7 @@ func (s *Server) InitGQL() {
 	envStrings := SelectedEnvironment
 	for _, e := range envStrings { //Not including itdev and servicepack
 		// Get spectrum sessions
-		spctmSessions[e], err = s.getActiveSessions(e)
+		spctmSessions[e], err = s.getActiveSessions(config, e)
 		if err != nil {
 			utils.LogErrorObject(config, err, false)
 			utils.LogWarningsObject(config, []string{fmt.Sprintf("GraphQL MAY not initialized (Spectrum %s sessions not added)", e)}, false)
