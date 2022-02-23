@@ -136,7 +136,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger}, nil, nil, tokenPtr, nil, envPtr, addrPtr, *pingPtr)
 		if autoErr != nil {
-			fmt.Println("Missing auth components.")
+			fmt.Println("Auth failure: " + autoErr.Error())
 			os.Exit(1)
 		}
 	}
