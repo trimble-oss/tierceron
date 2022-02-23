@@ -64,7 +64,7 @@ func AutoAuth(config *DriverConfig,
 
 	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" {
 		// For token based auth, auto auth not
-		return errors.New("Missing auth.")
+		return nil
 	}
 
 	// Get current user's home directory
