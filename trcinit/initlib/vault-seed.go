@@ -84,7 +84,7 @@ func SeedVault(insecure bool,
 
 		_, _, seedData, errGenerateSeeds := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
 		if errGenerateSeeds != nil {
-			return eUtils.LogAndSafeExit(config, err.Error(), -1)
+			return eUtils.LogErrorAndSafeExit(config, errGenerateSeeds, -1)
 		}
 
 		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
@@ -180,11 +180,7 @@ func SeedVault(insecure bool,
 							}
 							for _, sectionConfigFile := range sectionConfigFiles {
 								path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
-								config := utils.DriverConfig{
-									Insecure: insecure,
-									Log:      logger,
-								}
-								SeedVaultFromFile(&config, path, service, uploadCert)
+								SeedVaultFromFile(config, path, service, uploadCert)
 							}
 						}
 					}
@@ -243,7 +239,7 @@ func SeedVault(insecure bool,
 func SeedVaultFromFile(config *utils.DriverConfig, filepath string, service string, uploadCert bool) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
-	eUtils.LogAndSafeExit(config, err.Error(), 1)
+	eUtils.LogErrorAndSafeExit(config, err, 1)
 	SeedVaultFromData(config, strings.SplitAfterN(filepath, "/", 3)[2], rawFile, service, uploadCert)
 }
 
@@ -266,8 +262,9 @@ func SeedVaultFromData(config *utils.DriverConfig, filepath string, fData []byte
 
 	err := yaml.Unmarshal(fData, &rawYaml)
 	if err != nil {
-		eUtils.LogAndSafeExit(config, err.Error(), 1)
+		return eUtils.LogErrorAndSafeExit(config, err, 1)
 	}
+
 	seed, ok := rawYaml.(map[interface{}]interface{})
 	if ok == false {
 		return eUtils.LogAndSafeExit(config, "Invalid yaml file.  Refusing to continue.", 1)
@@ -327,7 +324,7 @@ func SeedVaultFromData(config *utils.DriverConfig, filepath string, fData []byte
 
 	mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, config.Log) // Connect to vault
 	if err != nil {
-		return eUtils.LogAndSafeExit(config, err.Error(), 1)
+		return eUtils.LogErrorAndSafeExit(config, err, 1)
 	}
 	mod.Env = config.Env
 	if strings.HasPrefix(filepath, "Index/") || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
