@@ -149,8 +149,11 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if (len(*filterTemplatePtr) == 0 || len(*indexServiceFilterPtr) == 0) && *diffPtr && len(*indexedPtr) != 0 {
 		fmt.Println("-templateFilter & -indexFilter must be specificed to use -indexed & -diff flag")
 		os.Exit(1)
-	} else if *versionPtr && (len(*indexedPtr) > 0 || len(*restrictedPtr) > 0) {
-		fmt.Println("-indexed and -restricted flags cannot be used with -version flag")
+	} else if (len(*filterTemplatePtr) == 0 || len(*indexServiceFilterPtr) == 0) && *versionPtr && len(*indexedPtr) != 0 {
+		fmt.Println("-templateFilter & -indexFilter must be specificed to use -indexed & -versions flag")
+		os.Exit(1)
+	} else if *versionPtr && len(*restrictedPtr) > 0 {
+		fmt.Println("-restricted flags cannot be used with -versions flag")
 		os.Exit(1)
 	} else if (strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")) && *addrPtr == "" {
 		fmt.Println("The -addr flag must be used with staging/prod environment")
@@ -370,7 +373,7 @@ skipDiff:
 
 	var filteredSectionSlice []string
 	var indexFilterSlice []string
-	if len(*filterTemplatePtr) > 0 && *diffPtr && len(*indexedPtr) > 0 {
+	if len(*filterTemplatePtr) > 0 && (*diffPtr || *versionPtr) && len(*indexedPtr) > 0 {
 		filterSlice := strings.Split(*filterTemplatePtr, ",")
 		for _, filter := range filterSlice {
 			for _, section := range sectionSlice {
