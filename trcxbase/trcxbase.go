@@ -85,14 +85,6 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")
 	restrictedPtr := flag.String("restricted", "", "Specifies which projects have restricted access.")
 
-	config := &eUtils.DriverConfig{ExitOnFailure: true, Insecure: *insecurePtr}
-
-	// Initialize logging
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(config, err, true)
-	logger := log.New(f, "[trcx]", log.LstdFlags)
-	config.Log = logger
-
 	// Checks for proper flag input
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -104,6 +96,15 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	}
 
 	flag.Parse()
+
+	config := &eUtils.DriverConfig{ExitOnFailure: true, Insecure: *insecurePtr}
+
+	// Initialize logging
+	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	eUtils.CheckError(config, err, true)
+	logger := log.New(f, "[trcx]", log.LstdFlags)
+	config.Log = logger
+
 	envRaw := *envPtr
 
 	Yellow := "\033[33m"
@@ -208,8 +209,8 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 			autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 
 			if autoErr != nil {
-				fmt.Println("Missing auth components.")
-				os.Exit(1)
+				fmt.Println("Missing auth componentsX.")
+				eUtils.LogErrorMessage(config, autoErr.Error(), true)
 			}
 		} else {
 			*tokenPtr = "novault"
@@ -274,7 +275,7 @@ skipDiff:
 		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 		if autoErr != nil {
 			fmt.Println("Missing auth components.")
-			os.Exit(1)
+			eUtils.LogErrorMessage(config, autoErr.Error(), true)
 		}
 	}
 
