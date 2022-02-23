@@ -22,7 +22,7 @@ func CheckError(config *DriverConfig, err error, exit bool) {
 	// If code wants to exit and ExitOnFailure is specified,
 	// then we can exit here.
 	if err != nil && exit && config.ExitOnFailure {
-		panic(err)
+		log.Fatal(err)
 	}
 }
 
@@ -70,14 +70,12 @@ func LogError(config *DriverConfig, err error, f *os.File, exit bool) {
 		_prefix := log.Prefix()
 		log.SetOutput(f)
 		log.SetPrefix("[ERROR]")
-		if exit {
+		if exit && config.ExitOnFailure {
 			if !headlessService {
 				fmt.Printf("Errors encountered, exiting and writing to log file: %s\n", f.Name())
 				log.Fatal(err)
 			} else {
-				if config.ExitOnFailure {
-					os.Exit(-1)
-				}
+				os.Exit(-1)
 			}
 		} else {
 			if !headlessService {
@@ -99,13 +97,11 @@ func LogWarnings(config *DriverConfig, warnings []string, f *os.File, exit bool)
 				log.Println(w)
 			}
 		}
-		if exit {
+		if exit && config.ExitOnFailure {
 			if !headlessService {
 				fmt.Printf("Warnings encountered, exiting and writing to log file: %s\n", f.Name())
 			}
-			if config.ExitOnFailure {
-				os.Exit(1)
-			}
+			os.Exit(1)
 		} else {
 			log.SetPrefix(_prefix)
 		}
