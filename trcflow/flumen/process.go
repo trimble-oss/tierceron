@@ -380,6 +380,11 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		if flowError != nil {
 			eUtils.LogErrorObject(config, flowError, true)
 		}
+	} else if flowType == flowcore.TableTestFlow {
+		flowError := testflowimpl.ProcessTestFlowController(trcFlowMachineContext, trcFlowContext)
+		if flowError != nil {
+			eUtils.LogErrorObject(config, flowError, true)
+		}
 	}
 
 	return nil

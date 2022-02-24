@@ -16,6 +16,7 @@ type FlowType int64
 const (
 	TableSyncFlow FlowType = iota
 	TableEnrichFlow
+	TableTestFlow
 )
 
 type TrcFlowMachineContext struct {
