@@ -32,9 +32,10 @@ require VaultConfig.Test v0.0.0-00010101000000-000000000000
 require (
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/dolthub/vitess v0.0.0-20220207220721-35d6793fac38 // indirect
+	github.com/dolthub/vitess v0.0.0-20220215181831-b3d3007ceb62 // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/frankban/quicktest v1.14.1 // indirect
+	github.com/go-co-op/gocron v1.13.0 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
@@ -68,6 +69,7 @@ require (
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sendgrid/rest v2.6.0+incompatible // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
