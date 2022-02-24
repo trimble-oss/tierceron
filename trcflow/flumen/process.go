@@ -649,7 +649,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					sourceDatabaseConnectionMap,
 					flowVault,
 					f,
-					flowcore.TableEnrichFlow,
+					flowcore.TableTestFlow,
 					channelMap[f], // tableChangedChannel
 					signalChannel,
 				)
