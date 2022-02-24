@@ -75,6 +75,7 @@ func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client
 	response, err := httpClient.Do(request)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
+		return nil, err
 	}
 	defer response.Body.Close()
 
@@ -92,7 +93,10 @@ func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client
 		}
 
 		return jsonData, nil
+	} else if response.StatusCode == http.StatusNoContent {
+		return jsonData, nil
 	}
+
 	return nil, errors.New("http status failure")
 }
 
