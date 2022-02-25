@@ -490,6 +490,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 		tempTemplatePaths = append(tempTemplatePaths, tp...)
 	}
 
+	if len(tempTemplatePaths) == 0 {
+		eUtils.LogErrorMessage(config, "No files found in trc_templates", true)
+	}
+
 	//Duplicate path remover
 	keys := make(map[string]bool)
 	templatePaths := []string{}
