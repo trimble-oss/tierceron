@@ -11,7 +11,6 @@ import (
 	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
 
 	configcore "VaultConfig.Bootstrap/configcore"
 )
@@ -54,24 +53,6 @@ func main() {
 	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
 	eUtils.CheckError(config, err, true)
 
-	if len(*tokenNamePtr) > 0 {
-		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
-			utils.CheckError(config, fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
-		}
-		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr, false, logger)
-		utils.CheckError(config, err, true)
-
-		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
-		utils.CheckError(config, err, true)
-
-		mod, err := kv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, logger)
-		utils.CheckError(config, err, true)
-		mod.Env = "bamboo"
-
-		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
-		utils.CheckError(config, err, true)
-	}
-
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = utils.LoginToLocal()
@@ -95,10 +76,11 @@ func main() {
 		if err != nil {
 			utils.CheckError(config, err, true)
 		}
+		fmt.Printf("\nProjects available:\n")
 		for _, templatePath := range templateList.Data {
 			for _, projectInterface := range templatePath.([]interface{}) {
 				project := projectInterface.(string)
-				fmt.Println(project)
+				fmt.Println(strings.TrimRight(project, "/"))
 			}
 		}
 		os.Exit(1)
