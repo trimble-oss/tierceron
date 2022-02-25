@@ -89,6 +89,7 @@ func main() {
 		// The actual download templates goes here.
 		err, warn := il.DownloadTemplateDirectory(mod, *dirPtr, logger, filterTemplatePtr)
 		if err != nil {
+			fmt.Println(err)
 			if strings.Contains(err.Error(), "x509: certificate") {
 				os.Exit(-1)
 			}
