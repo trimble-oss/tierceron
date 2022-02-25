@@ -82,6 +82,11 @@ func main() {
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 	fmt.Printf("Downloading templates from vault to %s\n", *dirPtr)
 
+	autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+	if autoErr != nil {
+		fmt.Println("Missing auth components.")
+		os.Exit(1)
+	}
 	mod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
 	utils.CheckError(config, err, true)
 	mod.Env = *envPtr
