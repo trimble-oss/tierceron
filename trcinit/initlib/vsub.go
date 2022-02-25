@@ -25,7 +25,7 @@ func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Log
 	}
 	for _, templatePath := range templateList.Data {
 		for _, projectInterface := range templatePath.([]interface{}) {
-			project := projectInterface.(string)
+			project := strings.TrimSuffix(projectInterface.(string), "/")
 			if len(filterTemplateSlice) > 0 {
 				projectFound := false
 				for _, filter := range filterTemplateSlice {
@@ -44,13 +44,16 @@ func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Log
 				}
 			}
 
-			allTemplateFilePaths, err1 := mod.GetTemplateFilePaths("templates/" + project)
+			allTemplateFilePaths, err1 := mod.GetTemplateFilePaths("templates/" + project + "/")
 			if err1 != nil {
 				return err1, nil
 			}
 
 			for _, path := range allTemplateFilePaths {
-				fmt.Println(path)
+				if strings.HasSuffix(path, "/") {
+					continue
+				}
+				fmt.Println(path + ".tmpl")
 			}
 			//recursively grab paths
 			//use paths with ReadData to write to file
