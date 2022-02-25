@@ -81,7 +81,7 @@ func main() {
 	utils.CheckError(config, err, true)
 	mod.Env = *envPtr
 
-	err, warn := il.UploadTemplateDirectory(mod, *dirPtr, logger)
+	err, warn := il.DownloadTemplateDirectory(mod, *dirPtr, logger)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)
@@ -144,11 +144,11 @@ func downloadTemplates(config *eUtils.DriverConfig, dirName string) {
 
 			// Construct template path for vault
 			templatePath := "templates/" + subDir + "/" + name + "/template-file"
-			config.Log.Println("\tUploading template to path:\t%s\n", templatePath)
+			config.Log.Println("\tDownloading template to path:\t%s\n", templatePath)
 
 			// Construct value path for vault
 			valuePath := "values/" + subDir + "/" + name
-			config.Log.Println("\tUploading values to path:\t%s\n", valuePath)
+			config.Log.Println("\tDownloading values to path:\t%s\n", valuePath)
 
 			// Write templates to vault and output errors/warnings
 			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext})
