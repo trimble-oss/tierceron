@@ -80,7 +80,6 @@ func main() {
 	}
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
-	fmt.Printf("Downloading templates from vault to %s\n", *dirPtr)
 
 	autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 	if autoErr != nil {
@@ -103,6 +102,11 @@ func main() {
 			}
 		}
 		os.Exit(1)
+	} else {
+		fmt.Printf("Downloading templates from vault to %s\n", *dirPtr)
+
+		// The actual download templates goes here.
+
 	}
 
 	err, warn := il.DownloadTemplateDirectory(mod, *dirPtr, logger)
