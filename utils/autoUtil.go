@@ -98,7 +98,7 @@ func AutoAuth(config *DriverConfig,
 
 			if *tokenPtr == "" {
 				if !override {
-					LogInfo(config, "Grabbing config IDs from cert file.")
+					LogInfo(config, "Obtaining auth credentials.")
 					if c.SecretID != "" && secretIDPtr != nil {
 						*secretIDPtr = c.SecretID
 					}
