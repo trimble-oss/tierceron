@@ -58,10 +58,16 @@ func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Log
 				if err != nil {
 					return err, nil
 				}
-				ext = tfMap["ext"].(string)
-				data := tfMap["data"].(string)
-				if err != nil {
-					return err, nil
+				if _, extOk := tfMap["ext"]; extOk {
+					ext = tfMap["ext"].(string)
+				}
+
+				var data string
+				if _, dataOk := tfMap["data"]; dataOk {
+					data = tfMap["data"].(string)
+				} else {
+					fmt.Println("No data found for: " + path + "template-file")
+					continue
 				}
 				templateBytes, decodeErr := base64.StdEncoding.DecodeString(data)
 				if decodeErr != nil {
