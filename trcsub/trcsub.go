@@ -3,10 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	il "tierceron/trcinit/initlib"
@@ -36,8 +34,15 @@ func main() {
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flag.String("log", "./trcpub.log", "Output path for log files")
+	projectInfoPtr := flag.Bool("projectInfo", false, "Lists all project info")
+	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
 
 	flag.Parse()
+
+	if len(*filterTemplatePtr) == 0 && !*projectInfoPtr {
+		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")
+		os.Exit(1)
+	}
 
 	// If logging production directory does not exist and is selected log to local directory
 	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/trcsub.log" {
@@ -81,6 +86,20 @@ func main() {
 	utils.CheckError(config, err, true)
 	mod.Env = *envPtr
 
+	if *projectInfoPtr {
+		templateList, err := mod.List("templates/")
+		if err != nil {
+			utils.CheckError(config, err, true)
+		}
+		for _, templatePath := range templateList.Data {
+			for _, projectInterface := range templatePath.([]interface{}) {
+				project := projectInterface.(string)
+				fmt.Println(project)
+			}
+		}
+		os.Exit(1)
+	}
+
 	err, warn := il.DownloadTemplateDirectory(mod, *dirPtr, logger)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
@@ -90,75 +109,4 @@ func main() {
 
 	utils.CheckError(config, err, true)
 	utils.CheckWarnings(config, warn, true)
-}
-
-func downloadTemplates(config *eUtils.DriverConfig, dirName string) {
-	config.Log.Printf("dirName: %s\n", dirName)
-	// Open directory
-	files, err := ioutil.ReadDir(dirName)
-	utils.CheckError(config, err, true)
-
-	// Use name of containing directory as the template subdirectory
-	splitDir := strings.SplitAfterN(dirName, "/", 2)
-	subDir := splitDir[len(splitDir)-1]
-	config.Log.Printf("subDir: %s\n", subDir)
-
-	// Create modifier
-	mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, config.Log)
-	utils.CheckError(config, err, true)
-	mod.Env = config.Env
-
-	// Parse through files
-	for _, file := range files {
-		if file.IsDir() { // Recurse folders
-			downloadTemplates(config, dirName+"/"+file.Name())
-			// if err != nil || len(warn) > 0 {
-			// 	return err, warn
-			// }
-			continue
-		}
-		// Extract extension and name
-		ext := filepath.Ext(file.Name())
-		name := file.Name()
-		name = name[0 : len(name)-len(ext)] // Truncate extension
-
-		if ext == ".tmpl" { // Only upload template files
-			fmt.Printf("Found template file %s\n", file.Name())
-			config.Log.Println(fmt.Sprintf("Found template file %s", file.Name()))
-			// Seperate name and extension one more time for saving to vault
-			ext = filepath.Ext(name)
-			name = name[0 : len(name)-len(ext)]
-
-			// Extract values
-			extractedValues, err := utils.Parse(dirName+"/"+file.Name(), subDir, name)
-			utils.CheckError(config, err, true)
-
-			// Open file
-			f, err := os.Open(dirName + "/" + file.Name())
-			utils.CheckError(config, err, true)
-
-			// Read the file
-			fileBytes := make([]byte, file.Size())
-			_, err = f.Read(fileBytes)
-			utils.CheckError(config, err, true)
-
-			// Construct template path for vault
-			templatePath := "templates/" + subDir + "/" + name + "/template-file"
-			config.Log.Println("\tDownloading template to path:\t%s\n", templatePath)
-
-			// Construct value path for vault
-			valuePath := "values/" + subDir + "/" + name
-			config.Log.Println("\tDownloading values to path:\t%s\n", valuePath)
-
-			// Write templates to vault and output errors/warnings
-			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext})
-			utils.CheckError(config, err, false)
-			utils.CheckWarnings(config, warn, false)
-
-			// Write values to vault and output any errors/warnings
-			warn, err = mod.Write(valuePath, extractedValues)
-			utils.CheckError(config, err, false)
-			utils.CheckWarnings(config, warn, false)
-		}
-	}
 }
