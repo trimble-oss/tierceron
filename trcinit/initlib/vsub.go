@@ -12,7 +12,7 @@ import (
 	"tierceron/vaulthelper/kv"
 )
 
-func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Logger, templateFilter *string) (error, []string) {
+func DownloadTemplateDirectory(config *utils.DriverConfig, mod *kv.Modifier, dirName string, logger *log.Logger, templateFilter *string) (error, []string) {
 
 	var filterTemplateSlice []string
 	if len(*templateFilter) > 0 {
@@ -21,7 +21,7 @@ func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Log
 
 	templateList, err := mod.List("templates/")
 	if err != nil {
-		return err, nil
+		utils.LogErrorMessage(config, "Couldn't read into paths under templates/", true)
 	}
 	for _, templatePath := range templateList.Data {
 		for _, projectInterface := range templatePath.([]interface{}) {
@@ -44,7 +44,8 @@ func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Log
 
 			allTemplateFilePaths, err1 := mod.GetTemplateFilePaths("templates/" + project + "/")
 			if err1 != nil {
-				return err1, nil
+				utils.LogErrorMessage(config, "Couldn't read into paths under templates/"+project+"/", false)
+				continue
 			}
 
 			allTemplateFilePaths = utils.RemoveDuplicates(allTemplateFilePaths)
@@ -71,7 +72,8 @@ func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Log
 				}
 				templateBytes, decodeErr := base64.StdEncoding.DecodeString(data)
 				if decodeErr != nil {
-					return decodeErr, nil
+					utils.LogErrorMessage(config, "Couldn't decode data for: "+path+"template-file", false)
+					continue
 				}
 				//Ensure directory has been created
 				filePath := strings.TrimSuffix(path, "/")
@@ -80,28 +82,29 @@ func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Log
 				dirPath := filepath.Dir(dirName + filePath)
 				err = os.MkdirAll(dirPath, os.ModePerm)
 				if err != nil {
-					return err, nil
+					utils.LogErrorMessage(config, "Couldn't make directory: "+dirName+filePath, false)
+					continue
 				}
 				//create new file
 				newFile, err := os.Create(dirPath + file + ext + ".tmpl")
 				if err != nil {
-					return err, nil
+					utils.LogErrorMessage(config, "Couldn't create file: "+dirPath+file+ext+".tmpl", false)
+					continue
 				}
 				//write to file
 				_, err = newFile.Write(templateBytes)
 				if err != nil {
-					return err, nil
+					utils.LogErrorMessage(config, "Couldn't write file: "+dirPath+file+ext+".tmpl", false)
+					continue
 				}
 				err = newFile.Sync()
 				if err != nil {
-					return err, nil
+					utils.LogErrorMessage(config, "Couldn't sync file: "+dirPath+file+ext+".tmpl", false)
+					continue
 				}
 				newFile.Close()
 				fmt.Println("File has been writen to " + dirPath + file + ext + ".tmpl")
 			}
-			//Add "template-file" to the end of this path ->
-			//recursively grab paths
-			//use paths with ReadData to write to file
 		}
 	}
 
