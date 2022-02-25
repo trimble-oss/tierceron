@@ -50,7 +50,7 @@ func main() {
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
 	logger := log.New(f, "[INIT]", log.LstdFlags)
-	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+	config := &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}
 	eUtils.CheckError(config, err, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
@@ -87,7 +87,7 @@ func main() {
 	} else {
 		fmt.Printf("Downloading templates from vault to %s\n", *dirPtr)
 		// The actual download templates goes here.
-		err, warn := il.DownloadTemplateDirectory(mod, *dirPtr, logger, filterTemplatePtr)
+		err, warn := il.DownloadTemplateDirectory(config, mod, *dirPtr, logger, filterTemplatePtr)
 		if err != nil {
 			fmt.Println(err)
 			if strings.Contains(err.Error(), "x509: certificate") {
