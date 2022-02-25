@@ -36,6 +36,8 @@ xp:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcxp
 pub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcpub
+sub:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcsub
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
