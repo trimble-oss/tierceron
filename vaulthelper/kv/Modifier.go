@@ -564,11 +564,11 @@ func getPaths(mod *Modifier, pathName string) ([]string, error) {
 	}
 	return pathList, nil
 }
-func getTemplateFilePaths(mod *Modifier, pathName string) ([]string, error) {
-	secrets, err := mod.List(pathName)
+func (m *Modifier) GetTemplateFilePaths(pathName string) ([]string, error) {
+	secrets, err := m.List(pathName)
 	pathList := []string{}
 	if err != nil {
-		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, mod.Env)
+		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, m.Env)
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
@@ -581,7 +581,7 @@ func getTemplateFilePaths(mod *Modifier, pathName string) ([]string, error) {
 
 		subPathList := []string{}
 		for _, path := range pathList {
-			subsubList, _ := templateFileRecurse(mod, path)
+			subsubList, _ := templateFileRecurse(m, path)
 			for _, subsub := range subsubList {
 				//List is returning both pathEnd and pathEnd/
 				subPathList = append(subPathList, subsub)
