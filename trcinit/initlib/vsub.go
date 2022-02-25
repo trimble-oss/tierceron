@@ -29,11 +29,9 @@ func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Log
 			if len(filterTemplateSlice) > 0 {
 				projectFound := false
 				for _, filter := range filterTemplateSlice {
-					if strings.Contains(filter, "/") { //For Project/Service in filter
-						filterSplit := strings.Split(filter, "/")
-						if project == filterSplit[0] {
-							projectFound = true
-						}
+					filterSplit := strings.Split(filter, "/")
+					if project == filterSplit[0] {
+						projectFound = true
 					}
 					if project == filter {
 						projectFound = true
