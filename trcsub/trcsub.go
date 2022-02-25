@@ -32,7 +32,7 @@ func main() {
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcpub to access the vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./trcpub.log", "Output path for log files")
+	logFilePtr := flag.String("log", "./trcsub.log", "Output path for log files")
 	projectInfoPtr := flag.Bool("projectInfo", false, "Lists all project info")
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
 
