@@ -48,7 +48,29 @@ func DownloadTemplateDirectory(config *utils.DriverConfig, mod *kv.Modifier, dir
 				continue
 			}
 
+			var tempFilteredPaths []string
 			allTemplateFilePaths = utils.RemoveDuplicates(allTemplateFilePaths)
+			if len(filterTemplateSlice) > 0 {
+				for _, path := range allTemplateFilePaths {
+					serviceFound := false
+					for _, filter := range filterTemplateSlice {
+						filterSplit := strings.Split(filter, "/")
+						if len(filterSplit) > 1 {
+							if strings.Contains(path, filterSplit[1]) {
+								serviceFound = true
+							}
+							if serviceFound {
+								tempFilteredPaths = append(tempFilteredPaths, path)
+							}
+						} else {
+							tempFilteredPaths = append(tempFilteredPaths, path)
+						}
+					}
+					if len(tempFilteredPaths) > 0 {
+						allTemplateFilePaths = tempFilteredPaths
+					}
+				}
+			}
 
 			for _, path := range allTemplateFilePaths {
 				if !strings.HasSuffix(path, "/") {
