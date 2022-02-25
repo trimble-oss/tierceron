@@ -12,7 +12,50 @@ import (
 	"tierceron/vaulthelper/kv"
 )
 
-func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Logger) (error, []string) {
+func DownloadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Logger, templateFilter *string) (error, []string) {
+
+	var filterTemplateSlice []string
+	if len(*templateFilter) > 0 {
+		filterTemplateSlice = strings.Split(*templateFilter, ",")
+	}
+
+	templateList, err := mod.List("templates/")
+	if err != nil {
+		return err, nil
+	}
+	for _, templatePath := range templateList.Data {
+		for _, projectInterface := range templatePath.([]interface{}) {
+			project := projectInterface.(string)
+			if len(filterTemplateSlice) > 0 {
+				projectFound := false
+				for _, filter := range filterTemplateSlice {
+					if strings.Contains(filter, "/") { //For Project/Service in filter
+						filterSplit := strings.Split(filter, "/")
+						if project == filterSplit[0] {
+							projectFound = true
+						}
+					}
+					if project == filter {
+						projectFound = true
+					}
+				}
+				if !projectFound {
+					continue
+				}
+			}
+
+			allTemplateFilePaths, err1 := mod.GetTemplateFilePaths("templates/" + project)
+			if err1 != nil {
+				return err1, nil
+			}
+
+			for _, path := range allTemplateFilePaths {
+				fmt.Println(path)
+			}
+			//recursively grab paths
+			//use paths with ReadData to write to file
+		}
+	}
 
 	dirs, err := ioutil.ReadDir(dirName)
 	if err != nil {
