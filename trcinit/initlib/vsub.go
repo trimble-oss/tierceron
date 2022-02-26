@@ -79,6 +79,7 @@ func DownloadTemplateDirectory(config *utils.DriverConfig, mod *kv.Modifier, dir
 				ext := ""
 				tfMap, err := mod.ReadData(path + "template-file") //Grab extention of file
 				if err != nil {
+					utils.LogErrorMessage(config, "Skipping template: "+path+" Error: "+err.Error(), false)
 					continue
 				}
 				if _, extOk := tfMap["ext"]; extOk {
