@@ -62,7 +62,7 @@ func main() {
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 
-	autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		os.Exit(1)
