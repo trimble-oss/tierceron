@@ -146,6 +146,9 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if *diffPtr && *versionPtr {
 		fmt.Println("-version flag cannot be used with -diff flag")
 		os.Exit(1)
+	} else if len(*indexServiceFilterPtr) == 0 && len(*indexedPtr) != 0 {
+		fmt.Println("-indexFilter must be specificed to use -indexed flag")
+		os.Exit(1)
 	} else if (len(*filterTemplatePtr) == 0 || len(*indexServiceFilterPtr) == 0) && *diffPtr && len(*indexedPtr) != 0 {
 		fmt.Println("-templateFilter & -indexFilter must be specificed to use -indexed & -diff flag")
 		os.Exit(1)
