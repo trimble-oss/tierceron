@@ -40,6 +40,10 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 	maxDepth := -1
 
 	endPath := ""
+	service := ""
+	if len(config.IndexFilter) > 0 {
+		service = config.IndexFilter[0]
+	}
 	multiService := false
 	var mod *kv.Modifier
 
@@ -230,8 +234,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			serviceFound := false
 			var acceptedTemplatePaths []string
 			for _, templatePath := range templatePaths {
-				var service string
-				_, service, templatePath = vcutils.GetProjectService(templatePath)
+				_, _, templatePath = vcutils.GetProjectService(templatePath)
 				_, _, indexed, _ := kv.PreCheckEnvironment(mod.Env)
 				//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
 				if (strings.Contains(mod.Env, ".") || len(config.ProjectSections) > 0) && !serviceFound {
