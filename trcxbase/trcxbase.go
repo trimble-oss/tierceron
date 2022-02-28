@@ -80,8 +80,11 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	diffPtr := flag.Bool("diff", false, "Diff files")
 	versionPtr := flag.Bool("versions", false, "Gets version metadata information")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
-	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
-	indexServiceFilterPtr := flag.String("indexFilter", "", "Specifies which services to filter to diff")
+	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter") // -templateFilter=config.yml
+
+	indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter") // KafkaTableConfiguration, TenantConfiguration
+	indexNameFilterPtr := flag.String("indexFilter", "", "Specifies which index names to filter")               // tenantId, SpectrumTableName
+	indexValueFilterPtr := flag.String("indexValueFilter", "", "Specifies which index values to filter")        // qa14p8
 	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")
 	restrictedPtr := flag.String("restricted", "", "Specifies which projects have restricted access.")
 
@@ -146,14 +149,14 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if *diffPtr && *versionPtr {
 		fmt.Println("-version flag cannot be used with -diff flag")
 		os.Exit(1)
-	} else if len(*indexServiceFilterPtr) == 0 && len(*indexedPtr) != 0 {
-		fmt.Println("-indexFilter must be specificed to use -indexed flag")
+	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexNameFilterPtr) == 0) && len(*indexedPtr) != 0 {
+		fmt.Println("-serviceFilter and -indexFilter must be specificed to use -indexed flag")
 		os.Exit(1)
-	} else if (len(*filterTemplatePtr) == 0 || len(*indexServiceFilterPtr) == 0) && *diffPtr && len(*indexedPtr) != 0 {
-		fmt.Println("-templateFilter & -indexFilter must be specificed to use -indexed & -diff flag")
+	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexValueFilterPtr) == 0) && *diffPtr && len(*indexedPtr) != 0 {
+		fmt.Println("-indexFilter and -indexValueFilter must be specificed to use -indexed & -diff flag")
 		os.Exit(1)
-	} else if (len(*filterTemplatePtr) == 0 || len(*indexServiceFilterPtr) == 0) && *versionPtr && len(*indexedPtr) != 0 {
-		fmt.Println("-templateFilter & -indexFilter must be specificed to use -indexed & -versions flag")
+	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexValueFilterPtr) == 0) && *versionPtr && len(*indexedPtr) != 0 {
+		fmt.Println("-indexFilter and -indexValueFilter must be specificed to use -indexed & -versions flag")
 		os.Exit(1)
 	} else if *versionPtr && len(*restrictedPtr) > 0 {
 		fmt.Println("-restricted flags cannot be used with -versions flag")
@@ -306,7 +309,7 @@ skipDiff:
 	var subSectionName string
 	var waitg sync.WaitGroup
 	sectionKey := "/"
-	if len(envSlice) == 1 || (len(*filterTemplatePtr) > 0 && len(*indexedPtr) > 0 && *diffPtr) {
+	if len(envSlice) == 1 || (len(*indexValueFilterPtr) > 0 && len(*indexedPtr) > 0) {
 		if strings.Contains(envSlice[0], "*") || len(*indexedPtr) > 0 || len(*restrictedPtr) > 0 {
 			if len(*indexedPtr) > 0 {
 				sectionKey = "/Index/"
@@ -376,7 +379,7 @@ skipDiff:
 
 	var filteredSectionSlice []string
 	var indexFilterSlice []string
-	if len(*filterTemplatePtr) > 0 && (*diffPtr || *versionPtr) && len(*indexedPtr) > 0 {
+	if len(*filterTemplatePtr) > 0 && len(*indexedPtr) > 0 {
 		filterSlice := strings.Split(*filterTemplatePtr, ",")
 		for _, filter := range filterSlice {
 			for _, section := range sectionSlice {
