@@ -386,8 +386,9 @@ skipDiff:
 
 	var filteredSectionSlice []string
 	var indexFilterSlice []string
-	if len(*indexServiceFilterPtr) > 0 {
-		filterSlice := strings.Split(*indexServiceFilterPtr, ",")
+
+	if len(*indexValueFilterPtr) > 0 {
+		filterSlice := strings.Split(*indexValueFilterPtr, ",")
 		for _, filter := range filterSlice {
 			for _, section := range sectionSlice {
 				if filter == section {
@@ -396,6 +397,8 @@ skipDiff:
 			}
 		}
 		sectionSlice = filteredSectionSlice
+	}
+	if len(*indexServiceFilterPtr) > 0 {
 		indexFilterSlice = strings.Split(*indexServiceFilterPtr, ",")
 	}
 
