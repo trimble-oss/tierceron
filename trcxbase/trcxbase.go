@@ -307,6 +307,11 @@ skipDiff:
 
 	sectionSlice := []string{""}
 	var subSectionName string
+	if len(*indexNameFilterPtr) > 0 {
+		subSectionName = *indexNameFilterPtr
+	} else {
+		subSectionName = ""
+	}
 	var waitg sync.WaitGroup
 	sectionKey := "/"
 	if len(envSlice) == 1 || (len(*indexValueFilterPtr) > 0 && len(*indexedPtr) > 0) {
@@ -350,7 +355,9 @@ skipDiff:
 					}
 					for k, valuesPath := range listValues.Data {
 						for _, indexNameInterface := range valuesPath.([]interface{}) {
-							subSectionName = strings.TrimSuffix(indexNameInterface.(string), "/")
+							if indexNameInterface != (subSectionName + "/") {
+								continue
+							}
 							indexList, err := testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath + "/" + indexNameInterface.(string))
 							if err != nil {
 								logger.Printf(err.Error())
@@ -379,8 +386,8 @@ skipDiff:
 
 	var filteredSectionSlice []string
 	var indexFilterSlice []string
-	if len(*filterTemplatePtr) > 0 && len(*indexedPtr) > 0 {
-		filterSlice := strings.Split(*filterTemplatePtr, ",")
+	if len(*indexServiceFilterPtr) > 0 {
+		filterSlice := strings.Split(*indexServiceFilterPtr, ",")
 		for _, filter := range filterSlice {
 			for _, section := range sectionSlice {
 				if filter == section {
