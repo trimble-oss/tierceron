@@ -446,7 +446,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					eUtils.LogWarningMessage(config, "Expected database configuration does not exist: "+indexValue, false)
 					continue
 				}
-				sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
+				// Chewbacca -- remove if check.
+				if sourceDatabaseConfig["dbsourceregion"] == "west" {
+					sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
+				}
 
 			case "Identity":
 				trcIdentityConfig, ok = properties.GetConfigValues(services[i], "config")
