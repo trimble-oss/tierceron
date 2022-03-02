@@ -30,6 +30,7 @@ import (
 )
 
 var tableCreationLock sync.Mutex
+var flowInitLock sync.Mutex
 var changesLock sync.Mutex
 
 var channelMap map[string]chan bool
@@ -173,7 +174,11 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 		trcFlowContext.FlowName = eUtils.GetTemplateFileName(trcFlowContext.FlowPath, trcFlowContext.FlowService)
 		trcFlowContext.ChangeFlowName = trcFlowContext.FlowName + "_Changes"
+
+		flowInitLock.Lock()
 		trcFlowMachineContext.FlowMap[trcFlowContext.FlowService] = trcFlowContext
+		flowInitLock.Unlock()
+
 		// Set up schema callback for table to track.
 		trcFlowMachineContext.CallAddTableSchema = func(tableSchema sqle.PrimaryKeySchema, tableName string) {
 			// Create table if necessary.
