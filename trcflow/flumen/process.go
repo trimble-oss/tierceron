@@ -266,21 +266,21 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 			}
 		}
 
-		trcFlowMachineContext.CallSelectFlowChannel = func(trcFlowMachineContext *flowcore.TrcFlowMachineContext, trcfc *flowcore.TrcFlowContext) <-chan bool {
-			if notifFlowCxt, ok := trcFlowMachineContext.FlowMap[trcfc.Flow]; ok {
-				if notificationFlowChannel, ok := channelMap[notifFlowCxt.(*flowcore.TrcFlowContext).FlowPath]; ok {
-					return notificationFlowChannel
-				}
-			}
-			trcFlowMachineContext.CallLog("Could not find channel for flow.", nil)
-
-			return nil
-		}
-
 	} else {
 		// Use the flow name directly.
 		trcFlowContext.Flow = flowcore.FlowNameType(flow)
 		trcFlowContext.FlowSource = flow.ServiceName()
+	}
+
+	trcFlowMachineContext.CallSelectFlowChannel = func(trcFlowMachineContext *flowcore.TrcFlowMachineContext, trcfc *flowcore.TrcFlowContext) <-chan bool {
+		if notifFlowCxt, ok := trcFlowMachineContext.FlowMap[trcfc.Flow]; ok {
+			if notificationFlowChannel, ok := channelMap[notifFlowCxt.(*flowcore.TrcFlowContext).FlowPath]; ok {
+				return notificationFlowChannel
+			}
+		}
+		trcFlowMachineContext.CallLog("Could not find channel for flow.", nil)
+
+		return nil
 	}
 
 	trcFlowMachineContext.CallGetFlowConfiguration = func(trcfc *flowcore.TrcFlowContext, flowTemplatePath string) (map[string]interface{}, bool) {
