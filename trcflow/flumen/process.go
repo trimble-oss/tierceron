@@ -162,7 +162,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	vaultAddress string,
 	sourceDatabaseConnectionMap map[string]interface{},
 	vault *sys.Vault,
-	flow string,
+	flow flowcore.FlowNameType,
 	flowType flowcore.FlowType,
 	changedChannel chan bool,
 	signalChannel chan os.Signal) error {
@@ -171,7 +171,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	//     a. Get project, service, and table config template name.
 	if flowType == flowcore.TableSyncFlow {
 		var flowService string
-		trcFlowContext.FlowSource, flowService, trcFlowContext.FlowPath = eUtils.GetProjectService(flow)
+		trcFlowContext.FlowSource, flowService, trcFlowContext.FlowPath = eUtils.GetProjectService(flow.ServiceName())
 		trcFlowContext.Flow = flowcore.FlowNameType(eUtils.GetTemplateFileName(trcFlowContext.FlowPath, flowService))
 		trcFlowContext.ChangeFlowName = trcFlowContext.Flow.TableName() + "_Changes"
 
@@ -268,7 +268,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	} else {
 		// Use the flow name directly.
 		trcFlowContext.Flow = flowcore.FlowNameType(flow)
-		trcFlowContext.FlowSource = flow
+		trcFlowContext.FlowSource = flow.ServiceName()
 	}
 
 	trcFlowMachineContext.CallGetFlowConfiguration = func(trcfc *flowcore.TrcFlowContext, flowTemplatePath string) (map[string]interface{}, bool) {
@@ -576,16 +576,20 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		channelMap[table] = make(chan bool, 5)
 	}
 
-	for _, flowName := range flowimpl.GetAdditionalFlows() {
-		channelMap[flowName.ServiceName()] = make(chan bool, 5)
+	for _, f := range flowimpl.GetAdditionalFlows() {
+		channelMap[f.ServiceName()] = make(chan bool, 5)
+	}
+
+	for _, f := range testflowimpl.GetAdditionalFlows() {
+		channelMap[f.ServiceName()] = make(chan bool, 5)
 	}
 
 	trcFlowMachineContext.FlowMap = make(map[flowcore.FlowNameType]interface{})
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range tableList {
 			wg.Add(1)
-			go func(t string) {
-				eUtils.LogInfo(config, "Beginning flow: "+t)
+			go func(t flowcore.FlowNameType) {
+				eUtils.LogInfo(config, "Beginning flow: "+t.ServiceName())
 				defer wg.Done()
 				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
 				var flowVault *sys.Vault
@@ -605,15 +609,15 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowVault,
 					t,
 					flowcore.TableSyncFlow,
-					channelMap[t], // tableChangedChannel
+					channelMap[t.ServiceName()], // tableChangedChannel
 					signalChannel,
 				)
-			}(table)
+			}(flowcore.FlowNameType(table))
 		}
 		for _, flowName := range flowimpl.GetAdditionalFlows() {
 			wg.Add(1)
-			go func(f string) {
-				eUtils.LogInfo(config, "Beginning flow: "+f)
+			go func(f flowcore.FlowNameType) {
+				eUtils.LogInfo(config, "Beginning flow: "+f.ServiceName())
 				defer wg.Done()
 				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
 				var flowVault *sys.Vault
@@ -632,16 +636,16 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowVault,
 					f,
 					flowcore.TableEnrichFlow,
-					channelMap[f], // tableChangedChannel
+					channelMap[f.ServiceName()], // tableChangedChannel
 					signalChannel,
 				)
-			}(flowName.ServiceName())
+			}(flowName)
 		}
 
-		for _, flowName := range testflowimpl.GetAdditionalFlows() {
+		for _, f := range testflowimpl.GetAdditionalFlows() {
 			wg.Add(1)
-			go func(f string) {
-				eUtils.LogInfo(config, "Beginning flow: "+f)
+			go func(f flowcore.FlowNameType) {
+				eUtils.LogInfo(config, "Beginning flow: "+f.ServiceName())
 				defer wg.Done()
 				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
 				var flowVault *sys.Vault
@@ -660,10 +664,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowVault,
 					f,
 					flowcore.TableTestFlow,
-					channelMap[f], // tableChangedChannel
+					channelMap[f.ServiceName()], // tableChangedChannel
 					signalChannel,
 				)
-			}(flowName)
+			}(f)
 		}
 	}
 
