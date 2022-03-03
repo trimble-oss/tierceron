@@ -261,7 +261,6 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 	} else {
 		// Use the flow name directly.
-		trcFlowContext.Flow = flowcore.FlowNameType(flow)
 		trcFlowContext.FlowSource = flow.ServiceName()
 	}
 
@@ -590,6 +589,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogInfo(config, "Beginning flow: "+t.ServiceName())
 				defer wg.Done()
 				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				trcFlowContext.Flow = t
 				var flowVault *sys.Vault
 				config, trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
@@ -648,6 +648,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogInfo(config, "Beginning flow: "+f.ServiceName())
 				defer wg.Done()
 				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				trcFlowContext.Flow = f
 				var flowVault *sys.Vault
 				config, trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
