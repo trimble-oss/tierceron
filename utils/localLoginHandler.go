@@ -65,7 +65,7 @@ func LoginToLocal() (string, error) {
 			return "", err
 		}
 
-		if false /* resp.Success */ {
+		if true /* resp.Success */ {
 			break
 		} else {
 			fmt.Printf("Could not login for user %s in %s\n", username, environment)
