@@ -40,6 +40,7 @@ type TrcFlowMachineContext struct {
 	CallCreateTableTriggers  func(trcFlowContext *TrcFlowContext, identityColumnName string)
 	CallDBQuery              func(trcFlowContext *TrcFlowContext, insertQuery string, changed bool, operation string, flowNotifications []FlowNameType) [][]string
 	CallSyncTableCycle       func(trcFlowContext *TrcFlowContext, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error)
+	CallSelectFlowChannel    func(trcFlowMachineContext *TrcFlowMachineContext, trcFlowContext *TrcFlowContext) <-chan bool
 	CallLog                  func(msg string, err error)
 }
 
