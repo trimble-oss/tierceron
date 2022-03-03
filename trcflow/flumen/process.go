@@ -232,12 +232,14 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		trcFlowMachineContext.CallSyncTableCycle = func(trcfc *flowcore.TrcFlowContext, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 			afterTime := time.Duration(time.Second * 20)
 			isInit := true
+			flowChangedChannel := channelMap[trcfc.ChangeFlowName]
+
 			for {
 				select {
 				case <-signalChannel:
 					eUtils.LogErrorMessage(config, "Receiving shutdown presumably from vault.", true)
 					os.Exit(0)
-				case <-channelMap[trcfc.ChangeFlowName]:
+				case <-flowChangedChannel:
 					seedVaultFromChanges(trcFlowMachineContext,
 						trcfc,
 						config,
