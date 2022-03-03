@@ -169,7 +169,6 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
 	if flowType == flowcore.TableSyncFlow {
-		trcFlowContext.FlowSource, _, trcFlowContext.FlowPath = eUtils.GetProjectService(flow.ServiceName())
 		trcFlowContext.ChangeFlowName = trcFlowContext.Flow.TableName() + "_Changes"
 
 		// Set up schema callback for table to track.
@@ -487,11 +486,15 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 
 	templateList := pluginConfig["templatePath"].([]string)
+	flowTemplateMap := map[string]string{}
+	flowSourceMap := map[string]string{}
 
 	for _, template := range templateList {
-		_, service, tableTemplateName := eUtils.GetProjectService(template)
+		source, service, tableTemplateName := eUtils.GetProjectService(template)
 		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
 		configBasis.VersionFilter = append(configBasis.VersionFilter, tableName)
+		flowTemplateMap[tableName] = template
+		flowSourceMap[tableName] = source
 	}
 
 	trcFlowMachineContext.TierceronEngine, err = db.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowimpl.GetDatabaseName())
@@ -585,11 +588,14 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range configBasis.VersionFilter {
 			wg.Add(1)
-			go func(t flowcore.FlowNameType) {
-				eUtils.LogInfo(config, "Beginning flow: "+t.ServiceName())
+			go func(tableFlow flowcore.FlowNameType) {
+				eUtils.LogInfo(config, "Beginning flow: "+tableFlow.ServiceName())
 				defer wg.Done()
 				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
-				trcFlowContext.Flow = t
+				trcFlowContext.Flow = tableFlow
+				trcFlowContext.FlowSource = flowSourceMap[tableFlow.TableName()]
+				trcFlowContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+
 				var flowVault *sys.Vault
 				config, trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
@@ -605,9 +611,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					pluginConfig["address"].(string),
 					sourceDatabaseConnectionMap,
 					flowVault,
-					t,
+					tableFlow,
 					flowcore.TableSyncFlow,
-					channelMap[t], // tableChangedChannel
+					channelMap[tableFlow], // tableChangedChannel
 					signalChannel,
 				)
 			}(flowcore.FlowNameType(table))
