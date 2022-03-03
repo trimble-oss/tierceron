@@ -307,11 +307,11 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 				}
 			}
 		} else if operation == "UPDATE" {
-			_, _, matrix, err := db.Query(trcFlowMachineContext.TierceronEngine, query)
+			tableName, _, matrix, err := db.Query(trcFlowMachineContext.TierceronEngine, query)
 			if err != nil {
 				eUtils.LogErrorObject(config, err, false)
 			}
-			if changed && len(matrix) > 0 {
+			if changed && (len(matrix) > 0 || tableName != "") {
 				if changedChannel != nil {
 					changedChannel <- true
 				}
