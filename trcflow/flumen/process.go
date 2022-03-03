@@ -237,7 +237,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 				case <-signalChannel:
 					eUtils.LogErrorMessage(config, "Receiving shutdown presumably from vault.", true)
 					os.Exit(0)
-				case <-changedChannel:
+				case <-channelMap[trcfc.ChangeFlowName]:
 					seedVaultFromChanges(trcFlowMachineContext,
 						trcfc,
 						config,
