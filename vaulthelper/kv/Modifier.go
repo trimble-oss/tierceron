@@ -425,7 +425,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 
 	if wantCerts {
 		//get a list of projects under values
-		certPaths, err := getPaths(mod, "values/Common/")
+		certPaths, err := m.getPaths("values/Common/")
 		if err != nil {
 			return nil, err
 		}
@@ -507,10 +507,10 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 	return versionDataMap, nil
 }
 
-func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[string]map[string]interface{}, logger *log.Logger) {
+func (m *Modifier) recursivePathFinder(filePaths []string, versionDataMap map[string]map[string]interface{}, logger *log.Logger) {
 	for _, filePath := range filePaths {
 		foundService := false
-		for _, service := range mod.VersionFilter {
+		for _, service := range m.VersionFilter {
 			if strings.Contains(filePath, service) && !foundService {
 				foundService = true
 			}
@@ -520,17 +520,17 @@ func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[s
 			continue
 		}
 
-		subFilePaths, err := getPaths(mod, filePath)
+		subFilePaths, err := m.getPaths(filePath)
 
 		if len(subFilePaths) > 0 {
-			recursivePathFinder(mod, subFilePaths, versionDataMap, logger)
+			m.recursivePathFinder(subFilePaths, versionDataMap, logger)
 		}
 
 		if err != nil {
 			logger.Println(err.Error())
 		}
 
-		metadataValue, err := mod.ReadTemplateVersions(filePath)
+		metadataValue, err := m.ReadTemplateVersions(filePath)
 		if len(metadataValue) == 0 {
 			continue
 		}
@@ -538,13 +538,13 @@ func recursivePathFinder(mod *Modifier, filePaths []string, versionDataMap map[s
 	}
 }
 
-func getPaths(mod *Modifier, pathName string) ([]string, error) {
-	secrets, err := mod.List(pathName)
+func (m *Modifier) getPaths(pathName string) ([]string, error) {
+	secrets, err := m.List(pathName)
 	//logger.Println("secrets " + pathName)
 	//logger.Println(secrets)
 	pathList := []string{}
 	if err != nil {
-		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, mod.Env)
+		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, m.Env)
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
@@ -581,7 +581,7 @@ func (m *Modifier) GetTemplateFilePaths(pathName string) ([]string, error) {
 
 		subPathList := []string{}
 		for _, path := range pathList {
-			subsubList, _ := templateFileRecurse(m, path)
+			subsubList, _ := m.templateFileRecurse(path)
 			for _, subsub := range subsubList {
 				//List is returning both pathEnd and pathEnd/
 				subPathList = append(subPathList, subsub)
@@ -593,9 +593,9 @@ func (m *Modifier) GetTemplateFilePaths(pathName string) ([]string, error) {
 	}
 	return pathList, nil
 }
-func templateFileRecurse(mod *Modifier, pathName string) ([]string, error) {
+func (m *Modifier) templateFileRecurse(pathName string) ([]string, error) {
 	subPathList := []string{}
-	subsecrets, err := mod.List(pathName)
+	subsecrets, err := m.List(pathName)
 	if err != nil {
 		return subPathList, err
 	} else if subsecrets != nil {
@@ -604,7 +604,7 @@ func templateFileRecurse(mod *Modifier, pathName string) ([]string, error) {
 			for _, pathEnd := range subslice {
 				//List is returning both pathEnd and pathEnd/
 				subpath := pathName + pathEnd.(string)
-				subsublist, _ := templateFileRecurse(mod, subpath)
+				subsublist, _ := m.templateFileRecurse(subpath)
 				if len(subsublist) != 0 {
 					for _, subsub := range subsublist {
 						//List is returning both pathEnd and pathEnd/
