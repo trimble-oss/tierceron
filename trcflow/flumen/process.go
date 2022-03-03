@@ -30,10 +30,9 @@ import (
 )
 
 var tableCreationLock sync.Mutex
-var flowInitLock sync.Mutex
 var changesLock sync.Mutex
 
-var channelMap map[string]chan bool
+var channelMap map[flowcore.FlowNameType]chan bool
 
 func getChangeIdQuery(databaseName string, changeTable string) string {
 	return "SELECT id FROM " + databaseName + `.` + changeTable
@@ -170,14 +169,8 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
 	if flowType == flowcore.TableSyncFlow {
-		var flowService string
-		trcFlowContext.FlowSource, flowService, trcFlowContext.FlowPath = eUtils.GetProjectService(flow.ServiceName())
-		trcFlowContext.Flow = flowcore.FlowNameType(eUtils.GetTemplateFileName(trcFlowContext.FlowPath, flowService))
+		trcFlowContext.FlowSource, _, trcFlowContext.FlowPath = eUtils.GetProjectService(flow.ServiceName())
 		trcFlowContext.ChangeFlowName = trcFlowContext.Flow.TableName() + "_Changes"
-
-		flowInitLock.Lock()
-		trcFlowMachineContext.FlowMap[trcFlowContext.Flow] = trcFlowContext
-		flowInitLock.Unlock()
 
 		// Set up schema callback for table to track.
 		trcFlowMachineContext.CallAddTableSchema = func(tableSchema sqle.PrimaryKeySchema, tableName string) {
@@ -232,7 +225,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		trcFlowMachineContext.CallSyncTableCycle = func(trcfc *flowcore.TrcFlowContext, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 			afterTime := time.Duration(time.Second * 20)
 			isInit := true
-			flowChangedChannel := channelMap[trcfc.FlowPath]
+			flowChangedChannel := channelMap[trcfc.Flow]
 
 			for {
 				select {
@@ -273,10 +266,8 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	}
 
 	trcFlowMachineContext.CallSelectFlowChannel = func(trcFlowMachineContext *flowcore.TrcFlowMachineContext, trcfc *flowcore.TrcFlowContext) <-chan bool {
-		if notifFlowCxt, ok := trcFlowMachineContext.FlowMap[trcfc.Flow]; ok {
-			if notificationFlowChannel, ok := channelMap[notifFlowCxt.(*flowcore.TrcFlowContext).FlowPath]; ok {
-				return notificationFlowChannel
-			}
+		if notificationFlowChannel, ok := channelMap[trcfc.Flow]; ok {
+			return notificationFlowChannel
 		}
 		trcFlowMachineContext.CallLog("Could not find channel for flow.", nil)
 
@@ -312,10 +303,8 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 				if len(flowNotifications) > 0 {
 					// look up channels and notify them too.
 					for _, flowNotification := range flowNotifications {
-						if notifFlowCxt, ok := trcFlowMachineContext.FlowMap[flowNotification]; ok {
-							if notificationFlowChannel, ok := channelMap[notifFlowCxt.(*flowcore.TrcFlowContext).FlowPath]; ok {
-								notificationFlowChannel <- true
-							}
+						if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
+							notificationFlowChannel <- true
 						}
 					}
 				}
@@ -332,10 +321,8 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 				if len(flowNotifications) > 0 {
 					// look up channels and notify them too.
 					for _, flowNotification := range flowNotifications {
-						if notifFlowCxt, ok := trcFlowMachineContext.FlowMap[flowNotification]; ok {
-							if notificationFlowChannel, ok := channelMap[notifFlowCxt.(*flowcore.TrcFlowContext).FlowPath]; ok {
-								notificationFlowChannel <- true
-							}
+						if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
+							notificationFlowChannel <- true
 						}
 					}
 				}
@@ -583,20 +570,19 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 	eUtils.LogInfo(config, "Tables creation completed.")
 
-	channelMap = make(map[string]chan bool)
+	channelMap = make(map[flowcore.FlowNameType]chan bool)
 	for _, table := range tableList {
-		channelMap[table] = make(chan bool, 5)
+		channelMap[flowcore.FlowNameType(table)] = make(chan bool, 5)
 	}
 
 	for _, f := range flowimpl.GetAdditionalFlows() {
-		channelMap[f.ServiceName()] = make(chan bool, 5)
+		channelMap[f] = make(chan bool, 5)
 	}
 
 	for _, f := range testflowimpl.GetAdditionalFlows() {
-		channelMap[f.ServiceName()] = make(chan bool, 5)
+		channelMap[f] = make(chan bool, 5)
 	}
 
-	trcFlowMachineContext.FlowMap = make(map[flowcore.FlowNameType]interface{})
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range tableList {
 			wg.Add(1)
@@ -621,7 +607,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowVault,
 					t,
 					flowcore.TableSyncFlow,
-					channelMap[t.ServiceName()], // tableChangedChannel
+					channelMap[t], // tableChangedChannel
 					signalChannel,
 				)
 			}(flowcore.FlowNameType(table))
@@ -632,6 +618,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogInfo(config, "Beginning flow: "+f.ServiceName())
 				defer wg.Done()
 				trcFlowContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				trcFlowContext.Flow = f
+
 				var flowVault *sys.Vault
 				config, trcFlowContext.GoMod, flowVault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
@@ -648,7 +636,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowVault,
 					f,
 					flowcore.TableEnrichFlow,
-					channelMap[f.ServiceName()], // tableChangedChannel
+					channelMap[f], // tableChangedChannel
 					signalChannel,
 				)
 			}(flowName)
@@ -676,7 +664,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowVault,
 					f,
 					flowcore.TableTestFlow,
-					channelMap[f.ServiceName()], // tableChangedChannel
+					channelMap[f], // tableChangedChannel
 					signalChannel,
 				)
 			}(f)
