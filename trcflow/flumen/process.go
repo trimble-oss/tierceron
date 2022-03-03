@@ -577,7 +577,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 
 	for _, flowName := range flowimpl.GetAdditionalFlows() {
-		channelMap[flowName] = make(chan bool, 5)
+		channelMap[flowName.ServiceName()] = make(chan bool, 5)
 	}
 
 	trcFlowMachineContext.FlowMap = make(map[flowcore.FlowNameType]interface{})
@@ -635,7 +635,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					channelMap[f], // tableChangedChannel
 					signalChannel,
 				)
-			}(flowName)
+			}(flowName.ServiceName())
 		}
 
 		for _, flowName := range testflowimpl.GetAdditionalFlows() {
