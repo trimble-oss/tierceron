@@ -98,7 +98,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
 
-		changedTableQuery := `SELECT * FROM ` + trcFlowContext.FlowSourceAlias + `.` + trcFlowContext.FlowName + ` WHERE ` + identityColumnName + `='` + changedId + `'` // TODO: Implement query using changedId
+		changedTableQuery := `SELECT * FROM ` + trcFlowContext.FlowSourceAlias + `.` + trcFlowContext.Flow.TableName() + ` WHERE ` + identityColumnName + `='` + changedId + `'` // TODO: Implement query using changedId
 
 		_, changedTableColumns, changedTableRowData, err := db.Query(trcFlowMachineContext.TierceronEngine, changedTableQuery)
 		if err != nil {
@@ -117,7 +117,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		//Check for tenantId
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace below
-		indexPath, indexPathErr := flowimpl.GetIndexedPathExt(trcFlowMachineContext.TierceronEngine, rowDataMap, vaultIndexColumnName, trcFlowContext.FlowSourceAlias, trcFlowContext.FlowName, func(engine interface{}, query string) (string, []string, [][]string, error) {
+		indexPath, indexPathErr := flowimpl.GetIndexedPathExt(trcFlowMachineContext.TierceronEngine, rowDataMap, vaultIndexColumnName, trcFlowContext.FlowSourceAlias, trcFlowContext.Flow.TableName(), func(engine interface{}, query string) (string, []string, [][]string, error) {
 			return db.Query(engine.(*db.TierceronEngine), query)
 		})
 		if indexPathErr != nil {
@@ -131,7 +131,7 @@ func seedVaultFromChanges(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		}
 
 		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
-		seedError := util.SeedVaultById(config, trcFlowContext.GoMod, trcFlowContext.FlowService, vaultAddress, v.GetToken(), trcFlowContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, trcFlowContext.FlowSource)
+		seedError := util.SeedVaultById(config, trcFlowContext.GoMod, trcFlowContext.Flow.ServiceName(), vaultAddress, v.GetToken(), trcFlowContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, trcFlowContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(config, seedError, false)
 			// Re-inject into changes because it might not be here yet...
@@ -170,13 +170,13 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	// 	i. Init engine
 	//     a. Get project, service, and table config template name.
 	if flowType == flowcore.TableSyncFlow {
-		trcFlowContext.FlowSource, trcFlowContext.FlowService, trcFlowContext.FlowPath = eUtils.GetProjectService(flow)
-
-		trcFlowContext.FlowName = eUtils.GetTemplateFileName(trcFlowContext.FlowPath, trcFlowContext.FlowService)
-		trcFlowContext.ChangeFlowName = trcFlowContext.FlowName + "_Changes"
+		var flowService string
+		trcFlowContext.FlowSource, flowService, trcFlowContext.FlowPath = eUtils.GetProjectService(flow)
+		trcFlowContext.Flow = flowcore.FlowNameType(eUtils.GetTemplateFileName(trcFlowContext.FlowPath, flowService))
+		trcFlowContext.ChangeFlowName = trcFlowContext.Flow.TableName() + "_Changes"
 
 		flowInitLock.Lock()
-		trcFlowMachineContext.FlowMap[trcFlowContext.FlowService] = trcFlowContext
+		trcFlowMachineContext.FlowMap[trcFlowContext.Flow] = trcFlowContext
 		flowInitLock.Unlock()
 
 		// Set up schema callback for table to track.
@@ -199,8 +199,8 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 			//Create triggers
 			var updTrigger sqle.TriggerDefinition
 			var insTrigger sqle.TriggerDefinition
-			insTrigger.Name = "tcInsertTrigger_" + trcfc.FlowName
-			updTrigger.Name = "tcUpdateTrigger_" + trcfc.FlowName
+			insTrigger.Name = "tcInsertTrigger_" + trcfc.Flow.TableName()
+			updTrigger.Name = "tcUpdateTrigger_" + trcfc.Flow.TableName()
 			//Prevent duplicate triggers from existing
 			existingTriggers, err := trcFlowMachineContext.TierceronEngine.Database.GetTriggers(trcFlowMachineContext.TierceronEngine.Context)
 			if err != nil {
@@ -214,8 +214,8 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 				}
 			}
 			if !triggerExist {
-				updTrigger.CreateStatement = getUpdateTrigger(trcFlowMachineContext.TierceronEngine.Database.Name(), trcfc.FlowName, identityColumnName)
-				insTrigger.CreateStatement = getInsertTrigger(trcFlowMachineContext.TierceronEngine.Database.Name(), trcfc.FlowName, identityColumnName)
+				updTrigger.CreateStatement = getUpdateTrigger(trcFlowMachineContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
+				insTrigger.CreateStatement = getInsertTrigger(trcFlowMachineContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
 				trcFlowMachineContext.TierceronEngine.Database.CreateTrigger(trcFlowMachineContext.TierceronEngine.Context, updTrigger)
 				trcFlowMachineContext.TierceronEngine.Database.CreateTrigger(trcFlowMachineContext.TierceronEngine.Context, insTrigger)
 			}
@@ -223,7 +223,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 
 		// 3. Create a base seed template for use in vault seed process.
 		var baseTableTemplate extract.TemplateResultData
-		util.LoadBaseTemplate(config, &baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.FlowService, trcFlowContext.FlowPath)
+		util.LoadBaseTemplate(config, &baseTableTemplate, trcFlowContext.GoMod, trcFlowContext.FlowSource, trcFlowContext.Flow.ServiceName(), trcFlowContext.FlowPath)
 		trcFlowContext.FlowData = &baseTableTemplate
 
 		// When called sets up an infinite loop listening for changes on either
@@ -267,7 +267,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		}
 	} else {
 		// Use the flow name directly.
-		trcFlowContext.FlowName = flow
+		trcFlowContext.Flow = flowcore.FlowNameType(flow)
 		trcFlowContext.FlowSource = flow
 	}
 
@@ -287,7 +287,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 	// Make a call on Call back to insert or update using the provided query.
 	// If this is expected to result in a change to an existing table, thern trigger
 	// something to the changed channel.
-	trcFlowMachineContext.CallDBQuery = func(trcfc *flowcore.TrcFlowContext, query string, changed bool, operation string, flowNotifications []string) [][]string {
+	trcFlowMachineContext.CallDBQuery = func(trcfc *flowcore.TrcFlowContext, query string, changed bool, operation string, flowNotifications []flowcore.FlowNameType) [][]string {
 		if operation == "INSERT" {
 			_, _, matrix, err := db.Query(trcFlowMachineContext.TierceronEngine, query)
 			if err != nil {
@@ -580,7 +580,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		channelMap[flowName] = make(chan bool, 5)
 	}
 
-	trcFlowMachineContext.FlowMap = make(map[string]interface{})
+	trcFlowMachineContext.FlowMap = make(map[flowcore.FlowNameType]interface{})
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range tableList {
 			wg.Add(1)
