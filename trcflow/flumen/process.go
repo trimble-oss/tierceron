@@ -232,7 +232,7 @@ func ProcessFlow(trcFlowMachineContext *flowcore.TrcFlowMachineContext,
 		trcFlowMachineContext.CallSyncTableCycle = func(trcfc *flowcore.TrcFlowContext, identityColumnName string, vaultIndexColumnName string, flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 			afterTime := time.Duration(time.Second * 20)
 			isInit := true
-			flowChangedChannel := channelMap[trcfc.ChangeFlowName]
+			flowChangedChannel := channelMap[trcfc.FlowName]
 
 			for {
 				select {
