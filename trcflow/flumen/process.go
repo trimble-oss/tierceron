@@ -486,15 +486,15 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		Log:          logger,
 	}
 
-	tableList := pluginConfig["templatePath"].([]string)
+	templateList := pluginConfig["templatePath"].([]string)
 
-	for _, table := range tableList {
-		_, service, tableTemplateName := eUtils.GetProjectService(table)
+	for _, template := range templateList {
+		_, service, tableTemplateName := eUtils.GetProjectService(template)
 		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
 		configBasis.VersionFilter = append(configBasis.VersionFilter, tableName)
 	}
 
-	trcFlowMachineContext.TierceronEngine, err = db.CreateEngine(&configBasis, tableList, pluginConfig["env"].(string), flowimpl.GetDatabaseName())
+	trcFlowMachineContext.TierceronEngine, err = db.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowimpl.GetDatabaseName())
 	if err != nil {
 		eUtils.LogErrorMessage(config, "Couldn't build engine.", false)
 		return err
@@ -570,7 +570,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	eUtils.LogInfo(config, "Tables creation completed.")
 
 	channelMap = make(map[flowcore.FlowNameType]chan bool)
-	for _, table := range tableList {
+	for _, table := range configBasis.VersionFilter {
 		channelMap[flowcore.FlowNameType(table)] = make(chan bool, 5)
 	}
 
@@ -583,7 +583,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
-		for _, table := range tableList {
+		for _, table := range configBasis.VersionFilter {
 			wg.Add(1)
 			go func(t flowcore.FlowNameType) {
 				eUtils.LogInfo(config, "Beginning flow: "+t.ServiceName())
