@@ -152,6 +152,9 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexNameFilterPtr) == 0) && len(*indexedPtr) != 0 {
 		fmt.Println("-serviceFilter and -indexFilter must be specificed to use -indexed flag")
 		os.Exit(1)
+	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexNameFilterPtr) == 0) && len(*restrictedPtr) != 0 {
+		fmt.Println("-serviceFilter and -indexFilter must be specificed to use -restricted flag")
+		os.Exit(1)
 	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexValueFilterPtr) == 0) && *diffPtr && len(*indexedPtr) != 0 {
 		fmt.Println("-indexFilter and -indexValueFilter must be specificed to use -indexed & -diff flag")
 		os.Exit(1)
