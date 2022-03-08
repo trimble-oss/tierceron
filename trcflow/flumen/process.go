@@ -31,12 +31,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var goMod *helperkv.Modifier
 	var err error
 
-	tfmContext = &flowcore.TrcFlowMachineContext{}
-	tfmContext.Env = pluginConfig["env"].(string)
 	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if err != nil {
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
+	}
+	tfmContext = &flowcore.TrcFlowMachineContext{
+		Env: pluginConfig["env"].(string),
 	}
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
@@ -128,6 +129,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 
 	tfmContext.TierceronEngine, err = db.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowimpl.GetDatabaseName())
+	tfmContext.Config = &configBasis
+
 	if err != nil {
 		eUtils.LogErrorMessage(config, "Couldn't build engine.", false)
 		return err
