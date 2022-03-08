@@ -23,7 +23,7 @@ func getInsertChangeQuery(databaseName string, changeTable string, id string) st
 	return `INSERT IGNORE INTO ` + databaseName + `.` + changeTable + `VALUES (` + id + `, current_timestamp());`
 }
 
-func seedVaultFromChanges(tfmContext *TrcFlowMachineContext,
+func (tfmContext *TrcFlowMachineContext) seedVaultFromChanges(
 	tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
@@ -110,6 +110,20 @@ func seedVaultFromChanges(tfmContext *TrcFlowMachineContext,
 		}
 
 	}
+
+	return nil
+}
+
+func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
+	tfContext *TrcFlowContext,
+	identityColumnName string,
+	vaultIndexColumnName string,
+	isInit bool,
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
+
+	// TODO: Implement...
+	// Might be able to leverage some of the code from seedVaultFromChanges
 
 	return nil
 }
