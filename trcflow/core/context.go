@@ -184,11 +184,12 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 	return properties.GetConfigValues(flowService, flowConfigTemplateName)
 }
 
-func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContext,
+func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
+
 	afterTime := time.Duration(time.Second * 20)
 	isInit := true
 	flowChangedChannel := channelMap[tfContext.Flow]
@@ -199,7 +200,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)
 		case <-flowChangedChannel:
-			seedVaultFromChanges(tfmContext,
+			tfmContext.seedVaultFromChanges(
 				tfContext,
 				identityColumnName,
 				vaultIndexColumnName,
@@ -209,7 +210,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		case <-time.After(afterTime):
 			afterTime = time.Minute * 3
 			eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes.")
-			seedVaultFromChanges(tfmContext,
+			tfmContext.seedVaultFromChanges(
 				tfContext,
 				identityColumnName,
 				vaultIndexColumnName,
@@ -219,6 +220,55 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 			isInit = false
 		}
 	}
+}
+
+func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContext,
+	identityColumnName string,
+	vaultIndexColumnName string,
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
+
+	afterTime := time.Duration(time.Second * 20)
+	isInit := true
+	flowChangedChannel := channelMap[tfContext.Flow]
+
+	for {
+		select {
+		case <-signalChannel:
+			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
+			os.Exit(0)
+		case <-flowChangedChannel:
+			tfmContext.seedTrcDbFromChanges(
+				tfContext,
+				identityColumnName,
+				vaultIndexColumnName,
+				false,
+				getIndexedPathExt,
+				flowPushRemote)
+		case <-time.After(afterTime):
+			afterTime = time.Minute * 3
+			eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes.")
+			tfmContext.seedTrcDbFromChanges(
+				tfContext,
+				identityColumnName,
+				vaultIndexColumnName,
+				isInit,
+				getIndexedPathExt,
+				flowPushRemote)
+			isInit = false
+		}
+	}
+}
+
+func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContext,
+	identityColumnName string,
+	vaultIndexColumnName string,
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
+
+	go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote)
+
+	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote)
 }
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan bool {
