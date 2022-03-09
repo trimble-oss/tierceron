@@ -19,7 +19,7 @@ import (
 
 var m sync.Mutex
 
-func writeToTable(te *TierceronEngine, envEnterprise string, version string, project string, service string, templateResult *extract.TemplateResultData) {
+func writeToTable(te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, templateResult *extract.TemplateResultData) {
 
 	//
 	// What we need is in ValueSection and SecretSection...
@@ -31,24 +31,22 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 
 	// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
 	configTableMap := templateResult.InterfaceTemplateSection.(map[string]interface{})["templates"].(map[string]interface{})[project].(map[string]interface{})[service].(map[string]interface{})
-	for configName, _ := range configTableMap {
-		tableName := project + "_" + service + "_" + configName
-		tierceronTable := te.TableCache[tableName]
+	for configTableName, _ := range configTableMap {
+		tableSql, tableOk, _ := te.Database.GetTableInsensitive(te.Context, configTableName)
+		var table *memory.Table
+
 		valueColumns := templateResult.ValueSection["values"][service]
 		secretColumns := templateResult.SecretSection["super-secrets"][service]
 
-		if strings.Contains(envEnterprise, ".") {
-			envEnterpriseParts := strings.Split(envEnterprise, ".")
-			valueColumns["_Env_"] = envEnterpriseParts[0]
-			valueColumns["_EnterpriseId_"] = envEnterpriseParts[1]
-		} else {
-			valueColumns["_Env_"] = envEnterprise
-		}
-		valueColumns["_Version_"] = version
+		// TODO: Do we want back lookup by enterpriseId on all rows?
+		// if enterpriseId, ok := secretColumns["EnterpriseId"]; ok {
+		// 	valueColumns["_EnterpriseId_"] = enterpriseId
+		// }
+		// valueColumns["_Version_"] = version
 
-		if tierceronTable == nil {
+		if !tableOk {
 			// This is cacheable...
-			tierceronTable = &TierceronTable{Table: nil, Schema: sql.NewPrimaryKeySchema([]*sql.Column{})}
+			tableSchema := sql.NewPrimaryKeySchema([]*sql.Column{})
 
 			columnKeys := []string{}
 
@@ -64,32 +62,37 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 			sort.Strings(columnKeys)
 
 			for _, columnKey := range columnKeys {
-				column := sql.Column{Name: columnKey, Type: sql.Text, Source: tableName}
-				tierceronTable.Schema.Schema = append(tierceronTable.Schema.Schema, &column)
+				column := sql.Column{Name: columnKey, Type: sql.Text, Source: configTableName}
+				tableSchema.Schema = append(tableSchema.Schema, &column)
 			}
 
-			table := memory.NewTable(tableName, tierceronTable.Schema)
+			table = memory.NewTable(configTableName, tableSchema)
 			m.Lock()
-			te.Database.AddTable(tableName, table)
+			te.Database.AddTable(configTableName, table)
 			m.Unlock()
-			tierceronTable.Table = table
-			te.TableCache[tableName] = tierceronTable
+		} else {
+			table = tableSql.(*memory.Table)
 		}
 
 		row := []interface{}{}
 
 		// TODO: Add Enterprise, Environment, and Version....
-
-		for _, column := range tierceronTable.Schema.Schema {
+		for _, column := range table.Schema() {
 			if value, ok := valueColumns[column.Name]; ok {
+				if value == "<Enter Secret Here>" {
+					value = ""
+				}
 				row = append(row, value)
 			} else if secretValue, svOk := secretColumns[column.Name]; svOk {
+				if secretValue == "<Enter Secret Here>" {
+					secretValue = ""
+				}
 				row = append(row, secretValue)
 			}
 		}
 
 		m.Lock()
-		tierceronTable.Table.Insert(te.Context, sql.NewRow(row...))
+		table.Insert(te.Context, sql.NewRow(row...))
 		m.Unlock()
 	}
 }
@@ -106,7 +109,7 @@ func removeDuplicateValues(slice []string) []string {
 	return list
 }
 
-func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, service string, config *eUtils.DriverConfig) error {
+func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath)
 	if err != nil {
@@ -127,41 +130,62 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 
 	// TODO: Make this async for performance...
 	for _, templatePath := range templatePaths {
-
-		var templateResult extract.TemplateResultData
-		templateResult.ValueSection = map[string]map[string]map[string]string{}
-		templateResult.ValueSection["values"] = map[string]map[string]string{}
-
-		templateResult.SecretSection = map[string]map[string]map[string]string{}
-		templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
-
 		var cds *vcutils.ConfigDataStore
+		var indexValues []string = []string{""}
+
 		if goMod != nil {
-			cds = new(vcutils.ConfigDataStore)
 			goMod.Env = envEnterprise
 			goMod.Version = version
+
+			index, indexErr := goMod.FindIndexForService(project, service)
+			if indexErr == nil && index != "" {
+				goMod.SectionName = index
+			}
+			if goMod.SectionName != "" {
+				indexValues, err = goMod.ListSubsection("/Index/", project, goMod.SectionName)
+				if err != nil {
+					eUtils.LogErrorObject(config, err, false)
+					return err
+				}
+			}
+		}
+
+		for _, indexValue := range indexValues {
+			cds = new(vcutils.ConfigDataStore)
+			var templateResult extract.TemplateResultData
+			templateResult.ValueSection = map[string]map[string]map[string]string{}
+			templateResult.ValueSection["values"] = map[string]map[string]string{}
+
+			templateResult.SecretSection = map[string]map[string]map[string]string{}
+			templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
+
+			if indexValue != "" {
+				goMod.SectionPath = "super-secrets/Index/" + project + "/" + goMod.SectionName + "/" + indexValue + "/" + service
+			}
+
 			cds.Init(config, goMod, config.SecretMode, true, project, nil, service)
+
+			var errSeed error
+
+			_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(config,
+				goMod,
+				cds,
+				templatePath,
+				project,
+				service,
+				true,
+				&(templateResult.InterfaceTemplateSection),
+				&(templateResult.ValueSection),
+				&(templateResult.SecretSection),
+			)
+
+			if errSeed != nil {
+				return errSeed
+			}
+
+			writeToTable(te, envEnterprise, version, project, projectAlias, service, &templateResult)
 		}
 
-		var errSeed error
-
-		_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(config,
-			goMod,
-			cds,
-			templatePath,
-			project,
-			service,
-			true,
-			&(templateResult.InterfaceTemplateSection),
-			&(templateResult.ValueSection),
-			&(templateResult.SecretSection),
-		)
-
-		if errSeed != nil {
-			return errSeed
-		}
-
-		writeToTable(te, envEnterprise, version, project, service, &templateResult)
 	}
 
 	return nil
