@@ -165,8 +165,11 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 	if m.SectionPath != "" && !strings.HasPrefix(fullPath, "templates") {
 		fullPath += m.SectionPath + "/"
 	}
+
 	if len(pathBlocks) > 1 {
-		fullPath += pathBlocks[1]
+		if !strings.Contains(fullPath, "/"+pathBlocks[1]+"/") {
+			fullPath += pathBlocks[1]
+		}
 	}
 	Secret, err := m.logical.Write(fullPath, sendData)
 
