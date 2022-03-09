@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -226,10 +227,37 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 	identityColumnName string,
 	vaultIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
+	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
+	bootStrap bool,
+	seedInitCompleteChan chan bool) {
+
+	if bootStrap {
+		removedTriggers := []sqle.TriggerDefinition{}
+		triggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
+		if err == nil {
+			for _, trigger := range triggers {
+				if strings.HasSuffix(trigger.Name, "_"+string(tfContext.Flow)) {
+					err := tfmContext.TierceronEngine.Database.DropTrigger(tfmContext.TierceronEngine.Context, trigger.Name)
+					if err == nil {
+						removedTriggers = append(removedTriggers, trigger)
+					}
+				}
+			}
+		}
+		tfmContext.seedTrcDbFromChanges(
+			tfContext,
+			identityColumnName,
+			vaultIndexColumnName,
+			true,
+			getIndexedPathExt,
+			flowPushRemote)
+		for _, trigger := range removedTriggers {
+			tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, trigger)
+		}
+		seedInitCompleteChan <- true
+	}
 
 	afterTime := time.Duration(time.Second * 20)
-	isInit := true
 	flowChangedChannel := channelMap[tfContext.Flow]
 
 	for {
@@ -252,10 +280,9 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 				tfContext,
 				identityColumnName,
 				vaultIndexColumnName,
-				isInit,
+				false,
 				getIndexedPathExt,
 				flowPushRemote)
-			isInit = false
 		}
 	}
 }
@@ -266,8 +293,10 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 
-	go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote)
+	var seedInitComplete chan bool = make(chan bool, 1)
+	go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
 
+	<-seedInitComplete
 	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote)
 }
 

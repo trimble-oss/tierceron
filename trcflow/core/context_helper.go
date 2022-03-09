@@ -6,6 +6,7 @@ import (
 	"tierceron/trcx/db"
 	"tierceron/trcx/extract"
 
+	xdbutil "tierceron/trcx/db"
 	eUtils "tierceron/utils"
 )
 
@@ -23,15 +24,8 @@ func getInsertChangeQuery(databaseName string, changeTable string, id string) st
 	return `INSERT IGNORE INTO ` + databaseName + `.` + changeTable + `VALUES (` + id + `, current_timestamp());`
 }
 
-func (tfmContext *TrcFlowMachineContext) seedVaultFromChanges(
-	tfContext *TrcFlowContext,
-	identityColumnName string,
-	vaultIndexColumnName string,
-	isInit bool,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
-
-	var matrixChangedEntries [][]string
+// removeChangedTableEntries -- gets and removes any changed table entries.
+func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *TrcFlowContext) ([][]string, error) {
 	var changedEntriesQuery string
 
 	changesLock.Lock()
@@ -45,15 +39,33 @@ func (tfmContext *TrcFlowMachineContext) seedVaultFromChanges(
 	_, _, matrixChangedEntries, err := db.Query(tfmContext.TierceronEngine, changedEntriesQuery)
 	if err != nil {
 		eUtils.LogErrorObject(tfmContext.Config, err, false)
+		return nil, err
 	}
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
 		_, _, _, err = db.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
+			return nil, err
 		}
 	}
 	changesLock.Unlock()
+	return matrixChangedEntries, nil
+}
+
+func (tfmContext *TrcFlowMachineContext) seedVaultFromChanges(
+	tfContext *TrcFlowContext,
+	identityColumnName string,
+	vaultIndexColumnName string,
+	isInit bool,
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
+
+	matrixChangedEntries, err := tfmContext.removeChangedTableEntries(tfContext)
+	if err != nil {
+		tfmContext.Log("Failure to scrub table entries.", err)
+		return err
+	}
 
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
@@ -89,7 +101,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultFromChanges(
 			continue
 		}
 
-		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
 		seedError := util.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.Config.VaultAddress, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
@@ -121,9 +132,14 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	isInit bool,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
-
-	// TODO: Implement...
-	// Might be able to leverage some of the code from seedVaultFromChanges
+	xdbutil.TransformConfig(tfContext.GoMod,
+		tfmContext.TierceronEngine,
+		tfmContext.Env,
+		"0",
+		tfContext.FlowSource,
+		tfContext.FlowSourceAlias,
+		string(tfContext.Flow),
+		tfmContext.Config)
 
 	return nil
 }
