@@ -180,7 +180,14 @@ func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
 	for key, value := range tableData {
-		templateResult.SecretSection["super-secrets"][service][key] = value.(string)
+		if _, ok := templateResult.SecretSection["super-secrets"][service][key]; ok {
+			templateResult.SecretSection["super-secrets"][service][key] = value.(string)
+		}
+	}
+	for key, value := range tableData {
+		if _, ok := templateResult.ValueSection["values"][service][key]; ok {
+			templateResult.ValueSection["values"][service][key] = value.(string)
+		}
 	}
 	maxDepth := templateResult.TemplateDepth
 	// Combine values of slice

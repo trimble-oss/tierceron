@@ -641,3 +641,41 @@ func (m *Modifier) ListSubsection(sectionKey string, project string, indexName s
 	}
 	return nil, errors.New("no regions were found")
 }
+
+// Given Project and Service, looks for a key index and returns it.
+func (m *Modifier) FindIndexForService(project string, service string) (string, error) {
+	index := ""
+
+	indexSecrets, err := m.List("super-secrets/Index/" + project)
+	if err != nil {
+		return "", err
+	}
+	if indexSecrets != nil {
+		indexValues := indexSecrets.Data["keys"].([]interface{})
+
+		for _, indexValue := range indexValues {
+			indexValueSecrets, valueErr := m.List("super-secrets/Index/" + project + "/" + indexValue.(string))
+			if valueErr != nil {
+				continue
+			}
+			indexValues := indexValueSecrets.Data["keys"].([]interface{})
+
+			subsectionValueSecrets, subsectionErr := m.List("super-secrets/Index/" + project + "/" + indexValue.(string) + "/" + indexValues[0].(string))
+			if subsectionErr != nil {
+				continue
+			}
+			subsectionValues := subsectionValueSecrets.Data["keys"].([]interface{})
+
+			for _, subSectionValue := range subsectionValues {
+				if subSectionValue == service {
+					index = strings.TrimSuffix(indexValue.(string), "/")
+					goto indexFound
+				}
+
+			}
+		}
+	}
+indexFound:
+
+	return index, nil
+}
