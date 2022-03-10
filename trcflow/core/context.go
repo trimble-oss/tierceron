@@ -341,13 +341,13 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 						notificationFlowChannel <- true
 					}
 				}
-				// If this is a test...  Also inject notifications appropriately.
-				if flowtestState != "" {
-					additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
-					for _, flowNotification := range additionalTestFlows {
-						if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
-							notificationFlowChannel <- true
-						}
+			}
+			// If this is a test...  Also inject notifications appropriately.
+			if flowtestState != "" {
+				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
+				for _, flowNotification := range additionalTestFlows {
+					if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
+						notificationFlowChannel <- true
 					}
 				}
 			}
@@ -364,6 +364,15 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			if len(flowNotifications) > 0 {
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
+					if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
+						notificationFlowChannel <- true
+					}
+				}
+			}
+			// If this is a test...  Also inject notifications appropriately.
+			if flowtestState != "" {
+				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
+				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
 						notificationFlowChannel <- true
 					}
