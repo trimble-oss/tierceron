@@ -267,7 +267,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 							}
 						}
 						for _, listedService := range serviceSlice {
-							if listedService == service {
+							if strings.TrimSuffix(listedService, "/") == service {
 								serviceFound = true
 							}
 						}
@@ -359,7 +359,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				goMod.Version = goMod.Version + "***X-Mode"
 				if goMod.SectionName != "" && goMod.SubSectionValue != "" {
 					if goMod.SectionKey == "/Index/" {
-						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service
+						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + config.SubSectionName
 					} else {
 						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
 					}
@@ -573,7 +573,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 				subSectionValuePath = config.Env
 			}
 
-			endPath = config.EndDir + envBasePath + config.SectionKey + config.ProjectSections[0] + sectionNamePath + subSectionValuePath + "_seed.yml"
+			endPath = config.EndDir + envBasePath + config.SectionKey + config.ProjectSections[0] + sectionNamePath + subSectionValuePath + config.SubSectionName + "_seed.yml"
 		} else {
 			endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 		}

@@ -42,6 +42,7 @@ type DriverConfig struct {
 	SectionKey      string // Restricted or Index
 	SectionName     string // extension provided name
 	SubSectionValue string
+	SubSectionName  string
 	IndexFilter     []string
 }
 
