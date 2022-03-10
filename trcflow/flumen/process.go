@@ -237,7 +237,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(flowName)
 		}
 
-		for _, f := range testflowimpl.GetAdditionalFlows() {
+		for _, flow := range testflowimpl.GetAdditionalFlows() {
 			wg.Add(1)
 			go func(f flowcore.FlowNameType) {
 				eUtils.LogInfo(config, "Beginning flow: "+f.ServiceName())
@@ -259,7 +259,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					f,
 					flowcore.TableTestFlow,
 				)
-			}(f)
+			}(flow)
 		}
 	}
 
