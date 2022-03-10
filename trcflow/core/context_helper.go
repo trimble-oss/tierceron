@@ -53,7 +53,8 @@ func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *Tr
 	return matrixChangedEntries, nil
 }
 
-func (tfmContext *TrcFlowMachineContext) seedVaultFromChanges(
+// vaultPersistPushRemoteChanges - Persists any local mysql changes to vault and pushed any changes to a remote data source.
+func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
