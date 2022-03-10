@@ -82,10 +82,11 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter") // -templateFilter=config.yml
 
-	indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter") // KafkaTableConfiguration, TenantConfiguration
-	indexNameFilterPtr := flag.String("indexFilter", "", "Specifies which index names to filter")               // tenantId, SpectrumTableName
-	indexValueFilterPtr := flag.String("indexValueFilter", "", "Specifies which index values to filter")        // qa14p8
-	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")
+	indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
+	indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // KafkaTableConfiguration, TenantConfiguration
+	indexNameFilterPtr := flag.String("indexFilter", "", "Specifies which index names to filter")                            // tenantId, SpectrumTableName
+	indexValueFilterPtr := flag.String("indexValueFilter", "", "Specifies which index values to filter")                     // qa14p8
+	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")                                         // TenantDatabase
 	restrictedPtr := flag.String("restricted", "", "Specifies which projects have restricted access.")
 
 	// Checks for proper flag input
@@ -403,6 +404,9 @@ skipDiff:
 	}
 	if len(*indexServiceFilterPtr) > 0 {
 		indexFilterSlice = strings.Split(*indexServiceFilterPtr, ",")
+		if len(*indexServiceExtFilterPtr) > 0 {
+			*indexServiceExtFilterPtr = "/" + *indexServiceExtFilterPtr //added "/" - used path later
+		}
 	}
 
 	go reciever() //Channel reciever
@@ -435,6 +439,7 @@ skipDiff:
 				SectionKey:      sectionKey,
 				SectionName:     subSectionName,
 				SubSectionValue: section,
+				SubSectionName:  *indexServiceExtFilterPtr,
 				Regions:         regions,
 				SecretMode:      *secretMode,
 				ServicesWanted:  []string{},
