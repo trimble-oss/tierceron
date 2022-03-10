@@ -37,7 +37,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		return err
 	}
 	tfmContext = &flowcore.TrcFlowMachineContext{
-		Env: pluginConfig["env"].(string),
+		Env:                       pluginConfig["env"].(string),
+		GetAdditionalFlowsByState: testflowimpl.GetAdditionalFlowsByState,
 	}
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}

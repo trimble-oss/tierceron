@@ -58,12 +58,13 @@ func (fnt FlowNameType) ServiceName() string {
 }
 
 type TrcFlowMachineContext struct {
-	Region            string
-	Env               string
-	Config            *eUtils.DriverConfig
-	Vault             *sys.Vault
-	TierceronEngine   *db.TierceronEngine
-	ExtensionAuthData map[string]interface{}
+	Region                    string
+	Env                       string
+	Config                    *eUtils.DriverConfig
+	Vault                     *sys.Vault
+	TierceronEngine           *db.TierceronEngine
+	ExtensionAuthData         map[string]interface{}
+	GetAdditionalFlowsByState func(teststate string) []FlowNameType
 }
 
 type TrcFlowContext struct {
@@ -312,7 +313,12 @@ func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowCon
 // Make a call on Call back to insert or update using the provided query.
 // If this is expected to result in a change to an existing table, thern trigger
 // something to the changed channel.
-func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext, query string, changed bool, operation string, flowNotifications []FlowNameType) [][]string {
+func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
+	query string,
+	changed bool,
+	operation string,
+	flowNotifications []FlowNameType,
+	flowtestState string) [][]string {
 	var changedChannel chan bool
 
 	if changed {
@@ -333,6 +339,15 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext, 
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
 						notificationFlowChannel <- true
+					}
+				}
+				// If this is a test...  Also inject notifications appropriately.
+				if flowtestState != "" {
+					additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
+					for _, flowNotification := range additionalTestFlows {
+						if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
+							notificationFlowChannel <- true
+						}
 					}
 				}
 			}
