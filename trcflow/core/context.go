@@ -202,7 +202,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)
 		case <-flowChangedChannel:
-			tfmContext.seedVaultFromChanges(
+			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
 				vaultIndexColumnName,
@@ -212,7 +212,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 		case <-time.After(afterTime):
 			afterTime = time.Minute * 3
 			eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes.")
-			tfmContext.seedVaultFromChanges(
+			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
 				vaultIndexColumnName,
@@ -267,7 +267,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)
 		case <-flowChangedChannel:
-			tfmContext.seedTrcDbFromChanges(
+			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
 				vaultIndexColumnName,
@@ -277,7 +277,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 		case <-time.After(afterTime):
 			afterTime = time.Minute * 3
 			eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes.")
-			tfmContext.seedTrcDbFromChanges(
+			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
 				vaultIndexColumnName,
