@@ -437,6 +437,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
 	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
 
+	eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
 	dbsourceConn, err := util.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
 	if err != nil {
