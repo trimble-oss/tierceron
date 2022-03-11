@@ -109,6 +109,40 @@ func removeDuplicateValues(slice []string) []string {
 	return list
 }
 
+func templateToTableRowHelper(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, templatePath string, config *eUtils.DriverConfig) error {
+	var cds *vcutils.ConfigDataStore
+	cds = new(vcutils.ConfigDataStore)
+	var templateResult extract.TemplateResultData
+	templateResult.ValueSection = map[string]map[string]map[string]string{}
+	templateResult.ValueSection["values"] = map[string]map[string]string{}
+
+	templateResult.SecretSection = map[string]map[string]map[string]string{}
+	templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
+
+	cds.Init(config, goMod, config.SecretMode, true, project, nil, service)
+
+	var errSeed error
+
+	_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(config,
+		goMod,
+		cds,
+		templatePath,
+		project,
+		service,
+		true,
+		&(templateResult.InterfaceTemplateSection),
+		&(templateResult.ValueSection),
+		&(templateResult.SecretSection),
+	)
+
+	if errSeed != nil {
+		return errSeed
+	}
+
+	writeToTable(te, envEnterprise, version, project, projectAlias, service, &templateResult)
+	return nil
+}
+
 func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath)
@@ -130,7 +164,6 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 
 	// TODO: Make this async for performance...
 	for _, templatePath := range templatePaths {
-		var cds *vcutils.ConfigDataStore
 		var indexValues []string = []string{""}
 
 		if goMod != nil {
@@ -151,39 +184,34 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 		}
 
 		for _, indexValue := range indexValues {
-			cds = new(vcutils.ConfigDataStore)
-			var templateResult extract.TemplateResultData
-			templateResult.ValueSection = map[string]map[string]map[string]string{}
-			templateResult.ValueSection["values"] = map[string]map[string]string{}
-
-			templateResult.SecretSection = map[string]map[string]map[string]string{}
-			templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
-
 			if indexValue != "" {
+				goMod.SectionKey = "/Index/"
+				//	goMod.SubSectionValue = flowService
 				goMod.SectionPath = "super-secrets/Index/" + project + "/" + goMod.SectionName + "/" + indexValue + "/" + service
+				subsectionValues, err := goMod.List(goMod.SectionPath)
+				if err != nil {
+					return err
+				}
+				if subsectionValues != nil {
+					for _, subsectionValue := range subsectionValues.Data["keys"].([]interface{}) {
+						goMod.SectionPath = goMod.SectionPath + "/" + subsectionValue.(string)
+						rowErr := templateToTableRowHelper(goMod, te, config.Env, "0", project, projectAlias, service, templatePath, config)
+						if rowErr != nil {
+							return rowErr
+						}
+					}
+				} else {
+					rowErr := templateToTableRowHelper(goMod, te, config.Env, "0", project, projectAlias, service, templatePath, config)
+					if rowErr != nil {
+						return rowErr
+					}
+				}
+			} else {
+				rowErr := templateToTableRowHelper(goMod, te, config.Env, "0", project, projectAlias, service, templatePath, config)
+				if rowErr != nil {
+					return rowErr
+				}
 			}
-
-			cds.Init(config, goMod, config.SecretMode, true, project, nil, service)
-
-			var errSeed error
-
-			_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(config,
-				goMod,
-				cds,
-				templatePath,
-				project,
-				service,
-				true,
-				&(templateResult.InterfaceTemplateSection),
-				&(templateResult.ValueSection),
-				&(templateResult.SecretSection),
-			)
-
-			if errSeed != nil {
-				return errSeed
-			}
-
-			writeToTable(te, envEnterprise, version, project, projectAlias, service, &templateResult)
 		}
 
 	}
