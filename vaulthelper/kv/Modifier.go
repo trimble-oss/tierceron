@@ -670,7 +670,7 @@ func (m *Modifier) FindIndexForService(project string, service string) (string, 
 			subsectionValues := subsectionValueSecrets.Data["keys"].([]interface{})
 
 			for _, subSectionValue := range subsectionValues {
-				if subSectionValue == service {
+				if strings.TrimSuffix(subSectionValue.(string), "/") == service {
 					index = strings.TrimSuffix(indexValue.(string), "/")
 					goto indexFound
 				}
