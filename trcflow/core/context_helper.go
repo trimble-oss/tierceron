@@ -115,10 +115,10 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 		// Push this change to the flow for delivery to remote data source.
 		if !isInit {
-			pushError := flowPushRemote(tfContext.RemoteDataSource, rowDataMap)
-			if pushError != nil {
-				eUtils.LogErrorObject(tfmContext.Config, err, false)
-			}
+			//	pushError := flowPushRemote(tfContext.RemoteDataSource, rowDataMap)
+			//	if pushError != nil {
+			//		eUtils.LogErrorObject(tfmContext.Config, err, false)
+			//	}
 		}
 
 	}
