@@ -183,6 +183,7 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 // @return	A Secret pointer that contains key,value pairs and metadata
 //			errors generated from reading
 func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
+
 	// Create full path
 	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") { //Template paths are not indexed -> values & super-secrets are
 		if strings.Contains(path, "values") {
@@ -202,6 +203,8 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	if len(pathBlocks) > 1 {
 		fullPath += pathBlocks[1]
 	}
+	retryCount := 0
+retryVaultAccess:
 
 	var secret *api.Secret
 	var err error
@@ -219,6 +222,13 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 		secret, err = m.logical.ReadWithData(fullPath, versionMap)
 	} else {
 		secret, err = m.logical.Read(fullPath)
+	}
+
+	if err != nil {
+		if retryCount < 3 {
+			retryCount = retryCount + 1
+			goto retryVaultAccess
+		}
 	}
 
 	if secret == nil {
