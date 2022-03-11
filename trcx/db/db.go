@@ -110,8 +110,7 @@ func removeDuplicateValues(slice []string) []string {
 }
 
 func templateToTableRowHelper(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, templatePath string, config *eUtils.DriverConfig) error {
-	var cds *vcutils.ConfigDataStore
-	cds = new(vcutils.ConfigDataStore)
+	cds := new(vcutils.ConfigDataStore)
 	var templateResult extract.TemplateResultData
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
 	templateResult.ValueSection["values"] = map[string]map[string]string{}
@@ -119,7 +118,10 @@ func templateToTableRowHelper(goMod *kv.Modifier, te *TierceronEngine, envEnterp
 	templateResult.SecretSection = map[string]map[string]map[string]string{}
 	templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
 
-	cds.Init(config, goMod, config.SecretMode, true, project, nil, service)
+	err := cds.Init(config, goMod, config.SecretMode, true, project, nil, service)
+	if err != nil {
+		eUtils.LogErrorObject(config, err, false)
+	}
 
 	var errSeed error
 
@@ -194,7 +196,7 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 				}
 				if subsectionValues != nil {
 					for _, subsectionValue := range subsectionValues.Data["keys"].([]interface{}) {
-						goMod.SectionPath = goMod.SectionPath + "/" + subsectionValue.(string)
+						goMod.SectionPath = "super-secrets/Index/" + project + "/" + goMod.SectionName + "/" + indexValue + "/" + service + "/" + subsectionValue.(string)
 						rowErr := templateToTableRowHelper(goMod, te, config.Env, "0", project, projectAlias, service, templatePath, config)
 						if rowErr != nil {
 							return rowErr
