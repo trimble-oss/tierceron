@@ -238,6 +238,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 		if err == nil {
 			for _, trigger := range triggers {
 				if strings.HasSuffix(trigger.Name, "_"+string(tfContext.Flow)) {
+					//TODO: Add trigger locks
 					err := tfmContext.TierceronEngine.Database.DropTrigger(tfmContext.TierceronEngine.Context, trigger.Name)
 					if err == nil {
 						removedTriggers = append(removedTriggers, trigger)
@@ -253,6 +254,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 			getIndexedPathExt,
 			flowPushRemote)
 		for _, trigger := range removedTriggers {
+			//TODO: Add trigger locks
 			tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, trigger)
 		}
 		seedInitCompleteChan <- true
