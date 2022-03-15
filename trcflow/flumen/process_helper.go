@@ -79,14 +79,9 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 		//Use trigger to make another table
 		//Check for tenantId
 
-		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace below
 		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query string) (string, []string, [][]string, error) {
 			return db.Query(engine.(*db.TierceronEngine), query)
 		})
-		// TODO: delete me.
-		// indexPath, indexPathErr := flowimpl.GetIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query string) (string, []string, [][]string, error) {
-		// 	return db.Query(engine.(*db.TierceronEngine), query)
-		// })
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(tfmContext.Config, indexPathErr, false)
 			// Re-inject into changes because it might not be here yet...
@@ -97,7 +92,6 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 			continue
 		}
 
-		// TODO: This should be simplified to lib.GetIndexedPathExt() -- replace above
 		seedError := util.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), vaultAddress, tfmContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
