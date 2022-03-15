@@ -8,6 +8,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 	pb "tierceron/webapi/rpc/apinator"
@@ -17,6 +18,7 @@ func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, 
 	tokenSecret := s.TrcAPITokenSecret
 	currentTime := time.Now().Unix()
 	expTime := currentTime + 24*60*60
+	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  id,
@@ -36,8 +38,8 @@ func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, 
 				"Expires": expTime,
 			}
 			warn, err := mod.Write("apiLogins/"+user, tokenData)
-			utils.LogWarningsObject(warn, s.Log, false)
-			utils.LogErrorObject(err, s.Log, false)
+			utils.LogWarningsObject(config, warn, false)
+			utils.LogErrorObject(config, err, false)
 		}()
 	}
 
@@ -47,9 +49,10 @@ func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, 
 // GetVaultTokens takes app role credentials and attempts to fetch names tokens from the vault
 func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.TokensResp, error) {
 	// Create 2 vault connections, one for checking/rolling tokens, the other for accessing the AWS user cubbyhole
-	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false)
+	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
+	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
@@ -61,21 +64,21 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 
 	arToken, err := v.AppRoleLogin(req.AppRoleID, req.AppRoleSecretID)
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
 	// Modifier to access token values granted to bamboo
-	mod, err := kv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil)
+	mod, err := kv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	mod.Env = "bamboo"
 
 	data, err := mod.ReadData("super-secrets/tokens")
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
+		utils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
@@ -95,7 +98,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 				})
 			}
 		} else {
-			utils.LogWarningsObject([]string{fmt.Sprintf("Failed to convert token %s to string", k)}, s.Log, false)
+			utils.LogWarningsObject(config, []string{fmt.Sprintf("Failed to convert token %s to string", k)}, false)
 		}
 	}
 	// AWS

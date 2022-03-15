@@ -117,6 +117,15 @@ func main() {
 		*wantCertsPtr = false
 	}
 
+	if strings.Contains(*envPtr, "*") {
+		fmt.Println("* is not available as an environment suffix.")
+		os.Exit(1)
+	}
+	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	config := eUtils.DriverConfig{ExitOnFailure: true}
+	eUtils.CheckError(&config, err, true)
+	logger := log.New(f, "[trcconfig]", log.LstdFlags)
+
 	//Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
 		fmt.Println("Cannot use -diff flag and -templateInfo flag together")
@@ -166,7 +175,12 @@ func main() {
 		}
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
-		eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+		if autoErr != nil {
+			fmt.Println("Missing auth components.")
+			os.Exit(1)
+		}
+
 		if len(envVersion) >= 2 { //Put back env+version together
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
@@ -205,13 +219,10 @@ func main() {
 			var err error
 			*envPtr, err = eUtils.LoginToLocal()
 			fmt.Println(*envPtr)
-			eUtils.CheckError(err, true)
+			eUtils.CheckError(&config, err, true)
 		}
 	}
 
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(err, true)
-	logger := log.New(f, "[trcconfig]", log.LstdFlags)
 	services := []string{}
 	if *servicesWanted != "" {
 		services = strings.Split(*servicesWanted, ",")
@@ -250,10 +261,14 @@ func main() {
 	if *diffPtr {
 		configSlice := make([]eUtils.DriverConfig, 0, len(envDiffSlice)-1)
 		for _, env := range envDiffSlice {
-			envVersion := strings.Split(env, "_") //Break apart env+version for token
+			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
-			eUtils.AutoAuth(*insecurePtr, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			if autoErr != nil {
+				fmt.Println("Missing auth components.")
+				os.Exit(1)
+			}
 			if len(envVersion) >= 2 { //Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]
 				if envVersion[1] == "" {
@@ -285,7 +300,7 @@ func main() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				eUtils.ConfigControl(nil, configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault)
+				eUtils.ConfigControl(nil, &configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault)
 			}()
 		}
 	} else {
@@ -319,10 +334,10 @@ func main() {
 			VersionInfo:    eUtils.VersionHelper,
 		}
 		wg.Add(1)
-		go func() {
+		go func(c *eUtils.DriverConfig) {
 			defer wg.Done()
-			eUtils.ConfigControl(nil, config, utils.GenerateConfigsFromVault)
-		}()
+			eUtils.ConfigControl(nil, c, utils.GenerateConfigsFromVault)
+		}(&config)
 	}
 	wg.Wait() //Wait for templates
 	close(resultChannel)

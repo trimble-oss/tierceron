@@ -8,8 +8,10 @@ api:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/webapi/apiRouter
 config:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcconfig
+configdbprodplugin:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags prod -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
 configdbplugin:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -tags testflow -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
 configwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -o $(GOBIN)/trcconfig.exe trcconfig/trcconfig.go
 configmac:
@@ -34,6 +36,8 @@ xp:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcxp
 pub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcpub
+sub:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcsub
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 

@@ -10,7 +10,7 @@ import (
 
 type TierceronTable struct {
 	Table  *memory.Table
-	Schema sql.Schema
+	Schema sql.PrimaryKeySchema
 }
 
 type TierceronEngine struct {

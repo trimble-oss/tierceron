@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	pb "tierceron/webapi/rpc/apinator"
 
 	configcore "VaultConfig.Bootstrap/configcore"
@@ -106,32 +107,34 @@ func (s *Server) InitGQL() {
 
 	// Fetch template keys and values
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
+	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (values not added)"}, s.Log, false)
+		utils.LogErrorObject(config, err, false)
+		utils.LogWarningsObject(config, []string{"GraphQL MAY not initialized (values not added)"}, false)
 		return
 	}
 
 	// Fetch secret keys and verification info
 	templates, err := s.getTemplateData()
 	if err != nil {
-		utils.LogErrorObject(err, s.Log, false)
-		utils.LogWarningsObject([]string{"GraphQL MAY not initialized (secrets not added)"}, s.Log, false)
+		utils.LogErrorObject(config, err, false)
+		utils.LogWarningsObject(config, []string{"GraphQL MAY not initialized (secrets not added)"}, false)
 		return
 	}
 
 	envStrings := SelectedEnvironment
 	for _, e := range envStrings { //Not including itdev and servicepack
 		// Get spectrum sessions
-		spctmSessions[e], err = s.getActiveSessions(e)
+		spctmSessions[e], err = s.getActiveSessions(config, e)
 		if err != nil {
-			utils.LogErrorObject(err, s.Log, false)
-			utils.LogWarningsObject([]string{fmt.Sprintf("GraphQL MAY not initialized (Spectrum %s sessions not added)", e)}, s.Log, false)
+			utils.LogErrorObject(config, err, false)
+			utils.LogWarningsObject(config, []string{fmt.Sprintf("GraphQL MAY not initialized (Spectrum %s sessions not added)", e)}, false)
 		}
 		vaultSessions[e], err = s.getVaultSessions(e)
 		if err != nil {
-			utils.LogErrorObject(err, s.Log, false)
-			utils.LogWarningsObject([]string{fmt.Sprintf("GraphQL MAY not initialized (Vault %s sessions not added)", e)}, s.Log, false)
+			utils.LogErrorObject(config, err, false)
+			utils.LogWarningsObject(config, []string{fmt.Sprintf("GraphQL MAY not initialized (Vault %s sessions not added)", e)}, false)
 		}
 	}
 
