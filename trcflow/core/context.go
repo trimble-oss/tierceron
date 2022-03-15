@@ -35,6 +35,8 @@ const (
 	TableTestFlow
 )
 
+var triggerLock sync.Mutex
+
 func getUpdateTrigger(databaseName string, tableName string, idColumnName string) string {
 	return `CREATE TRIGGER tcUpdateTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
@@ -168,8 +170,10 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 	if !triggerExist {
 		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
 		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
+		triggerLock.Lock()
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
+		triggerLock.Unlock()
 	}
 }
 
@@ -238,8 +242,9 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 		if err == nil {
 			for _, trigger := range triggers {
 				if strings.HasSuffix(trigger.Name, "_"+string(tfContext.Flow)) {
-					//TODO: Add trigger locks
+					triggerLock.Lock()
 					err := tfmContext.TierceronEngine.Database.DropTrigger(tfmContext.TierceronEngine.Context, trigger.Name)
+					triggerLock.Unlock()
 					if err == nil {
 						removedTriggers = append(removedTriggers, trigger)
 					}
@@ -254,8 +259,9 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 			getIndexedPathExt,
 			flowPushRemote)
 		for _, trigger := range removedTriggers {
-			//TODO: Add trigger locks
+			triggerLock.Lock()
 			tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, trigger)
+			triggerLock.Unlock()
 		}
 		seedInitCompleteChan <- true
 	}
