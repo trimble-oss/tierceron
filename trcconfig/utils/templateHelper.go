@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"strings"
 	"text/template"
 
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 )
 
@@ -87,21 +87,28 @@ func GetTemplate(modifier *kv.Modifier, templatePath string) (string, error) {
 }
 
 //ConfigTemplateRaw - gets a raw unpopulated template.
-func ConfigTemplateRaw(modifier *kv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, project string, service string, cert bool, zc bool) ([]byte, error) {
+func ConfigTemplateRaw(config *eUtils.DriverConfig, mod *kv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, project string, service string, cert bool, zc bool, exitOnFailure bool) ([]byte, error) {
 	var err error
 
 	var templateEncoded string
-	templateEncoded, err = GetTemplate(modifier, emptyFilePath)
-	utils.CheckError(err, true)
+	templateEncoded, err = GetTemplate(mod, emptyFilePath)
+	eUtils.CheckError(config, err, exitOnFailure)
 	templateBytes, decodeErr := base64.StdEncoding.DecodeString(templateEncoded)
-	utils.CheckError(decodeErr, true)
+	eUtils.CheckError(config, decodeErr, exitOnFailure)
 
 	return templateBytes, decodeErr
 }
 
 //ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.
 //It configures the template and writes it to the specified file path.
-func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool, project string, service string, cert bool, zc bool) (string, map[int]string, bool, error) {
+func ConfigTemplate(config *eUtils.DriverConfig,
+	modifier *kv.Modifier,
+	emptyFilePath string,
+	secretMode bool,
+	project string,
+	service string,
+	cert bool,
+	zc bool) (string, map[int]string, bool, error) {
 	var template string
 	var err error
 
@@ -119,7 +126,7 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool
 		template = string(templateBytes)
 	} else {
 		emptyTemplate, err := ioutil.ReadFile(emptyFilePath)
-		utils.CheckError(err, true)
+		utils.CheckError(config, err, true)
 		template = string(emptyTemplate)
 	}
 	// cert map
@@ -152,7 +159,7 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool
 			extra = extra + "/" + component
 		}
 	}
-	if strings.Index(filename, ".") != -1 {
+	if strings.Contains(filename, ".") {
 		filename = filename[0:strings.Index(filename, ".")]
 	}
 
@@ -160,22 +167,28 @@ func ConfigTemplate(modifier *kv.Modifier, emptyFilePath string, secretMode bool
 		filename = extra + "/" + filename
 	}
 	//populate template
-	template, certData = PopulateTemplate(template, modifier, secretMode, project, service, filename, cert)
-	return template, certData, true, nil
+	template, certData, err = PopulateTemplate(config, template, modifier, secretMode, project, service, filename, cert)
+	return template, certData, true, err
 }
 
-func getTemplateVersionData(modifier *kv.Modifier, secretMode bool, project string, service string, file string) map[string]interface{} {
+func getTemplateVersionData(config *eUtils.DriverConfig, modifier *kv.Modifier, project string, service string, file string) (map[string]interface{}, error) {
 	cds := new(ConfigDataStore)
-	versionData := cds.InitTemplateVersionData(modifier, secretMode, true, project, file, service)
-	return versionData
+	return cds.InitTemplateVersionData(config, modifier, true, project, file, service)
 }
 
 //PopulateTemplate takes an empty template and a modifier.
 //It populates the template and returns it in a string.
-func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bool, project string, service string, filename string, cert bool) (string, map[int]string) {
+func PopulateTemplate(config *eUtils.DriverConfig,
+	emptyTemplate string,
+	modifier *kv.Modifier,
+	secretMode bool,
+	project string,
+	service string,
+	filename string,
+	cert bool) (string, map[int]string, error) {
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
-	cds.Init(modifier, secretMode, true, project, nil, service)
+	cds.Init(config, modifier, secretMode, true, project, nil, service)
 	certData := make(map[int]string)
 	serviceLookup := service
 	i := strings.Index(service, ".")
@@ -190,7 +203,7 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 		t := template.New("template")
 		t, err := t.Parse(emptyTemplate)
 		if err != nil {
-			panic(err)
+			eUtils.LogErrorObject(config, err, false)
 		}
 		var doc bytes.Buffer
 		//configure the template
@@ -199,7 +212,7 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 
 		_, data := values[filename]
 		if data == false {
-			fmt.Println(filename + " does not exist in values. Please check seed files to verify that folder structures are correct.")
+			eUtils.LogInfo(config, filename+" does not exist in values. Please check seed files to verify that folder structures are correct.")
 		}
 
 		if len(cds.Regions) > 0 {
@@ -226,32 +239,34 @@ func PopulateTemplate(emptyTemplate string, modifier *kv.Modifier, secretMode bo
 				certSourcePath, hasCertSourcePath := valueData["certSourcePath"].(interface{})
 				if hasCertDefinition && hasCertSourcePath {
 					if !ok {
-						fmt.Println("No certDestPath in config template section of seed for this service. Unable to generate cert.pfx")
-						os.Exit(1)
+						vaultCertErr := errors.New("No certDestPath in config template section of seed for this service. Unable to generate cert.pfx")
+						eUtils.LogErrorMessage(config, vaultCertErr.Error(), false)
+						return "", nil, vaultCertErr
 					}
 					certData[0] = certDestPath.(string)
 					data, ok := valueData["certData"].(interface{})
 					if !ok {
-						fmt.Println("No certData in config template section of seed for this service. Unable to generate cert.pfx")
-						os.Exit(1)
+						vaultCertErr := errors.New("No certData in config template section of seed for this service. Unable to generate cert.pfx")
+						eUtils.LogInfo(config, vaultCertErr.Error())
+						return "", nil, vaultCertErr
 					}
 					encoded := fmt.Sprintf("%s", data)
 					//Decode cert as it was encoded in trcinit
 					decoded, err := base64.StdEncoding.DecodeString(encoded)
 					if err != nil {
-						panic(err)
+						eUtils.LogErrorObject(config, err, false)
 					}
 					certData[1] = fmt.Sprintf("%s", decoded)
 					certData[2] = certSourcePath.(string)
-					return "", certData
+					return "", certData, nil
 				}
 			}
 		}
 		err = t.Execute(&doc, values[filename])
 		str = doc.String()
 		if err != nil {
-			panic(err)
+			eUtils.LogErrorObject(config, err, false)
 		}
 	}
-	return str, certData
+	return str, certData, nil
 }

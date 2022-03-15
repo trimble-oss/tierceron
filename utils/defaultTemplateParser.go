@@ -13,34 +13,41 @@ const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
 type ProcessContext interface{}
 
-type ConfigDriver func(ctx ProcessContext, config DriverConfig) interface{}
+type ConfigDriver func(ctx ProcessContext, config *DriverConfig) (interface{}, error)
 
 type DriverConfig struct {
-	Context        ProcessContext
-	Insecure       bool
-	Token          string
-	VaultAddress   string
-	EnvRaw         string
-	Env            string
-	Regions        []string
-	SecretMode     bool
-	ServicesWanted []string
-	StartDir       []string // Starting directory... possibly multiple
-	EndDir         string
-	WantCerts      bool
-	ZeroConfig     bool
-	GenAuth        bool
-	Clean          bool
-	Log            *log.Logger
-	Diff           bool
-	Update         func(*string, string)
-	FileFilter     []string
-	VersionInfo    func(map[string]interface{}, bool, string, bool)
-	VersionFilter  []string
+	Context         ProcessContext
+	Insecure        bool
+	Token           string
+	VaultAddress    string
+	EnvRaw          string
+	Env             string
+	Regions         []string
+	SecretMode      bool
+	ServicesWanted  []string
+	StartDir        []string // Starting directory... possibly multiple
+	EndDir          string
+	WantCerts       bool
+	ZeroConfig      bool
+	GenAuth         bool
+	Clean           bool
+	Log             *log.Logger
+	Diff            bool
+	Update          func(*string, string)
+	FileFilter      []string
+	VersionInfo     func(map[string]interface{}, bool, string, bool)
+	VersionFilter   []string
+	ExitOnFailure   bool // Exit on a failure or try to continue
+	ProjectSections []string
+	SectionKey      string // Restricted or Index
+	SectionName     string // extension provided name
+	SubSectionValue string
+	SubSectionName  string
+	IndexFilter     []string
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
-func ConfigControl(ctx ProcessContext, config DriverConfig, drive ConfigDriver) {
+func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver) {
 	multiProject := false
 
 	config.EndDir = strings.Replace(config.EndDir, "\\", "/", -1)

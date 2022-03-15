@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"tierceron/utils"
+	eUtils "tierceron/utils"
 	pb "tierceron/webapi/rpc/apinator"
 
 	"github.com/graphql-go/graphql"
@@ -51,9 +51,12 @@ func main() {
 	apiClient := pb.NewEnterpriseServiceBrokerProtobufClient(*addrPtr, &http.Client{})
 
 	makeVaultReq := &pb.GetValuesReq{}
+	config := &eUtils.DriverConfig{ExitOnFailure: true}
 
 	vault, err := apiClient.GetValues(context.Background(), makeVaultReq)
-	utils.CheckError(err, true)
+	eUtils.CheckError(config, err, true)
+
+	config.ExitOnFailure = false
 
 	envList := []Env{}
 	for i, env := range vault.Envs {
