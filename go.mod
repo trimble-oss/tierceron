@@ -5,7 +5,7 @@ go 1.17
 require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
 	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000
-	github.com/denisenkom/go-mssqldb v0.11.0
+	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dolthub/go-mysql-server v0.11.0
 	github.com/go-sql-driver/mysql v1.6.0
@@ -38,6 +38,7 @@ require (
 	github.com/go-co-op/gocron v1.13.0 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
+	github.com/golang-sql/sqlexp v0.0.0-20170517235910-f1bb20e5a188 // indirect
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.2.0 // indirect
@@ -56,6 +57,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
+	github.com/jmoiron/sqlx v1.3.4 // indirect
 	github.com/lestrrat-go/strftime v1.0.4 // indirect
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
