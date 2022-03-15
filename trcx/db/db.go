@@ -166,7 +166,7 @@ func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise stri
 
 	// TODO: Make this async for performance...
 	for _, templatePath := range templatePaths {
-		var indexValues []string = []string{""}
+		var indexValues []string = []string{}
 
 		if goMod != nil {
 			goMod.Env = envEnterprise
