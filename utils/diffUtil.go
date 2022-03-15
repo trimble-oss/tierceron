@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -102,7 +101,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	timeOut := time.Date(9999, 1, 1, 12, 0, 0, 0, time.UTC)
 	if stringA == nil || stringB == nil {
 		fmt.Println("A null string was found while diffing")
-		os.Exit(1)
+		return ""
 	}
 	diffs := dmp.DiffBisect(*stringA, *stringB, timeOut)
 	diffs = dmp.DiffCleanupSemantic(diffs)
@@ -235,7 +234,7 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 
 	if versionData == nil {
 		fmt.Println("No version data found for this environment")
-		os.Exit(1)
+		return
 	}
 
 	//template == true
@@ -353,20 +352,22 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 	mutex.Lock()
 	if len(resultMap) == 0 {
 		fmt.Println("Couldn't find any data to diff")
-		os.Exit(1)
+		return
 	}
 
 	var baseEnv []string
 	diffEnvFound := false
 	if len(envDiffSlice) > 0 {
-		baseEnv = strings.Split(envDiffSlice[0], "_")
+		baseEnv = SplitEnv(envDiffSlice[0])
 	}
 	//Sort Diff Slice if env are the same
 	for i, env := range envDiffSlice { //Arranges keys for ordered output
-		base := strings.Split(env, "_")
+		var base []string
+		base = SplitEnv(env)
+
 		if base[1] == "0" { //Special case for latest, so sort adds latest to the back of ordered slice
 			base[1] = "_999999"
-			envDiffSlice[i] = base[0] +  base[1]
+			envDiffSlice[i] = base[0] + base[1]
 		}
 
 		if len(base) > 0 && len(baseEnv) > 0 && baseEnv[0] != base[0] {
@@ -379,8 +380,9 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 	}
 
 	for i, env := range envDiffSlice { //Changes latest back - special case
-		base := strings.Split(env, "_")
-		if base[1] == "999999" { 
+		var base []string
+		base = SplitEnv(env)
+		if base[1] == "999999" {
 			base[1] = "_0"
 			envDiffSlice[i] = base[0] + base[1]
 		}
@@ -410,7 +412,11 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		for _, env := range envDiffSlice { //Arranges keys for ordered output
 			keys = append(keys, env+"||"+env+"_seed.yml")
 		}
-		fileList[0] = "placeHolder"
+		if len(fileList) > 0 {
+			fileList[0] = "placeHolder"
+		} else {
+			fileList = append(fileList, "placeHolder")
+		}
 	}
 
 	//Diff resultMap using fileList

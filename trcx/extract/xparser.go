@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
-	"log"
-	"os"
 	"strings"
 	"text/template/parse"
+	"tierceron/utils"
+	eUtils "tierceron/utils"
 
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/vaulthelper/kv"
@@ -24,6 +24,7 @@ type TemplateResultData struct {
 	SecretSection            map[string]map[string]map[string]string
 	TemplateDepth            int
 	Env                      string
+	SubSectionValue          string
 }
 
 // ToSeed parses a <foo>.yml.tmpl file into a <foo>.yml file which then can be used for seeding vault
@@ -32,17 +33,16 @@ type TemplateResultData struct {
 //	- Log file for logging support information
 // Output:
 //	- Parsed string containing the .yml file
-func ToSeed(mod *kv.Modifier,
+func ToSeed(config *utils.DriverConfig, mod *kv.Modifier,
 	cds *vcutils.ConfigDataStore,
 	templatePath string,
-	logger *log.Logger,
 	project string,
 	service string,
 	fromVault bool,
 	interfaceTemplateSection *interface{},
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
-) (*interface{}, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int) {
+) (*interface{}, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int, error) {
 
 	// TODO: replace string sections with maps
 	templatePath = strings.ReplaceAll(templatePath, "\\", "/")
@@ -63,13 +63,13 @@ func ToSeed(mod *kv.Modifier,
 			templatePathExtended = strings.Replace(templatePath, "trc_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
-		templateFile, _ := vcutils.ConfigTemplateRaw(mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true)
+		templateFile, _ := vcutils.ConfigTemplateRaw(config, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, config.ExitOnFailure)
 		newTemplate = string(templateFile)
 	} else {
 		templateFile, err := ioutil.ReadFile(templatePath)
 		newTemplate = string(templateFile)
 		if err != nil {
-			logger.Fatal(err)
+			return nil, nil, nil, 0, eUtils.LogAndSafeExit(config, err.Error(), -1)
 		}
 	}
 
@@ -77,7 +77,7 @@ func ToSeed(mod *kv.Modifier,
 	t := template.New("template")
 	theTemplate, err := t.Parse(newTemplate)
 	if err != nil {
-		logger.Fatal(err)
+		return nil, nil, nil, 0, eUtils.LogAndSafeExit(config, err.Error(), -1)
 	}
 	commandList := theTemplate.Tree.Root
 
@@ -88,15 +88,14 @@ func ToSeed(mod *kv.Modifier,
 			for _, arg := range fields.Cmds[0].Args {
 				templateParameter := strings.ReplaceAll(arg.String(), "\\\"", "\"")
 				if strings.Contains(templateParameter, "~") {
-					fmt.Println("Unsupported parameter name character ~: " + templateParameter)
-					os.Exit(1)
+					eUtils.LogInfo(config, "Unsupported parameter name character ~: "+templateParameter)
+					return nil, nil, nil, 0, errors.New("Unsupported parameter name character ~: " + templateParameter)
 				}
 				args = append(args, templateParameter)
 			}
 
 			// Gets the parsed file line
-			Parse(cds,
-				logger,
+			errParse := Parse(config, cds,
 				args,
 				pathSlice[len(pathSlice)-2],
 				templatePathSlice,
@@ -107,10 +106,13 @@ func ToSeed(mod *kv.Modifier,
 				valueSection,
 				secretSection,
 			)
+			if errParse != nil {
+				return nil, nil, nil, 0, errParse
+			}
 		}
 	}
 
-	return interfaceTemplateSection, valueSection, secretSection, templateDepth
+	return interfaceTemplateSection, valueSection, secretSection, templateDepth, nil
 }
 
 // GetInitialTemplateStructure Initializes the structure of the template section using the template directory path
@@ -195,8 +197,7 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 //  - The current template directory
 // Output:
 //	- String(s) containing the .yml file subsections
-func Parse(cds *vcutils.ConfigDataStore,
-	logger *log.Logger,
+func Parse(config *utils.DriverConfig, cds *vcutils.ConfigDataStore,
 	args []string,
 	currentDir string,
 	templatePathSlice []string,
@@ -206,7 +207,7 @@ func Parse(cds *vcutils.ConfigDataStore,
 	interfaceTemplateSection *interface{},
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
-) {
+) error {
 	if len(args) == 3 { //value
 		keySlice := args[1]
 		keyName := keySlice[1:]
@@ -293,9 +294,9 @@ func Parse(cds *vcutils.ConfigDataStore,
 		}
 	} else {
 		parseMsg := fmt.Sprintf("Template: %s Incorrect template element count: %d Syntax error: %v", templatePathSlice[templateDir+3:len(templatePathSlice)], len(args), args)
-		fmt.Printf(parseMsg)
-		logger.Fatal(errors.New(parseMsg))
+		return eUtils.LogAndSafeExit(config, parseMsg, 1)
 	}
+	return nil
 }
 
 // AppendToTemplateSection Add parse line to template section

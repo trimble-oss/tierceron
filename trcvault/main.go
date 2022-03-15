@@ -4,8 +4,12 @@ import (
 	"log"
 	"os"
 	"tierceron/trcvault/factory"
+	vscutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
+	"tierceron/utils/mlock"
 
+	tclib "VaultConfig.TenantConfig/lib"
+	tcutil "VaultConfig.TenantConfig/util"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
 )
@@ -16,18 +20,38 @@ func main() {
 	// 	fmt.Println(mLockErr)
 	// 	os.Exit(-1)
 	// }
+	eUtils.InitHeadless(true)
 	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(logErr, true)
 	logger := log.New(f, "[trcvault]", log.LstdFlags)
-	factory.Init(logger)
+	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 
-	logger.Println("=============== Initializing Vault Tierceron Plugin ===============")
+	tclib.SetLogger(logger.Writer())
+	factory.Init(logger)
+	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
-	argErr := flags.Parse(os.Args[1:])
-	eUtils.LogErrorObject(argErr, logger, true)
-	logger.Println("Vault Tierceron Plugin Args parsed")
+
+	args := os.Args
+	vaultHost, lvherr := vscutils.GetLocalVaultHost(false, logger)
+	if lvherr != nil {
+		logger.Println("Host lookup failure.")
+		os.Exit(-1)
+	}
+
+	if vaultHost == tcutil.GetLocalVaultAddr() {
+		logger.Println("Running in developer mode with self signed certs.")
+		args = append(args, "--tls-skip-verify=true")
+	} else {
+		// TODO: this may not be needed...
+		//	args = append(args, fmt.Sprintf("--ca-cert=", caPEM))
+	}
+
+	argErr := flags.Parse(args[1:])
+	if argErr != nil {
+		logger.Fatal(argErr)
+	}
+	logger.Print("Warming up...")
 
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
@@ -36,6 +60,7 @@ func main() {
 		BackendFactoryFunc: factory.TrcFactory,
 		TLSProviderFunc:    tlsProviderFunc,
 	})
-	eUtils.LogErrorObject(err, logger, true)
-	logger.Println("=============== Vault Tierceron Plugin Initialization complete ===============")
+	if err != nil {
+		logger.Fatal("Plugin shutting down")
+	}
 }
