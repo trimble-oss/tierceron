@@ -50,8 +50,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		var indexValues []string
 
 		if services[i] == "Database" {
-			// TODO: This could be an api call vault list - to list what's available with rid's.
-			// East and west...
 			goMod.SectionName = "regionId"
 			goMod.SectionKey = "/Index/"
 			regions, err := goMod.ListSubsection("/Index/", projects[i], goMod.SectionName)
@@ -82,9 +80,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					eUtils.LogWarningMessage(config, "Expected database configuration does not exist: "+indexValue, false)
 					continue
 				}
-				// Chewbacca -- remove if check.
-				if sourceDatabaseConfig["dbsourceregion"] == "west" {
-					sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
+				for _, supportedRegion := range flowimpl.GetSupportedSourceRegions() {
+					if sourceDatabaseConfig["dbsourceregion"] == supportedRegion {
+						sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
+					}
 				}
 
 			case "Identity":
@@ -211,13 +210,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				)
 			}(flowcore.FlowNameType(table))
 		}
-		for _, flowName := range flowimpl.GetAdditionalFlows() {
+		for _, enhancement := range flowimpl.GetAdditionalFlows() {
 			wg.Add(1)
-			go func(f flowcore.FlowNameType) {
-				eUtils.LogInfo(config, "Beginning flow: "+f.ServiceName())
+			go func(enhancementFlow flowcore.FlowNameType) {
+				eUtils.LogInfo(config, "Beginning flow: "+enhancementFlow.ServiceName())
 				defer wg.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
-				tfContext.Flow = f
+				tfContext.Flow = enhancementFlow
 
 				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
@@ -231,19 +230,19 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowimpl.ProcessFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
-					f,
+					enhancementFlow,
 					flowcore.TableEnrichFlow,
 				)
-			}(flowName)
+			}(enhancement)
 		}
 
-		for _, flow := range testflowimpl.GetAdditionalFlows() {
+		for _, test := range testflowimpl.GetAdditionalFlows() {
 			wg.Add(1)
-			go func(f flowcore.FlowNameType) {
-				eUtils.LogInfo(config, "Beginning flow: "+f.ServiceName())
+			go func(testFlow flowcore.FlowNameType) {
+				eUtils.LogInfo(config, "Beginning flow: "+testFlow.ServiceName())
 				defer wg.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
-				tfContext.Flow = f
+				tfContext.Flow = testFlow
 				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
@@ -256,31 +255,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					testflowimpl.ProcessTestFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
-					f,
+					testFlow,
 					flowcore.TableTestFlow,
 				)
-			}(flow)
+			}(test)
 		}
 	}
 
 	wg.Wait()
-
-	// 5. Implement write backs to vault from our TierceronEngine ....  if an enterpriseId appears... then write it to vault...
-	//    somehow you need to track if something is a new entry...  like a rowChangedSlice...
-
-	// :AutoRegistration
-	//    -- Query Spectrum to find an administrator...  Also figure out an EnterpriseName?  EnterpriseId? Other stuff....
-	//       -- Get auth token to be able to call AutoRegistration some how...
-	//       -- Call AutoRegistration...
-	//
-	// Other things we can do:
-	//     I. Write config files for rest of tables in mysql:
-	//        KafkaTableConfiguration, MysqlFile, ReportJobs, SpectrumEnterpriseConfig, TenantConfiguration (done*), Tokens
-	//        In order of priority: TenantConfiguration, SpectrumEnterpriseConfig, Mysqlfile, KafkaTableConfiguration (vault feature needed?), ReportJobs, Tokens?
-	//     II. Open up mysql port and performance test queries...
-	//         -- create a mysql client runner... I bet there are go libraries that let you do this...
-	//     I don't wanna do this...
-	//     d. Optionally update fieldtech TenantConfiguration back to mysql.
-	//
 	return nil
 }
