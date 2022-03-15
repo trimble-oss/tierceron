@@ -13,6 +13,8 @@ import (
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
+	tcutil "VaultConfig.TenantConfig/util"
+
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"gopkg.in/yaml.v2"
 
@@ -145,19 +147,7 @@ func ProcessEnvConfig(envConfig map[string]interface{}) error {
 		return ptvError
 	}
 
-	// Adding additional configurations the plugin needs to know which tables to process
-	// and where to get additional configurations.
-	envConfig["templatePath"] = []string{
-		"trc_templates/TenantDatabase/TenantConfiguration/TenantConfiguration.tmpl",           // implemented
-		"trc_templates/TenantDatabase/SpectrumEnterpriseConfig/SpectrumEnterpriseConfig.tmpl", // not yet implemented.
-		//		"trc_templates/TenantDatabase/KafkaTableConfiguration/KafkaTableConfiguration.tmpl",   // not yet implemented.
-		//		"trc_templates/TenantDatabase/Mysqlfile/Mysqlfile.tmpl",                               // not yet implemented.
-	}
-	envConfig["connectionPath"] = []string{
-		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // implemented
-		"trc_templates/TrcVault/Database/config.yml.tmpl",      // implemented
-		"trc_templates/TrcVault/Identity/config.yml.tmpl",      // implemented
-	}
+	envConfig = tcutil.GetConfigPaths(envConfig)
 
 	flumen.ProcessFlows(envConfig, logger)
 

@@ -455,13 +455,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Invalid token - token: ", *tokenPtr)
 			os.Exit(1)
 		}
-		var slice = make([]string, 0) //Assign slice with the appriopiate slice
+		var subSectionSlice = make([]string, 0) //Assign slice with the appriopiate slice
 		if len(restrictedSlice) > 0 {
-			slice = restrictedSlice
+			subSectionSlice = restrictedSlice
 		} else if len(indexSlice) > 0 {
-			slice = indexSlice
+			subSectionSlice = indexSlice
 		}
-		il.SeedVault(*insecurePtr, *seedPtr, *addrPtr, v.GetToken(), *envPtr, slice, logger, *servicePtr, *uploadCertPtr)
+		il.SeedVault(*insecurePtr, *seedPtr, *addrPtr, v.GetToken(), *envPtr, subSectionSlice, logger, *servicePtr, *uploadCertPtr)
 	}
 
 	logger.SetPrefix("[INIT]")

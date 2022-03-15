@@ -9,11 +9,17 @@ import (
 	"tierceron/utils/mlock"
 
 	tclib "VaultConfig.TenantConfig/lib"
+	tcutil "VaultConfig.TenantConfig/util"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
 )
 
 func main() {
+	// mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
+	// if mLockErr != nil {
+	// 	fmt.Println(mLockErr)
+	// 	os.Exit(-1)
+	// }
 	eUtils.InitHeadless(true)
 	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcvault]", log.LstdFlags)
@@ -33,7 +39,7 @@ func main() {
 		os.Exit(-1)
 	}
 
-	if vaultHost == "https://vault.whoboot.org" {
+	if vaultHost == tcutil.GetLocalVaultAddr() {
 		logger.Println("Running in developer mode with self signed certs.")
 		args = append(args, "--tls-skip-verify=true")
 	} else {
@@ -49,26 +55,6 @@ func main() {
 
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
-
-	/*
-		signalChannel := make(chan os.Signal, 1)
-		signal.Notify(signalChannel,
-			syscall.SIGHUP,
-			syscall.SIGINT,
-			syscall.SIGTERM,
-			syscall.SIGQUIT)
-
-		go func() {
-			for {
-				select {
-				case s := <-signalChannel:
-					logger.Println("Got signal:", s)
-					logger.Println("Received shutdown presumably from vault.")
-					os.Exit(0)
-				}
-			}
-		}()
-	*/
 
 	err := plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: factory.TrcFactory,

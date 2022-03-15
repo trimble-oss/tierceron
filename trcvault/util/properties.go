@@ -17,34 +17,6 @@ type Properties struct {
 	cds          *utils.ConfigDataStore
 }
 
-/*
-//NewProperties stores all configuration properties for a project.
-func NewProperties(tokenNamePtr *string, authTokenNamePtr *string, appRoleIDPtr *string, secretIDPtr *string, addrPtr *string, env string, authenv string, project string, service string) (*Properties, error) {
-	properties := Properties{}
-	if len(*tokenNamePtr) > 0 {
-		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
-			eUtils.CheckError(fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
-		}
-		v, err := sys.NewVault(false, *addrPtr, env, false, false, false)
-		eUtils.CheckError(err, true)
-
-		mod, err := kv.NewModifier(false, token, *addrPtr, env, nil)
-		eUtils.CheckError(err, true)
-		mod.Env = "bamboo"
-
-		tokenHandle, err := mod.ReadValue("super-secrets/tokens", *authTokenNamePtr)
-		properties.mod, err = kv.NewModifier(false, tokenHandle, *addrPtr, env, nil)
-		eUtils.CheckError(err, true)
-		properties.mod.Env = env
-
-		properties.cds = new(utils.ConfigDataStore)
-		var commonPaths []string
-		properties.cds.Init(properties.mod, true, true, project, commonPaths, service)
-	}
-
-	return &properties, nil
-}
-*/
 func NewProperties(config *eUtils.DriverConfig, v *sys.Vault, mod *kv.Modifier, env string, project string, service string) (*Properties, error) {
 	properties := Properties{}
 	properties.mod = mod
