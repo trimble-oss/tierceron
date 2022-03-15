@@ -225,7 +225,7 @@ retryVaultAccess:
 	}
 
 	if err != nil {
-		if retryCount < 3 {
+		if retryCount < 7 {
 			retryCount = retryCount + 1
 			goto retryVaultAccess
 		}

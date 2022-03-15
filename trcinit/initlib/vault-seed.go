@@ -44,7 +44,7 @@ func SeedVault(insecure bool,
 	addr string,
 	token string,
 	env string,
-	slice []string,
+	subSectionSlice []string,
 	logger *log.Logger,
 	service string,
 	uploadCert bool) error {
@@ -157,9 +157,9 @@ func SeedVault(insecure bool,
 					}
 					// Iterate of projects...
 					for _, projectDirectory := range projectDirectories {
-						if len(slice) > 0 {
+						if len(subSectionSlice) > 0 {
 							acceptProject := false
-							for _, index := range slice {
+							for _, index := range subSectionSlice {
 								if index == projectDirectory.Name() {
 									acceptProject = true
 									break
@@ -527,7 +527,7 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 	// Update value metrics to reflect credential use
 	if root == "templates" {
 		//Printing out path of each entry so that users can verify that folder structure in seed files are correct
-		config.Log.Println("vault_" + path + ".<idkey>.*.tmpl")
+		config.Log.Println("trc_" + path + ".*.tmpl")
 		for _, v := range data {
 			if templateKey, ok := v.([]interface{}); ok {
 				metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
