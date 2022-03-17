@@ -28,6 +28,7 @@ Tierceron is a [encrypted configuration management system](https://en.wikipedia.
 ## Trusted Committers 💻
 - [Joel Rieke](mailto:joel_rieke@trimble.com)
 - [David Mkrtychyan](mailto:david_mkrtychyan@trimble.com)
+- [Karnveer Gill](mailto:karnveer_gill@trimble.com)
 
 ## Getting started 🚀
 If you are a contributor, please have a look on the [getting started](GETTING_STARTED.MD) file. Here you can check the information required and other things before providing a useful contribution.
