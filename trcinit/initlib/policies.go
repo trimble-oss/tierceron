@@ -2,23 +2,23 @@ package initlib
 
 import (
 	"io/ioutil"
-	"log"
 	"path/filepath"
 
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	sys "tierceron/vaulthelper/system"
 )
 
 //UploadPolicies accepts a file directory and vault object to upload policies to. Logs to pased logger
-func UploadPolicies(dir string, v *sys.Vault, noPermissions bool, logger *log.Logger) error {
-	logger.SetPrefix("[POLICY]")
-	logger.Printf("Writing policies from %s\n", dir)
+func UploadPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault, noPermissions bool) error {
+	config.Log.SetPrefix("[POLICY]")
+	config.Log.Printf("Writing policies from %s\n", dir)
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return err
 	}
 
-	utils.LogErrorObject(err, logger, true)
+	utils.LogErrorObject(config, err, true)
 	for _, file := range files {
 		// Extract and truncate file name
 		filename := file.Name()
@@ -26,13 +26,13 @@ func UploadPolicies(dir string, v *sys.Vault, noPermissions bool, logger *log.Lo
 		filename = filename[0 : len(filename)-len(ext)]
 
 		if ext == ".hcl" { // Write policy to vault
-			logger.Printf("\tFound policy file: %s\n", file.Name())
+			config.Log.Printf("\tFound policy file: %s\n", file.Name())
 			if noPermissions {
 				err = v.CreateEmptyPolicy(filename)
 			} else {
 				err = v.CreatePolicyFromFile(filename, dir+"/"+file.Name())
 			}
-			utils.LogErrorObject(err, logger, false)
+			utils.LogErrorObject(config, err, false)
 			if err != nil {
 				return err
 			}
@@ -42,9 +42,9 @@ func UploadPolicies(dir string, v *sys.Vault, noPermissions bool, logger *log.Lo
 }
 
 //GetExistsPolicies accepts a file directory and vault object to check policies for. Logs to pased logger
-func GetExistsPolicies(dir string, v *sys.Vault, logger *log.Logger) (bool, error) {
-	logger.SetPrefix("[POLICY]")
-	logger.Printf("Checking exists token policies from %s\n", dir)
+func GetExistsPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault) (bool, error) {
+	config.Log.SetPrefix("[POLICY]")
+	config.Log.Printf("Checking exists token policies from %s\n", dir)
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return false, nil
@@ -52,12 +52,12 @@ func GetExistsPolicies(dir string, v *sys.Vault, logger *log.Logger) (bool, erro
 
 	allExists := false
 
-	utils.LogErrorObject(err, logger, true)
+	utils.LogErrorObject(config, err, true)
 	for _, file := range files {
 		// Extract and truncate file name
-		logger.Printf("\tFound token policy file: %s\n", file.Name())
+		config.Log.Printf("\tFound token policy file: %s\n", file.Name())
 		exists, err := v.GetExistsPolicyFromFileName(file.Name())
-		utils.LogErrorObject(err, logger, false)
+		utils.LogErrorObject(config, err, false)
 		if err != nil {
 			return false, err
 		}

@@ -1,9 +1,8 @@
 package initlib
 
 import (
-	"log"
-
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	sys "tierceron/vaulthelper/system"
 )
 
@@ -17,14 +16,14 @@ var engines = [...]string{
 }
 
 //CreateEngines adds engines specified by the list 'engines'
-func CreateEngines(v *sys.Vault, logger *log.Logger) {
+func CreateEngines(config *eUtils.DriverConfig, v *sys.Vault) {
 	// Delete the kv path secreat first time (originally v1)
 	for _, eng := range engines {
 		err := v.CreateKVPath(eng, eng+" vault engine")
 		if err != nil {
-			utils.LogErrorObject(err, logger, false)
+			utils.LogErrorObject(config, err, false)
 			continue
 		}
-		logger.Printf("Created engine %s\n", eng)
+		config.Log.Printf("Created engine %s\n", eng)
 	}
 }
