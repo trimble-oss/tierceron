@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"tierceron/utils"
+	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
 	twp "tierceron/webapi/rpc/apinator"
 	"tierceron/webapi/server"
@@ -129,7 +129,7 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 		GQLReq.Header = r.Header
 		if err != nil {
 			s.Log.Println(err)
-			os.Exit(1)
+			return
 		}
 		GQLReq.Header["Content-Type"] = []string{"application/json"}
 		ctx := GQLReq.Context()
@@ -176,7 +176,6 @@ var prodEnvironments = []string{"staging", "prod"}
 var webAPIProdEnvironments = []string{"staging"}
 
 func main() {
-	mlock.Mlock()
 	fmt.Println("Version: " + "1.1")
 	addrPtr := flag.String("addr", configcore.VaultHostPort, "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
@@ -190,13 +189,15 @@ func main() {
 
 	s = server.NewServer(*addrPtr, *tokenPtr)
 	localHost = *localPtr
+	config := &eUtils.DriverConfig{ExitOnFailure: true}
 
 	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	utils.CheckError(err, true)
+	eUtils.CheckError(config, err, true)
 	s.Log.SetOutput(f)
+	mlock.Mlock(s.Log)
 
 	status, err := s.GetStatus(context.Background(), nil)
-	utils.LogErrorObject(err, s.Log, true)
+	eUtils.LogErrorObject(config, err, true)
 
 	if !status.Sealed && s.VaultToken != "" {
 		s.Log.Println("Vault is unsealed. Initializing GQL")

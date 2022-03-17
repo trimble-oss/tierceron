@@ -8,9 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
-
 	"tierceron/vaulthelper/kv"
+	"time"
 
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
@@ -30,15 +29,15 @@ type KeyTokenWrapper struct {
 }
 
 // NewVault Constructs a new vault at the given address with the given access token
-func NewVault(insecure bool, address string, env string, newVault bool, pingVault bool) (*Vault, error) {
-	httpClient, err := kv.CreateHTTPClient(insecure, address, env)
+func NewVault(insecure bool, address string, env string, newVault bool, pingVault bool, scanVault bool, logger *log.Logger) (*Vault, error) {
+	httpClient, err := kv.CreateHTTPClient(insecure, address, env, scanVault)
 	if err != nil {
-		fmt.Println("Connection to vault couldn't be made - vaultHost: " + address)
+		logger.Println("Connection to vault couldn't be made - vaultHost: " + address)
 		return nil, err
 	}
 	client, err := api.NewClient(&api.Config{Address: address, HttpClient: httpClient})
 	if err != nil {
-		fmt.Println("vaultHost: " + address)
+		logger.Println("vaultHost: " + address)
 		return nil, err
 	}
 
@@ -48,7 +47,7 @@ func NewVault(insecure bool, address string, env string, newVault bool, pingVaul
 	}
 
 	if pingVault {
-		fmt.Println("Ping success!")
+		logger.Println("Ping success!")
 		return nil, nil
 	}
 
@@ -271,7 +270,9 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 	// Remove for deployment
 	fmt.Println("Vault succesfully Init'd")
 	fmt.Println("=========================")
-	fmt.Printf("Unseal key: %s\n", response.KeysB64[0])
+	for _, key := range response.KeysB64 {
+		fmt.Printf("Unseal key: %s\n", key)
+	}
 	fmt.Printf("Root token: %s\n\n", response.RootToken)
 
 	keyToken := KeyTokenWrapper{
