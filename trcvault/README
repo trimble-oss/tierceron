@@ -1,0 +1,7 @@
+## Usage
+
+1. Start vault.
+2. Initialize vault with your dev token using trcpluginit.sh
+3. Build and deploy the initial plugin with buildit.sh
+4. Making changes you must run updateit.sh to deploy new versions of the plugin.
+

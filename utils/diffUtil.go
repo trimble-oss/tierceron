@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -29,7 +28,7 @@ func GetStringInBetween(str string, start string, end string) (result string) {
 	return str[s : s+e]
 }
 
-func LineByLineDiff(stringA *string, stringB *string) string {
+func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip bool) string {
 	//Colors used for output
 	var Reset = "\033[0m"
 	var Red = "\033[31m"
@@ -42,57 +41,68 @@ func LineByLineDiff(stringA *string, stringB *string) string {
 		Red = "\x1b[31m"
 		Green = "\x1b[32m"
 		Cyan = "\x1b[36m"
+	} else if colorSkip {
+		Reset = ""
+		Red = ""
+		Green = ""
+		Cyan = ""
 	}
 
 	dmp := diffmatchpatch.New()
-	var patchText string
 	var patchOutput string
-	//Patch Calculation - Catches patch slice out of bounds
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				patchText = ""
-			}
+	if patchData {
+		var patchText string
+		//Patch Calculation - Catches patch slice out of bounds
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					patchText = ""
+				}
+			}()
+			patches := dmp.PatchMake(*stringA, *stringB) //This throws out of index slice error rarely
+			patchText = dmp.PatchToText(patches)
 		}()
-		patches := dmp.PatchMake(*stringA, *stringB) //This throws out of index slice error rarely
-		patchText = dmp.PatchToText(patches)
-	}()
 
-	if patchText != "" {
-		//Converts escaped chars in patches
-		unescapedPatchText, err2 := url.PathUnescape(patchText)
-		if err2 != nil {
-			log.Fatalf("Unable to decode percent-encoding: %v", err2)
-		}
-
-		parsedPatchText := strings.Split(unescapedPatchText, "\n")
-
-		//Fixes char offset due to common preString
-		for i, string := range parsedPatchText {
-			if strings.Contains(string, "@@") {
-				charOffset := string[strings.Index(parsedPatchText[i], "-")+1 : strings.Index(parsedPatchText[i], ",")]
-				charOffsetInt, _ := strconv.Atoi(charOffset)
-				charOffsetInt = charOffsetInt - 2 + len(parsedPatchText[i+1])
-				parsedPatchText[i] = strings.Replace(string, charOffset, strconv.Itoa(charOffsetInt), 2)
+		if patchText != "" {
+			//Converts escaped chars in patches
+			unescapedPatchText, err2 := url.PathUnescape(patchText)
+			if err2 != nil {
+				log.Fatalf("Unable to decode percent-encoding: %v", err2)
 			}
-		}
 
-		//Grabs only patch data from PatchMake
-		onlyPatchedText := []string{}
-		for _, stringLine := range parsedPatchText {
-			if strings.Contains(stringLine, "@@") {
-				onlyPatchedText = append(onlyPatchedText, stringLine)
+			parsedPatchText := strings.Split(unescapedPatchText, "\n")
+
+			//Fixes char offset due to common preString
+			for i, string := range parsedPatchText {
+				if strings.Contains(string, "@@") {
+					charOffset := string[strings.Index(parsedPatchText[i], "-")+1 : strings.Index(parsedPatchText[i], ",")]
+					charOffsetInt, _ := strconv.Atoi(charOffset)
+					charOffsetInt = charOffsetInt - 2 + len(parsedPatchText[i+1])
+					parsedPatchText[i] = strings.Replace(string, charOffset, strconv.Itoa(charOffsetInt), 2)
+				}
 			}
-		}
 
-		//Patch Data Output
-		patchOutput = Cyan + strings.Join(onlyPatchedText, " ") + Reset + "\n"
-	} else {
-		patchOutput = Cyan + "@@ Patch Data Unavailable @@" + Reset + "\n"
+			//Grabs only patch data from PatchMake
+			onlyPatchedText := []string{}
+			for _, stringLine := range parsedPatchText {
+				if strings.Contains(stringLine, "@@") {
+					onlyPatchedText = append(onlyPatchedText, stringLine)
+				}
+			}
+
+			//Patch Data Output
+			patchOutput = Cyan + strings.Join(onlyPatchedText, " ") + Reset + "\n"
+		} else {
+			patchOutput = Cyan + "@@ Patch Data Unavailable @@" + Reset + "\n"
+		}
 	}
 
 	//Diff Calculation
 	timeOut := time.Date(9999, 1, 1, 12, 0, 0, 0, time.UTC)
+	if stringA == nil || stringB == nil {
+		fmt.Println("A null string was found while diffing")
+		return ""
+	}
 	diffs := dmp.DiffBisect(*stringA, *stringB, timeOut)
 	diffs = dmp.DiffCleanupSemantic(diffs)
 
@@ -190,13 +200,15 @@ func LineByLineDiff(stringA *string, stringB *string) string {
 	result = strings.ReplaceAll(result, "\n-", "\n"+Red+"-"+Reset)
 
 	//Diff vs no Diff output
-	if len(strings.TrimSpace(result)) == 0 {
+	if len(strings.TrimSpace(result)) == 0 && patchData {
 		if runtime.GOOS == "windows" {
 			return "@@ No Differences @@"
 		}
 		return Cyan + "@@ No Differences @@" + Reset
 	} else {
-		result = patchOutput + result
+		if patchOutput != "" {
+			result = patchOutput + result
+		}
 		result = strings.TrimSuffix(result, "\n")
 	}
 
@@ -210,7 +222,7 @@ func LineByLineDiff(stringA *string, stringB *string) string {
 	return result
 }
 
-func VersionHelper(versionData map[string]interface{}, templateOrValues bool, valuePath string) {
+func VersionHelper(versionData map[string]interface{}, templateOrValues bool, valuePath string, first bool) {
 	Reset := "\033[0m"
 	Cyan := "\033[36m"
 	Red := "\033[31m"
@@ -222,7 +234,7 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 
 	if versionData == nil {
 		fmt.Println("No version data found for this environment")
-		os.Exit(1)
+		return
 	}
 
 	//template == true
@@ -283,7 +295,15 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 		return
 
 	printOutput:
+		if len(valuePath) > 0 {
+			if first {
+				fmt.Println(Cyan + "======================================================================================" + Reset)
+			}
+			fmt.Println(valuePath)
+		}
+
 		fmt.Println(Cyan + "======================================================================================" + Reset)
+
 		keys := make([]int, 0, len(versionData))
 		for versionNumber := range versionData {
 			versionNo, _ := strconv.ParseInt(versionNumber, 10, 64)
@@ -330,6 +350,44 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 	fileIndex := 0
 	keys := []string{}
 	mutex.Lock()
+	if len(resultMap) == 0 {
+		fmt.Println("Couldn't find any data to diff")
+		return
+	}
+
+	var baseEnv []string
+	diffEnvFound := false
+	if len(envDiffSlice) > 0 {
+		baseEnv = SplitEnv(envDiffSlice[0])
+	}
+	//Sort Diff Slice if env are the same
+	for i, env := range envDiffSlice { //Arranges keys for ordered output
+		var base []string
+		base = SplitEnv(env)
+
+		if base[1] == "0" { //Special case for latest, so sort adds latest to the back of ordered slice
+			base[1] = "_999999"
+			envDiffSlice[i] = base[0] + base[1]
+		}
+
+		if len(base) > 0 && len(baseEnv) > 0 && baseEnv[0] != base[0] {
+			diffEnvFound = true
+		}
+	}
+
+	if !diffEnvFound {
+		sort.Strings(envDiffSlice)
+	}
+
+	for i, env := range envDiffSlice { //Changes latest back - special case
+		var base []string
+		base = SplitEnv(env)
+		if base[1] == "999999" {
+			base[1] = "_0"
+			envDiffSlice[i] = base[0] + base[1]
+		}
+	}
+
 	fileList := make([]string, len(resultMap)/envLength)
 	mutex.Unlock()
 
@@ -352,12 +410,13 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		}
 	} else {
 		for _, env := range envDiffSlice { //Arranges keys for ordered output
-			if strings.Contains(env, "_0") {
-				env = strings.Split(env, "_")[0]
-			}
 			keys = append(keys, env+"||"+env+"_seed.yml")
 		}
-		fileList[0] = "placeHolder"
+		if len(fileList) > 0 {
+			fileList[0] = "placeHolder"
+		} else {
+			fileList = append(fileList, "placeHolder")
+		}
 	}
 
 	//Diff resultMap using fileList
@@ -411,6 +470,16 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		if len(latestVersionBCheck) > 1 && latestVersionBCheck[1] == "0" {
 			keySplitB[0] = strings.ReplaceAll(keySplitB[0], "0", "latest")
 		}
+
+		if strings.Count(keySplitA[1], "_") == 2 {
+			fileSplit := strings.Split(keySplitA[1], "_")
+			keySplitA[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
+		}
+
+		if strings.Count(keySplitB[1], "_") == 2 {
+			fileSplit := strings.Split(keySplitB[1], "_")
+			keySplitB[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
+		}
 		switch envLength {
 		case 4:
 			keyC := keys[2]
@@ -431,18 +500,28 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 				keySplitD[0] = strings.ReplaceAll(keySplitD[0], "0", "latest")
 			}
 
+			if strings.Count(keySplitC[1], "_") == 2 {
+				fileSplit := strings.Split(keySplitC[1], "_")
+				keySplitC[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
+			}
+
+			if strings.Count(keySplitD[1], "_") == 2 {
+				fileSplit := strings.Split(keySplitD[1], "_")
+				keySplitD[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
+			}
+
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA))
+			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyA))
+			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyA, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitD[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyA))
+			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyA, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitB[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyB))
+			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyB, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitB[0] + Reset + Green + " +Env-" + keySplitD[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyB))
+			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyB, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitC[0] + Reset + Green + " +Env-" + keySplitD[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyC))
+			fmt.Println(LineByLineDiff(envFileKeyD, envFileKeyC, true, false))
 		case 3:
 			keyC := keys[2]
 			keySplitC := strings.Split(keyC, "||")
@@ -455,15 +534,20 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 				keySplitC[0] = strings.ReplaceAll(keySplitC[0], "0", "latest")
 			}
 
+			if strings.Count(keySplitC[1], "_") == 2 {
+				fileSplit := strings.Split(keySplitC[1], "_")
+				keySplitC[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
+			}
+
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA))
+			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyA))
+			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyA, true, false))
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitB[0] + Reset + Green + " +Env-" + keySplitC[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyB))
+			fmt.Println(LineByLineDiff(envFileKeyC, envFileKeyB, true, false))
 		default:
 			fmt.Print("\n" + Yellow + keySplitA[1] + " (" + Reset + Red + "-Env-" + keySplitA[0] + Reset + Green + " +Env-" + keySplitB[0] + Reset + Yellow + ")" + Reset + "\n")
-			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA))
+			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true, false))
 		}
 
 		//Seperator

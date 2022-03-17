@@ -3,9 +3,9 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 )
 
@@ -15,16 +15,35 @@ type ConfigDataStore struct {
 	Regions []string
 }
 
-func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool, project string, servicesWanted ...string) {
+func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
+	mod *kv.Modifier,
+	secretMode bool,
+	useDirs bool,
+	project string,
+	commonPaths []string,
+	servicesWanted ...string) error {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
-	//get paths where the data is stored
-	dataPathsFull, err := getPathsFromProject(mod, project)
 
-	if err != nil {
-		fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
-		os.Exit(1)
+	var dataPathsFull []string
+
+	if project == "Common" && commonPaths != nil && len(commonPaths) > 0 {
+		dataPathsFull = commonPaths
+	} else {
+		//get paths where the data is stored
+		dp, err := GetPathsFromProject(config, mod, project)
+		if len(dp) > 1 && strings.Contains(dp[len(dp)-1], "!=!") {
+			mod.VersionFilter = append(mod.VersionFilter, strings.Split(dp[len(dp)-1], "!=!")[0])
+			dp = dp[:len(dp)-1]
+		}
+
+		if err != nil {
+			eUtils.LogInfo(config, fmt.Sprintf("Uninitialized environment.  Please initialize environment. %v\n", err))
+			return err
+		}
+		dataPathsFull = dp
 	}
+
 	dataPaths := []string{}
 	for _, fullPath := range dataPathsFull {
 		if strings.HasSuffix(fullPath, "/") {
@@ -34,7 +53,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 		}
 	}
 	if len(dataPaths) < len(dataPathsFull)/3 && len(dataPaths) != len(dataPathsFull) {
-		fmt.Println("Unexpected vault pathing.  Dropping optimization.")
+		eUtils.LogInfo(config, "Unexpected vault pathing.  Dropping optimization.")
 		dataPaths = dataPathsFull
 	}
 
@@ -47,7 +66,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
 			splitService := strings.Split(servicesWanted[i], ".")
-			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2]) {
+			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2] || (len(pathParts) >= 4 && pathParts[3] == servicesWanted[i])) {
 				foundWantedService = true
 				break
 			}
@@ -58,7 +77,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 
 		secrets, err := mod.ReadData(path)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		//get the keys and values in secrets
@@ -178,7 +197,7 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 			for i, valueMap := range valueMaps {
 				//these should be [path, key] maps
 				if len(valueMap) != 2 {
-					panic(errors.New("value path is not the correct length"))
+					return errors.New("value path is not the correct length")
 				} else {
 					//first element is the path
 					bucket := valueMap[0]
@@ -222,17 +241,20 @@ func (cds *ConfigDataStore) Init(mod *kv.Modifier, secretMode bool, useDirs bool
 		}
 
 	}
+	return nil
 }
 
-func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode bool, useDirs bool, project string, file string, servicesWanted ...string) map[string]interface{} {
+func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig, mod *kv.Modifier, useDirs bool, project string, file string, servicesWanted ...string) (map[string]interface{}, error) {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
-	dataPathsFull, err := getPathsFromProject(mod, project)
+	dataPathsFull, err := GetPathsFromProject(config, mod, project)
+	if len(dataPathsFull) > 0 && strings.Contains(dataPathsFull[len(dataPathsFull)-1], "!=!") {
+		dataPathsFull = dataPathsFull[:len(dataPathsFull)-1]
+	}
 
 	if err != nil {
-		fmt.Printf("Uninitialized environment.  Please initialize environment. %v\n", err)
-		os.Exit(1)
+		return nil, eUtils.LogAndSafeExit(config, fmt.Sprintf("Uninitialized environment.  Please initialize environment. %v\n", err), 1)
 	}
 
 	dataPaths := dataPathsFull
@@ -245,7 +267,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
 			splitService := strings.Split(servicesWanted[i], ".")
-			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2]) {
+			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2] || (len(pathParts) >= 4 && pathParts[3] == servicesWanted[i])) {
 				foundWantedService = true
 				break
 			}
@@ -260,14 +282,14 @@ func (cds *ConfigDataStore) InitTemplateVersionData(mod *kv.Modifier, secretMode
 			deeperData, _ = mod.ReadTemplateVersions(path + "template-file")
 		}
 		if err != nil || deeperData == nil && data == nil {
-			fmt.Printf("Couldn't read version data for %s\n", path)
+			eUtils.LogInfo(config, fmt.Sprintf("Couldn't read version data for %s\n", path))
 		}
 	}
 
 	if deeperData != nil && data == nil {
-		return deeperData
+		return deeperData, nil
 	} else {
-		return data
+		return data, nil
 	}
 }
 
@@ -355,7 +377,7 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 	return "", false
 }
 
-func getPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error) {
+func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects ...string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
 	var err error
@@ -363,7 +385,7 @@ func getPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error)
 		mod.SecretDictionary, err = mod.List("templates")
 	}
 	secrets := mod.SecretDictionary
-
+	var innerService string
 	if err != nil {
 		return nil, err
 	} else if secrets != nil {
@@ -374,34 +396,78 @@ func getPathsFromProject(mod *kv.Modifier, projects ...string) ([]string, error)
 			for _, project := range projects {
 				project = project + "/"
 				projectAvailable := false
-				for _, availProject := range availProjects {
+				for _, availProject := range availProjects { //Look for project in top path
+					if projectAvailable {
+						break
+					}
 					if project == availProject.(string) {
 						projectsUsed = append(projectsUsed, availProject)
 						projectAvailable = true
 					}
 				}
+
+				if !projectAvailable { //If project not found, search one path deeper
+					for _, availProject := range availProjects {
+						innerPathList, err := mod.List("templates/" + availProject.(string)) //Looks for services one path deeper
+						if err != nil {
+							eUtils.LogInfo(config, "Unable to read into nested template path: "+err.Error())
+						}
+						if innerPathList == nil || availProject.(string) == "Common/" {
+							continue
+						}
+						innerPaths := innerPathList.Data["keys"].([]interface{})
+						for _, innerPath := range innerPaths {
+							if projectAvailable {
+								break
+							}
+							if project == innerPath.(string) {
+								innerPath = availProject.(string) + innerPath.(string)
+								innerService = "!=!" + innerPath.(string) //Pass project back somehow?
+								projectsUsed = append(projectsUsed, innerPath)
+								projectAvailable = true
+							}
+						}
+					}
+				}
 				if !projectAvailable {
-					fmt.Println(project + " is not an available project. No values found.")
+					if !projectAvailable {
+						if len(projects) > 1 || project != "Common/" {
+							eUtils.LogInfo(config, project+" is not an available project. No values found.")
+						}
+					}
 				}
 			}
 			availProjects = projectsUsed
 		}
+		var pathErr error
 		for _, project := range availProjects {
 			path := "templates/" + project.(interface{}).(string)
-			paths = getPaths(mod, path, paths)
+			paths, pathErr = getPaths(mod, path, paths)
 			//don't add on to paths until you're sure it's an END path
+			if pathErr != nil {
+				return nil, pathErr
+			}
 		}
 
+		if strings.HasPrefix(innerService, "!=!") {
+			paths = append(paths, innerService)
+		}
 		//paths = getPaths(mod, availProjects, paths)
+		if paths == nil {
+			return nil, errors.New("no available projects found")
+		}
 		return paths, err
 	} else {
 		return nil, errors.New("no paths found from templates engine")
 	}
 }
-func getPaths(mod *kv.Modifier, pathName string, pathList []string) []string {
+func getPaths(mod *kv.Modifier, pathName string, pathList []string) ([]string, error) {
 	secrets, err := mod.List(pathName)
 	if err != nil {
-		panic(err)
+		secrets, err = mod.List(pathName + "template-file")
+		if err != nil {
+			return nil, err
+		}
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
@@ -416,10 +482,10 @@ func getPaths(mod *kv.Modifier, pathName string, pathList []string) []string {
 				//don't add on to paths until you're sure it's an END path
 				pathList = append(pathList, path)
 			} else {
-				pathList = getPaths(mod, path, pathList)
+				pathList, err = getPaths(mod, path, pathList)
 			}
 		}
-		return pathList
+		return pathList, err
 	}
-	return pathList
+	return pathList, err
 }

@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	pb "tierceron/webapi/rpc/apinator"
 
 	configcore "VaultConfig.Bootstrap/configcore"
 )
 
 // ProxyLogin proxy logs in the user.
-func ProxyLogin(authHost string, req *pb.LoginReq, log *log.Logger) (string, string, *pb.LoginResp, error) {
+func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) (string, string, *pb.LoginResp, error) {
 	credentials := bytes.NewBuffer([]byte{})
 
 	err := json.NewEncoder(credentials).Encode(map[string]string{
@@ -24,7 +24,7 @@ func ProxyLogin(authHost string, req *pb.LoginReq, log *log.Logger) (string, str
 	})
 
 	if err != nil {
-		utils.LogErrorObject(err, log, false)
+		utils.LogErrorObject(config, err, false)
 		return "", "", nil, err
 	}
 
@@ -32,7 +32,7 @@ func ProxyLogin(authHost string, req *pb.LoginReq, log *log.Logger) (string, str
 	res, err := client.Post(authHost, "application/json", credentials)
 
 	if err != nil {
-		utils.LogErrorObject(err, log, false)
+		utils.LogErrorObject(config, err, false)
 		return "", "", nil, err
 	}
 
@@ -45,13 +45,13 @@ func ProxyLogin(authHost string, req *pb.LoginReq, log *log.Logger) (string, str
 		var response map[string]interface{}
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			utils.LogErrorObject(err, log, false)
+			utils.LogErrorObject(config, err, false)
 			return "", "", nil, err
 		}
 
 		err = json.Unmarshal([]byte(bodyBytes), &response)
 		if err != nil {
-			utils.LogErrorObject(err, log, false)
+			utils.LogErrorObject(config, err, false)
 			return "", "", nil, err
 		}
 
@@ -64,10 +64,10 @@ func ProxyLogin(authHost string, req *pb.LoginReq, log *log.Logger) (string, str
 				}, nil
 			}
 			err = fmt.Errorf("Unable to parse userCodeField in auth response")
-			utils.LogErrorObject(err, log, false)
+			utils.LogErrorObject(config, err, false)
 		} else {
 			err = fmt.Errorf("Unable to parse userNameField in auth response")
-			utils.LogErrorObject(err, log, false)
+			utils.LogErrorObject(config, err, false)
 		}
 
 		return "", "", &pb.LoginResp{
@@ -76,7 +76,7 @@ func ProxyLogin(authHost string, req *pb.LoginReq, log *log.Logger) (string, str
 		}, err
 	}
 	err = fmt.Errorf("Unexpected response code from auth endpoint: %d", res.StatusCode)
-	utils.LogErrorObject(err, log, false)
+	utils.LogErrorObject(config, err, false)
 	return "", "", &pb.LoginResp{
 		Success:   false,
 		AuthToken: "",

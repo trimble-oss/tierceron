@@ -60,16 +60,14 @@ func UploadTemplates(mod *kv.Modifier, dirName string, logger *log.Logger) (erro
 		name = name[0 : len(name)-len(ext)] // Truncate extension
 
 		if ext == ".tmpl" { // Only upload template files
-			fmt.Printf("Found template file %s\n", file.Name())
-			logger.Println("Found template file %s\n", file.Name())
+			fmt.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
+			logger.Println(fmt.Sprintf("Found template file %s for %s", file.Name(), mod.Env))
 
 			// Seperate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
 			name = name[0 : len(name)-len(ext)]
-			logger.Println("dirName")
-			logger.Println(dirName)
-			logger.Println("file name")
-			logger.Println(file.Name())
+			logger.Printf("dirName: %s\n", dirName)
+			logger.Printf("file name: %s\n", file.Name())
 			// Extract values
 			extractedValues, err := utils.Parse(dirName+"/"+file.Name(), subDir, name)
 			if err != nil {
@@ -91,11 +89,11 @@ func UploadTemplates(mod *kv.Modifier, dirName string, logger *log.Logger) (erro
 
 			// Construct template path for vault
 			templatePath := "templates/" + subDir + "/" + name + "/template-file"
-			logger.Println("\tUploading template to path:\t%s\n", templatePath)
+			logger.Printf("\tUploading template to path:\t%s\n", templatePath)
 
 			// Construct value path for vault
 			valuePath := "values/" + subDir + "/" + name
-			logger.Println("\tUploading values to path:\t%s\n", valuePath)
+			logger.Printf("\tUploading values to path:\t%s\n", valuePath)
 
 			// Write templates to vault and output errors/warnings
 			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext})
@@ -108,6 +106,8 @@ func UploadTemplates(mod *kv.Modifier, dirName string, logger *log.Logger) (erro
 			if err != nil || len(warn) > 0 {
 				return err, warn
 			}
+		} else {
+			logger.Printf("\tSkippping template (templates must end in .tmpl):\t%s\n", file.Name())
 		}
 	}
 	return nil, nil

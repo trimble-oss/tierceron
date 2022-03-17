@@ -3,9 +3,9 @@ package initlib
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"tierceron/utils"
+	eUtils "tierceron/utils"
 	"tierceron/validator"
 	"tierceron/vaulthelper/kv"
 )
@@ -22,10 +22,10 @@ import (
 // KeyStore:
 // 	type: KeyStore
 
-func verify(mod *kv.Modifier, v map[interface{}]interface{}, logger *log.Logger) ([]string, error) {
+func verify(config *eUtils.DriverConfig, mod *kv.Modifier, v map[interface{}]interface{}) ([]string, error) {
 	var isValid bool
 	var path string
-	logger.SetPrefix("[VERIFY]")
+	config.Log.SetPrefix("[VERIFY]")
 
 	for service, info := range v {
 		vType := info.(map[interface{}]interface{})["type"].(string)
@@ -33,27 +33,27 @@ func verify(mod *kv.Modifier, v map[interface{}]interface{}, logger *log.Logger)
 		if err != nil {
 			return nil, err
 		}
-		logger.Printf("Verifying %s as type %s\n", service, vType)
+		config.Log.Printf("Verifying %s as type %s\n", service, vType)
 		switch vType {
 		case "db":
 			if url, ok := serviceData["url"].(string); ok {
 				if user, ok := serviceData["user"].(string); ok {
 					if pass, ok := serviceData["pass"].(string); ok {
-						isValid, err = validator.Heartbeat(url, user, pass)
-						utils.LogErrorObject(err, logger, false)
+						isValid, err = validator.Heartbeat(config, url, user, pass)
+						utils.LogErrorObject(config, err, false)
 					} else {
-						utils.LogErrorObject(fmt.Errorf("Password field is not a string value"), logger, false)
+						utils.LogErrorObject(config, fmt.Errorf("Password field is not a string value"), false)
 					}
 				} else {
-					utils.LogErrorObject(fmt.Errorf("Username field is not a string value"), logger, false)
+					utils.LogErrorObject(config, fmt.Errorf("Username field is not a string value"), false)
 				}
 			} else {
-				utils.LogErrorObject(fmt.Errorf("URL field is not a string value"), logger, false)
+				utils.LogErrorObject(config, fmt.Errorf("URL field is not a string value"), false)
 			}
 		case "SendGridKey":
 			if key, ok := serviceData["SendGridApiKey"].(string); ok {
 				isValid, err = validator.ValidateSendGrid(key)
-				utils.LogErrorObject(err, logger, false)
+				utils.LogErrorObject(config, err, false)
 			}
 		case "KeyStore":
 			// path := serviceData["path"].(string)
@@ -64,7 +64,7 @@ func verify(mod *kv.Modifier, v map[interface{}]interface{}, logger *log.Logger)
 		}
 
 		// Log verification status and write to vault
-		logger.Printf("\tverified: %v\n", isValid)
+		config.Log.Printf("\tverified: %v\n", isValid)
 		path = "verification/" + service.(string)
 		warn, err := mod.Write(path, map[string]interface{}{
 			"type":     vType,
