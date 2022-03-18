@@ -14,7 +14,7 @@ import (
 	"tierceron/webapi/server"
 
 	configcore "VaultConfig.Bootstrap/configcore"
-	jwt "github.com/dgrijalva/jwt-go"
+	jwt "github.com/golang-jwt/jwt"
 	rtr "github.com/julienschmidt/httprouter"
 	"github.com/rs/cors"
 )
