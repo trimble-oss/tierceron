@@ -15,6 +15,16 @@ resources:
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.Bootstrap
     ref: develop
+  - repository: VaultConfig.Test
+    type: git
+    endpoint: AzureBuilderConnection
+    name: Spectrum/_git/VaultConfig.Test
+    ref: develop
+  - repository: VaultConfig.TenantConfig
+    type: git
+    endpoint: AzureBuilderConnection
+    name: Spectrum/_git/VaultConfig.TenantConfig
+    ref: develop
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
@@ -33,6 +43,8 @@ steps:
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
 - checkout: VaultConfig.Bootstrap
+- checkout: VaultConfig.TenantConfig
+- checkout: VaultConfig.Test
 - checkout: self
 - script: |
     go version
