@@ -6,7 +6,6 @@ require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
 	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000
 	github.com/denisenkom/go-mssqldb v0.12.0
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dolthub/go-mysql-server v0.11.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/protobuf v1.5.2
@@ -27,7 +26,10 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require VaultConfig.Test v0.0.0-00010101000000-000000000000
+require (
+	VaultConfig.Test v0.0.0-00010101000000-000000000000
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+)
 
 require (
 	github.com/armon/go-radix v1.0.0 // indirect
@@ -77,14 +79,11 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/src-d/go-oniguruma v1.1.0 // indirect
-	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
-	golang.org/x/tools v0.1.9 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20210506142907-4a47615972c2 // indirect
 	google.golang.org/grpc v1.41.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
@@ -92,10 +91,8 @@ require (
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
 
-replace VaultConfig.Bootstrap => ../../Azure/VaultConfig.Bootstrap
+replace VaultConfig.Bootstrap => ../VaultConfig.Bootstrap
 
-replace VaultConfig.TenantConfig => ../../Azure/VaultConfig.TenantConfig
+replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 
-replace VaultConfig.Test => ../../Azure/VaultConfig.Test
-
-replace github.com/dolthub/go-mysql-server => ../../Github/go-mysql-server
+replace VaultConfig.Test => ../VaultConfig.Test
