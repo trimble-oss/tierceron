@@ -57,7 +57,7 @@ steps:
     go mod tidy -compat=1.17
     echo "Compile start"
 
-    for p in trcconfig trcpub trcinit trcinitp trcx trcxp; do
+    for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/$p ]] ; then
@@ -75,6 +75,12 @@ steps:
           exit 1
       fi
     done
+
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags testflow -o tierceron/trc-vault-plugin tierceron/trcvault
+    if [[ ! -f tierceron/trc-vault-plugin]] ; then
+        echo File trc vault plugin was not built, aborting.
+        exit 1
+    fi
 
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' tierceron/webapi/apiRouter
     if [[ ! -f $GOBIN/apiRouter ]] ; then
