@@ -51,7 +51,7 @@ steps:
     pwd
     echo $GOBIN
     echo "Mod tidy"
-    go mod tidy -compat=1.17
+    go mod tidy 
     echo "Compile start"
 
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp; do
