@@ -64,16 +64,6 @@ steps:
           echo File $p was not built, aborting.
           exit 1
       fi
-      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
-      if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
-          echo File $p.exe was not built, aborting.
-          exit 1
-      fi
-      GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
-      if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
-          echo File $p was not built, aborting.
-          exit 1
-      fi
     done
 
 
@@ -102,9 +92,6 @@ steps:
     cp $GOBIN/trc* $(Build.ArtifactStagingDirectory)
     cp $GOBIN/apiRouter $(Build.ArtifactStagingDirectory)
     cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/trcconfig.mac
-    cp $GOBIN/darwin_amd64/trcinit $(Build.ArtifactStagingDirectory)/trcinit.mac
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
