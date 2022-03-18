@@ -96,3 +96,5 @@ replace VaultConfig.Bootstrap => ../VaultConfig.Bootstrap
 replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 
 replace VaultConfig.Test => ../VaultConfig.Test
+
+// replace github.com/dolthub/go-mysql-server => ../../Github/go-mysql-server
