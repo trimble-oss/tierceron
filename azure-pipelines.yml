@@ -50,10 +50,8 @@ steps:
     go version
     pwd
     echo $GOBIN
-    echo "Mod init"
-    go mod init
-    echo "Mod download"
-    go mod download
+    echo "Mod tidy"
+    go mod tidy -compat=1.17
     echo "Compile start"
 
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp; do
