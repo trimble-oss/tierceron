@@ -32,6 +32,9 @@ variables:
   modulePath: 'tierceron' # Path to the module's code
 
 steps:
+- task: GoTool@0
+  inputs:
+    version: '1.17.8'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -51,7 +54,7 @@ steps:
     pwd
     echo $GOBIN
     echo "Mod tidy"
-    go mod tidy 
+    go mod tidy -compat=1.17
     echo "Compile start"
 
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp; do
