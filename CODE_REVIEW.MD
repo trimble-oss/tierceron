@@ -1,7 +1,7 @@
 ﻿
 ## Code Review 📝
 
-### Guidelines ✍ 
+### Guidelines ✍
 Code review is required to get a second opinion on the chosen solution and
 implementation, having an extra pair of eyes looking for bugs, logic problems, or
 uncovered edge cases and also to ensure that the code is properly constructed.
