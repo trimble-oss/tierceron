@@ -59,7 +59,7 @@ steps:
 
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
-      GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
+      GOOS=linux GOARCH=amd64 go install tierceron/$p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
@@ -68,21 +68,21 @@ steps:
 
 
     echo Compiling trc-vault-plugin
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags testflow -o $GOBIN/trc-vault-plugin tierceron/trcvault
+    GOOS=linux GOARCH=amd64 go build -tags testflow -o $GOBIN/trc-vault-plugin tierceron/trcvault
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo Compiling api
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' tierceron/webapi/apiRouter
+    GOOS=linux GOARCH=amd64 go install tierceron/webapi/apiRouter
     if [[ ! -f $GOBIN/apiRouter ]] ; then
         echo File apiRouter was not built, aborting.
         exit 1
     fi
 
     echo Compiling conflib
-    GOBIN= GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' tierceron/configlib
+    GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -o $GOBIN/nc.so tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
