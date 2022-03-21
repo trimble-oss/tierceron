@@ -11,6 +11,7 @@ import (
 	eUtils "tierceron/utils"
 
 	vcutils "tierceron/trcconfig/utils"
+	vController "tierceron/trcvault/controller"
 	"tierceron/vaulthelper/kv"
 )
 
@@ -60,7 +61,7 @@ func ToSeed(config *utils.DriverConfig, mod *kv.Modifier,
 			templatePathExtended = templatePath
 			serviceRaw = ""
 		} else {
-			templatePathExtended = strings.Replace(templatePath, "trc_templates/", "/", 1)
+			templatePathExtended = strings.Replace(templatePath, vController.GetFolderPrefix()+"_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
 		templateFile, _ := vcutils.ConfigTemplateRaw(config, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, config.ExitOnFailure)
@@ -133,7 +134,7 @@ func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int
 
 	// Find the index in the slice of the vault_template subdirectory
 	for i, folder := range templatePathSlice {
-		if folder == "trc_templates" {
+		if folder == vController.GetFolderPrefix()+"_templates" {
 			templateDir = i
 			templatePathSlice[i] = "templates"
 		}
