@@ -1,7 +1,7 @@
 //go:build trcname
 // +build trcname
 
-package util
+package controller
 
 import (
 	tvUtils "VaultConfig.TenantConfig/util/buildtrcprefix"
