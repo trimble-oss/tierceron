@@ -14,6 +14,8 @@ import (
 	"tierceron/trcconfig/utils"
 	eUtils "tierceron/utils"
 
+	vController "tierceron/trcvault/controller"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -77,7 +79,7 @@ func main() {
 	fmt.Println("Version: " + "1.23")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
-	startDirPtr := flag.String("startDir", "trc_templates", "Template directory")
+	startDirPtr := flag.String("startDir", vController.GetFolderPrefix()+"_templates", "Template directory")
 	endDirPtr := flag.String("endDir", ".", "Directory to put configured templates into")
 	envPtr := flag.String("env", "dev", "Environment to configure")
 	regionPtr := flag.String("region", "", "Region to configure")
@@ -85,9 +87,9 @@ func main() {
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcconfig to access the vault")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this"+vController.GetFolderPrefix()+"config to access the vault")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
-	logFilePtr := flag.String("log", "./trcconfig.log", "Output path for log file")
+	logFilePtr := flag.String("log", "./"+vController.GetFolderPrefix()+"config.log", "Output path for log file")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	zcPtr := flag.Bool("zc", false, "Zero config (no configuration option).")
 	diffPtr := flag.Bool("diff", false, "Diff files")
@@ -124,7 +126,7 @@ func main() {
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	config := eUtils.DriverConfig{ExitOnFailure: true}
 	eUtils.CheckError(&config, err, true)
-	logger := log.New(f, "[trcconfig]", log.LstdFlags)
+	logger := log.New(f, "["+vController.GetFolderPrefix()+"config]", log.LstdFlags)
 
 	//Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
