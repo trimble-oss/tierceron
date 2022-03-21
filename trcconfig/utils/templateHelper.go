@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/template"
 
+	vController "tierceron/trcvault/controller"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
@@ -24,7 +25,7 @@ func GetProjectService(templateFile string) (string, string, string) {
 	offsetBase := 0
 
 	for i, component := range splitDir {
-		if component == "trc_templates" {
+		if component == vController.GetFolderPrefix()+"_templates" {
 			offsetBase = i
 			break
 		}
@@ -146,7 +147,7 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 	extra := ""
 	// Please rework... Urg...
 	for i, component := range s {
-		if component == "trc_templates" {
+		if component == vController.GetFolderPrefix()+"_templates" {
 			extra = ""
 			continue
 		}
