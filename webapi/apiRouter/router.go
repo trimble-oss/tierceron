@@ -13,8 +13,10 @@ import (
 	twp "tierceron/webapi/rpc/apinator"
 	"tierceron/webapi/server"
 
+	vController "tierceron/trcvault/controller"
+
 	configcore "VaultConfig.Bootstrap/configcore"
-	jwt "github.com/golang-jwt/jwt"
+	jwt "github.com/dgrijalva/jwt-go"
 	rtr "github.com/julienschmidt/httprouter"
 	"github.com/rs/cors"
 )
@@ -179,7 +181,7 @@ func main() {
 	fmt.Println("Version: " + "1.1")
 	addrPtr := flag.String("addr", configcore.VaultHostPort, "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
-	logPathPtr := flag.String("log", "/etc/opt/trcAPI/server.log", "Log file path for this server")
+	logPathPtr := flag.String("log", "/etc/opt/"+vController.GetFolderPrefix()+"API/server.log", "Log file path for this server")
 	tlsPathPtr := flag.String("tlsPath", "../vault/certs", "Path to server certificate and private key")
 	authPtr := flag.Bool("auth", true, "Run with auth enabled?")
 	localPtr := flag.Bool("local", false, "Run locally")

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	il "tierceron/trcinit/initlib"
+	vController "tierceron/trcvault/controller"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
@@ -24,22 +25,22 @@ import (
 
 func main() {
 	fmt.Println("Version: " + "1.3")
-	dirPtr := flag.String("dir", "trc_templates", "Directory containing template files for vault")
+	dirPtr := flag.String("dir", vController.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
 	envPtr := flag.String("env", "dev", "Environement in vault")
 	addrPtr := flag.String("addr", configcore.VaultHostPort, "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this trcpub to access the vault")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+vController.GetFolderPrefix()+"pub to access the vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./trcpub.log", "Output path for log files")
+	logFilePtr := flag.String("log", "./"+vController.GetFolderPrefix()+"pub.log", "Output path for log files")
 
 	flag.Parse()
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/trcpub.log" {
-		*logFilePtr = "./trcpub.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+vController.GetFolderPrefix()+"pub.log" {
+		*logFilePtr = "./" + vController.GetFolderPrefix() + "pub.log"
 	}
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
