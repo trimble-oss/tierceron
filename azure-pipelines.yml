@@ -136,6 +136,16 @@ steps:
     tags: |
       $(Build.SourceVersion)
 
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trc-vault-plugin
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcvaultplugin/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
 - task: ECRPushImage@1
   inputs:
     awsCredentials: 'Seattle AWS Development'
@@ -172,4 +182,23 @@ steps:
     sourceImageName: 'trcpub'
     sourceImageTag: '$(Build.SourceVersion)'
     repositoryName: 'trcpub'
+    pushTag: 'latest'
+
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'trc-vault-plugin'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'trc-vault-plugin'
+    pushTag: '$(Build.SourceVersion)'
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'trc-vault-plugin'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'trc-vault-plugin'
     pushTag: 'latest'
