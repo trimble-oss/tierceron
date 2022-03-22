@@ -36,7 +36,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.17.8'
+    version: '1.18'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -55,8 +55,8 @@ steps:
     go version
     pwd
     echo $GOBIN
-    echo "Mod tidy"
-    go mod tidy -compat=1.17
+    echo "Mod download"
+    go mod download
     echo "Compile start"
 
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
