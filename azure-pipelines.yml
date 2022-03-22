@@ -4,7 +4,9 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/go
 
 trigger:
-- main
+  branches:
+    include:
+    - main
 
 pool:
   vmImage: 'ubuntu-latest'
