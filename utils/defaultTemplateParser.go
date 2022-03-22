@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	vController "tierceron/trcvault/controller"
 )
 
 // {{or .<key> "<value>"}}
@@ -58,7 +59,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 	startDirs := []string{}
 
 	// Satisfy needs of templating tool with path cleanup.
-	if config.StartDir[0] == "trc_templates" {
+	if config.StartDir[0] == vController.GetFolderPrefix()+"_templates" {
 		// Set up for single service configuration when available.
 		// This is the most common use of the tool.
 		pwd, err := os.Getwd()

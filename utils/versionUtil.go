@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	vController "tierceron/trcvault/controller"
 	"tierceron/vaulthelper/kv"
 )
 
@@ -143,7 +144,7 @@ func GetProjectService(templateFile string) (string, string, string) {
 	offsetBase := 0
 
 	for i, component := range splitDir {
-		if component == "trc_templates" {
+		if component == vController.GetFolderPrefix()+"_templates" {
 			offsetBase = i
 			break
 		}

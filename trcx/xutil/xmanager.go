@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	vcutils "tierceron/trcconfig/utils"
+	vController "tierceron/trcvault/controller"
 	"tierceron/trcx/extract"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
@@ -494,7 +495,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	}
 
 	if len(tempTemplatePaths) == 0 {
-		eUtils.LogErrorMessage(config, "No files found in trc_templates", true)
+		eUtils.LogErrorMessage(config, "No files found in "+vController.GetFolderPrefix()+"_templates", true)
 	}
 
 	//Duplicate path remover
