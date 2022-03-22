@@ -43,7 +43,7 @@ func Init(l *log.Logger) {
 			case tokenEnvMap := <-tokenEnvChan:
 
 				logger.Println("Config engine init begun: " + tokenEnvMap["env"].(string))
-				pecError := ProcessEnvConfig(tokenEnvMap)
+				pecError := ProcessPluginEnvConfig(tokenEnvMap)
 
 				if pecError != nil {
 					logger.Println("Bad configuration data for env: " + tokenEnvMap["env"].(string) + " error: " + pecError.Error())
@@ -128,14 +128,14 @@ func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
 	return nil
 }
 
-func ProcessEnvConfig(envConfig map[string]interface{}) error {
-	env, eOk := envConfig["env"]
+func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) error {
+	env, eOk := pluginEnvConfig["env"]
 	if !eOk || env.(string) == "" {
 		logger.Println("Bad configuration data.  Missing env.")
 		return errors.New("missing token")
 	}
 
-	token, rOk := envConfig["token"]
+	token, rOk := pluginEnvConfig["token"]
 	if !rOk || token.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing token.")
 		return errors.New("missing token")
@@ -147,9 +147,9 @@ func ProcessEnvConfig(envConfig map[string]interface{}) error {
 		return ptvError
 	}
 
-	envConfig = tcutil.GetConfigPaths(envConfig)
+	pluginEnvConfig = tcutil.ProcessPluginEnvConfig(pluginEnvConfig)
 
-	flumen.ProcessFlows(envConfig, logger)
+	flumen.ProcessFlows(pluginEnvConfig, logger)
 
 	return nil
 }
