@@ -215,7 +215,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		commonMod.Version = envVersion[1]
 		commonMod.Version = commonMod.Version + "***X-Mode"
 
-		commonPaths, err = vcutils.GetPathsFromProject(config, commonMod, "Common")
+		commonPaths, err = vcutils.GetPathsFromProject(config, commonMod, []string{"Common"}, []string{})
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 		}
