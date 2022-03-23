@@ -113,6 +113,12 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 	var template string
 	var err error
 
+	if !config.WantCerts {
+		relativeTemplatePathParts := strings.Split(emptyFilePath, vController.GetFolderPrefix()+"_templates")
+		templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
+		modifier.TemplatePath = "templates" + templatePathParts[0]
+	}
+
 	if zc {
 		var templateEncoded string
 		templateEncoded, err = GetTemplate(modifier, emptyFilePath)
