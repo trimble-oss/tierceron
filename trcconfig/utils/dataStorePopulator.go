@@ -443,8 +443,9 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects
 		for _, project := range availProjects {
 			if !config.WantCerts && len(services) > 0 {
 				for _, service := range services {
+					mod.ProjectIndex = []string{project.(interface{}).(string)}
 					path := "templates/" + project.(interface{}).(string) + service + "/"
-					paths, pathErr = getPaths(mod, path, paths)
+					paths, pathErr = getPaths(config, mod, path, paths, false)
 					//don't add on to paths until you're sure it's an END path
 					if pathErr != nil {
 						return nil, pathErr
@@ -452,8 +453,9 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects
 				}
 
 			} else {
+				mod.ProjectIndex = []string{project.(interface{}).(string)}
 				path := "templates/" + project.(interface{}).(string)
-				paths, pathErr = getPaths(mod, path, paths)
+				paths, pathErr = getPaths(config, mod, path, paths, false)
 				//don't add on to paths until you're sure it's an END path
 				if pathErr != nil {
 					return nil, pathErr
@@ -473,36 +475,50 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects
 		return nil, errors.New("no paths found from templates engine")
 	}
 }
-func getPaths(mod *kv.Modifier, pathName string, pathList []string) ([]string, error) {
+func getPaths(config *eUtils.DriverConfig, mod *kv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {
 	secrets, err := mod.List(pathName)
 	if err != nil {
-		secrets, err = mod.List(pathName + "template-file")
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
-		for _, pathEnd := range slicey {
-			path := pathName + pathEnd.(string)
-			if pathEnd.(string) == "template-file" {
-				pathList = append(pathList, pathName)
-				break
+		if len(slicey) == 1 && slicey[0].(string) == "template-file" {
+			pathList = append(pathList, pathName)
+			if isDir {
+				pathList = append(pathList, strings.TrimRight(pathName, "/"))
 			}
-			lookAhead, err2 := mod.List(path)
-			if err2 != nil || lookAhead == nil {
-				//don't add on to paths until you're sure it's an END path
-				pathList = append(pathList, path)
-			} else {
-				if len(pathList) > 0 {
+		} else {
+			dirMap := map[string]bool{}
+
+			for _, s := range slicey {
+				if strings.HasSuffix(s.(string), "/") {
+					dirMap[s.(string)] = true
+				}
+			}
+			for _, pathEnd := range slicey {
+				if pathEnd == mod.ProjectIndex[0] {
+					// Ignore nested project paths.
+					eUtils.LogWarningMessage(config, "Nested project name in path.  Skipping: "+pathEnd.(string), false)
+					continue
+				}
+				path := pathName + pathEnd.(string)
+				lookAhead, err2 := mod.List(path)
+				if err2 != nil || lookAhead == nil {
+					//don't add on to paths until you're sure it's an END path
+					pathList = append(pathList, path)
+				} else {
+					if !strings.HasSuffix(pathEnd.(string), "/") && dirMap[pathEnd.(string)+"/"] {
+						// Deduplicate drilldown.
+						continue
+					}
 					// TODO: Chewbacca - This recursion is expensive.  55% slower
 					// in some cases.
-					pathList, err = getPaths(mod, path, pathList)
-				} else {
-					pathList = append(pathList, path)
+					// Not doing this results in inaccurate data however...
+					pathList, err = getPaths(config, mod, path, pathList, dirMap[pathEnd.(string)])
 				}
 			}
 		}
+
 		return pathList, err
 	}
 	return pathList, err
