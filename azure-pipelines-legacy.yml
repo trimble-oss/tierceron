@@ -81,3 +81,61 @@ steps:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
     publishLocation: 'Container'
+
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: vaultconfig
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/vaultconfig/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: vaultpub
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/vaultpub/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'vaultconfig'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'vaultconfig'
+    pushTag: '$(Build.SourceVersion)'
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'vaultconfig'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'vaultconfig'
+    pushTag: 'latest'
+
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'vaultpub'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'vaultpub'
+    pushTag: '$(Build.SourceVersion)'
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'vaultpub'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'vaultpub'
+    pushTag: 'latest'
