@@ -3,6 +3,7 @@ package utils
 import (
 	"log"
 	"strings"
+	vController "tierceron/trcvault/controller"
 	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
@@ -74,8 +75,9 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 		}
 	}
 	for _, templatePath := range templatePaths {
-		templatePathParts := strings.Split(templatePath, "/")
-		service := templatePathParts[len(templatePathParts)-2]
+		templatePathRelativeParts := strings.Split(templatePath, vController.GetFolderPrefix()+"_templates/")
+		templatePathParts := strings.Split(templatePathRelativeParts[1], "/")
+		service := templatePathParts[1]
 
 		if _, ok := serviceMap[service]; ok {
 			if config.SectionKey == "" || config.SectionKey == "/" {

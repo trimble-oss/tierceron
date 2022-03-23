@@ -31,7 +31,7 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 		dataPathsFull = commonPaths
 	} else {
 		//get paths where the data is stored
-		dp, err := GetPathsFromProject(config, mod, project)
+		dp, err := GetPathsFromProject(config, mod, []string{project}, servicesWanted)
 		if len(dp) > 1 && strings.Contains(dp[len(dp)-1], "!=!") {
 			mod.VersionFilter = append(mod.VersionFilter, strings.Split(dp[len(dp)-1], "!=!")[0])
 			dp = dp[:len(dp)-1]
@@ -248,7 +248,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig,
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
-	dataPathsFull, err := GetPathsFromProject(config, mod, project)
+	dataPathsFull, err := GetPathsFromProject(config, mod, []string{project}, servicesWanted)
 	if len(dataPathsFull) > 0 && strings.Contains(dataPathsFull[len(dataPathsFull)-1], "!=!") {
 		dataPathsFull = dataPathsFull[:len(dataPathsFull)-1]
 	}
@@ -377,7 +377,7 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 	return "", false
 }
 
-func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects ...string) ([]string, error) {
+func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects []string, services []string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
 	var err error
@@ -440,12 +440,35 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects
 			availProjects = projectsUsed
 		}
 		var pathErr error
-		for _, project := range availProjects {
-			path := "templates/" + project.(interface{}).(string)
-			paths, pathErr = getPaths(mod, path, paths)
-			//don't add on to paths until you're sure it's an END path
+		if !config.WantCerts && mod.TemplatePath != "" {
+			pathErr = verifyTemplatePath(mod)
 			if pathErr != nil {
 				return nil, pathErr
+			}
+			paths = append(paths, mod.TemplatePath)
+		} else {
+			// Not provided template, so look it up.
+			for _, project := range availProjects {
+				if !config.WantCerts && len(services) > 0 {
+					for _, service := range services {
+						mod.ProjectIndex = []string{project.(interface{}).(string)}
+						path := "templates/" + project.(interface{}).(string) + service + "/"
+						paths, pathErr = getPaths(config, mod, path, paths, false)
+						//don't add on to paths until you're sure it's an END path
+						if pathErr != nil {
+							return nil, pathErr
+						}
+					}
+
+				} else {
+					mod.ProjectIndex = []string{project.(interface{}).(string)}
+					path := "templates/" + project.(interface{}).(string)
+					paths, pathErr = getPaths(config, mod, path, paths, false)
+					//don't add on to paths until you're sure it's an END path
+					if pathErr != nil {
+						return nil, pathErr
+					}
+				}
 			}
 		}
 
@@ -461,30 +484,63 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects
 		return nil, errors.New("no paths found from templates engine")
 	}
 }
-func getPaths(mod *kv.Modifier, pathName string, pathList []string) ([]string, error) {
-	secrets, err := mod.List(pathName)
+
+func verifyTemplatePath(mod *kv.Modifier) error {
+	secrets, err := mod.List(mod.TemplatePath)
 	if err != nil {
-		secrets, err = mod.List(pathName + "template-file")
-		if err != nil {
-			return nil, err
-		}
+		return err
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
-		for _, pathEnd := range slicey {
-			path := pathName + pathEnd.(string)
-			if pathEnd.(string) == "template-file" {
-				pathList = append(pathList, pathName)
-				break
+		if len(slicey) == 1 && slicey[0].(string) == "template-file" {
+			return nil
+		}
+	}
+	return errors.New("Template not found in vault.")
+}
+
+func getPaths(config *eUtils.DriverConfig, mod *kv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {
+	secrets, err := mod.List(pathName)
+	if err != nil {
+		return nil, err
+	} else if secrets != nil {
+		//add paths
+		slicey := secrets.Data["keys"].([]interface{})
+		if len(slicey) == 1 && slicey[0].(string) == "template-file" {
+			pathList = append(pathList, pathName)
+			if isDir {
+				pathList = append(pathList, strings.TrimRight(pathName, "/"))
 			}
-			lookAhead, err2 := mod.List(path)
-			if err2 != nil || lookAhead == nil {
-				//don't add on to paths until you're sure it's an END path
-				pathList = append(pathList, path)
-			} else {
-				pathList, err = getPaths(mod, path, pathList)
+		} else {
+			dirMap := map[string]bool{}
+
+			for _, s := range slicey {
+				if strings.HasSuffix(s.(string), "/") {
+					dirMap[s.(string)] = true
+				}
+			}
+			for _, pathEnd := range slicey {
+				if pathEnd == mod.ProjectIndex[0] {
+					// Ignore nested project paths.
+					eUtils.LogWarningMessage(config, "Nested project name in path.  Skipping: "+pathEnd.(string), false)
+					continue
+				}
+				path := pathName + pathEnd.(string)
+				lookAhead, err2 := mod.List(path)
+				if err2 != nil || lookAhead == nil {
+					//don't add on to paths until you're sure it's an END path
+					pathList = append(pathList, path)
+				} else {
+					if !strings.HasSuffix(pathEnd.(string), "/") && dirMap[pathEnd.(string)+"/"] {
+						// Deduplicate drilldown.
+						continue
+					}
+					// This recursion is much slower, but used less frequently now.
+					pathList, err = getPaths(config, mod, path, pathList, dirMap[pathEnd.(string)])
+				}
 			}
 		}
+
 		return pathList, err
 	}
 	return pathList, err
