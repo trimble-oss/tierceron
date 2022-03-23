@@ -535,9 +535,7 @@ func getPaths(config *eUtils.DriverConfig, mod *kv.Modifier, pathName string, pa
 						// Deduplicate drilldown.
 						continue
 					}
-					// TODO: Chewbacca - This recursion is expensive.  55% slower
-					// in some cases.
-					// Not doing this results in inaccurate data however...
+					// This recursion is much slower, but used less frequently now.
 					pathList, err = getPaths(config, mod, path, pathList, dirMap[pathEnd.(string)])
 				}
 			}
