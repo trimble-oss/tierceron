@@ -215,7 +215,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		commonMod.Version = envVersion[1]
 		commonMod.Version = commonMod.Version + "***X-Mode"
 
-		commonPaths, err = vcutils.GetPathsFromProject(config, commonMod, "Common")
+		commonPaths, err = vcutils.GetPathsFromProject(config, commonMod, []string{"Common"}, []string{})
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 		}
@@ -348,6 +348,11 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					goMod.SectionName = config.SectionName
 					goMod.SubSectionValue = config.SubSectionValue
 				}
+
+				relativeTemplatePathParts := strings.Split(tp, vController.GetFolderPrefix()+"_templates")
+				templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
+				goMod.TemplatePath = "templates" + templatePathParts[0]
+
 				if c.GenAuth {
 					_, err := mod.ReadData("apiLogins/meta")
 					if err != nil {
