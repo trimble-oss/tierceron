@@ -3,41 +3,41 @@ GOBIN=$(shell pwd)/bin
 GOFILES=$(wildcard *.go)
 
 apiprod:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' tierceron/webapi/apiRouter
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -tags trcname -a -ldflags '-w' tierceron/webapi/apiRouter
 api:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/webapi/apiRouter
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/webapi/apiRouter
 config:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/trcconfig
 configdbprodplugin:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags prod -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags trcname prod -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
 configdbplugin:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -tags testflow -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
 configwin:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -o $(GOBIN)/trcconfig.exe trcconfig/trcconfig.go
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags trcname -o $(GOBIN)/trcconfig.exe trcconfig/trcconfig.go
 configmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/trcconfig.mac tierceron/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -tags trcname -o $(GOBIN)/trcconfig.mac tierceron/trcconfig
 seed:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcinit
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/trcinit
 seedmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/trcinit.mac tierceron/trcinit 
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -tags trcname -o $(GOBIN)/trcinit.mac tierceron/trcinit 
 seedp:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcinitp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/trcinitp
 x:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/trcx
 xmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/trcx.mac tierceron/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -tags trcname -o $(GOBIN)/trcx.mac tierceron/trcx
 xlib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -a -ldflags '-w' -o $(GOBIN)/nc.so tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -tags trcname -buildmode=c-shared -a -ldflags '-w' -o $(GOBIN)/nc.so tierceron/configlib
 maclib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -o $(GOBIN)/nc.dylib tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -tags trcname -buildmode=c-shared -o $(GOBIN)/nc.dylib tierceron/configlib
 winlib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -buildmode=c-shared -o $(GOBIN)/nc.dll tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -tags trcname -buildmode=c-shared -o $(GOBIN)/nc.dll tierceron/configlib
 xp:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcxp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/trcxp
 pub:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcpub
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/trcpub
 sub:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install tierceron/trcsub
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/trcsub
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
