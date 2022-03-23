@@ -31,7 +31,7 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 		dataPathsFull = commonPaths
 	} else {
 		//get paths where the data is stored
-		dp, err := GetPathsFromProject(config, mod, project)
+		dp, err := GetPathsFromProject(config, mod, []string{project}, servicesWanted)
 		if len(dp) > 1 && strings.Contains(dp[len(dp)-1], "!=!") {
 			mod.VersionFilter = append(mod.VersionFilter, strings.Split(dp[len(dp)-1], "!=!")[0])
 			dp = dp[:len(dp)-1]
@@ -248,7 +248,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig,
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
-	dataPathsFull, err := GetPathsFromProject(config, mod, project)
+	dataPathsFull, err := GetPathsFromProject(config, mod, []string{project}, servicesWanted)
 	if len(dataPathsFull) > 0 && strings.Contains(dataPathsFull[len(dataPathsFull)-1], "!=!") {
 		dataPathsFull = dataPathsFull[:len(dataPathsFull)-1]
 	}
@@ -377,7 +377,7 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 	return "", false
 }
 
-func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects ...string) ([]string, error) {
+func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects []string, services []string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
 	var err error
@@ -441,11 +441,23 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects
 		}
 		var pathErr error
 		for _, project := range availProjects {
-			path := "templates/" + project.(interface{}).(string)
-			paths, pathErr = getPaths(mod, path, paths)
-			//don't add on to paths until you're sure it's an END path
-			if pathErr != nil {
-				return nil, pathErr
+			if !config.WantCerts && len(services) > 0 {
+				for _, service := range services {
+					path := "templates/" + project.(interface{}).(string) + service + "/"
+					paths, pathErr = getPaths(mod, path, paths)
+					//don't add on to paths until you're sure it's an END path
+					if pathErr != nil {
+						return nil, pathErr
+					}
+				}
+
+			} else {
+				path := "templates/" + project.(interface{}).(string)
+				paths, pathErr = getPaths(mod, path, paths)
+				//don't add on to paths until you're sure it's an END path
+				if pathErr != nil {
+					return nil, pathErr
+				}
 			}
 		}
 
@@ -482,7 +494,13 @@ func getPaths(mod *kv.Modifier, pathName string, pathList []string) ([]string, e
 				//don't add on to paths until you're sure it's an END path
 				pathList = append(pathList, path)
 			} else {
-				pathList, err = getPaths(mod, path, pathList)
+				if len(pathList) > 0 {
+					// TODO: Chewbacca - This recursion is expensive.  55% slower
+					// in some cases.
+					pathList, err = getPaths(mod, path, pathList)
+				} else {
+					pathList = append(pathList, path)
+				}
 			}
 		}
 		return pathList, err
