@@ -71,7 +71,7 @@ steps:
     done
   
     echo "Compile Complete"
-    cp $GOBIN/vault* $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/trc* /vaultconfig /vaultpub /vaultinit /vaultx /vaultsub $(Build.ArtifactStagingDirectory)
     cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
