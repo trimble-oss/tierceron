@@ -440,25 +440,34 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects
 			availProjects = projectsUsed
 		}
 		var pathErr error
-		for _, project := range availProjects {
-			if !config.WantCerts && len(services) > 0 {
-				for _, service := range services {
+		if !config.WantCerts && mod.TemplatePath != "" {
+			pathErr = verifyTemplatePath(mod)
+			if pathErr != nil {
+				return nil, pathErr
+			}
+			paths = append(paths, mod.TemplatePath)
+		} else {
+			// Not provided template, so look it up.
+			for _, project := range availProjects {
+				if !config.WantCerts && len(services) > 0 {
+					for _, service := range services {
+						mod.ProjectIndex = []string{project.(interface{}).(string)}
+						path := "templates/" + project.(interface{}).(string) + service + "/"
+						paths, pathErr = getPaths(config, mod, path, paths, false)
+						//don't add on to paths until you're sure it's an END path
+						if pathErr != nil {
+							return nil, pathErr
+						}
+					}
+
+				} else {
 					mod.ProjectIndex = []string{project.(interface{}).(string)}
-					path := "templates/" + project.(interface{}).(string) + service + "/"
+					path := "templates/" + project.(interface{}).(string)
 					paths, pathErr = getPaths(config, mod, path, paths, false)
 					//don't add on to paths until you're sure it's an END path
 					if pathErr != nil {
 						return nil, pathErr
 					}
-				}
-
-			} else {
-				mod.ProjectIndex = []string{project.(interface{}).(string)}
-				path := "templates/" + project.(interface{}).(string)
-				paths, pathErr = getPaths(config, mod, path, paths, false)
-				//don't add on to paths until you're sure it's an END path
-				if pathErr != nil {
-					return nil, pathErr
 				}
 			}
 		}
@@ -475,6 +484,21 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects
 		return nil, errors.New("no paths found from templates engine")
 	}
 }
+
+func verifyTemplatePath(mod *kv.Modifier) error {
+	secrets, err := mod.List(mod.TemplatePath)
+	if err != nil {
+		return err
+	} else if secrets != nil {
+		//add paths
+		slicey := secrets.Data["keys"].([]interface{})
+		if len(slicey) == 1 && slicey[0].(string) == "template-file" {
+			return nil
+		}
+	}
+	return errors.New("Template not found in vault.")
+}
+
 func getPaths(config *eUtils.DriverConfig, mod *kv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {
 	secrets, err := mod.List(pathName)
 	if err != nil {
