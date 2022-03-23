@@ -32,6 +32,7 @@ type Modifier struct {
 	Version          string       // Version for data
 	VersionFilter    []string     // Used to filter vault paths
 	RawEnv           string
+	TemplatePath     string   // Path to template we are processing.
 	ProjectIndex     []string // Which projects are indexed.
 	SectionKey       string   // The section key: Index or Restricted.
 	SectionName      string   // The name of the actual subsection.
