@@ -1,0 +1,83 @@
+# Go
+# Build your Go project.
+# Add steps that test, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/go
+
+trigger:
+  branches:
+    include:
+    - develop
+    exclude:
+    - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+resources:
+  repositories:
+  - repository: VaultConfig.Bootstrap
+    type: git
+    endpoint: AzureBuilderConnection
+    name: Spectrum/_git/VaultConfig.Bootstrap
+    ref: develop
+  - repository: VaultConfig.Test
+    type: git
+    endpoint: AzureBuilderConnection
+    name: Spectrum/_git/VaultConfig.Test
+    ref: develop
+  - repository: VaultConfig.TenantConfig
+    type: git
+    endpoint: AzureBuilderConnection
+    name: Spectrum/_git/VaultConfig.TenantConfig
+    ref: develop
+
+variables:
+  GOBIN:  '$(GOPATH)/bin' # Go binaries path
+  GOPATH: '$(system.defaultWorkingDirectory)' # Go workspace path
+  modulePath: 'tierceron' # Path to the module's code
+
+steps:
+- task: GoTool@0
+  inputs:
+    version: '1.17.8'
+- script: |
+    mkdir -p '$(GOBIN)'
+    mkdir -p '$(GOPATH)/pkg'
+    mkdir -p '$(modulePath)'
+    shopt -s extglob
+    shopt -s dotglob
+    mv !(gopath) '$(modulePath)'
+    echo '##vso[task.prependpath]$(GOBIN)'
+    echo '##vso[task.prependpath]$(GOROOT)/bin'
+  displayName: 'Set up the Go workspace'
+- checkout: VaultConfig.Bootstrap
+- checkout: VaultConfig.TenantConfig
+- checkout: VaultConfig.Test
+- checkout: self
+- script: |
+    go version
+    pwd
+    echo $GOBIN
+    echo "Mod download"
+    go mod download
+    echo "Compile start"
+
+    for p in vaultconfig vaultpub vaultinit vaultx vaultsub; do
+      echo Compiling $p
+      GOOS=linux GOARCH=amd64 go install tierceron/$p
+      if [[ ! -f $GOBIN/$p ]] ; then
+          echo File $p was not built, aborting.
+          exit 1
+      fi
+    done
+  
+    echo "Compile Complete"
+    cp $GOBIN/vault* $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
+  workingDirectory: '$(modulePath)'
+  displayName: 'Get dependencies, then build'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
