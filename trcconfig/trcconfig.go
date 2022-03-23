@@ -76,7 +76,7 @@ func reciever() {
 }
 
 func main() {
-	fmt.Println("Version: " + "1.23")
+	fmt.Println("Version: " + "1.24")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	startDirPtr := flag.String("startDir", vController.GetFolderPrefix()+"_templates", "Template directory")
