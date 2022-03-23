@@ -348,6 +348,11 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					goMod.SectionName = config.SectionName
 					goMod.SubSectionValue = config.SubSectionValue
 				}
+
+				relativeTemplatePathParts := strings.Split(tp, vController.GetFolderPrefix()+"_templates")
+				templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
+				goMod.TemplatePath = "templates" + templatePathParts[0]
+
 				if c.GenAuth {
 					_, err := mod.ReadData("apiLogins/meta")
 					if err != nil {
