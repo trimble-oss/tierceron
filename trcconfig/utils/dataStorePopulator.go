@@ -495,6 +495,8 @@ func getPaths(mod *kv.Modifier, pathName string, pathList []string) ([]string, e
 				pathList = append(pathList, path)
 			} else {
 				if len(pathList) > 0 {
+					// TODO: Chewbacca - This recursion is expensive.  55% slower
+					// in some cases.
 					pathList, err = getPaths(mod, path, pathList)
 				} else {
 					pathList = append(pathList, path)
