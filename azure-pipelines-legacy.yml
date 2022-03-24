@@ -6,9 +6,10 @@
 trigger:
   branches:
     include:
-    - develop
+    - releases/legacy/1.0.0
     exclude:
     - main
+    - develop
 
 pool:
   vmImage: 'ubuntu-latest'
