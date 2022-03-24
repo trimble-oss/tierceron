@@ -92,7 +92,7 @@ steps:
     repository: vaultconfig
     buildContext: '$(Build.ArtifactStagingDirectory)'
     command: build
-    dockerfile: '**/docker/vaultconfig/Dockerfile'
+    dockerfile: '**/docker/legacy/vaultconfig/Dockerfile'
     tags: |
       $(Build.SourceVersion)
 
@@ -102,7 +102,7 @@ steps:
     repository: vaultpub
     buildContext: '$(Build.ArtifactStagingDirectory)'
     command: build
-    dockerfile: '**/docker/vaultpub/Dockerfile'
+    dockerfile: '**/docker/legacy/vaultpub/Dockerfile'
     tags: |
       $(Build.SourceVersion)
 
