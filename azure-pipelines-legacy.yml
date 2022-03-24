@@ -11,6 +11,14 @@ trigger:
     - main
     - develop
 
+pr:
+  branches:
+    include:
+    - releases/legacy/1.0.0
+    exclude:
+    - main
+    - develop
+
 pool:
   vmImage: 'ubuntu-latest'
 resources:
