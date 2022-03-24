@@ -73,7 +73,7 @@ steps:
     done
 
     echo "Compile Windows"
-    for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
+    for p in trcconfig trcpub trcinit trcx trcsub; do
       echo Compiling $p
       GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -tags trcname -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
@@ -83,7 +83,7 @@ steps:
     done
 
     echo "Compile Mac"
-    for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
+    for p in trcconfig trcpub trcx trcsub; do
       echo Compiling $p
       GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -tags trcname -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
@@ -112,7 +112,6 @@ steps:
     cp $GOBIN/windows_amd64/trcsub.exe $(Build.ArtifactStagingDirectory)/vaultsub.exe
     cp $GOBIN/windows_amd64/trcpub.exe $(Build.ArtifactStagingDirectory)/vaultpub.exe
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/vaultconfig.mac
-    cp $GOBIN/darwin_amd64/trcinit $(Build.ArtifactStagingDirectory)/vaultconfig.mac
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
