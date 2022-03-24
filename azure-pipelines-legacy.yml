@@ -11,7 +11,8 @@ trigger:
     - main
     - develop
 
-pr:
+pr: 
+  autoCancel: 'true'
   branches:
     include:
     - releases/legacy/1.0.0
