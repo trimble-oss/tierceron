@@ -65,7 +65,7 @@ steps:
     echo "Compile Linux"
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
-      GOOS=linux GOARCH=amd64 go install tierceron/$p
+      GOOS=linux GOARCH=amd64 go install -tags trcname -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
@@ -75,7 +75,7 @@ steps:
     echo "Compile Windows"
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
-      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
+      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -tags trcname -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
           echo File $p.exe was not built, aborting.
           exit 1
@@ -85,7 +85,7 @@ steps:
     echo "Compile Mac"
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
-      GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
+      GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -tags trcname -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
