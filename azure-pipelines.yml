@@ -3,13 +3,6 @@
 # Add steps that test, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/go
 
-trigger:
-  branches:
-    include:
-    - main
-    exclude:
-    - develop
-
 pr:
   autoCancel: 'true'
   branches:
