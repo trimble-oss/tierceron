@@ -12,6 +12,7 @@ trigger:
     - develop
 
 pr:
+  autoCancel: true
   branches:
     include:
     - releases/legacy/1.0.0
