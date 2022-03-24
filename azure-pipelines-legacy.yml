@@ -71,6 +71,13 @@ steps:
       fi
     done
   
+    echo Compiling conflib
+    GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -o $GOBIN/nc.so tierceron/configlib
+    if [[ ! -f $GOBIN/nc.so ]] ; then
+        echo File nc.so was not built, aborting.
+        exit 1
+    fi
+
     echo "Compile Complete"
     cp $GOBIN/trcconfig $(Build.ArtifactStagingDirectory)/vaultconfig
     cp $GOBIN/trcpub $(Build.ArtifactStagingDirectory)/vaultpub
