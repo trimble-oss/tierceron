@@ -5,9 +5,8 @@
 
 trigger:
   branches:
-    include:
-    - develop
     exclude:
+    - develop
     - main
 
 pr:
