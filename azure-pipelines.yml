@@ -11,8 +11,7 @@ trigger:
     - develop
 
 pr:
-  autoCancel: 
-    - true
+  autoCancel: 'true'
   branches:
     include:
     - main
