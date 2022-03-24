@@ -61,7 +61,7 @@ steps:
     go mod download
     echo "Compile start"
 
-    for p in vaultconfig vaultpub vaultinit vaultx vaultsub; do
+    for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       GOOS=linux GOARCH=amd64 go install tierceron/$p
       if [[ ! -f $GOBIN/$p ]] ; then
@@ -71,7 +71,11 @@ steps:
     done
   
     echo "Compile Complete"
-    cp $GOBIN/trc* /vaultconfig /vaultpub /vaultinit /vaultx /vaultsub $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/trcconfig $(Build.ArtifactStagingDirectory)/vaultconfig
+    cp $GOBIN/trcpub $(Build.ArtifactStagingDirectory)/vaultpub
+    cp $GOBIN/trcsub $(Build.ArtifactStagingDirectory)/vaultsub
+    cp $GOBIN/trcinit $(Build.ArtifactStagingDirectory)/vaultinit
+    cp $GOBIN/trcx $(Build.ArtifactStagingDirectory)/vaultx
     cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
