@@ -6,16 +6,10 @@
 trigger:
   branches:
     include:
-<<<<<<< HEAD
-    - develop
-    exclude:
-    - main
-=======
     - releases/legacy/1.0.0
     exclude:
     - main
     - develop
->>>>>>> main
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -68,24 +62,15 @@ steps:
     go mod download
     echo "Compile start"
 
-<<<<<<< HEAD
-    for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
-      echo Compiling $p
-      GOOS=linux GOARCH=amd64 go install tierceron/$p
-=======
     echo "Compile Linux"
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       GOOS=linux GOARCH=amd64 go install -tags trcname -a -ldflags '-w' tierceron/$p
->>>>>>> main
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
       fi
     done
-<<<<<<< HEAD
-  
-=======
 
     echo "Compile Windows"
     for p in trcconfig trcpub trcinit trcx trcsub; do
@@ -114,7 +99,6 @@ steps:
         exit 1
     fi
 
->>>>>>> main
     echo "Compile Complete"
     cp $GOBIN/trcconfig $(Build.ArtifactStagingDirectory)/vaultconfig
     cp $GOBIN/trcpub $(Build.ArtifactStagingDirectory)/vaultpub
@@ -122,15 +106,12 @@ steps:
     cp $GOBIN/trcinit $(Build.ArtifactStagingDirectory)/vaultinit
     cp $GOBIN/trcx $(Build.ArtifactStagingDirectory)/vaultx
     cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
-<<<<<<< HEAD
-=======
     cp $GOBIN/windows_amd64/trcconfig.exe $(Build.ArtifactStagingDirectory)/vaultconfig.exe
     cp $GOBIN/windows_amd64/trcx.exe $(Build.ArtifactStagingDirectory)/vaultx.exe
     cp $GOBIN/windows_amd64/trcinit.exe $(Build.ArtifactStagingDirectory)/vaultinit.exe
     cp $GOBIN/windows_amd64/trcsub.exe $(Build.ArtifactStagingDirectory)/vaultsub.exe
     cp $GOBIN/windows_amd64/trcpub.exe $(Build.ArtifactStagingDirectory)/vaultpub.exe
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/vaultconfig.mac
->>>>>>> main
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
