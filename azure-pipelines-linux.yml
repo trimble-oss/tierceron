@@ -10,6 +10,13 @@ trigger:
     exclude:
     - main
 
+pr:
+  branches:
+    include:
+    - develop
+    exclude:
+    - main
+
 pool:
   vmImage: 'ubuntu-latest'
 resources:
