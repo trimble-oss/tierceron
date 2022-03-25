@@ -79,6 +79,10 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			continue
 		}
 
+		if len(changedTableRowData) == 0 {
+			continue
+		}
+
 		rowDataMap := map[string]interface{}{}
 		for i, column := range changedTableColumns {
 			rowDataMap[column] = changedTableRowData[0][i]
