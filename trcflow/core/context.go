@@ -366,7 +366,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				}
 			}
 		}
-	} else if operation == "UPDATE" {
+	} else if operation == "UPDATE" || operation == "DELETE" {
 		tableName, _, matrix, err := db.Query(tfmContext.TierceronEngine, query)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
