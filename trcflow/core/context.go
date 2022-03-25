@@ -266,34 +266,40 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 		seedInitCompleteChan <- true
 	}
 
-	afterTime := time.Duration(time.Second * 20)
-	flowChangedChannel := channelMap[tfContext.Flow]
+	// Check vault hourly for changes to sync with mysql
+	/* TODO: Seed mysql from Vault currently only work on insert level, not update...
+		         Before this can be uncommented, the Insert/Update must be implemented.
 
-	for {
-		select {
-		case <-signalChannel:
-			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
-			os.Exit(0)
-		case <-flowChangedChannel:
-			tfmContext.vaultPersistPushRemoteChanges(
-				tfContext,
-				identityColumnName,
-				vaultIndexColumnName,
-				false,
-				getIndexedPathExt,
-				flowPushRemote)
-		case <-time.After(afterTime):
-			afterTime = time.Minute * 3
-			eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes.")
-			tfmContext.vaultPersistPushRemoteChanges(
-				tfContext,
-				identityColumnName,
-				vaultIndexColumnName,
-				false,
-				getIndexedPathExt,
-				flowPushRemote)
+		afterTime := time.Duration(time.Hour * 1) // More expensive to test vault for changes.
+	                                              // Only check once an hour for changes in vault.
+		flowChangedChannel := channelMap[tfContext.Flow]
+
+		for {
+			select {
+			case <-signalChannel:
+				eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
+				os.Exit(0)
+			case <-flowChangedChannel:
+				tfmContext.seedTrcDbFromChanges(
+					tfContext,
+					identityColumnName,
+					vaultIndexColumnName,
+					false,
+					getIndexedPathExt,
+					flowPushRemote)
+			case <-time.After(afterTime):
+				afterTime = time.Minute * 3
+				eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes for sync with remote and vault.")
+				tfmContext.seedTrcDbFromChanges(
+					tfContext,
+					identityColumnName,
+					vaultIndexColumnName,
+					false,
+					getIndexedPathExt,
+					flowPushRemote)
+			}
 		}
-	}
+	*/
 }
 
 func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContext,
