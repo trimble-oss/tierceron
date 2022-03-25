@@ -80,6 +80,9 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		if len(changedTableRowData) == 0 && err == nil { //This change was a delete
+			if tfContext.Flow.TableName() != "SpectrumEnterpriseConfig" { //TODO: Add delete functionality for other tables? - logic is in SEC push remote
+				continue
+			}
 			//Check if it exists in trcdb
 			//Writeback to mysql to delete that
 			rowDataMap := map[string]interface{}{}
