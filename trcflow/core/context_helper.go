@@ -130,6 +130,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	return nil
 }
 
+// seedTrcDbFromChanges - seeds Trc DB with changes from vault
 func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	tfContext *TrcFlowContext,
 	identityColumnName string,
