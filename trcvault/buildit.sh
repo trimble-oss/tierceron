@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#cd ../Bitbucket/tierceron/trcvault
+#cd ../Github/tierceron/trcvault
 cd ../
 make configdbplugin
 cd ../../Vault.Hashicorp
@@ -10,7 +10,7 @@ vault secrets disable vaultdb/
 vault plugin deregister trc-vault-plugin
 rm vault/data/core/plugin-catalog/secret/_trc-vault-plugin
 
-cp ../Bitbucket/tierceron/bin/trc-vault-plugin plugins/trc-vault-plugin
+cp ../Github/tierceron/bin/trc-vault-plugin plugins/trc-vault-plugin
 
 cd plugins
 

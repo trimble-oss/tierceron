@@ -148,8 +148,11 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) error {
 	}
 
 	pluginEnvConfig = tcutil.ProcessPluginEnvConfig(pluginEnvConfig)
+	logger.Println("Begin processFlows for env: " + env.(string))
 
-	flumen.ProcessFlows(pluginEnvConfig, logger)
+	go flumen.ProcessFlows(pluginEnvConfig, logger)
+
+	logger.Println("End processFlows for env: " + env.(string))
 
 	return nil
 }
