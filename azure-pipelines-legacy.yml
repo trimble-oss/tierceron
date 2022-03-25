@@ -6,7 +6,7 @@
 trigger:
   branches:
     include:
-    - releases/legacy/1.0.0
+    - releases/legacy/*
     exclude:
     - main
     - develop
@@ -15,7 +15,7 @@ pr:
   autoCancel: 'true'
   branches:
     include:
-    - releases/legacy/1.0.0
+    - releases/legacy/*
     exclude:
     - main
     - develop
