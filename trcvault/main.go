@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"tierceron/trcvault/factory"
+	memonly "tierceron/trcvault/opts/memonly"
 	vscutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
@@ -12,14 +14,17 @@ import (
 	tcutil "VaultConfig.TenantConfig/util"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
+	"golang.org/x/sys/unix"
 )
 
 func main() {
-	// mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
-	// if mLockErr != nil {
-	// 	fmt.Println(mLockErr)
-	// 	os.Exit(-1)
-	// }
+	if memonly.IsMemonly() {
+		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
+		if mLockErr != nil {
+			fmt.Println(mLockErr)
+			os.Exit(-1)
+		}
+	}
 	eUtils.InitHeadless(true)
 	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcvault]", log.LstdFlags)

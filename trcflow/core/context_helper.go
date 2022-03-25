@@ -79,6 +79,10 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			continue
 		}
 
+		if len(changedTableRowData) == 0 {
+			continue
+		}
+
 		rowDataMap := map[string]interface{}{}
 		for i, column := range changedTableColumns {
 			rowDataMap[column] = changedTableRowData[0][i]
@@ -126,6 +130,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	return nil
 }
 
+// seedTrcDbFromChanges - seeds Trc DB with changes from vault
 func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	tfContext *TrcFlowContext,
 	identityColumnName string,
