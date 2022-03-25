@@ -12,19 +12,7 @@ read VAULT_ENV
 echo "Enter environment token with write permissions: "
 read VAULT_ENV_TOKEN
 
-if [[ $VAULT_ENV = "prod" ]]
-then
-vault plugin register \
-          -command=trc-vault-plugin-prod \
-          -sha256=$( cat trc-vault-plugin-prod.sha256 ) \
-          -args=`backendUUID=4` \
-          trc-vault-plugin-prod
-vault secrets enable \
-          -path=vaultdb \
-          -plugin-name=trc-vault-plugin-prod \
-          -description="Tierceron Vault Plugin Prod" \
-          plugin
-elif [[ $VAULT_ENV = "staging" ]]
+if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]
 then
 vault plugin register \
           -command=trc-vault-plugin-prod \
