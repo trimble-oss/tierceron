@@ -3,7 +3,7 @@ GOBIN=$(shell pwd)/bin
 GOFILES=$(wildcard *.go)
 
 apiprod:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -tags trcname -a -ldflags '-w' tierceron/webapi/apiRouter
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -tags "trcname prod" -a -ldflags '-w' tierceron/webapi/apiRouter
 api:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/webapi/apiRouter
 config:
