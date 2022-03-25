@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	trcname "tierceron/trcvault/opts/trcname"
 
 	vcutils "tierceron/trcconfig/utils"
-	vController "tierceron/trcvault/controller"
 	"tierceron/trcx/extract"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
@@ -349,7 +349,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					goMod.SubSectionValue = config.SubSectionValue
 				}
 
-				relativeTemplatePathParts := strings.Split(tp, vController.GetFolderPrefix()+"_templates")
+				relativeTemplatePathParts := strings.Split(tp, trcname.GetFolderPrefix()+"_templates")
 				templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
 				goMod.TemplatePath = "templates" + templatePathParts[0]
 
@@ -500,7 +500,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	}
 
 	if len(tempTemplatePaths) == 0 {
-		eUtils.LogErrorMessage(config, "No files found in "+vController.GetFolderPrefix()+"_templates", true)
+		eUtils.LogErrorMessage(config, "No files found in "+trcname.GetFolderPrefix()+"_templates", true)
 	}
 
 	//Duplicate path remover
