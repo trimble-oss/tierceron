@@ -7,9 +7,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	trcname "tierceron/trcvault/opts/trcname"
 
 	il "tierceron/trcinit/initlib"
-	vController "tierceron/trcvault/controller"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
@@ -26,13 +26,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if addrPtrIn != nil && *addrPtrIn != "" {
 		addrPtr = addrPtrIn
 	}
-	seedPtr := flag.String("seeds", vController.GetFolderPrefix()+"_seeds", "Directory that contains vault seeds")
+	seedPtr := flag.String("seeds", trcname.GetFolderPrefix()+"_seeds", "Directory that contains vault seeds")
 	tokenPtr := flag.String("token", "", "Vault access token, only use if in dev mode or reseeding")
 	shardPtr := flag.String("shard", "", "Key shard used to unseal a vault that has been initialized but restarted")
 
 	namespaceVariable := flag.String("namespace", "", "name of the namespace")
 
-	logFilePtr := flag.String("log", "./"+vController.GetFolderPrefix()+"init.log", "Output path for log files")
+	logFilePtr := flag.String("log", "./"+trcname.GetFolderPrefix()+"init.log", "Output path for log files")
 	servicePtr := flag.String("service", "", "Seeding vault with a single service")
 	prodPtr := flag.Bool("prod", false, "Prod only seeds vault with staging environment")
 	uploadCertPtr := flag.Bool("certs", false, "Upload certs if provided")
@@ -115,8 +115,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+vController.GetFolderPrefix()+"init.log" && os.IsNotExist(err) {
-		*logFilePtr = "./" + vController.GetFolderPrefix() + "init.log"
+	if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+trcname.GetFolderPrefix()+"init.log" && os.IsNotExist(err) {
+		*logFilePtr = "./" + trcname.GetFolderPrefix() + "init.log"
 	}
 
 	// Initialize logging
