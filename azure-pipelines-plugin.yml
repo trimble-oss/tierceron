@@ -6,16 +6,18 @@
 trigger:
   branches:
     include:
-    - main
+    - releases/legacy/1.0.0
     exclude:
+    - main
     - develop
 
-pr:
+pr: 
   autoCancel: 'true'
-  branches: 
+  branches:
     include:
-    - main
+    - releases/legacy/1.0.0
     exclude:
+    - main
     - develop
 
 pool:
@@ -26,17 +28,17 @@ resources:
     type: git
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.Bootstrap
-    ref: main
+    ref: develop
   - repository: VaultConfig.Test
     type: git
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.Test
-    ref: main
+    ref: develop
   - repository: VaultConfig.TenantConfig
     type: git
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.TenantConfig
-    ref: main
+    ref: develop
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
@@ -69,54 +71,22 @@ steps:
     go mod download
     echo "Compile start"
 
-    for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
-      echo Compiling $p
-      GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
-      if [[ ! -f $GOBIN/$p ]] ; then
-          echo File $p was not built, aborting.
-          exit 1
-      fi
-      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
-      if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
-          echo File $p.exe was not built, aborting.
-          exit 1
-      fi
-      GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -a -ldflags '-w' tierceron/$p
-      if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
-          echo File $p was not built, aborting.
-          exit 1
-      fi
-    done
-
-
-    echo Compiling trc-vault-plugin
+    echo "Compile Test Linux trc-vault-plugin"
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "testflow memonly" -o $GOBIN/trc-vault-plugin tierceron/trcvault
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
-    echo Compiling api
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -a -ldflags '-w' tierceron/webapi/apiRouter
-    if [[ ! -f $GOBIN/apiRouter ]] ; then
-        echo File apiRouter was not built, aborting.
+    echo "Compile Prod Linux trc-vault-plugin-prod"
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "prod memonly" -o $GOBIN/trc-vault-plugin-prod tierceron/trcvault
+    if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
+        echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
-    echo Compiling conflib
-    GOBIN= GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' tierceron/configlib
-    if [[ ! -f $GOBIN/nc.so ]] ; then
-        echo File nc.so was not built, aborting.
-        exit 1
-    fi
 
     echo "Compile Complete"
-    cp $GOBIN/trc* $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/apiRouter $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/trcconfig.mac
-    cp $GOBIN/darwin_amd64/trcinit $(Build.ArtifactStagingDirectory)/trcinit.mac
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
 
@@ -126,43 +96,45 @@ steps:
     ArtifactName: 'drop'
     publishLocation: 'Container'
 
+
 - task: Docker@2
   displayName: Build an image
   inputs:
-    repository: trcconfig
+    repository: trc-vault-plugin
     buildContext: '$(Build.ArtifactStagingDirectory)'
     command: build
-    dockerfile: '**/docker/trcconfig/Dockerfile'
+    dockerfile: '**/docker/trcvaultplugin/Dockerfile'
     tags: |
       $(Build.SourceVersion)
 
 - task: Docker@2
   displayName: Build an image
   inputs:
-    repository: trcpub
+    repository: trc-vault-plugin-prod
     buildContext: '$(Build.ArtifactStagingDirectory)'
     command: build
-    dockerfile: '**/docker/trcpub/Dockerfile'
+    dockerfile: '**/docker/trcvaultpluginprod/Dockerfile'
     tags: |
       $(Build.SourceVersion)
+
 
 - task: ECRPushImage@1
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'trcconfig'
+    sourceImageName: 'trc-vault-plugin'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcconfig'
+    repositoryName: 'trc-vault-plugin'
     pushTag: '$(Build.SourceVersion)'
 - task: ECRPushImage@1
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'trcconfig'
+    sourceImageName: 'trc-vault-plugin'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcconfig'
+    repositoryName: 'trc-vault-plugin'
     pushTag: 'latest'
 
 - task: ECRPushImage@1
@@ -170,16 +142,16 @@ steps:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'trcpub'
+    sourceImageName: 'trc-vault-plugin-prod'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcpub'
+    repositoryName: 'trc-vault-plugin-prod'
     pushTag: '$(Build.SourceVersion)'
 - task: ECRPushImage@1
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'trcpub'
+    sourceImageName: 'trc-vault-plugin-prod'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcpub'
+    repositoryName: 'trc-vault-plugin-prod'
     pushTag: 'latest'

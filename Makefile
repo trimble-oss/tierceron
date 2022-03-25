@@ -8,8 +8,10 @@ api:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/webapi/apiRouter
 config:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -tags trcname tierceron/trcconfig
+configdbdevplugin:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -tags "testflow insecure" -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
 configdbprodplugin:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags prod -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "prod memonly" -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
 configdbplugin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -tags testflow -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
 configwin:
@@ -41,3 +43,4 @@ sub:
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
+all: api config configdbdevplugin config seed x xlib pub sub
