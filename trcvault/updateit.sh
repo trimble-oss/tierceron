@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#cd ../Bitbucket/tierceron/trcvault
+#cd ../Github/tierceron/trcvault
 cd ../
 make configdbplugin
 cd ../../Vault.Hashicorp
 
 VERSION=`date -u +.%Y%m%d.%H%M%S`
 
-cp ../Bitbucket/tierceron/bin/trc-vault-plugin plugins/trc-vault-plugin-$VERSION
+cp ../Github/tierceron/bin/trc-vault-plugin plugins/trc-vault-plugin-$VERSION
 cd plugins
 
 vault plugin register \
