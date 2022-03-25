@@ -215,7 +215,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				flowPushRemote)
 		case <-time.After(afterTime):
 			afterTime = time.Minute * 3
-			eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes.")
+			eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes for sync with remote and vault.")
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
@@ -264,35 +264,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 			triggerLock.Unlock()
 		}
 		seedInitCompleteChan <- true
-	}
-
-	afterTime := time.Duration(time.Second * 20)
-	flowChangedChannel := channelMap[tfContext.Flow]
-
-	for {
-		select {
-		case <-signalChannel:
-			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
-			os.Exit(0)
-		case <-flowChangedChannel:
-			tfmContext.vaultPersistPushRemoteChanges(
-				tfContext,
-				identityColumnName,
-				vaultIndexColumnName,
-				false,
-				getIndexedPathExt,
-				flowPushRemote)
-		case <-time.After(afterTime):
-			afterTime = time.Minute * 3
-			eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes.")
-			tfmContext.vaultPersistPushRemoteChanges(
-				tfContext,
-				identityColumnName,
-				vaultIndexColumnName,
-				false,
-				getIndexedPathExt,
-				flowPushRemote)
-		}
 	}
 }
 
