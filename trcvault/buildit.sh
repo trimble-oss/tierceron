@@ -3,7 +3,10 @@
 #cd ../Github/tierceron/trcvault
 cd ../
 make configdbplugin
-cd ../../Vault.Hashicorp
+cd bin
+sha256sum trc-vault-plugin | cut -d' ' -f1 > trc-vault-plugin.sha256
+
+cd ../../../Vault.Hashicorp
 
 vault secrets disable vaultdb/
 
@@ -12,13 +15,14 @@ rm vault/data/core/plugin-catalog/secret/_trc-vault-plugin
 
 cp ../Github/tierceron/bin/trc-vault-plugin plugins/trc-vault-plugin
 
-cd plugins
-
+echo "Registering plugin"
 vault plugin register \
           -command=trc-vault-plugin \
-          -sha256=$( sha256sum trc-vault-plugin |cut -d' ' -f1 ) \
+          -sha256=$( cat ../Github/tierceron/bin/trc-vault-plugin.sha256 ) \
           -args=`backendUUID=4` \
           trc-vault-plugin
+
+echo "Plugin registered"
 
 vault secrets enable \
           -path=vaultdb \
