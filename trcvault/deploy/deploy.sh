@@ -17,7 +17,7 @@ read VAULT_ENV_TOKEN
 
 # scp -i ~/pems/deploy.pem ubuntu@"$VAULT_PRIVATE_IP":/etc/opt/vault/plugins
 
-if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ] || [ "$VAULT_ENV" = "QA" ]
+if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ] # || [ "$VAULT_ENV" = "QA" ]
 then
 vault plugin register \
           -command=trc-vault-plugin-prod \
