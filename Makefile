@@ -8,8 +8,13 @@ api:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags trcname tierceron/webapi/apiRouter
 config:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags trcname tierceron/trcconfig
-configdbdevplugin:
+configdbdevpluginbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "testflow insecure" -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
+configdbdevpluginsha:
+	sha256sum $(GOBIN)/trc-vault-plugin | cut -d' ' -f1 > $(GOBIN)/trc-vault-plugin.sha256
+configdbdevpluginprepare:
+	cp -v $(GOBIN)/trc-vault-plugin* trcvault/deploy/target
+configdbdevplugin: configdbdevpluginbuild configdbdevpluginsha configdbdevpluginprepare
 configdbprodplugin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "prod memonly" -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
 configdbplugin:
