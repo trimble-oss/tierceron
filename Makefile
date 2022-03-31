@@ -44,7 +44,9 @@ xp:
 pub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcpub
 sub:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcsub
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 tierceron/trcsub
+certify:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 tierceron/trcvault/trcplgtool
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
