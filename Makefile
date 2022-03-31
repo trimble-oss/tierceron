@@ -5,9 +5,9 @@ GOFILES=$(wildcard *.go)
 apiprod:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -tags "trcname prod" -a -ldflags '-w' tierceron/webapi/apiRouter
 api:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags trcname tierceron/webapi/apiRouter
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/webapi/apiRouter
 config:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags trcname tierceron/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcconfig
 configdbdevpluginbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "testflow insecure" -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
 configdbdevpluginsha:
@@ -20,31 +20,31 @@ configdbprodplugin:
 configdbplugin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags testflow -o $(GOBIN)/trc-vault-plugin tierceron/trcvault
 configwin:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -gcflags=-G=0 -tags trcname -o $(GOBIN)/trcconfig.exe trcconfig/trcconfig.go
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -gcflags=-G=0  -o $(GOBIN)/trcconfig.exe trcconfig/trcconfig.go
 configmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags trcname -o $(GOBIN)/trcconfig.mac tierceron/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0  -o $(GOBIN)/trcconfig.mac tierceron/trcconfig
 seed:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags trcname tierceron/trcinit
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcinit
 seedmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags trcname -o $(GOBIN)/trcinit.mac tierceron/trcinit 
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0  -o $(GOBIN)/trcinit.mac tierceron/trcinit 
 seedp:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags trcname tierceron/trcinitp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcinitp
 x:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags trcname tierceron/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcx
 xmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags trcname -o $(GOBIN)/trcx.mac tierceron/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0  -o $(GOBIN)/trcx.mac tierceron/trcx
 xlib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags trcname -buildmode=c-shared -a -ldflags '-w' -o $(GOBIN)/nc.so tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -gcflags=-G=0  -buildmode=c-shared -a -ldflags '-w' -o $(GOBIN)/nc.so tierceron/configlib
 maclib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags trcname -buildmode=c-shared -o $(GOBIN)/nc.dylib tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0  -buildmode=c-shared -o $(GOBIN)/nc.dylib tierceron/configlib
 winlib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -gcflags=-G=0 -tags trcname -buildmode=c-shared -o $(GOBIN)/nc.dll tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -gcflags=-G=0  -buildmode=c-shared -o $(GOBIN)/nc.dll tierceron/configlib
 xp:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags trcname tierceron/trcxp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcxp
 pub:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags trcname tierceron/trcpub
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcpub
 sub:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags trcname tierceron/trcsub
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcsub
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
