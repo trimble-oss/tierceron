@@ -1,7 +1,2 @@
-FROM alpine:latest
-
-WORKDIR /home/vault
-
-ADD trc-vault-plugin /go/bin/trc-vault-plugin-prod
-
-ENTRYPOINT ["/go/bin/trc-vault-plugin-prod"]
+FROM scratch
+ADD trc-vault-plugin-prod /etc/opt/vault/plugins/trc-vault-plugin-prod
