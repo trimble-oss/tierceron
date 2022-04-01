@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,103 +15,11 @@ import (
 	"os"
 	"strings"
 	trcname "tierceron/trcvault/opts/trcname"
+	"tierceron/trcvault/util/repository"
 	xUtils "tierceron/trcx/xutil"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ecr"
 )
-
-func getImageSHA(svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
-	imageInput := &ecr.BatchGetImageInput{
-		ImageIds: []*ecr.ImageIdentifier{
-			{
-				ImageTag: aws.String("latest"),
-			},
-		},
-		RepositoryName: aws.String(pluginToolConfig["pluginNamePtr"].(string)),
-		RegistryId:     aws.String(strings.Split(pluginToolConfig["ecrrepository"].(string), ".")[0]),
-	}
-
-	batchImages, err := svc.BatchGetImage(imageInput)
-	if err != nil {
-		var errorString string
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecr.ErrCodeServerException:
-				errorString = aerr.Error()
-			case ecr.ErrCodeInvalidParameterException:
-				errorString = aerr.Error()
-			case ecr.ErrCodeRepositoryNotFoundException:
-				errorString = aerr.Error()
-			default:
-				errorString = aerr.Error()
-			}
-		} else {
-			if err != nil {
-				return err
-			}
-		}
-		return errors.New(errorString)
-	}
-
-	var layerDigest string
-	var data map[string]interface{}
-	err = json.Unmarshal([]byte(*batchImages.Images[0].ImageManifest), &data)
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	layers := data["layers"].([]interface{})
-	for _, layerMetadata := range layers {
-		mapLayerMetdata := layerMetadata.(map[string]interface{})
-		layerDigest = mapLayerMetdata["digest"].(string)
-	}
-
-	pluginToolConfig["layerDigest"] = layerDigest
-	return nil
-}
-
-func getDownloadUrl(svc *ecr.ECR, pluginToolConfig map[string]interface{}) (string, error) {
-	err := getImageSHA(svc, pluginToolConfig)
-	if err != nil {
-		return "", err
-	}
-	downloadInput := &ecr.GetDownloadUrlForLayerInput{
-		LayerDigest:    aws.String(pluginToolConfig["layerDigest"].(string)),
-		RegistryId:     aws.String(strings.Split(pluginToolConfig["ecrrepository"].(string), ".")[0]),
-		RepositoryName: aws.String(pluginToolConfig["pluginNamePtr"].(string)),
-	}
-
-	downloadOutput, err := svc.GetDownloadUrlForLayer(downloadInput)
-	if err != nil {
-		var errorString string
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecr.ErrCodeServerException:
-				errorString = aerr.Error()
-			case ecr.ErrCodeInvalidParameterException:
-				errorString = aerr.Error()
-			case ecr.ErrCodeRepositoryNotFoundException:
-				errorString = aerr.Error()
-			default:
-				errorString = aerr.Error()
-			}
-		} else {
-			if err != nil {
-				return "", err
-			}
-		}
-		return "", errors.New(errorString)
-	}
-
-	return *downloadOutput.DownloadUrl, nil
-}
 
 func getPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginName string, sha string) map[string]interface{} {
 	//templatePaths
@@ -190,7 +97,7 @@ func untarData(data []byte) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func getDownload(downloadUrl string) ([]byte, error) {
+func getImage(downloadUrl string) ([]byte, error) {
 	resp, err := http.Get(downloadUrl)
 	if err != nil {
 		return nil, err
@@ -211,7 +118,7 @@ func PluginMain() {
 	envPtr := flag.String("env", "dev", "Environement in vault")
 	startDirPtr := flag.String("startDir", trcname.GetFolderPrefix()+"_templates", "Template directory")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./"+trcname.GetFolderPrefix()+"sub.log", "Output path for log files")
+	logFilePtr := flag.String("log", "./"+trcname.GetFolderPrefix()+"plgtool.log", "Output path for log files")
 	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //THis has to match the image that is pulled -> then we write the vault.
@@ -245,8 +152,8 @@ func PluginMain() {
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+trcname.GetFolderPrefix()+"sub.log" {
-		*logFilePtr = "./" + trcname.GetFolderPrefix() + "sub.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+trcname.GetFolderPrefix()+"plgtool.log" {
+		*logFilePtr = "./" + trcname.GetFolderPrefix() + "plgtool.log"
 	}
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
@@ -265,33 +172,28 @@ func PluginMain() {
 
 	//Certify Image
 	if *certifyImagePtr {
-		svc := ecr.New(session.New(&aws.Config{
-			Region:      aws.String("us-west-2"),
-			Credentials: credentials.NewStaticCredentials(pluginToolConfig["awspassword"].(string), pluginToolConfig["awsaccesskey"].(string), ""),
-		}))
-
-		downloadUrl, downloadURlError := getDownloadUrl(svc, pluginToolConfig)
+		downloadUrl, downloadURlError := repository.GetImageDownloadUrl(pluginToolConfig)
 		if downloadURlError != nil {
 			fmt.Println("Failed to get download url.")
 			os.Exit(1)
 		}
-		downloadData, downloadError := getDownload(downloadUrl)
+		pluginImageDataCompressed, downloadError := getImage(downloadUrl)
 		if downloadError != nil {
 			fmt.Println("Failed to get download from url.")
 			os.Exit(1)
 		}
-		unZipData, gUnZipError := gUnZipData(downloadData)
+		pluginTarredData, gUnZipError := gUnZipData(pluginImageDataCompressed)
 		if gUnZipError != nil {
 			fmt.Println("gUnZip failed.")
 			os.Exit(1)
 		}
-		unTarData, gUnTarError := untarData(unZipData)
+		pluginImage, gUnTarError := untarData(pluginTarredData)
 		if gUnTarError != nil {
 			fmt.Println("Untarring failed.")
 			os.Exit(1)
 		}
-		imageSha := sha256.Sum256(unTarData)
-		pluginToolConfig["imagesha256"] = fmt.Sprintf("sha256:%x", imageSha)
+		pluginSha := sha256.Sum256(pluginImage)
+		pluginToolConfig["imagesha256"] = fmt.Sprintf("sha256:%x", pluginSha)
 		if pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { //Comparing generated sha from image to sha from flag
 			fmt.Println("Valid image found.")
 			//SHA MATCHES
@@ -311,5 +213,5 @@ func PluginMain() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println("Image sha has been updated in vault.")
+	fmt.Println("Image certified in vault and is ready for release.")
 }
