@@ -27,7 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr"
 )
 
-func getImageSHA(svc *ecr.ECR, pluginToolConfig map[string]interface{}) {
+func getImageSHA(svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
 	imageInput := &ecr.BatchGetImageInput{
 		ImageIds: []*ecr.ImageIdentifier{
 			{
@@ -40,22 +40,24 @@ func getImageSHA(svc *ecr.ECR, pluginToolConfig map[string]interface{}) {
 
 	batchImages, err := svc.BatchGetImage(imageInput)
 	if err != nil {
+		var errorString string
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case ecr.ErrCodeServerException:
-				fmt.Println(ecr.ErrCodeServerException, aerr.Error())
+				errorString = aerr.Error()
 			case ecr.ErrCodeInvalidParameterException:
-				fmt.Println(ecr.ErrCodeInvalidParameterException, aerr.Error())
+				errorString = aerr.Error()
 			case ecr.ErrCodeRepositoryNotFoundException:
-				fmt.Println(ecr.ErrCodeRepositoryNotFoundException, aerr.Error())
+				errorString = aerr.Error()
 			default:
-				fmt.Println(aerr.Error())
+				errorString = aerr.Error()
 			}
-			os.Exit(1)
 		} else {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			if err != nil {
+				return err
+			}
 		}
+		return errors.New(errorString)
 	}
 
 	var layerDigest string
@@ -73,10 +75,14 @@ func getImageSHA(svc *ecr.ECR, pluginToolConfig map[string]interface{}) {
 	}
 
 	pluginToolConfig["layerDigest"] = layerDigest
+	return nil
 }
 
-func getDownloadUrl(svc *ecr.ECR, pluginToolConfig map[string]interface{}) string {
-	getImageSHA(svc, pluginToolConfig)
+func getDownloadUrl(svc *ecr.ECR, pluginToolConfig map[string]interface{}) (string, error) {
+	err := getImageSHA(svc, pluginToolConfig)
+	if err != nil {
+		return "", err
+	}
 	downloadInput := &ecr.GetDownloadUrlForLayerInput{
 		LayerDigest:    aws.String(pluginToolConfig["layerDigest"].(string)),
 		RegistryId:     aws.String(strings.Split(pluginToolConfig["ecrrepository"].(string), ".")[0]),
@@ -85,25 +91,27 @@ func getDownloadUrl(svc *ecr.ECR, pluginToolConfig map[string]interface{}) strin
 
 	downloadOutput, err := svc.GetDownloadUrlForLayer(downloadInput)
 	if err != nil {
+		var errorString string
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case ecr.ErrCodeServerException:
-				fmt.Println(ecr.ErrCodeServerException, aerr.Error())
+				errorString = aerr.Error()
 			case ecr.ErrCodeInvalidParameterException:
-				fmt.Println(ecr.ErrCodeInvalidParameterException, aerr.Error())
+				errorString = aerr.Error()
 			case ecr.ErrCodeRepositoryNotFoundException:
-				fmt.Println(ecr.ErrCodeRepositoryNotFoundException, aerr.Error())
+				errorString = aerr.Error()
 			default:
-				fmt.Println(aerr.Error())
+				errorString = aerr.Error()
 			}
 		} else {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			if err != nil {
+				return "", err
+			}
 		}
-		os.Exit(1)
+		return "", errors.New(errorString)
 	}
 
-	return *downloadOutput.DownloadUrl
+	return *downloadOutput.DownloadUrl, nil
 }
 
 func getPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginName string, sha string) map[string]interface{} {
@@ -145,25 +153,23 @@ func getPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginNa
 	return pluginToolConfig
 }
 
-func gUnZipData(data []byte) []byte {
+func gUnZipData(data []byte) ([]byte, error) {
 	var unCompressedBytes []byte
 	newB := bytes.NewBuffer(unCompressedBytes)
 	b := bytes.NewBuffer(data)
 	zr, err := gzip.NewReader(b)
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		return nil, err
 	}
 
 	if _, err := io.Copy(newB, zr); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		return nil, err
 	}
 
-	return newB.Bytes()
+	return newB.Bytes(), nil
 }
 
-func untarData(data []byte) []byte {
+func untarData(data []byte) ([]byte, error) {
 	var b bytes.Buffer
 	writer := io.Writer(&b)
 	tarReader := tar.NewReader(bytes.NewReader(data))
@@ -173,44 +179,36 @@ func untarData(data []byte) []byte {
 			break
 		}
 		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			return nil, err
 		}
 
 		_, err = io.Copy(writer, tarReader)
 		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			return nil, err
 		}
 	}
-	return b.Bytes()
+	return b.Bytes(), nil
 }
 
-func getDownload(downloadUrl string) []byte {
+func getDownload(downloadUrl string) ([]byte, error) {
 	resp, err := http.Get(downloadUrl)
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		return nil, err
 	}
 
-	return body
+	return body, nil
 }
 
 func PluginMain() {
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	envPtr := flag.String("env", "dev", "Environement in vault")
-	secretIDPtr := flag.String("secretID", "", "Public app role ID")
-	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this tool to access the vault")
-	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	startDirPtr := flag.String("startDir", trcname.GetFolderPrefix()+"_templates", "Template directory")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flag.String("log", "./"+trcname.GetFolderPrefix()+"sub.log", "Output path for log files")
@@ -272,7 +270,27 @@ func PluginMain() {
 			Credentials: credentials.NewStaticCredentials(pluginToolConfig["awspassword"].(string), pluginToolConfig["awsaccesskey"].(string), ""),
 		}))
 
-		imageSha := sha256.Sum256(untarData(gUnZipData(getDownload(getDownloadUrl(svc, pluginToolConfig)))))
+		downloadUrl, downloadURlError := getDownloadUrl(svc, pluginToolConfig)
+		if downloadURlError != nil {
+			fmt.Println("Failed to get download url.")
+			os.Exit(1)
+		}
+		downloadData, downloadError := getDownload(downloadUrl)
+		if downloadError != nil {
+			fmt.Println("Failed to get download from url.")
+			os.Exit(1)
+		}
+		unZipData, gUnZipError := gUnZipData(downloadData)
+		if gUnZipError != nil {
+			fmt.Println("gUnZip failed.")
+			os.Exit(1)
+		}
+		unTarData, gUnTarError := untarData(unZipData)
+		if gUnTarError != nil {
+			fmt.Println("Untarring failed.")
+			os.Exit(1)
+		}
+		imageSha := sha256.Sum256(unTarData)
 		pluginToolConfig["imagesha256"] = fmt.Sprintf("sha256:%x", imageSha)
 		if pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { //Comparing generated sha from image to sha from flag
 			fmt.Println("Valid image found.")
@@ -284,21 +302,7 @@ func PluginMain() {
 
 	}
 
-	//Look at image for layer sha
-	//Get download url using layer SHA
-	//Extract the executable from image file using tar
-	//convert to byte array
-	//use sha256sum on it
-	//compare to sha256 passed in
-	//if they match - upload to vault.
-
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
-	autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
-	if autoErr != nil {
-		fmt.Println("Missing auth components.")
-		os.Exit(1)
-	}
-
 	writeMap := make(map[string]interface{})
 	writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
 	writeMap["trcsha256"] = strings.TrimPrefix(pluginToolConfig["trcsha256"].(string), "sha256:") //Trimming so it matches original format
