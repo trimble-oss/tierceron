@@ -46,7 +46,7 @@ pub:
 sub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 tierceron/trcsub
 certify:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/trcplgtool  tierceron/trcvault/trcplgtoolbase
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/trcplgtool -tags "awsecr" tierceron/trcvault/trcplgtoolbase
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
