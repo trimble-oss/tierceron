@@ -71,9 +71,9 @@ steps:
     go mod download
     echo "Compile start"
 
-    echo "Compile Deployer plugin trc-vault-deploy-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $GOBIN/trc-vault-deploy-plugin tierceron/trcvault/plugindeployer
-    if [[ ! -f $GOBIN/trc-vault-deploy-plugin ]] ; then
+    echo "Compile Deployer plugin trc-vault-carrier-plugin"
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $GOBIN/trc-vault-carrier-plugin tierceron/trcvault/plugincarrier
+    if [[ ! -f $GOBIN/trc-vault-carrier-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
@@ -92,12 +92,12 @@ steps:
         exit 1
     fi
 
-    sha256sum $GOBIN/trc-vault-deploy-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-deploy-plugin.sha256
+    sha256sum $GOBIN/trc-vault-carrier-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-carrier-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin-prod | cut -d' ' -f1 > $GOBIN/trc-vault-plugin-prod.sha256
 
     echo "Compile Complete"
-    cp $GOBIN/trc-vault-deploy-plugin $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/trc-vault-carrier-plugin $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin  $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin-prod  $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin.sha256  $(Build.ArtifactStagingDirectory)
@@ -114,10 +114,10 @@ steps:
 - task: Docker@2
   displayName: Build an image
   inputs:
-    repository: trc-vault-deploy-plugin
+    repository: trc-vault-carrier-plugin
     buildContext: '$(Build.ArtifactStagingDirectory)'
     command: build
-    dockerfile: '**/docker/trcvaultdeployplugin/Dockerfile'
+    dockerfile: '**/docker/trcvaultplugincarrier/Dockerfile'
     tags: |
       $(Build.SourceVersion)
 
@@ -146,9 +146,9 @@ steps:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'trc-vault-deploy-plugin'
+    sourceImageName: 'trc-vault-carrier-plugin'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-deploy-plugin'
+    repositoryName: 'trc-vault-carrier-plugin'
     pushTag: '$(Build.SourceVersion)'
 
 - task: ECRPushImage@1

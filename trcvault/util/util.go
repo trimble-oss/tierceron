@@ -8,8 +8,10 @@ import (
 	"strconv"
 	"strings"
 
+	xUtils "tierceron/trcx/xutil"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
+	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 
@@ -225,4 +227,43 @@ func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service
 	//VaultInit Section Begins
 	il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData), service, false)
 	return nil
+}
+
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginName string, sha string) map[string]interface{} {
+	//templatePaths
+	indexFound := false
+	templatePaths := []string{}
+	for _, startDir := range config.StartDir {
+		//get files from directory
+		tp := xUtils.GetDirFiles(startDir)
+		templatePaths = append(templatePaths, tp...)
+	}
+
+	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
+	if err != nil {
+		eUtils.CheckError(config, err, true)
+	}
+
+	for _, templatePath := range templatePaths {
+		project, service, _ := eUtils.GetProjectService(templatePath)
+		mod.SectionPath = "super-secrets/Index/" + project + "/" + "trcplugin" + "/" + config.SubSectionValue + "/" + service
+		ptc1, err := mod.ReadData(mod.SectionPath)
+		if err != nil || ptc1 == nil {
+			continue
+		}
+		indexFound = true
+		for k, v := range ptc1 {
+			pluginToolConfig[k] = v
+		}
+		break
+	}
+
+	if pluginToolConfig == nil || !indexFound {
+		eUtils.CheckError(config, errors.New("No plugin configs were found"), true)
+	}
+
+	pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", pluginName, -1) //"https://" +
+	pluginToolConfig["trcsha256"] = sha
+	pluginToolConfig["pluginNamePtr"] = pluginName
+	return pluginToolConfig
 }
