@@ -128,7 +128,10 @@ func PluginMain() {
 		eUtils.CheckError(config, err, true)
 	}
 	mod.Env = *envPtr
-	pluginToolConfig := util.GetPluginToolConfig(config, mod, *pluginNamePtr, *sha256Ptr)
+	pluginToolConfig := util.GetPluginToolConfig(config, mod)
+	pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", *pluginNamePtr, -1) //"https://" +
+	pluginToolConfig["trcsha256"] = *sha256Ptr
+	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
 
 	//Certify Image
 	if *certifyImagePtr {
