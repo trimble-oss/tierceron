@@ -12,6 +12,9 @@ read VAULT_ENV
 echo "Enter environment token with write permissions: "
 read VAULT_ENV_TOKEN
 
+vault secrets disable vaultdb/
+vault plugin deregister trc-vault-plugin
+
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]
 then
 vault plugin register \
@@ -38,3 +41,5 @@ vault secrets enable \
 fi
 
 vault write vaultdb/$VAULT_ENV token=$VAULT_ENV_TOKEN
+
+# TODO: run trcplgtool -certify -deployed

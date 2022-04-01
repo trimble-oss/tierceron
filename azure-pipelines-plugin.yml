@@ -71,6 +71,13 @@ steps:
     go mod download
     echo "Compile start"
 
+    echo "Compile Deployer plugin trc-vault-deploy-plugin"
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $GOBIN/trc-vault-deploy-plugin tierceron/trcvault/plugindeployer
+    if [[ ! -f $GOBIN/trc-vault-deploy-plugin ]] ; then
+        echo File trc vault plugin was not built, aborting.
+        exit 1
+    fi
+
     echo "Compile Test Linux trc-vault-plugin"
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "testflow memonly" -o $GOBIN/trc-vault-plugin tierceron/trcvault
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
@@ -80,15 +87,17 @@ steps:
 
     echo "Compile Prod Linux trc-vault-plugin-prod"
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "prod memonly" -o $GOBIN/trc-vault-plugin-prod tierceron/trcvault
-    if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
+    if [[ ! -f $GOBIN/trc-vault-plugin-prod ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
+    sha256sum $GOBIN/trc-vault-deploy-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-deploy-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin-prod | cut -d' ' -f1 > $GOBIN/trc-vault-plugin-prod.sha256
 
     echo "Compile Complete"
+    cp $GOBIN/trc-vault-deploy-plugin $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin  $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin-prod  $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin.sha256  $(Build.ArtifactStagingDirectory)
@@ -102,6 +111,15 @@ steps:
     ArtifactName: 'drop'
     publishLocation: 'Container'
 
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trc-vault-deploy-plugin
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcvaultdeployplugin/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
 
 - task: Docker@2
   displayName: Build an image
@@ -123,6 +141,15 @@ steps:
     tags: |
       $(Build.SourceVersion)
 
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'trc-vault-deploy-plugin'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'trc-vault-deploy-plugin'
+    pushTag: '$(Build.SourceVersion)'
 
 - task: ECRPushImage@1
   inputs:

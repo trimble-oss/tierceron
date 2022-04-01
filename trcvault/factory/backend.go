@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 	"tierceron/trcconfig/utils"
-	"tierceron/trcflow/flumen"
+	"tierceron/trcvault/util"
 	vscutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
@@ -28,7 +28,7 @@ var _ logical.Factory = TrcFactory
 
 var logger *log.Logger
 
-func Init(l *log.Logger) {
+func Init(processFlows util.ProcessFlowFunc, l *log.Logger) {
 	eUtils.InitHeadless(true)
 	logger = l
 
@@ -43,7 +43,7 @@ func Init(l *log.Logger) {
 			case tokenEnvMap := <-tokenEnvChan:
 
 				logger.Println("Config engine init begun: " + tokenEnvMap["env"].(string))
-				pecError := ProcessPluginEnvConfig(tokenEnvMap)
+				pecError := ProcessPluginEnvConfig(processFlows, tokenEnvMap)
 
 				if pecError != nil {
 					logger.Println("Bad configuration data for env: " + tokenEnvMap["env"].(string) + " error: " + pecError.Error())
@@ -128,7 +128,7 @@ func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
 	return nil
 }
 
-func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) error {
+func ProcessPluginEnvConfig(processFlows util.ProcessFlowFunc, pluginEnvConfig map[string]interface{}) error {
 	env, eOk := pluginEnvConfig["env"]
 	if !eOk || env.(string) == "" {
 		logger.Println("Bad configuration data.  Missing env.")
@@ -150,7 +150,7 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) error {
 	pluginEnvConfig = tcutil.ProcessPluginEnvConfig(pluginEnvConfig)
 	logger.Println("Begin processFlows for env: " + env.(string))
 
-	go flumen.ProcessFlows(pluginEnvConfig, logger)
+	go processFlows(pluginEnvConfig, logger)
 
 	logger.Println("End processFlows for env: " + env.(string))
 

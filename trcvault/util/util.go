@@ -26,6 +26,8 @@ import (
 	"log"
 )
 
+type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
+
 func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 	vaultHost := "https://"
 	vaultErr := errors.New("no usable local vault found")

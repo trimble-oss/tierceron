@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"tierceron/trcflow/flumen"
 	"tierceron/trcvault/factory"
 	memonly "tierceron/trcvault/opts/memonly"
 	vscutils "tierceron/trcvault/util"
@@ -18,6 +17,13 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
+
+	return nil
+}
+
+// TODO: Expose public Https api...
+
 func main() {
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
@@ -27,12 +33,12 @@ func main() {
 		}
 	}
 	eUtils.InitHeadless(true)
-	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	logger := log.New(f, "[trcvault]", log.LstdFlags)
+	f, logErr := os.OpenFile("trcdeployplugin.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	logger := log.New(f, "[trcdeployplugin]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 
 	tclib.SetLogger(logger.Writer())
-	factory.Init(flumen.ProcessFlows, logger)
+	factory.Init(PluginDeployFlow, logger)
 	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
