@@ -149,14 +149,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, logger *lo
 func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, error) {
 	// Wrap data and send
 	sendData := map[string]interface{}{"data": data}
-	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") { //Template paths are not indexed -> values & super-secrets are
-		if strings.Contains(path, "values") {
-			path = strings.Replace(m.SectionPath, "super-secrets", "values", -1)
-		} else {
-			path = m.SectionPath
-		}
-		path = strings.TrimSuffix(path, "/")
-	}
+
 	// Create full path
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	if len(pathBlocks) == 1 {
