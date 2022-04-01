@@ -229,7 +229,7 @@ func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service
 	return nil
 }
 
-func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginName string, sha string) map[string]interface{} {
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier) map[string]interface{} {
 	//templatePaths
 	indexFound := false
 	templatePaths := []string{}
@@ -262,8 +262,5 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginNa
 		eUtils.CheckError(config, errors.New("No plugin configs were found"), true)
 	}
 
-	pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", pluginName, -1) //"https://" +
-	pluginToolConfig["trcsha256"] = sha
-	pluginToolConfig["pluginNamePtr"] = pluginName
 	return pluginToolConfig
 }
