@@ -197,21 +197,22 @@ func PluginMain() {
 		if pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { //Comparing generated sha from image to sha from flag
 			fmt.Println("Valid image found.")
 			//SHA MATCHES
+			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
+			writeMap := make(map[string]interface{})
+			writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
+			writeMap["trcsha256"] = strings.TrimPrefix(pluginToolConfig["trcsha256"].(string), "sha256:") //Trimming so it matches original format
+			pathSplit := strings.Split(mod.SectionPath, "/")
+			_, err = mod.Write(pathSplit[0]+"/"+pathSplit[len(pathSplit)-1], writeMap)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			fmt.Println("Image certified in vault and is ready for release.")
+
 		} else {
 			fmt.Println("Invalid or nonexistent image.")
 			os.Exit(1)
 		}
 
 	}
-
-	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
-	writeMap := make(map[string]interface{})
-	writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-	writeMap["trcsha256"] = strings.TrimPrefix(pluginToolConfig["trcsha256"].(string), "sha256:") //Trimming so it matches original format
-	_, err = mod.Write(mod.SectionPath, writeMap)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	fmt.Println("Image certified in vault and is ready for release.")
 }
