@@ -1,16 +1,9 @@
 package trcplugtool
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
-	"crypto/sha256"
 	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	trcname "tierceron/trcvault/opts/trcname"
@@ -21,58 +14,6 @@ import (
 
 	tcutil "VaultConfig.TenantConfig/util"
 )
-
-func gUnZipData(data []byte) ([]byte, error) {
-	var unCompressedBytes []byte
-	newB := bytes.NewBuffer(unCompressedBytes)
-	b := bytes.NewBuffer(data)
-	zr, err := gzip.NewReader(b)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := io.Copy(newB, zr); err != nil {
-		return nil, err
-	}
-
-	return newB.Bytes(), nil
-}
-
-func untarData(data []byte) ([]byte, error) {
-	var b bytes.Buffer
-	writer := io.Writer(&b)
-	tarReader := tar.NewReader(bytes.NewReader(data))
-	for {
-		_, err := tarReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = io.Copy(writer, tarReader)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return b.Bytes(), nil
-}
-
-func getImage(downloadUrl string) ([]byte, error) {
-	resp, err := http.Get(downloadUrl)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
-}
 
 func PluginMain() {
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
@@ -106,13 +47,6 @@ func PluginMain() {
 		os.Exit(1)
 	}
 
-	//Ensure that ptr has required suffix
-	if *sha256Ptr != "" {
-		if !strings.HasPrefix(*sha256Ptr, "sha256:") {
-			*sha256Ptr = "sha256:" + *sha256Ptr
-		}
-	}
-
 	// If logging production directory does not exist and is selected log to local directory
 	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+trcname.GetFolderPrefix()+"plgtool.log" {
 		*logFilePtr = "./" + trcname.GetFolderPrefix() + "plgtool.log"
@@ -137,35 +71,16 @@ func PluginMain() {
 
 	//Certify Image
 	if *certifyImagePtr {
-		downloadUrl, downloadURlError := repository.GetImageDownloadUrl(pluginToolConfig)
-		if downloadURlError != nil {
-			fmt.Println("Failed to get download url.")
-			os.Exit(1)
-		}
-		pluginImageDataCompressed, downloadError := getImage(downloadUrl)
-		if downloadError != nil {
-			fmt.Println("Failed to get download from url.")
-			os.Exit(1)
-		}
-		pluginTarredData, gUnZipError := gUnZipData(pluginImageDataCompressed)
-		if gUnZipError != nil {
-			fmt.Println("gUnZip failed.")
-			os.Exit(1)
-		}
-		pluginImage, gUnTarError := untarData(pluginTarredData)
-		if gUnTarError != nil {
-			fmt.Println("Untarring failed.")
-			os.Exit(1)
-		}
-		pluginSha := sha256.Sum256(pluginImage)
-		pluginToolConfig["imagesha256"] = fmt.Sprintf("sha256:%x", pluginSha)
+		repository.GetShaFromDownload(pluginToolConfig)
 		if pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { //Comparing generated sha from image to sha from flag
 			fmt.Println("Valid image found.")
 			//SHA MATCHES
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-			writeMap["trcsha256"] = strings.TrimPrefix(pluginToolConfig["trcsha256"].(string), "sha256:") //Trimming so it matches original format
+			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
+			writeMap["copied"] = false
+			writeMap["deployed"] = false
 			pathSplit := strings.Split(mod.SectionPath, "/")
 			_, err = mod.Write(pathSplit[0]+"/"+pathSplit[len(pathSplit)-1], writeMap)
 			if err != nil {
