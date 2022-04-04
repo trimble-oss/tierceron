@@ -71,7 +71,12 @@ func PluginMain() {
 
 	//Certify Image
 	if *certifyImagePtr {
-		repository.GetShaFromDownload(pluginToolConfig)
+		repository.GetImageAndShaFromDownload(pluginToolConfig)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
 		if pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { //Comparing generated sha from image to sha from flag
 			fmt.Println("Valid image found.")
 			//SHA MATCHES
