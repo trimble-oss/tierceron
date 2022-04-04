@@ -14,7 +14,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -61,8 +60,7 @@ func getImageSHA(svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
 	var data map[string]interface{}
 	err = json.Unmarshal([]byte(*batchImages.Images[0].ImageManifest), &data)
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		return errors.New(err.Error())
 	}
 
 	layers := data["layers"].([]interface{})
@@ -169,28 +167,25 @@ func getImage(downloadUrl string) ([]byte, error) {
 	return body, nil
 }
 
-func GetShaFromDownload(pluginToolConfig map[string]interface{}) {
+func GetImageAndShaFromDownload(pluginToolConfig map[string]interface{}) error {
 	downloadUrl, downloadURlError := GetImageDownloadUrl(pluginToolConfig)
 	if downloadURlError != nil {
-		fmt.Println("Failed to get download url.")
-		os.Exit(1)
+		return errors.New("Failed to get download url.")
 	}
 	pluginImageDataCompressed, downloadError := getImage(downloadUrl)
 	if downloadError != nil {
-		fmt.Println("Failed to get download from url.")
-		os.Exit(1)
+		return errors.New("Failed to get download from url.")
 	}
 	pluginTarredData, gUnZipError := gUnZipData(pluginImageDataCompressed)
 	if gUnZipError != nil {
-		fmt.Println("gUnZip failed.")
-		os.Exit(1)
+		return errors.New("Gunzip failed.")
 	}
 	pluginImage, gUnTarError := untarData(pluginTarredData)
 	if gUnTarError != nil {
-		fmt.Println("Untarring failed.")
-		os.Exit(1)
+		return errors.New("Untarring failed.")
 	}
 	pluginSha := sha256.Sum256(pluginImage)
 	pluginToolConfig["rawImageFile"] = pluginImage
 	pluginToolConfig["imagesha256"] = fmt.Sprintf("%x", pluginSha)
+	return nil
 }

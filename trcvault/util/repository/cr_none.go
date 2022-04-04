@@ -3,11 +3,13 @@
 
 package repository
 
+import "errors"
+
 // Return url to the image to be used for download.
 func GetImageDownloadUrl(pluginToolConfig map[string]interface{}) (string, error) {
 	return "", nil
 }
 
-func GetShaFromDownload(pluginToolConfig map[string]interface{}) {
-	return
+func GetImageAndShaFromDownload(pluginToolConfig map[string]interface{}) error {
+	return errors.New("Not defined")
 }

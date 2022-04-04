@@ -52,7 +52,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		// 1.c.i. Download new image from ECR.
 		// 1.c.ii. Sha256 of new executable.
 		// 1.c.ii.- if Sha256 of new executable === sha256 from vault.
-		repository.GetShaFromDownload(pluginToolConfig)
+		downloadErr := repository.GetImageAndShaFromDownload(pluginToolConfig)
+		if downloadErr != nil {
+			eUtils.LogErrorMessage(config, "Could not get download image: "+downloadErr.Error(), false)
+			return downloadErr
+		}
 		if pluginToolConfig["imagesha256"] == pluginToolConfig["trcsha256"] { //Sha256 from download matches in vault
 			err = ioutil.WriteFile("/etc/opt/vault/plugins/"+pluginToolConfig["trcplugin"].(string), pluginToolConfig["rawImageFile"].([]byte), 0644)
 			if err != nil {
