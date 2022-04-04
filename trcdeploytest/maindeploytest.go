@@ -41,10 +41,10 @@ func main() {
 	envMap := tcutil.GetTestDeployConfig(*tokenPtr)
 
 	go factory.Init(deploy.PluginDeployFlow, true, logger)
+	factory.PushEnv(envMap)
+
 	for {
 		select {
-		case <-factory.ReadyForEnvs():
-			factory.PushEnv(envMap)
 		case <-signalChannel:
 			eUtils.LogErrorMessage(configDriver, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)

@@ -32,10 +32,6 @@ func Init(processFlows util.ProcessFlowFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
 
-	tokenEnvChan = make(chan map[string]interface{}, 5)
-	environmentConfigs = map[string]*EnvConfig{}
-	envChanReady <- true
-
 	// Set up a table process runner.
 	initVaultHost()
 
@@ -64,14 +60,10 @@ var KvRead framework.OperationFunc
 
 var vaultHost string // Plugin will only communicate locally with a vault instance.
 var environments []string = []string{"dev", "QA"}
-var environmentConfigs map[string]*EnvConfig
+var environmentConfigs map[string]*EnvConfig = map[string]*EnvConfig{}
 
-var tokenEnvChan chan map[string]interface{}
-var envChanReady chan bool = make(chan bool)
+var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
 
-func ReadyForEnvs() chan bool {
-	return envChanReady
-}
 func PushEnv(envMap map[string]interface{}) {
 	tokenEnvChan <- envMap
 }
