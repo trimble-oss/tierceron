@@ -41,6 +41,7 @@ func main() {
 	envMap := tcutil.GetTestDeployConfig(*tokenPtr)
 
 	go factory.Init(tcutil.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
+	envMap["env"] = "QA"
 	factory.PushEnv(envMap)
 
 	for {

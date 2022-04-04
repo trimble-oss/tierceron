@@ -183,6 +183,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 		} else {
 			if _, ok := tokenMap["token"]; ok {
 				tokenMap["env"] = env
+				tokenMap["address"] = vaultHost
 				PushEnv(tokenMap)
 			}
 		}
@@ -318,6 +319,21 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcUpdate")
 	tokenEnvMap := map[string]interface{}{}
+
+	var plugin interface{}
+	pluginOk := false
+	if plugin, pluginOk = data.GetOk("plugin"); pluginOk {
+		// Then this is the carrier calling.
+		pluginName := plugin.(string)
+
+		// At this point, trigger channel to kick of a deploy....
+		// Then listen for sha256 channel response...
+		// We can use the plugin+env map channel trick.
+
+	}
+
+	// TODO: Verify token and env...
+	// Path includes Env and token will only work if it has right permissions.
 	tokenEnvMap["env"] = req.Path
 
 	if token, tokenOk := data.GetOk("token"); tokenOk {
@@ -354,6 +370,17 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	tokenEnvChan <- tokenEnvMap
 	ctx.Done()
+
+	if pluginOk {
+		// Listen on sha256 channel....
+		sha256 := "thesha"
+
+		return &logical.Response{
+			Data: map[string]interface{}{
+				"message": sha256,
+			},
+		}, nil
+	}
 
 	return &logical.Response{
 		Data: map[string]interface{}{
