@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"tierceron/trcflow/deploy"
 	"tierceron/trcvault/factory"
 	memonly "tierceron/trcvault/opts/memonly"
-	"tierceron/trcvault/util"
 	vscutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
-	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
 
 	tclib "VaultConfig.TenantConfig/lib"
 	tcutil "VaultConfig.TenantConfig/util"
@@ -19,38 +17,6 @@ import (
 	"github.com/hashicorp/vault/sdk/plugin"
 	"golang.org/x/sys/unix"
 )
-
-func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
-	var config *eUtils.DriverConfig
-	var vault *sys.Vault
-	var goMod *helperkv.Modifier
-	var err error
-
-	//Grabbing configs
-	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
-	if err != nil {
-		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
-		return err
-	}
-
-	pluginToolConfig := util.GetPluginToolConfig(config, goMod)
-
-	// 0. List all the plugins under Index/TrcVault/trcplugin
-
-	// 1. For each plugin do the following:
-	// Assert: we already have a plugin name
-	// 1a. retrieve TrcVault/trcplugin/<theplugin>/Certify/trcsha256
-	// 1b. Read and sha256 of /etc/opt/vault/plugins/<theplugin>
-	// 1c. if vault sha256 != filesystem sha256.
-	// 1.c.i. Download new image from ECR.
-	// 1.c.ii. Sha256 of new executable.
-	// 1.c.ii.- if Sha256 of new executable === sha256 from vault.
-	//  Save new image over existing image in /etc/opt/vault/plugins/<theplugin>
-	// 2a. Update vault setting copied=true...
-	// 3. Update apiChannel so api returns true
-
-	return nil
-}
 
 // TODO: Expose public Https api...
 
@@ -68,7 +34,7 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 
 	tclib.SetLogger(logger.Writer())
-	factory.Init(PluginDeployFlow, logger)
+	factory.Init(deploy.PluginDeployFlow, true, logger)
 	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}

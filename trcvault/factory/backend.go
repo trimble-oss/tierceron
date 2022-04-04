@@ -28,11 +28,13 @@ var _ logical.Factory = TrcFactory
 
 var logger *log.Logger
 
-func Init(processFlows util.ProcessFlowFunc, l *log.Logger) {
-	eUtils.InitHeadless(true)
+func Init(processFlows util.ProcessFlowFunc, headless bool, l *log.Logger) {
+	eUtils.InitHeadless(headless)
 	logger = l
 
 	tokenEnvChan = make(chan map[string]interface{}, 5)
+	environmentConfigs = map[string]*EnvConfig{}
+	envChanReady <- true
 
 	// Set up a table process runner.
 	initVaultHost()
@@ -65,7 +67,14 @@ var environments []string = []string{"dev", "QA"}
 var environmentConfigs map[string]*EnvConfig
 
 var tokenEnvChan chan map[string]interface{}
+var envChanReady chan bool = make(chan bool)
 
+func ReadyForEnvs() chan bool {
+	return envChanReady
+}
+func PushEnv(envMap map[string]interface{}) {
+	tokenEnvChan <- envMap
+}
 func initVaultHost() error {
 	if vaultHost == "" {
 		logger.Println("Begin finding vault.")
@@ -179,7 +188,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 		} else {
 			if _, ok := tokenMap["token"]; ok {
 				tokenMap["env"] = env
-				tokenEnvChan <- tokenMap
+				PushEnv(tokenMap)
 			}
 		}
 	}
@@ -251,7 +260,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 			logger.Println("Env queued: " + req.Path)
 		}
 		tokenEnvMap["token"] = vData["token"]
-		tokenEnvChan <- tokenEnvMap
+		PushEnv(tokenEnvMap)
 		ctx.Done()
 	}
 	logger.Println("TrcRead complete.")
