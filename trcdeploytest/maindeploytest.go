@@ -40,7 +40,7 @@ func main() {
 	//Grabbing configs
 	envMap := tcutil.GetTestDeployConfig(*tokenPtr)
 
-	go factory.Init(deploy.PluginDeployFlow, true, logger)
+	go factory.Init(tcutil.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
 	factory.PushEnv(envMap)
 
 	for {

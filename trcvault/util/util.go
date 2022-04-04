@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	xUtils "tierceron/trcx/xutil"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
@@ -28,6 +27,7 @@ import (
 	"log"
 )
 
+type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
 type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
@@ -229,15 +229,10 @@ func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service
 	return nil
 }
 
-func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier) map[string]interface{} {
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginConfig map[string]interface{}) map[string]interface{} {
 	//templatePaths
 	indexFound := false
-	templatePaths := []string{}
-	for _, startDir := range config.StartDir {
-		//get files from directory
-		tp := xUtils.GetDirFiles(startDir)
-		templatePaths = append(templatePaths, tp...)
-	}
+	templatePaths := pluginConfig["templatePath"].([]string)
 
 	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
 	if err != nil {

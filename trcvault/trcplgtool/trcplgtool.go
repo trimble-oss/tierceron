@@ -18,6 +18,8 @@ import (
 	"tierceron/trcvault/util/repository"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
+
+	tcutil "VaultConfig.TenantConfig/util"
 )
 
 func gUnZipData(data []byte) ([]byte, error) {
@@ -128,7 +130,7 @@ func PluginMain() {
 		eUtils.CheckError(config, err, true)
 	}
 	mod.Env = *envPtr
-	pluginToolConfig := util.GetPluginToolConfig(config, mod)
+	pluginToolConfig := util.GetPluginToolConfig(config, mod, tcutil.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
 	pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", *pluginNamePtr, -1) //"https://" +
 	pluginToolConfig["trcsha256"] = *sha256Ptr
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr

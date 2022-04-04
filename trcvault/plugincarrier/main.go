@@ -34,7 +34,7 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 
 	tclib.SetLogger(logger.Writer())
-	factory.Init(deploy.PluginDeployFlow, true, logger)
+	factory.Init(tcutil.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
 	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}

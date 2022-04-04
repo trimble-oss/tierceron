@@ -31,7 +31,7 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 
 	tclib.SetLogger(logger.Writer())
-	factory.Init(flumen.ProcessFlows, true, logger)
+	factory.Init(tcutil.ProcessPluginEnvConfig, flumen.ProcessFlows, true, logger)
 	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}

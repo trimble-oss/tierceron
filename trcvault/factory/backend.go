@@ -13,8 +13,6 @@ import (
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
-	tcutil "VaultConfig.TenantConfig/util"
-
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"gopkg.in/yaml.v2"
 
@@ -28,7 +26,7 @@ var _ logical.Factory = TrcFactory
 
 var logger *log.Logger
 
-func Init(processFlows util.ProcessFlowFunc, headless bool, l *log.Logger) {
+func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlowFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
 
@@ -41,7 +39,7 @@ func Init(processFlows util.ProcessFlowFunc, headless bool, l *log.Logger) {
 			case tokenEnvMap := <-tokenEnvChan:
 
 				logger.Println("Config engine init begun: " + tokenEnvMap["env"].(string))
-				pecError := ProcessPluginEnvConfig(processFlows, tokenEnvMap)
+				pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, tokenEnvMap)
 
 				if pecError != nil {
 					logger.Println("Bad configuration data for env: " + tokenEnvMap["env"].(string) + " error: " + pecError.Error())
@@ -129,7 +127,7 @@ func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
 	return nil
 }
 
-func ProcessPluginEnvConfig(processFlows util.ProcessFlowFunc, pluginEnvConfig map[string]interface{}) error {
+func ProcessPluginEnvConfig(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlowFunc, pluginEnvConfig map[string]interface{}) error {
 	env, eOk := pluginEnvConfig["env"]
 	if !eOk || env.(string) == "" {
 		logger.Println("Bad configuration data.  Missing env.")
@@ -142,13 +140,14 @@ func ProcessPluginEnvConfig(processFlows util.ProcessFlowFunc, pluginEnvConfig m
 		return errors.New("missing token")
 	}
 
+	// TODO: remove trom deployer plugin...
 	ptvError := populateTrcVaultDbConfigs(&eUtils.DriverConfig{Env: env.(string), Token: token.(string), VaultAddress: vaultHost, ExitOnFailure: false})
 	if ptvError != nil {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  error: " + ptvError.Error())
 		return ptvError
 	}
 
-	pluginEnvConfig = tcutil.ProcessPluginEnvConfig(pluginEnvConfig)
+	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
 	logger.Println("Begin processFlows for env: " + env.(string))
 
 	go processFlows(pluginEnvConfig, logger)
