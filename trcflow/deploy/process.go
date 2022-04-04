@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"log"
+	"strings"
 	"tierceron/trcvault/util"
 
 	sys "tierceron/vaulthelper/system"
@@ -24,14 +25,19 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
 	}
+
+	pluginToolConfig := util.GetPluginToolConfig(config, goMod, pluginConfig)
+	// This should come from vault now....
+	pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", "trc-vault-plugin", -1) //"https://" +
+	pluginToolConfig["trcsha256"] = "*sha256Ptr"
+	pluginToolConfig["pluginNamePtr"] = "pluginNamePtr"
+
 	// This should come from vault
 	// 0. List all the plugins under Index/TrcVault/trcplugin
 	// Example:
 	// config.SubSectionValue = "trc-plugin-vault"
 	// Note: Code from trcplgtool
 	// config := &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
-
-	pluginToolConfig := util.GetPluginToolConfig(config, goMod)
 
 	spew.Dump(pluginToolConfig)
 	spew.Dump(vault)

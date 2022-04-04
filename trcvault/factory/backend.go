@@ -127,7 +127,9 @@ func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
 	return nil
 }
 
-func ProcessPluginEnvConfig(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlowFunc, pluginEnvConfig map[string]interface{}) error {
+func ProcessPluginEnvConfig(processFlowConfig util.ProcessFlowConfig,
+	processFlows util.ProcessFlowFunc,
+	pluginEnvConfig map[string]interface{}) error {
 	env, eOk := pluginEnvConfig["env"]
 	if !eOk || env.(string) == "" {
 		logger.Println("Bad configuration data.  Missing env.")
@@ -140,11 +142,13 @@ func ProcessPluginEnvConfig(processFlowConfig util.ProcessFlowConfig, processFlo
 		return errors.New("missing token")
 	}
 
-	// TODO: remove trom deployer plugin...
-	ptvError := populateTrcVaultDbConfigs(&eUtils.DriverConfig{Env: env.(string), Token: token.(string), VaultAddress: vaultHost, ExitOnFailure: false})
-	if ptvError != nil {
-		logger.Println("Bad configuration data for env: " + env.(string) + ".  error: " + ptvError.Error())
-		return ptvError
+	if _, enabledTrcDb := pluginEnvConfig["enableTrcDbInterface"]; enabledTrcDb {
+		// This isn't even used yet....
+		ptvError := populateTrcVaultDbConfigs(&eUtils.DriverConfig{Env: env.(string), Token: token.(string), VaultAddress: vaultHost, ExitOnFailure: false})
+		if ptvError != nil {
+			logger.Println("Bad configuration data for env: " + env.(string) + ".  error: " + ptvError.Error())
+			return ptvError
+		}
 	}
 
 	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
