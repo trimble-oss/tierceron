@@ -38,7 +38,7 @@ func main() {
 	eUtils.CheckError(configDriver, err, true)
 
 	//Grabbing configs
-	envMap := tcutil.GetTestConfig(*tokenPtr)
+	envMap := tcutil.GetTestDeployConfig(*tokenPtr)
 
 	go factory.Init(deploy.PluginDeployFlow, true, logger)
 	for {
