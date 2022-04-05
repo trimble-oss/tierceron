@@ -72,6 +72,7 @@ func PushEnv(envMap map[string]interface{}) {
 
 func PushPluginSha(plugin string, sha string) {
 	pluginShaMap[plugin] = sha
+	// TODO: Create the chan if needed.
 	pluginSettingsChan[plugin] <- true
 }
 
