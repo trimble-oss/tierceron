@@ -12,6 +12,7 @@ import (
 	vscutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
+	"time"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"gopkg.in/yaml.v2"
@@ -62,9 +63,18 @@ var environmentConfigs map[string]*EnvConfig = map[string]*EnvConfig{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
 
+var pluginSettingsChan map[string]chan bool
+var pluginShaMap map[string]string = map[string]string{}
+
 func PushEnv(envMap map[string]interface{}) {
 	tokenEnvChan <- envMap
 }
+
+func PushPluginSha(plugin string, sha string) {
+	pluginShaMap[plugin] = sha
+	pluginSettingsChan[plugin] <- true
+}
+
 func initVaultHost() error {
 	if vaultHost == "" {
 		logger.Println("Begin finding vault.")
@@ -324,12 +334,10 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	pluginOk := false
 	if plugin, pluginOk = data.GetOk("plugin"); pluginOk {
 		// Then this is the carrier calling.
-		pluginName := plugin.(string)
+		tokenEnvMap["pluginName"] = plugin.(string)
 
-		// At this point, trigger channel to kick of a deploy....
-		// Then listen for sha256 channel response...
-		// We can use the plugin+env map channel trick.
-
+		// TODO: Set copied and deployed to false for this plugin...
+		//
 	}
 
 	// TODO: Verify token and env...
@@ -368,12 +376,22 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, fmt.Errorf("failed to write: %v", err)
 	}
 
+	// This will kick off the main flow for the plugin..
 	tokenEnvChan <- tokenEnvMap
 	ctx.Done()
 
 	if pluginOk {
 		// Listen on sha256 channel....
-		sha256 := "thesha"
+		var sha256 string
+		sha256, shaOk := pluginShaMap[tokenEnvMap["pluginName"].(string)]
+
+		select {
+		case <-pluginSettingsChan[tokenEnvMap["pluginName"].(string)]:
+		case <-time.After(time.Second * 7):
+			if !shaOk {
+				sha256 = "Failure to copy plugin."
+			}
+		}
 
 		return &logical.Response{
 			Data: map[string]interface{}{

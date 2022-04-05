@@ -19,13 +19,24 @@ vault plugin deregister trc-vault-plugin
 
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]
 then
-# Just writing to vault will trigger a copy...
+# Just writing to vault will trigger the carrier plugin...
 # First we set Copied to false...
 # This should also trigger the copy process...
 # It should return sha256 of copied plugin on success.
-vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN plugin=trc-vault-plugin-prod
+SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN plugin=trc-vault-plugin-prod)
 # TODO: If this errors, then fail...
+for keyval in $(ech $SHA256BUNDLE | grep -E '": [^\{]' | sed -e 's/: /=/' -e "s/\(\,\)$//"); do
+    echo "export $keyval"
+    eval export $keyval
+done
 
+# TODO: -- fall back to jq if the above doesn't work -- or delete this if it does work.
+#for s in $(echo $SHA256BUNDLE | jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" ); do
+#    echo $s
+#    export $s
+#done
+
+exit 0
 vault plugin register \
           -command=trc-vault-plugin-prod \
           -sha256=$( cat target/trc-vault-plugin-prod.sha256 ) \
@@ -41,8 +52,21 @@ else
 # First we set Copied to false...
 # This should also trigger the copy process...
 # It should return sha256 of copied plugin on success.
-vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN plugin=trc-vault-plugin
+SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN plugin=trc-vault-plugin)
+# TODO: If this errors, then fail...
+for keyval in $(ech $SHA256BUNDLE | grep -E '": [^\{]' | sed -e 's/: /=/' -e "s/\(\,\)$//"); do
+    echo "export $keyval"
+    eval export $keyval
+done
 
+# TODO: -- fall back to jq if the above doesn't work -- or delete this if it does work.
+#for s in $(echo $SHA256BUNDLE | jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" ); do
+#    echo $s
+#    export $s
+#done
+
+
+exit 0
 
 # TODO: If this errors, then fail...
 vault plugin register \
@@ -57,6 +81,6 @@ vault secrets enable \
           plugin
 fi
 
+# Note: plugin should update deployed flag for itself.
 vault write vaultdb/$VAULT_ENV token=$VAULT_ENV_TOKEN
 
-# TODO: run trcplgtool -certify -deployed
