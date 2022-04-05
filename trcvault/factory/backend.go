@@ -63,7 +63,7 @@ var environmentConfigs map[string]*EnvConfig = map[string]*EnvConfig{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
 
-var pluginSettingsChan map[string]chan bool
+var pluginSettingsChan map[string]chan bool = map[string]chan bool{}
 var pluginShaMap map[string]string = map[string]string{}
 
 func PushEnv(envMap map[string]interface{}) {
