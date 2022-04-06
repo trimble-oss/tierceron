@@ -11,6 +11,7 @@ import (
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+	LogInfo(config, "InitVaultMod begins..")
 	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, config.ExitOnFailure, config.Log)
 	if err != nil {
 		LogErrorObject(config, err, false)
@@ -26,6 +27,7 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	mod.Env = config.Env
 	mod.Version = "0"
 	mod.VersionFilter = config.VersionFilter
+	LogInfo(config, "InitVaultMod complete..")
 
 	return config, mod, vault, nil
 }
@@ -109,6 +111,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+	logger.Println("InitVaultModForPlugin begin..")
 	exitOnFailure := false
 	if _, ok := pluginConfig["exitOnFailure"]; ok {
 		exitOnFailure = pluginConfig["exitOnFailure"].(bool)
@@ -128,6 +131,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		ExitOnFailure:  exitOnFailure,
 		Log:            logger,
 	}
+	logger.Println("InitVaultModForPlugin ends..")
 
 	return InitVaultMod(&config)
 }
