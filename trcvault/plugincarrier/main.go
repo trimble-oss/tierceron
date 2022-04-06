@@ -32,6 +32,7 @@ func main() {
 	f, logErr := os.OpenFile("trcplugincarrier.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
+	logger.Println("Beginning plugin startup.")
 
 	tclib.SetLogger(logger.Writer())
 	factory.Init(tcutil.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
@@ -64,6 +65,7 @@ func main() {
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
+	logger.Print("Starting server...")
 	err := plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: factory.TrcFactory,
 		TLSProviderFunc:    tlsProviderFunc,
