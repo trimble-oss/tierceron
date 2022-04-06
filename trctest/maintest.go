@@ -21,7 +21,7 @@ func main() {
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
-	pluginConfig := tcutil.GetTestConfig(*tokenPtr)
+	pluginConfig := tcutil.GetTestConfig(*tokenPtr, false)
 
 	trcflow.ProcessFlows(pluginConfig, logger)
 }
