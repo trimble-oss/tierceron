@@ -436,11 +436,11 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	if pluginOk {
 		// Listen on sha256 channel....
 		var sha256 string
-		sha256, shaOk := pluginShaMap[tokenEnvMap["pluginName"].(string)]
+		sha256, shaOk := pluginShaMap[tokenEnvMap["trcplugin"].(string)]
 
 		select {
-		case <-pluginSettingsChan[tokenEnvMap["pluginName"].(string)]:
-			sha256 = pluginShaMap[tokenEnvMap["pluginName"].(string)]
+		case <-pluginSettingsChan[tokenEnvMap["trcplugin"].(string)]:
+			sha256 = pluginShaMap[tokenEnvMap["trcplugin"].(string)]
 		case <-time.After(time.Second * 7):
 			if !shaOk {
 				sha256 = "Failure to copy plugin."
