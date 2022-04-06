@@ -352,11 +352,6 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		tokenEnvMap["pluginName"] = plugin.(string)
 		pluginSettingsChan[plugin.(string)] = make(chan bool)
 		// TODO: Set copied and deployed to false for this plugin...
-		writeMap := make(map[string]interface{})
-		writeMap["trcplugin"] = tokenEnvMap["trcplugin"].(string)
-		writeMap["trcsha256"] = pluginShaMap[tokenEnvMap["pluginName"].(string)]
-		writeMap["copied"] = false
-		writeMap["deployed"] = false
 		if token, tokenOk := data.GetOk("token"); tokenOk {
 			mod, err := helperkv.NewModifier(insecure.IsInsecure(), token.(string), vaultHost, req.Path, nil, logger)
 			if err != nil {
@@ -364,6 +359,13 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				//ctx.Done()
 				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
+			writeMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
+			if err != nil {
+				logger.Println("Failed to read previous plugin status from vault")
+				return logical.ErrorResponse("Failed to read previous plugin status from vault"), nil
+			}
+			writeMap["copied"] = false
+			writeMap["deployed"] = false
 			_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+tokenEnvMap["trcplugin"].(string)+"/Certify", writeMap)
 			if err != nil {
 				logger.Println("Failed to write plugin state: " + err.Error())
