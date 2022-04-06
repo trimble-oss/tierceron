@@ -19,6 +19,9 @@ read VAULT_ENV_TOKEN
 vault secrets disable vaultcarrier/
 vault plugin deregister trc-vault-carrier-plugin
 
+# TODO: remove this next line...  or parameterize it.
+cp target/trc-vault-carrier-plugin ../../../../Vault.Hashicorp/plugins/
+
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]
 then
 vault plugin register \
