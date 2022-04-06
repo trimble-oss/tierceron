@@ -351,7 +351,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		logger.Println("TrcUpdate checking plugin")
 
 		// Then this is the carrier calling.
-		tokenEnvMap["pluginName"] = plugin.(string)
+		tokenEnvMap["trcplugin"] = plugin.(string)
 		if _, pscOk := pluginSettingsChan[plugin.(string)]; !pscOk {
 			pluginSettingsChan[plugin.(string)] = make(chan bool)
 		}
