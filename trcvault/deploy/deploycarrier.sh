@@ -20,10 +20,6 @@ echo "Enter environment token with write permissions: "
 read VAULT_ENV_TOKEN
 fi
 
-# TODO: make api call to trc carrier with sha256...
-# input (plugin name)
-# output sha256 or error (if plugin has not been copied and a copy attempt failed).
-
 vault secrets disable vaultcarrier/
 vault plugin deregister trc-vault-carrier-plugin
 
@@ -56,9 +52,3 @@ vault secrets enable \
           -description="Tierceron Vault Carrier Plugin" \
           plugin
 fi
-
-echo "Starting Carrier"
-vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN
-echo "Carrier Started"
-
-# TODO: run trcplgtool -certify -deployed
