@@ -36,6 +36,10 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", pluginName, -1) //"https://" +
 
 		if imageFile, err := os.Open("/etc/opt/vault/plugins/" + pluginToolConfig["trcplugin"].(string)); err == nil {
+			if err != nil {
+				eUtils.LogErrorMessage(config, "Could not find plugin image", false)
+				return err
+			}
 			sha256 := sha256.New()
 
 			defer imageFile.Close()
