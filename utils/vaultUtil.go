@@ -116,6 +116,9 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	if _, ok := pluginConfig["exitOnFailure"]; ok {
 		exitOnFailure = pluginConfig["exitOnFailure"].(bool)
 	}
+
+	logger.Println("InitVaultModForPlugin initialize DriverConfig.")
+
 	config := DriverConfig{
 		Insecure:       pluginConfig["insecure"].(bool),
 		Token:          pluginConfig["token"].(string),
