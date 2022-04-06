@@ -73,11 +73,10 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
 			writeMap["copied"] = true
 			writeMap["deployed"] = false
-			pathSplit := strings.Split(goMod.SectionPath, "/")
-			_, err = goMod.Write(pathSplit[0]+"/"+pathSplit[len(pathSplit)-1], writeMap)
+			_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap)
 			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+				logger.Println("Failed to write plugin state: " + err.Error())
+				return err
 			}
 			utils.LogInfo(config, "Image has been copied and vault has been updated.")
 		}
