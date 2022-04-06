@@ -496,6 +496,11 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 					Type:        framework.TypeString,
 					Description: "Token used for specified environment.",
 				},
+				"plugin": &framework.FieldSchema{
+					Type:        framework.TypeString,
+					Description: "Optional plugin name.",
+					Required:    false,
+				},
 			},
 
 			Callbacks: map[logical.Operation]framework.OperationFunc{
