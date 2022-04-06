@@ -364,6 +364,11 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				logger.Println("Failed to read previous plugin status from vault")
 				return logical.ErrorResponse("Failed to read previous plugin status from vault"), nil
 			}
+
+			if _, ok := writeMap["trasha256"]; !ok {
+				logger.Println("Failed to read previous plugin sha from vault")
+				return logical.ErrorResponse("Failed to read previous plugin sha from vault"), nil
+			}
 			writeMap["copied"] = false
 			writeMap["deployed"] = false
 			_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+tokenEnvMap["trcplugin"].(string)+"/Certify", writeMap)
