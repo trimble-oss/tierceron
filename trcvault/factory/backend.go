@@ -347,9 +347,14 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		if token, tokenOk := data.GetOk("token"); tokenOk {
 			mod, err := helperkv.NewModifier(insecure.IsInsecure(), token.(string), vaultHost, req.Path, nil, logger)
 			if err != nil {
+				logger.Println("Failed to init mod for deploy update")
 				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
 			_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+tokenEnvMap["trcplugin"].(string)+"/Certify", writeMap)
+			if err != nil {
+				logger.Println("Failed to write plugin state: " + err.Error())
+				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
+			}
 		}
 	}
 
