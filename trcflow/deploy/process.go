@@ -17,6 +17,7 @@ import (
 )
 
 func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
+	logger.Println("PluginDeployFlow begun.")
 	var config *eUtils.DriverConfig
 	var goMod *helperkv.Modifier
 	var err error
@@ -29,6 +30,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	}
 
 	for _, pluginName := range pluginConfig["pluginNameList"].([]string) {
+		logger.Println("PluginDeployFlow begun for plugin: " + pluginName)
 		config = &eUtils.DriverConfig{Insecure: pluginConfig["insecure"].(bool), Log: logger, ExitOnFailure: true, StartDir: []string{}, SubSectionValue: pluginName}
 
 		pluginToolConfig := util.GetPluginToolConfig(config, goMod, pluginConfig)
@@ -52,6 +54,8 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			if pluginToolConfig["filesystemsha256"] == pluginToolConfig["trcsha256"] { //Sha256 from file system matches in vault
 				continue
 			}
+		} else {
+			logger.Println("Attempting to download new image.")
 		}
 		// 1.c.i. Download new image from ECR.
 		// 1.c.ii. Sha256 of new executable.
@@ -102,6 +106,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	//  Save new image over existing image in /etc/opt/vault/plugins/<theplugin>
 	// 2a. Update vault setting copied=true...
 	// 3. Update apiChannel so api returns true
+	logger.Println("PluginDeployFlow complete.")
 
 	return nil
 }
