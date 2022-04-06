@@ -364,6 +364,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				//ctx.Done()
 				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
+			mod.Env = req.Path
 			logger.Println("TrcUpdate getting plugin settings")
 			writeMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
 			if err != nil {
