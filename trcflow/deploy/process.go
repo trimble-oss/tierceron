@@ -29,6 +29,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		return err
 	}
 
+	logger.Println("PluginDeployFlow begin processing plugins.")
 	for _, pluginName := range pluginConfig["pluginNameList"].([]string) {
 		logger.Println("PluginDeployFlow begun for plugin: " + pluginName)
 		config = &eUtils.DriverConfig{Insecure: pluginConfig["insecure"].(bool), Log: logger, ExitOnFailure: true, StartDir: []string{}, SubSectionValue: pluginName}
