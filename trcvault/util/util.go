@@ -236,7 +236,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 
 	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
 	if err != nil {
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(config, err, config.ExitOnFailure)
 	}
 
 	for _, templatePath := range templatePaths {
@@ -254,7 +254,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 	}
 
 	if pluginToolConfig == nil || !indexFound {
-		eUtils.CheckError(config, errors.New("No plugin configs were found"), true)
+		eUtils.CheckError(config, errors.New("No plugin configs were found"), config.ExitOnFailure)
 	}
 
 	return pluginToolConfig
