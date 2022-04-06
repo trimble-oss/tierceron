@@ -35,11 +35,13 @@ vault secrets enable \
           -description="Tierceron Vault Carrier Plugin Prod" \
           plugin
 else
+echo "Registering Carrier"
 vault plugin register \
           -command=trc-vault-carrier-plugin \
           -sha256=$( cat target/trc-vault-carrier-plugin.sha256 ) \
           -args=`backendUUID=567` \
           trc-vault-carrier-plugin
+echo "Enabling Carrier secret engine"
 vault secrets enable \
           -path=vaultcarrier \
           -plugin-name=trc-vault-carrier-plugin \
@@ -47,6 +49,8 @@ vault secrets enable \
           plugin
 fi
 
+echo "Starting Carrier"
 vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN
+echo "Carrier Started"
 
 # TODO: run trcplgtool -certify -deployed
