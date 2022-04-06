@@ -166,7 +166,12 @@ func ProcessPluginEnvConfig(processFlowConfig util.ProcessFlowConfig,
 	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
 	logger.Println("Begin processFlows for env: " + env.(string))
 
-	go processFlows(pluginEnvConfig, logger)
+	go func(pc map[string]interface{}, l *log.Logger) {
+		flowErr := processFlows(pluginEnvConfig, l)
+		if flowErr != nil {
+			l.Println("Flow had an error: " + flowErr.Error())
+		}
+	}(pluginEnvConfig, logger)
 
 	logger.Println("End processFlows for env: " + env.(string))
 
