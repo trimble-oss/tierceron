@@ -10,7 +10,7 @@ config:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcconfig
 
 plugincarrierbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -o trcvault/deploy/target/trc-vault-carrier-plugin tierceron/trcvault/plugincarrier
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "insecure" -o trcvault/deploy/target/trc-vault-carrier-plugin tierceron/trcvault/plugincarrier
 plugincarriersha:
 	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin.sha256
 plugincarrier: plugincarrierbuild plugincarriersha
