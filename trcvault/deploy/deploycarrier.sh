@@ -24,7 +24,7 @@ then
 vault plugin register \
           -command=trc-vault-carrier-plugin-prod \
           -sha256=$( cat target/trc-vault-carrier-plugin-prod.sha256 ) \
-          -args=`backendUUID=4` \
+          -args=`backendUUID=567` \
           plugin
 vault secrets enable \
           -path=vaultcarrier \
@@ -34,9 +34,9 @@ vault secrets enable \
 else
 vault plugin register \
           -command=trc-vault-carrier-plugin \
-          -sha256=$( cat target/trc-vault-plugin.sha256 ) \
-          -args=`backendUUID=4` \
-          trc-vault-plugin
+          -sha256=$( cat target/trc-vault-carrier-plugin.sha256 ) \
+          -args=`backendUUID=567` \
+          trc-vault-carrier-plugin
 vault secrets enable \
           -path=vaultcarrier \
           -plugin-name=trc-vault-carrier-plugin \
