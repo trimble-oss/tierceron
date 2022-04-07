@@ -32,11 +32,13 @@ then
 SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN plugin=trc-vault-plugin-prod)
 SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
 
+echo "Registering new plugin."
 vault plugin register \
           -command=trc-vault-plugin-prod \
-          -sha256=$SHAVAL \
-          -args=`backendUUID=4` \
+          -sha256=$(echo $SHAVAL) \
+          -args=`backendUUID=789` \
           trc-vault-plugin-prod
+echo "Enabling new plugin."
 vault secrets enable \
           -path=vaultdb \
           -plugin-name=trc-vault-plugin-prod \
@@ -50,12 +52,13 @@ else
 SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN plugin=trc-vault-plugin)
 SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
 
-# TODO: If this errors, then fail...
+echo "Registering new plugin."
 vault plugin register \
           -command=trc-vault-plugin \
-          -sha256=$SHAVAL \
-          -args=`backendUUID=4` \
+          -sha256=$(echo $SHAVAL) \
+          -args=`backendUUID=789` \
           trc-vault-plugin
+echo "Enabling new plugin."
 vault secrets enable \
           -path=vaultdb \
           -plugin-name=trc-vault-plugin \
