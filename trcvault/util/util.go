@@ -229,21 +229,24 @@ func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service
 	return nil
 }
 
-func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginConfig map[string]interface{}) map[string]interface{} {
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
+	config.Log.Println("GetPluginToolConfig begin processing plugins.")
 	//templatePaths
 	indexFound := false
 	templatePaths := pluginConfig["templatePath"].([]string)
 
 	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
 	if err != nil {
-		eUtils.CheckError(config, err, config.ExitOnFailure)
+		return nil, err
 	}
 
 	for _, templatePath := range templatePaths {
 		project, service, _ := eUtils.GetProjectService(templatePath)
+		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
 		mod.SectionPath = "super-secrets/Index/" + project + "/" + "trcplugin" + "/" + config.SubSectionValue + "/" + service
 		ptc1, err := mod.ReadData(mod.SectionPath)
 		if err != nil || ptc1 == nil {
+			config.Log.Println("No data found.")
 			continue
 		}
 		indexFound = true
@@ -254,8 +257,9 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 	}
 
 	if pluginToolConfig == nil || !indexFound {
-		eUtils.CheckError(config, errors.New("No plugin configs were found"), config.ExitOnFailure)
+		return nil, err
 	}
+	config.Log.Println("GetPluginToolConfig end processing plugins.")
 
-	return pluginToolConfig
+	return pluginToolConfig, nil
 }
