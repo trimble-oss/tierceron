@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"tierceron/trcvault/factory"
 	"tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
 	"tierceron/utils"
@@ -56,11 +57,10 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			}
 
 			filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
-			if filesystemsha256 == vaultPluginSignature["trcsha256"] { //Sha256 from file system matches in vault
-				// TODO: write success to vault...
-				continue
-			} else {
+			if filesystemsha256 != vaultPluginSignature["trcsha256"] { //Sha256 from file system matches in vault
 				pluginDownloadNeeded = true
+			} else {
+				eUtils.LogErrorMessage(config, "Certified plugin already exists in file system - continuing with vault plugin status update", false)
 			}
 		} else {
 			pluginDownloadNeeded = true
@@ -94,6 +94,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 		if (!pluginDownloadNeeded && !pluginCopied) || // No download needed because it's already there, but vault may be wrong.
 			(pluginDownloadNeeded && pluginCopied) {
+			factory.PushPluginSha(vaultPluginSignature["trcplugin"].(string), vaultPluginSignature["trcsha256"].(string))
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
 			writeMap["trcsha256"] = vaultPluginSignature["trcsha256"].(string)
