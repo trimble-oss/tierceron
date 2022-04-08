@@ -36,6 +36,19 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
 	}
+
+	//Need new function writing to that path using pluginName ->
+	//if not copied -> this plugin should fail to start up
+	//Update deployed status & return if
+	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok {
+		deployedUpdateErr := PluginDeployedUpdate(goMod, pluginNameList)
+		if deployedUpdateErr != nil {
+			eUtils.LogErrorMessage(config, deployedUpdateErr.Error(), false)
+			eUtils.LogErrorMessage(config, "Could not update plugin deployed status in vault.", false)
+			return err
+		}
+	}
+
 	tfmContext = &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: testflowimpl.GetAdditionalFlowsByState,
