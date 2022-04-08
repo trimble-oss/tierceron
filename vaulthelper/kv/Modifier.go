@@ -93,7 +93,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
-func (m *Modifier) ValidateEnvironment(environment string, init bool, logger *log.Logger) (bool, error) {
+func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuffix string, logger *log.Logger) (bool, error) {
 	env, sub, _, envErr := PreCheckEnvironment(environment)
 
 	if envErr != nil {
@@ -108,7 +108,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, logger *lo
 	if strings.Contains(environment, "local") {
 		environment = "local"
 	}
-	desiredPolicy := "config_" + strings.ToLower(environment)
+	desiredPolicy := "config_" + strings.ToLower(environment) + policySuffix
 
 	if init {
 		desiredPolicy = "vault_pub_" + strings.ToLower(environment)
@@ -130,13 +130,16 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, logger *lo
 		for _, policy := range policies {
 			if policy == "root" {
 				valid = true
+				break
 			}
 			if strings.ToLower(policy) == desiredPolicy {
 				valid = true
+				break
 			}
 		}
 
 	}
+
 	return valid, nil
 }
 
@@ -172,6 +175,10 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 			fullPath += pathBlocks[1]
 		}
 	}
+
+	if strings.Contains(fullPath, "/super-secrets/") {
+		fullPath = strings.ReplaceAll(fullPath, "/super-secrets/", "/")
+	}
 	Secret, err := m.logical.Write(fullPath, sendData)
 
 	if Secret == nil { // No warnings
@@ -184,9 +191,8 @@ func (m *Modifier) Write(path string, data map[string]interface{}) ([]string, er
 // @return	A Secret pointer that contains key,value pairs and metadata
 //			errors generated from reading
 func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
-
 	// Create full path
-	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") { //Template paths are not indexed -> values & super-secrets are
+	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") && !strings.HasPrefix(path, "value-metrics") { //Template paths are not indexed -> values & super-secrets are
 		if strings.Contains(path, "values") {
 			path = strings.Replace(m.SectionPath, "super-secrets", "values", -1)
 		} else {
