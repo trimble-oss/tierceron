@@ -22,7 +22,7 @@ require (
 	github.com/txn2/txeh v1.3.0
 	github.com/xo/dburl v0.9.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
-	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -31,8 +31,11 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 )
 
+require github.com/jmespath/go-jmespath v0.4.0 // indirect
+
 require (
 	github.com/armon/go-radix v1.0.0 // indirect
+	github.com/aws/aws-sdk-go v1.43.30
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/dolthub/vitess v0.0.0-20220317184555-442cf0a796cc // indirect
 	github.com/fatih/color v1.7.0 // indirect
@@ -80,9 +83,9 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/src-d/go-oniguruma v1.1.0 // indirect
 	golang.org/x/mod v0.5.1 // indirect
-	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	golang.org/x/tools v0.1.9 // indirect
