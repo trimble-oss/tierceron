@@ -49,10 +49,10 @@ func (c *cert) getCert(logger *log.Logger) (*cert, error) {
 
 // AutoAuth attempts to authenticate a user.
 func AutoAuth(config *DriverConfig,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
-	tokenPtr *string,
-	tokenNamePtr *string,
+	secretIDPtr *string, // Optional if token provided.
+	appRoleIDPtr *string, // Optional if token provided.
+	tokenPtr *string, // Optional if appRole and secret provided.
+	tokenNamePtr *string, // Required if approle and secret provided.
 	envPtr *string,
 	addrPtr *string,
 	ping bool) error {
