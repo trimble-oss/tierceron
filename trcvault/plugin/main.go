@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"tierceron/trcflow/flumen"
 	"tierceron/trcvault/factory"
 	memonly "tierceron/trcvault/opts/memonly"
 	vscutils "tierceron/trcvault/util"
@@ -25,13 +26,12 @@ func main() {
 			os.Exit(-1)
 		}
 	}
-	eUtils.InitHeadless(true)
 	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcvault]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 
 	tclib.SetLogger(logger.Writer())
-	factory.Init(logger)
+	factory.Init(tcutil.ProcessPluginEnvConfig, flumen.ProcessFlows, true, logger)
 	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
