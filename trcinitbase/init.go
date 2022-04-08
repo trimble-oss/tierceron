@@ -147,7 +147,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
 			fmt.Printf("Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
+		} else if strings.Contains(err.Error(), "no such host") {
+			fmt.Printf("failed to connect to vault - missing host")
+		} else {
+			fmt.Println(err.Error())
 		}
+
 		os.Exit(0)
 	}
 	if *pingPtr {
