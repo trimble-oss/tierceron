@@ -1,10 +1,12 @@
 package flumen
 
 import (
+	"errors"
 	"sync"
 	"tierceron/trcvault/util"
 	"tierceron/trcx/db"
 	"tierceron/trcx/extract"
+	helperkv "tierceron/vaulthelper/kv"
 
 	flowcore "tierceron/trcflow/core"
 
@@ -113,5 +115,30 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 
 	}
 
+	return nil
+}
+
+//Updated deployed to true for any plugin
+func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error {
+	for _, plguinName := range pluginNameList {
+		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + plguinName + "/Certify")
+		if err != nil {
+			return err
+		}
+
+		if !pluginData["copied"].(bool) {
+			return errors.New("Copy status for plugin is false.")
+		}
+		writeMap := make(map[string]interface{})
+		writeMap["trcplugin"] = pluginData["trcplugin"]
+		writeMap["trcsha256"] = pluginData["trcsha256"]
+		writeMap["copied"] = pluginData["copied"]
+		writeMap["deployed"] = true
+
+		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+plguinName+"/Certify", writeMap)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

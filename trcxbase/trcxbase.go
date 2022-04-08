@@ -336,7 +336,10 @@ skipDiff:
 					baseEnv = envSlice[0]
 				}
 				//Ask vault for list of dev.<id>.* environments, add to envSlice
-				eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, *pingPtr)
+				authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, *pingPtr)
+				if authErr != nil {
+					eUtils.LogErrorMessage(config, "Auth failure: "+authErr.Error(), true)
+				}
 				testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, logger)
 				testMod.Env = baseEnv
 				if err != nil {
