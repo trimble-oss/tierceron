@@ -48,6 +48,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		pluginCopied := false
 
 		if imageFile, err := os.Open("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); err == nil {
+			chdModErr := imageFile.Chmod(0550)
+			if chdModErr != nil {
+				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not give permission to image in file system.", false)
+				return err
+			}
 			sha256 := sha256.New()
 
 			defer imageFile.Close()
