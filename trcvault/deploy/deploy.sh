@@ -61,4 +61,3 @@ fi
 #Activates/starts the deployed plugin.
 # Note: plugin should update deployed flag for itself.
 vault write vaultdb/$VAULT_ENV token=$VAULT_ENV_TOKEN
-
