@@ -18,8 +18,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// TODO: Expose public Https api...
-
 func main() {
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
