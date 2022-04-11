@@ -12,7 +12,13 @@ read VAULT_ENV
 echo "Enter environment token with write permissions: "
 read VAULT_ENV_TOKEN
 
+VAULT_API_ADDR=VAULT_ADDR
+export VAULT_ADDR
+export VAULT_API_ADDR
+
+echo "Disable old trc vault secrets"
 vault secrets disable vaultdb/
+echo "Unregister old trc vault plugin"
 vault plugin deregister trc-vault-plugin
 
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]
