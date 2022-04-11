@@ -84,6 +84,18 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not write out download image.", false)
 					return err
 				}
+
+				if imageFile, err := os.Open("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); err == nil {
+					chdModErr := imageFile.Chmod(0750)
+					if chdModErr != nil {
+						eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not give permission to image in file system.", false)
+						return err
+					}
+				} else {
+					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not open image in file system to give permissions.", false)
+					return err
+				}
+
 				pluginCopied = true
 				utils.LogInfo(config, "Image has been copied.")
 			} else {
