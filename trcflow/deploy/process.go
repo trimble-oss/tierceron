@@ -80,6 +80,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			}
 			if vaultPluginSignature["imagesha256"] == vaultPluginSignature["trcsha256"] { //Sha256 from download matches in vault
 				err = ioutil.WriteFile("/etc/opt/vault/plugins/"+vaultPluginSignature["trcplugin"].(string), vaultPluginSignature["rawImageFile"].([]byte), 0644)
+
 				if err != nil {
 					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not write out download image.", false)
 					return err
