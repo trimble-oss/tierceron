@@ -12,11 +12,19 @@ read VAULT_ENV
 echo "Enter environment token with write permissions: "
 read VAULT_ENV_TOKEN
 
+VAULT_API_ADDR=VAULT_ADDR
+export VAULT_ADDR
+export VAULT_API_ADDR
+
+echo "Disable old carrier secrets"
 vault secrets disable vaultcarrier/
+echo "Unregister old carrier plugin"
 vault plugin deregister trc-vault-carrier-plugin
 
-# TODO: remove this next line...  or parameterize it.
+if [ "$VAULT_ADDR" = "https://vault.whoboot.org:8200" ]
+then
 cp target/trc-vault-carrier-plugin ../../../../Vault.Hashicorp/plugins/
+fi
 
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]
 then
