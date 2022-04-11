@@ -26,7 +26,10 @@ prodplugintrcdbbuild:
 prodplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin-prod.sha256
 prodplugintrcdb: prodplugintrcdbbuild prodplugintrcdbsha
+<<<<<<< HEAD
 
+=======
+>>>>>>> releases/plugin/1.0.0
 pluginprodcarrierbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "prod memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin-prod tierceron/trcvault/plugins/carrier
 pluginprodcarriersha:
