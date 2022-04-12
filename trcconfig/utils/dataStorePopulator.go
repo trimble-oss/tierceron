@@ -60,7 +60,7 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 	ogKeys := []string{}
 	valueMaps := [][]string{}
 
-	if len(dataPaths) > 0 {
+	if len(dataPaths) == 0 {
 		eUtils.LogInfo(config, "No data paths found when initing CDS. \n")
 		return errors.New("No data paths found when initing CDS")
 	}
