@@ -112,11 +112,23 @@ func PluginMain() {
 
 	//Checks if image has been copied & deployed
 	if *checkDeployedPtr {
-		if pluginToolConfig["copied"].(bool) && pluginToolConfig["deployed"].(bool) && pluginToolConfig["trcsha256"].(string) == *sha256Ptr {
+		if pluginToolConfig["copied"].(bool) && pluginToolConfig["deployed"].(bool) && pluginToolConfig["trcsha256"].(string) == *sha256Ptr { //Compare vault sha with provided sha
 			fmt.Println("Plugin has been copied, deployed & certified.")
 			os.Exit(0)
 		}
+
+		err := repository.GetImageAndShaFromDownload(pluginToolConfig)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		if *sha256Ptr == pluginToolConfig["imagesha256"].(string) { //Compare repo image sha with provided sha
+			fmt.Println("Latest plugin image sha matches provided plugin sha.")
+		}
+
 		fmt.Println("Plugin has not been copied, deployed & certified.")
+		//Pull SHA from AWS && compare -> If it doesn't
 		os.Exit(2)
 	}
 }
