@@ -125,10 +125,12 @@ func PluginMain() {
 
 		if *sha256Ptr == pluginToolConfig["imagesha256"].(string) { //Compare repo image sha with provided sha
 			fmt.Println("Latest plugin image sha matches provided plugin sha.")
+		} else {
+			fmt.Println("Provided plugin sha is not deployable.")
+			os.Exit(1)
 		}
 
 		fmt.Println("Plugin has not been copied, deployed & certified.")
-		//Pull SHA from AWS && compare -> If it doesn't
 		os.Exit(2)
 	}
 }
