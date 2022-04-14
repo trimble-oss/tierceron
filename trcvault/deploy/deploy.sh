@@ -26,20 +26,24 @@ fi
 echo "Precertify plugin: "
 read PRE_CERTIFY
 
+if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
 trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
+else 
+trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+fi 
 
-if ["$?" = "0"]; then       
+if [ "$?" = 0 ]; then       
 echo "This version of the plugin has already been deployed - enabling for environment $VAULT_ENV."
 vault write vaultdb/$VAULT_ENV token=$VAULT_ENV_TOKEN
 exit $?
 fi
 
-if ["$?" = "1"]; then       
+if [ "$?" = 1 ]; then       
 echo "Unable to validate if existing plugin has been deployed - cannot continue."
 exit $?
 fi
 
-if ["$?" = "2"]; then       
+if [ "$?" = 2 ]; then       
 echo "This version of the plugin has not been deployed for environment $VAULT_ENV."
 fi
 
