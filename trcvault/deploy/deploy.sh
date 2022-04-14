@@ -26,9 +26,10 @@ fi
 echo "Precertify plugin: "
 read PRE_CERTIFY
 
+echo "Checking plugin deploy status."
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
 trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
-else 
+else
 trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
 fi 
 
@@ -36,16 +37,16 @@ if [ "$?" = 0 ]; then
 echo "This version of the plugin has already been deployed - enabling for environment $VAULT_ENV."
 vault write vaultdb/$VAULT_ENV token=$VAULT_ENV_TOKEN
 exit $?
-fi
-
-if [ "$?" = 1 ]; then       
-echo "Unable to validate if existing plugin has been deployed - cannot continue."
+elif [ "$?" = 1 ]; then       
+echo "Existing plugin does not match repository plugin - cannot continue."
+exit $?
+elif [ "$?" = 2 ]; then       
+echo "This version of the plugin has not been deployed for environment $VAULT_ENV."
+else
+echo "Unexpected error response."
 exit $?
 fi
-
-if [ "$?" = 2 ]; then       
-echo "This version of the plugin has not been deployed for environment $VAULT_ENV."
-fi
+echo "Uninstalling existing plugin."
 
 vault secrets disable vaultdb/
 vault plugin deregister $TRC_PLUGIN_NAME
