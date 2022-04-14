@@ -25,6 +25,7 @@ func PluginMain() {
 	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
+	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -43,7 +44,12 @@ func PluginMain() {
 	}
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
-		fmt.Println("Must use -pluginName && -sha256 flags to use -certify")
+		fmt.Println("Must use -pluginName && -sha256 flags to use -certify flag")
+		os.Exit(1)
+	}
+
+	if *checkDeployedPtr && (len(*pluginNamePtr) == 0) {
+		fmt.Println("Must use -pluginName flag to use -checkDeployed flag")
 		os.Exit(1)
 	}
 
@@ -102,6 +108,14 @@ func PluginMain() {
 			fmt.Println("Invalid or nonexistent image.")
 			os.Exit(1)
 		}
+	}
 
+	//Checks if image has been copied & deployed
+	if *checkDeployedPtr {
+		if pluginToolConfig["copied"].(bool) && pluginToolConfig["deployed"].(bool) {
+			fmt.Println("Plugin has been copied and deployed.")
+			os.Exit(0)
+		}
+		os.Exit(2)
 	}
 }
