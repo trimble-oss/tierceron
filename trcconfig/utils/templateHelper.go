@@ -218,7 +218,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 		//Check if filename exists in values map
 
 		_, data := values[filename]
-		if data == false {
+		if data == false && !config.WantCerts {
 			eUtils.LogInfo(config, filename+" does not exist in values. Please check seed files to verify that folder structures are correct.")
 		}
 
