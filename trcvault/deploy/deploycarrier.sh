@@ -21,11 +21,6 @@ vault secrets disable vaultcarrier/
 echo "Unregister old carrier plugin"
 vault plugin deregister trc-vault-carrier-plugin
 
-if [ "$VAULT_ADDR" = "https://vault.whoboot.org:8200" ]
-then
-cp target/trc-vault-carrier-plugin ../../../../Vault.Hashicorp/plugins/
-fi
-
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]
 then
 vault plugin register \
@@ -39,6 +34,14 @@ vault secrets enable \
           -description="Tierceron Vault Carrier Plugin Prod" \
           plugin
 else
+
+if [ "$VAULT_PLUGIN_DIR" ]
+then
+echo "Copying new carrier plugin"
+cp target/trc-vault-carrier-plugin $VAULT_PLUGIN_DIR
+chmod 700 $VAULT_PLUGIN_DIR/trc-vault-carrier-plugin
+fi
+
 echo "Registering Carrier"
 vault plugin register \
           -command=trc-vault-carrier-plugin \
