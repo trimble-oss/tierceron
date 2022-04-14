@@ -48,6 +48,11 @@ exit $?
 fi
 echo "Uninstalling existing plugin."
 
+VAULT_API_ADDR=VAULT_ADDR
+export VAULT_ADDR
+export VAULT_API_ADDR
+
+echo "Disable old trc vault secrets"
 vault secrets disable vaultdb/
 vault plugin deregister $TRC_PLUGIN_NAME
 
