@@ -112,10 +112,11 @@ func PluginMain() {
 
 	//Checks if image has been copied & deployed
 	if *checkDeployedPtr {
-		if pluginToolConfig["copied"].(bool) && pluginToolConfig["deployed"].(bool) {
-			fmt.Println("Plugin has been copied and deployed.")
+		if pluginToolConfig["copied"].(bool) && pluginToolConfig["deployed"].(bool) && pluginToolConfig["trcsha256"].(string) == *sha256Ptr {
+			fmt.Println("Plugin has been copied, deployed & certified.")
 			os.Exit(0)
 		}
+		fmt.Println("Plugin has not been copied, deployed & certified.")
 		os.Exit(2)
 	}
 }
