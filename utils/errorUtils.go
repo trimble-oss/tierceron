@@ -162,7 +162,7 @@ func LogInfo(config *DriverConfig, msg string) {
 	if !headlessService {
 		fmt.Println(msg)
 	}
-	if config.Log != nil {
+	if config != nil && config.Log != nil {
 		_prefix := config.Log.Prefix()
 		config.Log.SetPrefix("[INFO]")
 		config.Log.Println(msg)
