@@ -79,6 +79,9 @@ func PluginMain() {
 	pluginToolConfig["trcsha256"] = *sha256Ptr
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
 
+	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
+		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
+	}
 	//Certify Image
 	if *certifyImagePtr {
 		err := repository.GetImageAndShaFromDownload(pluginToolConfig)
