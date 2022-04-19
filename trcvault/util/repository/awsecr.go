@@ -30,7 +30,7 @@ func getImageSHA(svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
 				ImageTag: aws.String("latest"),
 			},
 		},
-		RepositoryName: aws.String(pluginToolConfig["pluginNamePtr"].(string)),
+		RepositoryName: aws.String(pluginToolConfig["trcplugin"].(string)),
 		RegistryId:     aws.String(strings.Split(pluginToolConfig["ecrrepository"].(string), ".")[0]),
 	}
 
@@ -87,7 +87,7 @@ func GetImageDownloadUrl(pluginToolConfig map[string]interface{}) (string, error
 	downloadInput := &ecr.GetDownloadUrlForLayerInput{
 		LayerDigest:    aws.String(pluginToolConfig["layerDigest"].(string)),
 		RegistryId:     aws.String(strings.Split(pluginToolConfig["ecrrepository"].(string), ".")[0]),
-		RepositoryName: aws.String(pluginToolConfig["pluginNamePtr"].(string)),
+		RepositoryName: aws.String(pluginToolConfig["trcplugin"].(string)),
 	}
 
 	downloadOutput, err := svc.GetDownloadUrlForLayer(downloadInput)
