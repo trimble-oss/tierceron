@@ -356,7 +356,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			pluginSettingsChan[plugin.(string)] = make(chan bool)
 		}
 		logger.Println("TrcUpdate begin setup for plugin settings init")
-		// TODO: Set copied and deployed to false for this plugin...
+
 		if token, tokenOk := data.GetOk("token"); tokenOk {
 			mod, err := helperkv.NewModifier(insecure.IsInsecure(), token.(string), vaultHost, req.Path, nil, logger)
 			if err != nil {
@@ -365,7 +365,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
 			mod.Env = req.Path
-			logger.Println("TrcUpdate getting plugin settings")
+			logger.Println("TrcUpdate getting plugin settings for env: " + req.Path)
 			writeMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
 			if err != nil {
 				logger.Println("Failed to read previous plugin status from vault")
