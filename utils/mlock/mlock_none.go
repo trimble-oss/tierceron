@@ -4,7 +4,7 @@
 package mlock
 
 import (
-	"fmt"
+        "log"
 	"os"
 )
 
