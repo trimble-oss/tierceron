@@ -28,17 +28,17 @@ resources:
     type: git
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.Bootstrap
-    ref: develop
+    ref: main
   - repository: VaultConfig.Test
     type: git
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.Test
-    ref: develop
+    ref: main
   - repository: VaultConfig.TenantConfig
     type: git
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.TenantConfig
-    ref: develop
+    ref: main
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
