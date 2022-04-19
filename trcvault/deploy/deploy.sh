@@ -65,7 +65,7 @@ export VAULT_ADDR
 export VAULT_API_ADDR
 
 echo "Disable old trc vault secrets"
-vault secrets disable vaultdb/
+vault secrets disable $TRC_PLUGIN_NAME/
 vault plugin deregister $TRC_PLUGIN_NAME
 
 
@@ -86,7 +86,7 @@ vault plugin register \
           $TRC_PLUGIN_NAME-prod
 echo "Enabling new plugin."
 vault secrets enable \
-          -path=vaultdb \
+          -path=$TRC_PLUGIN_NAME \
           -plugin-name=$TRC_PLUGIN_NAME-prod \
           -description="Tierceron Vault Plugin Prod" \
           plugin
@@ -112,7 +112,7 @@ vault plugin register \
           $TRC_PLUGIN_NAME
 echo "Enabling new plugin."
 vault secrets enable \
-          -path=vaultdb \
+          -path=$TRC_PLUGIN_NAME \
           -plugin-name=$TRC_PLUGIN_NAME \
           -description="Tierceron Vault Plugin" \
           plugin
@@ -120,5 +120,5 @@ fi
 
 #Activates/starts the deployed plugin.
 # Note: plugin should update deployed flag for itself.
-vault write vaultdb/$VAULT_ENV token=$VAULT_ENV_TOKEN
+vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN
 
