@@ -256,8 +256,10 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 		break
 	}
 
-	if pluginToolConfig == nil || !indexFound {
+	if pluginToolConfig == nil {
 		return nil, err
+	} else if !indexFound {
+		return pluginToolConfig, nil
 	}
 	config.Log.Println("GetPluginToolConfig end processing plugins.")
 
