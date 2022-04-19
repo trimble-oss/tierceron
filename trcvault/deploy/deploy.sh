@@ -34,12 +34,16 @@ fi
 
 echo "Checking plugin deploy status."
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
+echo "Certifying plugin for env $VAULT_ENV."
 trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
-else
-trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
-fi 
-
 status=$?
+echo "Plugin certified with result $status."
+else
+echo "Certifying plugin for env $VAULT_ENV."
+trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+status=$?
+echo "Plugin certified with result $status."
+fi 
 
 if [ $status -eq 0 ]; then       
 echo "This version of the plugin has already been deployed - enabling for environment $VAULT_ENV."
@@ -95,6 +99,10 @@ else
 SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN plugin=$TRC_PLUGIN_NAME)
 SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
 #SHAVAL=$( cat target/$TRC_PLUGIN_NAME.sha256 )
+if [ "$VAULT_PLUGIN_DIR" ]
+then
+sudo setcap cap_ipc_lock=+ep $VAULT_PLUGIN_DIR/$TRC_PLUGIN_NAME
+fi
 
 echo "Registering new plugin."
 vault plugin register \
