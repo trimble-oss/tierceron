@@ -259,6 +259,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 	if pluginToolConfig == nil {
 		return nil, err
 	} else if !indexFound {
+		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
 		return pluginToolConfig, nil
 	}
 	config.Log.Println("GetPluginToolConfig end processing plugins.")
