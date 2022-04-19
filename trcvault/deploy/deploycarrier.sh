@@ -40,6 +40,7 @@ then
 echo "Copying new carrier plugin"
 cp target/trc-vault-carrier-plugin $VAULT_PLUGIN_DIR
 chmod 700 $VAULT_PLUGIN_DIR/trc-vault-carrier-plugin
+sudo setcap cap_ipc_lock=+ep $VAULT_PLUGIN_DIR/trc-vault-carrier-plugin
 fi
 
 echo "Registering Carrier"
