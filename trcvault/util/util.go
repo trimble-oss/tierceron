@@ -30,12 +30,13 @@ import (
 type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
 type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
 
-func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
+func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
 	vaultHost := "https://"
 	vaultErr := errors.New("no usable local vault found")
 	hostFileLines, pherr := txeh.ParseHosts("/etc/hosts")
 	if pherr != nil {
-		return "", pherr
+		vaultLookupErrChan <- pherr
+		return
 	}
 
 	for _, hostFileLine := range hostFileLines {
@@ -62,7 +63,11 @@ func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 		vaultErr = nil
 	}
 
-	return vaultHost, vaultErr
+	if vaultErr != nil {
+		vaultLookupErrChan <- vaultErr
+	} else {
+		vaultHostChan <- vaultHost
+	}
 }
 
 func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
