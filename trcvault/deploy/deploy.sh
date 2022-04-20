@@ -18,6 +18,18 @@ read VAULT_ENV_TOKEN
 echo "Precertify plugin: "
 read PRE_CERTIFY
 
+FILE="target/$TRC_PLUGIN_NAME"
+if [ ! -f "$FILE" ]; then
+    echo "$FILE does not exist."
+    exit 1
+fi
+
+FILESHA="target/$TRC_PLUGIN_NAME"
+if [ ! -f "$FILESHA" ]; then
+    echo "$FILESHA does not exist."
+    exit 1
+fi
+
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
 
 if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ]; then
