@@ -33,7 +33,7 @@ func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlo
 	logger = l
 
 	// Set up a table process runner.
-	go initVaultHost()
+	go initVaultHostBootstrap()
 
 	go func() {
 		<-vaultInitialized
@@ -76,18 +76,24 @@ func PushPluginSha(plugin string, sha string) {
 	pluginSettingsChan[plugin] <- true
 }
 
-func initVaultHost() error {
+func InitVaultHost(v string) {
+	vaultHost = v
+}
+
+func initVaultHostBootstrap() error {
 	if vaultHost == "" {
 		logger.Println("Begin finding vault.")
 
-		v, lvherr := vscutils.GetLocalVaultHost(true, logger)
-		if lvherr != nil {
-			logger.Println("Couldn't find local vault: " + lvherr.Error())
-			return lvherr
-		} else {
+		vaultHostChan := make(chan string, 1)
+		vaultLookupErrChan := make(chan error, 1)
+		vscutils.GetLocalVaultHost(true, vaultHostChan, vaultLookupErrChan, logger)
+		select {
+		case v := <-vaultHostChan:
+			vaultHost = v
 			logger.Println("Found vault at: " + v)
+		case lvherr := <-vaultLookupErrChan:
+			logger.Println("Couldn't find local vault: " + lvherr.Error())
 		}
-		vaultHost = v
 		vaultInitialized <- true
 		logger.Println("End finding vault.")
 	}
