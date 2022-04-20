@@ -33,21 +33,20 @@ func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlo
 	logger = l
 
 	// Set up a table process runner.
-	initVaultHost()
+	go initVaultHostBootstrap()
+	<-vaultHostInitialized
 
 	go func() {
+		<-vaultInitialized
 		for {
-			select {
-			case tokenEnvMap := <-tokenEnvChan:
+			tokenEnvMap := <-tokenEnvChan
+			logger.Println("Config engine init begun: " + tokenEnvMap["env"].(string))
+			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, tokenEnvMap)
 
-				logger.Println("Config engine init begun: " + tokenEnvMap["env"].(string))
-				pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, tokenEnvMap)
-
-				if pecError != nil {
-					logger.Println("Bad configuration data for env: " + tokenEnvMap["env"].(string) + " error: " + pecError.Error())
-				}
-				logger.Println("Config engine setup complete for env: " + tokenEnvMap["env"].(string))
+			if pecError != nil {
+				logger.Println("Bad configuration data for env: " + tokenEnvMap["env"].(string) + " error: " + pecError.Error())
 			}
+			logger.Println("Config engine setup complete for env: " + tokenEnvMap["env"].(string))
 		}
 
 	}()
@@ -58,7 +57,10 @@ var KvCreate framework.OperationFunc
 var KvUpdate framework.OperationFunc
 var KvRead framework.OperationFunc
 
+var vaultBootState int = 0
 var vaultHost string // Plugin will only communicate locally with a vault instance.
+var vaultInitialized chan bool = make(chan bool)
+var vaultHostInitialized chan bool = make(chan bool)
 var environments []string = []string{"dev", "QA"}
 var environmentConfigs map[string]*EnvConfig = map[string]*EnvConfig{}
 
@@ -73,22 +75,60 @@ func PushEnv(envMap map[string]interface{}) {
 
 func PushPluginSha(plugin string, sha string) {
 	pluginShaMap[plugin] = sha
-	// TODO: Create the chan if needed.
 	pluginSettingsChan[plugin] <- true
 }
 
-func initVaultHost() error {
-	if vaultHost == "" {
+func InitVaultHost(v string) {
+	vaultHost = v
+}
+
+func GetVaultHost() string {
+	return vaultHost
+}
+
+func initVaultHostBootstrap() error {
+	const (
+		DEFAULT  = 0                      //
+		WARMUP   = 1 << iota              // 1
+		HOST     = 1 << iota              // 2
+		PORT     = 1 << iota              // 4
+		COMPLETE = (WARMUP | HOST | PORT) // 7
+	)
+
+	if vaultBootState == DEFAULT {
+		vaultBootState = WARMUP
 		logger.Println("Begin finding vault.")
 
-		v, lvherr := vscutils.GetLocalVaultHost(true, logger)
-		if lvherr != nil {
-			logger.Println("Couldn't find local vault: " + lvherr.Error())
-			return lvherr
-		} else {
-			logger.Println("Found vault at: " + v)
+		vaultHostChan := make(chan string, 1)
+		vaultPortChan := make(chan string, 1)
+		vaultLookupErrChan := make(chan error, 1)
+		vscutils.GetLocalVaultHost(true, vaultHostChan, vaultPortChan, vaultLookupErrChan, logger)
+		vaultPort := ""
+
+		for (vaultBootState & COMPLETE) != COMPLETE {
+			select {
+			case v := <-vaultHostChan:
+				if (vaultBootState & PORT) == PORT {
+					vaultHost = v + ":" + vaultPort
+					logger.Println("Found vault at: " + vaultHost)
+				} else {
+					vaultHost = v
+				}
+				vaultBootState |= HOST
+				vaultHostInitialized <- true
+			case p := <-vaultPortChan:
+				if (vaultBootState & HOST) == HOST {
+					vaultHost = vaultHost + ":" + p
+					logger.Println("Found vault at: " + vaultHost)
+				}
+				vaultBootState |= PORT
+				vaultPort = p
+			case lvherr := <-vaultLookupErrChan:
+				logger.Println("Couldn't find local vault: " + lvherr.Error())
+				vaultBootState = COMPLETE
+			}
 		}
-		vaultHost = v
+		vaultInitialized <- true
 		logger.Println("End finding vault.")
 	}
 	return nil
@@ -353,7 +393,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		// Then this is the carrier calling.
 		tokenEnvMap["trcplugin"] = plugin.(string)
 		if _, pscOk := pluginSettingsChan[plugin.(string)]; !pscOk {
-			pluginSettingsChan[plugin.(string)] = make(chan bool)
+			pluginSettingsChan[plugin.(string)] = make(chan bool, 1)
 		}
 		logger.Println("TrcUpdate begin setup for plugin settings init")
 
