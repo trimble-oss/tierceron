@@ -9,7 +9,7 @@ read VAULT_TOKEN
 echo "Enter environment: "
 read VAULT_ENV
 
-echo "Enter environment token with write permissions: "
+echo "Enter carrier environment token with write permissions: "
 read VAULT_ENV_TOKEN
 
 VAULT_API_ADDR=VAULT_ADDR
