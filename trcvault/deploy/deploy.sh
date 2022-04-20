@@ -24,7 +24,7 @@ if [ ! -f "$FILE" ]; then
     exit 1
 fi
 
-FILESHA="target/$TRC_PLUGIN_NAME"
+FILESHA="target/$TRC_PLUGIN_NAME.sha256"
 if [ ! -f "$FILESHA" ]; then
     echo "$FILESHA does not exist."
     exit 1
