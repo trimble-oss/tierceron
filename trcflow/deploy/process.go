@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -33,7 +34,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	logger.Println("PluginDeployFlow begin processing plugins.")
 	for _, pluginName := range pluginConfig["pluginNameList"].([]string) {
 		logger.Println("PluginDeployFlow begun for plugin: " + pluginName)
-		config = &eUtils.DriverConfig{Insecure: pluginConfig["insecure"].(bool), Log: logger, ExitOnFailure: true, StartDir: []string{}, SubSectionValue: pluginName}
+		config = &eUtils.DriverConfig{Insecure: pluginConfig["insecure"].(bool), Log: logger, ExitOnFailure: false, StartDir: []string{}, SubSectionValue: pluginName}
 
 		vaultPluginSignature, ptcErr := util.GetPluginToolConfig(config, goMod, pluginConfig)
 		if ptcErr != nil {
@@ -46,24 +47,31 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		pluginDownloadNeeded := false
 		pluginCopied := false
 
-		if imageFile, err := os.Open("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); err == nil {
-			sha256 := sha256.New()
-
-			defer imageFile.Close()
-			if _, err := io.Copy(sha256, imageFile); err != nil {
-				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not sha256 image from file system.", false)
-				continue
-			}
-
-			filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
-			if filesystemsha256 != vaultPluginSignature["trcsha256"] { //Sha256 from file system matches in vault
-				pluginDownloadNeeded = true
-			} else {
-				eUtils.LogErrorMessage(config, "Certified plugin already exists in file system - continuing with vault plugin status update", false)
-			}
-		} else {
+		if _, err := os.Stat("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); errors.Is(err, os.ErrNotExist) {
 			pluginDownloadNeeded = true
 			logger.Println("Attempting to download new image.")
+		} else {
+			if imageFile, err := os.Open("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); err == nil {
+				logger.Println("Found image for: " + vaultPluginSignature["trcplugin"].(string))
+
+				sha256 := sha256.New()
+
+				defer imageFile.Close()
+				if _, err := io.Copy(sha256, imageFile); err != nil {
+					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not sha256 image from file system.", false)
+					continue
+				}
+
+				filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
+				if filesystemsha256 != vaultPluginSignature["trcsha256"] { //Sha256 from file system matches in vault
+					pluginDownloadNeeded = true
+				} else {
+					eUtils.LogErrorMessage(config, "Certified plugin already exists in file system - continuing with vault plugin status update", false)
+				}
+			} else {
+				pluginDownloadNeeded = true
+				logger.Println("Attempting to download new image.")
+			}
 		}
 
 		if pluginDownloadNeeded {
