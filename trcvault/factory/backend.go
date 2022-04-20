@@ -393,7 +393,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	var plugin interface{}
 	pluginOk := false
 	if plugin, pluginOk = data.GetOk("plugin"); pluginOk {
-		logger.Println("TrcUpdate checking plugin")
+		logger.Println("TrcUpdate checking plugin: " + plugin.(string))
 
 		// Then this is the carrier calling.
 		tokenEnvMap["trcplugin"] = plugin.(string)
@@ -421,15 +421,6 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			if _, ok := writeMap["trcsha256"]; !ok {
 				logger.Println("Failed to read previous plugin sha from vault")
 				return logical.ErrorResponse("Failed to read previous plugin sha from vault"), nil
-			}
-			writeMap["copied"] = false
-			writeMap["deployed"] = false
-			logger.Println("TrcUpdate Updating plugin settings")
-			_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+tokenEnvMap["trcplugin"].(string)+"/Certify", writeMap)
-			if err != nil {
-				logger.Println("Failed to write plugin state: " + err.Error())
-				//ctx.Done()
-				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
 		}
 	}
