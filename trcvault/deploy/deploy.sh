@@ -59,7 +59,7 @@ fi
 
 if [ $status -eq 0 ]; then       
 echo "This version of the plugin has already been deployed - enabling for environment $VAULT_ENV."
-vault write vaultdb/$VAULT_ENV token=$VAULT_ENV_TOKEN
+vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN
 exit $status
 elif [ $status -eq 1 ]; then
 echo "Existing plugin does not match repository plugin - cannot continue."
