@@ -2,7 +2,6 @@ package deploy
 
 import (
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -53,7 +52,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			defer imageFile.Close()
 			if _, err := io.Copy(sha256, imageFile); err != nil {
 				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not sha256 image from file system.", false)
-				return err
+				continue
 			}
 
 			filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
@@ -76,37 +75,37 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			downloadErr := repository.GetImageAndShaFromDownload(vaultPluginSignature)
 			if downloadErr != nil {
 				eUtils.LogErrorMessage(config, "Could not get download image: "+downloadErr.Error(), false)
-				return downloadErr
+				continue
 			}
 			if vaultPluginSignature["imagesha256"] == vaultPluginSignature["trcsha256"] { //Sha256 from download matches in vault
 				err = ioutil.WriteFile("/etc/opt/vault/plugins/"+vaultPluginSignature["trcplugin"].(string), vaultPluginSignature["rawImageFile"].([]byte), 0644)
 
 				if err != nil {
 					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not write out download image.", false)
-					return err
+					continue
 				}
 
 				if imageFile, err := os.Open("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); err == nil {
 					chdModErr := imageFile.Chmod(0750)
 					if chdModErr != nil {
 						eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not give permission to image in file system.", false)
-						return err
+						continue
 					}
 				} else {
 					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not open image in file system to give permissions.", false)
-					return err
+					continue
 				}
 
 				pluginCopied = true
 				utils.LogInfo(config, "Image has been copied.")
 			} else {
 				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Refusing to copy since vault certification does not match plugin sha256 signature.", false)
-				return errors.New("refusing to copy since vault certification does not match plugin sha256 signature")
+				continue
 			}
 		}
 
-		if (!pluginDownloadNeeded && !pluginCopied) || // No download needed because it's already there, but vault may be wrong.
-			(pluginDownloadNeeded && pluginCopied) {
+		if (!pluginDownloadNeeded && !pluginCopied) || (pluginDownloadNeeded && pluginCopied) { // No download needed because it's already there, but vault may be wrong.
+			utils.LogInfo(config, "Updating plugin image to vault.")
 			factory.PushPluginSha(vaultPluginSignature["trcplugin"].(string), vaultPluginSignature["trcsha256"].(string))
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
@@ -116,7 +115,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap)
 			if err != nil {
 				logger.Println("PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
-				return err
+				continue
 			}
 			utils.LogInfo(config, "Plugin image config in vault has been updated.")
 		}
