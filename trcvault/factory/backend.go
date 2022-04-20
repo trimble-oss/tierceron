@@ -33,21 +33,19 @@ func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlo
 	logger = l
 
 	// Set up a table process runner.
-	initVaultHost()
+	go initVaultHost()
 
 	go func() {
+		<-vaultInitialized
 		for {
-			select {
-			case tokenEnvMap := <-tokenEnvChan:
+			tokenEnvMap := <-tokenEnvChan
+			logger.Println("Config engine init begun: " + tokenEnvMap["env"].(string))
+			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, tokenEnvMap)
 
-				logger.Println("Config engine init begun: " + tokenEnvMap["env"].(string))
-				pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, tokenEnvMap)
-
-				if pecError != nil {
-					logger.Println("Bad configuration data for env: " + tokenEnvMap["env"].(string) + " error: " + pecError.Error())
-				}
-				logger.Println("Config engine setup complete for env: " + tokenEnvMap["env"].(string))
+			if pecError != nil {
+				logger.Println("Bad configuration data for env: " + tokenEnvMap["env"].(string) + " error: " + pecError.Error())
 			}
+			logger.Println("Config engine setup complete for env: " + tokenEnvMap["env"].(string))
 		}
 
 	}()
@@ -59,6 +57,7 @@ var KvUpdate framework.OperationFunc
 var KvRead framework.OperationFunc
 
 var vaultHost string // Plugin will only communicate locally with a vault instance.
+var vaultInitialized chan bool = make(chan bool)
 var environments []string = []string{"dev", "QA"}
 var environmentConfigs map[string]*EnvConfig = map[string]*EnvConfig{}
 
@@ -89,6 +88,7 @@ func initVaultHost() error {
 			logger.Println("Found vault at: " + v)
 		}
 		vaultHost = v
+		vaultInitialized <- true
 		logger.Println("End finding vault.")
 	}
 	return nil
