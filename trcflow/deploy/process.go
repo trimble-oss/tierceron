@@ -38,9 +38,16 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 		vaultPluginSignature, ptcErr := util.GetPluginToolConfig(config, goMod, pluginConfig)
 		if ptcErr != nil {
-			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: vault load failure: "+ptcErr.Error(), false)
+			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
 			continue
 		}
+
+		if _, ok := vaultPluginSignature["trcplugin"]; !ok {
+			// TODO: maybe delete plugin if it exists since there was no entry in vault...
+			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure.", false)
+			continue
+		}
+
 		// This should come from vault now....
 		vaultPluginSignature["ecrrepository"] = strings.Replace(vaultPluginSignature["ecrrepository"].(string), "__imagename__", pluginName, -1) //"https://" +
 
