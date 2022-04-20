@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"tierceron/trcflow/deploy"
 	"tierceron/trcvault/factory"
 	memonly "tierceron/trcvault/opts/memonly"
-	vscutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
 
@@ -40,49 +40,30 @@ func main() {
 	flags := apiClientMeta.FlagSet()
 
 	args := os.Args
-	var vaultHost string
-	vaultSequenceCompleteChan := make(chan bool, 1)
+	vaultHost := factory.GetVaultHost()
+	if strings.HasPrefix(vaultHost, tcutil.GetLocalVaultAddr()) {
+		logger.Println("Running in developer mode with self signed certs.")
+		args = append(args, "--tls-skip-verify=true")
+	} else {
+		// TODO: this may not be needed...
+		//	args = append(args, fmt.Sprintf("--ca-cert=", caPEM))
+	}
 
-	go func() {
-		vaultHostChan := make(chan string, 1)
-		vaultLookupErrChan := make(chan error, 1)
-		vscutils.GetLocalVaultHost(false, vaultHostChan, vaultLookupErrChan, logger)
-		select {
-		case v := <-vaultHostChan:
-			vaultHost = v
-			factory.InitVaultHost(v)
-			logger.Println("Found vault at: " + v)
-		case lvherr := <-vaultLookupErrChan:
-			logger.Println("Couldn't find local vault: " + lvherr.Error())
-		}
-		vaultSequenceCompleteChan <- true
-	}()
+	argErr := flags.Parse(args[1:])
+	if argErr != nil {
+		logger.Fatal(argErr)
+	}
+	logger.Print("Warming up...")
 
-	go func() {
-		if vaultHost == tcutil.GetLocalVaultAddr() {
-			logger.Println("Running in developer mode with self signed certs.")
-			args = append(args, "--tls-skip-verify=true")
-		} else {
-			// TODO: this may not be needed...
-			//	args = append(args, fmt.Sprintf("--ca-cert=", caPEM))
-		}
+	tlsConfig := apiClientMeta.GetTLSConfig()
+	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
-		argErr := flags.Parse(args[1:])
-		if argErr != nil {
-			logger.Fatal(argErr)
-		}
-		logger.Print("Warming up...")
-
-		tlsConfig := apiClientMeta.GetTLSConfig()
-		tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
-
-		logger.Print("Starting server...")
-		err := plugin.Serve(&plugin.ServeOpts{
-			BackendFactoryFunc: factory.TrcFactory,
-			TLSProviderFunc:    tlsProviderFunc,
-		})
-		if err != nil {
-			logger.Fatal("Plugin shutting down")
-		}
-	}()
+	logger.Print("Starting server...")
+	err := plugin.Serve(&plugin.ServeOpts{
+		BackendFactoryFunc: factory.TrcFactory,
+		TLSProviderFunc:    tlsProviderFunc,
+	})
+	if err != nil {
+		logger.Fatal("Plugin shutting down")
+	}
 }
