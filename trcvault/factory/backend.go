@@ -73,8 +73,13 @@ func PushEnv(envMap map[string]interface{}) {
 	tokenEnvChan <- envMap
 }
 
-func PushPluginSha(plugin string, sha string) {
+func PushPluginSha(config *eUtils.DriverConfig, plugin string, sha string) {
 	pluginShaMap[plugin] = sha
+	if _, pscOk := pluginSettingsChan[plugin]; !pscOk {
+		eUtils.LogInfo(config, "Creating new plugin chan.")
+		pluginSettingsChan[plugin] = make(chan bool, 1)
+	}
+
 	pluginSettingsChan[plugin] <- true
 }
 
