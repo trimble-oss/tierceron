@@ -105,6 +105,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		}
 
 		if (!pluginDownloadNeeded && !pluginCopied) || (pluginDownloadNeeded && pluginCopied) { // No download needed because it's already there, but vault may be wrong.
+			if vaultPluginSignature["copied"].(bool) && !vaultPluginSignature["deployed"].(bool) { //If status hasn't changed, don't update
+				utils.LogInfo(config, "Not updating plugin image to vault as status is the same.")
+				continue
+			}
+
 			utils.LogInfo(config, "Updating plugin image to vault.")
 			factory.PushPluginSha(config, vaultPluginSignature["trcplugin"].(string), vaultPluginSignature["trcsha256"].(string))
 			writeMap := make(map[string]interface{})
