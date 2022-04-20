@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"tierceron/trcflow/deploy"
 	"tierceron/trcvault/factory"
 	memonly "tierceron/trcvault/opts/memonly"
-	vscutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
 
@@ -40,13 +40,8 @@ func main() {
 	flags := apiClientMeta.FlagSet()
 
 	args := os.Args
-	vaultHost, lvherr := vscutils.GetLocalVaultHost(false, logger)
-	if lvherr != nil {
-		logger.Println("Host lookup failure.")
-		os.Exit(-1)
-	}
-
-	if vaultHost == tcutil.GetLocalVaultAddr() {
+	vaultHost := factory.GetVaultHost()
+	if strings.HasPrefix(vaultHost, tcutil.GetLocalVaultAddr()) {
 		logger.Println("Running in developer mode with self signed certs.")
 		args = append(args, "--tls-skip-verify=true")
 	} else {
