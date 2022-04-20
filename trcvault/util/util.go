@@ -30,7 +30,7 @@ import (
 type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
 type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
 
-func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
+func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
 	vaultHost := "https://"
 	vaultErr := errors.New("no usable local vault found")
 	hostFileLines, pherr := txeh.ParseHosts("/etc/hosts")
@@ -43,6 +43,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrC
 		for _, host := range hostFileLine.Hostnames {
 			if (strings.Contains(host, "whoboot.org") || strings.Contains(host, "dexchadev.org") || strings.Contains(host, "dexterchaney.com")) && strings.Contains(hostFileLine.Address, "127.0.0.1") {
 				vaultHost = vaultHost + host
+				vaultHostChan <- vaultHost
 				break
 			}
 		}
@@ -54,7 +55,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrC
 			vh := vaultHost + ":" + strconv.Itoa(i)
 			_, err := sys.NewVault(true, vh, "", false, true, true, logger)
 			if err == nil {
-				vaultHost = vaultHost + ":" + strconv.Itoa(i)
+				vaultPortChan <- strconv.Itoa(i)
 				vaultErr = nil
 				break
 			}
@@ -65,8 +66,6 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrC
 
 	if vaultErr != nil {
 		vaultLookupErrChan <- vaultErr
-	} else {
-		vaultHostChan <- vaultHost
 	}
 }
 

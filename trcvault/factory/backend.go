@@ -34,6 +34,7 @@ func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlo
 
 	// Set up a table process runner.
 	go initVaultHostBootstrap()
+	<-vaultHostInitialized
 
 	go func() {
 		<-vaultInitialized
@@ -56,8 +57,10 @@ var KvCreate framework.OperationFunc
 var KvUpdate framework.OperationFunc
 var KvRead framework.OperationFunc
 
+var vaultBootState int = 0
 var vaultHost string // Plugin will only communicate locally with a vault instance.
 var vaultInitialized chan bool = make(chan bool)
+var vaultHostInitialized chan bool = make(chan bool)
 var environments []string = []string{"dev", "QA"}
 var environmentConfigs map[string]*EnvConfig = map[string]*EnvConfig{}
 
@@ -72,7 +75,6 @@ func PushEnv(envMap map[string]interface{}) {
 
 func PushPluginSha(plugin string, sha string) {
 	pluginShaMap[plugin] = sha
-	// TODO: Create the chan if needed.
 	pluginSettingsChan[plugin] <- true
 }
 
@@ -80,19 +82,51 @@ func InitVaultHost(v string) {
 	vaultHost = v
 }
 
+func GetVaultHost() string {
+	return vaultHost
+}
+
 func initVaultHostBootstrap() error {
-	if vaultHost == "" {
+	const (
+		DEFAULT  = 0                      //
+		WARMUP   = 1 << iota              // 1
+		HOST     = 1 << iota              // 2
+		PORT     = 1 << iota              // 4
+		COMPLETE = (WARMUP | HOST | PORT) // 7
+	)
+
+	if vaultBootState == DEFAULT {
+		vaultBootState = WARMUP
 		logger.Println("Begin finding vault.")
 
 		vaultHostChan := make(chan string, 1)
+		vaultPortChan := make(chan string, 1)
 		vaultLookupErrChan := make(chan error, 1)
-		vscutils.GetLocalVaultHost(true, vaultHostChan, vaultLookupErrChan, logger)
-		select {
-		case v := <-vaultHostChan:
-			vaultHost = v
-			logger.Println("Found vault at: " + v)
-		case lvherr := <-vaultLookupErrChan:
-			logger.Println("Couldn't find local vault: " + lvherr.Error())
+		vscutils.GetLocalVaultHost(true, vaultHostChan, vaultPortChan, vaultLookupErrChan, logger)
+		vaultPort := ""
+
+		for (vaultBootState & COMPLETE) != COMPLETE {
+			select {
+			case v := <-vaultHostChan:
+				if (vaultBootState & PORT) == PORT {
+					vaultHost = v + ":" + vaultPort
+					logger.Println("Found vault at: " + vaultHost)
+				} else {
+					vaultHost = v
+				}
+				vaultBootState |= HOST
+				vaultHostInitialized <- true
+			case p := <-vaultPortChan:
+				if (vaultBootState & HOST) == HOST {
+					vaultHost = vaultHost + ":" + p
+					logger.Println("Found vault at: " + vaultHost)
+				}
+				vaultBootState |= PORT
+				vaultPort = p
+			case lvherr := <-vaultLookupErrChan:
+				logger.Println("Couldn't find local vault: " + lvherr.Error())
+				vaultBootState = COMPLETE
+			}
 		}
 		vaultInitialized <- true
 		logger.Println("End finding vault.")
