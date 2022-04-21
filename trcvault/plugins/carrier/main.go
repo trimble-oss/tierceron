@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"tierceron/trcflow/deploy"
 	"tierceron/trcvault/factory"
 	memonly "tierceron/trcvault/opts/memonly"
-	vscutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
 
@@ -26,25 +27,21 @@ func main() {
 		}
 	}
 	eUtils.InitHeadless(true)
-	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	logger := log.New(f, "[trcvault]", log.LstdFlags)
+	f, logErr := os.OpenFile("trcplugincarrier.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
+	logger.Println("Beginning plugin startup.")
 
 	tclib.SetLogger(logger.Writer())
-	factory.Init(logger)
+	factory.Init(tcutil.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
 	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
 
 	args := os.Args
-	vaultHost, lvherr := vscutils.GetLocalVaultHost(false, logger)
-	if lvherr != nil {
-		logger.Println("Host lookup failure.")
-		os.Exit(-1)
-	}
-
-	if vaultHost == tcutil.GetLocalVaultAddr() {
+	vaultHost := factory.GetVaultHost()
+	if strings.HasPrefix(vaultHost, tcutil.GetLocalVaultAddr()) {
 		logger.Println("Running in developer mode with self signed certs.")
 		args = append(args, "--tls-skip-verify=true")
 	} else {
@@ -61,6 +58,7 @@ func main() {
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
+	logger.Print("Starting server...")
 	err := plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: factory.TrcFactory,
 		TLSProviderFunc:    tlsProviderFunc,

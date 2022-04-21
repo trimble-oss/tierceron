@@ -10,6 +10,7 @@ import (
 
 	"tierceron/utils"
 	eUtils "tierceron/utils"
+	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 
@@ -26,18 +27,23 @@ import (
 	"log"
 )
 
-func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
+type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
+type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
+
+func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
 	vaultHost := "https://"
 	vaultErr := errors.New("no usable local vault found")
 	hostFileLines, pherr := txeh.ParseHosts("/etc/hosts")
 	if pherr != nil {
-		return "", pherr
+		vaultLookupErrChan <- pherr
+		return
 	}
 
 	for _, hostFileLine := range hostFileLines {
 		for _, host := range hostFileLine.Hostnames {
 			if (strings.Contains(host, "whoboot.org") || strings.Contains(host, "dexchadev.org") || strings.Contains(host, "dexterchaney.com")) && strings.Contains(hostFileLine.Address, "127.0.0.1") {
 				vaultHost = vaultHost + host
+				vaultHostChan <- vaultHost
 				break
 			}
 		}
@@ -49,7 +55,7 @@ func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 			vh := vaultHost + ":" + strconv.Itoa(i)
 			_, err := sys.NewVault(true, vh, "", false, true, true, logger)
 			if err == nil {
-				vaultHost = vaultHost + ":" + strconv.Itoa(i)
+				vaultPortChan <- strconv.Itoa(i)
 				vaultErr = nil
 				break
 			}
@@ -58,7 +64,9 @@ func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
 		vaultErr = nil
 	}
 
-	return vaultHost, vaultErr
+	if vaultErr != nil {
+		vaultLookupErrChan <- vaultErr
+	}
 }
 
 func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
@@ -223,4 +231,41 @@ func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service
 	//VaultInit Section Begins
 	il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData), service, false)
 	return nil
+}
+
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
+	config.Log.Println("GetPluginToolConfig begin processing plugins.")
+	//templatePaths
+	indexFound := false
+	templatePaths := pluginConfig["templatePath"].([]string)
+
+	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, templatePath := range templatePaths {
+		project, service, _ := eUtils.GetProjectService(templatePath)
+		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
+		mod.SectionPath = "super-secrets/Index/" + project + "/" + "trcplugin" + "/" + config.SubSectionValue + "/" + service
+		ptc1, err := mod.ReadData(mod.SectionPath)
+		if err != nil || ptc1 == nil {
+			config.Log.Println("No data found.")
+			continue
+		}
+		indexFound = true
+		for k, v := range ptc1 {
+			pluginToolConfig[k] = v
+		}
+		break
+	}
+
+	if pluginToolConfig == nil {
+		return nil, err
+	} else if !indexFound {
+		return pluginToolConfig, nil
+	}
+	config.Log.Println("GetPluginToolConfig end processing plugins.")
+
+	return pluginToolConfig, nil
 }

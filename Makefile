@@ -8,18 +8,31 @@ api:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/webapi/apiRouter
 config:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/trcconfig
-configdbdevpluginbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "testflow insecure" -o trcvault/deploy/target/trc-vault-plugin tierceron/trcvault/plugin
-configdbdevpluginsha:
+
+devplugincarrierbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "insecure awsecr" -o trcvault/deploy/target/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
+devplugincarriersha:
+	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin.sha256
+devplugincarrier: devplugincarrierbuild devplugincarriersha
+
+devplugintrcdbbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "testflow insecure" -o trcvault/deploy/target/trc-vault-plugin tierceron/trcvault/plugins/trcdb
+devplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin.sha256
-configdbdevplugin: configdbdevpluginbuild configdbdevpluginsha
-configdbprodpluginbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "prod memonly" -o trcvault/deploy/target/trc-vault-plugin-prod tierceron/trcvault/plugin
-configdbprodpluginsha:
+devplugintrcdb: devplugintrcdbbuild devplugintrcdbsha
+
+prodplugintrcdbbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "prod awsecr memonly" -o trcvault/deploy/target/trc-vault-plugin-prod tierceron/trcvault/plugins/trcdb
+prodplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin-prod.sha256
-configdbprodplugin: configdbprodpluginbuild configdbprodpluginsha
-configdbplugin:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags testflow -o $(GOBIN)/trc-vault-plugin tierceron/trcvault/plugin
+prodplugintrcdb: prodplugintrcdbbuild prodplugintrcdbsha
+
+pluginprodcarrierbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "prod memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin-prod tierceron/trcvault/plugins/carrier
+pluginprodcarriersha:
+	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin-prod.sha256
+pluginprodcarrier: pluginprodcarrierbuild pluginprodcarriersha
+
 configwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -gcflags=-G=0  -o $(GOBIN)/trcconfig.exe trcconfig/trcconfig.go
 configmac:
@@ -51,4 +64,4 @@ certify:
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
-all: api config configdbdevplugin config seed x xlib pub sub
+all: api config devplugintrcdb config seed x xlib pub sub

@@ -457,9 +457,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		// Seed the vault with given seed directory
 		mod, _ := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger) // Connect to vault
 		mod.Env = *envPtr
-		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.Env, false, logger); errValidateEnvironment != nil || !valid {
-			fmt.Println("Invalid token - token: ", *tokenPtr)
-			os.Exit(1)
+		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
+			if unrestrictedValid, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+				eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+mod.Env, 1)
+				return
+			}
 		}
 		var subSectionSlice = make([]string, 0) //Assign slice with the appriopiate slice
 		if len(restrictedSlice) > 0 {

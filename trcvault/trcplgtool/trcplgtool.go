@@ -1,116 +1,19 @@
 package trcplugtool
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
-	"crypto/sha256"
-	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	trcname "tierceron/trcvault/opts/trcname"
+	"tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
-	xUtils "tierceron/trcx/xutil"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
+
+	tcutil "VaultConfig.TenantConfig/util"
 )
-
-func getPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginName string, sha string) map[string]interface{} {
-	//templatePaths
-	indexFound := false
-	templatePaths := []string{}
-	for _, startDir := range config.StartDir {
-		//get files from directory
-		tp := xUtils.GetDirFiles(startDir)
-		templatePaths = append(templatePaths, tp...)
-	}
-
-	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
-	if err != nil {
-		eUtils.CheckError(config, err, true)
-	}
-
-	for _, templatePath := range templatePaths {
-		project, service, _ := eUtils.GetProjectService(templatePath)
-		mod.SectionPath = "super-secrets/Index/" + project + "/" + "trcplugin" + "/" + config.SubSectionValue + "/" + service
-		ptc1, err := mod.ReadData(mod.SectionPath)
-		if err != nil || ptc1 == nil {
-			continue
-		}
-		indexFound = true
-		for k, v := range ptc1 {
-			pluginToolConfig[k] = v
-		}
-		break
-	}
-
-	if pluginToolConfig == nil || !indexFound {
-		eUtils.CheckError(config, errors.New("No plugin configs were found"), true)
-	}
-
-	pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", pluginName, -1) //"https://" +
-	pluginToolConfig["trcsha256"] = sha
-	pluginToolConfig["pluginNamePtr"] = pluginName
-	return pluginToolConfig
-}
-
-func gUnZipData(data []byte) ([]byte, error) {
-	var unCompressedBytes []byte
-	newB := bytes.NewBuffer(unCompressedBytes)
-	b := bytes.NewBuffer(data)
-	zr, err := gzip.NewReader(b)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := io.Copy(newB, zr); err != nil {
-		return nil, err
-	}
-
-	return newB.Bytes(), nil
-}
-
-func untarData(data []byte) ([]byte, error) {
-	var b bytes.Buffer
-	writer := io.Writer(&b)
-	tarReader := tar.NewReader(bytes.NewReader(data))
-	for {
-		_, err := tarReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = io.Copy(writer, tarReader)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return b.Bytes(), nil
-}
-
-func getImage(downloadUrl string) ([]byte, error) {
-	resp, err := http.Get(downloadUrl)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
-}
 
 func PluginMain() {
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
@@ -121,7 +24,9 @@ func PluginMain() {
 	logFilePtr := flag.String("log", "./"+trcname.GetFolderPrefix()+"plgtool.log", "Output path for log files")
 	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
-	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //THis has to match the image that is pulled -> then we write the vault.
+	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
+	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
+	certifyInit := false
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -140,15 +45,13 @@ func PluginMain() {
 	}
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
-		fmt.Println("Must use -pluginName && -sha256 flags to use -certify")
+		fmt.Println("Must use -pluginName && -sha256 flags to use -certify flag")
 		os.Exit(1)
 	}
 
-	//Ensure that ptr has required suffix
-	if *sha256Ptr != "" {
-		if !strings.HasPrefix(*sha256Ptr, "sha256:") {
-			*sha256Ptr = "sha256:" + *sha256Ptr
-		}
+	if *checkDeployedPtr && (len(*pluginNamePtr) == 0) {
+		fmt.Println("Must use -pluginName flag to use -checkDeployed flag")
+		os.Exit(1)
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
@@ -168,39 +71,40 @@ func PluginMain() {
 		eUtils.CheckError(config, err, true)
 	}
 	mod.Env = *envPtr
-	pluginToolConfig := getPluginToolConfig(config, mod, *pluginNamePtr, *sha256Ptr)
+	pluginToolConfig, plcErr := util.GetPluginToolConfig(config, mod, tcutil.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
+	if plcErr != nil {
+		fmt.Println(plcErr.Error())
+		os.Exit(1)
+	}
+	pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", *pluginNamePtr, -1) //"https://" +
+	pluginToolConfig["trcsha256"] = *sha256Ptr
+	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
 
+	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
+		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
+		if *certifyImagePtr {
+			certifyInit = true
+		}
+	}
 	//Certify Image
 	if *certifyImagePtr {
-		downloadUrl, downloadURlError := repository.GetImageDownloadUrl(pluginToolConfig)
-		if downloadURlError != nil {
-			fmt.Println("Failed to get download url.")
-			os.Exit(1)
+		if !certifyInit {
+			err := repository.GetImageAndShaFromDownload(pluginToolConfig)
+			if err != nil {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
 		}
-		pluginImageDataCompressed, downloadError := getImage(downloadUrl)
-		if downloadError != nil {
-			fmt.Println("Failed to get download from url.")
-			os.Exit(1)
-		}
-		pluginTarredData, gUnZipError := gUnZipData(pluginImageDataCompressed)
-		if gUnZipError != nil {
-			fmt.Println("gUnZip failed.")
-			os.Exit(1)
-		}
-		pluginImage, gUnTarError := untarData(pluginTarredData)
-		if gUnTarError != nil {
-			fmt.Println("Untarring failed.")
-			os.Exit(1)
-		}
-		pluginSha := sha256.Sum256(pluginImage)
-		pluginToolConfig["imagesha256"] = fmt.Sprintf("sha256:%x", pluginSha)
-		if pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { //Comparing generated sha from image to sha from flag
+
+		if certifyInit || pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { //Comparing generated sha from image to sha from flag
 			fmt.Println("Valid image found.")
 			//SHA MATCHES
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-			writeMap["trcsha256"] = strings.TrimPrefix(pluginToolConfig["trcsha256"].(string), "sha256:") //Trimming so it matches original format
+			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
+			writeMap["copied"] = false
+			writeMap["deployed"] = false
 			pathSplit := strings.Split(mod.SectionPath, "/")
 			_, err = mod.Write(pathSplit[0]+"/"+pathSplit[len(pathSplit)-1], writeMap)
 			if err != nil {
@@ -213,6 +117,29 @@ func PluginMain() {
 			fmt.Println("Invalid or nonexistent image.")
 			os.Exit(1)
 		}
+	}
 
+	//Checks if image has been copied & deployed
+	if *checkDeployedPtr {
+		if pluginToolConfig["copied"].(bool) && pluginToolConfig["deployed"].(bool) && pluginToolConfig["trcsha256"].(string) == *sha256Ptr { //Compare vault sha with provided sha
+			fmt.Println("Plugin has been copied, deployed & certified.")
+			os.Exit(0)
+		}
+
+		err := repository.GetImageAndShaFromDownload(pluginToolConfig)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		if *sha256Ptr == pluginToolConfig["imagesha256"].(string) { //Compare repo image sha with provided sha
+			fmt.Println("Latest plugin image sha matches provided plugin sha.  It has been certified.")
+		} else {
+			fmt.Println("Provided plugin sha is not deployable.")
+			os.Exit(1)
+		}
+
+		fmt.Println("Plugin has not been copied or deployed.")
+		os.Exit(2)
 	}
 }
