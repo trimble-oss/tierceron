@@ -54,27 +54,19 @@ sudo chown root:root /etc/opt/vault/vault_properties.hcl
 
 # Setup the init script
 cat <<EOF >/tmp/upstart
-description "Vault server"
+[Unit]
+Description=Vault Service
+After=systemd-user-sessions.service
+[Service]
 
-start on runlevel [2345]
-stop on runlevel [!2345]
+Type=simple
+Environment="VAULT_API_ADDR=https://<TODO>:<TODOPORT>;GOMAXPROCS=`nproc`"
+ExecStart=/usr/src/app/vault server -config /etc/opt/vault/vault_properties.hcl
+LimitMEMLOCK=infinity
 
-respawn
-
-script
-  if [ -f "/etc/service/vault" ]; then
-    . /etc/service/vault
-  fi
-
-  # Make sure to use all our CPUs, because Vault can block a scheduler thread
-  export GOMAXPROCS=`nproc`
-
-  exec /usr/src/app/vault server \
-    -config="/etc/opt/vault/vault_properties.hcl" \
-    >>/var/log/vault.log 2>&1
 end script
 EOF
-sudo mv /tmp/upstart /etc/init/vault.conf
+sudo mv /tmp/upstart /lib/systemd/system/vault.service
 
 # Start Vault
-#sudo start vault
+sudo service vault start
