@@ -19,3 +19,6 @@ bin/api*
 .idea/
 .vscode/
 .DS_Store
+
+# Confidential resource dependencies for running vault in aws and azure
+trcinit/vaultfiles/resources/**
