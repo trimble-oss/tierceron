@@ -125,7 +125,7 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error
 			return err
 		}
 
-		if !pluginData["copied"].(bool) {
+		if !pluginData["copied"].(bool) || pluginData["deployed"].(bool) {
 			continue
 		}
 		writeMap := make(map[string]interface{})
