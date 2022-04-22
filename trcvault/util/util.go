@@ -255,6 +255,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 		}
 		indexFound = true
 		for k, v := range ptc1 {
+			pluginToolConfig["pluginpath"] = mod.SectionPath
 			pluginToolConfig[k] = v
 		}
 		break
