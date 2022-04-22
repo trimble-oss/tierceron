@@ -105,7 +105,7 @@ func PluginMain() {
 			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
 			writeMap["copied"] = false
 			writeMap["deployed"] = false
-			pathSplit := strings.Split(mod.SectionPath, "/")
+			pathSplit := strings.Split(pluginToolConfig["pluginpath"].(string), "/")
 			_, err = mod.Write(pathSplit[0]+"/"+pathSplit[len(pathSplit)-1], writeMap)
 			if err != nil {
 				fmt.Println(err)
