@@ -1,4 +1,5 @@
 #!/bin/bash -e
+
 #this script isn't being called on startup... why? # Install packages
 sudo apt-get update -y
 sudo apt-get install -y curl unzip
@@ -52,19 +53,21 @@ sudo chown root:root /etc/opt/vault/vault_properties.hcl
 #sudo mv /tmp/getArtifacts.sh /etc/opt/trcAPI
 #sudo chmod 0777 /etc/opt/trcAPI/getArtifacts.sh
 
+
 # Setup the init script
-cat <<EOF >/tmp/upstart
+cat \<<EOF >/tmp/upstart
 [Unit]
 Description=Vault Service
 After=systemd-user-sessions.service
 [Service]
 
 Type=simple
-Environment="VAULT_API_ADDR=https://<TODO>:<TODOPORT>;GOMAXPROCS=`nproc`"
+Environment="VAULT_API_ADDR=https://${TODO}:${TODOPORT};"
+Environment="GOMAXPROCS=$(nproc)"
 ExecStart=/usr/src/app/vault server -config /etc/opt/vault/vault_properties.hcl
 LimitMEMLOCK=infinity
 
-end script
+#end script
 EOF
 sudo mv /tmp/upstart /lib/systemd/system/vault.service
 

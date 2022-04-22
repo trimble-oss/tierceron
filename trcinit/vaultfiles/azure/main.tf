@@ -105,7 +105,7 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
   location              = azurerm_resource_group.rg.location
   resource_group_name   = azurerm_resource_group.rg.name
   network_interface_ids = [azurerm_network_interface.myterraformnic.id]
-  size                  = "Standard_DS1_v2"
+  size                  = "Standard_B1ls"
 
   os_disk {
     name                 = "myOsDisk"
@@ -180,6 +180,9 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
     destination = "/tmp/serv_key.pem"
   }
 
+ 
+
+ 
   provisioner "file" {
     connection {
       #host = "${azurerm_resource_group.rg.public_ip_address}"
@@ -189,8 +192,16 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
       private_key = file("id_rsa")
       timeout     = "10s"
     }
-    source      = "${path.module}/scripts/install.sh"
+    #source      = "${path.module}/scripts/install.sh"
     destination = "/tmp/install.sh"
+    content     = templatefile(
+      #inject variables into 
+      "${path.module}/scripts/install.sh.tpl",
+      {
+        "TODOPORT" : var.TODOPORT
+        "TODO" : var.TODO
+      }
+    )
   }
 
   provisioner "remote-exec" {
@@ -202,7 +213,9 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
       "sudo mkdir /tmp/token_files",
       "sudo chown ubuntu /tmp/token_files",
       "sudo mkdir /tmp/template_files",
-      "sudo chown ubuntu /tmp/template_files"
+      "sudo chown ubuntu /tmp/template_files",
+      #"sudo export TODO=${var.TODO}",
+      #"sudo export TODOPORT=${var.TODOPORT}"
     ]
     connection {
       host        = self.public_ip_address
@@ -231,53 +244,6 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
     }
   }
 
-
-  #comment out 34 to 54 in script file
-
-
-
-
-  /*
-
-
-    provisioner "remote-exec" {
-        inline = [
-            "sudo mkdir /tmp/public",
-            "sudo chown ubuntu /tmp/public",
-            "sudo mkdir /tmp/policy_files",
-            "sudo chown ubuntu /tmp/policy_files",
-            "sudo mkdir /tmp/token_files",
-            "sudo chown ubuntu /tmp/token_files",
-            "sudo mkdir /tmp/template_files",
-            "sudo chown ubuntu /tmp/template_files"
-        ]
-        connection {
-            type        = "ssh"
-            agent       = false
-            user        = "ubuntu"
-            private_key = "${file("id_rsa")}"
-            host = ""
-        }
-    }
-
-
-     provisioner "remote-exec" {
-       inline = [
-       "chmod +x /tmp/install.sh",
-       "/tmp/install.sh"
-        ]
-        connection {
-            type        = "ssh"
-            agent       = false
-            user        = "ubuntu"
-            private_key = "${file("id_rsa")}"
-            host = ""
-        }
-
-        #comment out 34 to 54 in script file
-
-     }
-*/
 }
 
 
