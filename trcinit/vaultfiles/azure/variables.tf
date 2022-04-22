@@ -12,6 +12,14 @@ variable "resource_group_name" {
   default = "Spectrum"
 }
 
+# Using heredoc in terraform doesn't
+# allow for terraform variable substitution.
+# This will bypass that limitation.
+variable "write_service" {
+  type = string
+  default= "<<"
+}
+
 #variable "deploy-pem-path" {
 #    description = "path of the deploy.pem file"
 #}

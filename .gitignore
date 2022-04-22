@@ -22,3 +22,4 @@ bin/api*
 
 # Confidential resource dependencies for running vault in aws and azure
 trcinit/vaultfiles/resources/**
+trcinit/vaultfiles/azure/confidential_vars.tf

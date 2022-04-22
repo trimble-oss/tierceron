@@ -144,7 +144,7 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
       user        = "ubuntu"
       type        = "ssh"
       private_key = file("id_rsa")
-      timeout     = "10s"
+      timeout     = "30s"
       #agent = false
     }
     source      = "../resources/vault_properties.hcl"
@@ -158,7 +158,7 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
       user        = "ubuntu"
       type        = "ssh"
       private_key = file("id_rsa")
-      timeout     = "10s"
+      timeout     = "30s"
       #agent = false
     }
     #was previously serv_cert.pem
@@ -173,7 +173,7 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
       user        = "ubuntu"
       type        = "ssh"
       private_key = file("id_rsa")
-      timeout     = "10s"
+      timeout     = "30s"
     }
     #was previously serv_key.pem
     source      = "../resources/key.pem"
@@ -190,16 +190,17 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
       user        = "ubuntu"
       type        = "ssh"
       private_key = file("id_rsa")
-      timeout     = "10s"
+      timeout     = "30s"
     }
     #source      = "${path.module}/scripts/install.sh"
     destination = "/tmp/install.sh"
     content     = templatefile(
-      #inject variables into 
+      #inject variables into the install script via template
       "${path.module}/scripts/install.sh.tpl",
       {
-        "TODOPORT" : var.TODOPORT
-        "TODO" : var.TODO
+        "HOSTPORT" = var.hostport
+        "HOST" = var.host
+        "write_service" = var.write_service
       }
     )
   }
@@ -214,8 +215,6 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
       "sudo chown ubuntu /tmp/token_files",
       "sudo mkdir /tmp/template_files",
       "sudo chown ubuntu /tmp/template_files",
-      #"sudo export TODO=${var.TODO}",
-      #"sudo export TODOPORT=${var.TODOPORT}"
     ]
     connection {
       host        = self.public_ip_address
@@ -223,7 +222,7 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
       type        = "ssh"
       private_key = file("id_rsa")
       agent       = false
-      timeout     = "10s"
+      timeout     = "30s"
     }
   }
 
@@ -240,7 +239,7 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
       type        = "ssh"
       private_key = file("id_rsa")
       agent       = false
-      timeout     = "10s"
+      timeout     = "30s"
     }
   }
 
