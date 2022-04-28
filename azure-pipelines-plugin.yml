@@ -111,7 +111,7 @@ steps:
     testType: 'app'
     monitorWhen: 'always'
     failOnIssues: false
-    packagesFolder: ttrcvault/plugins/trcdb/*
+    targetFile: ttrcvault/plugins/trcdb/*
     projectName: 'Tierceron.VaultPlugin'
     organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
 
