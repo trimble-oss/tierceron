@@ -1,7 +1,6 @@
 package flumen
 
 import (
-	"errors"
 	"sync"
 	"tierceron/trcvault/util"
 	"tierceron/trcx/db"
@@ -120,14 +119,14 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 
 //Updated deployed to true for any plugin
 func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error {
-	for _, plguinName := range pluginNameList {
-		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + plguinName + "/Certify")
+	for _, pluginName := range pluginNameList {
+		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
 		if err != nil {
 			return err
 		}
 
-		if !pluginData["copied"].(bool) {
-			return errors.New("Copy status for plugin is false.")
+		if !pluginData["copied"].(bool) || pluginData["deployed"].(bool) {
+			continue
 		}
 		writeMap := make(map[string]interface{})
 		writeMap["trcplugin"] = pluginData["trcplugin"]
@@ -135,7 +134,7 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error
 		writeMap["copied"] = pluginData["copied"]
 		writeMap["deployed"] = true
 
-		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+plguinName+"/Certify", writeMap)
+		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap)
 		if err != nil {
 			return err
 		}

@@ -244,11 +244,13 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 		return nil, err
 	}
 
+	var ptc1 map[string]interface{}
+
 	for _, templatePath := range templatePaths {
 		project, service, _ := eUtils.GetProjectService(templatePath)
 		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
 		mod.SectionPath = "super-secrets/Index/" + project + "/" + "trcplugin" + "/" + config.SubSectionValue + "/" + service
-		ptc1, err := mod.ReadData(mod.SectionPath)
+		ptc1, err = mod.ReadData(mod.SectionPath)
 		if err != nil || ptc1 == nil {
 			config.Log.Println("No data found.")
 			continue
@@ -260,9 +262,14 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 		}
 		break
 	}
+	mod.SectionPath = ""
 
 	if pluginToolConfig == nil {
-		return nil, err
+		config.Log.Println("No data found for plugin.")
+		if err == nil {
+			err = errors.New("No data and unexpected error.")
+		}
+		return pluginToolConfig, err
 	} else if !indexFound {
 		return pluginToolConfig, nil
 	}

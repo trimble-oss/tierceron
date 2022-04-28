@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -33,37 +34,51 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	logger.Println("PluginDeployFlow begin processing plugins.")
 	for _, pluginName := range pluginConfig["pluginNameList"].([]string) {
 		logger.Println("PluginDeployFlow begun for plugin: " + pluginName)
-		config = &eUtils.DriverConfig{Insecure: pluginConfig["insecure"].(bool), Log: logger, ExitOnFailure: true, StartDir: []string{}, SubSectionValue: pluginName}
+		config = &eUtils.DriverConfig{Insecure: pluginConfig["insecure"].(bool), Log: logger, ExitOnFailure: false, StartDir: []string{}, SubSectionValue: pluginName}
 
 		vaultPluginSignature, ptcErr := util.GetPluginToolConfig(config, goMod, pluginConfig)
 		if ptcErr != nil {
-			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: vault load failure: "+ptcErr.Error(), false)
+			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
 			continue
 		}
+
+		if _, ok := vaultPluginSignature["trcplugin"]; !ok {
+			// TODO: maybe delete plugin if it exists since there was no entry in vault...
+			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure.", false)
+			continue
+		}
+
 		// This should come from vault now....
 		vaultPluginSignature["ecrrepository"] = strings.Replace(vaultPluginSignature["ecrrepository"].(string), "__imagename__", pluginName, -1) //"https://" +
 
 		pluginDownloadNeeded := false
 		pluginCopied := false
 
-		if imageFile, err := os.Open("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); err == nil {
-			sha256 := sha256.New()
-
-			defer imageFile.Close()
-			if _, err := io.Copy(sha256, imageFile); err != nil {
-				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not sha256 image from file system.", false)
-				continue
-			}
-
-			filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
-			if filesystemsha256 != vaultPluginSignature["trcsha256"] { //Sha256 from file system matches in vault
-				pluginDownloadNeeded = true
-			} else {
-				eUtils.LogErrorMessage(config, "Certified plugin already exists in file system - continuing with vault plugin status update", false)
-			}
-		} else {
+		if _, err := os.Stat("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); errors.Is(err, os.ErrNotExist) {
 			pluginDownloadNeeded = true
 			logger.Println("Attempting to download new image.")
+		} else {
+			if imageFile, err := os.Open("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); err == nil {
+				logger.Println("Found image for: " + vaultPluginSignature["trcplugin"].(string))
+
+				sha256 := sha256.New()
+
+				defer imageFile.Close()
+				if _, err := io.Copy(sha256, imageFile); err != nil {
+					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not sha256 image from file system.", false)
+					continue
+				}
+
+				filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
+				if filesystemsha256 != vaultPluginSignature["trcsha256"] { //Sha256 from file system matches in vault
+					pluginDownloadNeeded = true
+				} else {
+					eUtils.LogErrorMessage(config, "Certified plugin already exists in file system - continuing with vault plugin status update", false)
+				}
+			} else {
+				pluginDownloadNeeded = true
+				logger.Println("Attempting to download new image.")
+			}
 		}
 
 		if pluginDownloadNeeded {
@@ -105,8 +120,13 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		}
 
 		if (!pluginDownloadNeeded && !pluginCopied) || (pluginDownloadNeeded && pluginCopied) { // No download needed because it's already there, but vault may be wrong.
+			if vaultPluginSignature["copied"].(bool) && !vaultPluginSignature["deployed"].(bool) { //If status hasn't changed, don't update
+				utils.LogInfo(config, "Not updating plugin image to vault as status is the same.")
+				continue
+			}
+
 			utils.LogInfo(config, "Updating plugin image to vault.")
-			factory.PushPluginSha(vaultPluginSignature["trcplugin"].(string), vaultPluginSignature["trcsha256"].(string))
+			factory.PushPluginSha(config, vaultPluginSignature["trcplugin"].(string), vaultPluginSignature["trcsha256"].(string))
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
 			writeMap["trcsha256"] = vaultPluginSignature["trcsha256"].(string)
