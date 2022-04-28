@@ -113,7 +113,7 @@ steps:
     failOnIssues: false
     testDirectory: '$(modulePath)'
     targetFile: go.mod
-    projectName: 'Tierceron.VaultPlugin'
+    projectName: 'Tierceron'
     organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
 
 - task: PublishBuildArtifacts@1
