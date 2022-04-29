@@ -14,6 +14,7 @@ read VAULT_ENV_TOKEN
 
 VAULT_API_ADDR=VAULT_ADDR
 export VAULT_ADDR
+export VAULT_TOKEN
 export VAULT_API_ADDR
 
 echo "Disable old carrier secrets"
