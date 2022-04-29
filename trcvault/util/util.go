@@ -64,6 +64,8 @@ hostfound:
 				vaultPortChan <- strconv.Itoa(i)
 				vaultErr = nil
 				break
+			} else {
+				logger.Println("vaultHost: " + vh + " err: " + err.Error())
 			}
 		}
 	} else {
