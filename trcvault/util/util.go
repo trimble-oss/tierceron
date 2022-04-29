@@ -44,10 +44,12 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 			if (strings.Contains(host, "whoboot.org") || strings.Contains(host, "dexchadev.com") || strings.Contains(host, "dexterchaney.com")) && strings.Contains(hostFileLine.Address, "127.0.0.1") {
 				vaultHost = vaultHost + host
 				vaultHostChan <- vaultHost
-				break
+				goto hostfound
 			}
 		}
 	}
+
+hostfound:
 
 	if withPort {
 		// Now, look for vault.
