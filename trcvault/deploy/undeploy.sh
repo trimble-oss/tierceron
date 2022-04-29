@@ -8,6 +8,9 @@ read VAULT_ADDR
 echo "Enter root token: "
 read VAULT_TOKEN
 
+export VAULT_ADDR
+export VAULT_TOKEN
+
 vault secrets disable vaultdb/
 
 vault plugin deregister trc-vault-plugin
