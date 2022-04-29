@@ -74,6 +74,7 @@ echo "Uninstalling existing plugin."
 
 VAULT_API_ADDR=VAULT_ADDR
 export VAULT_ADDR
+export VAULT_TOKEN
 export VAULT_API_ADDR
 
 echo "Disable old trc vault secrets"
