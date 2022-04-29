@@ -39,14 +39,14 @@ func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlo
 	go func() {
 		<-vaultInitialized
 		for {
-			tokenEnvMap := <-tokenEnvChan
-			logger.Println("Config engine init begun: " + tokenEnvMap["env"].(string))
-			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, tokenEnvMap)
+			pluginEnvConfig := <-tokenEnvChan
+			logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
+			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfig)
 
 			if pecError != nil {
-				logger.Println("Bad configuration data for env: " + tokenEnvMap["env"].(string) + " error: " + pecError.Error())
+				logger.Println("Bad configuration data for env: " + pluginEnvConfig["env"].(string) + " error: " + pecError.Error())
 			}
-			logger.Println("Config engine setup complete for env: " + tokenEnvMap["env"].(string))
+			logger.Println("Config engine setup complete for env: " + pluginEnvConfig["env"].(string))
 		}
 
 	}()
@@ -193,10 +193,16 @@ func ProcessPluginEnvConfig(processFlowConfig util.ProcessFlowConfig,
 		return errors.New("missing token")
 	}
 
-	token, rOk := pluginEnvConfig["token"]
-	if !rOk || token.(string) == "" {
+	token, tOk := pluginEnvConfig["token"]
+	if !tOk || token.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing token.")
 		return errors.New("missing token")
+	}
+
+	address, aOk := pluginEnvConfig["address"]
+	if !aOk || address.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing address.")
+		return errors.New("missing address")
 	}
 
 	if _, enabledTrcDb := pluginEnvConfig["enableTrcDbInterface"]; enabledTrcDb {
