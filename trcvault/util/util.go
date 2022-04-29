@@ -51,7 +51,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 
 	if withPort {
 		// Now, look for vault.
-		for i := 8190; i < 8300; i++ {
+		for i := 8019; i < 8300; i++ {
 			vh := vaultHost + ":" + strconv.Itoa(i)
 			_, err := sys.NewVault(true, vh, "", false, true, true, logger)
 			if err == nil {
