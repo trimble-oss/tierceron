@@ -36,6 +36,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 	hostFileLines, pherr := txeh.ParseHosts("/etc/hosts")
 	if pherr != nil {
 		vaultLookupErrChan <- pherr
+		logger.Println("Init failure: " + pherr.Error())
 		return
 	}
 
@@ -44,6 +45,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 			if (strings.Contains(host, "whoboot.org") || strings.Contains(host, "dexchadev.com") || strings.Contains(host, "dexterchaney.com")) && strings.Contains(hostFileLine.Address, "127.0.0.1") {
 				vaultHost = vaultHost + host
 				vaultHostChan <- vaultHost
+				logger.Println("Init stage 1 success.")
 				goto hostfound
 			}
 		}
@@ -52,17 +54,20 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 hostfound:
 
 	if withPort {
+		logger.Println("Init stage 2.")
 		// Now, look for vault.
 		for i := 8019; i < 8300; i++ {
 			vh := vaultHost + ":" + strconv.Itoa(i)
 			_, err := sys.NewVault(true, vh, "", false, true, true, logger)
 			if err == nil {
+				logger.Println("Init stage 2 success.")
 				vaultPortChan <- strconv.Itoa(i)
 				vaultErr = nil
 				break
 			}
 		}
 	} else {
+		logger.Println("Init skipping.")
 		vaultErr = nil
 	}
 
