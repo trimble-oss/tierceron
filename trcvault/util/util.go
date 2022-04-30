@@ -44,7 +44,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 	hostname, _ := os.Hostname()
 	ip := "127.0.0.1"
 	if strings.HasPrefix(hostname, "ip-") {
-		ip := strings.Replace(hostname, "ip-", "", 1)
+		ip = strings.Replace(hostname, "ip-", "", 1)
 		ip = strings.Replace(ip, "-", ".", -1)
 	}
 
