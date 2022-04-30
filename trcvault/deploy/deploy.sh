@@ -3,6 +3,18 @@
 echo "Enter plugin name: "
 read TRC_PLUGIN_NAME
 
+FILE="target/$TRC_PLUGIN_NAME"
+if [ ! -f "$FILE" ]; then
+    echo "$FILE does not exist."
+    exit 1
+fi
+
+FILESHA="target/$TRC_PLUGIN_NAME.sha256"
+if [ ! -f "$FILESHA" ]; then
+    echo "$FILESHA does not exist."
+    exit 1
+fi
+
 echo "Enter vault host base url: "
 read VAULT_ADDR
 
@@ -47,7 +59,7 @@ fi
 
 if [ $status -eq 0 ]; then       
 echo "This version of the plugin has already been deployed - enabling for environment $VAULT_ENV."
-vault write vaultdb/$VAULT_ENV token=$VAULT_ENV_TOKEN
+vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN
 exit $status
 elif [ $status -eq 1 ]; then
 echo "Existing plugin does not match repository plugin - cannot continue."
@@ -62,6 +74,7 @@ echo "Uninstalling existing plugin."
 
 VAULT_API_ADDR=VAULT_ADDR
 export VAULT_ADDR
+export VAULT_TOKEN
 export VAULT_API_ADDR
 
 echo "Disable old trc vault secrets"
