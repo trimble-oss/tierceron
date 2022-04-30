@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -40,9 +41,16 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 		return
 	}
 
+	hostname, _ := os.Hostname()
+	ip := "127.0.0.1"
+	if strings.HasPrefix(hostname, "ip-") {
+		ip := strings.Replace(hostname, "ip-", "", 1)
+		ip = strings.Replace(ip, "-", ".", -1)
+	}
+
 	for _, hostFileLine := range hostFileLines {
 		for _, host := range hostFileLine.Hostnames {
-			if (strings.Contains(host, "whoboot.org") || strings.Contains(host, "dexchadev.com") || strings.Contains(host, "dexterchaney.com")) && strings.Contains(hostFileLine.Address, "127.0.0.1") {
+			if (strings.Contains(host, "whoboot.org") || strings.Contains(host, "dexchadev.com") || strings.Contains(host, "dexterchaney.com")) && strings.Contains(hostFileLine.Address, ip) {
 				vaultHost = vaultHost + host
 				vaultHostChan <- vaultHost
 				logger.Println("Init stage 1 success.")
@@ -64,8 +72,6 @@ hostfound:
 				vaultPortChan <- strconv.Itoa(i)
 				vaultErr = nil
 				break
-			} else {
-				logger.Println("vaultHost: " + vh + " err: " + err.Error())
 			}
 		}
 	} else {
