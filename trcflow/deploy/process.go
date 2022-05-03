@@ -1,7 +1,6 @@
 package deploy
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -120,10 +119,9 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				//				cap.GetFd
 				//				capSet.SetFlag(cap.Permitted, true)
 				cmd := exec.Command("setcap", "cap_ipc_lock=+ep", "/etc/opt/vault/plugins/"+vaultPluginSignature["trcplugin"].(string))
-				var out bytes.Buffer
-				cmd.Stdout = &out
-				err := cmd.Run()
+				output, err := cmd.CombinedOutput()
 				if err != nil {
+					eUtils.LogErrorMessage(config, fmt.Sprint(err)+": "+string(output), false)
 					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not set needed capabilities.", false)
 					continue
 				}
