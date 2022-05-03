@@ -255,6 +255,10 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 	templatePaths := pluginConfig["templatePath"].([]string)
 
 	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
+
+	for k, v := range pluginConfig {
+		pluginToolConfig[k] = v
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -266,13 +270,13 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
 		mod.SectionPath = "super-secrets/Index/" + project + "/" + "trcplugin" + "/" + config.SubSectionValue + "/" + service
 		ptc1, err = mod.ReadData(mod.SectionPath)
+		pluginToolConfig["pluginpath"] = mod.SectionPath
 		if err != nil || ptc1 == nil {
 			config.Log.Println("No data found.")
 			continue
 		}
 		indexFound = true
 		for k, v := range ptc1 {
-			pluginToolConfig["pluginpath"] = mod.SectionPath
 			pluginToolConfig[k] = v
 		}
 		break
