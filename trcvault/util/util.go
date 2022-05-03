@@ -295,7 +295,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 		return pluginToolConfig, nil
 	}
 	config.Log.Println("GetPluginToolConfig end processing plugins.")
-	if !strings.ContainsAny(pluginToolConfig["trcplugin"].(string), "./") {
+	if strings.ContainsAny(pluginToolConfig["trcplugin"].(string), "./") {
 		err = errors.New("Invalid plugin configuration: " + pluginToolConfig["trcplugin"].(string))
 		return nil, err
 	}
