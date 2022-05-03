@@ -28,6 +28,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	//Grabbing configs
 	config, goMod, _, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+
 	if err != nil {
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
@@ -44,9 +45,9 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			continue
 		}
 
-		if _, ok := vaultPluginSignature["trcplugin"]; !ok {
+		if _, ok := vaultPluginSignature["ecrrepository"].(string); !ok {
 			// TODO: maybe delete plugin if it exists since there was no entry in vault...
-			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure.", false)
+			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure - no certification entry found.", false)
 			continue
 		}
 
