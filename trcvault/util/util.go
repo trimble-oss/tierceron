@@ -25,6 +25,8 @@ import (
 	il "tierceron/trcinit/initlib"
 	xutil "tierceron/trcx/xutil"
 
+	vbopts "VaultConfig.Bootstrap/buildopts"
+
 	"log"
 )
 
@@ -50,7 +52,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 
 	for _, hostFileLine := range hostFileLines {
 		for _, host := range hostFileLine.Hostnames {
-			if (strings.Contains(host, "whoboot.org") || strings.Contains(host, "dexchadev.com") || strings.Contains(host, "dexterchaney.com")) && strings.Contains(hostFileLine.Address, ip) {
+			if strings.Contains(host, vbopts.GetDomain()) && strings.Contains(hostFileLine.Address, ip) {
 				vaultHost = vaultHost + host
 				vaultHostChan <- vaultHost
 				logger.Println("Init stage 1 success.")
@@ -293,6 +295,10 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 		return pluginToolConfig, nil
 	}
 	config.Log.Println("GetPluginToolConfig end processing plugins.")
+	if !strings.ContainsAny(pluginToolConfig["trcplugin"].(string), "./") {
+		err = errors.New("Invalid plugin configuration: " + pluginToolConfig["trcplugin"].(string))
+		return nil, err
+	}
 
 	return pluginToolConfig, nil
 }
