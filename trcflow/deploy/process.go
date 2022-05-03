@@ -1,6 +1,7 @@
 package deploy
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"tierceron/trcvault/factory"
 	"tierceron/trcvault/util"
@@ -16,6 +18,7 @@ import (
 
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
+	//"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
@@ -108,6 +111,20 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 					}
 				} else {
 					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not open image in file system to give permissions.", false)
+					continue
+				}
+				// TODO: setcap more directly using kernel lib if possible...
+				//"kernel.org/pub/linux/libs/security/libcap/cap"
+
+				//				capSet, err := cap.GetFile("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string))
+				//				cap.GetFd
+				//				capSet.SetFlag(cap.Permitted, true)
+				cmd := exec.Command("setcap", "cap_ipc_lock=+ep", "/etc/opt/vault/plugins/"+vaultPluginSignature["trcplugin"].(string))
+				var out bytes.Buffer
+				cmd.Stdout = &out
+				err := cmd.Run()
+				if err != nil {
+					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not set needed capabilities.", false)
 					continue
 				}
 
