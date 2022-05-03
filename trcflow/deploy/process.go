@@ -28,8 +28,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	//Grabbing configs
 	config, goMod, _, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
-	secrets, err := goMod.ReadData("super-secrets/Index/TenantDatabase/SpectrumTableName")
-	fmt.Println(secrets)
 	if err != nil {
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
