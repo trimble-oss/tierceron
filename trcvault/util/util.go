@@ -25,6 +25,8 @@ import (
 	il "tierceron/trcinit/initlib"
 	xutil "tierceron/trcx/xutil"
 
+	vbopts "VaultConfig.Bootstrap/buildopts"
+
 	"log"
 )
 
@@ -50,7 +52,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 
 	for _, hostFileLine := range hostFileLines {
 		for _, host := range hostFileLine.Hostnames {
-			if (strings.Contains(host, "whoboot.org") || strings.Contains(host, "dexchadev.com") || strings.Contains(host, "dexterchaney.com")) && strings.Contains(hostFileLine.Address, ip) {
+			if strings.Contains(host, vbopts.GetDomain()) && strings.Contains(hostFileLine.Address, ip) {
 				vaultHost = vaultHost + host
 				vaultHostChan <- vaultHost
 				logger.Println("Init stage 1 success.")
@@ -255,6 +257,10 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 	templatePaths := pluginConfig["templatePath"].([]string)
 
 	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
+
+	for k, v := range pluginConfig {
+		pluginToolConfig[k] = v
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -266,13 +272,13 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
 		mod.SectionPath = "super-secrets/Index/" + project + "/" + "trcplugin" + "/" + config.SubSectionValue + "/" + service
 		ptc1, err = mod.ReadData(mod.SectionPath)
+		pluginToolConfig["pluginpath"] = mod.SectionPath
 		if err != nil || ptc1 == nil {
 			config.Log.Println("No data found.")
 			continue
 		}
 		indexFound = true
 		for k, v := range ptc1 {
-			pluginToolConfig["pluginpath"] = mod.SectionPath
 			pluginToolConfig[k] = v
 		}
 		break
@@ -289,6 +295,10 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginCo
 		return pluginToolConfig, nil
 	}
 	config.Log.Println("GetPluginToolConfig end processing plugins.")
+	if strings.ContainsAny(pluginToolConfig["trcplugin"].(string), "./") {
+		err = errors.New("Invalid plugin configuration: " + pluginToolConfig["trcplugin"].(string))
+		return nil, err
+	}
 
 	return pluginToolConfig, nil
 }
