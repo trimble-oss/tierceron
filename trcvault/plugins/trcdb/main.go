@@ -30,7 +30,10 @@ func main() {
 	logger := log.New(f, "[trcvault]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 
-	tclib.SetLogger(logger.Writer())
+	tclib.SetLogger(func(query string, args ...interface{}) {
+		logger.Println(query)
+	})
+	tclib.SetErrorLogger(logger.Writer())
 	factory.Init(tcutil.ProcessPluginEnvConfig, flumen.ProcessFlows, true, logger)
 	mlock.Mlock(logger)
 
