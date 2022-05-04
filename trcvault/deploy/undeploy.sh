@@ -1,7 +1,5 @@
 #!/bin/bash
 
-cd ../../../Vault.Hashicorp
-
 echo "Enter vault host base url: "
 read VAULT_ADDR
 
