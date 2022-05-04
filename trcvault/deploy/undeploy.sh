@@ -11,7 +11,7 @@ read VAULT_TOKEN
 export VAULT_ADDR
 export VAULT_TOKEN
 
-vault secrets disable vaultdb/
+vault secrets disable trc-vault-plugin/
 
 vault plugin deregister trc-vault-plugin
 #rm vault/data/core/plugin-catalog/secret/_trc-vault-plugin
