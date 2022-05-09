@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strings"
 	"tierceron/trcvault/factory"
+	"tierceron/trcvault/opts/insecure"
 	"tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
 	"tierceron/utils"
@@ -126,7 +127,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				//				capSet.SetFlag(cap.Permitted, true)
 				cmd := exec.Command("setcap", "cap_ipc_lock=+ep", "/etc/opt/vault/plugins/"+vaultPluginSignature["trcplugin"].(string))
 				output, err := cmd.CombinedOutput()
-				if err != nil {
+				if !insecure.IsInsecure() && err != nil {
 					eUtils.LogErrorMessage(config, fmt.Sprint(err)+": "+string(output), false)
 					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not set needed capabilities.", false)
 					continue
