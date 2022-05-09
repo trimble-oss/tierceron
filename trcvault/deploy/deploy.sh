@@ -120,7 +120,7 @@ else
 SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME)
 SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
 
-if [ "$SHAVAL" = "" ]; then
+if [ "$SHAVAL" = "Failure" ]; then
    echo "Failed to obtain sha256 for indicated plugin.   Refusing to continue."
    exit -1
 fi
