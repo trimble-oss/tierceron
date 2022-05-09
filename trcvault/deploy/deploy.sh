@@ -24,8 +24,11 @@ read VAULT_TOKEN
 echo "Enter environment: "
 read VAULT_ENV
 
-echo "Enter environment token with write permissions: "
+echo "Enter trc plugin runtime environment token with write permissions unrestricted: "
 read VAULT_ENV_TOKEN
+
+echo "Enter carrier deployment runtime token pluginEnv: "
+read VAULT_CARRIER_DEPLOY_TOKEN
 
 echo "Precertify plugin: "
 read PRE_CERTIFY
@@ -77,7 +80,7 @@ export VAULT_ADDR
 export VAULT_TOKEN
 export VAULT_API_ADDR
 
-echo "Disable old trc vault secrets"
+echo "Disable and unregister old plugin."
 vault secrets disable $TRC_PLUGIN_NAME/
 vault plugin deregister $TRC_PLUGIN_NAME
 
@@ -88,8 +91,13 @@ if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
 # First we set Copied to false...
 # This should also trigger the copy process...
 # It should return sha256 of copied plugin on success.
-SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN plugin=$TRC_PLUGIN_NAME-prod)
+SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME-prod)
 SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
+
+if [ "$SHAVAL" = "" ]; then
+   echo "Failed to obtain sha256 for indicated plugin.   Refusing to continue."
+   exit -1
+fi
 
 echo "Registering new plugin."
 vault plugin register \
@@ -109,8 +117,14 @@ else
 # First we set Copied to false...
 # This should also trigger the copy process...
 # It should return sha256 of copied plugin on success.
-SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN plugin=$TRC_PLUGIN_NAME)
+SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME)
 SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
+
+if [ "$SHAVAL" = "" ]; then
+   echo "Failed to obtain sha256 for indicated plugin.   Refusing to continue."
+   exit -1
+fi
+
 #SHAVAL=$( cat target/$TRC_PLUGIN_NAME.sha256 )
 if [ "$VAULT_PLUGIN_DIR" ]
 then
