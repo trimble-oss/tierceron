@@ -121,6 +121,7 @@ if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
 else
     if [ "$VAULT_PLUGIN_DIR" ]
     then
+        cp target/$TRC_PLUGIN_NAME $VAULT_PLUGIN_DIR
         SHAVAL=$( cat target/$TRC_PLUGIN_NAME.sha256 )
         sudo setcap cap_ipc_lock=+ep $VAULT_PLUGIN_DIR/$TRC_PLUGIN_NAME
     else
