@@ -589,7 +589,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 		var certData map[int]string
 		certLoaded := false
 
-		for _, templatePath := range templatePaths {
+		for _, templatePath := range tempTemplatePaths {
 
 			project, service, templatePath := vcutils.GetProjectService(templatePath)
 
