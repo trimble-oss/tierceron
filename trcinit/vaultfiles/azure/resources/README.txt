@@ -1,1 +1,0 @@
-# This folder contains trcconfig generated configuration files used by terraform.
