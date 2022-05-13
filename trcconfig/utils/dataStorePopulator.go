@@ -245,6 +245,9 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 		}
 
 	}
+	if cds.dataMap == nil {
+		config.Log.Println("Failed to populate cds")
+	}
 	return nil
 }
 
