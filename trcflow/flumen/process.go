@@ -275,6 +275,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 	}
 
+	// TODO: Start up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
+	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.
+	// The engine is in tfmContext...  that's the one we need to make available for connecting via dbvis...
+	// be sure to enable encryption on the connection...
+
 	wg.Wait()
 	return nil
 }
