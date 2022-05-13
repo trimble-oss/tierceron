@@ -1,0 +1,29 @@
+variable "host" {
+  type = string
+  default = {{.host}}
+}
+
+variable "hostport" {
+  type = string
+  default= {{.hostport}}
+}
+
+variable "allowed_ips" {
+  type    = string
+  default = {{.allowed_ips}}
+}
+
+variable "dest_port_range" {
+  type    = string
+  default = {{.dest_port_range}}
+}
+
+variable "security_software_script_path"{
+  type = string
+  default = {{.security_software_script_path}}
+}
+
+variable "security_software_name"{
+  type = string
+  default = {{.security_software_name}}
+}

@@ -3,10 +3,14 @@ output "resource_group_name" {
 }
 
 output "public_ip_address" {
-  value = azurerm_linux_virtual_machine.myterraformvm.public_ip_address
+  value = azurerm_linux_virtual_machine.az-vm.public_ip_address
+}
+
+output "run_project" {
+  value = "Login: ssh -i private_key.pem ubuntu@${azurerm_linux_virtual_machine.az-vm.public_ip_address}"
 }
 
 output "tls_private_key" {
-  value     = tls_private_key.example_ssh.private_key_pem
+  value     = tls_private_key.private_key.private_key_pem
   sensitive = true
 }
