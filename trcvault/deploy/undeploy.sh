@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cd ../../../Vault.Hashicorp
+echo "Enter plugin name: "
+read TRC_PLUGIN_NAME
 
 echo "Enter vault host base url: "
 read VAULT_ADDR
@@ -10,10 +11,11 @@ read VAULT_TOKEN
 
 export VAULT_ADDR
 export VAULT_TOKEN
+export TRC_PLUGIN_NAME
 
-vault secrets disable vaultdb/
+vault secrets disable $TRC_PLUGIN_NAME/
 
-vault plugin deregister trc-vault-plugin
+vault plugin deregister $TRC_PLUGIN_NAME
 #rm vault/data/core/plugin-catalog/secret/_trc-vault-plugin
 #rm plugins/*
 

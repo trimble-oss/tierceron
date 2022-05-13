@@ -8,14 +8,17 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"tierceron/trcvault/factory"
+	"tierceron/trcvault/opts/insecure"
 	"tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
 	"tierceron/utils"
 
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
+	//"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
@@ -45,6 +48,12 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		if _, ok := vaultPluginSignature["trcplugin"]; !ok {
 			// TODO: maybe delete plugin if it exists since there was no entry in vault...
 			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure.", false)
+			continue
+		}
+
+		if _, ok := vaultPluginSignature["ecrrepository"].(string); !ok {
+			// TODO: maybe delete plugin if it exists since there was no entry in vault...
+			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure - no certification entry found.", false)
 			continue
 		}
 
@@ -108,6 +117,19 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 					}
 				} else {
 					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not open image in file system to give permissions.", false)
+					continue
+				}
+				// TODO: setcap more directly using kernel lib if possible...
+				//"kernel.org/pub/linux/libs/security/libcap/cap"
+
+				//				capSet, err := cap.GetFile("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string))
+				//				cap.GetFd
+				//				capSet.SetFlag(cap.Permitted, true)
+				cmd := exec.Command("setcap", "cap_ipc_lock=+ep", "/etc/opt/vault/plugins/"+vaultPluginSignature["trcplugin"].(string))
+				output, err := cmd.CombinedOutput()
+				if !insecure.IsInsecure() && err != nil {
+					eUtils.LogErrorMessage(config, fmt.Sprint(err)+": "+string(output), false)
+					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not set needed capabilities.", false)
 					continue
 				}
 
