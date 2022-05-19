@@ -19,3 +19,25 @@ bin/api*
 .idea/
 .vscode/
 .DS_Store
+
+# Scrub any confidential information from aws and azure config directories
+trcinit/vaultfiles/azure/vault/**
+trcinit/vaultfiles/azure/resources/**
+trcinit/vaultfiles/azure/trc_seeds/**
+trcinit/vaultfiles/azure/confidential_vars.tf
+trcinit/vaultfiles/azure/terraform.tfstate
+trcinit/vaultfiles/azure/main.tfplan
+trcinit/vaultfiles/azure/terraform.tfstate.backup
+trcinit/vaultfiles/azure/.terraform/providers/registry.terraform.io/hashicorp/azurerm/2.99.0/linux_amd64/terraform-provider-azurerm_v2.99.0_x5
+trcinit/vaultfiles/azure/.terraform/providers/registry.terraform.io/hashicorp/azurerm/3.0.2/linux_amd64/terraform-provider-azurerm_v3.0.2_x5
+trcinit/vaultfiles/azure/.terraform/providers/registry.terraform.io/hashicorp/random/3.1.2/linux_amd64/terraform-provider-random_v3.1.2_x5
+trcinit/vaultfiles/azure/.terraform/providers/registry.terraform.io/hashicorp/tls/3.3.0/linux_amd64/terraform-provider-tls_v3.3.0_x5
+trcinit/vaultfiles/azure/.terraform/providers/registry.terraform.io/hashicorp/template/2.2.0/linux_amd64/terraform-provider-template_v2.2.0_x4
+trcinit/vaultfiles/azure/.terraform.lock.hcl
+trcinit/vaultfiles/aws/.terraform.lock.hcl
+trcinit/vaultfiles/aws/.terraform/providers/registry.terraform.io/hashicorp/aws/4.10.0/linux_amd64/terraform-provider-aws_v4.10.0_x5
+trcinit/vaultfiles/azure/private_key.pem
+trcinit/vaultfiles/azure/variables.tf
+trcinit/vaultfiles/azure/.terraform/providers/registry.terraform.io/hashicorp/local/2.2.2/linux_amd64/terraform-provider-local_v2.2.2_x5
+bin/nc.h
+trcinit/vaultfiles/azure/resources/README.txt
