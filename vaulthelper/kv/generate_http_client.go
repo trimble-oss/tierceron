@@ -10,8 +10,31 @@ import (
 	"time"
 )
 
+func IsUrlLocalIp(address string) (bool, error) {
+	u, err := url.Parse(address)
+	if err != nil {
+		return false, err
+	}
+	host, _, _ := net.SplitHostPort(u.Host)
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return false, err
+	}
+	for _, ip := range ips {
+		if ip.String() == "127.0.0.1" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 //CreateHTTPClient reads from several .pem files to get the necessary keys and certs to configure the http client and returns the client.
 func CreateHTTPClient(insecure bool, address string, env string, scan bool) (client *http.Client, err error) {
+	return CreateHTTPClientAllowNonLocal(insecure, address, env, scan, false)
+}
+
+//CreateHTTPClient reads from several .pem files to get the necessary keys and certs to configure the http client and returns the client.
+func CreateHTTPClientAllowNonLocal(insecure bool, address string, env string, scan bool, allowNonLocal bool) (client *http.Client, err error) {
 	// // create a pool of trusted certs
 	certPath := "../../certs/cert_files/dcidevpublic.pem"
 	if strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "staging") {
@@ -33,19 +56,17 @@ func CreateHTTPClient(insecure bool, address string, env string, scan bool) (cli
 
 	var tlsConfig = &tls.Config{RootCAs: certPool}
 	if insecure {
-		u, err := url.Parse(address)
-		if err != nil {
-			return nil, err
-		}
-		host, _, _ := net.SplitHostPort(u.Host)
-		ips, err := net.LookupIP(host)
-		if err != nil {
-			return nil, err
-		}
-		for _, ip := range ips {
-			if ip.String() == "127.0.0.1" {
+		if isLocal, lookupErr := IsUrlLocalIp(address); isLocal {
+			if lookupErr != nil {
+				return nil, lookupErr
+			}
+			tlsConfig = &tls.Config{RootCAs: certPool, InsecureSkipVerify: true}
+		} else {
+			if lookupErr != nil {
+				return nil, lookupErr
+			}
+			if allowNonLocal {
 				tlsConfig = &tls.Config{RootCAs: certPool, InsecureSkipVerify: true}
-				break
 			}
 		}
 	}
