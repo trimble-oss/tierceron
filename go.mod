@@ -19,10 +19,9 @@ require (
 	github.com/sendgrid/sendgrid-go v3.6.1+incompatible
 	github.com/sergi/go-diff v1.2.0
 	github.com/twitchtv/twirp v5.12.1+incompatible
-	github.com/txn2/txeh v1.3.0
 	github.com/xo/dburl v0.9.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
-	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
+	golang.org/x/sys v0.0.0-20220209214540-3681064d5158
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -40,7 +39,6 @@ require (
 	github.com/dolthub/vitess v0.0.0-20220317184555-442cf0a796cc // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/frankban/quicktest v1.14.1 // indirect
-	github.com/go-co-op/gocron v1.13.0 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang-sql/sqlexp v0.0.0-20170517235910-f1bb20e5a188 // indirect
@@ -76,7 +74,6 @@ require (
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sendgrid/rest v2.6.0+incompatible // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
