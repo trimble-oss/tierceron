@@ -11,6 +11,9 @@ import (
 )
 
 func IsUrlLocalIp(address string) (bool, error) {
+	if strings.HasPrefix(address, "https://127.0.0.1") {
+		return true, nil
+	}
 	u, err := url.Parse(address)
 	if err != nil {
 		return false, err
