@@ -1,0 +1,14 @@
+storage "file" {
+    path = "./vault/data"
+    max_entry_size = 16777216
+}
+
+listener "tcp" {
+    address     = {{.vault_ip}}
+    tls_disable = "false"
+    tls_cert_file = "/etc/opt/vault/certs/serv_cert.pem"
+    tls_key_file = "/etc/opt/vault/certs/serv_key.pem"
+}
+disable_mlock = true
+ui = true
+max_lease_ttl = "8760h"
