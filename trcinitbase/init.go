@@ -1,6 +1,7 @@
 package trcinitbase
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -49,6 +50,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	restrictedPtr := flag.String("restricted", "", "Specfies which projects have restricted access.")
 	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
 
+	allowNonLocal := false
+
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
 		s := args[i]
@@ -73,6 +76,27 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if len(*indexedPtr) > 0 && len(*restrictedPtr) > 0 {
 		fmt.Println("-index and -restricted flag cannot be used together.")
 		os.Exit(1)
+	}
+
+	// Enter ID tokens
+	if *insecurePtr {
+		if isLocal, lookupErr := kv.IsUrlLocalIp(*addrPtr); isLocal && lookupErr == nil {
+			// This is fine...
+			fmt.Println("Initialize local vault.")
+		} else {
+			scanner := bufio.NewScanner(os.Stdin)
+			// Enter ID tokens
+			fmt.Println("Are you sure you want to connect to non local server with self signed cert(Y): ")
+			scanner.Scan()
+			skipVerify := scanner.Text()
+			if skipVerify == "Y" || skipVerify == "y" {
+				// Good to go.
+				allowNonLocal = true
+			} else {
+				fmt.Println("This is a remote host and you did not confirm allow non local.  If this is a remote host with a self signed cert, init will fail.")
+				*insecurePtr = false
+			}
+		}
 	}
 
 	var indexSlice = make([]string, 0) //Checks for indexed projects
@@ -143,7 +167,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	}
 
 	// Create a new vault system connection
-	v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr, false, logger)
+	v, err := sys.NewVaultWithNonlocal(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr, false, allowNonLocal, logger)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
 			fmt.Printf("Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
