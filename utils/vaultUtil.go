@@ -81,7 +81,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 		templatePathParts := strings.Split(templatePathRelativeParts[1], "/")
 		service := templatePathParts[1]
 
-		if _, ok := serviceMap[service]; ok {
+		if _, ok := serviceMap[service]; ok || templatePathParts[0] == "Common" {
 			if config.SectionKey == "" || config.SectionKey == "/" {
 				acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
 			} else {
