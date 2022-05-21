@@ -15,17 +15,15 @@ import (
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 
+	"github.com/txn2/txeh"
+	vbopts "VaultConfig.Bootstrap/buildopts"
 	"gopkg.in/yaml.v2"
 
 	vcutils "tierceron/trcconfig/utils"
 	extract "tierceron/trcx/extract"
 
-	"github.com/txn2/txeh"
-
 	il "tierceron/trcinit/initlib"
 	xutil "tierceron/trcx/xutil"
-
-	vbopts "VaultConfig.Bootstrap/buildopts"
 
 	"log"
 )
@@ -62,7 +60,6 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 	}
 
 hostfound:
-
 	if withPort {
 		logger.Println("Init stage 2.")
 		// Now, look for vault.

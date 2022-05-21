@@ -19,7 +19,6 @@ require (
 	github.com/sendgrid/sendgrid-go v3.6.1+incompatible
 	github.com/sergi/go-diff v1.2.0
 	github.com/twitchtv/twirp v5.12.1+incompatible
-	github.com/txn2/txeh v1.3.0
 	github.com/xo/dburl v0.9.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158
@@ -29,6 +28,7 @@ require (
 require (
 	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/txn2/txeh v1.3.0
 )
 
 require (
