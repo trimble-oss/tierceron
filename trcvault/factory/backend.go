@@ -35,9 +35,6 @@ func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlo
 	// Set up a table process runner.
 	go initVaultHostBootstrap()
 	<-vaultHostInitialized
-	pluginEnvConfig := <-tokenEnvChan
-	pluginEnvConfig["address"] = GetVaultHost()
-	tokenEnvChan <- pluginEnvConfig
 
 	var testCompleteChan chan bool = nil
 	if !headless {
@@ -48,6 +45,10 @@ func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlo
 		<-vaultInitialized
 		for {
 			pluginEnvConfig := <-tokenEnvChan
+			if _, ok := pluginEnvConfig["address"]; !ok {
+				// Testflow won't have this set yet.
+				pluginEnvConfig["address"] = GetVaultHost()
+			}
 			logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
 			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfig, testCompleteChan)
 
