@@ -35,21 +35,33 @@ func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlo
 	// Set up a table process runner.
 	go initVaultHostBootstrap()
 	<-vaultHostInitialized
+	pluginEnvConfig := <-tokenEnvChan
+	pluginEnvConfig["address"] = GetVaultHost()
+	tokenEnvChan <- pluginEnvConfig
+
+	var testCompleteChan chan bool = nil
+	if !headless {
+		testCompleteChan = make(chan bool)
+	}
 
 	go func() {
 		<-vaultInitialized
 		for {
 			pluginEnvConfig := <-tokenEnvChan
 			logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
-			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfig)
+			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfig, testCompleteChan)
 
 			if pecError != nil {
 				logger.Println("Bad configuration data for env: " + pluginEnvConfig["env"].(string) + " error: " + pecError.Error())
+				testCompleteChan <- true
 			}
 			logger.Println("Config engine setup complete for env: " + pluginEnvConfig["env"].(string))
 		}
 
 	}()
+	if testCompleteChan != nil {
+		<-testCompleteChan
+	}
 }
 
 var KvInitialize func(context.Context, *logical.InitializationRequest) error
@@ -186,7 +198,8 @@ func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
 
 func ProcessPluginEnvConfig(processFlowConfig util.ProcessFlowConfig,
 	processFlows util.ProcessFlowFunc,
-	pluginEnvConfig map[string]interface{}) error {
+	pluginEnvConfig map[string]interface{},
+	testCompleteChan chan bool) error {
 	env, eOk := pluginEnvConfig["env"]
 	if !eOk || env.(string) == "" {
 		logger.Println("Bad configuration data.  Missing env.")
@@ -219,6 +232,9 @@ func ProcessPluginEnvConfig(processFlowConfig util.ProcessFlowConfig,
 
 	go func(pc map[string]interface{}, l *log.Logger) {
 		flowErr := processFlows(pluginEnvConfig, l)
+		if testCompleteChan != nil {
+			testCompleteChan <- true
+		}
 		if flowErr != nil {
 			l.Println("Flow had an error: " + flowErr.Error())
 		}
