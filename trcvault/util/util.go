@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -14,6 +15,8 @@ import (
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 
+	"github.com/txn2/txeh"
+	vbopts "VaultConfig.Bootstrap/buildopts"
 	"gopkg.in/yaml.v2"
 
 	vcutils "tierceron/trcconfig/utils"
