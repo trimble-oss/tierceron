@@ -29,10 +29,34 @@ type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]i
 type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
+	vaultHost := "https://"
 	vaultErr := errors.New("no usable local vault found")
-	vaultHost := "https://127.0.0.1"
-	vaultHostChan <- vaultHost
+	hostFileLines, pherr := txeh.ParseHosts("/etc/hosts")
+	if pherr != nil {
+		vaultLookupErrChan <- pherr
+		logger.Println("Init failure: " + pherr.Error())
+		return
+	}
 
+	hostname, _ := os.Hostname()
+	ip := "127.0.0.1"
+	if strings.HasPrefix(hostname, "ip-") {
+		ip = strings.Replace(hostname, "ip-", "", 1)
+		ip = strings.Replace(ip, "-", ".", -1)
+	}
+
+	for _, hostFileLine := range hostFileLines {
+		for _, host := range hostFileLine.Hostnames {
+			if strings.Contains(host, vbopts.GetDomain()) && strings.Contains(hostFileLine.Address, ip) {
+				vaultHost = vaultHost + host
+				vaultHostChan <- vaultHost
+				logger.Println("Init stage 1 success.")
+				goto hostfound
+			}
+		}
+	}
+
+hostfound:
 	if withPort {
 		logger.Println("Init stage 2.")
 		// Now, look for vault.
