@@ -1,6 +1,7 @@
 package flumen
 
 import (
+	"errors"
 	"sync"
 	"tierceron/trcvault/util"
 	"tierceron/trcx/db"
@@ -123,6 +124,9 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error
 		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
 		if err != nil {
 			return err
+		}
+		if pluginData == nil {
+			return errors.New("Plugin not certified.")
 		}
 
 		if !pluginData["copied"].(bool) || pluginData["deployed"].(bool) {
