@@ -41,9 +41,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	//if not copied -> this plugin should fail to start up
 	//Update deployed status & return if
 	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok {
-		eUtils.LogErrorMessage(config, "PluginDeployedUpdate: "+pluginConfig["address"].(string), false)
 		deployedUpdateErr := PluginDeployedUpdate(goMod, pluginNameList)
-		eUtils.LogErrorMessage(config, "After PluginDeployedUpdate.", false)
 		if deployedUpdateErr != nil {
 			eUtils.LogErrorMessage(config, deployedUpdateErr.Error(), false)
 			eUtils.LogErrorMessage(config, "Could not update plugin deployed status in vault.", false)
@@ -55,9 +53,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: testflowimpl.GetAdditionalFlowsByState,
 	}
-	eUtils.LogErrorMessage(config, "GetProjectServices.", false)
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
-	eUtils.LogErrorMessage(config, "After GetProjectServices.", false)
 	var sourceDatabaseConfigs []map[string]interface{}
 	var vaultDatabaseConfig map[string]interface{}
 	var trcIdentityConfig map[string]interface{}
