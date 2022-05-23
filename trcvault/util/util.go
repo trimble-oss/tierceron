@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"tierceron/trcvault/opts/insecure"
@@ -15,7 +14,6 @@ import (
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
 
 	"gopkg.in/yaml.v2"
 
@@ -31,7 +29,7 @@ import (
 type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
 type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
 
-func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
+func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
 	vaultHost := "https://"
 	vaultErr := errors.New("no usable local vault found")
 	if !prod.IsProd() && insecure.IsInsecure() {
@@ -39,6 +37,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 		vaultHost = vaultHost + "127.0.0.1"
 		vaultHostChan <- vaultHost
 		logger.Println("Init stage 1 success.")
+		vaultErr = nil
 		goto hostfound
 	} else {
 		// Hosted machines and prod.
@@ -51,6 +50,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 						vaultHost = vaultHost + ipnet.IP.String()
 						vaultHostChan <- vaultHost
 						logger.Println("Init stage 1 success.")
+						vaultErr = nil
 						goto hostfound
 					}
 				}
@@ -59,23 +59,6 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan c
 	}
 
 hostfound:
-	if withPort {
-		logger.Println("Init stage 2.")
-		// Now, look for vault.
-		for i := 8019; i < 8300; i++ {
-			vh := vaultHost + ":" + strconv.Itoa(i)
-			_, err := sys.NewVault(true, vh, "", false, true, true, logger)
-			if err == nil {
-				logger.Println("Init stage 2 success.")
-				vaultPortChan <- strconv.Itoa(i)
-				vaultErr = nil
-				break
-			}
-		}
-	} else {
-		logger.Println("Init skipping.")
-		vaultErr = nil
-	}
 
 	if vaultErr != nil {
 		vaultLookupErrChan <- vaultErr
