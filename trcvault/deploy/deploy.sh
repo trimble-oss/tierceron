@@ -155,5 +155,5 @@ fi
 
 #Activates/starts the deployed plugin.
 # Note: plugin should update deployed flag for itself.
-vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN
+vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR
 
