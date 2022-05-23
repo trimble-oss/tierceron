@@ -4,19 +4,19 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
+	"tierceron/trcvault/opts/insecure"
+	"tierceron/trcvault/opts/prod"
 	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 
-	"github.com/txn2/txeh"
-	vbopts "VaultConfig.Bootstrap/buildopts"
 	"gopkg.in/yaml.v2"
 
 	vcutils "tierceron/trcconfig/utils"
@@ -34,27 +34,26 @@ type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logge
 func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultPortChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
 	vaultHost := "https://"
 	vaultErr := errors.New("no usable local vault found")
-	hostFileLines, pherr := txeh.ParseHosts("/etc/hosts")
-	if pherr != nil {
-		vaultLookupErrChan <- pherr
-		logger.Println("Init failure: " + pherr.Error())
-		return
-	}
-
-	hostname, _ := os.Hostname()
-	ip := "127.0.0.1"
-	if strings.HasPrefix(hostname, "ip-") {
-		ip = strings.Replace(hostname, "ip-", "", 1)
-		ip = strings.Replace(ip, "-", ".", -1)
-	}
-
-	for _, hostFileLine := range hostFileLines {
-		for _, host := range hostFileLine.Hostnames {
-			if strings.Contains(host, vbopts.GetDomain()) && strings.Contains(hostFileLine.Address, ip) {
-				vaultHost = vaultHost + host
-				vaultHostChan <- vaultHost
-				logger.Println("Init stage 1 success.")
-				goto hostfound
+	if !prod.IsProd() && insecure.IsInsecure() {
+		// Dev machines.
+		vaultHost = vaultHost + "127.0.0.1"
+		vaultHostChan <- vaultHost
+		logger.Println("Init stage 1 success.")
+		goto hostfound
+	} else {
+		// Hosted machines and prod.
+		addrs, err := net.InterfaceAddrs()
+		if err == nil {
+			for _, address := range addrs {
+				// check the address type and if it is not a loopback the display it
+				if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+					if ipnet.IP.To4() != nil {
+						vaultHost = vaultHost + ipnet.IP.String()
+						vaultHostChan <- vaultHost
+						logger.Println("Init stage 1 success.")
+						goto hostfound
+					}
+				}
 			}
 		}
 	}

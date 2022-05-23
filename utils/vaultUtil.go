@@ -120,7 +120,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	logger.Println("InitVaultModForPlugin initialize DriverConfig.")
 
 	config := DriverConfig{
-		Insecure:       pluginConfig["insecure"].(bool),
+		Insecure:       true, // Plugin always local, so this is ok...
 		Token:          pluginConfig["token"].(string),
 		VaultAddress:   pluginConfig["address"].(string),
 		Env:            pluginConfig["env"].(string),
