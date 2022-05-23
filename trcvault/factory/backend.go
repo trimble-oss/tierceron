@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
+	"strings"
 	"tierceron/trcconfig/utils"
 	"tierceron/trcvault/opts/insecure"
 	"tierceron/trcvault/util"
@@ -45,10 +47,19 @@ func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlo
 		<-vaultInitialized
 		for {
 			pluginEnvConfig := <-tokenEnvChan
+
 			if _, ok := pluginEnvConfig["address"]; !ok {
 				// Testflow won't have this set yet.
 				pluginEnvConfig["address"] = GetVaultHost()
 			}
+
+			if !strings.HasSuffix(pluginEnvConfig["address"].(string), GetVaultPort()) {
+				// Missing port.
+				vhost := pluginEnvConfig["address"].(string)
+				vhost = vhost + ":" + GetVaultPort()
+				pluginEnvConfig["address"] = vhost
+			}
+
 			logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
 			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfig, testCompleteChan)
 
@@ -72,6 +83,7 @@ var KvRead framework.OperationFunc
 
 var vaultBootState int = 0
 var vaultHost string // Plugin will only communicate locally with a vault instance.
+var vaultPort string
 var vaultInitialized chan bool = make(chan bool)
 var vaultHostInitialized chan bool = make(chan bool)
 var environments []string = []string{"dev", "QA"}
@@ -96,21 +108,20 @@ func PushPluginSha(config *eUtils.DriverConfig, plugin string, sha string) {
 	pluginSettingsChan[plugin] <- true
 }
 
-func InitVaultHost(v string) {
-	vaultHost = v
-}
-
 func GetVaultHost() string {
 	return vaultHost
 }
 
+func GetVaultPort() string {
+	return vaultPort
+}
+
 func initVaultHostBootstrap() error {
 	const (
-		DEFAULT  = 0                      //
-		WARMUP   = 1 << iota              // 1
-		HOST     = 1 << iota              // 2
-		PORT     = 1 << iota              // 4
-		COMPLETE = (WARMUP | HOST | PORT) // 7
+		DEFAULT  = 0               //
+		WARMUP   = 1 << iota       // 1
+		HOST     = 1 << iota       // 2
+		COMPLETE = (WARMUP | HOST) // 3
 	)
 
 	if vaultBootState == DEFAULT {
@@ -118,29 +129,15 @@ func initVaultHostBootstrap() error {
 		logger.Println("Begin finding vault.")
 
 		vaultHostChan := make(chan string, 1)
-		vaultPortChan := make(chan string, 1)
 		vaultLookupErrChan := make(chan error, 1)
-		vscutils.GetLocalVaultHost(true, vaultHostChan, vaultPortChan, vaultLookupErrChan, logger)
-		vaultPort := ""
+		vscutils.GetLocalVaultHost(true, vaultHostChan, vaultLookupErrChan, logger)
 
 		for (vaultBootState & COMPLETE) != COMPLETE {
 			select {
 			case v := <-vaultHostChan:
-				if (vaultBootState & PORT) == PORT {
-					vaultHost = v + ":" + vaultPort
-					logger.Println("Found vault at: " + vaultHost)
-				} else {
-					vaultHost = v
-				}
+				vaultHost = v
 				vaultBootState |= HOST
 				vaultHostInitialized <- true
-			case p := <-vaultPortChan:
-				if (vaultBootState & HOST) == HOST {
-					vaultHost = vaultHost + ":" + p
-					logger.Println("Found vault at: " + vaultHost)
-				}
-				vaultBootState |= PORT
-				vaultPort = p
 			case lvherr := <-vaultLookupErrChan:
 				logger.Println("Couldn't find local vault: " + lvherr.Error())
 				vaultBootState = COMPLETE
@@ -155,11 +152,17 @@ func initVaultHostBootstrap() error {
 func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	tokenMap := map[string]interface{}{}
 	type tokenWrapper struct {
-		Token string `json:"token,omitempty"`
+		Token    string `json:"token,omitempty"`
+		VAddress string `json:"vaddress,omitempty"`
 	}
 	tokenConfig := tokenWrapper{}
 	e.DecodeJSON(&tokenConfig)
 	tokenMap["token"] = tokenConfig.Token
+
+	vaultUrl, err := url.Parse(tokenConfig.VAddress)
+	if err == nil {
+		vaultPort = vaultUrl.Port()
+	}
 
 	return tokenMap, nil
 }
@@ -368,8 +371,16 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	if token, tokenOk := data.GetOk("token"); tokenOk {
 		tokenEnvMap["token"] = token
 	} else {
-		//ctx.Done()
 		return nil, errors.New("Token required.")
+	}
+
+	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
+		vaultUrl, err := url.Parse(vaddr.(string))
+		if err == nil {
+			vaultPort = vaultUrl.Port()
+		}
+	} else {
+		return nil, errors.New("Vault Url required.")
 	}
 
 	tokenEnvMap["env"] = req.Path
@@ -426,6 +437,16 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		logger.Println("TrcUpdate begin setup for plugin settings init")
 
 		if token, tokenOk := data.GetOk("token"); tokenOk {
+
+			if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
+				vaultUrl, err := url.Parse(vaddr.(string))
+				if err == nil {
+					vaultPort = vaultUrl.Port()
+				}
+			} else {
+				return nil, errors.New("Vault Update Url required.")
+			}
+
 			mod, err := helperkv.NewModifier(insecure.IsInsecure(), token.(string), vaultHost, req.Path, nil, logger)
 			if err != nil {
 				logger.Println("Failed to init mod for deploy update")
@@ -458,6 +479,16 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		//ctx.Done()
 		return nil, errors.New("Token required.")
 	}
+
+	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
+		vaultUrl, err := url.Parse(vaddr.(string))
+		if err == nil {
+			vaultPort = vaultUrl.Port()
+		}
+	} else {
+		return nil, errors.New("Vault Create Url required.")
+	}
+
 	tokenEnvMap["address"] = vaultHost
 
 	key := req.Path
@@ -570,6 +601,10 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 				"token": &framework.FieldSchema{
 					Type:        framework.TypeString,
 					Description: "Token used for specified environment.",
+				},
+				"vaddress": &framework.FieldSchema{
+					Type:        framework.TypeString,
+					Description: "Vaurl Url for plugin reference purposes.",
 				},
 				"plugin": &framework.FieldSchema{
 					Type:        framework.TypeString,
