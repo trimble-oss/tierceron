@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 	pb "tierceron/webapi/rpc/apinator"
@@ -47,13 +46,13 @@ func NewServer(VaultAddr string, VaultToken string) *Server {
 func (s *Server) InitConfig(config *eUtils.DriverConfig, env string) error {
 	connInfo, err := s.GetConfig(env, "apiLogins/meta")
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return err
 	}
 	trcAPITokenSecretString, ok := connInfo["trcAPITokenSecret"].(string)
 	if !ok {
 		err := fmt.Errorf("Missing trcAPITokenSecret")
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return err
 	}
 
@@ -67,25 +66,25 @@ func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
 	listPath := "templates/" + req.Project + "/" + req.Service
 	secret, err := mod.List(listPath)
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	if secret == nil {
 		err := fmt.Errorf("Could not find any templates under %s", req.Project+"/"+req.Service)
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
-	utils.LogWarningsObject(config, secret.Warnings, false)
+	eUtils.LogWarningsObject(config, secret.Warnings, false)
 	if len(secret.Warnings) > 0 {
 		err := errors.New("Warnings generated from vault " + req.Project + "/" + req.Service)
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
@@ -110,7 +109,7 @@ func (s *Server) GetTemplate(ctx context.Context, req *pb.TemplateReq) (*pb.Temp
 	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
@@ -118,12 +117,12 @@ func (s *Server) GetTemplate(ctx context.Context, req *pb.TemplateReq) (*pb.Temp
 	path := "templates/" + req.Project + "/" + req.Service + "/" + req.File + "/template-file"
 	data, err := mod.ReadData(path)
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	if data == nil {
 		err := errors.New("No file " + req.File + " under " + req.Project + "/" + req.Service)
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
@@ -138,7 +137,7 @@ func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.Valid
 	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	mod.Env = req.Env
@@ -146,13 +145,13 @@ func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.Valid
 	servicePath := "verification/" + req.Project + "/" + req.Service
 	data, err := mod.ReadData(servicePath)
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
 	if data == nil {
 		err := errors.New("No verification for " + req.Project + "/" + req.Service + " found under " + req.Env + " environment")
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	return &pb.ValidationResp{IsValid: data["verified"].(bool)}, nil
@@ -164,7 +163,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	environments := []*pb.ValuesRes_Env{}
@@ -194,7 +193,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 	for _, environment := range envStrings {
 		mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 		if err != nil {
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 			return nil, err
 		}
 		mod.Env = environment
@@ -202,7 +201,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		//get a list of projects under values
 		projectPaths, err := s.getPaths(config, mod, "values/")
 		if err != nil {
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 			return nil, err
 		}
 
@@ -213,7 +212,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 			//fmt.Println("servicePaths")
 			//fmt.Println(servicePaths)
 			if err != nil {
-				utils.LogErrorObject(config, err, false)
+				eUtils.LogErrorObject(config, err, false)
 				return nil, err
 			}
 
@@ -222,7 +221,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 				//get a list of files under project
 				filePaths, err := s.getPaths(config, mod, servicePath)
 				if err != nil {
-					utils.LogErrorObject(config, err, false)
+					eUtils.LogErrorObject(config, err, false)
 					return nil, err
 				}
 
@@ -232,7 +231,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 					valueMap, err := mod.ReadData(filePath)
 					if err != nil {
 						err := fmt.Errorf("Unable to fetch data from %s", filePath)
-						utils.LogErrorObject(config, err, false)
+						eUtils.LogErrorObject(config, err, false)
 						return nil, err
 					}
 					if valueMap != nil {
@@ -275,7 +274,7 @@ func (s *Server) getPaths(config *eUtils.DriverConfig, mod *kv.Modifier, pathNam
 	//fmt.Println(secrets)
 	pathList := []string{}
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
 		//add paths
@@ -300,7 +299,7 @@ func (s *Server) getTemplateFilePaths(config *eUtils.DriverConfig, mod *kv.Modif
 	secrets, err := mod.List(pathName)
 	pathList := []string{}
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
 		//add paths
@@ -330,7 +329,7 @@ func (s *Server) templateFileRecurse(config *eUtils.DriverConfig, mod *kv.Modifi
 	subPathList := []string{}
 	subsecrets, err := mod.List(pathName)
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return subPathList, err
 	} else if subsecrets != nil {
 		subslice := subsecrets.Data["keys"].([]interface{})
@@ -375,7 +374,7 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoPar
 	cmd.Dir = "/etc/opt/trcAPI"
 	err := cmd.Run()
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
-	utils.LogErrorObject(config, err, false)
+	eUtils.LogErrorObject(config, err, false)
 	return &pb.NoParams{}, err
 }
 

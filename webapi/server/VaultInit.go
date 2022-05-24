@@ -8,7 +8,6 @@ import (
 	"log"
 
 	il "tierceron/trcinit/initlib"
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
@@ -41,7 +40,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	// Init and unseal vault
 	keyToken, err := v.InitVault(3, 5)
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return &pb.InitResp{
 			Success: false,
 			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
@@ -54,7 +53,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	//check error returned by unseal
 	v.Unseal()
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return &pb.InitResp{
 			Success: false,
 			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
@@ -70,7 +69,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	for _, seed := range req.Files {
 		fBytes, err := b64.StdEncoding.DecodeString(seed.Data)
 		if err != nil {
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 			return &pb.InitResp{
 				Success: false,
 				Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
@@ -89,36 +88,36 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	}
 
 	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
-	utils.LogErrorObject(config, err, false)
+	eUtils.LogErrorObject(config, err, false)
 
 	mod.Env = "bamboo"
 	warn, err := mod.Write("super-secrets/tokens", tokenMap)
-	utils.LogErrorObject(config, err, false)
-	utils.LogWarningsObject(config, warn, false)
+	eUtils.LogErrorObject(config, err, false)
+	eUtils.LogWarningsObject(config, warn, false)
 
 	envStrings := SelectedEnvironment
 	for _, e := range envStrings {
 		mod.Env = e
 		err, warn = il.UploadTemplateDirectory(mod, templatePath, logger)
-		utils.LogErrorObject(config, err, false)
-		utils.LogWarningsObject(config, warn, false)
+		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogWarningsObject(config, warn, false)
 	}
 
 	err = v.EnableAppRole()
-	utils.LogErrorObject(config, err, false)
+	eUtils.LogErrorObject(config, err, false)
 
 	err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
 		TokenTTL:    "10m",
 		TokenMaxTTL: "15m",
 		Policies:    []string{"bamboo"},
 	})
-	utils.LogErrorObject(config, err, false)
+	eUtils.LogErrorObject(config, err, false)
 
 	roleID, _, err := v.GetRoleID("bamboo")
-	utils.LogErrorObject(config, err, false)
+	eUtils.LogErrorObject(config, err, false)
 
 	secretID, err := v.GetSecretID("bamboo")
-	utils.LogErrorObject(config, err, false)
+	eUtils.LogErrorObject(config, err, false)
 
 	s.Log.Println("Init Log \n" + logBuffer.String())
 
@@ -141,7 +140,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	res, err := s.APILogin(ctx, &pb.LoginReq{Username: req.Username, Password: req.Password, Environment: targetEnv})
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		tokens = append(tokens, &pb.InitResp_Token{
 			Name:  "Auth",
 			Value: "invalid",
@@ -181,20 +180,20 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 
 	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return &result, err
 	}
 	mod.Env = req.Environment
 
 	authSuccess, name, err := s.authUser(config, mod, req.Username, req.Password)
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return &result, err
 	}
 
 	token, errJwtGen := s.generateJWT(name, req.Environment+"/"+req.Username, mod)
 	if errJwtGen != nil {
-		utils.LogErrorObject(config, errJwtGen, false)
+		eUtils.LogErrorObject(config, errJwtGen, false)
 		return &result, err
 	}
 	result.AuthToken = token
@@ -208,13 +207,13 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
 	status, err := v.GetStatus()
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	return &pb.VaultStatus{
@@ -229,7 +228,7 @@ func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp,
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
@@ -237,7 +236,7 @@ func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp,
 	prog, need, sealed, err := v.Unseal()
 
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	if sealed {

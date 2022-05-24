@@ -9,7 +9,6 @@ import (
 	trcname "tierceron/trcvault/opts/trcname"
 
 	il "tierceron/trcinit/initlib"
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
@@ -50,34 +49,34 @@ func main() {
 
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
-			utils.CheckError(config, fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
+			eUtils.CheckError(config, fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
 		}
 		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr, false, logger)
-		utils.CheckError(config, err, true)
+		eUtils.CheckError(config, err, true)
 
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
-		utils.CheckError(config, err, true)
+		eUtils.CheckError(config, err, true)
 
 		mod, err := kv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, logger)
-		utils.CheckError(config, err, true)
+		eUtils.CheckError(config, err, true)
 		mod.Env = "bamboo"
 
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
-		utils.CheckError(config, err, true)
+		eUtils.CheckError(config, err, true)
 	}
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
-		*envPtr, err = utils.LoginToLocal()
+		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		utils.CheckError(config, err, true)
+		eUtils.CheckError(config, err, true)
 	}
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 
 	mod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	mod.Env = *envPtr
 
 	err, warn := il.UploadTemplateDirectory(mod, *dirPtr, logger)
@@ -87,6 +86,6 @@ func main() {
 		}
 	}
 
-	utils.CheckError(config, err, true)
-	utils.CheckWarnings(config, warn, true)
+	eUtils.CheckError(config, err, true)
+	eUtils.CheckWarnings(config, warn, true)
 }
