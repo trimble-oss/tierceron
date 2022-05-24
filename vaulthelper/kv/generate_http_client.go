@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func IsUrlLocalIp(address string) (bool, error) {
+func IsUrlIp(address string) (bool, error) {
 	if strings.HasPrefix(address, "https://127.0.0.1") {
 		return true, nil
 	}
@@ -19,6 +19,10 @@ func IsUrlLocalIp(address string) (bool, error) {
 		return false, err
 	}
 	host, _, _ := net.SplitHostPort(u.Host)
+	ipHost := net.ParseIP(host)
+	if ipHost.To4() != nil {
+		return true, nil
+	}
 	ips, err := net.LookupIP(host)
 	if err != nil {
 		return false, err
@@ -59,7 +63,7 @@ func CreateHTTPClientAllowNonLocal(insecure bool, address string, env string, sc
 
 	var tlsConfig = &tls.Config{RootCAs: certPool}
 	if insecure {
-		if isLocal, lookupErr := IsUrlLocalIp(address); isLocal {
+		if isLocal, lookupErr := IsUrlIp(address); isLocal {
 			if lookupErr != nil {
 				return nil, lookupErr
 			}
