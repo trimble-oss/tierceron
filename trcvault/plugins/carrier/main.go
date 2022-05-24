@@ -27,7 +27,7 @@ func main() {
 		}
 	}
 	eUtils.InitHeadless(true)
-	f, logErr := os.OpenFile("trcplugincarrier.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, logErr := os.OpenFile("/var/log/trcplugincarrier.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 	logger.Println("Beginning plugin startup.")
