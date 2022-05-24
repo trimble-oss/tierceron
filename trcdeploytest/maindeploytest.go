@@ -42,6 +42,7 @@ func main() {
 
 	go factory.Init(tcutil.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "QA"
+	envMap["insecure"] = true
 	factory.PushEnv(envMap)
 
 	for {
