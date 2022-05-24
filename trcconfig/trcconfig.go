@@ -69,7 +69,6 @@ func reciever() {
 				resultMap[data.inPath] = data.inData
 				mutex.Unlock()
 			}
-		default:
 		}
 	}
 }

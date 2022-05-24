@@ -190,7 +190,6 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 						templateResultChan <- tResult
 					}(tResult)
 				}
-			default:
 			}
 		}
 	}(config)
