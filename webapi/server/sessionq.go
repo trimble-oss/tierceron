@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	pb "tierceron/webapi/rpc/apinator"
 
@@ -24,7 +23,7 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 	})
 
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return "", "", nil, err
 	}
 
@@ -32,7 +31,7 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 	res, err := client.Post(authHost, "application/json", credentials)
 
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return "", "", nil, err
 	}
 
@@ -45,13 +44,13 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 		var response map[string]interface{}
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 			return "", "", nil, err
 		}
 
 		err = json.Unmarshal([]byte(bodyBytes), &response)
 		if err != nil {
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 			return "", "", nil, err
 		}
 
@@ -64,10 +63,10 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 				}, nil
 			}
 			err = fmt.Errorf("Unable to parse userCodeField in auth response")
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 		} else {
 			err = fmt.Errorf("Unable to parse userNameField in auth response")
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 		}
 
 		return "", "", &pb.LoginResp{
@@ -76,7 +75,7 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 		}, err
 	}
 	err = fmt.Errorf("Unexpected response code from auth endpoint: %d", res.StatusCode)
-	utils.LogErrorObject(config, err, false)
+	eUtils.LogErrorObject(config, err, false)
 	return "", "", &pb.LoginResp{
 		Success:   false,
 		AuthToken: "",

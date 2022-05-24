@@ -9,10 +9,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"tierceron/trcconfig/utils"
-	"tierceron/trcvault/opts/insecure"
-	"tierceron/trcvault/util"
-	vscutils "tierceron/trcvault/util"
+	vcutils "tierceron/trcconfig/utils"
+	trcvutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 	"time"
@@ -30,7 +28,7 @@ var _ logical.Factory = TrcFactory
 
 var logger *log.Logger
 
-func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlowFunc, headless bool, l *log.Logger) {
+func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
 
@@ -130,7 +128,7 @@ func initVaultHostBootstrap() error {
 
 		vaultHostChan := make(chan string, 1)
 		vaultLookupErrChan := make(chan error, 1)
-		vscutils.GetLocalVaultHost(true, vaultHostChan, vaultLookupErrChan, logger)
+		trcvutils.GetLocalVaultHost(true, vaultHostChan, vaultLookupErrChan, logger)
 
 		for (vaultBootState & COMPLETE) != COMPLETE {
 			select {
@@ -178,7 +176,7 @@ func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
 		return errModInit
 	}
 
-	configuredTemplate, _, _, ctErr := utils.ConfigTemplate(config, goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true)
+	configuredTemplate, _, _, ctErr := vcutils.ConfigTemplate(config, goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true)
 	if ctErr != nil {
 		logger.Println("Config template lookup failure: " + ctErr.Error())
 		return ctErr
@@ -200,8 +198,8 @@ func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
 	return nil
 }
 
-func ProcessPluginEnvConfig(processFlowConfig util.ProcessFlowConfig,
-	processFlows util.ProcessFlowFunc,
+func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
+	processFlows trcvutils.ProcessFlowFunc,
 	pluginEnvConfig map[string]interface{},
 	testCompleteChan chan bool) error {
 	env, eOk := pluginEnvConfig["env"]
@@ -437,20 +435,35 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		logger.Println("TrcUpdate begin setup for plugin settings init")
 
 		if token, tokenOk := data.GetOk("token"); tokenOk {
+			logger.Println("TrcUpdate stage 1")
 
-			if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-				vaultUrl, err := url.Parse(vaddr.(string))
-				if err == nil {
-					vaultPort = vaultUrl.Port()
+			if GetVaultPort() == "" {
+				logger.Println("TrcUpdate stage 1.1")
+				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
+					logger.Println("TrcUpdate stage 1.1.1")
+					vaultUrl, err := url.Parse(vaddr.(string))
+					if err == nil {
+						logger.Println("TrcUpdate stage 1.1.1.1")
+						vaultPort = vaultUrl.Port()
+					} else {
+						logger.Println("Bad address: " + vaddr.(string))
+					}
+				} else {
+					return nil, errors.New("Vault Update Url required.")
 				}
-			} else {
-				return nil, errors.New("Vault Update Url required.")
 			}
 
-			mod, err := helperkv.NewModifier(insecure.IsInsecure(), token.(string), vaultHost, req.Path, nil, logger)
+			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
+				// Missing port.
+				vaultHost = vaultHost + ":" + GetVaultPort()
+			}
+
+			// Plugins
+			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, logger)
 			if err != nil {
 				logger.Println("Failed to init mod for deploy update")
 				//ctx.Done()
+				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
 			mod.Env = req.Path
@@ -458,6 +471,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			writeMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
 			if err != nil {
 				logger.Println("Failed to read previous plugin status from vault")
+				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to read previous plugin status from vault"), nil
 			}
 			logger.Println("TrcUpdate Checking sha")
@@ -592,21 +606,21 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 	}
 
 	bkv.(*kv.PassthroughBackend).Paths = []*framework.Path{
-		&framework.Path{
+		{
 			Pattern:         "(dev|QA|staging|prod)",
 			HelpSynopsis:    "Configure an access token.",
 			HelpDescription: "Use this endpoint to configure the auth tokens required by trcvault.",
 
 			Fields: map[string]*framework.FieldSchema{
-				"token": &framework.FieldSchema{
+				"token": {
 					Type:        framework.TypeString,
 					Description: "Token used for specified environment.",
 				},
-				"vaddress": &framework.FieldSchema{
+				"vaddress": {
 					Type:        framework.TypeString,
 					Description: "Vaurl Url for plugin reference purposes.",
 				},
-				"plugin": &framework.FieldSchema{
+				"plugin": {
 					Type:        framework.TypeString,
 					Description: "Optional plugin name.",
 					Required:    false,
