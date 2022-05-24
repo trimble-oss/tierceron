@@ -1,7 +1,7 @@
 package util
 
 import (
-	"tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfig/utils"
 	eUtils "tierceron/utils"
 
 	"tierceron/vaulthelper/kv"
@@ -14,7 +14,7 @@ type Properties struct {
 	mod          *kv.Modifier
 	authMod      *kv.Modifier
 	AuthEndpoint string
-	cds          *utils.ConfigDataStore
+	cds          *vcutils.ConfigDataStore
 }
 
 func NewProperties(config *eUtils.DriverConfig, v *sys.Vault, mod *kv.Modifier, env string, project string, service string) (*Properties, error) {
@@ -32,7 +32,7 @@ func NewProperties(config *eUtils.DriverConfig, v *sys.Vault, mod *kv.Modifier, 
 	} else {
 		properties.mod.SectionPath = ""
 	}
-	properties.cds = new(utils.ConfigDataStore)
+	properties.cds = new(vcutils.ConfigDataStore)
 	var commonPaths []string
 	propertyerr := properties.cds.Init(config, properties.mod, true, true, project, commonPaths, service)
 	if propertyerr != nil {

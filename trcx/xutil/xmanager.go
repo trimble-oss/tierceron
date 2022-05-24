@@ -11,7 +11,6 @@ import (
 
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 
@@ -91,7 +90,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 	}
 
 	if len(filteredTemplatePaths) > 0 {
-		filteredTemplatePaths = utils.RemoveDuplicates(filteredTemplatePaths)
+		filteredTemplatePaths = eUtils.RemoveDuplicates(filteredTemplatePaths)
 		templatePaths = filteredTemplatePaths
 	}
 
@@ -125,7 +124,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			project = config.VersionFilter[0]
 		}
 		for _, templatePath := range templatePaths {
-			_, service, _ := utils.GetProjectService(templatePath) //This checks for nested project names
+			_, service, _ := eUtils.GetProjectService(templatePath) //This checks for nested project names
 
 			config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 		}
@@ -134,9 +133,9 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			config.VersionFilter = append(config.VersionFilter, "Common")
 		}
 
-		config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
+		config.VersionFilter = eUtils.RemoveDuplicates(config.VersionFilter)
 		mod.VersionFilter = config.VersionFilter
-		versionMetadataMap := utils.GetProjectVersionInfo(config, mod)
+		versionMetadataMap := eUtils.GetProjectVersionInfo(config, mod)
 
 		if versionMetadataMap == nil {
 			return "", false, "", eUtils.LogAndSafeExit(config, fmt.Sprintf("No version data found - this filter was applied during search: %v\n", config.VersionFilter), 1)
@@ -166,8 +165,8 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			}
 			return "", false, "", eUtils.LogAndSafeExit(config, "Version info provided.", 1)
 		} else { //Version bound check
-			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
-			utils.BoundCheck(config, versionNumbers, version)
+			versionNumbers := eUtils.GetProjectVersions(config, versionMetadataMap)
+			eUtils.BoundCheck(config, versionNumbers, version)
 		}
 	}
 
@@ -259,9 +258,9 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 							for _, serviceInterface := range valuesPath.([]interface{}) {
 								serviceFace := serviceInterface.(string)
 								if version != "0" {
-									versionMap := utils.GetProjectVersionInfo(config, mod) //("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/" + serviceFace)
-									versionNumbers := utils.GetProjectVersions(config, versionMap)
-									utils.BoundCheck(config, versionNumbers, version)
+									versionMap := eUtils.GetProjectVersionInfo(config, mod) //("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/" + serviceFace)
+									versionNumbers := eUtils.GetProjectVersions(config, versionMap)
+									eUtils.BoundCheck(config, versionNumbers, version)
 								}
 								serviceSlice = append(serviceSlice, serviceFace)
 							}
@@ -661,15 +660,15 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	//Ensure directory has been created
 	dirPath := filepath.Dir(path)
 	err := os.MkdirAll(dirPath, os.ModePerm)
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	//create new file
 	newFile, err := os.Create(path)
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	//write to file
 	_, err = newFile.Write(byteData)
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	err = newFile.Sync()
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	newFile.Close()
 }
 
