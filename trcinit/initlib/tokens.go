@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	sys "tierceron/vaulthelper/system"
 	pb "tierceron/webapi/rpc/apinator"
@@ -19,7 +18,7 @@ func UploadTokens(config *eUtils.DriverConfig, dir string, fileFilterPtr *string
 	config.Log.Printf("Writing tokens from %s\n", dir)
 	files, err := ioutil.ReadDir(dir)
 
-	utils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(config, err, true)
 	for _, file := range files {
 		// Extract and truncate file name
 		filename := file.Name()
@@ -32,7 +31,7 @@ func UploadTokens(config *eUtils.DriverConfig, dir string, fileFilterPtr *string
 			}
 			config.Log.Printf("\tFound token file: %s\n", file.Name())
 			tokenName, err := v.CreateTokenFromFile(dir + "/" + file.Name())
-			utils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(config, err, true)
 
 			if err == nil {
 				fmt.Printf("Created token %-30s %s\n", filename+":", tokenName)

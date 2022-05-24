@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 	"time"
 
 	"github.com/hashicorp/vault/api"
@@ -46,9 +46,9 @@ func NewVaultWithNonlocal(insecure bool, address string, env string, newVault bo
 	var err error
 
 	if allowNonLocal {
-		httpClient, err = kv.CreateHTTPClientAllowNonLocal(insecure, address, env, scanVault, true)
+		httpClient, err = helperkv.CreateHTTPClientAllowNonLocal(insecure, address, env, scanVault, true)
 	} else {
-		httpClient, err = kv.CreateHTTPClient(insecure, address, env, scanVault)
+		httpClient, err = helperkv.CreateHTTPClient(insecure, address, env, scanVault)
 	}
 
 	if err != nil {

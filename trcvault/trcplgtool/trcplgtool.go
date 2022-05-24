@@ -10,7 +10,7 @@ import (
 	"tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 
 	tcutil "VaultConfig.TenantConfig/util"
 )
@@ -66,7 +66,7 @@ func PluginMain() {
 	eUtils.CheckError(config, err, true)
 
 	//Grabbing configs
-	mod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
 	if err != nil {
 		eUtils.CheckError(config, err, true)
 	}

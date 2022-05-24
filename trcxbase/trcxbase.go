@@ -11,7 +11,7 @@ import (
 	trcname "tierceron/trcvault/opts/trcname"
 
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -44,7 +44,6 @@ func reciever() {
 				resultMap[data.inPath] = data.inData
 				mutex.Unlock()
 			}
-		default:
 		}
 	}
 }
@@ -340,7 +339,7 @@ skipDiff:
 				if authErr != nil {
 					eUtils.LogErrorMessage(config, "Auth failure: "+authErr.Error(), true)
 				}
-				testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, logger)
+				testMod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, logger)
 				testMod.Env = baseEnv
 				if err != nil {
 					logger.Printf(err.Error())
