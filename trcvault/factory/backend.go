@@ -458,7 +458,6 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				// Missing port.
 				vaultHost = vaultHost + ":" + GetVaultPort()
 			}
-			logger.Println("vaultHost: " + vaultHost)
 
 			mod, err := helperkv.NewModifier(insecure.IsInsecure(), token.(string), vaultHost, req.Path, nil, logger)
 			if err != nil {
@@ -472,6 +471,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			writeMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
 			if err != nil {
 				logger.Println("Failed to read previous plugin status from vault")
+				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to read previous plugin status from vault"), nil
 			}
 			logger.Println("TrcUpdate Checking sha")
