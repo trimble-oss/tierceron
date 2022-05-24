@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"tierceron/trcvault/util"
-	"tierceron/trcx/db"
+	trcdb "tierceron/trcx/db"
 	"tierceron/trcx/extract"
 	sys "tierceron/vaulthelper/system"
 
@@ -64,7 +64,7 @@ type TrcFlowMachineContext struct {
 	Env                       string
 	Config                    *eUtils.DriverConfig
 	Vault                     *sys.Vault
-	TierceronEngine           *db.TierceronEngine
+	TierceronEngine           *trcdb.TierceronEngine
 	ExtensionAuthData         map[string]interface{}
 	GetAdditionalFlowsByState func(teststate string) []FlowNameType
 }
@@ -343,7 +343,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	}
 
 	if operation == "INSERT" {
-		_, _, matrix, err := db.Query(tfmContext.TierceronEngine, query)
+		_, _, matrix, err := trcdb.Query(tfmContext.TierceronEngine, query)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -370,7 +370,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			}
 		}
 	} else if operation == "UPDATE" || operation == "DELETE" {
-		tableName, _, matrix, err := db.Query(tfmContext.TierceronEngine, query)
+		tableName, _, matrix, err := trcdb.Query(tfmContext.TierceronEngine, query)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -397,7 +397,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			}
 		}
 	} else if operation == "SELECT" {
-		_, _, matrixChangedEntries, err := db.Query(tfmContext.TierceronEngine, query)
+		_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, query)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}

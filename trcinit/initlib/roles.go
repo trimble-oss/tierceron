@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	sys "tierceron/vaulthelper/system"
 )
@@ -15,7 +14,7 @@ func UploadTokenCidrRoles(config *eUtils.DriverConfig, dir string, v *sys.Vault)
 	config.Log.Printf("Writing token roles from %s\n", dir)
 	files, err := ioutil.ReadDir(dir)
 
-	utils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(config, err, true)
 	if err != nil {
 		return err
 	}
@@ -27,7 +26,7 @@ func UploadTokenCidrRoles(config *eUtils.DriverConfig, dir string, v *sys.Vault)
 
 		config.Log.Printf("\tFound token role file: %s\n", file.Name())
 		err = v.CreateTokenCidrRoleFromFile(dir + "/" + file.Name())
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		if err != nil {
 			return err
 		}
@@ -46,12 +45,12 @@ func GetExistsRoles(config *eUtils.DriverConfig, dir string, v *sys.Vault) (bool
 
 	allExists := false
 
-	utils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(config, err, true)
 	for _, file := range files {
 		// Extract and truncate file name
 		config.Log.Printf("\tFound token role file: %s\n", file.Name())
 		exists, err := v.GetExistsTokenRoleFromFile(dir + "/" + file.Name())
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		if err != nil {
 			return false, err
 		}

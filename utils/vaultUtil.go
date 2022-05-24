@@ -4,7 +4,6 @@ import (
 	"log"
 	"strings"
 	trcname "tierceron/trcvault/opts/trcname"
-	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 )
@@ -32,7 +31,7 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	return config, mod, vault, nil
 }
 
-func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templatePaths []string) ([]string, error) {
+func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
 	var acceptedTemplatePaths []string
 	serviceMap := make(map[string]bool)
 
