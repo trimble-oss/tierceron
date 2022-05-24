@@ -7,7 +7,7 @@ import (
 
 	vcutils "tierceron/trcconfig/utils"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 )
 import (
 	"log"
@@ -19,7 +19,7 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
 
 	logger.Println("NCLib Version: " + "1.12")
-	mod, err := kv.NewModifier(false, token, address, env, nil, logger)
+	mod, err := helperkv.NewModifier(false, token, address, env, nil, logger)
 	mod.Env = env
 	config := &eUtils.DriverConfig{
 		Insecure: false,
@@ -44,7 +44,7 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 func ConfigCertLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
 	logger.Println("NCLib Version: " + "1.12")
-	mod, err := kv.NewModifier(false, token, address, env, nil, logger)
+	mod, err := helperkv.NewModifier(false, token, address, env, nil, logger)
 	mod.Env = env
 	config := &eUtils.DriverConfig{
 		Insecure: false,
