@@ -122,7 +122,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	configBasis := eUtils.DriverConfig{
 		Regions:      emptySlice,
-		Insecure:     pluginConfig["insecure"].(bool),
+		Insecure:     true, // TODO: re-evaluate if non-plugin flows pluginConfig["insecure"].(bool),
 		Token:        pluginConfig["token"].(string),
 		VaultAddress: pluginConfig["address"].(string),
 		Env:          pluginConfig["env"].(string),
