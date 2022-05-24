@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 )
 
 //ConfigDataStore stores the data needed to configure the specified template files
@@ -16,7 +16,7 @@ type ConfigDataStore struct {
 }
 
 func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
-	mod *kv.Modifier,
+	mod *helperkv.Modifier,
 	secretMode bool,
 	useDirs bool,
 	project string,
@@ -251,7 +251,7 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 	return nil
 }
 
-func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig, mod *kv.Modifier, useDirs bool, project string, file string, servicesWanted ...string) (map[string]interface{}, error) {
+func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig, mod *helperkv.Modifier, useDirs bool, project string, file string, servicesWanted ...string) (map[string]interface{}, error) {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
@@ -384,7 +384,7 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 	return "", false
 }
 
-func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects []string, services []string) ([]string, error) {
+func GetPathsFromProject(config *eUtils.DriverConfig, mod *helperkv.Modifier, projects []string, services []string) ([]string, error) {
 	//setup for getPaths
 	paths := []string{}
 	var err error
@@ -492,7 +492,7 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *kv.Modifier, projects
 	}
 }
 
-func verifyTemplatePath(mod *kv.Modifier) error {
+func verifyTemplatePath(mod *helperkv.Modifier) error {
 	secrets, err := mod.List(mod.TemplatePath)
 	if err != nil {
 		return err
@@ -506,7 +506,7 @@ func verifyTemplatePath(mod *kv.Modifier) error {
 	return errors.New("Template not found in vault.")
 }
 
-func getPaths(config *eUtils.DriverConfig, mod *kv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {
+func getPaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {
 	secrets, err := mod.List(pathName)
 	if err != nil {
 		return nil, err

@@ -14,7 +14,6 @@ import (
 	"tierceron/trcvault/opts/insecure"
 	"tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
-	"tierceron/utils"
 
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
@@ -134,7 +133,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				}
 
 				pluginCopied = true
-				utils.LogInfo(config, "Image has been copied.")
+				eUtils.LogInfo(config, "Image has been copied.")
 			} else {
 				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Refusing to copy since vault certification does not match plugin sha256 signature.", false)
 				continue
@@ -143,11 +142,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 		if (!pluginDownloadNeeded && !pluginCopied) || (pluginDownloadNeeded && pluginCopied) { // No download needed because it's already there, but vault may be wrong.
 			if vaultPluginSignature["copied"].(bool) && !vaultPluginSignature["deployed"].(bool) { //If status hasn't changed, don't update
-				utils.LogInfo(config, "Not updating plugin image to vault as status is the same.")
+				eUtils.LogInfo(config, "Not updating plugin image to vault as status is the same.")
 				continue
 			}
 
-			utils.LogInfo(config, "Updating plugin image to vault.")
+			eUtils.LogInfo(config, "Updating plugin image to vault.")
 			factory.PushPluginSha(config, vaultPluginSignature["trcplugin"].(string), vaultPluginSignature["trcsha256"].(string))
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
@@ -159,7 +158,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				logger.Println("PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
 				continue
 			}
-			utils.LogInfo(config, "Plugin image config in vault has been updated.")
+			eUtils.LogInfo(config, "Plugin image config in vault has been updated.")
 		}
 
 	}

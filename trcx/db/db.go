@@ -10,7 +10,7 @@ import (
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -109,7 +109,7 @@ func removeDuplicateValues(slice []string) []string {
 	return list
 }
 
-func templateToTableRowHelper(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, templatePath string, config *eUtils.DriverConfig) error {
+func templateToTableRowHelper(goMod *helperkv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, templatePath string, config *eUtils.DriverConfig) error {
 	cds := new(vcutils.ConfigDataStore)
 	var templateResult extract.TemplateResultData
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
@@ -145,7 +145,7 @@ func templateToTableRowHelper(goMod *kv.Modifier, te *TierceronEngine, envEnterp
 	return nil
 }
 
-func TransformConfig(goMod *kv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig) error {
+func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath)
 	if err != nil {
@@ -227,8 +227,8 @@ func CreateEngine(config *eUtils.DriverConfig,
 
 	te := &TierceronEngine{Database: memory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext(), Config: *config}
 
-	var goMod *kv.Modifier
-	goMod, errModInit := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions, config.Log)
+	var goMod *helperkv.Modifier
+	goMod, errModInit := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions, config.Log)
 	if errModInit != nil {
 		return nil, errModInit
 	}
