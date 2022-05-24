@@ -445,11 +445,13 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			} else {
 				return nil, errors.New("Vault Update Url required.")
 			}
+			logger.Println("vaultHost: " + vaultHost)
 
 			mod, err := helperkv.NewModifier(insecure.IsInsecure(), token.(string), vaultHost, req.Path, nil, logger)
 			if err != nil {
 				logger.Println("Failed to init mod for deploy update")
 				//ctx.Done()
+				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
 			mod.Env = req.Path
