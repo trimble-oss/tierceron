@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 	vcutils "tierceron/trcconfig/utils"
-	"tierceron/trcvault/opts/insecure"
 	trcvutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
@@ -271,6 +270,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 			if _, ok := tokenMap["token"]; ok {
 				tokenMap["env"] = env
 				tokenMap["address"] = vaultHost
+				tokenMap["insecure"] = true
 				PushEnv(tokenMap)
 			}
 		}
@@ -342,6 +342,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		tokenEnvMap := map[string]interface{}{}
 		tokenEnvMap["env"] = req.Path
 		tokenEnvMap["address"] = vaultHost
+		tokenEnvMap["insecure"] = true
 		if vData["token"] != nil {
 			logger.Println("Env queued: " + req.Path)
 		}
@@ -384,6 +385,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	tokenEnvMap["env"] = req.Path
 	tokenEnvMap["address"] = vaultHost
+	tokenEnvMap["insecure"] = true
 
 	// Check that some fields are given
 	if len(req.Data) == 0 {
@@ -436,20 +438,35 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		logger.Println("TrcUpdate begin setup for plugin settings init")
 
 		if token, tokenOk := data.GetOk("token"); tokenOk {
+			logger.Println("TrcUpdate stage 1")
 
-			if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-				vaultUrl, err := url.Parse(vaddr.(string))
-				if err == nil {
-					vaultPort = vaultUrl.Port()
+			if GetVaultPort() == "" {
+				logger.Println("TrcUpdate stage 1.1")
+				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
+					logger.Println("TrcUpdate stage 1.1.1")
+					vaultUrl, err := url.Parse(vaddr.(string))
+					if err == nil {
+						logger.Println("TrcUpdate stage 1.1.1.1")
+						vaultPort = vaultUrl.Port()
+					} else {
+						logger.Println("Bad address: " + vaddr.(string))
+					}
+				} else {
+					return nil, errors.New("Vault Update Url required.")
 				}
-			} else {
-				return nil, errors.New("Vault Update Url required.")
 			}
 
-			mod, err := helperkv.NewModifier(insecure.IsInsecure(), token.(string), vaultHost, req.Path, nil, logger)
+			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
+				// Missing port.
+				vaultHost = vaultHost + ":" + GetVaultPort()
+			}
+
+			// Plugins
+			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, logger)
 			if err != nil {
 				logger.Println("Failed to init mod for deploy update")
 				//ctx.Done()
+				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
 			mod.Env = req.Path
@@ -457,6 +474,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			writeMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
 			if err != nil {
 				logger.Println("Failed to read previous plugin status from vault")
+				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to read previous plugin status from vault"), nil
 			}
 			logger.Println("TrcUpdate Checking sha")
@@ -489,6 +507,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	tokenEnvMap["address"] = vaultHost
+	tokenEnvMap["insecure"] = true
 
 	key := req.Path
 	if key == "" {
