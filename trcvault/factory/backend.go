@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 	vcutils "tierceron/trcconfig/utils"
-	"tierceron/trcvault/opts/insecure"
 	trcvutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
@@ -459,7 +458,8 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				vaultHost = vaultHost + ":" + GetVaultPort()
 			}
 
-			mod, err := helperkv.NewModifier(insecure.IsInsecure(), token.(string), vaultHost, req.Path, nil, logger)
+			// Plugins
+			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, logger)
 			if err != nil {
 				logger.Println("Failed to init mod for deploy update")
 				//ctx.Done()
