@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"tierceron/utils"
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 )
 
@@ -69,7 +69,7 @@ func UploadTemplates(mod *kv.Modifier, dirName string, logger *log.Logger) (erro
 			logger.Printf("dirName: %s\n", dirName)
 			logger.Printf("file name: %s\n", file.Name())
 			// Extract values
-			extractedValues, err := utils.Parse(dirName+"/"+file.Name(), subDir, name)
+			extractedValues, err := eUtils.Parse(dirName+"/"+file.Name(), subDir, name)
 			if err != nil {
 				return err, nil
 			}

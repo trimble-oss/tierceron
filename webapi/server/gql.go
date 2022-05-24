@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	pb "tierceron/webapi/rpc/apinator"
 
@@ -110,16 +109,16 @@ func (s *Server) InitGQL() {
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
-		utils.LogWarningsObject(config, []string{"GraphQL MAY not initialized (values not added)"}, false)
+		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogWarningsObject(config, []string{"GraphQL MAY not initialized (values not added)"}, false)
 		return
 	}
 
 	// Fetch secret keys and verification info
 	templates, err := s.getTemplateData()
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
-		utils.LogWarningsObject(config, []string{"GraphQL MAY not initialized (secrets not added)"}, false)
+		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogWarningsObject(config, []string{"GraphQL MAY not initialized (secrets not added)"}, false)
 		return
 	}
 
@@ -128,13 +127,13 @@ func (s *Server) InitGQL() {
 		// Get spectrum sessions
 		spctmSessions[e], err = s.getActiveSessions(config, e)
 		if err != nil {
-			utils.LogErrorObject(config, err, false)
-			utils.LogWarningsObject(config, []string{fmt.Sprintf("GraphQL MAY not initialized (Spectrum %s sessions not added)", e)}, false)
+			eUtils.LogErrorObject(config, err, false)
+			eUtils.LogWarningsObject(config, []string{fmt.Sprintf("GraphQL MAY not initialized (Spectrum %s sessions not added)", e)}, false)
 		}
 		vaultSessions[e], err = s.getVaultSessions(e)
 		if err != nil {
-			utils.LogErrorObject(config, err, false)
-			utils.LogWarningsObject(config, []string{fmt.Sprintf("GraphQL MAY not initialized (Vault %s sessions not added)", e)}, false)
+			eUtils.LogErrorObject(config, err, false)
+			eUtils.LogWarningsObject(config, []string{fmt.Sprintf("GraphQL MAY not initialized (Vault %s sessions not added)", e)}, false)
 		}
 	}
 

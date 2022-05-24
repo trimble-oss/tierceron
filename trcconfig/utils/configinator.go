@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 )
@@ -110,7 +109,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		if !config.WantCerts && strings.Contains(templatePath, "Common") {
 			continue
 		}
-		_, service, _ := utils.GetProjectService(templatePath)       //This checks for nested project names
+		_, service, _ := eUtils.GetProjectService(templatePath)      //This checks for nested project names
 		config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 	}
 
@@ -118,7 +117,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		config.VersionFilter = append(config.VersionFilter, "Common")
 	}
 
-	config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
+	config.VersionFilter = eUtils.RemoveDuplicates(config.VersionFilter)
 	modCheck.VersionFilter = config.VersionFilter
 
 	if versionInfo {
@@ -130,7 +129,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 			modCheck.Env = envVersion[0]
 		}
 
-		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
+		versionMetadataMap := eUtils.GetProjectVersionInfo(config, modCheck)
 		//var masterKey string
 		project := ""
 		neverPrinted := true
@@ -202,10 +201,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		*/
 	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
-			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
-			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
+			versionMetadataMap := eUtils.GetProjectVersionInfo(config, modCheck)
+			versionNumbers := eUtils.GetProjectVersions(config, versionMetadataMap)
 
-			utils.BoundCheck(config, versionNumbers, version)
+			eUtils.BoundCheck(config, versionNumbers, version)
 		}
 	}
 
@@ -376,15 +375,15 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 
 	dirPath := filepath.Dir(path)
 	err := os.MkdirAll(dirPath, os.ModePerm)
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	//create new file
 	newFile, err := os.Create(path)
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	//write to file
 	_, err = newFile.Write(byteData)
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	err = newFile.Sync()
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	newFile.Close()
 }
 
