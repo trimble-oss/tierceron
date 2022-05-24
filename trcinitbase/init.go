@@ -11,7 +11,6 @@ import (
 	trcname "tierceron/trcvault/opts/trcname"
 
 	il "tierceron/trcinit/initlib"
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
@@ -148,10 +147,10 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	logger := log.New(f, "[INIT]", log.LstdFlags)
 	logger.Println("==========Beginning Vault Initialization==========")
 	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 
 	if !*pingPtr && !*newPtr && *tokenPtr == "" {
-		utils.CheckWarning(config, "Missing auth tokens", true)
+		eUtils.CheckWarning(config, "Missing auth tokens", true)
 	}
 
 	if addrPtr == nil || *addrPtr == "" {
@@ -186,12 +185,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		os.Exit(0)
 	}
 
-	utils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(config, err, true)
 
 	// Trying to use local, prompt for username/password
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
-		*envPtr, err = utils.LoginToLocal()
-		utils.LogErrorObject(config, err, true)
+		*envPtr, err = eUtils.LoginToLocal()
+		eUtils.LogErrorObject(config, err, true)
 		logger.Printf("Login successful, using local envronment: %s\n", *envPtr)
 	}
 
@@ -207,12 +206,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Unable to parse unsealShardPtr into int")
 		}
 		keyToken, err := v.InitVault(int(totalKeyShard), int(unsealShardPtr))
-		utils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(config, err, true)
 		v.SetToken(keyToken.Token)
 		v.SetShards(keyToken.Keys)
 		//check error returned by unseal
 		_, _, _, err = v.Unseal()
-		utils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(config, err, true)
 	}
 	logger.Printf("Succesfully connected to vault at %s\n", *addrPtr)
 
@@ -221,7 +220,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Creating tokens, roles, and policies.")
 			policyExists, policyErr := il.GetExistsPolicies(config, namespacePolicyConfigs, v)
 			if policyErr != nil {
-				utils.LogErrorObject(config, policyErr, false)
+				eUtils.LogErrorObject(config, policyErr, false)
 				fmt.Println("Cannot safely determine policy.")
 				os.Exit(-1)
 			}
@@ -233,7 +232,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 			roleExists, roleErr := il.GetExistsRoles(config, namespaceRoleConfigs, v)
 			if roleErr != nil {
-				utils.LogErrorObject(config, roleErr, false)
+				eUtils.LogErrorObject(config, roleErr, false)
 				fmt.Println("Cannot safely determine role.")
 			}
 
@@ -275,7 +274,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		if *tokenExpiration {
 			fmt.Println("Checking token expiration.")
 			roleId, lease, err := v.GetRoleID("bamboo")
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
 		} else {
 			if *rotateTokens {
@@ -329,7 +328,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				tokenMap := map[string]interface{}{}
 
 				mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
-				utils.LogErrorObject(config, err, false)
+				eUtils.LogErrorObject(config, err, false)
 
 				mod.Env = "bamboo"
 
@@ -342,7 +341,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				existingTokens, err := mod.ReadData("super-secrets/tokens")
 				if err != nil {
 					fmt.Println("Read existing tokens failure.  Cannot continue.")
-					utils.LogErrorObject(config, err, false)
+					eUtils.LogErrorObject(config, err, false)
 					os.Exit(-1)
 				}
 
@@ -372,11 +371,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				// Recreate the role.
 				//
 				resp, role_cleanup := v.DeleteRole("bamboo")
-				utils.LogErrorObject(config, role_cleanup, false)
+				eUtils.LogErrorObject(config, role_cleanup, false)
 
 				if resp.StatusCode == 404 {
 					err = v.EnableAppRole()
-					utils.LogErrorObject(config, err, true)
+					eUtils.LogErrorObject(config, err, true)
 				}
 
 				err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
@@ -384,13 +383,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 					TokenMaxTTL: "15m",
 					Policies:    []string{"bamboo"},
 				})
-				utils.LogErrorObject(config, err, true)
+				eUtils.LogErrorObject(config, err, true)
 
 				roleID, _, err := v.GetRoleID("bamboo")
-				utils.LogErrorObject(config, err, true)
+				eUtils.LogErrorObject(config, err, true)
 
 				secretID, err := v.GetSecretID("bamboo")
-				utils.LogErrorObject(config, err, true)
+				eUtils.LogErrorObject(config, err, true)
 
 				fmt.Printf("Rotated role id and secret id.\n")
 				fmt.Printf("Role ID: %s\n", roleID)
@@ -398,8 +397,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 				// Store all new tokens to new appRole.
 				warn, err := mod.Write("super-secrets/tokens", tokenMap)
-				utils.LogErrorObject(config, err, true)
-				utils.LogWarningsObject(config, warn, true)
+				eUtils.LogErrorObject(config, err, true)
+				eUtils.LogWarningsObject(config, warn, true)
 			}
 		}
 		os.Exit(0)
@@ -409,7 +408,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if !*newPtr && len(*shardPtr) > 0 {
 		v.AddShard(*shardPtr)
 		prog, t, success, err := v.Unseal()
-		utils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(config, err, true)
 		if !success {
 			logger.Printf("Vault unseal progress: %d/%d key shards\n", prog, t)
 			logger.Println("============End Initialization Attempt============")
@@ -421,7 +420,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
 		mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
-		utils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(config, err, true)
 
 		mod.Env = "bamboo"
 
@@ -449,20 +448,20 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			}
 
 			err = v.EnableAppRole()
-			utils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(config, err, true)
 
 			err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
 				TokenTTL:    "10m",
 				TokenMaxTTL: "15m",
 				Policies:    []string{"bamboo"},
 			})
-			utils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(config, err, true)
 
 			roleID, _, err := v.GetRoleID("bamboo")
-			utils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(config, err, true)
 
 			secretID, err := v.GetSecretID("bamboo")
-			utils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(config, err, true)
 
 			fmt.Printf("Rotated role id and secret id.\n")
 			fmt.Printf("Role ID: %s\n", roleID)
@@ -470,8 +469,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 			// Store all new tokens to new appRole.
 			warn, err := mod.Write("super-secrets/tokens", tokenMap)
-			utils.LogErrorObject(config, err, true)
-			utils.LogWarningsObject(config, warn, true)
+			eUtils.LogErrorObject(config, err, true)
+			eUtils.LogWarningsObject(config, warn, true)
 		}
 	}
 

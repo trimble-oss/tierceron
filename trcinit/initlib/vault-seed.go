@@ -15,7 +15,6 @@ import (
 	trcname "tierceron/trcvault/opts/trcname"
 
 	"tierceron/trcx/xutil"
-	"tierceron/utils"
 	"tierceron/validator"
 	"tierceron/vaulthelper/kv"
 
@@ -56,7 +55,7 @@ func SeedVault(insecure bool,
 	files, err := ioutil.ReadDir(dir)
 
 	templateWritten = make(map[string]bool)
-	var config *utils.DriverConfig
+	var config *eUtils.DriverConfig
 	if len(files) == 1 && files[0].Name() == "certs" && uploadCert {
 		// Cert rotation support without templates
 		logger.Printf("No templates available, Common service requested.: %s\n", dir)
@@ -65,10 +64,10 @@ func SeedVault(insecure bool,
 		regions := []string{}
 
 		if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
-			regions = utils.GetSupportedProdRegions()
+			regions = eUtils.GetSupportedProdRegions()
 		}
 
-		config = &utils.DriverConfig{
+		config = &eUtils.DriverConfig{
 			Insecure:       insecure,
 			Token:          token,
 			VaultAddress:   addr,
@@ -93,7 +92,7 @@ func SeedVault(insecure bool,
 		SeedVaultFromData(config, "", []byte(seedData), service, true)
 		return nil
 	} else {
-		config = &utils.DriverConfig{
+		config = &eUtils.DriverConfig{
 			Insecure:       insecure,
 			Token:          token,
 			VaultAddress:   addr,
@@ -108,7 +107,7 @@ func SeedVault(insecure bool,
 		}
 
 	}
-	utils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(config, err, true)
 
 	_, suffix, indexedEnvNot, _ := kv.PreCheckEnvironment(env)
 
@@ -127,7 +126,7 @@ func SeedVault(insecure bool,
 			} else {
 				filesSteppedInto, err = ioutil.ReadDir(dir + "/" + envDir.Name())
 			}
-			utils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(config, err, true)
 
 			conflictingFile := false
 			for _, fileSteppedInto := range filesSteppedInto {
@@ -142,7 +141,7 @@ func SeedVault(insecure bool,
 				}
 			}
 			if len(filesSteppedInto) > 1 && conflictingFile {
-				utils.CheckWarning(config, fmt.Sprintf("Multiple potentially conflicting configuration files found for environment: %s", envDir.Name()), true)
+				eUtils.CheckWarning(config, fmt.Sprintf("Multiple potentially conflicting configuration files found for environment: %s", envDir.Name()), true)
 			}
 
 			normalEnv := false
@@ -237,7 +236,7 @@ func SeedVault(insecure bool,
 }
 
 //SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(config *utils.DriverConfig, filepath string, service string, uploadCert bool) {
+func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string, service string, uploadCert bool) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	eUtils.LogErrorAndSafeExit(config, err, 1)
@@ -245,7 +244,7 @@ func SeedVaultFromFile(config *utils.DriverConfig, filepath string, service stri
 }
 
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(config *utils.DriverConfig, filepath string, fData []byte, service string, uploadCert bool) error {
+func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byte, service string, uploadCert bool) error {
 	config.Log.SetPrefix("[SEED]")
 	config.Log.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
@@ -359,7 +358,7 @@ func SeedVaultFromData(config *utils.DriverConfig, filepath string, fData []byte
 				certPath = trcname.GetFolderPrefix() + "_seeds/" + certPath
 				cert, err := ioutil.ReadFile(certPath)
 				if err != nil {
-					utils.LogErrorObject(config, err, false)
+					eUtils.LogErrorObject(config, err, false)
 					continue
 				}
 
@@ -500,8 +499,8 @@ func SeedVaultFromData(config *utils.DriverConfig, filepath string, fData []byte
 
 	// Run verification after seeds have been written
 	warn, err := verify(config, mod, verificationData)
-	utils.LogErrorObject(config, err, false)
-	utils.LogWarningsObject(config, warn, false)
+	eUtils.LogErrorObject(config, err, false)
+	eUtils.LogWarningsObject(config, warn, false)
 	eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
 	return nil
 }
@@ -523,8 +522,8 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 
 	warn, err := mod.Write(path, data)
 
-	utils.LogWarningsObject(config, warn, false)
-	utils.LogErrorObject(config, err, false)
+	eUtils.LogWarningsObject(config, warn, false)
+	eUtils.LogErrorObject(config, err, false)
 	// Update value metrics to reflect credential use
 	if root == "templates" {
 		//Printing out path of each entry so that users can verify that folder structure in seed files are correct

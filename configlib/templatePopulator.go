@@ -5,7 +5,7 @@ import (
 
 	"encoding/base64"
 
-	"tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfig/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 )
@@ -30,7 +30,10 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 		eUtils.LogErrorObject(config, err, false)
 	}
 
-	configuredTemplate, _, _, err := utils.ConfigTemplate(config, mod, templatePath, true, project, service, false, true)
+	configuredTemplate, _, _, err := vcutils.ConfigTemplate(config, mod, templatePath, true, project, service, false, true)
+	if err != nil {
+		eUtils.LogErrorObject(config, err, false)
+	}
 
 	mod.Close()
 
@@ -51,7 +54,10 @@ func ConfigCertLib(token string, address string, env string, templatePath string
 		eUtils.LogErrorMessage(config, err.Error(), false)
 		return C.CString("")
 	}
-	_, configuredCert, _, err := utils.ConfigTemplate(config, mod, templatePath, true, project, service, true, true)
+	_, configuredCert, _, err := vcutils.ConfigTemplate(config, mod, templatePath, true, project, service, true, true)
+	if err != nil {
+		eUtils.LogErrorObject(config, err, false)
+	}
 
 	mod.Close()
 
