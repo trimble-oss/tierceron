@@ -9,10 +9,9 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcvault/opts/insecure"
-	"tierceron/trcvault/util"
-	vscutils "tierceron/trcvault/util"
+	trcvutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 	"time"
@@ -30,7 +29,7 @@ var _ logical.Factory = TrcFactory
 
 var logger *log.Logger
 
-func Init(processFlowConfig util.ProcessFlowConfig, processFlows util.ProcessFlowFunc, headless bool, l *log.Logger) {
+func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
 
@@ -130,7 +129,7 @@ func initVaultHostBootstrap() error {
 
 		vaultHostChan := make(chan string, 1)
 		vaultLookupErrChan := make(chan error, 1)
-		vscutils.GetLocalVaultHost(true, vaultHostChan, vaultLookupErrChan, logger)
+		trcvutils.GetLocalVaultHost(true, vaultHostChan, vaultLookupErrChan, logger)
 
 		for (vaultBootState & COMPLETE) != COMPLETE {
 			select {
@@ -178,7 +177,7 @@ func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
 		return errModInit
 	}
 
-	configuredTemplate, _, _, ctErr := utils.ConfigTemplate(config, goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true)
+	configuredTemplate, _, _, ctErr := vcutils.ConfigTemplate(config, goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true)
 	if ctErr != nil {
 		logger.Println("Config template lookup failure: " + ctErr.Error())
 		return ctErr
@@ -200,8 +199,8 @@ func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
 	return nil
 }
 
-func ProcessPluginEnvConfig(processFlowConfig util.ProcessFlowConfig,
-	processFlows util.ProcessFlowFunc,
+func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
+	processFlows trcvutils.ProcessFlowFunc,
 	pluginEnvConfig map[string]interface{},
 	testCompleteChan chan bool) error {
 	env, eOk := pluginEnvConfig["env"]

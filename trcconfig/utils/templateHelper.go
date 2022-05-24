@@ -10,7 +10,6 @@ import (
 	"text/template"
 	trcname "tierceron/trcvault/opts/trcname"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
 )
@@ -134,7 +133,7 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 		template = string(templateBytes)
 	} else {
 		emptyTemplate, err := ioutil.ReadFile(emptyFilePath)
-		utils.CheckError(config, err, true)
+		eUtils.CheckError(config, err, true)
 		template = string(emptyTemplate)
 	}
 	// cert map
