@@ -9,7 +9,7 @@ import (
 
 	il "tierceron/trcinit/initlib"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 	pb "tierceron/webapi/rpc/apinator"
 )
@@ -87,7 +87,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		tokenMap[token.Name] = token.Value
 	}
 
-	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	eUtils.LogErrorObject(config, err, false)
 
 	mod.Env = "bamboo"
@@ -178,7 +178,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 	}
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 
-	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return &result, err

@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 )
 
-func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *kv.Modifier, dirName string, logger *log.Logger, templateFilter *string) (error, []string) {
+func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templateFilter *string) (error, []string) {
 
 	var filterTemplateSlice []string
 	if len(*templateFilter) > 0 {
