@@ -436,12 +436,18 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		logger.Println("TrcUpdate begin setup for plugin settings init")
 
 		if token, tokenOk := data.GetOk("token"); tokenOk {
+			logger.Println("TrcUpdate stage 1")
 
 			if GetVaultPort() == "" {
+				logger.Println("TrcUpdate stage 1.1")
 				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
+					logger.Println("TrcUpdate stage 1.1.1")
 					vaultUrl, err := url.Parse(vaddr.(string))
 					if err == nil {
+						logger.Println("TrcUpdate stage 1.1.1.1")
 						vaultPort = vaultUrl.Port()
+					} else {
+						logger.Println("Bad address: " + vaddr.(string))
 					}
 				} else {
 					return nil, errors.New("Vault Update Url required.")
