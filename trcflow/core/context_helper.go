@@ -3,10 +3,9 @@ package core
 import (
 	"sync"
 	"tierceron/trcvault/util"
-	"tierceron/trcx/db"
 	"tierceron/trcx/extract"
 
-	xdbutil "tierceron/trcx/db"
+	trcdb "tierceron/trcx/db"
 	eUtils "tierceron/utils"
 )
 
@@ -36,14 +35,14 @@ func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *Tr
 	changedEntriesQuery = getChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
 	//}
 
-	_, _, matrixChangedEntries, err := db.Query(tfmContext.TierceronEngine, changedEntriesQuery)
+	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery)
 	if err != nil {
 		eUtils.LogErrorObject(tfmContext.Config, err, false)
 		return nil, err
 	}
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
-		_, _, _, err = db.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 			return nil, err
@@ -73,7 +72,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 		changedTableQuery := `SELECT * FROM ` + tfContext.FlowSourceAlias + `.` + tfContext.Flow.TableName() + ` WHERE ` + identityColumnName + `='` + changedId + `'`
 
-		_, changedTableColumns, changedTableRowData, err := db.Query(tfmContext.TierceronEngine, changedTableQuery)
+		_, changedTableColumns, changedTableRowData, err := trcdb.Query(tfmContext.TierceronEngine, changedTableQuery)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 			continue
@@ -109,12 +108,12 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		//Check for tenantId
 
 		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query string) (string, []string, [][]string, error) {
-			return db.Query(engine.(*db.TierceronEngine), query)
+			return trcdb.Query(engine.(*trcdb.TierceronEngine), query)
 		})
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(tfmContext.Config, indexPathErr, false)
 			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = db.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
+			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
@@ -125,7 +124,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		if seedError != nil {
 			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
 			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = db.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
+			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
@@ -153,7 +152,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	isInit bool,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
-	xdbutil.TransformConfig(tfContext.GoMod,
+	trcdb.TransformConfig(tfContext.GoMod,
 		tfmContext.TierceronEngine,
 		tfmContext.Env,
 		"0",

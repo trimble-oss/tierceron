@@ -3,7 +3,7 @@ package xdbutil
 import (
 	"os"
 	xdb "tierceron/trcx/db"
-	xUtils "tierceron/trcx/xutil"
+	"tierceron/trcx/xutil"
 	eUtils "tierceron/utils"
 )
 
@@ -28,7 +28,7 @@ func GenerateSeedsFromVaultToDb(config *eUtils.DriverConfig) (interface{}, error
 	tempTemplatePaths := []string{}
 	for _, startDir := range config.StartDir {
 		//get files from directory
-		tp := xUtils.GetDirFiles(startDir)
+		tp := xutil.GetDirFiles(startDir)
 		tempTemplatePaths = append(tempTemplatePaths, tp...)
 	}
 
