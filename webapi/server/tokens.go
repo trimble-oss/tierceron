@@ -8,12 +8,12 @@ import (
 	jwt "github.com/golang-jwt/jwt"
 
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 	pb "tierceron/webapi/rpc/apinator"
 )
 
-func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, error) {
+func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (string, error) {
 	tokenSecret := s.TrcAPITokenSecret
 	currentTime := time.Now().Unix()
 	expTime := currentTime + 24*60*60
@@ -68,7 +68,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	}
 
 	// Modifier to access token values granted to bamboo
-	mod, err := kv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err

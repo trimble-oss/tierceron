@@ -10,7 +10,7 @@ import (
 
 	il "tierceron/trcinit/initlib"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 
 	configcore "VaultConfig.Bootstrap/configcore"
 )
@@ -67,7 +67,7 @@ func main() {
 		fmt.Println("Missing auth components.")
 		os.Exit(1)
 	}
-	mod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
 	eUtils.CheckError(config, err, true)
 	mod.Env = *envPtr
 

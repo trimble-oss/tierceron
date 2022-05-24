@@ -6,7 +6,7 @@ import (
 
 	eUtils "tierceron/utils"
 	"tierceron/validator"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 )
 
 // Runs the verification step from data in the seed file
@@ -21,7 +21,7 @@ import (
 // KeyStore:
 // 	type: KeyStore
 
-func verify(config *eUtils.DriverConfig, mod *kv.Modifier, v map[interface{}]interface{}) ([]string, error) {
+func verify(config *eUtils.DriverConfig, mod *helperkv.Modifier, v map[interface{}]interface{}) ([]string, error) {
 	var isValid bool
 	var path string
 	config.Log.SetPrefix("[VERIFY]")

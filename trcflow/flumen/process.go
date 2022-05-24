@@ -13,13 +13,13 @@ import (
 	flowcore "tierceron/trcflow/core"
 	helperkv "tierceron/vaulthelper/kv"
 
-	testflowimpl "VaultConfig.Test/util"
+	testtcutil "VaultConfig.Test/util"
 
 	eUtils "tierceron/utils"
 
 	sys "tierceron/vaulthelper/system"
 
-	flowimpl "VaultConfig.TenantConfig/util"
+	tcutil "VaultConfig.TenantConfig/util"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -51,7 +51,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	tfmContext = &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
-		GetAdditionalFlowsByState: testflowimpl.GetAdditionalFlowsByState,
+		GetAdditionalFlowsByState: testtcutil.GetAdditionalFlowsByState,
 	}
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
@@ -93,7 +93,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					eUtils.LogWarningMessage(config, "Expected database configuration does not exist: "+indexValue, false)
 					continue
 				}
-				for _, supportedRegion := range flowimpl.GetSupportedSourceRegions() {
+				for _, supportedRegion := range tcutil.GetSupportedSourceRegions() {
 					if sourceDatabaseConfig["dbsourceregion"] == supportedRegion {
 						sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
 					}
@@ -141,7 +141,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		flowSourceMap[tableName] = source
 	}
 
-	tfmContext.TierceronEngine, err = db.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowimpl.GetDatabaseName())
+	tfmContext.TierceronEngine, err = db.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), tcutil.GetDatabaseName())
 	tfmContext.Config = &configBasis
 
 	if err != nil {
@@ -175,7 +175,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// Http query resources include:
 	// 1. Auth -- Auth is provided by the external library tcutil.
 	// 2. Get json by Api call.
-	extensionAuthComponents := flowimpl.GetExtensionAuthComponents(trcIdentityConfig)
+	extensionAuthComponents := tcutil.GetExtensionAuthComponents(trcIdentityConfig)
 	httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -192,7 +192,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
 
 	var wg sync.WaitGroup
-	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, flowimpl.GetAdditionalFlows(), testflowimpl.GetAdditionalFlows())
+	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, tcutil.GetAdditionalFlows(), testtcutil.GetAdditionalFlows())
 
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range configBasis.VersionFilter {
@@ -210,12 +210,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
-				tfContext.FlowSourceAlias = flowimpl.GetDatabaseName()
+				tfContext.FlowSourceAlias = tcutil.GetDatabaseName()
 
 				tfmContext.ProcessFlow(
 					config,
 					&tfContext,
-					flowimpl.ProcessFlowController,
+					tcutil.ProcessFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
 					tableFlow,
@@ -223,7 +223,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				)
 			}(flowcore.FlowNameType(table))
 		}
-		for _, enhancement := range flowimpl.GetAdditionalFlows() {
+		for _, enhancement := range tcutil.GetAdditionalFlows() {
 			wg.Add(1)
 			go func(enhancementFlow flowcore.FlowNameType) {
 				eUtils.LogInfo(config, "Beginning flow: "+enhancementFlow.ServiceName())
@@ -240,7 +240,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfmContext.ProcessFlow(
 					config,
 					&tfContext,
-					flowimpl.ProcessFlowController,
+					tcutil.ProcessFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
 					enhancementFlow,
@@ -249,7 +249,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(enhancement)
 		}
 
-		for _, test := range testflowimpl.GetAdditionalFlows() {
+		for _, test := range testtcutil.GetAdditionalFlows() {
 			wg.Add(1)
 			go func(testFlow flowcore.FlowNameType) {
 				eUtils.LogInfo(config, "Beginning flow: "+testFlow.ServiceName())
@@ -265,7 +265,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfmContext.ProcessFlow(
 					config,
 					&tfContext,
-					testflowimpl.ProcessTestFlowController,
+					testtcutil.ProcessTestFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
 					testFlow,

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 	trcname "tierceron/trcvault/opts/trcname"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 )
 
 func SplitEnv(env string) []string {
@@ -24,7 +24,7 @@ func SplitEnv(env string) []string {
 	return envVersion
 }
 
-func GetProjectVersionInfo(config *DriverConfig, mod *kv.Modifier) map[string]map[string]interface{} {
+func GetProjectVersionInfo(config *DriverConfig, mod *helperkv.Modifier) map[string]map[string]interface{} {
 	versionMetadataMap := make(map[string]map[string]interface{})
 	mod.VersionFilter = config.VersionFilter
 	var secretMetadataMap map[string]map[string]interface{}
