@@ -17,9 +17,9 @@ import (
 
 	vcutils "tierceron/trcconfig/utils"
 	extract "tierceron/trcx/extract"
+	"tierceron/trcx/xutil"
 
 	il "tierceron/trcinit/initlib"
-	xutil "tierceron/trcx/xutil"
 
 	"log"
 )
