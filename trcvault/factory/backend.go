@@ -437,13 +437,20 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 		if token, tokenOk := data.GetOk("token"); tokenOk {
 
-			if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-				vaultUrl, err := url.Parse(vaddr.(string))
-				if err == nil {
-					vaultPort = vaultUrl.Port()
+			if GetVaultPort() == "" {
+				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
+					vaultUrl, err := url.Parse(vaddr.(string))
+					if err == nil {
+						vaultPort = vaultUrl.Port()
+					}
+				} else {
+					return nil, errors.New("Vault Update Url required.")
 				}
-			} else {
-				return nil, errors.New("Vault Update Url required.")
+			}
+
+			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
+				// Missing port.
+				vaultHost = vaultHost + ":" + GetVaultPort()
 			}
 			logger.Println("vaultHost: " + vaultHost)
 
