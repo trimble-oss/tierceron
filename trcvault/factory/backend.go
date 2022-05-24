@@ -592,21 +592,21 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 	}
 
 	bkv.(*kv.PassthroughBackend).Paths = []*framework.Path{
-		&framework.Path{
+		{
 			Pattern:         "(dev|QA|staging|prod)",
 			HelpSynopsis:    "Configure an access token.",
 			HelpDescription: "Use this endpoint to configure the auth tokens required by trcvault.",
 
 			Fields: map[string]*framework.FieldSchema{
-				"token": &framework.FieldSchema{
+				"token": {
 					Type:        framework.TypeString,
 					Description: "Token used for specified environment.",
 				},
-				"vaddress": &framework.FieldSchema{
+				"vaddress": {
 					Type:        framework.TypeString,
 					Description: "Vaurl Url for plugin reference purposes.",
 				},
-				"plugin": &framework.FieldSchema{
+				"plugin": {
 					Type:        framework.TypeString,
 					Description: "Optional plugin name.",
 					Required:    false,

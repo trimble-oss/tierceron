@@ -228,9 +228,10 @@ func main() {
 		services = strings.Split(*servicesWanted, ",")
 	}
 
-	for _, service := range services {
-		service = strings.TrimSpace(service)
-	}
+	// TODO: This wasn't doing anything useful...  possibly remove?
+	//	for _, service := range services {
+	//		service = strings.TrimSpace(service)
+	//	}
 	regions := []string{}
 
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {

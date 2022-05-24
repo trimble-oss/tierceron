@@ -618,7 +618,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 				}
 			}
 
-			certPath := fmt.Sprintf("%s", certData[2])
+			certPath := certData[2]
 			eUtils.LogInfo(config, "Writing certificate: "+certPath+".")
 
 			if strings.Contains(certPath, "ENV") {
@@ -648,9 +648,6 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 		// Print that we're done
 		if strings.Contains(config.Env, "_0") {
 			config.Env = strings.Split(config.Env, "_")[0]
-		}
-		if strings.Contains(envBasePath, "_") {
-			envBasePath = strings.Split(envBasePath, "_")[0]
 		}
 
 		eUtils.LogInfo(config, "Seed created and written to "+endPath)
