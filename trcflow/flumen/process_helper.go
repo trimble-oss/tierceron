@@ -1,8 +1,14 @@
 package flumen
 
 import (
+	"crypto/sha256"
 	"errors"
+	"fmt"
+	"io"
+	"os"
 	"sync"
+	"tierceron/trcvault/opts/insecure"
+	"tierceron/trcvault/opts/prod"
 	"tierceron/trcvault/util"
 	"tierceron/trcx/db"
 	"tierceron/trcx/extract"
@@ -126,7 +132,24 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error
 			return err
 		}
 		if pluginData == nil {
-			return errors.New("Plugin not certified.")
+			if !prod.IsProd() && insecure.IsInsecure() {
+				pluginData = make(map[string]interface{})
+				pluginData["trcplugin"] = pluginName
+				if imageFile, err := os.Open("/etc/opt/vault/plugins/" + pluginName); err == nil {
+					sha256 := sha256.New()
+
+					defer imageFile.Close()
+					if _, err := io.Copy(sha256, imageFile); err != nil {
+						continue
+					}
+
+					filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
+					pluginData["trcsha256"] = filesystemsha256
+					pluginData["copied"] = true
+				}
+			} else {
+				return errors.New("Plugin not certified.")
+			}
 		}
 
 		if !pluginData["copied"].(bool) || pluginData["deployed"].(bool) {
