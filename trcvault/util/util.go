@@ -11,7 +11,6 @@ import (
 	"tierceron/trcvault/opts/insecure"
 	"tierceron/trcvault/opts/prod"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
@@ -228,7 +227,7 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	return nil
 }
 
-func GetPluginToolConfig(config *eUtils.DriverConfig, mod *kv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
 	config.Log.Println("GetPluginToolConfig begin processing plugins.")
 	//templatePaths
 	indexFound := false

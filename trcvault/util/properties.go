@@ -4,20 +4,20 @@ import (
 	vcutils "tierceron/trcconfig/utils"
 	eUtils "tierceron/utils"
 
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 
 	sys "tierceron/vaulthelper/system"
 )
 
 //Properties stores all configuration properties for a project.
 type Properties struct {
-	mod          *kv.Modifier
-	authMod      *kv.Modifier
+	mod          *helperkv.Modifier
+	authMod      *helperkv.Modifier
 	AuthEndpoint string
 	cds          *vcutils.ConfigDataStore
 }
 
-func NewProperties(config *eUtils.DriverConfig, v *sys.Vault, mod *kv.Modifier, env string, project string, service string) (*Properties, error) {
+func NewProperties(config *eUtils.DriverConfig, v *sys.Vault, mod *helperkv.Modifier, env string, project string, service string) (*Properties, error) {
 	properties := Properties{}
 	properties.mod = mod
 	properties.mod.Env = env

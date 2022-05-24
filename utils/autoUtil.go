@@ -11,7 +11,7 @@ import (
 
 	sys "tierceron/vaulthelper/system"
 
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
 )
@@ -229,7 +229,7 @@ func AutoAuth(config *DriverConfig,
 
 	//if using appRole
 	if *secretIDPtr != "" || *appRoleIDPtr != "" || *tokenNamePtr != "" {
-		env, _, _, envErr := kv.PreCheckEnvironment(*envPtr)
+		env, _, _, envErr := helperkv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
 			LogErrorMessage(config, fmt.Sprintf("Environment format error: %v\n", envErr), false)
 			return envErr
@@ -281,7 +281,7 @@ func AutoAuth(config *DriverConfig,
 			return err
 		}
 
-		mod, err := kv.NewModifier(config.Insecure, master, *addrPtr, *envPtr, nil, config.Log)
+		mod, err := helperkv.NewModifier(config.Insecure, master, *addrPtr, *envPtr, nil, config.Log)
 		if err != nil {
 			return err
 		}

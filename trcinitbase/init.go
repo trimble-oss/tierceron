@@ -12,7 +12,7 @@ import (
 
 	il "tierceron/trcinit/initlib"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 )
 
@@ -79,7 +79,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	// Enter ID tokens
 	if *insecurePtr {
-		if isLocal, lookupErr := kv.IsUrlLocalIp(*addrPtr); isLocal && lookupErr == nil {
+		if isLocal, lookupErr := helperkv.IsUrlLocalIp(*addrPtr); isLocal && lookupErr == nil {
 			// This is fine...
 			fmt.Println("Initialize local vault.")
 		} else {
@@ -327,7 +327,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				//
 				tokenMap := map[string]interface{}{}
 
-				mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
+				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
 				eUtils.LogErrorObject(config, err, false)
 
 				mod.Env = "bamboo"
@@ -419,7 +419,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
-		mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
+		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
 		eUtils.LogErrorObject(config, err, true)
 
 		mod.Env = "bamboo"
@@ -478,7 +478,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	// because you first need tokens to do so.  Only seed if !new.
 	if !*newPtr {
 		// Seed the vault with given seed directory
-		mod, _ := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger) // Connect to vault
+		mod, _ := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger) // Connect to vault
 		mod.Env = *envPtr
 		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
 			if unrestrictedValid, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {

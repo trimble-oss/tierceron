@@ -16,7 +16,7 @@ import (
 
 	"tierceron/trcx/xutil"
 	"tierceron/validator"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 
 	eUtils "tierceron/utils"
 
@@ -109,7 +109,7 @@ func SeedVault(insecure bool,
 	}
 	eUtils.LogErrorObject(config, err, true)
 
-	_, suffix, indexedEnvNot, _ := kv.PreCheckEnvironment(env)
+	_, suffix, indexedEnvNot, _ := helperkv.PreCheckEnvironment(env)
 
 	seeded := false
 	starEnv := false
@@ -322,7 +322,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		}
 	}
 
-	mod, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, config.Log) // Connect to vault
+	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, config.Log) // Connect to vault
 	if err != nil {
 		return eUtils.LogErrorAndSafeExit(config, err, 1)
 	}
@@ -506,7 +506,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 }
 
 //WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
-func WriteData(config *eUtils.DriverConfig, path string, data map[string]interface{}, mod *kv.Modifier) {
+func WriteData(config *eUtils.DriverConfig, path string, data map[string]interface{}, mod *helperkv.Modifier) {
 	root := strings.Split(path, "/")[0]
 	if templateWritten == nil {
 		templateWritten = make(map[string]bool)

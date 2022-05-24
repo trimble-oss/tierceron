@@ -10,7 +10,7 @@ import (
 
 	il "tierceron/trcinit/initlib"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 
 	configcore "VaultConfig.Bootstrap/configcore"
@@ -57,7 +57,7 @@ func main() {
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		eUtils.CheckError(config, err, true)
 
-		mod, err := kv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, logger)
+		mod, err := helperkv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, logger)
 		eUtils.CheckError(config, err, true)
 		mod.Env = "bamboo"
 
@@ -75,7 +75,7 @@ func main() {
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 
-	mod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
 	eUtils.CheckError(config, err, true)
 	mod.Env = *envPtr
 

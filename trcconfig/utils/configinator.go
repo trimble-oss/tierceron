@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 )
 
 var mutex = &sync.Mutex{}
@@ -22,7 +22,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		Reset = ""
 		Cyan = ""
 	}*/
-	modCheck, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
+	modCheck, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
 	modCheck.Env = config.Env
 	version := ""
 	if err != nil {
@@ -63,7 +63,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		endPaths = append(endPaths, ep...)
 	}
 
-	_, _, indexedEnv, _ := kv.PreCheckEnvironment(config.Env)
+	_, _, indexedEnv, _ := helperkv.PreCheckEnvironment(config.Env)
 	if indexedEnv {
 		templatePaths, err = eUtils.GetAcceptedTemplatePaths(config, modCheck, templatePaths)
 		if err != nil {
@@ -215,7 +215,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
-			mod, _ := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
+			mod, _ := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
 			mod.Env = config.Env
 			mod.Version = version
 			//check for template_files directory here
