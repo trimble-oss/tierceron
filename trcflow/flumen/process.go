@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"tierceron/trcvault/util"
-	"tierceron/trcx/db"
+	xdb "tierceron/trcx/db"
 
 	flowcore "tierceron/trcflow/core"
 	helperkv "tierceron/vaulthelper/kv"
@@ -141,7 +141,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		flowSourceMap[tableName] = source
 	}
 
-	tfmContext.TierceronEngine, err = db.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), tcutil.GetDatabaseName())
+	tfmContext.TierceronEngine, err = xdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), tcutil.GetDatabaseName())
 	tfmContext.Config = &configBasis
 
 	if err != nil {

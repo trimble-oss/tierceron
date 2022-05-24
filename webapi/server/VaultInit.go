@@ -3,7 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
-	b64 "encoding/base64"
+	"encoding/base64"
 	"fmt"
 	"log"
 
@@ -32,7 +32,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		eUtils.LogErrorObject(config, err, false)
 		return &pb.InitResp{
 			Success: false,
-			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
+			Logfile: base64.StdEncoding.EncodeToString(logBuffer.Bytes()),
 			Tokens:  nil,
 		}, err
 	}
@@ -43,7 +43,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		eUtils.LogErrorObject(config, err, false)
 		return &pb.InitResp{
 			Success: false,
-			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
+			Logfile: base64.StdEncoding.EncodeToString(logBuffer.Bytes()),
 			Tokens:  nil,
 		}, err
 	}
@@ -56,7 +56,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		eUtils.LogErrorObject(config, err, false)
 		return &pb.InitResp{
 			Success: false,
-			Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
+			Logfile: base64.StdEncoding.EncodeToString(logBuffer.Bytes()),
 			Tokens:  nil,
 		}, err
 	}
@@ -67,12 +67,12 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	il.CreateEngines(config, v)
 
 	for _, seed := range req.Files {
-		fBytes, err := b64.StdEncoding.DecodeString(seed.Data)
+		fBytes, err := base64.StdEncoding.DecodeString(seed.Data)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 			return &pb.InitResp{
 				Success: false,
-				Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
+				Logfile: base64.StdEncoding.EncodeToString(logBuffer.Bytes()),
 				Tokens:  nil,
 			}, err
 		}
@@ -165,7 +165,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 
 	return &pb.InitResp{
 		Success: true,
-		Logfile: b64.StdEncoding.EncodeToString(logBuffer.Bytes()),
+		Logfile: base64.StdEncoding.EncodeToString(logBuffer.Bytes()),
 		Tokens:  tokens,
 	}, nil
 }
