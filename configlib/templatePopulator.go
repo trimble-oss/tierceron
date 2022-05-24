@@ -5,9 +5,9 @@ import (
 
 	"encoding/base64"
 
-	"tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfig/utils"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 )
 import (
 	"log"
@@ -19,7 +19,7 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
 
 	logger.Println("NCLib Version: " + "1.12")
-	mod, err := kv.NewModifier(false, token, address, env, nil, logger)
+	mod, err := helperkv.NewModifier(false, token, address, env, nil, logger)
 	mod.Env = env
 	config := &eUtils.DriverConfig{
 		Insecure: false,
@@ -30,7 +30,10 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 		eUtils.LogErrorObject(config, err, false)
 	}
 
-	configuredTemplate, _, _, err := utils.ConfigTemplate(config, mod, templatePath, true, project, service, false, true)
+	configuredTemplate, _, _, err := vcutils.ConfigTemplate(config, mod, templatePath, true, project, service, false, true)
+	if err != nil {
+		eUtils.LogErrorObject(config, err, false)
+	}
 
 	mod.Close()
 
@@ -41,7 +44,7 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 func ConfigCertLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
 	logger.Println("NCLib Version: " + "1.12")
-	mod, err := kv.NewModifier(false, token, address, env, nil, logger)
+	mod, err := helperkv.NewModifier(false, token, address, env, nil, logger)
 	mod.Env = env
 	config := &eUtils.DriverConfig{
 		Insecure: false,
@@ -51,7 +54,10 @@ func ConfigCertLib(token string, address string, env string, templatePath string
 		eUtils.LogErrorMessage(config, err.Error(), false)
 		return C.CString("")
 	}
-	_, configuredCert, _, err := utils.ConfigTemplate(config, mod, templatePath, true, project, service, true, true)
+	_, configuredCert, _, err := vcutils.ConfigTemplate(config, mod, templatePath, true, project, service, true, true)
+	if err != nil {
+		eUtils.LogErrorObject(config, err, false)
+	}
 
 	mod.Close()
 

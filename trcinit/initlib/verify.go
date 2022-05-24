@@ -4,10 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	"tierceron/validator"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 )
 
 // Runs the verification step from data in the seed file
@@ -22,7 +21,7 @@ import (
 // KeyStore:
 // 	type: KeyStore
 
-func verify(config *eUtils.DriverConfig, mod *kv.Modifier, v map[interface{}]interface{}) ([]string, error) {
+func verify(config *eUtils.DriverConfig, mod *helperkv.Modifier, v map[interface{}]interface{}) ([]string, error) {
 	var isValid bool
 	var path string
 	config.Log.SetPrefix("[VERIFY]")
@@ -40,20 +39,20 @@ func verify(config *eUtils.DriverConfig, mod *kv.Modifier, v map[interface{}]int
 				if user, ok := serviceData["user"].(string); ok {
 					if pass, ok := serviceData["pass"].(string); ok {
 						isValid, err = validator.Heartbeat(config, url, user, pass)
-						utils.LogErrorObject(config, err, false)
+						eUtils.LogErrorObject(config, err, false)
 					} else {
-						utils.LogErrorObject(config, fmt.Errorf("Password field is not a string value"), false)
+						eUtils.LogErrorObject(config, fmt.Errorf("Password field is not a string value"), false)
 					}
 				} else {
-					utils.LogErrorObject(config, fmt.Errorf("Username field is not a string value"), false)
+					eUtils.LogErrorObject(config, fmt.Errorf("Username field is not a string value"), false)
 				}
 			} else {
-				utils.LogErrorObject(config, fmt.Errorf("URL field is not a string value"), false)
+				eUtils.LogErrorObject(config, fmt.Errorf("URL field is not a string value"), false)
 			}
 		case "SendGridKey":
 			if key, ok := serviceData["SendGridApiKey"].(string); ok {
 				isValid, err = validator.ValidateSendGrid(key)
-				utils.LogErrorObject(config, err, false)
+				eUtils.LogErrorObject(config, err, false)
 			}
 		case "KeyStore":
 			// path := serviceData["path"].(string)
