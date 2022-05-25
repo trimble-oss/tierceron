@@ -79,7 +79,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	// Enter ID tokens
 	if *insecurePtr {
-		if isLocal, lookupErr := helperkv.IsUrlLocalIp(*addrPtr); isLocal && lookupErr == nil {
+		if isLocal, lookupErr := helperkv.IsUrlIp(*addrPtr); isLocal && lookupErr == nil {
 			// This is fine...
 			fmt.Println("Initialize local vault.")
 		} else {
