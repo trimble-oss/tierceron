@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"tierceron/trcvault/util"
+	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
 
 	flowcore "tierceron/trcflow/core"
@@ -79,7 +79,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		for _, indexValue := range indexValues {
 			goMod.SubSectionValue = indexValue
 			ok := false
-			properties, err := util.NewProperties(config, vault, goMod, pluginConfig["env"].(string), projects[i], services[i])
+			properties, err := trcvutils.NewProperties(config, vault, goMod, pluginConfig["env"].(string), projects[i], services[i])
 			if err != nil {
 				eUtils.LogErrorObject(config, err, false)
 				return err
@@ -123,9 +123,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	configBasis := eUtils.DriverConfig{
 		Regions:      emptySlice,
-		Insecure:     pluginConfig["insecure"].(bool),
 		Token:        pluginConfig["token"].(string),
 		VaultAddress: pluginConfig["address"].(string),
+		Insecure:     pluginConfig["insecure"].(bool),
 		Env:          pluginConfig["env"].(string),
 		Log:          logger,
 	}
@@ -183,7 +183,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		return err
 	}
 
-	tfmContext.ExtensionAuthData, err = util.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
+	tfmContext.ExtensionAuthData, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return err

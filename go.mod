@@ -28,7 +28,6 @@ require (
 require (
 	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/txn2/txeh v1.3.0
 )
 
 require (
