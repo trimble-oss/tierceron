@@ -12,7 +12,7 @@ import (
 	"strings"
 	"tierceron/trcvault/factory"
 	"tierceron/trcvault/opts/insecure"
-	"tierceron/trcvault/util"
+	trcvutils "tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
 
 	eUtils "tierceron/utils"
@@ -38,7 +38,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		logger.Println("PluginDeployFlow begun for plugin: " + pluginName)
 		config = &eUtils.DriverConfig{Insecure: pluginConfig["insecure"].(bool), Log: logger, ExitOnFailure: false, StartDir: []string{}, SubSectionValue: pluginName}
 
-		vaultPluginSignature, ptcErr := util.GetPluginToolConfig(config, goMod, pluginConfig)
+		vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(config, goMod, pluginConfig)
 		if ptcErr != nil {
 			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
 			continue
