@@ -57,6 +57,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 				vhost = vhost + ":" + GetVaultPort()
 				pluginEnvConfig["address"] = vhost
 			}
+			pluginEnvConfig["insecure"] = true
 
 			logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
 			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfig, testCompleteChan)
