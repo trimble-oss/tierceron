@@ -7,7 +7,9 @@ import (
 	"strings"
 	"tierceron/trcflow/flumen"
 	"tierceron/trcvault/factory"
+	"tierceron/trcvault/opts/insecure"
 	memonly "tierceron/trcvault/opts/memonly"
+	"tierceron/trcvault/opts/prod"
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
 
@@ -26,8 +28,12 @@ func main() {
 			os.Exit(-1)
 		}
 	}
-	f, logErr := os.OpenFile("/var/log/trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	logger := log.New(f, "[trcvault]", log.LstdFlags)
+	logFile := "/var/log/trcpluginvault.log"
+	if !prod.IsProd() && insecure.IsInsecure() {
+		logFile = "trcpluginvault.log"
+	}
+	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	logger := log.New(f, "[trcpluginvault]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 
 	tclib.SetLogger(func(query string, args ...interface{}) {
