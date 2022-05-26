@@ -29,6 +29,7 @@ var _ logical.Factory = TrcFactory
 var logger *log.Logger
 
 func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
+	logger.Println("Init begun.")
 	eUtils.InitHeadless(headless)
 	logger = l
 
@@ -73,6 +74,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 	if testCompleteChan != nil {
 		<-testCompleteChan
 	}
+	logger.Println("Init ended.")
 }
 
 var KvInitialize func(context.Context, *logical.InitializationRequest) error
@@ -203,6 +205,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	processFlows trcvutils.ProcessFlowFunc,
 	pluginEnvConfig map[string]interface{},
 	testCompleteChan chan bool) error {
+	logger.Println("ProcessPluginEnvConfig begun.")
 	env, eOk := pluginEnvConfig["env"]
 	if !eOk || env.(string) == "" {
 		logger.Println("Bad configuration data.  Missing env.")
