@@ -20,6 +20,7 @@ import (
 	sys "tierceron/vaulthelper/system"
 
 	tcutil "VaultConfig.TenantConfig/util"
+	"VaultConfig.TenantConfig/util/harbinger"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -281,6 +282,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// The engine is in tfmContext...  that's the one we need to make available for connecting via dbvis...
 	// be sure to enable encryption on the connection...
 
+	harbingerErr := harbinger.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig)
+	if harbingerErr != nil {
+		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+harbingerErr.Error(), false)
+		return harbingerErr
+	}
 	wg.Wait()
 	logger.Println("ProcessFlows complete.")
 
