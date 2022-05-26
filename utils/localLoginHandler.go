@@ -7,7 +7,7 @@ import (
 	"strings"
 	"syscall"
 
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 	//pb "tierceron/webapi/rpc/apinator"
 
 	configcore "VaultConfig.Bootstrap/configcore"
@@ -18,7 +18,7 @@ import (
 func LoginToLocal() (string, error) {
 	var username, environment string
 	var err error
-	httpsClient, err := kv.CreateHTTPClient(false, configcore.VaultHost, "nonprod", false)
+	httpsClient, err := helperkv.CreateHTTPClient(false, configcore.VaultHost, "nonprod", false)
 	if err != nil {
 		return "", err
 	}

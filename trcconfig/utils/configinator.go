@@ -8,9 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 )
 
 var mutex = &sync.Mutex{}
@@ -23,7 +22,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		Reset = ""
 		Cyan = ""
 	}*/
-	modCheck, err := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
+	modCheck, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
 	modCheck.Env = config.Env
 	version := ""
 	if err != nil {
@@ -46,8 +45,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		}
 	}
 	versionData := make(map[string]interface{})
-	if valid, errValidateEnvironment := modCheck.ValidateEnvironment(config.Env, false, config.Log); errValidateEnvironment != nil || !valid {
-		return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
+	if valid, errValidateEnvironment := modCheck.ValidateEnvironment(config.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
+		if unrestrictedValid, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(config.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+			return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
+		}
 	}
 
 	//initialized := false
@@ -62,7 +63,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		endPaths = append(endPaths, ep...)
 	}
 
-	_, _, indexedEnv, _ := kv.PreCheckEnvironment(config.Env)
+	_, _, indexedEnv, _ := helperkv.PreCheckEnvironment(config.Env)
 	if indexedEnv {
 		templatePaths, err = eUtils.GetAcceptedTemplatePaths(config, modCheck, templatePaths)
 		if err != nil {
@@ -108,7 +109,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		if !config.WantCerts && strings.Contains(templatePath, "Common") {
 			continue
 		}
-		_, service, _ := utils.GetProjectService(templatePath)       //This checks for nested project names
+		_, service, _ := eUtils.GetProjectService(templatePath)      //This checks for nested project names
 		config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 	}
 
@@ -116,7 +117,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		config.VersionFilter = append(config.VersionFilter, "Common")
 	}
 
-	config.VersionFilter = utils.RemoveDuplicates(config.VersionFilter)
+	config.VersionFilter = eUtils.RemoveDuplicates(config.VersionFilter)
 	modCheck.VersionFilter = config.VersionFilter
 
 	if versionInfo {
@@ -128,7 +129,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 			modCheck.Env = envVersion[0]
 		}
 
-		versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
+		versionMetadataMap := eUtils.GetProjectVersionInfo(config, modCheck)
 		//var masterKey string
 		project := ""
 		neverPrinted := true
@@ -200,10 +201,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		*/
 	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
-			versionMetadataMap := utils.GetProjectVersionInfo(config, modCheck)
-			versionNumbers := utils.GetProjectVersions(config, versionMetadataMap)
+			versionMetadataMap := eUtils.GetProjectVersionInfo(config, modCheck)
+			versionNumbers := eUtils.GetProjectVersions(config, versionMetadataMap)
 
-			utils.BoundCheck(config, versionNumbers, version)
+			eUtils.BoundCheck(config, versionNumbers, version)
 		}
 	}
 
@@ -214,7 +215,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
-			mod, _ := kv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
+			mod, _ := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
 			mod.Env = config.Env
 			mod.Version = version
 			//check for template_files directory here
@@ -374,15 +375,15 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 
 	dirPath := filepath.Dir(path)
 	err := os.MkdirAll(dirPath, os.ModePerm)
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	//create new file
 	newFile, err := os.Create(path)
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	//write to file
 	_, err = newFile.Write(byteData)
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	err = newFile.Sync()
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 	newFile.Close()
 }
 

@@ -4,61 +4,63 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/http"
-	"strconv"
 	"strings"
 
-	"tierceron/utils"
+	"tierceron/trcvault/opts/insecure"
+	"tierceron/trcvault/opts/prod"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
 
 	"gopkg.in/yaml.v2"
 
 	vcutils "tierceron/trcconfig/utils"
-	extract "tierceron/trcx/extract"
-
-	"github.com/txn2/txeh"
+	"tierceron/trcx/extract"
+	"tierceron/trcx/xutil"
 
 	il "tierceron/trcinit/initlib"
-	xutil "tierceron/trcx/xutil"
 
 	"log"
 )
 
-func GetLocalVaultHost(withPort bool, logger *log.Logger) (string, error) {
+type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
+type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
+
+func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
 	vaultHost := "https://"
 	vaultErr := errors.New("no usable local vault found")
-	hostFileLines, pherr := txeh.ParseHosts("/etc/hosts")
-	if pherr != nil {
-		return "", pherr
-	}
-
-	for _, hostFileLine := range hostFileLines {
-		for _, host := range hostFileLine.Hostnames {
-			if (strings.Contains(host, "whoboot.org") || strings.Contains(host, "dexchadev.org") || strings.Contains(host, "dexterchaney.com")) && strings.Contains(hostFileLine.Address, "127.0.0.1") {
-				vaultHost = vaultHost + host
-				break
-			}
-		}
-	}
-
-	if withPort {
-		// Now, look for vault.
-		for i := 8190; i < 8300; i++ {
-			vh := vaultHost + ":" + strconv.Itoa(i)
-			_, err := sys.NewVault(true, vh, "", false, true, true, logger)
-			if err == nil {
-				vaultHost = vaultHost + ":" + strconv.Itoa(i)
-				vaultErr = nil
-				break
-			}
-		}
-	} else {
+	if !prod.IsProd() && insecure.IsInsecure() {
+		// Dev machines.
+		vaultHost = vaultHost + "127.0.0.1"
+		vaultHostChan <- vaultHost
+		logger.Println("Init stage 1 success.")
 		vaultErr = nil
+		goto hostfound
+	} else {
+		// Hosted machines and prod.
+		addrs, err := net.InterfaceAddrs()
+		if err == nil {
+			for _, address := range addrs {
+				// check the address type and if it is not a loopback the display it
+				if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+					if ipnet.IP.To4() != nil {
+						vaultHost = vaultHost + ipnet.IP.String()
+						vaultHostChan <- vaultHost
+						logger.Println("Init stage 1 success.")
+						vaultErr = nil
+						goto hostfound
+					}
+				}
+			}
+		}
 	}
 
-	return vaultHost, vaultErr
+hostfound:
+
+	if vaultErr != nil {
+		vaultLookupErrChan <- vaultErr
+	}
 }
 
 func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
@@ -135,7 +137,7 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 	return nil, errors.New("http status failure")
 }
 
-func LoadBaseTemplate(config *utils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
+func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
 	templateResult.ValueSection["values"] = map[string]map[string]string{}
 
@@ -165,7 +167,7 @@ func LoadBaseTemplate(config *utils.DriverConfig, templateResult *extract.Templa
 	return errSeed
 }
 
-func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
+func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -223,4 +225,57 @@ func SeedVaultById(config *utils.DriverConfig, goMod *helperkv.Modifier, service
 	//VaultInit Section Begins
 	il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData), service, false)
 	return nil
+}
+
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
+	config.Log.Println("GetPluginToolConfig begin processing plugins.")
+	//templatePaths
+	indexFound := false
+	templatePaths := pluginConfig["templatePath"].([]string)
+
+	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
+
+	for k, v := range pluginConfig {
+		pluginToolConfig[k] = v
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var ptc1 map[string]interface{}
+
+	for _, templatePath := range templatePaths {
+		project, service, _ := eUtils.GetProjectService(templatePath)
+		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
+		mod.SectionPath = "super-secrets/Index/" + project + "/" + "trcplugin" + "/" + config.SubSectionValue + "/" + service
+		ptc1, err = mod.ReadData(mod.SectionPath)
+		pluginToolConfig["pluginpath"] = mod.SectionPath
+		if err != nil || ptc1 == nil {
+			config.Log.Println("No data found.")
+			continue
+		}
+		indexFound = true
+		for k, v := range ptc1 {
+			pluginToolConfig[k] = v
+		}
+		break
+	}
+	mod.SectionPath = ""
+
+	if pluginToolConfig == nil {
+		config.Log.Println("No data found for plugin.")
+		if err == nil {
+			err = errors.New("No data and unexpected error.")
+		}
+		return pluginToolConfig, err
+	} else if !indexFound {
+		return pluginToolConfig, nil
+	}
+	config.Log.Println("GetPluginToolConfig end processing plugins.")
+	if strings.ContainsAny(pluginToolConfig["trcplugin"].(string), "./") {
+		err = errors.New("Invalid plugin configuration: " + pluginToolConfig["trcplugin"].(string))
+		return nil, err
+	}
+
+	return pluginToolConfig, nil
 }
