@@ -20,7 +20,8 @@ import (
 	sys "tierceron/vaulthelper/system"
 
 	tcutil "VaultConfig.TenantConfig/util"
-	"VaultConfig.TenantConfig/util/harbinger"
+  "VaultConfig.TenantConfig/util/harbinger"
+
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -287,6 +288,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+harbingerErr.Error(), false)
 		return harbingerErr
 	}
+
 	wg.Wait()
 	logger.Println("ProcessFlows complete.")
 
