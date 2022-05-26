@@ -609,6 +609,20 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 				}
 			}
 
+			if config.Token == "novault" {
+				extractedValues, parseErr := eUtils.Parse(templatePath, project, service)
+				if parseErr != nil {
+					eUtils.CheckError(config, parseErr, true)
+				}
+				if okSourcePath, okDestPath := extractedValues["certSourcePath"], extractedValues["certDestPath"]; okSourcePath != nil && okDestPath != nil {
+					certData[0] = extractedValues["certSourcePath"].(string)
+					certData[1] = ""
+					certData[2] = extractedValues["certSourcePath"].(string)
+				} else {
+					continue
+				}
+			}
+
 			if len(certData) == 0 {
 				if certLoaded {
 					eUtils.LogInfo(config, "Could not load cert "+templatePath)
