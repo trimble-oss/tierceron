@@ -4,13 +4,13 @@ import (
 	"log"
 	"strings"
 	trcname "tierceron/trcvault/opts/trcname"
-	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 )
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+	LogInfo(config, "InitVaultMod begins..")
 	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, config.ExitOnFailure, config.Log)
 	if err != nil {
 		LogErrorObject(config, err, false)
@@ -26,11 +26,12 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	mod.Env = config.Env
 	mod.Version = "0"
 	mod.VersionFilter = config.VersionFilter
+	LogInfo(config, "InitVaultMod complete..")
 
 	return config, mod, vault, nil
 }
 
-func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templatePaths []string) ([]string, error) {
+func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
 	var acceptedTemplatePaths []string
 	serviceMap := make(map[string]bool)
 
@@ -79,7 +80,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 		templatePathParts := strings.Split(templatePathRelativeParts[1], "/")
 		service := templatePathParts[1]
 
-		if _, ok := serviceMap[service]; ok {
+		if _, ok := serviceMap[service]; ok || templatePathParts[0] == "Common" {
 			if config.SectionKey == "" || config.SectionKey == "/" {
 				acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
 			} else {
@@ -109,12 +110,16 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *kv.Modifier, templ
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+	logger.Println("InitVaultModForPlugin begin..")
 	exitOnFailure := false
 	if _, ok := pluginConfig["exitOnFailure"]; ok {
 		exitOnFailure = pluginConfig["exitOnFailure"].(bool)
 	}
+
+	logger.Println("InitVaultModForPlugin initialize DriverConfig.")
+
 	config := DriverConfig{
-		Insecure:       pluginConfig["insecure"].(bool),
+		Insecure:       true, // Plugin always local, so this is ok...
 		Token:          pluginConfig["token"].(string),
 		VaultAddress:   pluginConfig["address"].(string),
 		Env:            pluginConfig["env"].(string),
@@ -128,6 +133,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		ExitOnFailure:  exitOnFailure,
 		Log:            logger,
 	}
+	logger.Println("InitVaultModForPlugin ends..")
 
 	return InitVaultMod(&config)
 }

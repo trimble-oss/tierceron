@@ -12,7 +12,7 @@ import (
 	"sync"
 	trcname "tierceron/trcvault/opts/trcname"
 
-	"tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfig/utils"
 	eUtils "tierceron/utils"
 
 	"github.com/google/go-cmp/cmp"
@@ -69,7 +69,6 @@ func reciever() {
 				resultMap[data.inPath] = data.inData
 				mutex.Unlock()
 			}
-		default:
 		}
 	}
 }
@@ -229,9 +228,10 @@ func main() {
 		services = strings.Split(*servicesWanted, ",")
 	}
 
-	for _, service := range services {
-		service = strings.TrimSpace(service)
-	}
+	// TODO: This wasn't doing anything useful...  possibly remove?
+	//	for _, service := range services {
+	//		service = strings.TrimSpace(service)
+	//	}
 	regions := []string{}
 
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
@@ -301,7 +301,7 @@ func main() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				eUtils.ConfigControl(nil, &configSlice[len(configSlice)-1], utils.GenerateConfigsFromVault)
+				eUtils.ConfigControl(nil, &configSlice[len(configSlice)-1], vcutils.GenerateConfigsFromVault)
 			}()
 		}
 	} else {
@@ -337,7 +337,7 @@ func main() {
 		wg.Add(1)
 		go func(c *eUtils.DriverConfig) {
 			defer wg.Done()
-			eUtils.ConfigControl(nil, c, utils.GenerateConfigsFromVault)
+			eUtils.ConfigControl(nil, c, vcutils.GenerateConfigsFromVault)
 		}(&config)
 	}
 	wg.Wait() //Wait for templates

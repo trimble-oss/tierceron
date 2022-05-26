@@ -8,11 +8,10 @@ import (
 	"strings"
 	"text/template/parse"
 	trcname "tierceron/trcvault/opts/trcname"
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 
 	vcutils "tierceron/trcconfig/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 )
 
 const (
@@ -34,7 +33,7 @@ type TemplateResultData struct {
 //	- Log file for logging support information
 // Output:
 //	- Parsed string containing the .yml file
-func ToSeed(config *utils.DriverConfig, mod *kv.Modifier,
+func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 	cds *vcutils.ConfigDataStore,
 	templatePath string,
 	project string,
@@ -198,7 +197,7 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 //  - The current template directory
 // Output:
 //	- String(s) containing the .yml file subsections
-func Parse(config *utils.DriverConfig, cds *vcutils.ConfigDataStore,
+func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
 	args []string,
 	currentDir string,
 	templatePathSlice []string,
