@@ -7,14 +7,13 @@ import (
 
 	jwt "github.com/golang-jwt/jwt"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 	pb "tierceron/webapi/rpc/apinator"
 )
 
-func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, error) {
+func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (string, error) {
 	tokenSecret := s.TrcAPITokenSecret
 	currentTime := time.Now().Unix()
 	expTime := currentTime + 24*60*60
@@ -38,8 +37,8 @@ func (s *Server) generateJWT(user string, id string, mod *kv.Modifier) (string, 
 				"Expires": expTime,
 			}
 			warn, err := mod.Write("apiLogins/"+user, tokenData)
-			utils.LogWarningsObject(config, warn, false)
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogWarningsObject(config, warn, false)
+			eUtils.LogErrorObject(config, err, false)
 		}()
 	}
 
@@ -52,7 +51,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
@@ -64,21 +63,21 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 
 	arToken, err := v.AppRoleLogin(req.AppRoleID, req.AppRoleSecretID)
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
 	// Modifier to access token values granted to bamboo
-	mod, err := kv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	mod.Env = "bamboo"
 
 	data, err := mod.ReadData("super-secrets/tokens")
 	if err != nil {
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 
@@ -98,7 +97,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 				})
 			}
 		} else {
-			utils.LogWarningsObject(config, []string{fmt.Sprintf("Failed to convert token %s to string", k)}, false)
+			eUtils.LogWarningsObject(config, []string{fmt.Sprintf("Failed to convert token %s to string", k)}, false)
 		}
 	}
 	// AWS

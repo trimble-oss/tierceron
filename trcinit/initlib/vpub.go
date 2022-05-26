@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	eUtils "tierceron/utils"
+	helperkv "tierceron/vaulthelper/kv"
 )
 
-func UploadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Logger) (error, []string) {
+func UploadTemplateDirectory(mod *helperkv.Modifier, dirName string, logger *log.Logger) (error, []string) {
 
 	dirs, err := ioutil.ReadDir(dirName)
 	if err != nil {
@@ -34,7 +34,7 @@ func UploadTemplateDirectory(mod *kv.Modifier, dirName string, logger *log.Logge
 	return nil, nil
 }
 
-func UploadTemplates(mod *kv.Modifier, dirName string, logger *log.Logger) (error, []string) {
+func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger) (error, []string) {
 	// Open directory
 	files, err := ioutil.ReadDir(dirName)
 	if err != nil {
@@ -69,7 +69,7 @@ func UploadTemplates(mod *kv.Modifier, dirName string, logger *log.Logger) (erro
 			logger.Printf("dirName: %s\n", dirName)
 			logger.Printf("file name: %s\n", file.Name())
 			// Extract values
-			extractedValues, err := utils.Parse(dirName+"/"+file.Name(), subDir, name)
+			extractedValues, err := eUtils.Parse(dirName+"/"+file.Name(), subDir, name)
 			if err != nil {
 				return err, nil
 			}

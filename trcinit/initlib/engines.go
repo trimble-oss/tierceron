@@ -1,7 +1,6 @@
 package initlib
 
 import (
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	sys "tierceron/vaulthelper/system"
 )
@@ -21,7 +20,7 @@ func CreateEngines(config *eUtils.DriverConfig, v *sys.Vault) {
 	for _, eng := range engines {
 		err := v.CreateKVPath(eng, eng+" vault engine")
 		if err != nil {
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 			continue
 		}
 		config.Log.Printf("Created engine %s\n", eng)

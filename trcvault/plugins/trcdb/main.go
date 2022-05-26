@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"tierceron/trcflow/flumen"
 	"tierceron/trcvault/factory"
+	"tierceron/trcvault/opts/insecure"
 	memonly "tierceron/trcvault/opts/memonly"
-	vscutils "tierceron/trcvault/util"
+	"tierceron/trcvault/opts/prod"
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
 
@@ -25,26 +28,29 @@ func main() {
 			os.Exit(-1)
 		}
 	}
-	eUtils.InitHeadless(true)
-	f, logErr := os.OpenFile("trcvault.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	logger := log.New(f, "[trcvault]", log.LstdFlags)
+	logFile := "/var/log/trcpluginvault.log"
+	if !prod.IsProd() && insecure.IsInsecure() {
+		logFile = "trcpluginvault.log"
+	}
+	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	logger := log.New(f, "[trcpluginvault]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 
-	tclib.SetLogger(logger.Writer())
-	factory.Init(logger)
+	tclib.SetLogger(func(query string, args ...interface{}) {
+		logger.Println(query)
+	})
+	tclib.SetErrorLogger(logger.Writer())
+	factory.Init(tcutil.ProcessPluginEnvConfig, flumen.ProcessFlows, true, logger)
 	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
 
 	args := os.Args
-	vaultHost, lvherr := vscutils.GetLocalVaultHost(false, logger)
-	if lvherr != nil {
-		logger.Println("Host lookup failure.")
-		os.Exit(-1)
-	}
 
-	if vaultHost == tcutil.GetLocalVaultAddr() {
+	vaultHost := factory.GetVaultHost()
+
+	if strings.HasPrefix(vaultHost, tcutil.GetLocalVaultAddr()) {
 		logger.Println("Running in developer mode with self signed certs.")
 		args = append(args, "--tls-skip-verify=true")
 	} else {
@@ -68,4 +74,5 @@ func main() {
 	if err != nil {
 		logger.Fatal("Plugin shutting down")
 	}
+
 }
