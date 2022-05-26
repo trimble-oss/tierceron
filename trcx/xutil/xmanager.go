@@ -370,8 +370,9 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
 					}
 				}
-				cds.Init(config, goMod, c.SecretMode, true, project, cPaths, service)
-
+				if config.Token != "novault" {
+					cds.Init(config, goMod, c.SecretMode, true, project, cPaths, service)
+				}
 				if len(goMod.VersionFilter) >= 1 && strings.Contains(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!") {
 					// TODO: should this be before cds.Init???
 					innerProject = strings.Split(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!")[1]
@@ -524,14 +525,14 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 			return nil, eUtils.LogAndSafeExit(config, "", 1)
 		}
 		mod.Env = config.Env
-	}
-	templatePathsAccepted, err := eUtils.GetAcceptedTemplatePaths(config, mod, templatePaths)
-	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
-		eUtils.LogAndSafeExit(config, "", 1)
-	}
-	templatePaths = templatePathsAccepted
 
+		templatePathsAccepted, err := eUtils.GetAcceptedTemplatePaths(config, mod, templatePaths)
+		if err != nil {
+			eUtils.LogErrorObject(config, err, false)
+			eUtils.LogAndSafeExit(config, "", 1)
+		}
+		templatePaths = templatePathsAccepted
+	}
 	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 	if errGenerateSeeds != nil {
 		return errGenerateSeeds, nil
