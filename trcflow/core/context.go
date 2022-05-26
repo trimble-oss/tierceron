@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"tierceron/trcvault/util"
-	"tierceron/trcx/db"
+	trcvutils "tierceron/trcvault/util"
+	trcdb "tierceron/trcx/db"
 	"tierceron/trcx/extract"
 	sys "tierceron/vaulthelper/system"
 
@@ -64,7 +64,7 @@ type TrcFlowMachineContext struct {
 	Env                       string
 	Config                    *eUtils.DriverConfig
 	Vault                     *sys.Vault
-	TierceronEngine           *db.TierceronEngine
+	TierceronEngine           *trcdb.TierceronEngine
 	ExtensionAuthData         map[string]interface{}
 	GetAdditionalFlowsByState func(teststate string) []FlowNameType
 }
@@ -183,13 +183,15 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 	trcfc.GoMod.SectionKey = "/Restricted/"
 	trcfc.GoMod.SectionName = flowService
 	trcfc.GoMod.SubSectionValue = flowService
-	properties, err := util.NewProperties(tfmContext.Config, tfmContext.Vault, trcfc.GoMod, tfmContext.Env, flowProject, flowService)
+	properties, err := trcvutils.NewProperties(tfmContext.Config, tfmContext.Vault, trcfc.GoMod, tfmContext.Env, flowProject, flowService)
 	if err != nil {
 		return nil, false
 	}
 	return properties.GetConfigValues(flowService, flowConfigTemplateName)
 }
 
+// seedVaultCycle - looks for changes in TrcDb and seeds vault with changes and pushes them also to remote
+//                  data sources.
 func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
@@ -228,6 +230,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	}
 }
 
+// Seeds TrcDb from vault...  useful during init.
 func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
@@ -340,7 +343,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	}
 
 	if operation == "INSERT" {
-		_, _, matrix, err := db.Query(tfmContext.TierceronEngine, query)
+		_, _, matrix, err := trcdb.Query(tfmContext.TierceronEngine, query)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -366,8 +369,8 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				}
 			}
 		}
-	} else if operation == "UPDATE" {
-		tableName, _, matrix, err := db.Query(tfmContext.TierceronEngine, query)
+	} else if operation == "UPDATE" || operation == "DELETE" {
+		tableName, _, matrix, err := trcdb.Query(tfmContext.TierceronEngine, query)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -394,7 +397,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			}
 		}
 	} else if operation == "SELECT" {
-		_, _, matrixChangedEntries, err := db.Query(tfmContext.TierceronEngine, query)
+		_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, query)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -406,7 +409,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 // Open a database connection to the provided source using provided
 // source configurations.
 func (tfmContext *TrcFlowMachineContext) GetDbConn(tfContext *TrcFlowContext, dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
-	return util.OpenDirectConnection(tfmContext.Config, dbUrl,
+	return trcvutils.OpenDirectConnection(tfmContext.Config, dbUrl,
 		username,
 		configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionsMap[tfContext.RemoteDataSource["dbsourceregion"].(string)]))
 }
@@ -420,9 +423,9 @@ func (tfmContext *TrcFlowMachineContext) CallAPI(apiAuthHeaders map[string]strin
 		return nil, err
 	}
 	if getOrPost {
-		return util.GetJSONFromClientByGet(tfmContext.Config, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
+		return trcvutils.GetJSONFromClientByGet(tfmContext.Config, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
 	}
-	return util.GetJSONFromClientByPost(tfmContext.Config, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
+	return trcvutils.GetJSONFromClientByPost(tfmContext.Config, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
 }
 
 func (tfmContext *TrcFlowMachineContext) Log(msg string, err error) {
@@ -449,7 +452,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 
 		// 3. Create a base seed template for use in vault seed process.
 		var baseTableTemplate extract.TemplateResultData
-		util.LoadBaseTemplate(config, &baseTableTemplate, tfContext.GoMod, tfContext.FlowSource, tfContext.Flow.ServiceName(), tfContext.FlowPath)
+		trcvutils.LoadBaseTemplate(config, &baseTableTemplate, tfContext.GoMod, tfContext.FlowSource, tfContext.Flow.ServiceName(), tfContext.FlowPath)
 		tfContext.FlowData = &baseTableTemplate
 	} else {
 		// Use the flow name directly.
@@ -461,7 +464,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
 
 	eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
-	dbsourceConn, err := util.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+	dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
 	if err != nil {
 		eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.", false)

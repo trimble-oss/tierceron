@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"tierceron/utils"
 	eUtils "tierceron/utils"
 	sys "tierceron/vaulthelper/system"
 )
@@ -18,7 +17,7 @@ func UploadPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault, noPer
 		return err
 	}
 
-	utils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(config, err, true)
 	for _, file := range files {
 		// Extract and truncate file name
 		filename := file.Name()
@@ -32,7 +31,7 @@ func UploadPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault, noPer
 			} else {
 				err = v.CreatePolicyFromFile(filename, dir+"/"+file.Name())
 			}
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 			if err != nil {
 				return err
 			}
@@ -52,12 +51,12 @@ func GetExistsPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault) (b
 
 	allExists := false
 
-	utils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(config, err, true)
 	for _, file := range files {
 		// Extract and truncate file name
 		config.Log.Printf("\tFound token policy file: %s\n", file.Name())
 		exists, err := v.GetExistsPolicyFromFileName(file.Name())
-		utils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(config, err, false)
 		if err != nil {
 			return false, err
 		}

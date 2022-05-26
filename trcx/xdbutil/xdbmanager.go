@@ -2,8 +2,8 @@ package xdbutil
 
 import (
 	"os"
-	xdb "tierceron/trcx/db"
-	xUtils "tierceron/trcx/xutil"
+	trcdb "tierceron/trcx/db"
+	"tierceron/trcx/xutil"
 	eUtils "tierceron/utils"
 )
 
@@ -28,7 +28,7 @@ func GenerateSeedsFromVaultToDb(config *eUtils.DriverConfig) (interface{}, error
 	tempTemplatePaths := []string{}
 	for _, startDir := range config.StartDir {
 		//get files from directory
-		tp := xUtils.GetDirFiles(startDir)
+		tp := xutil.GetDirFiles(startDir)
 		tempTemplatePaths = append(tempTemplatePaths, tp...)
 	}
 
@@ -42,7 +42,7 @@ func GenerateSeedsFromVaultToDb(config *eUtils.DriverConfig) (interface{}, error
 		}
 	}
 
-	tierceronEngine, err := xdb.CreateEngine(config,
+	tierceronEngine, err := trcdb.CreateEngine(config,
 		templatePaths, config.Env, config.VersionFilter[0])
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)

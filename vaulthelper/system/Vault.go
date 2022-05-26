@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 	"time"
 
 	"github.com/hashicorp/vault/api"
@@ -30,7 +30,27 @@ type KeyTokenWrapper struct {
 
 // NewVault Constructs a new vault at the given address with the given access token
 func NewVault(insecure bool, address string, env string, newVault bool, pingVault bool, scanVault bool, logger *log.Logger) (*Vault, error) {
-	httpClient, err := kv.CreateHTTPClient(insecure, address, env, scanVault)
+	return NewVaultWithNonlocal(insecure,
+		address,
+		env,
+		newVault,
+		pingVault,
+		scanVault,
+		false, // allowInsecure - false
+		logger)
+}
+
+// NewVault Constructs a new vault at the given address with the given access token allowing insecure for non local.
+func NewVaultWithNonlocal(insecure bool, address string, env string, newVault bool, pingVault bool, scanVault bool, allowNonLocal bool, logger *log.Logger) (*Vault, error) {
+	var httpClient *http.Client
+	var err error
+
+	if allowNonLocal {
+		httpClient, err = helperkv.CreateHTTPClientAllowNonLocal(insecure, address, env, scanVault, true)
+	} else {
+		httpClient, err = helperkv.CreateHTTPClient(insecure, address, env, scanVault)
+	}
+
 	if err != nil {
 		logger.Println("Connection to vault couldn't be made - vaultHost: " + address)
 		return nil, err

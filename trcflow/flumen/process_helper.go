@@ -1,10 +1,18 @@
 package flumen
 
 import (
+	"crypto/sha256"
+	"errors"
+	"fmt"
+	"io"
+	"os"
 	"sync"
-	"tierceron/trcvault/util"
-	"tierceron/trcx/db"
+	"tierceron/trcvault/opts/insecure"
+	"tierceron/trcvault/opts/prod"
+	trcvutils "tierceron/trcvault/util"
+	trcdb "tierceron/trcx/db"
 	"tierceron/trcx/extract"
+	helperkv "tierceron/vaulthelper/kv"
 
 	flowcore "tierceron/trcflow/core"
 
@@ -45,13 +53,13 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 	changedEntriesQuery = getChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
 	//}
 
-	_, _, matrixChangedEntries, err := db.Query(tfmContext.TierceronEngine, changedEntriesQuery)
+	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery)
 	if err != nil {
 		eUtils.LogErrorObject(tfmContext.Config, err, false)
 	}
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
-		_, _, _, err = db.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -63,7 +71,7 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 
 		changedTableQuery := `SELECT * FROM ` + tfContext.FlowSourceAlias + `.` + tfContext.Flow.TableName() + ` WHERE ` + identityColumnName + `='` + changedId + `'` // TODO: Implement query using changedId
 
-		_, changedTableColumns, changedTableRowData, err := db.Query(tfmContext.TierceronEngine, changedTableQuery)
+		_, changedTableColumns, changedTableRowData, err := trcdb.Query(tfmContext.TierceronEngine, changedTableQuery)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 			continue
@@ -80,23 +88,23 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 		//Check for tenantId
 
 		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query string) (string, []string, [][]string, error) {
-			return db.Query(engine.(*db.TierceronEngine), query)
+			return trcdb.Query(engine.(*trcdb.TierceronEngine), query)
 		})
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(tfmContext.Config, indexPathErr, false)
 			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = db.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
+			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
 			continue
 		}
 
-		seedError := util.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), vaultAddress, tfmContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
+		seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), vaultAddress, tfmContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
 			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = db.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
+			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
@@ -113,5 +121,50 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 
 	}
 
+	return nil
+}
+
+//Updated deployed to true for any plugin
+func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error {
+	for _, pluginName := range pluginNameList {
+		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
+		if err != nil {
+			return err
+		}
+		if pluginData == nil {
+			if !prod.IsProd() && insecure.IsInsecure() {
+				pluginData = make(map[string]interface{})
+				pluginData["trcplugin"] = pluginName
+				if imageFile, err := os.Open("/etc/opt/vault/plugins/" + pluginName); err == nil {
+					sha256 := sha256.New()
+
+					defer imageFile.Close()
+					if _, err := io.Copy(sha256, imageFile); err != nil {
+						continue
+					}
+
+					filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
+					pluginData["trcsha256"] = filesystemsha256
+					pluginData["copied"] = true
+				}
+			} else {
+				return errors.New("Plugin not certified.")
+			}
+		}
+
+		if !pluginData["copied"].(bool) || pluginData["deployed"].(bool) {
+			continue
+		}
+		writeMap := make(map[string]interface{})
+		writeMap["trcplugin"] = pluginData["trcplugin"]
+		writeMap["trcsha256"] = pluginData["trcsha256"]
+		writeMap["copied"] = pluginData["copied"]
+		writeMap["deployed"] = true
+
+		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package trcinitbase
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -10,9 +11,8 @@ import (
 	trcname "tierceron/trcvault/opts/trcname"
 
 	il "tierceron/trcinit/initlib"
-	"tierceron/utils"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 )
 
@@ -49,6 +49,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	restrictedPtr := flag.String("restricted", "", "Specfies which projects have restricted access.")
 	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
 
+	allowNonLocal := false
+
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
 		s := args[i]
@@ -73,6 +75,27 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if len(*indexedPtr) > 0 && len(*restrictedPtr) > 0 {
 		fmt.Println("-index and -restricted flag cannot be used together.")
 		os.Exit(1)
+	}
+
+	// Enter ID tokens
+	if *insecurePtr {
+		if isLocal, lookupErr := helperkv.IsUrlIp(*addrPtr); isLocal && lookupErr == nil {
+			// This is fine...
+			fmt.Println("Initialize local vault.")
+		} else {
+			scanner := bufio.NewScanner(os.Stdin)
+			// Enter ID tokens
+			fmt.Println("Are you sure you want to connect to non local server with self signed cert(Y): ")
+			scanner.Scan()
+			skipVerify := scanner.Text()
+			if skipVerify == "Y" || skipVerify == "y" {
+				// Good to go.
+				allowNonLocal = true
+			} else {
+				fmt.Println("This is a remote host and you did not confirm allow non local.  If this is a remote host with a self signed cert, init will fail.")
+				*insecurePtr = false
+			}
+		}
 	}
 
 	var indexSlice = make([]string, 0) //Checks for indexed projects
@@ -124,10 +147,10 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	logger := log.New(f, "[INIT]", log.LstdFlags)
 	logger.Println("==========Beginning Vault Initialization==========")
 	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
-	utils.CheckError(config, err, true)
+	eUtils.CheckError(config, err, true)
 
 	if !*pingPtr && !*newPtr && *tokenPtr == "" {
-		utils.CheckWarning(config, "Missing auth tokens", true)
+		eUtils.CheckWarning(config, "Missing auth tokens", true)
 	}
 
 	if addrPtr == nil || *addrPtr == "" {
@@ -143,11 +166,16 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	}
 
 	// Create a new vault system connection
-	v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr, false, logger)
+	v, err := sys.NewVaultWithNonlocal(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr, false, allowNonLocal, logger)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
 			fmt.Printf("Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
+		} else if strings.Contains(err.Error(), "no such host") {
+			fmt.Printf("failed to connect to vault - missing host")
+		} else {
+			fmt.Println(err.Error())
 		}
+
 		os.Exit(0)
 	}
 	if *pingPtr {
@@ -157,12 +185,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		os.Exit(0)
 	}
 
-	utils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(config, err, true)
 
 	// Trying to use local, prompt for username/password
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
-		*envPtr, err = utils.LoginToLocal()
-		utils.LogErrorObject(config, err, true)
+		*envPtr, err = eUtils.LoginToLocal()
+		eUtils.LogErrorObject(config, err, true)
 		logger.Printf("Login successful, using local envronment: %s\n", *envPtr)
 	}
 
@@ -178,12 +206,12 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Unable to parse unsealShardPtr into int")
 		}
 		keyToken, err := v.InitVault(int(totalKeyShard), int(unsealShardPtr))
-		utils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(config, err, true)
 		v.SetToken(keyToken.Token)
 		v.SetShards(keyToken.Keys)
 		//check error returned by unseal
 		_, _, _, err = v.Unseal()
-		utils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(config, err, true)
 	}
 	logger.Printf("Succesfully connected to vault at %s\n", *addrPtr)
 
@@ -192,7 +220,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Creating tokens, roles, and policies.")
 			policyExists, policyErr := il.GetExistsPolicies(config, namespacePolicyConfigs, v)
 			if policyErr != nil {
-				utils.LogErrorObject(config, policyErr, false)
+				eUtils.LogErrorObject(config, policyErr, false)
 				fmt.Println("Cannot safely determine policy.")
 				os.Exit(-1)
 			}
@@ -204,7 +232,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 			roleExists, roleErr := il.GetExistsRoles(config, namespaceRoleConfigs, v)
 			if roleErr != nil {
-				utils.LogErrorObject(config, roleErr, false)
+				eUtils.LogErrorObject(config, roleErr, false)
 				fmt.Println("Cannot safely determine role.")
 			}
 
@@ -246,7 +274,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		if *tokenExpiration {
 			fmt.Println("Checking token expiration.")
 			roleId, lease, err := v.GetRoleID("bamboo")
-			utils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(config, err, false)
 			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
 		} else {
 			if *rotateTokens {
@@ -299,8 +327,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				//
 				tokenMap := map[string]interface{}{}
 
-				mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
-				utils.LogErrorObject(config, err, false)
+				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
+				eUtils.LogErrorObject(config, err, false)
 
 				mod.Env = "bamboo"
 
@@ -313,7 +341,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				existingTokens, err := mod.ReadData("super-secrets/tokens")
 				if err != nil {
 					fmt.Println("Read existing tokens failure.  Cannot continue.")
-					utils.LogErrorObject(config, err, false)
+					eUtils.LogErrorObject(config, err, false)
 					os.Exit(-1)
 				}
 
@@ -343,11 +371,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				// Recreate the role.
 				//
 				resp, role_cleanup := v.DeleteRole("bamboo")
-				utils.LogErrorObject(config, role_cleanup, false)
+				eUtils.LogErrorObject(config, role_cleanup, false)
 
 				if resp.StatusCode == 404 {
 					err = v.EnableAppRole()
-					utils.LogErrorObject(config, err, true)
+					eUtils.LogErrorObject(config, err, true)
 				}
 
 				err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
@@ -355,13 +383,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 					TokenMaxTTL: "15m",
 					Policies:    []string{"bamboo"},
 				})
-				utils.LogErrorObject(config, err, true)
+				eUtils.LogErrorObject(config, err, true)
 
 				roleID, _, err := v.GetRoleID("bamboo")
-				utils.LogErrorObject(config, err, true)
+				eUtils.LogErrorObject(config, err, true)
 
 				secretID, err := v.GetSecretID("bamboo")
-				utils.LogErrorObject(config, err, true)
+				eUtils.LogErrorObject(config, err, true)
 
 				fmt.Printf("Rotated role id and secret id.\n")
 				fmt.Printf("Role ID: %s\n", roleID)
@@ -369,8 +397,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 				// Store all new tokens to new appRole.
 				warn, err := mod.Write("super-secrets/tokens", tokenMap)
-				utils.LogErrorObject(config, err, true)
-				utils.LogWarningsObject(config, warn, true)
+				eUtils.LogErrorObject(config, err, true)
+				eUtils.LogWarningsObject(config, warn, true)
 			}
 		}
 		os.Exit(0)
@@ -380,7 +408,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	if !*newPtr && len(*shardPtr) > 0 {
 		v.AddShard(*shardPtr)
 		prog, t, success, err := v.Unseal()
-		utils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(config, err, true)
 		if !success {
 			logger.Printf("Vault unseal progress: %d/%d key shards\n", prog, t)
 			logger.Println("============End Initialization Attempt============")
@@ -391,8 +419,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
-		mod, err := kv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
-		utils.LogErrorObject(config, err, true)
+		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
+		eUtils.LogErrorObject(config, err, true)
 
 		mod.Env = "bamboo"
 
@@ -420,20 +448,20 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			}
 
 			err = v.EnableAppRole()
-			utils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(config, err, true)
 
 			err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
 				TokenTTL:    "10m",
 				TokenMaxTTL: "15m",
 				Policies:    []string{"bamboo"},
 			})
-			utils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(config, err, true)
 
 			roleID, _, err := v.GetRoleID("bamboo")
-			utils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(config, err, true)
 
 			secretID, err := v.GetSecretID("bamboo")
-			utils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(config, err, true)
 
 			fmt.Printf("Rotated role id and secret id.\n")
 			fmt.Printf("Role ID: %s\n", roleID)
@@ -441,8 +469,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 			// Store all new tokens to new appRole.
 			warn, err := mod.Write("super-secrets/tokens", tokenMap)
-			utils.LogErrorObject(config, err, true)
-			utils.LogWarningsObject(config, warn, true)
+			eUtils.LogErrorObject(config, err, true)
+			eUtils.LogWarningsObject(config, warn, true)
 		}
 	}
 
@@ -450,11 +478,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	// because you first need tokens to do so.  Only seed if !new.
 	if !*newPtr {
 		// Seed the vault with given seed directory
-		mod, _ := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger) // Connect to vault
+		mod, _ := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger) // Connect to vault
 		mod.Env = *envPtr
-		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.Env, false, logger); errValidateEnvironment != nil || !valid {
-			fmt.Println("Invalid token - token: ", *tokenPtr)
-			os.Exit(1)
+		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
+			if unrestrictedValid, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+				eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+mod.Env, 1)
+				return
+			}
 		}
 		var subSectionSlice = make([]string, 0) //Assign slice with the appriopiate slice
 		if len(restrictedSlice) > 0 {

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 
 	configcore "VaultConfig.Bootstrap/configcore"
 
@@ -18,7 +18,7 @@ import (
 	_ "github.com/denisenkom/go-mssqldb"
 )
 
-func (s *Server) authUser(config *eUtils.DriverConfig, mod *kv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
+func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
 	connInfo, err := mod.ReadData("apiLogins/meta")
 
 	var url, username, password string
@@ -53,7 +53,7 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *kv.Modifier, operato
 }
 
 func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]configcore.Session, error) {
-	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, 
 }
 
 func (s *Server) getVaultSessions(env string) ([]configcore.Session, error) {
-	mod, err := kv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
 		return nil, err
 	}

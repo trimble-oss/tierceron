@@ -9,9 +9,8 @@ import (
 	trcname "tierceron/trcvault/opts/trcname"
 
 	il "tierceron/trcinit/initlib"
-	"tierceron/utils"
 	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	helperkv "tierceron/vaulthelper/kv"
 
 	configcore "VaultConfig.Bootstrap/configcore"
 )
@@ -56,9 +55,9 @@ func main() {
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
-		*envPtr, err = utils.LoginToLocal()
+		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		utils.CheckError(config, err, true)
+		eUtils.CheckError(config, err, true)
 	}
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
@@ -68,14 +67,14 @@ func main() {
 		fmt.Println("Missing auth components.")
 		os.Exit(1)
 	}
-	mod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
-	utils.CheckError(config, err, true)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
+	eUtils.CheckError(config, err, true)
 	mod.Env = *envPtr
 
 	if *projectInfoPtr {
 		templateList, err := mod.List("templates/")
 		if err != nil {
-			utils.CheckError(config, err, true)
+			eUtils.CheckError(config, err, true)
 		}
 		fmt.Printf("\nProjects available:\n")
 		for _, templatePath := range templateList.Data {
@@ -95,7 +94,7 @@ func main() {
 				os.Exit(-1)
 			}
 		}
-		utils.CheckError(config, err, true)
-		utils.CheckWarnings(config, warn, true)
+		eUtils.CheckError(config, err, true)
+		eUtils.CheckWarnings(config, warn, true)
 	}
 }
