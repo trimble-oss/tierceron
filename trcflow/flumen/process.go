@@ -24,6 +24,7 @@ import (
 )
 
 func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error {
+	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
 	var tfmContext *flowcore.TrcFlowMachineContext
 	var config *eUtils.DriverConfig
@@ -281,5 +282,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// be sure to enable encryption on the connection...
 
 	wg.Wait()
+	logger.Println("ProcessFlows complete.")
+
 	return nil
 }
