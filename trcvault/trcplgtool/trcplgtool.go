@@ -26,6 +26,7 @@ func PluginMain() {
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
 	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
+	checkCopiedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied & certified")
 	certifyInit := false
 
 	args := os.Args[1:]
@@ -135,6 +136,29 @@ func PluginMain() {
 			fmt.Println("Latest plugin image sha matches provided plugin sha.  It has been certified.")
 		} else {
 			fmt.Println("Provided plugin sha is not deployable.")
+			os.Exit(1)
+		}
+
+		fmt.Println("Plugin has not been copied or deployed.")
+		os.Exit(2)
+	}
+
+	if *checkCopiedPtr {
+		if pluginToolConfig["copied"].(bool) && pluginToolConfig["trcsha256"].(string) == *sha256Ptr { //Compare vault sha with provided sha
+			fmt.Println("Plugin has been copied & certified.")
+			os.Exit(0)
+		}
+
+		err := repository.GetImageAndShaFromDownload(pluginToolConfig)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		if *sha256Ptr == pluginToolConfig["imagesha256"].(string) { //Compare repo image sha with provided sha
+			fmt.Println("Latest plugin image sha matches provided plugin sha.  It has been certified.")
+		} else {
+			fmt.Println("Provided plugin sha is not certified.")
 			os.Exit(1)
 		}
 
