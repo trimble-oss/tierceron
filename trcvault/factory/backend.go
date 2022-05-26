@@ -29,9 +29,9 @@ var _ logical.Factory = TrcFactory
 var logger *log.Logger
 
 func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
-	logger.Println("Init begun.")
 	eUtils.InitHeadless(headless)
 	logger = l
+	logger.Println("Init begun.")
 
 	// Set up a table process runner.
 	go initVaultHostBootstrap()
@@ -273,6 +273,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 		} else {
 			if _, ok := tokenMap["token"]; ok {
 				tokenMap["env"] = env
+				tokenMap["insecure"] = true
 				tokenMap["address"] = vaultHost
 				PushEnv(tokenMap)
 			}
@@ -345,6 +346,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		tokenEnvMap := map[string]interface{}{}
 		tokenEnvMap["env"] = req.Path
 		tokenEnvMap["address"] = vaultHost
+		tokenEnvMap["insecure"] = true
 		if vData["token"] != nil {
 			logger.Println("Env queued: " + req.Path)
 		}
@@ -387,6 +389,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	tokenEnvMap["env"] = req.Path
 	tokenEnvMap["address"] = vaultHost
+	tokenEnvMap["insecure"] = true
 
 	// Check that some fields are given
 	if len(req.Data) == 0 {
@@ -508,6 +511,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	tokenEnvMap["address"] = vaultHost
+	tokenEnvMap["insecure"] = true
 
 	key := req.Path
 	if key == "" {
