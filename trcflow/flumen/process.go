@@ -125,7 +125,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		Regions:      emptySlice,
 		Token:        pluginConfig["token"].(string),
 		VaultAddress: pluginConfig["address"].(string),
-		Insecure:     pluginConfig["insecure"].(bool),
+		Insecure:     true, // TODO: investigate insecure implementation...
 		Env:          pluginConfig["env"].(string),
 		Log:          logger,
 	}
