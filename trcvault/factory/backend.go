@@ -31,6 +31,7 @@ var logger *log.Logger
 func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
+	logger.Println("Init begun.")
 
 	// Set up a table process runner.
 	go initVaultHostBootstrap()
@@ -73,6 +74,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 	if testCompleteChan != nil {
 		<-testCompleteChan
 	}
+	logger.Println("Init ended.")
 }
 
 var KvInitialize func(context.Context, *logical.InitializationRequest) error
@@ -203,6 +205,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	processFlows trcvutils.ProcessFlowFunc,
 	pluginEnvConfig map[string]interface{},
 	testCompleteChan chan bool) error {
+	logger.Println("ProcessPluginEnvConfig begun.")
 	env, eOk := pluginEnvConfig["env"]
 	if !eOk || env.(string) == "" {
 		logger.Println("Bad configuration data.  Missing env.")
@@ -270,8 +273,8 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 		} else {
 			if _, ok := tokenMap["token"]; ok {
 				tokenMap["env"] = env
-				tokenMap["address"] = vaultHost
 				tokenMap["insecure"] = true
+				tokenMap["address"] = vaultHost
 				PushEnv(tokenMap)
 			}
 		}
@@ -577,6 +580,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 // TrcFactory configures and returns Mock backends
 func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
+	logger.Println("TrcFactory")
 	env, err := conf.System.PluginEnv(ctx)
 	if env != nil {
 		logger.Println("=============== Initializing Vault Tierceron Plugin ===============")
