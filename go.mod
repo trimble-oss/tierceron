@@ -31,12 +31,9 @@ require (
 )
 
 require (
-	ETL.Core v0.0.0-00010101000000-000000000000 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/linkedin/goavro/v2 v2.11.1 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	github.com/wildbeavers/schema-registry v0.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
@@ -107,7 +104,3 @@ replace VaultConfig.Bootstrap => ../VaultConfig.Bootstrap
 replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 
 replace VaultConfig.Test => ../VaultConfig.Test
-
-replace ETL.Core => ../../Azure/ETL.Core
-
-// replace github.com/dolthub/go-mysql-server => ../../Github/go-mysql-server
