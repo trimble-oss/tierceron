@@ -7,7 +7,9 @@ import (
 	"strings"
 	"tierceron/trcflow/deploy"
 	"tierceron/trcvault/factory"
+	"tierceron/trcvault/opts/insecure"
 	memonly "tierceron/trcvault/opts/memonly"
+	"tierceron/trcvault/opts/prod"
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
 
@@ -27,7 +29,12 @@ func main() {
 		}
 	}
 	eUtils.InitHeadless(true)
-	f, logErr := os.OpenFile("trcplugincarrier.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	logFile := "/var/log/trcplugincarrier.log"
+	if !prod.IsProd() && insecure.IsInsecure() {
+		logFile = "trcplugincarrier.log"
+	}
+
+	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 	logger.Println("Beginning plugin startup.")
