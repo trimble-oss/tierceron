@@ -77,23 +77,30 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 		row := []interface{}{}
 
 		// TODO: Add Enterprise, Environment, and Version....
+		allDefaults := true
 		for _, column := range table.Schema() {
 			if value, ok := valueColumns[column.Name]; ok {
-				if value == "<Enter Secret Here>" {
+				if value == "<Enter Secret Here>" || value == "" {
 					value = ""
+				} else {
+					allDefaults = false
 				}
 				row = append(row, value)
 			} else if secretValue, svOk := secretColumns[column.Name]; svOk {
-				if secretValue == "<Enter Secret Here>" {
+				if secretValue == "<Enter Secret Here>" || secretValue == "" {
 					secretValue = ""
+				} else {
+					allDefaults = false
 				}
 				row = append(row, secretValue)
 			}
 		}
 
-		m.Lock()
-		table.Insert(te.Context, sql.NewRow(row...))
-		m.Unlock()
+		if !allDefaults {
+			m.Lock()
+			table.Insert(te.Context, sql.NewRow(row...))
+			m.Unlock()
+		}
 	}
 }
 
