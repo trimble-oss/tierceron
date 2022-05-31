@@ -380,6 +380,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
 		vaultUrl, err := url.Parse(vaddr.(string))
+		tokenEnvMap["interfaceaddr"] = vaddr.(string)
 		if err == nil {
 			vaultPort = vaultUrl.Port()
 		}
@@ -449,6 +450,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
 					logger.Println("TrcUpdate stage 1.1.1")
 					vaultUrl, err := url.Parse(vaddr.(string))
+					tokenEnvMap["interfaceaddr"] = vaddr.(string)
 					if err == nil {
 						logger.Println("TrcUpdate stage 1.1.1.1")
 						vaultPort = vaultUrl.Port()
@@ -503,6 +505,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
 		vaultUrl, err := url.Parse(vaddr.(string))
+		tokenEnvMap["interfaceaddr"] = vaddr.(string)
 		if err == nil {
 			vaultPort = vaultUrl.Port()
 		}
