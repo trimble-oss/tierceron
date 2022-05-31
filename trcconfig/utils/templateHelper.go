@@ -195,7 +195,9 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 	cert bool) (string, map[int]string, error) {
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
-	cds.Init(config, modifier, secretMode, true, project, nil, service)
+	if config.Token != "novault" {
+		cds.Init(config, modifier, secretMode, true, project, nil, service)
+	}
 	certData := make(map[int]string)
 	serviceLookup := service
 	i := strings.Index(service, ".")
