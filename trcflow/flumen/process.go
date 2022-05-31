@@ -290,7 +290,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		eUtils.LogErrorMessage(config, "Could parse address for interface. Failing to start interface", false)
 		return parseErr
 	}
-	vaultDatabaseConfig["interfaceaddr"] = interfaceUrl.Scheme + "://" + strings.Split(interfaceUrl.Host, ":")[0] + ":" + vaultDatabaseConfig["dbport"].(string)
+	vaultDatabaseConfig["interfaceaddr"] = strings.Split(interfaceUrl.Host, ":")[0] + ":" + vaultDatabaseConfig["dbport"].(string)
 	harbingerErr := harbinger.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig)
 	if harbingerErr != nil {
 		wg.Done()
