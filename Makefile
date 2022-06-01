@@ -16,13 +16,13 @@ devplugincarriersha:
 devplugincarrier: devplugincarrierbuild devplugincarriersha
 
 devplugintrcdbbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "testflow insecure" -o trcvault/deploy/target/trc-vault-plugin tierceron/trcvault/plugins/trcdb
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "insecure" -o trcvault/deploy/target/trc-vault-plugin tierceron/trcvault/plugins/trcdb
 devplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin.sha256
 devplugintrcdb: devplugintrcdbbuild devplugintrcdbsha
 
 harbingplugintrcdbbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "testflow insecure harbinger" -o trcvault/deploy/target/trc-vault-plugin tierceron/trcvault/plugins/trcdb
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "insecure harbinger" -o trcvault/deploy/target/trc-vault-plugin tierceron/trcvault/plugins/trcdb
 harbingplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin.sha256
 harbingplugintrcdb: harbingplugintrcdbbuild harbingplugintrcdbsha
