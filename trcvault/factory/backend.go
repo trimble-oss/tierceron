@@ -236,8 +236,8 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
 	logger.Println("Begin processFlows for env: " + env.(string))
 
-	go func(pc map[string]interface{}, l *log.Logger) {
-		flowErr := processFlows(pluginEnvConfig, l)
+	go func(pec map[string]interface{}, l *log.Logger) {
+		flowErr := processFlows(pec, l)
 		if testCompleteChan != nil {
 			testCompleteChan <- true
 		}
