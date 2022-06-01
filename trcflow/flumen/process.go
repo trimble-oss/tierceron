@@ -3,9 +3,7 @@ package flumen
 import (
 	"io"
 	"log"
-	"net/url"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -286,14 +284,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.
 	// The engine is in tfmContext...  that's the one we need to make available for connecting via dbvis...
 	// be sure to enable encryption on the connection...
-	logger.Println("Starting Interface.")
 	wg.Add(1)
-	interfaceUrl, parseErr := url.Parse(pluginConfig["interfaceaddr"].(string))
-	if parseErr != nil {
-		eUtils.LogErrorMessage(config, "Could parse address for interface. Failing to start interface", false)
-		return parseErr
-	}
-	vaultDatabaseConfig["interfaceaddr"] = strings.Split(interfaceUrl.Host, ":")[0] + ":" + vaultDatabaseConfig["dbport"].(string)
+	vaultDatabaseConfig["interfaceaddr"] = pluginConfig["interfaceaddr"]
 	harbingerErr := harbinger.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig)
 	if harbingerErr != nil {
 		wg.Done()
