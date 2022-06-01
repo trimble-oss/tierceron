@@ -119,6 +119,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 
 	}
+	eUtils.LogInfo(config, "Finished retrieving configs")
 	sourceDatabaseConnectionsMap := map[string]map[string]interface{}{}
 
 	// 4. Create config for vault for queries to vault.
@@ -152,6 +153,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		eUtils.LogErrorMessage(config, "Couldn't build engine.", false)
 		return err
 	}
+	eUtils.LogInfo(config, "Finished building engine")
 
 	// 2. Establish mysql connection to remote mysql instance.
 	for _, sourceDatabaseConfig := range sourceDatabaseConfigs {
