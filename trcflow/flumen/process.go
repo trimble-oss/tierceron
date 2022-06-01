@@ -45,13 +45,14 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	//if not copied -> this plugin should fail to start up
 	//Update deployed status & return if
 	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok {
-		deployedUpdateErr := PluginDeployedUpdate(goMod, pluginNameList)
+		deployedUpdateErr := PluginDeployedUpdate(goMod, pluginNameList, logger)
 		if deployedUpdateErr != nil {
 			eUtils.LogErrorMessage(config, deployedUpdateErr.Error(), false)
 			eUtils.LogErrorMessage(config, "Could not update plugin deployed status in vault.", false)
 			return err
 		}
 	}
+	logger.Println("Deployed status updated.")
 
 	tfmContext = &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
@@ -61,7 +62,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var sourceDatabaseConfigs []map[string]interface{}
 	var vaultDatabaseConfig map[string]interface{}
 	var trcIdentityConfig map[string]interface{}
-
+	logger.Println("Grabbing configs.")
 	for i := 0; i < len(projects); i++ {
 
 		var indexValues []string
@@ -119,6 +120,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 
 	}
+	eUtils.LogInfo(config, "Finished retrieving configs")
 	sourceDatabaseConnectionsMap := map[string]map[string]interface{}{}
 
 	// 4. Create config for vault for queries to vault.
@@ -152,6 +154,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		eUtils.LogErrorMessage(config, "Couldn't build engine.", false)
 		return err
 	}
+	eUtils.LogInfo(config, "Finished building engine")
 
 	// 2. Establish mysql connection to remote mysql instance.
 	for _, sourceDatabaseConfig := range sourceDatabaseConfigs {
