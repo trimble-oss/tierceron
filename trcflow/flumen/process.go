@@ -52,6 +52,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			return err
 		}
 	}
+	logger.Println("Deployed status updated.")
 
 	tfmContext = &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
@@ -61,7 +62,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var sourceDatabaseConfigs []map[string]interface{}
 	var vaultDatabaseConfig map[string]interface{}
 	var trcIdentityConfig map[string]interface{}
-
+	logger.Println("Grabbing configs.")
 	for i := 0; i < len(projects); i++ {
 
 		var indexValues []string
