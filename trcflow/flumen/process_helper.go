@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"sync"
 	"tierceron/trcvault/opts/insecure"
@@ -125,7 +126,9 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 }
 
 //Updated deployed to true for any plugin
-func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error {
+func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logger *log.Logger) error {
+	logger.Println("PluginDeployedUpdate start.")
+
 	for _, pluginName := range pluginNameList {
 		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
 		if err != nil {
@@ -135,6 +138,7 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error
 			if !prod.IsProd() && insecure.IsInsecure() {
 				pluginData = make(map[string]interface{})
 				pluginData["trcplugin"] = pluginName
+				logger.Println("Checking file.")
 				if imageFile, err := os.Open("/etc/opt/vault/plugins/" + pluginName); err == nil {
 					sha256 := sha256.New()
 
@@ -152,9 +156,15 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error
 			}
 		}
 
-		if !pluginData["copied"].(bool) || pluginData["deployed"].(bool) {
+		if copied, okCopied := pluginData["copied"]; !okCopied || !copied.(bool) {
+			logger.Println("Cannot certify plugin.  Plugin not copied: " + pluginName)
 			continue
 		}
+
+		if deployed, okDeployed := pluginData["deployed"]; !okDeployed || deployed.(bool) {
+			continue
+		}
+
 		writeMap := make(map[string]interface{})
 		writeMap["trcplugin"] = pluginData["trcplugin"]
 		writeMap["trcsha256"] = pluginData["trcsha256"]
@@ -166,5 +176,6 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string) error
 			return err
 		}
 	}
+	logger.Println("PluginDeployedUpdate complete.")
 	return nil
 }
