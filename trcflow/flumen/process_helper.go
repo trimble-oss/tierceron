@@ -82,7 +82,7 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 		for i, column := range changedTableColumns {
 			rowDataMap[column] = changedTableRowData[0][i]
 		}
-		// Convert matrix/slice to tenantConfiguration map
+		// Convert matrix/slice to table map
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
