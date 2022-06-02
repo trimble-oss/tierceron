@@ -235,11 +235,11 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 
 	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
 
-	for k, v := range pluginConfig {
-		pluginToolConfig[k] = v
-	}
 	if err != nil {
 		return nil, err
+	}
+	for k, v := range pluginConfig {
+		pluginToolConfig[k] = v
 	}
 
 	var ptc1 map[string]interface{}
