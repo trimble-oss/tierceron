@@ -83,10 +83,10 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter") // -templateFilter=config.yml
 
 	indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
-	indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // KafkaTableConfiguration, TenantConfiguration
-	indexNameFilterPtr := flag.String("indexFilter", "", "Specifies which index names to filter")                            // tenantId, SpectrumTableName
-	indexValueFilterPtr := flag.String("indexValueFilter", "", "Specifies which index values to filter")                     // qa14p8
-	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")                                         // TenantDatabase
+	indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // Table names
+	indexNameFilterPtr := flag.String("indexFilter", "", "Specifies which index names to filter")                            // column index, table to filter.
+	indexValueFilterPtr := flag.String("indexValueFilter", "", "Specifies which index values to filter")                     // column index value to filter on.
+	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")                                         // Indicates indexed projects...
 	restrictedPtr := flag.String("restricted", "", "Specifies which projects have restricted access.")
 
 	// Checks for proper flag input
