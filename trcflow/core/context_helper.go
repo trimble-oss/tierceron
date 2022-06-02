@@ -7,6 +7,8 @@ import (
 
 	trcdb "tierceron/trcx/db"
 	eUtils "tierceron/utils"
+
+	"VaultConfig.TenantConfig/util/buildopts"
 )
 
 var changesLock sync.Mutex
@@ -79,8 +81,10 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		if len(changedTableRowData) == 0 && err == nil { //This change was a delete
-			if tfContext.Flow.TableName() != "SpectrumEnterpriseConfig" { //TODO: Add delete functionality for other tables? - logic is in SEC push remote
-				continue
+			for _, syncedTable := range buildopts.GetSyncedTables() {
+				if tfContext.Flow.TableName() != syncedTable { //TODO: Add delete functionality for other tables? - logic is in SEC push remote
+					continue
+				}
 			}
 			//Check if it exists in trcdb
 			//Writeback to mysql to delete that
@@ -101,7 +105,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		for i, column := range changedTableColumns {
 			rowDataMap[column] = changedTableRowData[0][i]
 		}
-		// Convert matrix/slice to tenantConfiguration map
+		// Convert matrix/slice to table map
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
