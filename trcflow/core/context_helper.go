@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/base64"
 	"sync"
 	trcvutils "tierceron/trcvault/util"
 	"tierceron/trcx/extract"
@@ -122,6 +123,10 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
 			continue
+		}
+
+		if identityColumnName == "MysqlFilePath" {
+			changedTableRowData[0][1] = base64.StdEncoding.EncodeToString([]byte(changedTableRowData[0][1]))
 		}
 
 		seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.Config.VaultAddress, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
