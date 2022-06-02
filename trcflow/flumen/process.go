@@ -285,7 +285,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// The engine is in tfmContext...  that's the one we need to make available for connecting via dbvis...
 	// be sure to enable encryption on the connection...
 	wg.Add(1)
-	vaultDatabaseConfig["interfaceaddr"] = pluginConfig["interfaceaddr"]
+	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	harbingerErr := harbinger.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig)
 	if harbingerErr != nil {
 		wg.Done()
