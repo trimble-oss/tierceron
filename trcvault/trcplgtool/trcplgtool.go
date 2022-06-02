@@ -26,7 +26,7 @@ func PluginMain() {
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
 	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
-	checkCopiedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied & certified")
+	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
 	certifyInit := false
 
 	args := os.Args[1:]
