@@ -73,7 +73,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	}
 
 	if len(*indexedPtr) > 0 && len(*restrictedPtr) > 0 {
-		fmt.Println("-index and -restricted flag cannot be used together.")
+		fmt.Println("-indexed and -restricted flag cannot be used together.")
 		os.Exit(1)
 	}
 
