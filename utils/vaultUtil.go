@@ -13,6 +13,7 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	LogInfo(config, "InitVaultMod begins..")
 	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, config.ExitOnFailure, config.Log)
 	if err != nil {
+		LogInfo(config, "Failure to connect to vault..")
 		LogErrorObject(config, err, false)
 		return config, nil, nil, err
 	}
