@@ -251,7 +251,9 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	// Unmarshal
 	var rawYaml interface{}
 	hasEmptyValues := bytes.Contains(fData, []byte("<Enter Secret Here>"))
-	if hasEmptyValues && !strings.HasPrefix(filepath, "Index/") {
+	isIndexData := strings.HasPrefix(filepath, "Index/")
+
+	if hasEmptyValues && !isIndexData {
 		return eUtils.LogAndSafeExit(config, "Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", 1)
 	}
 
@@ -327,7 +329,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		return eUtils.LogErrorAndSafeExit(config, err, 1)
 	}
 	mod.Env = config.Env
-	if strings.HasPrefix(filepath, "Index/") || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
+	if isIndexData || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
 		mod.SectionPath = strings.TrimSuffix(filepath, "_seed.yml")
 		config.Log.Println("Seeding configuration data for the following templates:" + mod.SectionPath)
 	} else {
@@ -501,7 +503,9 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	warn, err := verify(config, mod, verificationData)
 	eUtils.LogErrorObject(config, err, false)
 	eUtils.LogWarningsObject(config, warn, false)
-	eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
+	if !isIndexData {
+		eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
+	}
 	return nil
 }
 
