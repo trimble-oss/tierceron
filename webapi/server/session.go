@@ -9,8 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"tierceron/buildopts"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
+
+	"tierceron/buildopts/coreopts"
 
 	configcore "VaultConfig.Bootstrap/configcore"
 
@@ -49,7 +52,7 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 		return false, "", err
 	}
 
-	return configcore.Authorize(db, operatorId, operatorPassword)
+	return buildopts.Authorize(db, operatorId, operatorPassword)
 }
 
 func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]configcore.Session, error) {
@@ -87,7 +90,7 @@ func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]c
 		return nil, err
 	}
 
-	return configcore.ActiveSessions(db)
+	return coreopts.ActiveSessions(db)
 }
 
 func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, string, error) {

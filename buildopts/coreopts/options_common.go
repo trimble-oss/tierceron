@@ -3,6 +3,13 @@
 
 package coreopts
 
+import (
+	"database/sql"
+	"errors"
+
+	configcore "VaultConfig.Bootstrap/configcore"
+)
+
 // Which tables synced..
 func GetSyncedTables() []string {
 	return []string{}
@@ -10,4 +17,36 @@ func GetSyncedTables() []string {
 
 func GetFolderPrefix() string {
 	return "trc"
+}
+
+func GetSupportedTemplates() []string {
+	return []string{}
+}
+
+func GetLocalHost() string {
+	return ""
+}
+
+func GetVaultHost() string {
+	return ""
+}
+
+func GetVaultHostPort() string {
+	return ""
+}
+
+func DecryptSecretConfig(tenantConfiguration map[string]interface{}, config map[string]interface{}) string {
+	return ""
+}
+
+func ActiveSessions(db *sql.DB) ([]configcore.Session, error) {
+	return nil, errors.New("Not implemented")
+}
+
+func GetUserNameField() string {
+	return ""
+}
+
+func GetUserCodeField() string {
+	return ""
 }

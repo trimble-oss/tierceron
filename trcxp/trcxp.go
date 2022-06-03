@@ -3,10 +3,9 @@ package main
 import (
 	"fmt"
 
+	"tierceron/buildopts/coreopts"
 	"tierceron/trcx/xutil"
 	"tierceron/trcxbase"
-
-	configcore "VaultConfig.Bootstrap/configcore"
 )
 
 // This executable automates the creation of seed files from template file(s).
@@ -14,6 +13,6 @@ import (
 func main() {
 	fmt.Println("Version: " + "1.5")
 	env := "local"
-	addr := configcore.VaultHostPort
+	addr := coreopts.GetVaultHostPort()
 	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, &env, &addr, nil)
 }

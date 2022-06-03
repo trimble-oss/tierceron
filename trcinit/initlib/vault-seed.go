@@ -20,7 +20,6 @@ import (
 
 	eUtils "tierceron/utils"
 
-	configcore "VaultConfig.Bootstrap/configcore"
 	"gopkg.in/yaml.v2"
 )
 
@@ -60,7 +59,7 @@ func SeedVault(insecure bool,
 		// Cert rotation support without templates
 		logger.Printf("No templates available, Common service requested.: %s\n", dir)
 
-		var templatePaths = configcore.GetSupportedTemplates()
+		var templatePaths = coreopts.GetSupportedTemplates()
 		regions := []string{}
 
 		if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {

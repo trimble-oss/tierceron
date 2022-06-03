@@ -4,6 +4,7 @@
 package buildopts
 
 import (
+	"database/sql"
 	"errors"
 	flowcore "tierceron/trcflow/core"
 	eUtils "tierceron/utils"
@@ -82,4 +83,12 @@ func GetExtensionAuthComponents(config map[string]interface{}) map[string]interf
 // Build interface
 func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContext *flowcore.TrcFlowMachineContext, vaultDatabaseConfig map[string]interface{}) error {
 	return nil
+}
+
+func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, string, error) {
+	return false, "", errors.New("Not implemented")
+}
+
+func GetSupportedTemplates() []string {
+	return []string{}
 }

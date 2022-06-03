@@ -11,8 +11,6 @@ import (
 	il "tierceron/trcinit/initlib"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
-
-	configcore "VaultConfig.Bootstrap/configcore"
 )
 
 // Reads in template files in specified directory
@@ -25,7 +23,7 @@ func main() {
 	fmt.Println("Version: " + "1.4")
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
 	envPtr := flag.String("env", "dev", "Environement in vault")
-	addrPtr := flag.String("addr", configcore.VaultHostPort, "API endpoint for the vault")
+	addrPtr := flag.String("addr", coreopts.GetVaultHostPort(), "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")

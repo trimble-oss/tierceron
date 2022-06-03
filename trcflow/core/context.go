@@ -15,10 +15,10 @@ import (
 	"tierceron/trcx/extract"
 	sys "tierceron/vaulthelper/system"
 
+	"tierceron/buildopts/coreopts"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
-	configcore "VaultConfig.Bootstrap/configcore"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -411,7 +411,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 func (tfmContext *TrcFlowMachineContext) GetDbConn(tfContext *TrcFlowContext, dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
 	return trcvutils.OpenDirectConnection(tfmContext.Config, dbUrl,
 		username,
-		configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionsMap[tfContext.RemoteDataSource["dbsourceregion"].(string)]))
+		coreopts.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionsMap[tfContext.RemoteDataSource["dbsourceregion"].(string)]))
 }
 
 // Utilizing provided api auth headers, endpoint, and body data

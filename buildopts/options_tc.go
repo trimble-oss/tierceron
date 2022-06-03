@@ -14,6 +14,9 @@ import (
 	tclib "VaultConfig.TenantConfig/lib"
 	tcharbinger "VaultConfig.TenantConfig/util/harbinger"
 	helperkv "tierceron/vaulthelper/kv"
+
+	configcore "VaultConfig.Bootstrap/configcore"
+	"database/sql"
 )
 
 func SetLogger(logger interface{}) {
@@ -75,4 +78,8 @@ func GetExtensionAuthComponents(config map[string]interface{}) map[string]interf
 // Build interface
 func BuildInterface(config *eUtils.DriverConfig, goMod *helperkv.Modifier, tfmContext *flowcore.TrcFlowMachineContext, vaultDatabaseConfig map[string]interface{}) error {
 	return tcharbinger.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig)
+}
+
+func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, string, error) {
+	return configcore.Authorize(db, userIdentifier, userPassword)
 }
