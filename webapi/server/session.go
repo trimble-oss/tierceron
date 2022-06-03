@@ -15,8 +15,6 @@ import (
 
 	"tierceron/buildopts/coreopts"
 
-	configcore "VaultConfig.Bootstrap/configcore"
-
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
 )
@@ -55,7 +53,7 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 	return buildopts.Authorize(db, operatorId, operatorPassword)
 }
 
-func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]configcore.Session, error) {
+func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]map[string]interface{}, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
 		return nil, err
@@ -105,14 +103,14 @@ func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, 
 	return m[1], m[2], m[3], m[4], nil
 }
 
-func (s *Server) getVaultSessions(env string) ([]configcore.Session, error) {
+func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
 		return nil, err
 	}
 	mod.Env = ""
 
-	sessions := []configcore.Session{}
+	sessions := []map[string]interface{}{}
 	paths, err := mod.List("apiLogins/" + env)
 	if paths == nil {
 		return nil, fmt.Errorf("Nothing found under apiLogins/" + env)
@@ -147,10 +145,10 @@ func (s *Server) getVaultSessions(env string) ([]configcore.Session, error) {
 				userData["Issued"] = -1
 				userData["Expires"] = -1
 			} else {
-				sessions = append(sessions, configcore.Session{
-					ID:        id,
-					User:      strings.TrimSpace(user.(string)),
-					LastLogIn: issued,
+				sessions = append(sessions, map[string]interface{}{
+					"ID":        id,
+					"User":      strings.TrimSpace(user.(string)),
+					"LastLogIn": issued,
 				})
 				id++
 			}

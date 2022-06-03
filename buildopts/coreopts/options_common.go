@@ -6,8 +6,6 @@ package coreopts
 import (
 	"database/sql"
 	"errors"
-
-	configcore "VaultConfig.Bootstrap/configcore"
 )
 
 // Which tables synced..
@@ -39,7 +37,7 @@ func DecryptSecretConfig(tenantConfiguration map[string]interface{}, config map[
 	return ""
 }
 
-func ActiveSessions(db *sql.DB) ([]configcore.Session, error) {
+func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
 	return nil, errors.New("Not implemented")
 }
 

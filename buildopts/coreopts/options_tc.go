@@ -38,7 +38,7 @@ func GetVaultHostPort() string {
 	return configcore.VaultHostPort
 }
 
-func ActiveSessions(db *sql.DB) ([]configcore.Session, error) {
+func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
 	return configcore.ActiveSessions(db)
 }
 func GetUserNameField() string {
