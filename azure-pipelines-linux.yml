@@ -77,7 +77,7 @@ steps:
     done
 
     echo Compiling trc-vault-plugin
-    GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "testflow memonly" -o $GOBIN/trc-vault-plugin tierceron/trcvault/plugins/trcdb
+    GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc testflow memonly" -o $GOBIN/trc-vault-plugin tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1

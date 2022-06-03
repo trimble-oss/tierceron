@@ -1,5 +1,5 @@
-//go:build !testflow
-// +build !testflow
+//go:build !tc
+// +build !tc
 
 package coreopts
 
