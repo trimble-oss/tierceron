@@ -22,7 +22,7 @@ import (
 // Vault automatically encodes the file into base64
 
 func main() {
-	fmt.Println("Version: " + "1.3")
+	fmt.Println("Version: " + "1.4")
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
 	envPtr := flag.String("env", "dev", "Environement in vault")
 	addrPtr := flag.String("addr", configcore.VaultHostPort, "API endpoint for the vault")

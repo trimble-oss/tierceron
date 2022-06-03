@@ -12,7 +12,7 @@ import (
 // of automating setup and initial seeding
 
 func main() {
-	fmt.Println("Version: " + "1.5")
+	fmt.Println("Version: " + "1.6")
 	env := "local"
 	addr := configcore.VaultHostPort
 	trcinitbase.CommonMain(&env, &addr)
