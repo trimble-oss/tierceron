@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	trcname "tierceron/trcvault/opts/trcname"
 
+	"tierceron/buildopts/coreopts"
 	"tierceron/trcx/xutil"
 	"tierceron/validator"
 	helperkv "tierceron/vaulthelper/kv"
@@ -357,7 +357,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 						certPath = strings.Replace(certPath, "ENV", config.Env, 1)
 					}
 				}
-				certPath = trcname.GetFolderPrefix() + "_seeds/" + certPath
+				certPath = coreopts.GetFolderPrefix() + "_seeds/" + certPath
 				cert, err := ioutil.ReadFile(certPath)
 				if err != nil {
 					eUtils.LogErrorObject(config, err, false)
@@ -531,7 +531,7 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 	// Update value metrics to reflect credential use
 	if root == "templates" {
 		//Printing out path of each entry so that users can verify that folder structure in seed files are correct
-		config.Log.Println(trcname.GetFolderPrefix() + "_" + path + ".*.tmpl")
+		config.Log.Println(coreopts.GetFolderPrefix() + "_" + path + ".*.tmpl")
 		for _, v := range data {
 			if templateKey, ok := v.([]interface{}); ok {
 				metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)

@@ -6,22 +6,21 @@ import (
 	"log"
 	"os"
 	"strings"
-	trcname "tierceron/trcvault/opts/trcname"
+	"tierceron/buildopts"
+	"tierceron/buildopts/coreopts"
 	trcvutils "tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
-
-	tcutil "VaultConfig.TenantConfig/util"
 )
 
 func PluginMain() {
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	envPtr := flag.String("env", "dev", "Environement in vault")
-	startDirPtr := flag.String("startDir", trcname.GetFolderPrefix()+"_templates", "Template directory")
+	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix()+"_templates", "Template directory")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./"+trcname.GetFolderPrefix()+"plgtool.log", "Output path for log files")
+	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"plgtool.log", "Output path for log files")
 	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
@@ -56,8 +55,8 @@ func PluginMain() {
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+trcname.GetFolderPrefix()+"plgtool.log" {
-		*logFilePtr = "./" + trcname.GetFolderPrefix() + "plgtool.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"plgtool.log" {
+		*logFilePtr = "./" + coreopts.GetFolderPrefix() + "plgtool.log"
 	}
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
@@ -72,7 +71,7 @@ func PluginMain() {
 		eUtils.CheckError(config, err, true)
 	}
 	mod.Env = *envPtr
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, tcutil.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, buildopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		os.Exit(1)

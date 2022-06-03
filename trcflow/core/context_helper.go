@@ -4,13 +4,12 @@ import (
 	"encoding/base64"
 	"strings"
 	"sync"
+	"tierceron/buildopts/coreopts"
 	trcvutils "tierceron/trcvault/util"
 	"tierceron/trcx/extract"
 
 	trcdb "tierceron/trcx/db"
 	eUtils "tierceron/utils"
-
-	"VaultConfig.TenantConfig/util/buildopts"
 )
 
 var changesLock sync.Mutex
@@ -83,7 +82,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		if len(changedTableRowData) == 0 && err == nil { //This change was a delete
-			for _, syncedTable := range buildopts.GetSyncedTables() {
+			for _, syncedTable := range coreopts.GetSyncedTables() {
 				if tfContext.Flow.TableName() != syncedTable { //TODO: Add delete functionality for other tables? - logic is in SEC push remote
 					continue
 				}

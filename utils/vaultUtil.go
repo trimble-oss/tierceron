@@ -3,7 +3,7 @@ package utils
 import (
 	"log"
 	"strings"
-	trcname "tierceron/trcvault/opts/trcname"
+	"tierceron/buildopts/coreopts"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 )
@@ -77,7 +77,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 		}
 	}
 	for _, templatePath := range templatePaths {
-		templatePathRelativeParts := strings.Split(templatePath, trcname.GetFolderPrefix()+"_templates/")
+		templatePathRelativeParts := strings.Split(templatePath, coreopts.GetFolderPrefix()+"_templates/")
 		templatePathParts := strings.Split(templatePathRelativeParts[1], "/")
 		service := templatePathParts[1]
 
