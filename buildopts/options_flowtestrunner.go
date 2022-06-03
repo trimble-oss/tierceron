@@ -4,11 +4,9 @@
 package buildopts
 
 import (
-	flowcore "tierceron/trcflow/core"
-
-	testtcutil "VaultConfig.Test/util"
+	testtcutil "VaultConfig.TenantConfig/util"
 )
 
 func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
-	return tcutil.GetTestConfig(token, wantPluginPaths)
+	return testtcutil.GetTestConfig(token, wantPluginPaths)
 }
