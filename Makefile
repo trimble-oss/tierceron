@@ -70,4 +70,4 @@ certify:
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
-all: api config devplugintrcdb config seed x xlib pub sub
+all: api devplugintrcdb config seed x xlib pub sub
