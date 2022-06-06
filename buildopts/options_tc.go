@@ -17,6 +17,7 @@ import (
 
 	configcore "VaultConfig.Bootstrap/configcore"
 	"database/sql"
+	"github.com/dolthub/go-mysql-server/server"
 )
 
 func SetLogger(logger interface{}) {
@@ -76,8 +77,8 @@ func GetExtensionAuthComponents(config map[string]interface{}) map[string]interf
 }
 
 // Build interface
-func BuildInterface(config *eUtils.DriverConfig, goMod *helperkv.Modifier, tfmContext *flowcore.TrcFlowMachineContext, vaultDatabaseConfig map[string]interface{}) error {
-	return tcharbinger.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig)
+func BuildInterface(config *eUtils.DriverConfig, goMod *helperkv.Modifier, tfmContext *flowcore.TrcFlowMachineContext, vaultDatabaseConfig map[string]interface{}, serverListener server.ServerEventListener) error {
+	return tcharbinger.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, serverListener)
 }
 
 func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, string, error) {

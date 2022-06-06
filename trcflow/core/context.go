@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
@@ -19,6 +18,7 @@ import (
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
+	"VaultConfig.TenantConfig/util/mysql"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -57,6 +57,12 @@ func (fnt FlowNameType) TableName() string {
 
 func (fnt FlowNameType) ServiceName() string {
 	return string(fnt)
+}
+
+func TriggerAllChangeChannel() {
+	for _, changeChannel := range channelMap {
+		changeChannel <- true
+	}
 }
 
 type TrcFlowMachineContext struct {
@@ -198,10 +204,9 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 
-	afterTime := time.Duration(time.Second * 20)
-	isInit := true
+	syncMysql := mysql.GetMysqlStatus()
 	flowChangedChannel := channelMap[tfContext.Flow]
-
+	flowChangedChannel <- true
 	for {
 		select {
 		case <-signalChannel:
@@ -212,20 +217,9 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				tfContext,
 				identityColumnName,
 				vaultIndexColumnName,
-				false,
+				syncMysql,
 				getIndexedPathExt,
 				flowPushRemote)
-		case <-time.After(afterTime):
-			afterTime = time.Minute * 3
-			eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes.")
-			tfmContext.vaultPersistPushRemoteChanges(
-				tfContext,
-				identityColumnName,
-				vaultIndexColumnName,
-				isInit,
-				getIndexedPathExt,
-				flowPushRemote)
-			isInit = false
 		}
 	}
 }

@@ -283,7 +283,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// be sure to enable encryption on the connection...
 	wg.Add(1)
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
-	interfaceErr := buildopts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig)
+	interfaceErr := buildopts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{})
 	if interfaceErr != nil {
 		wg.Done()
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)

@@ -9,6 +9,8 @@ import (
 	flowcore "tierceron/trcflow/core"
 	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
+
+	"github.com/dolthub/go-mysql-server/server"
 )
 
 func SetLogger(logger interface{}) {
@@ -81,7 +83,7 @@ func GetExtensionAuthComponents(config map[string]interface{}) map[string]interf
 }
 
 // Build interface
-func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContext *flowcore.TrcFlowMachineContext, vaultDatabaseConfig map[string]interface{}) error {
+func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContext *flowcore.TrcFlowMachineContext, vaultDatabaseConfig map[string]interface{}, serverListener server.ServerEventListener) error {
 	return nil
 }
 
