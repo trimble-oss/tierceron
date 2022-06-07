@@ -12,15 +12,14 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	trcname "tierceron/trcvault/opts/trcname"
 
+	"tierceron/buildopts/coreopts"
 	"tierceron/trcx/xutil"
 	"tierceron/validator"
 	helperkv "tierceron/vaulthelper/kv"
 
 	eUtils "tierceron/utils"
 
-	configcore "VaultConfig.Bootstrap/configcore"
 	"gopkg.in/yaml.v2"
 )
 
@@ -60,7 +59,7 @@ func SeedVault(insecure bool,
 		// Cert rotation support without templates
 		logger.Printf("No templates available, Common service requested.: %s\n", dir)
 
-		var templatePaths = configcore.GetSupportedTemplates()
+		var templatePaths = coreopts.GetSupportedTemplates()
 		regions := []string{}
 
 		if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
@@ -251,7 +250,9 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	// Unmarshal
 	var rawYaml interface{}
 	hasEmptyValues := bytes.Contains(fData, []byte("<Enter Secret Here>"))
-	if hasEmptyValues && !strings.HasPrefix(filepath, "Index/") {
+	isIndexData := strings.HasPrefix(filepath, "Index/")
+
+	if hasEmptyValues && !isIndexData {
 		return eUtils.LogAndSafeExit(config, "Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", 1)
 	}
 
@@ -327,7 +328,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		return eUtils.LogErrorAndSafeExit(config, err, 1)
 	}
 	mod.Env = config.Env
-	if strings.HasPrefix(filepath, "Index/") || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
+	if isIndexData || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
 		mod.SectionPath = strings.TrimSuffix(filepath, "_seed.yml")
 		config.Log.Println("Seeding configuration data for the following templates:" + mod.SectionPath)
 	} else {
@@ -355,7 +356,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 						certPath = strings.Replace(certPath, "ENV", config.Env, 1)
 					}
 				}
-				certPath = trcname.GetFolderPrefix() + "_seeds/" + certPath
+				certPath = coreopts.GetFolderPrefix() + "_seeds/" + certPath
 				cert, err := ioutil.ReadFile(certPath)
 				if err != nil {
 					eUtils.LogErrorObject(config, err, false)
@@ -501,7 +502,9 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	warn, err := verify(config, mod, verificationData)
 	eUtils.LogErrorObject(config, err, false)
 	eUtils.LogWarningsObject(config, warn, false)
-	eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
+	if !isIndexData {
+		eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
+	}
 	return nil
 }
 
@@ -527,7 +530,7 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 	// Update value metrics to reflect credential use
 	if root == "templates" {
 		//Printing out path of each entry so that users can verify that folder structure in seed files are correct
-		config.Log.Println(trcname.GetFolderPrefix() + "_" + path + ".*.tmpl")
+		config.Log.Println(coreopts.GetFolderPrefix() + "_" + path + ".*.tmpl")
 		for _, v := range data {
 			if templateKey, ok := v.([]interface{}); ok {
 				metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
