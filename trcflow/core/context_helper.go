@@ -1,14 +1,15 @@
 package core
 
 import (
+	"encoding/base64"
+	"strings"
 	"sync"
+	"tierceron/buildopts/coreopts"
 	trcvutils "tierceron/trcvault/util"
 	"tierceron/trcx/extract"
 
 	trcdb "tierceron/trcx/db"
 	eUtils "tierceron/utils"
-
-	"VaultConfig.TenantConfig/util/buildopts"
 )
 
 var changesLock sync.Mutex
@@ -59,7 +60,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
-	isInit bool,
+	syncMysql bool,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
 
@@ -81,7 +82,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		if len(changedTableRowData) == 0 && err == nil { //This change was a delete
-			for _, syncedTable := range buildopts.GetSyncedTables() {
+			for _, syncedTable := range coreopts.GetSyncedTables() {
 				if tfContext.Flow.TableName() != syncedTable { //TODO: Add delete functionality for other tables? - logic is in SEC push remote
 					continue
 				}
@@ -124,6 +125,12 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			continue
 		}
 
+		if identityColumnName == "MysqlFilePath" {
+			if !strings.HasSuffix(changedTableRowData[0][1], "==") {
+				changedTableRowData[0][1] = base64.StdEncoding.EncodeToString([]byte(changedTableRowData[0][1]))
+			}
+		}
+
 		seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.Config.VaultAddress, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
@@ -136,7 +143,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		// Push this change to the flow for delivery to remote data source.
-		if !isInit {
+		if syncMysql {
 			pushError := flowPushRemote(tfContext.RemoteDataSource, rowDataMap)
 			if pushError != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
