@@ -9,10 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"tierceron/buildopts"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
-	configcore "VaultConfig.Bootstrap/configcore"
+	"tierceron/buildopts/coreopts"
 
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
@@ -49,10 +50,10 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 		return false, "", err
 	}
 
-	return configcore.Authorize(db, operatorId, operatorPassword)
+	return buildopts.Authorize(db, operatorId, operatorPassword)
 }
 
-func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]configcore.Session, error) {
+func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]map[string]interface{}, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
 		return nil, err
@@ -87,7 +88,7 @@ func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]c
 		return nil, err
 	}
 
-	return configcore.ActiveSessions(db)
+	return coreopts.ActiveSessions(db)
 }
 
 func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, string, error) {
@@ -102,14 +103,14 @@ func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, 
 	return m[1], m[2], m[3], m[4], nil
 }
 
-func (s *Server) getVaultSessions(env string) ([]configcore.Session, error) {
+func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
 	if err != nil {
 		return nil, err
 	}
 	mod.Env = ""
 
-	sessions := []configcore.Session{}
+	sessions := []map[string]interface{}{}
 	paths, err := mod.List("apiLogins/" + env)
 	if paths == nil {
 		return nil, fmt.Errorf("Nothing found under apiLogins/" + env)
@@ -144,10 +145,10 @@ func (s *Server) getVaultSessions(env string) ([]configcore.Session, error) {
 				userData["Issued"] = -1
 				userData["Expires"] = -1
 			} else {
-				sessions = append(sessions, configcore.Session{
-					ID:        id,
-					User:      strings.TrimSpace(user.(string)),
-					LastLogIn: issued,
+				sessions = append(sessions, map[string]interface{}{
+					"ID":        id,
+					"User":      strings.TrimSpace(user.(string)),
+					"LastLogIn": issued,
 				})
 				id++
 			}

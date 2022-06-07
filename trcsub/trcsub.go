@@ -6,13 +6,11 @@ import (
 	"log"
 	"os"
 	"strings"
-	trcname "tierceron/trcvault/opts/trcname"
 
+	"tierceron/buildopts/coreopts"
 	il "tierceron/trcinit/initlib"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
-
-	configcore "VaultConfig.Bootstrap/configcore"
 )
 
 // Reads in template files in specified directory
@@ -22,17 +20,17 @@ import (
 // Vault automatically encodes the file into base64
 
 func main() {
-	fmt.Println("Version: " + "1.3")
-	dirPtr := flag.String("dir", trcname.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
+	fmt.Println("Version: " + "1.4")
+	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
 	envPtr := flag.String("env", "dev", "Environement in vault")
-	addrPtr := flag.String("addr", configcore.VaultHostPort, "API endpoint for the vault")
+	addrPtr := flag.String("addr", coreopts.GetVaultHostPort(), "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+trcname.GetFolderPrefix()+"pub to access the vault")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix()+"pub to access the vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./"+trcname.GetFolderPrefix()+"sub.log", "Output path for log files")
+	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"sub.log", "Output path for log files")
 	projectInfoPtr := flag.Bool("projectInfo", false, "Lists all project info")
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
 
@@ -44,8 +42,8 @@ func main() {
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+trcname.GetFolderPrefix()+"sub.log" {
-		*logFilePtr = "./" + trcname.GetFolderPrefix() + "sub.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"sub.log" {
+		*logFilePtr = "./" + coreopts.GetFolderPrefix() + "sub.log"
 	}
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
