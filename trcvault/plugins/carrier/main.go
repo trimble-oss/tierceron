@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"tierceron/buildopts"
 	"tierceron/trcflow/deploy"
 	"tierceron/trcvault/factory"
 	"tierceron/trcvault/opts/insecure"
@@ -13,8 +14,6 @@ import (
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
 
-	tclib "VaultConfig.TenantConfig/lib"
-	tcutil "VaultConfig.TenantConfig/util"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
 	"golang.org/x/sys/unix"
@@ -39,8 +38,8 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 	logger.Println("Beginning plugin startup.")
 
-	tclib.SetLogger(logger.Writer())
-	factory.Init(tcutil.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
+	buildopts.SetLogger(logger.Writer())
+	factory.Init(buildopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
 	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
@@ -48,7 +47,7 @@ func main() {
 
 	args := os.Args
 	vaultHost := factory.GetVaultHost()
-	if strings.HasPrefix(vaultHost, tcutil.GetLocalVaultAddr()) {
+	if strings.HasPrefix(vaultHost, buildopts.GetLocalVaultAddr()) {
 		logger.Println("Running in developer mode with self signed certs.")
 		args = append(args, "--tls-skip-verify=true")
 	} else {

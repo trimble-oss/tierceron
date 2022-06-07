@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	trcname "tierceron/trcvault/opts/trcname"
 
+	"tierceron/buildopts/coreopts"
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
 	eUtils "tierceron/utils"
@@ -25,6 +25,9 @@ var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string, error) {
+	if config.WantCerts {
+		return "", false, "", nil
+	}
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -335,6 +338,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				goMod, err = helperkv.NewModifier(c.Insecure, c.Token, c.VaultAddress, c.Env, c.Regions, config.Log)
 				if err != nil {
 					eUtils.LogErrorObject(config, err, false)
+					wg.Done()
 					return
 				}
 				goMod.Env = env
@@ -347,7 +351,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					goMod.SubSectionValue = config.SubSectionValue
 				}
 
-				relativeTemplatePathParts := strings.Split(tp, trcname.GetFolderPrefix()+"_templates")
+				relativeTemplatePathParts := strings.Split(tp, coreopts.GetFolderPrefix()+"_templates")
 				templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
 				goMod.TemplatePath = "templates" + templatePathParts[0]
 
@@ -355,6 +359,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					_, err := mod.ReadData("apiLogins/meta")
 					if err != nil {
 						eUtils.LogAndSafeExit(config, "Cannot genAuth with provided token.", -1)
+						wg.Done()
 						return
 					}
 				}
@@ -395,6 +400,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			)
 			if errSeed != nil {
 				eUtils.LogAndSafeExit(config, errSeed.Error(), -1)
+				wg.Done()
 				return
 			}
 			templateResult.Env = env + "_" + version
@@ -499,7 +505,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	}
 
 	if len(tempTemplatePaths) == 0 {
-		eUtils.LogErrorMessage(config, "No files found in "+trcname.GetFolderPrefix()+"_templates", true)
+		eUtils.LogErrorMessage(config, "No files found in "+coreopts.GetFolderPrefix()+"_templates", true)
 	}
 
 	//Duplicate path remover
@@ -536,7 +542,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 		return errGenerateSeeds, nil
 	}
 
-	if endPath == "" && !multiService && seedData == "" {
+	if endPath == "" && !multiService && seedData == "" && !config.WantCerts {
 		return nil, nil
 	}
 
