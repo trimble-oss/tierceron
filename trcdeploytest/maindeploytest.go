@@ -6,11 +6,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"tierceron/buildopts"
 	"tierceron/trcflow/deploy"
 	"tierceron/trcvault/factory"
 	eUtils "tierceron/utils"
-
-	tcutil "VaultConfig.TenantConfig/util"
 )
 
 var signalChannel chan os.Signal
@@ -38,9 +37,9 @@ func main() {
 	eUtils.CheckError(configDriver, err, true)
 
 	//Grabbing configs
-	envMap := tcutil.GetTestDeployConfig(*tokenPtr)
+	envMap := buildopts.GetTestDeployConfig(*tokenPtr)
 
-	go factory.Init(tcutil.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
+	go factory.Init(buildopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "QA"
 	envMap["insecure"] = true
 	factory.PushEnv(envMap)

@@ -12,7 +12,6 @@ import (
 	eUtils "tierceron/utils"
 	pb "tierceron/webapi/rpc/apinator"
 
-	configcore "VaultConfig.Bootstrap/configcore"
 	"github.com/graphql-go/graphql"
 )
 
@@ -79,7 +78,7 @@ type Provider struct {
 	EnvID    int
 	ID       int
 	Name     string
-	Sessions []configcore.Session
+	Sessions []map[string]interface{}
 }
 
 //GraphQL Accepts a GraphQL query and creates a response
@@ -101,8 +100,8 @@ func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQL
 func (s *Server) InitGQL() {
 	s.Log.Println("InitGQL")
 	makeVaultReq := &pb.GetValuesReq{}
-	spctmSessions := map[string][]configcore.Session{} // Spectrum sessions
-	vaultSessions := map[string][]configcore.Session{} // Vault sessions
+	integrationSessions := map[string][]map[string]interface{}{} //
+	vaultSessions := map[string][]map[string]interface{}{}       //
 
 	// Fetch template keys and values
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
@@ -125,7 +124,7 @@ func (s *Server) InitGQL() {
 	envStrings := SelectedEnvironment
 	for _, e := range envStrings { //Not including itdev and servicepack
 		// Get spectrum sessions
-		spctmSessions[e], err = s.getActiveSessions(config, e)
+		integrationSessions[e], err = s.getActiveSessions(config, e)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 			eUtils.LogWarningsObject(config, []string{fmt.Sprintf("GraphQL MAY not initialized (Spectrum %s sessions not added)", e)}, false)
@@ -209,28 +208,28 @@ func (s *Server) InitGQL() {
 		(*envQL).Projects = projectList
 
 		if len(envQL.Providers) == 0 {
-			for i := 0; i < len(spctmSessions[env.Name]); i++ {
-				spctmSessions[env.Name][i].EnvID = (*envQL).ID
-				spctmSessions[env.Name][i].ProvID = 0
+			for i := 0; i < len(integrationSessions[env.Name]); i++ {
+				integrationSessions[env.Name][i]["EnvID"] = (*envQL).ID
+				integrationSessions[env.Name][i]["IntegrationID"] = 0
 			}
 			for i := 0; i < len(vaultSessions[env.Name]); i++ {
-				vaultSessions[env.Name][i].EnvID = (*envQL).ID
-				vaultSessions[env.Name][i].ProvID = 1
+				vaultSessions[env.Name][i]["EnvID"] = (*envQL).ID
+				vaultSessions[env.Name][i]["IntegrationID"] = 1
 			}
 
-			if spctmSessions[env.Name] != nil {
+			if integrationSessions[env.Name] != nil {
 				(*envQL).Providers = append((*envQL).Providers, Provider{
 					EnvID:    (*envQL).ID,
 					ID:       0,
-					Name:     "Spectrum",
-					Sessions: spctmSessions[env.Name],
+					Name:     "Integration Users",
+					Sessions: integrationSessions[env.Name],
 				})
 			}
 			if vaultSessions[env.Name] != nil {
 				(*envQL).Providers = append((*envQL).Providers, Provider{
 					EnvID:    (*envQL).ID,
 					ID:       1,
-					Name:     "Vault",
+					Name:     "Vault Users",
 					Sessions: vaultSessions[env.Name],
 				})
 			}
@@ -492,19 +491,19 @@ func (s *Server) InitGQL() {
 				"User": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						eID := params.Source.(configcore.Session).EnvID
-						pID := params.Source.(configcore.Session).ProvID
-						sID := params.Source.(configcore.Session).ID
-						return vaultQL.Envs[eID].Providers[pID].Sessions[sID].User, nil
+						eID := params.Source.(map[string]interface{})["EnvID"].(int)
+						pID := params.Source.(map[string]interface{})["IntegrationID"].(int)
+						sID := params.Source.(map[string]interface{})["ID"].(int)
+						return vaultQL.Envs[eID].Providers[pID].Sessions[sID]["User"].(string), nil
 					},
 				},
 				"LastLogIn": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.Int),
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						eID := params.Source.(configcore.Session).EnvID
-						pID := params.Source.(configcore.Session).ProvID
-						sID := params.Source.(configcore.Session).ID
-						return vaultQL.Envs[eID].Providers[pID].Sessions[sID].LastLogIn, nil
+						eID := params.Source.(map[string]interface{})["EnvID"].(int)
+						pID := params.Source.(map[string]interface{})["IntegrationID"].(int)
+						sID := params.Source.(map[string]interface{})["ID"].(int)
+						return vaultQL.Envs[eID].Providers[pID].Sessions[sID]["LastLogIn"].(int64), nil
 					},
 				},
 			},
@@ -542,9 +541,9 @@ func (s *Server) InitGQL() {
 
 						if userName, ok := params.Args["userName"].(string); ok {
 							regex := regexp.MustCompile(`(?i).*` + userName + `.*`)
-							sessions := []configcore.Session{}
+							sessions := []map[string]interface{}{}
 							for _, s := range vaultQL.Envs[eid].Providers[pid].Sessions {
-								if regex.MatchString(s.User) {
+								if regex.MatchString(s["User"].(string)) {
 									sessions = append(sessions, s)
 								}
 							}

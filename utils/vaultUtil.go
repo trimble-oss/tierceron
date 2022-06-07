@@ -3,7 +3,7 @@ package utils
 import (
 	"log"
 	"strings"
-	trcname "tierceron/trcvault/opts/trcname"
+	"tierceron/buildopts/coreopts"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 )
@@ -13,6 +13,7 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	LogInfo(config, "InitVaultMod begins..")
 	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, config.ExitOnFailure, config.Log)
 	if err != nil {
+		LogInfo(config, "Failure to connect to vault..")
 		LogErrorObject(config, err, false)
 		return config, nil, nil, err
 	}
@@ -76,7 +77,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 		}
 	}
 	for _, templatePath := range templatePaths {
-		templatePathRelativeParts := strings.Split(templatePath, trcname.GetFolderPrefix()+"_templates/")
+		templatePathRelativeParts := strings.Split(templatePath, coreopts.GetFolderPrefix()+"_templates/")
 		templatePathParts := strings.Split(templatePathRelativeParts[1], "/")
 		service := templatePathParts[1]
 

@@ -403,7 +403,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 				}
 			}
 
-			if !found && len(fileList) > 0 {
+			if !found && len(fileList) > 0 && fileIndex < len(fileList) {
 				fileList[fileIndex] = keySplit[1]
 				fileIndex++
 			}
