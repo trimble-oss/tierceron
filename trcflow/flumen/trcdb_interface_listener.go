@@ -1,6 +1,7 @@
 package flumen
 
 import (
+	"strings"
 	"sync"
 	flowcore "tierceron/trcflow/core"
 	"time"
@@ -16,8 +17,10 @@ func (tl *TrcDBServerEventListener) ClientDisconnected() {}
 
 func (tl *TrcDBServerEventListener) QueryStarted() {}
 
-func (tl *TrcDBServerEventListener) QueryCompleted(success bool, duration time.Duration) {
-	changeLock.Lock()
-	flowcore.TriggerAllChangeChannel()
-	changeLock.Unlock()
+func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, duration time.Duration) {
+	if success && (strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update")) {
+		changeLock.Lock()
+		flowcore.TriggerAllChangeChannel()
+		changeLock.Unlock()
+	}
 }
