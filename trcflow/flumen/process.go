@@ -7,20 +7,17 @@ import (
 	"sync"
 	"time"
 
+	"tierceron/buildopts"
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
 
 	flowcore "tierceron/trcflow/core"
 	helperkv "tierceron/vaulthelper/kv"
 
-	testtcutil "VaultConfig.Test/util"
-
 	eUtils "tierceron/utils"
 
 	sys "tierceron/vaulthelper/system"
 
-	tcutil "VaultConfig.TenantConfig/util"
-	"VaultConfig.TenantConfig/util/harbinger"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -54,7 +51,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	tfmContext = &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
-		GetAdditionalFlowsByState: testtcutil.GetAdditionalFlowsByState,
+		GetAdditionalFlowsByState: buildopts.GetAdditionalFlowsByState,
 	}
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
@@ -96,7 +93,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					eUtils.LogWarningMessage(config, "Expected database configuration does not exist: "+indexValue, false)
 					continue
 				}
-				for _, supportedRegion := range tcutil.GetSupportedSourceRegions() {
+				for _, supportedRegion := range buildopts.GetSupportedSourceRegions() {
 					if sourceDatabaseConfig["dbsourceregion"] == supportedRegion {
 						sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
 					}
@@ -145,7 +142,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		flowSourceMap[tableName] = source
 	}
 
-	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), tcutil.GetDatabaseName())
+	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), buildopts.GetDatabaseName())
 	tfmContext.Config = &configBasis
 
 	if err != nil {
@@ -178,9 +175,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 
 	// Http query resources include:
-	// 1. Auth -- Auth is provided by the external library tcutil.
+	// 1. Auth -- Auth is provided by the external library.
 	// 2. Get json by Api call.
-	extensionAuthComponents := tcutil.GetExtensionAuthComponents(trcIdentityConfig)
+	extensionAuthComponents := buildopts.GetExtensionAuthComponents(trcIdentityConfig)
 	httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -197,7 +194,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
 
 	var wg sync.WaitGroup
-	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, tcutil.GetAdditionalFlows(), testtcutil.GetAdditionalFlows())
+	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, buildopts.GetAdditionalFlows(), buildopts.GetAdditionalFlows())
 
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range configBasis.VersionFilter {
@@ -215,12 +212,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
-				tfContext.FlowSourceAlias = tcutil.GetDatabaseName()
+				tfContext.FlowSourceAlias = buildopts.GetDatabaseName()
 
 				tfmContext.ProcessFlow(
 					config,
 					&tfContext,
-					tcutil.ProcessFlowController,
+					buildopts.ProcessFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
 					tableFlow,
@@ -228,7 +225,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				)
 			}(flowcore.FlowNameType(table))
 		}
-		for _, enhancement := range tcutil.GetAdditionalFlows() {
+		for _, enhancement := range buildopts.GetAdditionalFlows() {
 			wg.Add(1)
 			go func(enhancementFlow flowcore.FlowNameType) {
 				eUtils.LogInfo(config, "Beginning flow: "+enhancementFlow.ServiceName())
@@ -245,7 +242,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfmContext.ProcessFlow(
 					config,
 					&tfContext,
-					tcutil.ProcessFlowController,
+					buildopts.ProcessFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
 					enhancementFlow,
@@ -254,7 +251,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(enhancement)
 		}
 
-		for _, test := range testtcutil.GetAdditionalFlows() {
+		for _, test := range buildopts.GetAdditionalFlows() {
 			wg.Add(1)
 			go func(testFlow flowcore.FlowNameType) {
 				eUtils.LogInfo(config, "Beginning flow: "+testFlow.ServiceName())
@@ -270,7 +267,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfmContext.ProcessFlow(
 					config,
 					&tfContext,
-					testtcutil.ProcessTestFlowController,
+					buildopts.ProcessTestFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
 					testFlow,
@@ -286,11 +283,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// be sure to enable encryption on the connection...
 	wg.Add(1)
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
-	harbingerErr := harbinger.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig)
-	if harbingerErr != nil {
+	interfaceErr := buildopts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{})
+	if interfaceErr != nil {
 		wg.Done()
-		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+harbingerErr.Error(), false)
-		return harbingerErr
+		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
+		return interfaceErr
 	}
 	wg.Wait()
 	logger.Println("ProcessFlows complete.")

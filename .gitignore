@@ -41,3 +41,11 @@ trcinit/vaultfiles/azure/variables.tf
 trcinit/vaultfiles/azure/.terraform/providers/registry.terraform.io/hashicorp/local/2.2.2/linux_amd64/terraform-provider-local_v2.2.2_x5
 bin/nc.h
 trcinit/vaultfiles/azure/resources/README.txt
+
+trcvault/deploy/target/
+trcvault/trc_seeds/
+
+tierceron.iml
+trcvault/deploy/deploy_dev.sh
+
+
