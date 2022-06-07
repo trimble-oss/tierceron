@@ -8,8 +8,8 @@ import (
 	"io/ioutil"
 	"strings"
 	"text/template"
-	trcname "tierceron/trcvault/opts/trcname"
 
+	"tierceron/buildopts/coreopts"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 )
@@ -24,7 +24,7 @@ func GetProjectService(templateFile string) (string, string, string) {
 	offsetBase := 0
 
 	for i, component := range splitDir {
-		if component == trcname.GetFolderPrefix()+"_templates" {
+		if component == coreopts.GetFolderPrefix()+"_templates" {
 			offsetBase = i
 			break
 		}
@@ -114,7 +114,7 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 
 	config.Log.Println("Configuring cert")
 	if !config.WantCerts {
-		relativeTemplatePathParts := strings.Split(emptyFilePath, trcname.GetFolderPrefix()+"_templates")
+		relativeTemplatePathParts := strings.Split(emptyFilePath, coreopts.GetFolderPrefix()+"_templates")
 		templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
 		modifier.TemplatePath = "templates" + templatePathParts[0]
 	}
@@ -153,7 +153,7 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 	extra := ""
 	// Please rework... Urg...
 	for i, component := range s {
-		if component == trcname.GetFolderPrefix()+"_templates" {
+		if component == coreopts.GetFolderPrefix()+"_templates" {
 			extra = ""
 			continue
 		}
