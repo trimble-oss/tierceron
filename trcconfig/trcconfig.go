@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	trcname "tierceron/trcvault/opts/trcname"
 
+	"tierceron/buildopts/coreopts"
 	vcutils "tierceron/trcconfig/utils"
 	eUtils "tierceron/utils"
 
@@ -74,10 +74,10 @@ func reciever() {
 }
 
 func main() {
-	fmt.Println("Version: " + "1.24")
+	fmt.Println("Version: " + "1.25")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
-	startDirPtr := flag.String("startDir", trcname.GetFolderPrefix()+"_templates", "Template directory")
+	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix()+"_templates", "Template directory")
 	endDirPtr := flag.String("endDir", ".", "Directory to put configured templates into")
 	envPtr := flag.String("env", "dev", "Environment to configure")
 	regionPtr := flag.String("region", "", "Region to configure")
@@ -85,9 +85,9 @@ func main() {
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this"+trcname.GetFolderPrefix()+"config to access the vault")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this"+coreopts.GetFolderPrefix()+"config to access the vault")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
-	logFilePtr := flag.String("log", "./"+trcname.GetFolderPrefix()+"config.log", "Output path for log file")
+	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"config.log", "Output path for log file")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	zcPtr := flag.Bool("zc", false, "Zero config (no configuration option).")
 	diffPtr := flag.Bool("diff", false, "Diff files")
@@ -124,7 +124,7 @@ func main() {
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	config := eUtils.DriverConfig{ExitOnFailure: true}
 	eUtils.CheckError(&config, err, true)
-	logger := log.New(f, "["+trcname.GetFolderPrefix()+"config]", log.LstdFlags)
+	logger := log.New(f, "["+coreopts.GetFolderPrefix()+"config]", log.LstdFlags)
 
 	//Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
