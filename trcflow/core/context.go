@@ -453,21 +453,22 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		tfContext.FlowSource = flow.ServiceName()
 	}
 
-	// Create remote data source with only what is needed.
-	tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
-	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
+	if mysql.GetMysqlStatus() {
+		// Create remote data source with only what is needed.
+		tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
+		tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
 
-	eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
-	dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+		eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
+		dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
-	if err != nil {
-		eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.", false)
-		return err
+		if err != nil {
+			eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.", false)
+			return err
+		}
+		defer dbsourceConn.Close()
+
+		tfContext.RemoteDataSource["connection"] = dbsourceConn
 	}
-	defer dbsourceConn.Close()
-
-	tfContext.RemoteDataSource["connection"] = dbsourceConn
-
 	//
 	// Hand processing off to process flow implementor.
 	//
