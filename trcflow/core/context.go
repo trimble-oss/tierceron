@@ -8,17 +8,17 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
 	"tierceron/trcx/extract"
 	sys "tierceron/vaulthelper/system"
 
+	"tierceron/buildopts/coreopts"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
-	configcore "VaultConfig.Bootstrap/configcore"
+	"VaultConfig.TenantConfig/util/mysql"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -57,6 +57,12 @@ func (fnt FlowNameType) TableName() string {
 
 func (fnt FlowNameType) ServiceName() string {
 	return string(fnt)
+}
+
+func TriggerAllChangeChannel() {
+	for _, changeChannel := range channelMap {
+		changeChannel <- true
+	}
 }
 
 type TrcFlowMachineContext struct {
@@ -198,10 +204,9 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 
-	afterTime := time.Duration(time.Second * 20)
-	isInit := true
+	syncMysql := mysql.GetMysqlStatus()
 	flowChangedChannel := channelMap[tfContext.Flow]
-
+	flowChangedChannel <- true
 	for {
 		select {
 		case <-signalChannel:
@@ -212,20 +217,9 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				tfContext,
 				identityColumnName,
 				vaultIndexColumnName,
-				false,
+				syncMysql,
 				getIndexedPathExt,
 				flowPushRemote)
-		case <-time.After(afterTime):
-			afterTime = time.Minute * 3
-			eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes.")
-			tfmContext.vaultPersistPushRemoteChanges(
-				tfContext,
-				identityColumnName,
-				vaultIndexColumnName,
-				isInit,
-				getIndexedPathExt,
-				flowPushRemote)
-			isInit = false
 		}
 	}
 }
@@ -411,7 +405,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 func (tfmContext *TrcFlowMachineContext) GetDbConn(tfContext *TrcFlowContext, dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
 	return trcvutils.OpenDirectConnection(tfmContext.Config, dbUrl,
 		username,
-		configcore.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionsMap[tfContext.RemoteDataSource["dbsourceregion"].(string)]))
+		coreopts.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionsMap[tfContext.RemoteDataSource["dbsourceregion"].(string)]))
 }
 
 // Utilizing provided api auth headers, endpoint, and body data
@@ -459,21 +453,21 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		tfContext.FlowSource = flow.ServiceName()
 	}
 
-	// Create remote data source with only what is needed.
 	tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
 	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
+	if mysql.GetMysqlStatus() {
+		// Create remote data source with only what is needed.
+		eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
+		dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
-	eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
-	dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+		if err != nil {
+			eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.", false)
+			return err
+		}
+		defer dbsourceConn.Close()
 
-	if err != nil {
-		eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.", false)
-		return err
+		tfContext.RemoteDataSource["connection"] = dbsourceConn
 	}
-	defer dbsourceConn.Close()
-
-	tfContext.RemoteDataSource["connection"] = dbsourceConn
-
 	//
 	// Hand processing off to process flow implementor.
 	//
