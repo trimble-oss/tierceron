@@ -453,11 +453,10 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		tfContext.FlowSource = flow.ServiceName()
 	}
 
+	tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
+	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
 	if mysql.GetMysqlStatus() {
 		// Create remote data source with only what is needed.
-		tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
-		tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
-
 		eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
 		dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
