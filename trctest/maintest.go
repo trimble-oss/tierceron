@@ -4,10 +4,9 @@ import (
 	"flag"
 	"log"
 	"os"
+	"tierceron/buildopts"
 	trcflow "tierceron/trcflow/flumen"
 	eUtils "tierceron/utils"
-
-	tcutil "VaultConfig.TenantConfig/util"
 )
 
 // This executable automates the creation of seed files from template file(s).
@@ -21,7 +20,7 @@ func main() {
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
-	pluginConfig := tcutil.GetTestConfig(*tokenPtr, false)
+	pluginConfig := buildopts.GetTestConfig(*tokenPtr, false)
 
 	trcflow.ProcessFlows(pluginConfig, logger)
 }

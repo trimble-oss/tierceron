@@ -7,10 +7,10 @@ import (
 	"strings"
 	"syscall"
 
+	"tierceron/buildopts/coreopts"
 	helperkv "tierceron/vaulthelper/kv"
 	//pb "tierceron/webapi/rpc/apinator"
 
-	configcore "VaultConfig.Bootstrap/configcore"
 	tm "golang.org/x/crypto/ssh/terminal"
 )
 
@@ -18,12 +18,12 @@ import (
 func LoginToLocal() (string, error) {
 	var username, environment string
 	var err error
-	httpsClient, err := helperkv.CreateHTTPClient(false, configcore.VaultHost, "nonprod", false)
+	httpsClient, err := helperkv.CreateHTTPClient(false, coreopts.GetVaultHost(), "nonprod", false)
 	if err != nil {
 		return "", err
 	}
 
-	//client := pb.NewEnterpriseServiceBrokerProtobufClient(configcore.VaultHost, httpsClient)
+	//client := pb.NewEnterpriseServiceBrokerProtobufClient(coreopts.GetVaultHost(), httpsClient)
 	console := bufio.NewReader(os.Stdin)
 	fmt.Println("Login needed to use a local environment")
 	for {
