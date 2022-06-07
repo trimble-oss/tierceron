@@ -11,7 +11,7 @@ import (
 // This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
 func main() {
-	fmt.Println("Version: " + "1.24")
+	fmt.Println("Version: " + "1.25")
 	envPtr := flag.String("env", "dev", "Environment to get seed data for.")
 
 	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil, nil)
