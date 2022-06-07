@@ -7,10 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"tierceron/buildopts/coreopts"
 	eUtils "tierceron/utils"
 	pb "tierceron/webapi/rpc/apinator"
-
-	configcore "VaultConfig.Bootstrap/configcore"
 )
 
 // ProxyLogin proxy logs in the user.
@@ -54,8 +53,8 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 			return "", "", nil, err
 		}
 
-		if userNameField, ok := response[configcore.UserNameField].(string); ok {
-			if userCodeField, ok := response[configcore.UserCodeField].(string); ok {
+		if userNameField, ok := response[coreopts.GetUserNameField()].(string); ok {
+			if userCodeField, ok := response[coreopts.GetUserCodeField()].(string); ok {
 
 				return userNameField, userCodeField, &pb.LoginResp{
 					Success:   true,
