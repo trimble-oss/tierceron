@@ -25,6 +25,9 @@ var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string, error) {
+	if config.WantCerts {
+		return "", false, "", nil
+	}
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -335,6 +338,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				goMod, err = helperkv.NewModifier(c.Insecure, c.Token, c.VaultAddress, c.Env, c.Regions, config.Log)
 				if err != nil {
 					eUtils.LogErrorObject(config, err, false)
+					wg.Done()
 					return
 				}
 				goMod.Env = env
@@ -355,6 +359,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					_, err := mod.ReadData("apiLogins/meta")
 					if err != nil {
 						eUtils.LogAndSafeExit(config, "Cannot genAuth with provided token.", -1)
+						wg.Done()
 						return
 					}
 				}
@@ -395,6 +400,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			)
 			if errSeed != nil {
 				eUtils.LogAndSafeExit(config, errSeed.Error(), -1)
+				wg.Done()
 				return
 			}
 			templateResult.Env = env + "_" + version
@@ -536,7 +542,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 		return errGenerateSeeds, nil
 	}
 
-	if endPath == "" && !multiService && seedData == "" {
+	if endPath == "" && !multiService && seedData == "" && !config.WantCerts {
 		return nil, nil
 	}
 
