@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	trcname "tierceron/trcvault/opts/trcname"
 
+	"tierceron/buildopts/coreopts"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
@@ -56,17 +56,17 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	if addrPtrIn != nil && *addrPtrIn != "" {
 		addrPtr = addrPtrIn
 	}
-	startDirPtr := flag.String("startDir", trcname.GetFolderPrefix()+"_templates", "Pull templates from this directory")
-	endDirPtr := flag.String("endDir", "./"+trcname.GetFolderPrefix()+"_seeds/", "Write generated seed files to this directory")
-	logFilePtr := flag.String("log", "./"+trcname.GetFolderPrefix()+"x.log", "Output path for log file")
-	helpPtr := flag.Bool("h", false, "Provide options for "+trcname.GetFolderPrefix()+"x")
+	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix()+"_templates", "Pull templates from this directory")
+	endDirPtr := flag.String("endDir", "./"+coreopts.GetFolderPrefix()+"_seeds/", "Write generated seed files to this directory")
+	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"x.log", "Output path for log file")
+	helpPtr := flag.Bool("h", false, "Provide options for "+coreopts.GetFolderPrefix()+"x")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	genAuth := flag.Bool("genAuth", false, "Generate auth section of seed data?")
 	cleanPtr := flag.Bool("clean", false, "Cleans seed files locally")
 	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+trcname.GetFolderPrefix()+"x to access the vault")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix()+"x to access the vault")
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 
@@ -106,7 +106,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	// Initialize logging
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	eUtils.CheckError(config, err, true)
-	logger := log.New(f, "["+trcname.GetFolderPrefix()+"x]", log.LstdFlags)
+	logger := log.New(f, "["+coreopts.GetFolderPrefix()+"x]", log.LstdFlags)
 	config.Log = logger
 
 	envRaw := *envPtr
@@ -271,8 +271,8 @@ skipDiff:
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+trcname.GetFolderPrefix()+"x.log" {
-		*logFilePtr = "./" + trcname.GetFolderPrefix() + "x.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"x.log" {
+		*logFilePtr = "./" + coreopts.GetFolderPrefix() + "x.log"
 	}
 
 	regions := []string{}
@@ -306,7 +306,7 @@ skipDiff:
 
 	logger.Println("=============== Initializing Seed Generator ===============")
 
-	logger.SetPrefix("[" + trcname.GetFolderPrefix() + "x]")
+	logger.SetPrefix("[" + coreopts.GetFolderPrefix() + "x]")
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
 	sectionSlice := []string{""}
@@ -478,7 +478,7 @@ skipDiff:
 	}
 	waitg.Wait() //Wait for diff
 
-	logger.SetPrefix("[" + trcname.GetFolderPrefix() + "x]")
+	logger.SetPrefix("[" + coreopts.GetFolderPrefix() + "x]")
 	logger.Println("=============== Terminating Seed Generator ===============")
 	logger.SetPrefix("[END]")
 	logger.Println()
