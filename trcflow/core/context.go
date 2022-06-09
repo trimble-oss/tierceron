@@ -326,6 +326,7 @@ func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowCon
 // something to the changed channel.
 func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	query string,
+	bindings map[string]sqle.Expression, // Optional param
 	changed bool,
 	operation string,
 	flowNotifications []FlowNameType,
@@ -335,9 +336,22 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	if changed {
 		changedChannel = channelMap[FlowNameType(tfContext.Flow.TableName())]
 	}
-
 	if operation == "INSERT" {
-		_, _, matrix, err := trcdb.Query(tfmContext.TierceronEngine, query)
+		var matrix [][]string
+		var err error
+		if bindings == nil {
+			_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
+			if len(matrix) == 0 {
+				changed = false
+			}
+		} else {
+			tableName, _, _, err := trcdb.QueryWithBindings(tfmContext.TierceronEngine, query, bindings)
+
+			if err == nil && tableName == "ok" {
+				changed = true
+				matrix = append(matrix, []string{})
+			}
+		}
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -364,7 +378,23 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			}
 		}
 	} else if operation == "UPDATE" || operation == "DELETE" {
-		tableName, _, matrix, err := trcdb.Query(tfmContext.TierceronEngine, query)
+		var tableName string
+		var matrix [][]string
+		var err error
+		if bindings == nil {
+			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
+			if len(matrix) == 0 {
+				changed = false
+			}
+		} else {
+			tableName, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, query, bindings)
+
+			if err == nil && tableName == "ok" {
+				changed = true
+				matrix = append(matrix, []string{})
+			}
+		}
+
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
