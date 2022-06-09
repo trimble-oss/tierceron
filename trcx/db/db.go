@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -14,8 +15,9 @@ import (
 	helperkv "tierceron/vaulthelper/kv"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/sql"
+	sqlememory "github.com/dolthub/go-mysql-server/memory"
+
+	sqles "github.com/dolthub/go-mysql-server/sql"
 )
 
 var m sync.Mutex
@@ -34,7 +36,7 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 	configTableMap := templateResult.InterfaceTemplateSection.(map[string]interface{})["templates"].(map[string]interface{})[project].(map[string]interface{})[service].(map[string]interface{})
 	for configTableName, _ := range configTableMap {
 		tableSql, tableOk, _ := te.Database.GetTableInsensitive(te.Context, configTableName)
-		var table *memory.Table
+		var table *sqlememory.Table
 
 		valueColumns := templateResult.ValueSection["values"][service]
 		secretColumns := templateResult.SecretSection["super-secrets"][service]
@@ -47,7 +49,7 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 
 		if !tableOk {
 			// This is cacheable...
-			tableSchema := sql.NewPrimaryKeySchema([]*sql.Column{})
+			tableSchema := sqles.NewPrimaryKeySchema([]*sqles.Column{})
 
 			columnKeys := []string{}
 
@@ -63,16 +65,16 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 			sort.Strings(columnKeys)
 
 			for _, columnKey := range columnKeys {
-				column := sql.Column{Name: columnKey, Type: sql.Text, Source: configTableName}
+				column := sqles.Column{Name: columnKey, Type: sqles.Text, Source: configTableName}
 				tableSchema.Schema = append(tableSchema.Schema, &column)
 			}
 
-			table = memory.NewTable(configTableName, tableSchema)
+			table = sqlememory.NewTable(configTableName, tableSchema)
 			m.Lock()
 			te.Database.AddTable(configTableName, table)
 			m.Unlock()
 		} else {
-			table = tableSql.(*memory.Table)
+			table = tableSql.(*sqlememory.Table)
 		}
 
 		row := []interface{}{}
@@ -81,32 +83,46 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 		allDefaults := true
 		for _, column := range table.Schema() {
 			if value, ok := valueColumns[column.Name]; ok {
-				if value == "<Enter Secret Here>" || value == "" {
-					value = ""
+				var iVar interface{}
+				var cErr error
+				if value == "<Enter Secret Here>" || value == "" || value == "0" {
+					iVar, cErr = column.Type.Convert("")
+					if cErr != nil {
+						iVar = nil
+					}
 				} else {
 					allDefaults = false
 				}
-				row = append(row, value)
+				row = append(row, iVar)
 			} else if secretValue, svOk := secretColumns[column.Name]; svOk {
+				var iVar interface{}
+				var cErr error
 				if column.Name == "MysqlFileContent" && secretValue != "<Enter Secret Here>" && secretValue != "" {
 					var decodeErr error
 					decodedValue, decodeErr := base64.StdEncoding.DecodeString(string(secretValue))
 					if decodeErr != nil {
 						continue
 					}
-					secretValue = string(decodedValue)
+					iVar = string(decodedValue)
 				} else if secretValue == "<Enter Secret Here>" || secretValue == "" {
-					secretValue = ""
+					iVar, cErr = column.Type.Convert("")
+					if cErr != nil {
+						iVar = nil
+					}
 				} else {
+					iVar, _ = column.Type.Convert(secretValue)
 					allDefaults = false
 				}
-				row = append(row, secretValue)
+				row = append(row, iVar)
 			}
 		}
 
 		if !allDefaults {
 			m.Lock()
-			table.Insert(te.Context, sql.NewRow(row...))
+			insertErr := table.Insert(te.Context, sqles.NewRow(row...))
+			if insertErr != nil {
+				fmt.Println("Here")
+			}
 			m.Unlock()
 		}
 	}
@@ -240,7 +256,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 func CreateEngine(config *eUtils.DriverConfig,
 	templatePaths []string, env string, dbname string) (*TierceronEngine, error) {
 
-	te := &TierceronEngine{Database: memory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sql.NewEmptyContext(), Config: *config}
+	te := &TierceronEngine{Database: sqlememory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*TierceronTable{}, Context: sqles.NewEmptyContext(), Config: *config}
 
 	var goMod *helperkv.Modifier
 	goMod, errModInit := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions, config.Log)
@@ -325,19 +341,19 @@ func CreateEngine(config *eUtils.DriverConfig,
 			wgEnterprise.Wait()
 		}
 		*/
-		te.Engine = sqle.NewDefault(memory.NewMemoryDBProvider(te.Database))
+		te.Engine = sqle.NewDefault(sqlememory.NewMemoryDBProvider(te.Database))
 	}
 	return te, nil
 }
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func Query(te *TierceronEngine, query string) (string, []string, [][]string, error) {
+func Query(te *TierceronEngine, query string) (string, []string, [][]interface{}, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
-	ctx := sql.NewContext(context.Background())
+	ctx := sqles.NewContext(context.Background())
 
 	m.Lock()
 	//	te.Context = ctx
@@ -349,7 +365,7 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 	}
 
 	columns := []string{}
-	matrix := [][]string{}
+	matrix := [][]interface{}{}
 	tableName := ""
 
 	for _, col := range schema {
@@ -368,11 +384,11 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 			if err == io.EOF {
 				break
 			}
-			rowData := []string{}
+			rowData := []interface{}{}
 			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
 				okResult = true
 				if len(row) > 0 {
-					if sqlOkResult, ok := row[0].(sql.OkResult); ok {
+					if sqlOkResult, ok := row[0].(sqles.OkResult); ok {
 						if sqlOkResult.RowsAffected > 0 {
 							matrix = append(matrix, rowData)
 						}
@@ -380,7 +396,7 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 				}
 			} else {
 				for _, col := range row {
-					rowData = append(rowData, col.(string))
+					rowData = append(rowData, col)
 				}
 				matrix = append(matrix, rowData)
 			}
@@ -395,12 +411,12 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]string, err
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sql.Expression) (string, []string, [][]string, error) {
+func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sqles.Expression) (string, []string, [][]string, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
-	ctx := sql.NewContext(context.Background())
+	ctx := sqles.NewContext(context.Background())
 
 	m.Lock()
 	//	te.Context = ctx
@@ -435,7 +451,7 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert or update statements
 				okResult = true
 				if len(row) > 0 {
-					if sqlOkResult, ok := row[0].(sql.OkResult); ok {
+					if sqlOkResult, ok := row[0].(sqles.OkResult); ok {
 						if sqlOkResult.RowsAffected > 0 {
 							matrix = append(matrix, rowData)
 						}

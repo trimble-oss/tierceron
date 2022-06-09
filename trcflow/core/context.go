@@ -201,7 +201,7 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 
 	syncMysql := mysql.GetMysqlStatus()
@@ -228,7 +228,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
 	bootStrap bool,
 	seedInitCompleteChan chan bool) {
@@ -302,7 +302,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 
 	var seedInitComplete chan bool = make(chan bool, 1)
@@ -330,14 +330,14 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	changed bool,
 	operation string,
 	flowNotifications []FlowNameType,
-	flowtestState string) [][]string {
+	flowtestState string) [][]interface{} {
 	var changedChannel chan bool
 
 	if changed {
 		changedChannel = channelMap[FlowNameType(tfContext.Flow.TableName())]
 	}
 	if operation == "INSERT" {
-		var matrix [][]string
+		var matrix [][]interface{}
 		var err error
 		if bindings == nil {
 			_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
@@ -349,7 +349,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 
 			if err == nil && tableName == "ok" {
 				changed = true
-				matrix = append(matrix, []string{})
+				matrix = append(matrix, []interface{}{})
 			}
 		}
 		if err != nil {
@@ -379,7 +379,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		}
 	} else if operation == "UPDATE" || operation == "DELETE" {
 		var tableName string
-		var matrix [][]string
+		var matrix [][]interface{}
 		var err error
 		if bindings == nil {
 			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
@@ -391,7 +391,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 
 			if err == nil && tableName == "ok" {
 				changed = true
-				matrix = append(matrix, []string{})
+				matrix = append(matrix, []interface{}{})
 			}
 		}
 

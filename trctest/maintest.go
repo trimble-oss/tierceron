@@ -12,6 +12,8 @@ import (
 // This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
 func main() {
+	// Supported build flags:
+	//    insecure harbinger tc testrunner ( mysql, testflow -- auto registration -- warning do not use!)
 	logFilePtr := flag.String("log", "./trcdbplugin.log", "Output path for log file")
 	tokenPtr := flag.String("token", "", "Vault access Token")
 	flag.Parse()
