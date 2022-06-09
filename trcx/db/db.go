@@ -432,7 +432,7 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 				break
 			}
 			rowData := []string{}
-			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
+			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert or update statements
 				okResult = true
 				if len(row) > 0 {
 					if sqlOkResult, ok := row[0].(sql.OkResult); ok {
