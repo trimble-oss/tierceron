@@ -112,7 +112,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
 			tableCreationLock.Lock()
 			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
-				{Name: "id", Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
+				{Name: "id", Type: coreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 			}))
 			tableCreationLock.Unlock()
@@ -201,7 +201,7 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 
 	syncMysql := mysql.GetMysqlStatus()
@@ -228,7 +228,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
 	bootStrap bool,
 	seedInitCompleteChan chan bool) {
@@ -302,7 +302,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 
 	var seedInitComplete chan bool = make(chan bool, 1)
@@ -326,18 +326,32 @@ func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowCon
 // something to the changed channel.
 func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	query string,
+	bindings map[string]sqle.Expression, // Optional param
 	changed bool,
 	operation string,
 	flowNotifications []FlowNameType,
-	flowtestState string) [][]string {
+	flowtestState string) [][]interface{} {
 	var changedChannel chan bool
 
 	if changed {
 		changedChannel = channelMap[FlowNameType(tfContext.Flow.TableName())]
 	}
-
 	if operation == "INSERT" {
-		_, _, matrix, err := trcdb.Query(tfmContext.TierceronEngine, query)
+		var matrix [][]interface{}
+		var err error
+		if bindings == nil {
+			_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
+			if len(matrix) == 0 {
+				changed = false
+			}
+		} else {
+			tableName, _, _, err := trcdb.QueryWithBindings(tfmContext.TierceronEngine, query, bindings)
+
+			if err == nil && tableName == "ok" {
+				changed = true
+				matrix = append(matrix, []interface{}{})
+			}
+		}
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -364,7 +378,23 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			}
 		}
 	} else if operation == "UPDATE" || operation == "DELETE" {
-		tableName, _, matrix, err := trcdb.Query(tfmContext.TierceronEngine, query)
+		var tableName string
+		var matrix [][]interface{}
+		var err error
+		if bindings == nil {
+			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
+			if len(matrix) == 0 {
+				changed = false
+			}
+		} else {
+			tableName, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, query, bindings)
+
+			if err == nil && tableName == "ok" {
+				changed = true
+				matrix = append(matrix, []interface{}{})
+			}
+		}
+
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
