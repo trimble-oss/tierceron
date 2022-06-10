@@ -19,6 +19,7 @@ sudo mkdir -p /etc/opt/vault/data/
 sudo mkdir -p /etc/opt/vault/certs/
 #copy everything from /tmp
 sudo mv /tmp/serv_*.pem /etc/opt/vault/certs/
+sudo mv /tmp/Digi*.crt.pem /etc/opt/vault/certs/
 privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp/vault_properties.hcl
 #get pem files locally 
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
