@@ -260,6 +260,18 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
     destination = "/tmp/serv_key.pem"
   }
 
+    provisioner "file" {
+    connection {
+      host        = self.public_ip_address
+      user        = "ubuntu"
+      type        = "ssh"
+      private_key = tls_private_key.private_key.private_key_pem
+      timeout     = "30s"
+    }
+    source      = "vault/sqlcert.pem"
+    destination = "/tmp/DigiCertGlobalRootCA.crt.pem"
+  }
+
   provisioner "file" {
     connection {
       host        = self.public_ip_address
@@ -268,6 +280,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       private_key = tls_private_key.private_key.private_key_pem
       timeout     = "30s"
     }
+    
 
     destination = "/tmp/install.sh"
     content = templatefile(

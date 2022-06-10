@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"sync"
 	"tierceron/buildopts/coreopts"
@@ -15,19 +16,35 @@ import (
 var changesLock sync.Mutex
 
 func getChangeIdQuery(databaseName string, changeTable string) string {
-	return "SELECT id FROM " + databaseName + `.` + changeTable
+	return fmt.Sprintf("SELECT id FROM %s.%s", databaseName, changeTable)
 }
 
-func getDeleteChangeQuery(databaseName string, changeTable string, id string) string {
-	return "DELETE FROM " + databaseName + `.` + changeTable + " WHERE id = '" + id + "'"
+func getChangedByIdQuery(databaseName string, changeTable string, identityColumnName string, id interface{}) string {
+	if _, iOk := id.(int64); iOk {
+		return fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, identityColumnName, id)
+	} else {
+		return fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, identityColumnName, id)
+	}
 }
 
-func getInsertChangeQuery(databaseName string, changeTable string, id string) string {
-	return `INSERT IGNORE INTO ` + databaseName + `.` + changeTable + `VALUES (` + id + `, current_timestamp());`
+func getDeleteChangeQuery(databaseName string, changeTable string, id interface{}) string {
+	if _, iOk := id.(int64); iOk {
+		return fmt.Sprintf("DELETE FROM %s.%s WHERE id = '%d'", databaseName, changeTable, id)
+	} else {
+		return fmt.Sprintf("DELETE FROM %s.%s WHERE id = '%s'", databaseName, changeTable, id)
+	}
+}
+
+func getInsertChangeQuery(databaseName string, changeTable string, id interface{}) string {
+	if _, iOk := id.(int64); iOk {
+		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (%d, current_timestamp())", databaseName, changeTable, id)
+	} else {
+		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (%s, current_timestamp())", databaseName, changeTable, id)
+	}
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
-func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *TrcFlowContext) ([][]string, error) {
+func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *TrcFlowContext) ([][]interface{}, error) {
 	var changedEntriesQuery string
 
 	changesLock.Lock()
@@ -61,7 +78,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	identityColumnName string,
 	vaultIndexColumnName string,
 	syncMysql bool,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
 
 	matrixChangedEntries, err := tfmContext.removeChangedTableEntries(tfContext)
@@ -73,7 +90,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
 
-		changedTableQuery := `SELECT * FROM ` + tfContext.FlowSourceAlias + `.` + tfContext.Flow.TableName() + ` WHERE ` + identityColumnName + `='` + changedId + `'`
+		changedTableQuery := getChangedByIdQuery(tfContext.FlowSourceAlias, tfContext.Flow.TableName(), identityColumnName, changedId)
 
 		_, changedTableColumns, changedTableRowData, err := trcdb.Query(tfmContext.TierceronEngine, changedTableQuery)
 		if err != nil {
@@ -112,13 +129,13 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		//Use trigger to make another table
 		//Check for tenantId
 
-		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query string) (string, []string, [][]string, error) {
+		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query string) (string, []string, [][]interface{}, error) {
 			return trcdb.Query(engine.(*trcdb.TierceronEngine), query)
 		})
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(tfmContext.Config, indexPathErr, false)
 			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
+			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)))
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
@@ -126,8 +143,8 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		if identityColumnName == "MysqlFilePath" {
-			if !strings.HasSuffix(changedTableRowData[0][1], "==") {
-				changedTableRowData[0][1] = base64.StdEncoding.EncodeToString([]byte(changedTableRowData[0][1]))
+			if !strings.HasSuffix(rowDataMap["MysqlFileContent"].(string), "==") {
+				rowDataMap["MysqlFileContent"] = base64.StdEncoding.EncodeToString([]byte(rowDataMap["MysqlFileContent"].(string)))
 			}
 		}
 
@@ -135,7 +152,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		if seedError != nil {
 			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
 			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId))
+			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)))
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
@@ -161,7 +178,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	identityColumnName string,
 	vaultIndexColumnName string,
 	isInit bool,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]string, error)) (string, error),
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
 	trcdb.TransformConfig(tfContext.GoMod,
 		tfmContext.TierceronEngine,
