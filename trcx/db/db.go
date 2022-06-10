@@ -91,6 +91,7 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 						iVar = nil
 					}
 				} else {
+					iVar, _ = column.Type.Convert(value)
 					allDefaults = false
 				}
 				row = append(row, iVar)
@@ -119,6 +120,7 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 
 		if !allDefaults {
 			m.Lock()
+
 			insertErr := table.Insert(te.Context, sqles.NewRow(row...))
 			if insertErr != nil {
 				fmt.Println("Here")
