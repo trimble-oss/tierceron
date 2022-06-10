@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -23,7 +22,7 @@ import (
 
 var m sync.Mutex
 
-func writeToTable(te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, templateResult *extract.TemplateResultData) {
+func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterprise string, version string, project string, projectAlias string, service string, templateResult *extract.TemplateResultData) {
 
 	//
 	// What we need is in ValueSection and SecretSection...
@@ -124,7 +123,7 @@ func writeToTable(te *TierceronEngine, envEnterprise string, version string, pro
 
 			insertErr := table.Insert(te.Context, sqles.NewRow(row...))
 			if insertErr != nil {
-				fmt.Println("Here")
+				eUtils.LogErrorObject(config, insertErr, false)
 			}
 			m.Unlock()
 		}
@@ -175,7 +174,7 @@ func templateToTableRowHelper(goMod *helperkv.Modifier, te *TierceronEngine, env
 		return errSeed
 	}
 
-	writeToTable(te, envEnterprise, version, project, projectAlias, service, &templateResult)
+	writeToTable(te, config, envEnterprise, version, project, projectAlias, service, &templateResult)
 	return nil
 }
 
