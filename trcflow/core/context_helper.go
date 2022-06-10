@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"sync"
 	"tierceron/buildopts/coreopts"
@@ -15,15 +16,31 @@ import (
 var changesLock sync.Mutex
 
 func getChangeIdQuery(databaseName string, changeTable string) string {
-	return "SELECT id FROM " + databaseName + `.` + changeTable
+	return fmt.Sprintf("SELECT id FROM %s.%s", databaseName, changeTable)
+}
+
+func getChangedByIdQuery(databaseName string, changeTable string, identityColumnName string, id interface{}) string {
+	if _, iOk := id.(int64); iOk {
+		return fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, identityColumnName, id)
+	} else {
+		return fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, identityColumnName, id)
+	}
 }
 
 func getDeleteChangeQuery(databaseName string, changeTable string, id interface{}) string {
-	return "DELETE FROM " + databaseName + `.` + changeTable + " WHERE id = '" + id.(string) + "'"
+	if _, iOk := id.(int64); iOk {
+		return fmt.Sprintf("DELETE FROM %s.%s WHERE id = '%d'", databaseName, changeTable, id)
+	} else {
+		return fmt.Sprintf("DELETE FROM %s.%s WHERE id = '%s'", databaseName, changeTable, id)
+	}
 }
 
-func getInsertChangeQuery(databaseName string, changeTable string, id string) string {
-	return `INSERT IGNORE INTO ` + databaseName + `.` + changeTable + `VALUES (` + id + `, current_timestamp());`
+func getInsertChangeQuery(databaseName string, changeTable string, id interface{}) string {
+	if _, iOk := id.(int64); iOk {
+		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (%d, current_timestamp())", databaseName, changeTable, id)
+	} else {
+		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (%s, current_timestamp())", databaseName, changeTable, id)
+	}
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
@@ -73,7 +90,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
 
-		changedTableQuery := `SELECT * FROM ` + tfContext.FlowSourceAlias + `.` + tfContext.Flow.TableName() + ` WHERE ` + identityColumnName + `='` + changedId.(string) + `'`
+		changedTableQuery := getChangedByIdQuery(tfContext.FlowSourceAlias, tfContext.Flow.TableName(), identityColumnName, changedId)
 
 		_, changedTableColumns, changedTableRowData, err := trcdb.Query(tfmContext.TierceronEngine, changedTableQuery)
 		if err != nil {

@@ -112,7 +112,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
 			tableCreationLock.Lock()
 			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
-				{Name: "id", Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
+				{Name: "id", Type: coreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 			}))
 			tableCreationLock.Unlock()

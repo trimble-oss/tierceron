@@ -194,7 +194,11 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 			} else if tValue, tOk := value.(time.Time); tOk {
 				templateResult.SecretSection["super-secrets"][service][key] = tValue.String()
 			} else {
-				templateResult.SecretSection["super-secrets"][service][key] = fmt.Sprintf("%v", value)
+				if value != nil {
+					templateResult.SecretSection["super-secrets"][service][key] = fmt.Sprintf("%v", value)
+				} else {
+					templateResult.SecretSection["super-secrets"][service][key] = ""
+				}
 			}
 		}
 	}
