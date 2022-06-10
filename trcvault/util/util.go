@@ -3,10 +3,12 @@ package util
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"tierceron/trcvault/opts/insecure"
 	"tierceron/trcvault/opts/prod"
@@ -183,12 +185,40 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	sliceSecretSection := []map[string]map[string]map[string]string{}
 	for key, value := range tableData {
 		if _, ok := templateResult.SecretSection["super-secrets"][service][key]; ok {
-			templateResult.SecretSection["super-secrets"][service][key] = value.(string)
+			if valueString, sOk := value.(string); sOk {
+				templateResult.SecretSection["super-secrets"][service][key] = valueString
+			} else if iValue, iOk := value.(int64); iOk {
+				templateResult.SecretSection["super-secrets"][service][key] = fmt.Sprintf("%d", iValue)
+			} else if i8Value, i8Ok := value.(int8); i8Ok {
+				templateResult.SecretSection["super-secrets"][service][key] = fmt.Sprintf("%d", i8Value)
+			} else if tValue, tOk := value.(time.Time); tOk {
+				templateResult.SecretSection["super-secrets"][service][key] = tValue.String()
+			} else {
+				if value != nil {
+					templateResult.SecretSection["super-secrets"][service][key] = fmt.Sprintf("%v", value)
+				} else {
+					templateResult.SecretSection["super-secrets"][service][key] = ""
+				}
+			}
 		}
 	}
 	for key, value := range tableData {
 		if _, ok := templateResult.ValueSection["values"][service][key]; ok {
-			templateResult.ValueSection["values"][service][key] = value.(string)
+			if valueString, sOk := value.(string); sOk {
+				templateResult.ValueSection["values"][service][key] = valueString
+			} else if iValue, iOk := value.(int64); iOk {
+				templateResult.ValueSection["values"][service][key] = fmt.Sprintf("%d", iValue)
+			} else if i8Value, i8Ok := value.(int8); i8Ok {
+				templateResult.ValueSection["values"][service][key] = fmt.Sprintf("%d", i8Value)
+			} else if tValue, tOk := value.(time.Time); tOk {
+				templateResult.ValueSection["values"][service][key] = tValue.String()
+			} else {
+				if value != nil {
+					templateResult.ValueSection["values"][service][key] = fmt.Sprintf("%v", value)
+				} else {
+					templateResult.ValueSection["values"][service][key] = ""
+				}
+			}
 		}
 	}
 	maxDepth := templateResult.TemplateDepth

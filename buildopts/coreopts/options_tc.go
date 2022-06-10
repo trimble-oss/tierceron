@@ -7,11 +7,17 @@ import (
 	configcore "VaultConfig.Bootstrap/configcore"
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
 	tvUtils "VaultConfig.TenantConfig/util/buildtrcprefix"
+
 	"database/sql"
+	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
 func GetSyncedTables() []string {
 	return tcbuildopts.GetSyncedTables()
+}
+
+func GetIdColumnType(table string) sqle.Type {
+	return tcbuildopts.GetIdColumnType(table)
 }
 
 func GetFolderPrefix() string {

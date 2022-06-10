@@ -297,7 +297,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 	if len(config.IndexFilter) > 0 {
 		for _, iFilter := range config.IndexFilter {
 			for _, tPath := range templatePaths {
-				if strings.Contains(tPath, iFilter) {
+				if strings.Contains(tPath, "/"+iFilter+"/") {
 					iFilterTemplatePaths = append(iFilterTemplatePaths, tPath)
 				}
 			}
