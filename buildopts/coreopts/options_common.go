@@ -6,11 +6,17 @@ package coreopts
 import (
 	"database/sql"
 	"errors"
+
+	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
 // Which tables synced..
 func GetSyncedTables() []string {
 	return []string{}
+}
+
+func GetIdColumnType(table string) sqle.Type {
+	return sqle.Text
 }
 
 func GetFolderPrefix() string {
