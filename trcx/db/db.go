@@ -16,6 +16,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
 
 	sqles "github.com/dolthub/go-mysql-server/sql"
 )
@@ -454,6 +455,69 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 				okResult = true
 				if len(row) > 0 {
 					if sqlOkResult, ok := row[0].(sqles.OkResult); ok {
+						if sqlOkResult.RowsAffected > 0 {
+							matrix = append(matrix, rowData)
+						}
+					}
+				}
+			} else {
+				for _, col := range row {
+					rowData = append(rowData, col.(string))
+				}
+				matrix = append(matrix, rowData)
+			}
+		}
+		if okResult {
+			return "ok", nil, matrix, nil
+		}
+	}
+
+	return tableName, columns, matrix, nil
+}
+
+// Query - queries configurations using standard ANSI SQL syntax.
+// Example: select * from ServiceTechMobileAPI.configfile
+func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sql.Expression) (string, []string, [][]string, error) {
+	// Create a test memory database and register it to the default engine.
+
+	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
+	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
+	ctx := sql.NewContext(context.Background())
+
+	m.Lock()
+	//	te.Context = ctx
+	schema, r, queryErr := te.Engine.QueryWithBindings(te.Context, query, bindings)
+	m.Unlock()
+
+	if queryErr != nil {
+		return "", nil, nil, queryErr
+	}
+
+	columns := []string{}
+	matrix := [][]string{}
+	tableName := ""
+
+	for _, col := range schema {
+		if tableName == "" {
+			tableName = col.Source
+		}
+
+		columns = append(columns, col.Name)
+	}
+
+	if len(columns) > 0 {
+		// Iterate results and print them.
+		okResult := false
+		for {
+			row, err := r.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			rowData := []string{}
+			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
+				okResult = true
+				if len(row) > 0 {
+					if sqlOkResult, ok := row[0].(sql.OkResult); ok {
 						if sqlOkResult.RowsAffected > 0 {
 							matrix = append(matrix, rowData)
 						}
