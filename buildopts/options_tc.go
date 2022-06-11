@@ -4,7 +4,6 @@
 package buildopts
 
 import (
-	"errors"
 	flowcore "tierceron/trcflow/core"
 	eUtils "tierceron/utils"
 
@@ -45,11 +44,11 @@ func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowCo
 }
 
 func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return errors.New("Table not implemented.")
+	return tcutil.ProcessFlowController(tfmContext, trcFlowContext)
 }
 
 func GetAdditionalFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{} // Noop
+	return tcutil.GetAdditionalFlows()
 }
 
 func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
