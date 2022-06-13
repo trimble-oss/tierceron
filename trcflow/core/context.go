@@ -61,7 +61,9 @@ func (fnt FlowNameType) ServiceName() string {
 
 func TriggerAllChangeChannel() {
 	for _, changeChannel := range channelMap {
-		changeChannel <- true
+		if len(changeChannel) < 3 {
+			changeChannel <- true
+		}
 	}
 }
 
