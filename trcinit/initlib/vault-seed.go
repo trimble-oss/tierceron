@@ -455,7 +455,11 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 							}
 						}
 					} else {
-						eUtils.LogInfo(config, "Cert validation failure.  Cert will not be loaded."+certValidationErr.Error())
+						if certValidationErr == nil {
+							eUtils.LogInfo(config, "Cert validation failure. Cert will not be loaded.")
+						} else {
+							eUtils.LogInfo(config, "Cert validation failure.  Cert will not be loaded."+certValidationErr.Error())
+						}
 						delete(entry.data, "certData")
 						delete(entry.data, "certHost")
 						delete(entry.data, "certSourcePath")
