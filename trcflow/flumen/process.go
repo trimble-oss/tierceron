@@ -75,7 +75,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			indexValues = []string{""}
 		}
 
-		if services[i] == "VaultDatabase" {
+		if services[i] == "VaultDatabase" || services[i] == "Identity" {
 			goMod.SectionName = "config"
 			goMod.SectionKey = "/Restricted/"
 		}
