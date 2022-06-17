@@ -13,3 +13,8 @@ func GetImageDownloadUrl(pluginToolConfig map[string]interface{}) (string, error
 	// TODO: implement
 	return "", nil
 }
+
+func GetImageAndShaFromDownload(pluginToolConfig map[string]interface{}) error {
+	// TODO: implement
+	return nil
+}
