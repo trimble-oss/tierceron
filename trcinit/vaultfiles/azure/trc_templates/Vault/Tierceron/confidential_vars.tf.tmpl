@@ -27,3 +27,13 @@ variable "security_software_name"{
   type = string
   default = {{.security_software_name}}
 }
+
+variable "script_cidr_block" {
+  type    = string
+  default = {{.script_cidr_block}}
+}
+
+variable "ssh_port" {
+  type    = string
+  default = ".ssh_port"
+}
