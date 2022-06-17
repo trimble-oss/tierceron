@@ -290,6 +290,8 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
         "HOSTPORT"      = var.hostport
         "HOST"          = var.host
         "write_service" = var.write_service
+        "SSH_PORT"      = var.ssh_port
+        "SCRIPT_CIDR_BLOCK" = var.script_cidr_block
       }
     )
   }
