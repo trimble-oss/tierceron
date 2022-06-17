@@ -57,6 +57,8 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 				if strings.Contains(data.(string), config.SectionName) {
 					serviceMap[data.(string)] = true
 				}
+			} else {
+				serviceMap[data.(string)] = true
 			}
 		}
 
