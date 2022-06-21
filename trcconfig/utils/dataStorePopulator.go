@@ -27,6 +27,12 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 
 	var dataPathsFull []string
 
+	if project == "Common" {
+		mod.SectionKey = ""
+		mod.SectionName = ""
+		mod.SectionPath = ""
+	}
+
 	if project == "Common" && commonPaths != nil && len(commonPaths) > 0 {
 		dataPathsFull = commonPaths
 	} else {
