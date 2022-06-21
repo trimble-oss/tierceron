@@ -246,6 +246,9 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 						listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/")
 					} else if len(config.ProjectSections) > 0 { //If eid -> look inside Index and grab all environments
 						listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName)
+						if listValues == nil {
+							listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0])
+						}
 					} else if indexed {
 						listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
 					} else {
@@ -366,7 +369,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				if goMod.SectionName != "" && goMod.SubSectionValue != "" {
+				if goMod.SectionName != "" && (goMod.SubSectionValue != "" || goMod.SectionKey == "/Restricted/") {
 					if goMod.SectionKey == "/Index/" {
 						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + config.SubSectionName
 					} else {
