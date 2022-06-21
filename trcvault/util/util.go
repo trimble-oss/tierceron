@@ -263,7 +263,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	indexFound := false
 	templatePaths := pluginConfig["templatePath"].([]string)
 
-	pluginToolConfig, err := mod.ReadData("super-secrets/PluginTool")
+	pluginToolConfig, err := mod.ReadData("super-secrets/Restricted/PluginTool/config")
 
 	if err != nil {
 		return nil, err
