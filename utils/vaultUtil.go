@@ -53,7 +53,13 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 
 		serviceList := serviceInterface.Data["keys"]
 		for _, data := range serviceList.([]interface{}) {
-			serviceMap[data.(string)] = true
+			if config.SectionName != "" {
+				if strings.Contains(data.(string), config.SectionName) {
+					serviceMap[data.(string)] = true
+				}
+			} else {
+				serviceMap[data.(string)] = true
+			}
 		}
 
 		for _, templatePath := range templatePaths {
@@ -62,9 +68,12 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 					if strings.Contains(templatePath, "/"+projectSection+"/") {
 						listValues, err := modCheck.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName)
 						if err != nil || listValues == nil {
-							LogErrorObject(config, err, false)
-							LogInfo(config, "Couldn't list services for project path")
-							continue
+							listValues, err = modCheck.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0])
+							if listValues == nil {
+								LogErrorObject(config, err, false)
+								LogInfo(config, "Couldn't list services for project path")
+								continue
+							}
 						}
 						for _, valuesPath := range listValues.Data {
 							for _, service := range valuesPath.([]interface{}) {

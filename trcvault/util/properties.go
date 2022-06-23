@@ -24,11 +24,11 @@ func NewProperties(config *eUtils.DriverConfig, v *sys.Vault, mod *helperkv.Modi
 	if mod.SectionName != "" && mod.SubSectionValue != "" {
 		if mod.SectionKey == "/Index/" {
 			properties.mod.SectionPath = "super-secrets" + mod.SectionKey + project + "/" + mod.SectionName + "/" + mod.SubSectionValue + "/" + service
-		} else if mod.SectionKey == "/Restricted/" {
-			properties.mod.SectionPath = "super-secrets" + mod.SectionKey + project + "/" + mod.SectionName
 		} else {
 			properties.mod.SectionPath = "super-secrets" + mod.SectionKey + project + "/" + mod.SectionName + "/" + mod.SubSectionValue
 		}
+	} else if mod.SectionKey == "/Restricted/" {
+		properties.mod.SectionPath = "super-secrets" + mod.SectionKey + service + "/" + mod.SectionName
 	} else {
 		properties.mod.SectionPath = ""
 	}
