@@ -1,6 +1,15 @@
-storage "file" {
-    path = "./vault/data"
-    max_entry_size = 16777216
+//storage "file" {
+//    path = "./vault/data"
+//    max_entry_size = 16777216
+//}
+
+Storage "mysql" {
+    // Set this path to wherever the test/deploy environment is
+    username ="{{.adminUser}}"
+    password="{{.dbPassword}}"
+    database="{{.dbname}}"
+    address="{{.dbAddress}}" #This should match the private dns for the database.
+    tls_ca_file= "/etc/opt/vault/certs/{{.dbcert_name}}"
 }
 
 listener "tcp" {
