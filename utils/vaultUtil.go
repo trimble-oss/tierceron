@@ -11,7 +11,7 @@ import (
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	LogInfo(config, "InitVaultMod begins..")
-	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, config.ExitOnFailure, config.Log)
+	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, false, config.Log)
 	if err != nil {
 		LogInfo(config, "Failure to connect to vault..")
 		LogErrorObject(config, err, false)
@@ -129,7 +129,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	logger.Println("InitVaultModForPlugin initialize DriverConfig.")
 
 	config := DriverConfig{
-		Insecure:       true, // Plugin always local, so this is ok...
+		Insecure:       !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
 		Token:          pluginConfig["token"].(string),
 		VaultAddress:   pluginConfig["address"].(string),
 		Env:            pluginConfig["env"].(string),

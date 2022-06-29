@@ -335,6 +335,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	flowtestState string) [][]interface{} {
 	var changedChannel chan bool
 
+	if query == "" {
+		return nil
+	}
 	if changed {
 		changedChannel = channelMap[FlowNameType(tfContext.Flow.TableName())]
 	}
