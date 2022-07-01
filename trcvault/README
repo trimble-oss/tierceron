@@ -5,3 +5,11 @@
 3. Build and deploy the initial plugin with buildit.sh
 4. Making changes you must run updateit.sh to deploy new versions of the plugin.
 
+
+# db regions
+trcx -env=QA -token=$VAULT_TOKEN -insecure -indexed=TrcVault -indexFilter=regionId -serviceFilter=Database
+
+# Restricted section
+trcx -env=QA -token=$VAULT_TOKEN -restricted=Identity -serviceFilter=config -indexFilter=config
+trcx -env=QA -token=$VAULT_TOKEN -restricted=PluginTool -serviceFilter=config -indexFilter=config
+trcx -env=QA -token=$VAULT_TOKEN -restricted=VaultDatabase -serviceFilter=config -indexFilter=config
