@@ -67,4 +67,4 @@ EOF
 sudo mv /tmp/upstart /lib/systemd/system/vault.service
 
 # Start Vault
-sudo service vault start
+#sudo service vault start
