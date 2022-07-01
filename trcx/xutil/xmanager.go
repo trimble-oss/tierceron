@@ -300,7 +300,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 	if len(config.IndexFilter) > 0 {
 		for _, iFilter := range config.IndexFilter {
 			for _, tPath := range templatePaths {
-				if strings.Contains(tPath, "/"+iFilter+"/") {
+				if strings.Contains(tPath, "/"+iFilter+"/") || strings.HasSuffix(tPath, "/"+iFilter+".yml.tmpl") {
 					iFilterTemplatePaths = append(iFilterTemplatePaths, tPath)
 				}
 			}
@@ -372,6 +372,8 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				if goMod.SectionName != "" && (goMod.SubSectionValue != "" || goMod.SectionKey == "/Restricted/") {
 					if goMod.SectionKey == "/Index/" {
 						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + config.SubSectionName
+					} else if goMod.SectionKey == "/Restricted/" {
+						goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
 					} else {
 						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
 					}
