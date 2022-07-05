@@ -54,3 +54,7 @@ func GetUserNameField() string {
 func GetUserCodeField() string {
 	return configcore.UserCodeField
 }
+
+func FindIndexForService(project string, service string) (string, error) {
+	return tcbuildopts.FindIndexForService(project, service)
+}

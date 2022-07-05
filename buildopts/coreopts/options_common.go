@@ -54,3 +54,7 @@ func GetUserNameField() string {
 func GetUserCodeField() string {
 	return ""
 }
+
+func FindIndexForService(project string, service string) (string, error) {
+	return "", errors.New("Not implemented")
+}
