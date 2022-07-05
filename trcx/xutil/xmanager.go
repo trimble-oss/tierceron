@@ -373,7 +373,11 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					if goMod.SectionKey == "/Index/" {
 						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + config.SubSectionName
 					} else if goMod.SectionKey == "/Restricted/" {
-						goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
+						if service != config.SectionName { //TODO: Revisit why we need this comparison
+							goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
+						} else {
+							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + config.SectionName
+						}
 					} else {
 						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
 					}
