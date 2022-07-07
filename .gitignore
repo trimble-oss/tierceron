@@ -16,9 +16,12 @@ trcUI/**
 trc_seeds/**
 bin/trc*
 bin/api*
+bin
 .idea/
 .vscode/
 .DS_Store
+*.log
+trcinit/vaultfiles/azure/.terraform/
 
 # Scrub any confidential information from aws and azure config directories
 trcinit/vaultfiles/azure/vault/**

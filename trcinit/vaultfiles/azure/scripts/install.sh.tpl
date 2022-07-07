@@ -35,6 +35,7 @@ sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${SSH_PORT} -j DROP
 # Add a rule to allow service connections
 sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
 # Block all other ip addresses
+sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s 127.0.0.1 -j ACCEPT
 sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${HOSTPORT} -j DROP
 
 # To add other ip addresses after this process:
@@ -66,4 +67,4 @@ EOF
 sudo mv /tmp/upstart /lib/systemd/system/vault.service
 
 # Start Vault
-sudo service vault start
+#sudo service vault start
