@@ -6,21 +6,18 @@ package buildopts
 import (
 	flowcore "tierceron/trcflow/core"
 
+	tcutil "VaultConfig.TenantConfig/util"
 	testtcutil "VaultConfig.Test/util"
 )
 
-func GetAdditionalFlows() []flowcore.FlowNameType {
+func GetAdditionalTestFlows() []flowcore.FlowNameType {
 	return testtcutil.GetAdditionalFlows()
 }
 
 func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
-	return testtcutil.GetAdditionalFlowsByState()
+	return testtcutil.GetAdditionalFlowsByState(teststate)
 }
 
 func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
 	return tcutil.ProcessTestFlowController(tfmContext, trcflowContext)
-}
-
-func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
-	return tcutil.GetTestConfig(token, wantPluginPaths)
 }
