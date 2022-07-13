@@ -44,7 +44,7 @@ func (dfs *DataFlowGroup) FinishStatistic(logFunc func(string, error), mod *kv.M
 	dfs.FinishStatisticLog(logFunc)
 
 	for _, dataFlowStatistic := range dfs.Statistics {
-		var statMap map[string]interface{}
+		statMap := make(map[string]interface{})
 		statMap["flowGroup"] = dataFlowStatistic.flowGroup
 		statMap["flowName"] = dataFlowStatistic.flowName
 		statMap["stateName"] = dataFlowStatistic.stateName
