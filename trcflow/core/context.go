@@ -190,8 +190,7 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 	flowConfigTemplateName := eUtils.GetTemplateFileName(flowConfigTemplatePath, flowService)
 	trcfc.GoMod.SectionKey = "/Restricted/"
 	trcfc.GoMod.SectionName = flowService
-	trcfc.GoMod.SubSectionValue = flowService
-	properties, err := trcvutils.NewProperties(tfmContext.Config, tfmContext.Vault, trcfc.GoMod, tfmContext.Env, flowProject, flowService)
+	properties, err := trcvutils.NewProperties(tfmContext.Config, tfmContext.Vault, trcfc.GoMod, tfmContext.Env, flowProject, flowProject)
 	if err != nil {
 		return nil, false
 	}
