@@ -2,13 +2,14 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"tierceron/vaulthelper/kv"
 	"time"
 )
 
 type DataFlowStatistic struct {
-	flowSet   string
+	flowGroup string
 	flowName  string
 	stateName string
 	stateCode string
@@ -34,20 +35,30 @@ func InitDataFlowGroup(name string) DataFlowGroup {
 	return newDFStatistic
 }
 
-func (dfs *DataFlowGroup) UpdateDataFlowStatistic(flowS string, flowN string, stateN string, stateC string, mode int) {
-	var newDFStat = DataFlowStatistic{flowS, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
+func (dfs *DataFlowGroup) UpdateDataFlowStatistic(flowG string, flowN string, stateN string, stateC string, mode int) {
+	var newDFStat = DataFlowStatistic{flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
 	dfs.Statistics = append(dfs.Statistics, newDFStat)
 }
 
-func (dfs *DataFlowGroup) FinishStatistic(logFunc func(string, error), mod *kv.Modifier, id string) {
+func (dfs *DataFlowGroup) FinishStatistic(logFunc func(string, error), mod *kv.Modifier, id string, indexPath string, idName string) {
 	//TODO : Write Statistic to vault
-	/*dfs.FinishStatisticLog(logFunc)
-	var statMap map[string]interface{}
+	dfs.FinishStatisticLog(logFunc)
+	mod.SectionPath = ""
+	for _, dataFlowStatistic := range dfs.Statistics {
+		statMap := make(map[string]interface{})
+		statMap["flowGroup"] = dataFlowStatistic.flowGroup
+		statMap["flowName"] = dataFlowStatistic.flowName
+		statMap["stateName"] = dataFlowStatistic.stateName
+		statMap["stateCode"] = dataFlowStatistic.stateCode
+		statMap["timeSplit"] = fmt.Sprintf("%f", dataFlowStatistic.timeSplit.Seconds()) + " seconds"
+		statMap["mode"] = dataFlowStatistic.mode
 
-	for _, dataFlowStatistic := range dfs.statistics {
-
+		mod.SectionPath = ""
+		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowGroup/"+dataFlowStatistic.flowGroup+"/dataFlowName/"+dataFlowStatistic.flowName+"/"+dataFlowStatistic.stateCode, statMap)
+		if writeErr != nil {
+			logFunc("Error writing out DataFlowStatistics to vault", writeErr)
+		}
 	}
-	*/
 }
 
 //Make success/failure placeholders later
