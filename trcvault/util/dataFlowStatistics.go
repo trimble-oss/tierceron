@@ -16,24 +16,30 @@ type DataFlowStatistic struct {
 	mode      int
 }
 
-type DataFlowStatistics struct {
-	timeStart  time.Time
-	statistics []DataFlowStatistic
+type DataFlowGroup struct {
+	Name       string
+	TimeStart  time.Time
+	Statistics []DataFlowStatistic
 }
 
-func InitDataFlowStatistic() DataFlowStatistics {
+type Argosy struct {
+}
+
+type ArgosyFleet struct {
+}
+
+func InitDataFlowGroup(name string) DataFlowGroup {
 	var stats []DataFlowStatistic
-	var newDFStatistic = DataFlowStatistics{time.Now(), stats}
+	var newDFStatistic = DataFlowGroup{Name: name, TimeStart: time.Now(), Statistics: stats}
 	return newDFStatistic
-
 }
 
-func (dfs *DataFlowStatistics) UpdateDataFlowStatistic(flowS string, flowN string, stateN string, stateC string, mode int) {
-	var newDFStat = DataFlowStatistic{flowS, flowN, stateN, stateC, time.Since(dfs.timeStart), mode}
-	dfs.statistics = append(dfs.statistics, newDFStat)
+func (dfs *DataFlowGroup) UpdateDataFlowStatistic(flowS string, flowN string, stateN string, stateC string, mode int) {
+	var newDFStat = DataFlowStatistic{flowS, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
+	dfs.Statistics = append(dfs.Statistics, newDFStat)
 }
 
-func (dfs *DataFlowStatistics) FinishStatistic(logFunc func(string, error), mod *kv.Modifier, id string) {
+func (dfs *DataFlowGroup) FinishStatistic(logFunc func(string, error), mod *kv.Modifier, id string) {
 	//TODO : Write Statistic to vault
 	/*dfs.FinishStatisticLog(logFunc)
 	var statMap map[string]interface{}
@@ -45,8 +51,8 @@ func (dfs *DataFlowStatistics) FinishStatistic(logFunc func(string, error), mod 
 }
 
 //Make success/failure placeholders later
-func (dfs *DataFlowStatistics) FinishStatisticLog(logFunc func(string, error)) {
-	for _, stat := range dfs.statistics {
+func (dfs *DataFlowGroup) FinishStatisticLog(logFunc func(string, error)) {
+	for _, stat := range dfs.Statistics {
 		if strings.Contains(stat.stateName, "Failure") {
 			logFunc(stat.flowName+"-"+stat.stateName, errors.New(stat.stateName))
 			if stat.mode == 2 { //Update snapshot mode on failure so it doesn't repeat
