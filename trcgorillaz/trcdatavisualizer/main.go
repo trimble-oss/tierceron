@@ -10,7 +10,7 @@ import (
 	"log"
 	"os"
 
-	//"strconv"
+	"strconv"
 
 	"tierceron/trcgorillaz/trcdatavisualizer/ttdirender"
 
@@ -42,11 +42,9 @@ func main() {
 
 	mashupRenderer := &g3nrender.MashupRenderer{}
 
-	mashupRenderer.AddRenderer("Sphere", &ttdirender.SphereRenderer{})
-	mashupRenderer.AddRenderer("Lines", &ttdirender.CurveRenderer{})
-	mashupRenderer.AddRenderer("Background", &g3nrender.BackgroundRenderer{})
-	//mashupRenderer.AddRenderer("Path", &ttdirender.PathRenderer{})
-	//mashupRenderer.AddRenderer("EqualPath", &ttdirender.EqualPathRenderer{})
+	mashupRenderer.AddRenderer("Curve", &ttdirender.CurveRenderer{})
+	mashupRenderer.AddRenderer("Background", &ttdirender.BackgroundRenderer{})
+	mashupRenderer.AddRenderer("Path", &ttdirender.PathRenderer{})
 
 	worldApp := g3nworld.NewWorldApp(*headless, mashupRenderer)
 
@@ -67,104 +65,39 @@ func main() {
 				Childids:    nil,
 			},
 			{
-				Basisid:     -2,
+				Basisid:     -1,
 				State:       &mashupsdk.MashupElementState{Id: -3, State: int64(mashupsdk.Mutable)},
 				Name:        "{3}-CurvePath",
 				Alias:       "It",
 				Description: "",
-				Renderer:    "Lines",
+				Renderer:    "Curve",
 				Genre:       "Solid",
 				Subgenre:    "Ento",
 				Parentids:   []int64{},
-				Childids:    []int64{5},
+				Childids:    []int64{1},
 			},
 			{
-				Id:          5,
+				Id:          1,
 				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
 				Name:        "CurvePathEntity-One",
 				Description: "",
 				Genre:       "Abstract",
 				Subgenre:    "",
 				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
+				Childids:    []int64{-1}, // -3 -- generated and replaced by server since it is immutable.
 			},
 			{
-				Id:          4,
+				Id:          2,
 				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
 				Name:        "CurvesGroupOne",
 				Description: "Curves",
 				Genre:       "Collection",
 				Subgenre:    "Curve",
 				Parentids:   nil,        //[]int64{},
-				Childids:    []int64{5}, //NOTE: If you want to add all children need to include children in for loop!
+				Childids:    []int64{1}, //NOTE: If you want to add all children need to include children in for loop!
 			},
-
-			/*{
+			{
 				Basisid:     -2,
-				State:       &mashupsdk.MashupElementState{Id: -3, State: int64(mashupsdk.Mutable)},
-				Name:        "{3}-EqualPath",
-				Alias:       "It",
-				Description: "",
-				Renderer:    "EqualPath",
-				Genre:       "Solid",
-				Subgenre:    "Ento",
-				Parentids:   []int64{},
-				Childids:    []int64{5},
-			},
-			{
-				Id:          5,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "EqualPathEntity-One",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
-			},
-			{
-				Id:          7,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "EqualPathEntity-One",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
-			},
-			{
-				Id:          8,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "EqualPathEntity-One",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
-			},
-			{
-				Id:          4,
-				State:       &mashupsdk.MashupElementState{Id: 10, State: int64(mashupsdk.Init)},
-				Name:        "EqualPathGroupOne",
-				Description: "EqualPaths",
-				Genre:       "Collection",
-				Subgenre:    "EqualPath",
-				Parentids:   []int64{},  //[]int64{},
-				Childids:    []int64{5}, //NOTE: If you want to add all children need to include children in for loop!
-			},*/
-			{
-				Basisid:     -3,
-				State:       &mashupsdk.MashupElementState{Id: -3, State: int64(mashupsdk.Mutable)},
-				Name:        "{1}-Sphere",
-				Alias:       "It",
-				Description: "",
-				Renderer:    "Sphere",
-				Genre:       "Solid",
-				Subgenre:    "Ento",
-				Parentids:   nil,
-				Childids:    []int64{1},
-			},
-			/*{
-				Basisid:     -4,
 				State:       &mashupsdk.MashupElementState{Id: -3, State: int64(mashupsdk.Mutable)},
 				Name:        "{2}-Path",
 				Alias:       "It",
@@ -173,48 +106,17 @@ func main() {
 				Genre:       "Solid",
 				Subgenre:    "Ento",
 				Parentids:   []int64{},
-				Childids:    []int64{5},
+				Childids:    []int64{3},
 			},
-
 			{
-				Id:          5,
+				Id:          3,
 				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "PathEntity-One",
+				Name:        "PathEntity-1",
 				Description: "",
 				Genre:       "Abstract",
 				Subgenre:    "",
 				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-4}, // -3 -- generated and replaced by server since it is immutable.
-			},
-			{
-				Id:          9,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "PathEntity-Two",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-4}, // -3 -- generated and replaced by server since it is immutable.
-			},
-			{
-				Id:          7,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "PathEntity-Three",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-4}, // -3 -- generated and replaced by server since it is immutable.
-			},
-			{
-				Id:          8,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "PathEntity-Four",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-4}, // -3 -- generated and replaced by server since it is immutable.
+				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
 			},
 			{
 				Id:          4,
@@ -225,64 +127,20 @@ func main() {
 				Subgenre:    "Path",
 				Parentids:   []int64{},  //[]int64{},
 				Childids:    []int64{5}, //NOTE: If you want to add all children need to include children in for loop!
-			},*/
-			//sphere elements
-
-			{
-				Id:          1,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "SphereEntity-One",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-3}, // -3 -- generated and replaced by server since it is immutable.
-			},
-			{
-				Id:          2,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "SphereEntity-Two",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-3}, // -3 -- generated and replaced by server since it is immutable.
-			},
-			{
-				Id:          3,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "SpheresGroupOne",
-				Description: "Spheres",
-				Genre:       "Collection",
-				Subgenre:    "Sphere",
-				Parentids:   nil,        //[]int64{},
-				Childids:    []int64{1}, //NOTE: If you want to add all children need to include children in for loop!
 			},
 		}
-		/*for i := 0; i < 97; i++ {
+		for i := 0; i < 100; i++ {
 			DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
-				Id:          int64(10 + i),
+				Id:          int64(5 + i),
 				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "PathEntity-" + strconv.Itoa(10+i),
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   []int64{},
-				Childids:    []int64{-4}, // -3 -- generated and replaced by server since it is immutable.
-			})
-		}*/
-		/*for i := 0; i < 97; i++ {
-			DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
-				Id:          int64(10 + i),
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "EqualPathEntity-" + strconv.Itoa(10+i),
+				Name:        "PathEntity-" + strconv.Itoa(2+i),
 				Description: "",
 				Genre:       "Abstract",
 				Subgenre:    "",
 				Parentids:   []int64{},
 				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
 			})
-		}*/
+		}
 
 		generatedElements, genErr := worldApp.MSdkApiHandler.UpsertMashupElements(
 			&mashupsdk.MashupDetailedElementBundle{

@@ -38,7 +38,9 @@ func (sp *SphereRenderer) Sort(worldApp *g3nworld.WorldApp, g3nRenderableElement
 
 func (sp *PathRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
-	mat := material.NewStandard(g3ndpalette.DARK_BLUE)
+	color := g3ndpalette.DARK_BLUE
+	color.Set(0, 0.349, 0.643)
+	mat := material.NewStandard(color)
 	sphereMesh := graphic.NewMesh(sphereGeom, mat)
 	fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
 	sphereMesh.SetLoaderID(g3n.GetDisplayName())
@@ -73,4 +75,21 @@ func (sp *PathRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalEle
 func (sp *PathRenderer) Layout(worldApp *g3nworld.WorldApp,
 	g3nRenderableElements []*g3nmash.G3nDetailedElement) {
 	sp.GenericRenderer.LayoutBase(worldApp, sp, g3nRenderableElements)
+}
+
+func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetailedElement *g3nmash.G3nDetailedElement) bool {
+	var g3nColor *math32.Color
+
+	if g3nDetailedElement.IsItemActive() {
+		g3nColor = g3ndpalette.DARK_RED
+	} else {
+		if g3nDetailedElement.IsBackgroundElement() {
+			// Axial circle
+			g3nColor = g3ndpalette.GREY
+		} else {
+			g3nColor = g3ndpalette.DARK_BLUE
+		}
+	}
+
+	return g3nDetailedElement.SetColor(g3nColor)
 }
