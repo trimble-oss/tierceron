@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"tierceron/vaulthelper/kv"
 	"time"
@@ -42,17 +43,18 @@ func (dfs *DataFlowGroup) UpdateDataFlowStatistic(flowG string, flowN string, st
 func (dfs *DataFlowGroup) FinishStatistic(logFunc func(string, error), mod *kv.Modifier, id string, indexPath string, idName string) {
 	//TODO : Write Statistic to vault
 	dfs.FinishStatisticLog(logFunc)
-
+	mod.SectionPath = ""
 	for _, dataFlowStatistic := range dfs.Statistics {
 		statMap := make(map[string]interface{})
 		statMap["flowGroup"] = dataFlowStatistic.flowGroup
 		statMap["flowName"] = dataFlowStatistic.flowName
 		statMap["stateName"] = dataFlowStatistic.stateName
 		statMap["stateCode"] = dataFlowStatistic.stateCode
-		statMap["timeSplit"] = dataFlowStatistic.timeSplit
+		statMap["timeSplit"] = fmt.Sprintf("%f", dataFlowStatistic.timeSplit.Seconds()) + " seconds"
 		statMap["mode"] = dataFlowStatistic.mode
 
-		_, writeErr := mod.Write("super-secrets/Index/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/"+dataFlowStatistic.flowGroup+"/dataFlowName/"+dataFlowStatistic.flowName+"/"+dataFlowStatistic.stateCode, statMap)
+		mod.SectionPath = ""
+		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowGroup/"+dataFlowStatistic.flowGroup+"/dataFlowName/"+dataFlowStatistic.flowName+"/"+dataFlowStatistic.stateCode, statMap)
 		if writeErr != nil {
 			logFunc("Error writing out DataFlowStatistics to vault", writeErr)
 		}
