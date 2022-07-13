@@ -36,6 +36,10 @@ func GetAdditionalFlows() []flowcore.FlowNameType {
 	return []flowcore.FlowNameType{}
 }
 
+func GetAdditionalTestFlows() []flowcore.FlowNameType {
+	return []flowcore.FlowNameType{} // Noop
+}
+
 func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
 	return []flowcore.FlowNameType{}
 }
