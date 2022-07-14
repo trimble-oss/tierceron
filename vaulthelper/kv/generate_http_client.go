@@ -79,7 +79,7 @@ func CreateHTTPClientAllowNonLocal(insecure bool, address string, env string, sc
 	}
 
 	dialTimeout := 30 * time.Second
-	tlsHandshakeTimeout := 10 * time.Second
+	tlsHandshakeTimeout := 30 * time.Second
 
 	if scan {
 		dialTimeout = 50 * time.Millisecond
