@@ -387,7 +387,10 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		var err error
 		if bindings == nil {
 			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
-			if len(matrix) == 0 {
+			if err == nil && tableName == "ok" {
+				changed = true
+				matrix = append(matrix, []interface{}{})
+			} else if len(matrix) == 0 {
 				changed = false
 			}
 		} else {
