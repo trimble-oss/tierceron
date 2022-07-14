@@ -256,7 +256,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(enhancement)
 		}
 
-		for _, test := range buildopts.GetAdditionalFlows() {
+		for _, test := range buildopts.GetAdditionalTestFlows() {
 			wg.Add(1)
 			go func(testFlow flowcore.FlowNameType) {
 				eUtils.LogInfo(config, "Beginning flow: "+testFlow.ServiceName())

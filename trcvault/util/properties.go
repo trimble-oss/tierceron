@@ -29,6 +29,9 @@ func NewProperties(config *eUtils.DriverConfig, v *sys.Vault, mod *helperkv.Modi
 		}
 	} else if mod.SectionKey == "/Restricted/" {
 		properties.mod.SectionPath = "super-secrets" + mod.SectionKey + service + "/" + mod.SectionName
+		if project == service {
+			service = mod.SectionName
+		}
 	} else {
 		properties.mod.SectionPath = ""
 	}
