@@ -6,6 +6,8 @@ import (
 	"strings"
 	"tierceron/vaulthelper/kv"
 	"time"
+
+	"github.com/mrjrieke/nute/mashupsdk"
 )
 
 type DataFlowStatistic struct {
@@ -24,9 +26,13 @@ type DataFlowGroup struct {
 }
 
 type Argosy struct {
+	mashupsdk.MashupDetailedElement
+	Groups []DataFlowGroup
 }
 
 type ArgosyFleet struct {
+	Name  string
+	Fleet []Argosy
 }
 
 func InitDataFlowGroup(name string) DataFlowGroup {
