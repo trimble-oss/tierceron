@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"tierceron/buildopts/coreopts"
 	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/extract"
 	eUtils "tierceron/utils"
@@ -205,7 +206,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 			goMod.Env = envEnterprise
 			goMod.Version = version
 
-			index, indexErr := goMod.FindIndexForService(project, service)
+			index, indexErr := coreopts.FindIndexForService(project, service)
 			if indexErr == nil && index != "" {
 				goMod.SectionName = index
 			}
