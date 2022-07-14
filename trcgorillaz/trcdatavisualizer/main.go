@@ -67,7 +67,7 @@ func main() {
 			{
 				Basisid:     -1,
 				State:       &mashupsdk.MashupElementState{Id: -3, State: int64(mashupsdk.Mutable)},
-				Name:        "{3}-CurvePath",
+				Name:        "{0}-CurvePath",
 				Alias:       "It",
 				Description: "",
 				Renderer:    "Curve",
@@ -99,7 +99,7 @@ func main() {
 			{
 				Basisid:     -2,
 				State:       &mashupsdk.MashupElementState{Id: -3, State: int64(mashupsdk.Mutable)},
-				Name:        "{2}-Path",
+				Name:        "{0}-Path",
 				Alias:       "It",
 				Description: "",
 				Renderer:    "Path",

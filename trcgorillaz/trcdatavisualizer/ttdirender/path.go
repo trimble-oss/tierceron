@@ -19,8 +19,9 @@ import (
 
 type PathRenderer struct {
 	g3nrender.GenericRenderer
-	iOffset int
-	counter float64
+	iOffset   int
+	counter   float64
+	activeSet map[int64]*math32.Vector3
 }
 
 /*type TTDICollection g3nrender.G3nCollection
@@ -39,8 +40,7 @@ func (sp *SphereRenderer) Sort(worldApp *g3nworld.WorldApp, g3nRenderableElement
 func (sp *PathRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
 	color := g3ndpalette.DARK_BLUE
-	color.Set(0, 0.349, 0.643)
-	mat := material.NewStandard(color)
+	mat := material.NewStandard(color.Set(0, 0.349, 0.643))
 	sphereMesh := graphic.NewMesh(sphereGeom, mat)
 	fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
 	sphereMesh.SetLoaderID(g3n.GetDisplayName())
@@ -67,7 +67,6 @@ func (sp *PathRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalEle
 	} else {
 		sp.counter = sp.counter + 0.1
 		complex := binet(sp.counter)
-		fmt.Println(complex)
 		return g3n, math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-sp.counter))
 	}
 }
@@ -82,12 +81,26 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 
 	if g3nDetailedElement.IsItemActive() {
 		g3nColor = g3ndpalette.DARK_RED
+		mesh := g3nDetailedElement.GetNamedMesh(g3nDetailedElement.GetDisplayName())
+		if sp.activeSet == nil {
+			sp.activeSet = map[int64]*math32.Vector3{}
+		}
+		activePosition := mesh.GetGraphic().Position()
+		sp.activeSet[g3nDetailedElement.GetDetailedElement().GetId()] = &activePosition
+		fmt.Printf("Active element centered at %v\n", activePosition)
 	} else {
 		if g3nDetailedElement.IsBackgroundElement() {
 			// Axial circle
 			g3nColor = g3ndpalette.GREY
 		} else {
-			g3nColor = g3ndpalette.DARK_BLUE
+			if !worldApp.Sticky {
+				g3nColor = g3ndpalette.DARK_BLUE
+			} else {
+				g3nColor = g3nDetailedElement.GetColor()
+				if g3nColor == nil {
+					g3nColor = g3ndpalette.DARK_BLUE
+				}
+			}
 		}
 	}
 
