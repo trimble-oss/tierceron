@@ -40,22 +40,35 @@ func (dfs *DataFlowGroup) UpdateDataFlowStatistic(flowG string, flowN string, st
 	dfs.Statistics = append(dfs.Statistics, newDFStat)
 }
 
+func (dfs *DataFlowGroup) UpdateDataFlowStatisticWithTime(flowG string, flowN string, stateN string, stateC string, mode int, elapsedTime time.Duration) {
+	var newDFStat = DataFlowStatistic{flowG, flowN, stateN, stateC, elapsedTime, mode}
+	dfs.Statistics = append(dfs.Statistics, newDFStat)
+}
+
 func (dfs *DataFlowGroup) FinishStatistic(logFunc func(string, error), mod *kv.Modifier, id string, indexPath string, idName string) {
 	//TODO : Write Statistic to vault
-	dfs.FinishStatisticLog(logFunc)
+	if logFunc != nil {
+		dfs.FinishStatisticLog(logFunc)
+	}
 	mod.SectionPath = ""
 	for _, dataFlowStatistic := range dfs.Statistics {
+		var elapsedTime float64
 		statMap := make(map[string]interface{})
 		statMap["flowGroup"] = dataFlowStatistic.flowGroup
 		statMap["flowName"] = dataFlowStatistic.flowName
 		statMap["stateName"] = dataFlowStatistic.stateName
 		statMap["stateCode"] = dataFlowStatistic.stateCode
-		statMap["timeSplit"] = fmt.Sprintf("%f", dataFlowStatistic.timeSplit.Seconds()) + " seconds"
+		if dataFlowStatistic.timeSplit.Seconds() < 0 { //Covering corner case of 0 second time durations being slightly off (-.00004 seconds)
+			elapsedTime = 0
+		} else {
+			elapsedTime = dataFlowStatistic.timeSplit.Seconds()
+		}
+		statMap["timeSplit"] = fmt.Sprintf("%f", elapsedTime) + " seconds"
 		statMap["mode"] = dataFlowStatistic.mode
 
 		mod.SectionPath = ""
 		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowGroup/"+dataFlowStatistic.flowGroup+"/dataFlowName/"+dataFlowStatistic.flowName+"/"+dataFlowStatistic.stateCode, statMap)
-		if writeErr != nil {
+		if writeErr != nil && logFunc != nil {
 			logFunc("Error writing out DataFlowStatistics to vault", writeErr)
 		}
 	}
