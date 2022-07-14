@@ -151,16 +151,16 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		fmt.Println("-version flag cannot be used with -diff flag")
 		os.Exit(1)
 	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexNameFilterPtr) == 0) && len(*indexedPtr) != 0 {
-		fmt.Println("-serviceFilter and -indexFilter must be specificed to use -indexed flag")
+		fmt.Println("-serviceFilter and -indexFilter must be specified to use -indexed flag")
 		os.Exit(1)
-	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexNameFilterPtr) == 0) && len(*restrictedPtr) != 0 {
-		fmt.Println("-serviceFilter and -indexFilter must be specificed to use -restricted flag")
+	} else if len(*indexServiceFilterPtr) == 0 && len(*restrictedPtr) != 0 {
+		fmt.Println("-serviceFilter must be specified to use -restricted flag")
 		os.Exit(1)
 	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexValueFilterPtr) == 0) && *diffPtr && len(*indexedPtr) != 0 {
-		fmt.Println("-indexFilter and -indexValueFilter must be specificed to use -indexed & -diff flag")
+		fmt.Println("-indexFilter and -indexValueFilter must be specified to use -indexed & -diff flag")
 		os.Exit(1)
 	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexValueFilterPtr) == 0) && *versionPtr && len(*indexedPtr) != 0 {
-		fmt.Println("-indexFilter and -indexValueFilter must be specificed to use -indexed & -versions flag")
+		fmt.Println("-indexFilter and -indexValueFilter must be specified to use -indexed & -versions flag")
 		os.Exit(1)
 	} else if *versionPtr && len(*restrictedPtr) > 0 {
 		fmt.Println("-restricted flags cannot be used with -versions flag")
@@ -168,6 +168,10 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if (strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")) && *addrPtr == "" {
 		fmt.Println("The -addr flag must be used with staging/prod environment")
 		os.Exit(1)
+	}
+
+	if len(*indexServiceFilterPtr) != 0 && len(*indexNameFilterPtr) == 0 && len(*restrictedPtr) != 0 {
+		indexNameFilterPtr = indexServiceFilterPtr
 	}
 
 	keysCheck := make(map[string]bool)
