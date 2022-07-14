@@ -51,6 +51,10 @@ func GetAdditionalFlows() []flowcore.FlowNameType {
 	return tcutil.GetAdditionalFlows()
 }
 
+func GetAdditionalTestFlows() []flowcore.FlowNameType {
+	return []flowcore.FlowNameType{} // Noop
+}
+
 func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
 	return []flowcore.FlowNameType{} // Noop
 }

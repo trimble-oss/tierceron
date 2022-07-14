@@ -212,7 +212,12 @@ func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
 		keySlice := args[1]
 		keyName := keySlice[1:]
 		valueSlice := args[2]
-		value := valueSlice[1 : len(valueSlice)-1]
+		var value string
+		if len(valueSlice) > 1 {
+			value = valueSlice[1 : len(valueSlice)-1]
+		} else {
+			value = valueSlice
+		}
 		fileOffsetIndex := 3
 		if templatePathSlice[templateDir+1] == "Common" {
 			fileOffsetIndex = 2
