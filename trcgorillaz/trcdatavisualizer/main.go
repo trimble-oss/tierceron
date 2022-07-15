@@ -10,8 +10,9 @@ import (
 	"log"
 	"os"
 
-	"strconv"
+	//"strconv"
 
+	"tierceron/buildopts/argosyopts"
 	"tierceron/trcgorillaz/trcdatavisualizer/ttdirender"
 
 	"github.com/mrjrieke/nute/g3nd/g3nworld"
@@ -51,97 +52,11 @@ func main() {
 	worldApp.InitServer(*callerCreds, *insecure)
 
 	if *headless {
-		DetailedElements := []*mashupsdk.MashupDetailedElement{
-			{
-				Id:          6,
-				State:       &mashupsdk.MashupElementState{Id: 7, State: int64(mashupsdk.Init)},
-				Name:        "Outside",
-				Alias:       "Outside",
-				Description: "",
-				Renderer:    "Background",
-				Genre:       "Space",
-				Subgenre:    "Exo",
-				Parentids:   nil,
-				Childids:    nil,
-			},
-			{
-				Basisid:     -1,
-				State:       &mashupsdk.MashupElementState{Id: -3, State: int64(mashupsdk.Mutable)},
-				Name:        "{0}-CurvePath",
-				Alias:       "It",
-				Description: "",
-				Renderer:    "Curve",
-				Genre:       "Solid",
-				Subgenre:    "Ento",
-				Parentids:   []int64{},
-				Childids:    []int64{1},
-			},
-			{
-				Id:          1,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "CurvePathEntity-One",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-1}, // -3 -- generated and replaced by server since it is immutable.
-			},
-			{
-				Id:          2,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "CurvesGroupOne",
-				Description: "Curves",
-				Genre:       "Collection",
-				Subgenre:    "Curve",
-				Parentids:   nil,        //[]int64{},
-				Childids:    []int64{1}, //NOTE: If you want to add all children need to include children in for loop!
-			},
-			{
-				Basisid:     -2,
-				State:       &mashupsdk.MashupElementState{Id: -3, State: int64(mashupsdk.Mutable)},
-				Name:        "{0}-Path",
-				Alias:       "It",
-				Description: "",
-				Renderer:    "Path",
-				Genre:       "Solid",
-				Subgenre:    "Ento",
-				Parentids:   []int64{},
-				Childids:    []int64{3},
-			},
-			{
-				Id:          3,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "PathEntity-1",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
-			},
-			{
-				Id:          4,
-				State:       &mashupsdk.MashupElementState{Id: 10, State: int64(mashupsdk.Init)},
-				Name:        "PathGroupOne",
-				Description: "Paths",
-				Genre:       "Collection",
-				Subgenre:    "Path",
-				Parentids:   []int64{},  //[]int64{},
-				Childids:    []int64{5}, //NOTE: If you want to add all children need to include children in for loop!
-			},
+		ArgosyFleet := argosyopts.BuildFleet(nil)
+		DetailedElements := []*mashupsdk.MashupDetailedElement{}
+		for _, argosy := range ArgosyFleet.Fleet {
+			DetailedElements = append(DetailedElements, &argosy.MashupDetailedElement)
 		}
-		for i := 0; i < 100; i++ {
-			DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
-				Id:          int64(5 + i),
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "PathEntity-" + strconv.Itoa(2+i),
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   []int64{},
-				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
-			})
-		}
-
 		generatedElements, genErr := worldApp.MSdkApiHandler.UpsertMashupElements(
 			&mashupsdk.MashupDetailedElementBundle{
 				AuthToken:        "",
@@ -150,8 +65,8 @@ func main() {
 
 		if genErr != nil {
 			log.Fatalf(genErr.Error(), genErr)
-		} else { //2-->3
-			generatedElements.DetailedElements[2].State.State = int64(mashupsdk.Clicked) //FIND OUT WHAT THIS DOES
+		} else {
+			generatedElements.DetailedElements[2].State.State = int64(mashupsdk.Clicked)
 
 			elementStateBundle := mashupsdk.MashupElementStateBundle{
 				AuthToken:     "",
@@ -163,7 +78,7 @@ func main() {
 		}
 
 	}
-
+	//worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Xpos: 0, Ypos: 0, Width: 600, Height: 800})
 	// Initialize the main window.
 	go worldApp.InitMainWindow()
 
