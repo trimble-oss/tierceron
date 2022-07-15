@@ -61,6 +61,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
 				Name:        "CurvesGroupOne",
 				Description: "Curves",
+				Renderer:    "Curve",
 				Genre:       "Collection",
 				Subgenre:    "Curve",
 				Parentids:   nil,        //[]int64{},
@@ -89,6 +90,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
 				Name:        "PathEntity-1",
 				Description: "",
+				Renderer:    "Path",
 				Genre:       "Abstract",
 				Subgenre:    "",
 				Parentids:   nil,         //[]int64{10},
@@ -103,6 +105,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Name:        "PathGroupOne",
 				Description: "Paths",
 				Genre:       "Collection",
+				Renderer:    "Path",
 				Subgenre:    "Path",
 				Parentids:   []int64{},  //[]int64{},
 				Childids:    []int64{7}, //NOTE: If you want to add all children need to include children in for loop!
@@ -115,9 +118,10 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		Argosys = append(Argosys, &util.Argosy{
 			mashupsdk.MashupDetailedElement{
 				Id:          int64(7 + totalElements),
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
+				State:       &mashupsdk.MashupElementState{Id: int64(7 + totalElements), State: int64(mashupsdk.Init)},
 				Name:        "PathEntity-" + strconv.Itoa(2+totalElements),
 				Description: "",
+				Renderer:    "Path",
 				Genre:       "Abstract",
 				Subgenre:    "",
 				Parentids:   []int64{},
