@@ -24,6 +24,8 @@ type DataFlowGroup struct {
 	Name       string
 	TimeStart  time.Time
 	Statistics []DataFlowStatistic
+	LogStat    bool
+	LogFunc    func(string, error)
 }
 
 type Argosy struct {
@@ -31,31 +33,46 @@ type Argosy struct {
 	Groups []DataFlowGroup
 }
 
+//New API -> Argosy, return dataFlowGroups populated
+
 type ArgosyFleet struct {
 	Name  string
 	Fleet []*Argosy
 }
 
-func InitDataFlowGroup(name string) DataFlowGroup {
+func InitDataFlowGroup(logF func(string, error), name string, logS bool) DataFlowGroup {
 	var stats []DataFlowStatistic
-	var newDFStatistic = DataFlowGroup{Name: name, TimeStart: time.Now(), Statistics: stats}
+	var newDFStatistic = DataFlowGroup{Name: name, TimeStart: time.Now(), Statistics: stats, LogStat: logS, LogFunc: logF}
 	return newDFStatistic
 }
 
 func (dfs *DataFlowGroup) UpdateDataFlowStatistic(flowG string, flowN string, stateN string, stateC string, mode int) {
 	var newDFStat = DataFlowStatistic{flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
 	dfs.Statistics = append(dfs.Statistics, newDFStat)
+	dfs.Log()
 }
 
 func (dfs *DataFlowGroup) UpdateDataFlowStatisticWithTime(flowG string, flowN string, stateN string, stateC string, mode int, elapsedTime time.Duration) {
 	var newDFStat = DataFlowStatistic{flowG, flowN, stateN, stateC, elapsedTime, mode}
 	dfs.Statistics = append(dfs.Statistics, newDFStat)
+	dfs.Log()
 }
 
-func (dfs *DataFlowGroup) FinishStatistic(logFunc func(string, error), mod *kv.Modifier, id string, indexPath string, idName string) {
+func (dfs *DataFlowGroup) Log() {
+	if dfs.LogStat {
+		stat := dfs.Statistics[len(dfs.Statistics)-1]
+		if strings.Contains(stat.stateName, "Failure") {
+			dfs.LogFunc(stat.flowName+"-"+stat.stateName, errors.New(stat.stateName))
+		} else {
+			dfs.LogFunc(stat.flowName+"-"+stat.stateName, nil)
+		}
+	}
+}
+
+func (dfs *DataFlowGroup) FinishStatistic(mod *kv.Modifier, id string, indexPath string, idName string) {
 	//TODO : Write Statistic to vault
-	if logFunc != nil {
-		dfs.FinishStatisticLog(logFunc)
+	if !dfs.LogStat && dfs.LogFunc != nil {
+		dfs.FinishStatisticLog()
 	}
 	mod.SectionPath = ""
 	for _, dataFlowStatistic := range dfs.Statistics {
@@ -74,24 +91,24 @@ func (dfs *DataFlowGroup) FinishStatistic(logFunc func(string, error), mod *kv.M
 		statMap["mode"] = dataFlowStatistic.mode
 
 		mod.SectionPath = ""
-		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowGroup/"+dataFlowStatistic.flowGroup+"/dataFlowName/"+dataFlowStatistic.flowName+"/"+dataFlowStatistic.stateCode, statMap)
-		if writeErr != nil && logFunc != nil {
-			logFunc("Error writing out DataFlowStatistics to vault", writeErr)
+		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+dataFlowStatistic.flowGroup+"/dataFlowName/"+dataFlowStatistic.flowName+"/"+dataFlowStatistic.stateCode, statMap)
+		if writeErr != nil && dfs.LogFunc != nil {
+			dfs.LogFunc("Error writing out DataFlowStatistics to vault", writeErr)
 		}
 	}
 }
 
-func (dfs *DataFlowGroup) RetrieveStatistic(logFunc func(string, error), mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string) {
-	listData, listErr := mod.List("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN)
-	if listErr != nil && logFunc != nil {
-		logFunc("Error reading DataFlowStatistics from vault", listErr)
+func (dfs *DataFlowGroup) RetrieveStatistic(mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string) {
+	listData, listErr := mod.List("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN)
+	if listErr != nil && dfs.LogFunc != nil {
+		dfs.LogFunc("Error reading DataFlowStatistics from vault", listErr)
 	}
 
 	for _, stateCodeList := range listData.Data {
 		for _, stateCode := range stateCodeList.([]interface{}) {
-			data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN + "/" + stateCode.(string))
-			if readErr != nil && logFunc != nil {
-				logFunc("Error reading DataFlowStatistics from vault", readErr)
+			data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN + "/" + stateCode.(string))
+			if readErr != nil && dfs.LogFunc != nil {
+				dfs.LogFunc("Error reading DataFlowStatistics from vault", readErr)
 			}
 			var df DataFlowStatistic
 			df.flowGroup = data["flowGroup"].(string)
@@ -111,16 +128,19 @@ func (dfs *DataFlowGroup) RetrieveStatistic(logFunc func(string, error), mod *kv
 	}
 }
 
-//Make success/failure placeholders later
-func (dfs *DataFlowGroup) FinishStatisticLog(logFunc func(string, error)) {
+//Set logFunc and logStat = false to use this otherwise it logs as states change with logStat = true
+func (dfs *DataFlowGroup) FinishStatisticLog() {
+	if dfs.LogFunc == nil || dfs.LogStat {
+		return
+	}
 	for _, stat := range dfs.Statistics {
 		if strings.Contains(stat.stateName, "Failure") {
-			logFunc(stat.flowName+"-"+stat.stateName, errors.New(stat.stateName))
+			dfs.LogFunc(stat.flowName+"-"+stat.stateName, errors.New(stat.stateName))
 			if stat.mode == 2 { //Update snapshot mode on failure so it doesn't repeat
 
 			}
 		} else {
-			logFunc(stat.flowName+"-"+stat.stateName, nil)
+			dfs.LogFunc(stat.flowName+"-"+stat.stateName, nil)
 		}
 	}
 }
