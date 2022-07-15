@@ -10,8 +10,6 @@ import (
 	"log"
 	"os"
 
-	//"strconv"
-
 	"tierceron/buildopts/argosyopts"
 	"tierceron/trcgorillaz/trcdatavisualizer/ttdirender"
 
@@ -43,9 +41,12 @@ func main() {
 
 	mashupRenderer := &g3nrender.MashupRenderer{}
 
-	mashupRenderer.AddRenderer("Curve", &ttdirender.CurveRenderer{})
+	curveRenderer := &ttdirender.CurveRenderer{
+		CollaboratingRenderer: &ttdirender.PathRenderer{}}
+
 	mashupRenderer.AddRenderer("Background", &ttdirender.BackgroundRenderer{})
-	mashupRenderer.AddRenderer("Path", &ttdirender.PathRenderer{})
+	mashupRenderer.AddRenderer("Path", curveRenderer.CollaboratingRenderer)
+	mashupRenderer.AddRenderer("Curve", curveRenderer)
 
 	worldApp := g3nworld.NewWorldApp(*headless, mashupRenderer)
 
@@ -74,11 +75,11 @@ func main() {
 			}
 
 			worldApp.MSdkApiHandler.UpsertMashupElementsState(&elementStateBundle)
-
+			go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
 		}
 
 	}
-	//worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Xpos: 0, Ypos: 0, Width: 600, Height: 800})
+
 	// Initialize the main window.
 	go worldApp.InitMainWindow()
 
