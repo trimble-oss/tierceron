@@ -110,7 +110,6 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Description: "Paths",
 				Renderer:    "Path",
 				Genre:       "Collection",
-				Renderer:    "Path",
 				Subgenre:    "Path",
 				Parentids:   []int64{},  //[]int64{},
 				Childids:    []int64{7}, //NOTE: If you want to add all children need to include children in for loop!
