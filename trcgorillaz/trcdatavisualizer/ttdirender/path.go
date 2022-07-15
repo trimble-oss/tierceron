@@ -2,7 +2,6 @@ package ttdirender
 
 import (
 	"fmt"
-	"math"
 
 	//"sort"
 	//"strings"
@@ -52,21 +51,14 @@ func (sp *PathRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElemen
 	return nil
 }
 
-func binet(n float64) complex128 {
-	goldenRatio := (float64(1.0) + float64(math.Sqrt(float64(5.0)))) / (float64(2.0))
-	real := (float64(math.Pow(goldenRatio, n)) - float64(math.Cos(float64(math.Pi)*n)*math.Pow(goldenRatio, -n))) / (float64(math.Sqrt(float64(5.0))))
-	imag := (float64(-1.0) * float64(math.Sin(math.Pi*n)) * float64(math.Pow(goldenRatio, -n))) / (math.Sqrt(float64(5.0)))
-	return complex(real, imag)
-}
-
 func (sp *PathRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
 	if sp.iOffset == 0 {
 		sp.iOffset = 1
-		sp.counter = -10.0
+		sp.counter = -0.1 * float64(totalElements)
 		return g3n, math32.NewVector3(float32(0.0), float32(0.0), float32(0.0))
 	} else {
 		sp.counter = sp.counter + 0.1
-		complex := binet(sp.counter)
+		complex := binetFormula(sp.counter)
 		return g3n, math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-sp.counter))
 	}
 }
@@ -80,7 +72,7 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 	var g3nColor *math32.Color
 
 	if g3nDetailedElement.IsItemActive() {
-		g3nColor = g3ndpalette.DARK_RED
+		g3nColor = math32.NewColor("darkred")
 		mesh := g3nDetailedElement.GetNamedMesh(g3nDetailedElement.GetDisplayName())
 		if sp.activeSet == nil {
 			sp.activeSet = map[int64]*math32.Vector3{}
