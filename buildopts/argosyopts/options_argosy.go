@@ -3,12 +3,15 @@
 
 package argosyopts
 
-import "github.com/dolthub/go-mysql-server/server"
+import (
+	"tierceron/trcvault/util"
+	"tierceron/vaulthelper/kv"
+)
 
-func BuildFleet() util.ArgosyFleet {
+func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 	return util.ArgosyFleet{}
 }
 
-func GetDataFlowGroups(argosy *util.Argosy) []util.DataFlowGroup {
+func GetDataFlowGroups(mod *kv.Modifier, argosy *util.Argosy) []util.DataFlowGroup {
 	return nil
 }
