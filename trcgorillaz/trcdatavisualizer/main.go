@@ -76,6 +76,7 @@ func main() {
 			worldApp.MSdkApiHandler.UpsertMashupElementsState(&elementStateBundle)
 
 		}
+		go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 1600, Height: 800})
 
 	}
 	//worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Xpos: 0, Ypos: 0, Width: 600, Height: 800})
