@@ -110,7 +110,7 @@ func main() {
 	insecure := flag.Bool("insecure", false, "Skip server validation")
 	flag.Parse()
 
-	helloLog, err := os.OpenFile("trcdatamanager.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	helloLog, err := os.OpenFile("ttdimanager.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatalf(err.Error(), err)
 	}
@@ -162,7 +162,7 @@ func main() {
 	initHandler := func(a fyne.App) {
 		a.Lifecycle().SetOnEnteredForeground(func() {
 			if helloApp.HelloContext.mashupContext == nil {
-				helloApp.HelloContext.mashupContext = client.BootstrapInit("trcdatavisualizer", helloApp.fyneMashupApiHandler, nil, nil, insecure)
+				helloApp.HelloContext.mashupContext = client.BootstrapInit("ttdivisualizer", helloApp.fyneMashupApiHandler, nil, nil, insecure)
 
 				var upsertErr error
 				var concreteElementBundle *mashupsdk.MashupDetailedElementBundle
