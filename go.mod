@@ -21,19 +21,19 @@ require (
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	github.com/xo/dburl v0.9.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
-	golang.org/x/sys v0.0.0-20220209214540-3681064d5158
+	golang.org/x/sys v0.0.0-20220712014510-0a85c31ab51e
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
 	VaultConfig.Test v0.0.0-00010101000000-000000000000
-	fyne.io/fyne/v2 v2.1.3
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/mrjrieke/nute v0.0.0-20220706131117-afa069a366ca
+	github.com/mrjrieke/nute v0.0.0-20220715140120-c4fd938ae870
 )
 
 require (
+	fyne.io/fyne/v2 v2.1.3 // indirect
 	fyne.io/systray v1.9.1-0.20220331100914-9177bf851614 // indirect
 	gioui.org v0.0.0-20220318070519-8833a6738a3b // indirect
 	gioui.org/cpu v0.0.0-20210817075930-8d6a761490d2 // indirect
@@ -114,16 +114,16 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/src-d/go-oniguruma v1.1.0 // indirect
 	golang.org/x/mod v0.5.1 // indirect
-	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
+	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	golang.org/x/tools v0.1.9 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
-	google.golang.org/grpc v1.45.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/genproto v0.0.0-20220714211235-042d03aeabc9 // indirect
+	google.golang.org/grpc v1.48.0 // indirect
+	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
