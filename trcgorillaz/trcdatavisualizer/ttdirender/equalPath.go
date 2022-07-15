@@ -2,7 +2,6 @@ package ttdirender
 
 import (
 	"fmt"
-	"math"
 
 	//"sort"
 	//"strings"
@@ -48,13 +47,6 @@ func (sp *EqualPathRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement,
 
 func (sp *EqualPathRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
 	return nil
-}
-
-func binetFormula(n float64) complex128 {
-	goldenRatio := (float64(1.0) + float64(math.Sqrt(float64(5.0)))) / (float64(2.0))
-	real := (float64(math.Pow(goldenRatio, n)) - float64(math.Cos(float64(math.Pi)*n)*math.Pow(goldenRatio, -n))) / (float64(math.Sqrt(float64(5.0))))
-	imag := (float64(-1.0) * float64(math.Sin(math.Pi*n)) * float64(math.Pow(goldenRatio, -n))) / (math.Sqrt(float64(5.0)))
-	return complex(real, imag)
 }
 
 func (sp *EqualPathRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {

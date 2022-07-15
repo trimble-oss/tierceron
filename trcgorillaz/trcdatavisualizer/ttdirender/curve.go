@@ -20,7 +20,8 @@ var sqrtfive float64 = float64(math.Sqrt(float64(5.0)))
 
 type CurveRenderer struct {
 	g3nrender.GenericRenderer
-	totalElements int
+	CollaboratingRenderer g3nrender.G3nRenderer
+	totalElements         int
 }
 
 func binetFormula(n float64) complex128 {
@@ -32,6 +33,9 @@ func binetFormula(n float64) complex128 {
 func (sp *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
 	var path []math32.Vector3
 	var i float64
+	if sp.totalElements == 0 {
+		sp.totalElements = 100
+	}
 	for i = -0.1 * float64(sp.totalElements); i <= -0.1; i = i + 0.1 {
 		c := binetFormula(i)
 		x := real(c)
@@ -59,11 +63,21 @@ func (sp *CurveRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedEleme
 }
 
 func (sp *CurveRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
-	sp.totalElements = 100 // convert this to int?: g3n.GetDetailedElement().Description as way to communicate with options_stub
-	return g3n, math32.NewVector3(0.0, 0.0, 0.0)
+	return g3n, math32.NewVector3(float32(0.0), float32(0.0), float32(0.0))
 }
 
 func (sp *CurveRenderer) Layout(worldApp *g3nworld.WorldApp,
 	g3nRenderableElements []*g3nmash.G3nDetailedElement) {
 	sp.GenericRenderer.LayoutBase(worldApp, sp, g3nRenderableElements)
+}
+
+func (sp *CurveRenderer) GetRenderer(rendererName string) g3nrender.G3nRenderer {
+	if sp.CollaboratingRenderer != nil {
+		return sp.CollaboratingRenderer
+	}
+	return nil
+}
+
+func (sp *CurveRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer interface{}) {
+	sp.CollaboratingRenderer.Collaborate(worldApp, sp)
 }
