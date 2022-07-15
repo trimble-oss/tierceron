@@ -33,7 +33,7 @@ type Argosy struct {
 
 type ArgosyFleet struct {
 	Name  string
-	Fleet []Argosy
+	Fleet []*Argosy
 }
 
 func InitDataFlowGroup(name string) DataFlowGroup {
