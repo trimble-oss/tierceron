@@ -15,7 +15,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		{
 			mashupsdk.MashupDetailedElement{
 				Id:          6,
-				State:       &mashupsdk.MashupElementState{Id: 7, State: int64(mashupsdk.Init)},
+				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
 				Name:        "Outside",
 				Alias:       "Outside",
 				Description: "",
@@ -29,49 +29,54 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		},
 		{
 			mashupsdk.MashupDetailedElement{
-				Basisid:     -1,
-				State:       &mashupsdk.MashupElementState{Id: -3, State: int64(mashupsdk.Mutable)},
-				Name:        "{0}-CurvePath",
-				Alias:       "It",
-				Description: "",
-				Renderer:    "Curve",
-				Genre:       "Solid",
-				Subgenre:    "Skeletal",
-				Parentids:   []int64{},
-				Childids:    []int64{1},
+				Basisid:       -1,
+				State:         &mashupsdk.MashupElementState{Id: -1, State: int64(mashupsdk.Mutable)},
+				Name:          "Curve",
+				Alias:         "It",
+				Description:   "",
+				Renderer:      "Curve",
+				Colabrenderer: "Path",
+				Genre:         "Solid",
+				Subgenre:      "Skeletal",
+				Parentids:     []int64{},
+				Childids:      []int64{1},
 			},
 			[]util.DataFlowGroup{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
-				Id:          1,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "CurvePathEntity-One",
-				Description: "",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,         //[]int64{10},
-				Childids:    []int64{-1}, // -3 -- generated and replaced by server since it is immutable.
+				Id:            1,
+				State:         &mashupsdk.MashupElementState{Id: 1, State: int64(mashupsdk.Init)},
+				Name:          "CurvePathEntity-One",
+				Description:   "",
+				Renderer:      "Curve",
+				Colabrenderer: "Path",
+				Genre:         "Abstract",
+				Subgenre:      "",
+				Parentids:     nil,         //[]int64{10},
+				Childids:      []int64{-1}, // -3 -- generated and replaced by server since it is immutable.
 			},
 			[]util.DataFlowGroup{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
-				Id:          2,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
-				Name:        "CurvesGroupOne",
-				Description: "Curves",
-				Genre:       "Collection",
-				Subgenre:    "Curve",
-				Parentids:   nil,        //[]int64{},
-				Childids:    []int64{1}, //NOTE: If you want to add all children need to include children in for loop!
+				Id:            2,
+				State:         &mashupsdk.MashupElementState{Id: 2, State: int64(mashupsdk.Init)},
+				Name:          "CurvesGroupOne",
+				Description:   "Curves",
+				Renderer:      "Curve",
+				Colabrenderer: "Path",
+				Genre:         "Collection",
+				Subgenre:      "Curve",
+				Parentids:     nil,        //[]int64{},
+				Childids:      []int64{1}, //NOTE: If you want to add all children need to include children in for loop!
 			},
 			[]util.DataFlowGroup{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
 				Basisid:     -2,
-				State:       &mashupsdk.MashupElementState{Id: -3, State: int64(mashupsdk.Mutable)},
+				State:       &mashupsdk.MashupElementState{Id: -2, State: int64(mashupsdk.Mutable)},
 				Name:        "{0}-Path",
 				Alias:       "It",
 				Description: "",
@@ -86,9 +91,10 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		{
 			mashupsdk.MashupDetailedElement{
 				Id:          3,
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
+				State:       &mashupsdk.MashupElementState{Id: 3, State: int64(mashupsdk.Init)},
 				Name:        "PathEntity-1",
 				Description: "",
+				Renderer:    "Path",
 				Genre:       "Abstract",
 				Subgenre:    "",
 				Parentids:   nil,         //[]int64{10},
@@ -99,9 +105,10 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		{
 			mashupsdk.MashupDetailedElement{
 				Id:          4,
-				State:       &mashupsdk.MashupElementState{Id: 10, State: int64(mashupsdk.Init)},
+				State:       &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
 				Name:        "PathGroupOne",
 				Description: "Paths",
+				Renderer:    "Path",
 				Genre:       "Collection",
 				Subgenre:    "Path",
 				Parentids:   []int64{},  //[]int64{},
@@ -115,9 +122,10 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		Argosys = append(Argosys, &util.Argosy{
 			mashupsdk.MashupDetailedElement{
 				Id:          int64(7 + totalElements),
-				State:       &mashupsdk.MashupElementState{Id: 6, State: int64(mashupsdk.Init)},
+				State:       &mashupsdk.MashupElementState{Id: int64(7 + totalElements), State: int64(mashupsdk.Init)},
 				Name:        "PathEntity-" + strconv.Itoa(2+totalElements),
 				Description: "",
+				Renderer:    "Path",
 				Genre:       "Abstract",
 				Subgenre:    "",
 				Parentids:   []int64{},
@@ -126,7 +134,6 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 			[]util.DataFlowGroup{},
 		})
 	}
-	totalElements += 2 //see if possible to then add curve render into array and then pass in "totalElements" in Description? seems overcomplicated...
 
 	return util.ArgosyFleet{
 		Fleet: Argosys,
