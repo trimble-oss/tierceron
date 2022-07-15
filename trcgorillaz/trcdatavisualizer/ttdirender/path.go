@@ -18,9 +18,10 @@ import (
 
 type PathRenderer struct {
 	g3nrender.GenericRenderer
-	iOffset   int
-	counter   float64
-	activeSet map[int64]*math32.Vector3
+	iOffset       int
+	counter       float64
+	totalElements int
+	activeSet     map[int64]*math32.Vector3
 }
 
 /*type TTDICollection g3nrender.G3nCollection
@@ -52,6 +53,7 @@ func (sp *PathRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElemen
 }
 
 func (sp *PathRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
+	sp.totalElements = totalElements //totalElements parameter increases as it is rendered?
 	if sp.iOffset == 0 {
 		sp.iOffset = 1
 		sp.counter = -0.1 * float64(totalElements)
@@ -97,4 +99,9 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 	}
 
 	return g3nDetailedElement.SetColor(g3nColor)
+}
+
+func (sp *PathRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer interface{}) {
+	curveRenderer := collaboratingRenderer.(*CurveRenderer)
+	curveRenderer.totalElements = sp.totalElements
 }
