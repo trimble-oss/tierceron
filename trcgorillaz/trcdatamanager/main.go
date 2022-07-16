@@ -69,31 +69,22 @@ func (ha *HelloApp) OnResize(displayHint *mashupsdk.MashupDisplayHint) {
 }
 
 func (ha *HelloApp) PathParser(childId int64) {
-	child := helloApp.mashupDetailedElementLibrary[childId]
-	if child.Alias != "" {
-		helloApp.fyneWidgetElements[child.Alias].MashupDetailedElement = child
-	}
-
-	if len(child.GetChildids()) > 0 {
-		for _, cId := range child.GetChildids() {
-			ha.PathParser(cId)
+	/*if child, ok := helloApp.mashupDetailedElementLibrary[childId]; !ok {
+		return
+	} else {
+		if child.Alias != "" {
+			helloApp.fyneWidgetElements[child.Alias].MashupDetailedElement = child
 		}
 
-	}
+		if len(child.GetChildids()) > 0 {
+			for _, cId := range child.GetChildids() {
+				ha.PathParser(cId)
+			}
+
+		}
+	}*/
+
 }
-
-/*func (ha *HelloApp) TorusParser(childId int64) {
-	child := helloApp.mashupDetailedElementLibrary[childId]
-	if child.Alias != "" {
-		helloApp.fyneWidgetElements[child.Alias].MashupDetailedElement = child
-	}
-
-	if len(child.GetChildids()) > 0 {
-		for _, cId := range child.GetChildids() {
-			ha.TorusParser(cId)
-		}
-	}
-}*/
 
 var helloApp HelloApp
 
