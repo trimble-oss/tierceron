@@ -141,3 +141,21 @@ func (dfs *DataFlowGroup) FinishStatisticLog() {
 		}
 	}
 }
+
+func (dfs *DataFlowGroup) StatisticToMap(dfst DataFlowStatistic) map[string]interface{} {
+	var elapsedTime float64
+	statMap := make(map[string]interface{})
+	statMap["flowGroup"] = dfst.flowGroup
+	statMap["flowName"] = dfst.flowName
+	statMap["stateName"] = dfst.stateName
+	statMap["stateCode"] = dfst.stateCode
+	if dfst.timeSplit.Seconds() < 0 { //Covering corner case of 0 second time durations being slightly off (-.00004 seconds)
+		elapsedTime = 0
+	} else {
+		elapsedTime = dfst.timeSplit.Seconds()
+	}
+	statMap["timeSplit"] = fmt.Sprintf("%f", elapsedTime) + " seconds"
+	statMap["mode"] = dfst.mode
+
+	return statMap
+}
