@@ -142,7 +142,7 @@ func (dfs *DataFlowGroup) FinishStatisticLog() {
 	}
 }
 
-func (dfs *DataFlowGroup) StatisticToMap(dfst DataFlowStatistic) map[string]interface{} {
+func (dfs *DataFlowGroup) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic) map[string]interface{} {
 	var elapsedTime float64
 	statMap := make(map[string]interface{})
 	statMap["flowGroup"] = dfst.flowGroup
@@ -156,6 +156,11 @@ func (dfs *DataFlowGroup) StatisticToMap(dfst DataFlowStatistic) map[string]inte
 	}
 	statMap["timeSplit"] = fmt.Sprintf("%f", elapsedTime) + " seconds"
 	statMap["mode"] = dfst.mode
+	ninjaData, ninjaReadErr := mod.ReadData("super-secrets/" + dfst.flowGroup)
+	if ninjaReadErr != nil && dfs.LogFunc != nil {
+		dfs.LogFunc("Error reading Ninja properties from vault", ninjaReadErr)
+	}
+	statMap["lastTestedDate"] = ninjaData["lastTestedDate"].(string)
 
 	return statMap
 }
