@@ -142,7 +142,8 @@ func (dfs *DataFlowGroup) FinishStatisticLog() {
 	}
 }
 
-func (dfs *DataFlowGroup) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic) map[string]interface{} {
+//Used for ninja - lastTestedDate will be different for other flows
+func (dfs *DataFlowGroup) StatisticToNinjaMap(mod *kv.Modifier, dfst DataFlowStatistic) map[string]interface{} {
 	var elapsedTime float64
 	statMap := make(map[string]interface{})
 	statMap["flowGroup"] = dfst.flowGroup
