@@ -185,6 +185,36 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 	}
 }
 
+// Set up call back to enable a trigger to track
+// whenever a row in a table changes...
+func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcFlowContext, iden1 string, iden2 string, iden3 string, insertT func(string, string, string, string, string) string, updateT func(string, string, string, string, string) string) {
+	//Create triggers
+	var updTrigger sqle.TriggerDefinition
+	var insTrigger sqle.TriggerDefinition
+	insTrigger.Name = "tcInsertTrigger_" + trcfc.Flow.TableName()
+	updTrigger.Name = "tcUpdateTrigger_" + trcfc.Flow.TableName()
+	//Prevent duplicate triggers from existing
+	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
+	if err != nil {
+		eUtils.CheckError(tfmContext.Config, err, false)
+	}
+
+	triggerExist := false
+	for _, trigger := range existingTriggers {
+		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name {
+			triggerExist = true
+		}
+	}
+	if !triggerExist {
+		updTrigger.CreateStatement = updateT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2, iden3)
+		insTrigger.CreateStatement = insertT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2, iden3)
+		triggerLock.Lock()
+		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
+		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
+		triggerLock.Unlock()
+	}
+}
+
 func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowContext, flowTemplatePath string) (map[string]interface{}, bool) {
 	flowProject, flowService, flowConfigTemplatePath := eUtils.GetProjectService(flowTemplatePath)
 	flowConfigTemplateName := eUtils.GetTemplateFileName(flowConfigTemplatePath, flowService)
