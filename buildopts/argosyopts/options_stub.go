@@ -202,8 +202,8 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 	}
 
 	return util.ArgosyFleet{
-		Fleet: Argosys,
-		Name:  "Dev Environment",
+		Argosies: Argosys,
+		Name:     "Dev Environment",
 	}
 }
 
