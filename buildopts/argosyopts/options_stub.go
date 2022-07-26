@@ -29,6 +29,52 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		},
 		{
 			mashupsdk.MashupDetailedElement{
+				Basisid:     -4,
+				State:       &mashupsdk.MashupElementState{Id: -4, State: int64(mashupsdk.Mutable)},
+				Name:        "SubSpiral",
+				Alias:       "It",
+				Description: "",
+				Renderer:    "SubSpiral",
+				//Colabrenderer: "Path",
+				Genre:     "Solid",
+				Subgenre:  "Skeletal", //if you want clickable: "Ento",
+				Parentids: []int64{},
+				Childids:  []int64{5},
+			},
+			[]util.DataFlowGroup{},
+		},
+		{
+			mashupsdk.MashupDetailedElement{
+				Id:          3,
+				State:       &mashupsdk.MashupElementState{Id: 3, State: int64(mashupsdk.Init)},
+				Name:        "SubSpiralGroupOne",
+				Description: "SubSpirals",
+				Renderer:    "SubSpiral",
+				//Colabrenderer: "Path",
+				Genre:     "Collection",
+				Subgenre:  "SubSpiral",
+				Parentids: nil,        //[]int64{},
+				Childids:  []int64{5}, //NOTE: If you want to add all children need to include children in for loop!
+			},
+			[]util.DataFlowGroup{},
+		},
+		{
+			mashupsdk.MashupDetailedElement{
+				Id:          5,
+				State:       &mashupsdk.MashupElementState{Id: int64(5), State: int64(mashupsdk.Init)},
+				Name:        "SubSpiralEntity-" + strconv.Itoa(1),
+				Alias:       "It",
+				Description: "",
+				Renderer:    "SubSpiral",
+				Genre:       "Abstract",
+				Subgenre:    "",
+				Parentids:   []int64{},
+				Childids:    []int64{-4}, // -3 -- generated and replaced by server since it is immutable.
+			},
+			[]util.DataFlowGroup{},
+		},
+		{
+			mashupsdk.MashupDetailedElement{
 				Basisid:       -1,
 				State:         &mashupsdk.MashupElementState{Id: -1, State: int64(mashupsdk.Mutable)},
 				Name:          "Curve",
@@ -90,9 +136,10 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		},
 		{
 			mashupsdk.MashupDetailedElement{
-				Id:          3,
-				State:       &mashupsdk.MashupElementState{Id: 3, State: int64(mashupsdk.Init)},
+				Id:          7,
+				State:       &mashupsdk.MashupElementState{Id: 7, State: int64(mashupsdk.Init)},
 				Name:        "PathEntity-1",
+				Alias:       "It",
 				Description: "",
 				Renderer:    "Path",
 				Genre:       "Abstract",
@@ -121,15 +168,34 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 	for totalElements = 0; totalElements < 100; totalElements++ {
 		Argosys = append(Argosys, &util.Argosy{
 			mashupsdk.MashupDetailedElement{
-				Id:          int64(7 + totalElements),
-				State:       &mashupsdk.MashupElementState{Id: int64(7 + totalElements), State: int64(mashupsdk.Init)},
+				Id:          int64(8 + totalElements),
+				State:       &mashupsdk.MashupElementState{Id: int64(8 + totalElements), State: int64(mashupsdk.Init)},
 				Name:        "PathEntity-" + strconv.Itoa(2+totalElements),
+				Alias:       "It",
 				Description: "",
 				Renderer:    "Path",
 				Genre:       "Abstract",
 				Subgenre:    "",
 				Parentids:   []int64{},
 				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
+			},
+			[]util.DataFlowGroup{},
+		})
+	}
+
+	for i := totalElements + 1; i < totalElements+150; i++ {
+		Argosys = append(Argosys, &util.Argosy{
+			mashupsdk.MashupDetailedElement{
+				Id:          int64(1000 + totalElements + i),
+				State:       &mashupsdk.MashupElementState{Id: int64(1000 + totalElements + i), State: int64(mashupsdk.Init)},
+				Name:        "SubSpiralEntity-" + strconv.Itoa(2+i),
+				Alias:       "It",
+				Description: "",
+				Renderer:    "SubSpiral",
+				Genre:       "Abstract",
+				Subgenre:    "",
+				Parentids:   []int64{},
+				Childids:    []int64{-4}, // -3 -- generated and replaced by server since it is immutable.
 			},
 			[]util.DataFlowGroup{},
 		})
