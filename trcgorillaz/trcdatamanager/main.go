@@ -171,7 +171,7 @@ func main() {
 
 				ArgosyFleet := argosyopts.BuildFleet(nil)
 				DetailedElements := []*mashupsdk.MashupDetailedElement{}
-				for _, argosy := range ArgosyFleet.Fleet {
+				for _, argosy := range ArgosyFleet.Argosies {
 					DetailedElements = append(DetailedElements, &argosy.MashupDetailedElement)
 				}
 
