@@ -38,7 +38,7 @@ type Argosy struct {
 
 type ArgosyFleet struct {
 	ArgosyName string
-	Argosy     []Argosy
+	Argosies   []Argosy
 }
 
 //New API -> Argosy, return dataFlowGroups populated
@@ -46,7 +46,7 @@ type ArgosyFleet struct {
 func InitArgosyFleet(mod *kv.Modifier, argosName string, project string, idName string) (ArgosyFleet, error) {
 	var aFleet ArgosyFleet
 	aFleet.ArgosyName = argosName
-	aFleet.Argosy = make([]Argosy, 0)
+	aFleet.Argosies = make([]Argosy, 0)
 	idListData, idListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName)
 	if idListErr != nil {
 		return aFleet, idListErr
@@ -76,7 +76,7 @@ func InitArgosyFleet(mod *kv.Modifier, argosName string, project string, idName 
 					}
 				}
 			}
-			aFleet.Argosy = append(aFleet.Argosy, new)
+			aFleet.Argosies = append(aFleet.Argosies, new)
 		}
 	}
 
