@@ -3,11 +3,17 @@ package main
 import (
 	"embed"
 	"flag"
+	"fmt"
 	"log"
 	"os"
+
+	//"strconv"
 	"strings"
 
 	"tierceron/buildopts/argosyopts"
+
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -30,6 +36,10 @@ type FyneWidgetBundle struct {
 	mashupsdk.GuiWidgetBundle
 }
 
+type FyneListBundle struct {
+	mashupsdk.GuiWidgetBundle
+}
+
 type HelloApp struct {
 	fyneMashupApiHandler         *fyneMashupApiHandler
 	HelloContext                 *HelloContext
@@ -38,6 +48,8 @@ type HelloApp struct {
 	mashupDetailedElementLibrary map[int64]*mashupsdk.MashupDetailedElement
 	elementLoaderIndex           map[string]int64 // mashup indexes by Name
 	fyneWidgetElements           map[string]*FyneWidgetBundle
+	fyneListElements             map[int64]*FyneWidgetBundle
+	list                         *widget.List
 }
 
 func (fwb *FyneWidgetBundle) OnClicked() {
@@ -68,22 +80,19 @@ func (ha *HelloApp) OnResize(displayHint *mashupsdk.MashupDisplayHint) {
 	}
 }
 
-func (ha *HelloApp) PathParser(childId int64) {
-	/*if child, ok := helloApp.mashupDetailedElementLibrary[childId]; !ok {
-		return
-	} else {
-		if child.Alias != "" {
-			helloApp.fyneWidgetElements[child.Alias].MashupDetailedElement = child
-		}
+func (ha *HelloApp) TorusParser(childId int64) {
+	/*
+	   child := helloApp.mashupDetailedElementLibrary[childId]
+	   if child.Alias != "" {
+	       helloApp.fyneWidgetElements[child.Alias].MashupDetailedElement = child
+	   }
 
-		if len(child.GetChildids()) > 0 {
-			for _, cId := range child.GetChildids() {
-				ha.PathParser(cId)
-			}
+	   if len(child.GetChildids()) > 0 {
+	       for _, cId := range child.GetChildids() {
+	           ha.TorusParser(cId)
+	       }
 
-		}
-	}*/
-
+	   }*/
 }
 
 var helloApp HelloApp
@@ -142,6 +151,8 @@ func main() {
 				},
 			},
 		},
+		fyneListElements: map[int64]*FyneWidgetBundle{},
+		list:             &widget.List{},
 	}
 
 	// Build G3nDetailedElement cache.
@@ -164,9 +175,6 @@ func main() {
 					DetailedElements = append(DetailedElements, &argosy.MashupDetailedElement)
 				}
 
-				for _, detailedElement := range helloApp.mashupDetailedElementLibrary {
-					DetailedElements = append(DetailedElements, detailedElement)
-				}
 				log.Printf("Delivering mashup elements.\n")
 
 				// Connection with mashup fully established.  Initialize mashup elements.
@@ -181,7 +189,6 @@ func main() {
 				}
 
 				for _, concreteElement := range concreteElementBundle.DetailedElements {
-					//helloApp.fyneComponentCache[generatedComponent.Basisid]
 					helloApp.mashupDetailedElementLibrary[concreteElement.Id] = concreteElement
 					helloApp.elementLoaderIndex[concreteElement.Name] = concreteElement.Id
 
@@ -189,11 +196,27 @@ func main() {
 						helloApp.fyneWidgetElements["Outside"].MashupDetailedElement = concreteElement
 					}
 				}
+				for _, detailedElement := range concreteElementBundle.DetailedElements {
+					//if detailedElement.Id >= int64(6) {
+					//if detailedElement.Renderer == "Path" {
+					guiWidgetBundle := mashupsdk.GuiWidgetBundle{
+						GuiComponent:          widget.NewLabel(detailedElement.Name),
+						MashupDetailedElement: detailedElement,
+					}
+					fyneWidgetBundle := FyneWidgetBundle{
+						guiWidgetBundle,
+					}
+
+					helloApp.fyneListElements[detailedElement.Id] = &fyneWidgetBundle
+					//}
+
+					//}
+				}
 
 				for _, concreteElement := range concreteElementBundle.DetailedElements {
 					if strings.HasPrefix(concreteElement.GetName(), "PathEntity") {
 						for _, childId := range concreteElement.Childids {
-							helloApp.PathParser(childId)
+							helloApp.TorusParser(childId)
 						}
 					}
 				}
@@ -223,10 +246,13 @@ func main() {
 		logoIconBytes, _ := logoIcon.ReadFile("logo.png")
 
 		helloApp.mainWin.SetIcon(fyne.NewStaticResource("Logo", logoIconBytes))
+		//go *g3nworld.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
+		//go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
+
 		helloApp.mainWin.Resize(fyne.NewSize(800, 100))
 		helloApp.mainWin.SetFixedSize(false)
 
-		torusMenu := container.NewAppTabs(
+		/*torusMenu := container.NewAppTabs(
 			helloApp.fyneWidgetElements["Inside"].GuiComponent.(*container.TabItem),       // inside
 			helloApp.fyneWidgetElements["Outside"].GuiComponent.(*container.TabItem),      // outside
 			helloApp.fyneWidgetElements["It"].GuiComponent.(*container.TabItem),           // It
@@ -244,11 +270,57 @@ func main() {
 				}
 			}
 			helloApp.fyneWidgetElements[tabItem.Text].OnClicked()
+		}*/
+
+		topContent := widget.NewToolbar(
+			widget.NewToolbarSpacer(),
+			widget.NewToolbarAction(theme.AccountIcon(), func() {
+				accountWindow := a.NewWindow("Account Information")
+				accountWindow.SetContent(widget.NewLabel("User: "))
+				accountWindow.Show()
+			}),
+			widget.NewToolbarSeparator(),
+			widget.NewToolbarAction(theme.SettingsIcon(), func() {
+				settingWindow := a.NewWindow("Settings")
+				settingWindow.SetContent(widget.NewLabel("Light Theme: "))
+				settingWindow.Show()
+			}),
+		)
+
+		//torusMenu.SetTabLocation(container.TabLocationTop)
+
+		list := widget.NewList(
+			func() int { return len(helloApp.fyneListElements) },
+			func() fyne.CanvasObject { return widget.NewLabel("") },
+			func(lii widget.ListItemID, co fyne.CanvasObject) {
+				if helloApp.fyneListElements[int64(lii+6)] != nil {
+					co.(*widget.Label).SetText(helloApp.fyneListElements[int64(lii+6)].MashupDetailedElement.Name)
+				}
+			},
+		)
+
+		list.OnSelected = func(id widget.ListItemID) {
+			log.Printf("Selected: %s\n", helloApp.fyneListElements[int64(id+6)].MashupDetailedElement.Name)
+			if mashupItemIndex, miOk := helloApp.elementLoaderIndex[helloApp.fyneListElements[int64(id+6)].MashupDetailedElement.Name]; miOk {
+				mashupDetailedElement := helloApp.mashupDetailedElementLibrary[mashupItemIndex]
+				if mashupDetailedElement.Alias != "" {
+					//helloApp.fyneWidgetElements[mashupDetailedElement.Alias].GuiWidgetBundle.MashupDetailedElement = mashupDetailedElement
+					helloApp.fyneListElements[int64(id+6)].OnClicked()
+					//helloApp.mainWin.AddToScene(argosyopts)
+					//helloApp.fyneWidgetElements[mashupDetailedElement.Alias].OnClicked()
+					return
+				}
+			}
+			fmt.Println(helloApp.fyneListElements[int64(id)+6].MashupDetailedElement.Name)
+			helloApp.fyneWidgetElements[helloApp.fyneListElements[int64(id+6)].MashupDetailedElement.Alias].OnClicked()
+
 		}
+		helloApp.list = list
 
-		torusMenu.SetTabLocation(container.TabLocationTop)
-
-		helloApp.mainWin.SetContent(torusMenu)
+		//fileContent := list
+		//overallContent := container.New(layout.NewBorderLayout(topContent, nil, fileContent, nil), topContent, fileContent, torusMenu)
+		overallContent := container.New(layout.NewBorderLayout(topContent, nil, nil, nil), topContent, list)
+		helloApp.mainWin.SetContent(overallContent)
 		helloApp.mainWin.SetCloseIntercept(func() {
 			helloApp.HelloContext.mashupContext.Client.Shutdown(helloApp.HelloContext.mashupContext, &mashupsdk.MashupEmpty{AuthToken: client.GetServerAuthToken()})
 			os.Exit(0)
@@ -281,17 +353,25 @@ func (mSdk *fyneMashupApiHandler) UpsertMashupElements(detailedElementBundle *ma
 	return &mashupsdk.MashupDetailedElementBundle{}, nil
 }
 
+//upserts from g3n to fyne
 func (mSdk *fyneMashupApiHandler) UpsertMashupElementsState(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
 	log.Printf("Fyne UpsertMashupElementsState called\n")
 	for _, es := range elementStateBundle.ElementStates {
-		detailedElement := helloApp.mashupDetailedElementLibrary[es.GetId()]
-
-		fyneComponent := helloApp.fyneWidgetElements[detailedElement.GetAlias()]
-		fyneComponent.MashupDetailedElement = detailedElement
-		fyneComponent.MashupDetailedElement.State.State = es.State
 
 		if mashupsdk.DisplayElementState(es.State) == mashupsdk.Clicked {
-			for _, childId := range detailedElement.GetChildids() {
+			detailedElement := helloApp.mashupDetailedElementLibrary[es.GetId()]
+			if helloApp.fyneListElements[detailedElement.Id] != nil {
+				fyneComponent := helloApp.fyneListElements[detailedElement.Id]
+				fyneComponent.MashupDetailedElement = detailedElement
+				fyneComponent.MashupDetailedElement.State.State = es.State
+				//upsert subspiral here?
+				list := helloApp.list //helloApp.mainWin.Content().(*container.AppTabs)
+				// Select the item.
+				//fyneComponent.GuiComponent.(*widget.List) = detailedElement.Name
+				list.Select(int(detailedElement.Id - 6))
+			}
+
+			/*for _, childId := range detailedElement.GetChildids() {
 				if childDetailedElement, childDetailOk := helloApp.mashupDetailedElementLibrary[childId]; childDetailOk {
 					if childFyneComponent, childFyneOk := helloApp.fyneWidgetElements[childDetailedElement.GetAlias()]; childFyneOk {
 						childFyneComponent.MashupDetailedElement = childDetailedElement
@@ -306,14 +386,56 @@ func (mSdk *fyneMashupApiHandler) UpsertMashupElementsState(elementStateBundle *
 						parentFyneComponent.GuiComponent.(*container.TabItem).Text = parentDetailedElement.Name
 					}
 				}
-			}
+			}*/
 
-			torusMenu := helloApp.mainWin.Content().(*container.AppTabs)
-			// Select the item.
-			fyneComponent.GuiComponent.(*container.TabItem).Text = detailedElement.Name
-			torusMenu.Select(fyneComponent.GuiComponent.(*container.TabItem))
+			/*if detailedElement.Id > 109 {
+				list.Select(int(helloApp.fyneListElements[detailedElement.Id].MashupDetailedElement.Id - 107))
+			} else {
+				list.Select(int(helloApp.fyneListElements[detailedElement.Id].MashupDetailedElement.Id) - 7)
+			}*/
+
 		}
 	}
 	log.Printf("Fyne UpsertMashupElementsState complete\n")
 	return &mashupsdk.MashupElementStateBundle{}, nil
 }
+
+/*
+//upserts from g3n to fyne
+func (mSdk *fyneMashupApiHandler) UpsertMashupElementsState(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
+   log.Printf("Fyne UpsertMashupElementsState called\n")
+   for _, es := range elementStateBundle.ElementStates {
+       detailedElement := helloApp.mashupDetailedElementLibrary[es.GetId()]
+
+       fyneComponent := helloApp.fyneWidgetElements[detailedElement.GetAlias()]
+       fyneComponent.MashupDetailedElement = detailedElement
+       fyneComponent.MashupDetailedElement.State.State = es.State
+
+       if mashupsdk.DisplayElementState(es.State) == mashupsdk.Clicked {
+           for _, childId := range detailedElement.GetChildids() {
+               if childDetailedElement, childDetailOk := helloApp.mashupDetailedElementLibrary[childId]; childDetailOk {
+                   if childFyneComponent, childFyneOk := helloApp.fyneWidgetElements[childDetailedElement.GetAlias()]; childFyneOk {
+                       childFyneComponent.MashupDetailedElement = childDetailedElement
+                       childFyneComponent.GuiComponent.(*container.TabItem).Text = childDetailedElement.Name
+                   }
+               }
+           }
+           for _, parentId := range detailedElement.GetParentids() {
+               if parentDetailedElement, parentDetailOk := helloApp.mashupDetailedElementLibrary[parentId]; parentDetailOk {
+                   if parentFyneComponent, parentFyneOk := helloApp.fyneWidgetElements[parentDetailedElement.GetAlias()]; parentFyneOk {
+                       parentFyneComponent.MashupDetailedElement = parentDetailedElement
+					   parentFyneComponent.GuiComponent.(*container.TabItem).Text = parentDetailedElement.Name
+                   }
+               }
+           }
+
+           torusMenu := helloApp.tabMenu //helloApp.mainWin.Content().(*container.AppTabs)
+           // Select the item.
+           fyneComponent.GuiComponent.(*container.TabItem).Text = detailedElement.Name
+           torusMenu.Select(fyneComponent.GuiComponent.(*container.TabItem))
+       }
+   }
+   log.Printf("Fyne UpsertMashupElementsState complete\n")
+   return &mashupsdk.MashupElementStateBundle{}, nil
+}
+*/
