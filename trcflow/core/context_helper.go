@@ -206,7 +206,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 					eUtils.LogErrorObject(tfmContext.Config, err, false)
 				}
 			} else {
-				if len(changedEntry) == 3 {
+				if len(changedEntry) == 3 { //Maybe there is a better way to do this, but this works for now.
 					_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedEntry[0], changedEntry[1], changedEntry[2]))
 					if err != nil {
 						eUtils.LogErrorObject(tfmContext.Config, err, false)
