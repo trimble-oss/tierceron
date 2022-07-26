@@ -1,9 +1,15 @@
+/*
+NOTE: Creating own geometry seems to be ok besides having to comment
+out the bounding box and sphere. There is a problem with creating a unique
+mesh in the layout method when calling layoutbase --> requires graphic.Mesh
+*/
+
 package ttdirender
 
 import (
 	"fmt"
 
-	"github.com/g3n/engine/geometry"
+	//"github.com/g3n/engine/geometry"
 	"github.com/g3n/engine/graphic"
 	"github.com/g3n/engine/material"
 	"github.com/g3n/engine/math32"
@@ -28,11 +34,12 @@ func (sp *SubSpiralRenderer) NewSubSpiral(vpos *math32.Vector3) *SubSpiralRender
 	return sp
 }
 
-func (sp *SubSpiralRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
-	sphereGeom := geometry.NewSphere(.1, 100, 100)
+func (sp *SubSpiralRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *Mesh {
+	//sphereGeom := geometry.NewSphere(.1, 100, 100)
+	spiralGeom := NewSphere(.1, 100, 100) //new geometry seems to be ok but had to comment out bounding box and sphere for it to work
 	color := g3ndpalette.DARK_BLUE
 	mat := material.NewStandard(color.Set(0, 0.349, 0.643))
-	sphereMesh := graphic.NewMesh(sphereGeom, mat)
+	sphereMesh := NewMesh(spiralGeom, mat)
 	fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
 	sphereMesh.SetLoaderID(g3n.GetDisplayName())
 	sphereMesh.SetPositionVec(vpos)
@@ -44,7 +51,7 @@ func (sp *SubSpiralRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedE
 }
 
 func (sp *SubSpiralRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
-	sp.totalElements = totalElements //totalElements parameter increases as it is rendered?
+	sp.totalElements = totalElements
 	if sp.iOffset == 0 {
 		sp.iOffset = 1
 		sp.counter = -0.1 * float64(15.0)
@@ -67,7 +74,7 @@ func (sp *SubSpiralRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, tot
 
 func (sp *SubSpiralRenderer) Layout(worldApp *g3nworld.WorldApp,
 	g3nRenderableElements []*g3nmash.G3nDetailedElement) {
-	sp.GenericRenderer.LayoutBase(worldApp, sp, g3nRenderableElements)
+	sp.GenericRenderer.LayoutBase(worldApp, sp, g3nRenderableElements) //Doesn't accept new mesh type in call to layoutbase
 }
 
 func (sp *SubSpiralRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetailedElement *g3nmash.G3nDetailedElement) bool {
