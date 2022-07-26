@@ -156,12 +156,12 @@ func (dfs *DataFlowGroup) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatisti
 	}
 	statMap["timeSplit"] = elapsedTime
 	statMap["mode"] = dfst.mode
-	flowData, flowReadErr := mod.ReadData("super-secrets/" + dfst.flowGroup)
-	if flowReadErr != nil && dfs.LogFunc != nil {
-		dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
-	}
 
 	if enrichLastTested {
+		flowData, flowReadErr := mod.ReadData("super-secrets/" + dfst.flowGroup)
+		if flowReadErr != nil && dfs.LogFunc != nil {
+			dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
+		}
 		statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
 	}
 
