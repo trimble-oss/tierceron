@@ -18,7 +18,7 @@ type DataFlowStatistic struct {
 	mode      int
 }
 
-type DataFlowGroup struct {
+type DataFlow struct {
 	Name       string
 	TimeStart  time.Time
 	Statistics []DataFlowStatistic
@@ -26,9 +26,17 @@ type DataFlowGroup struct {
 	LogFunc    func(string, error)
 }
 
+type DataFlowGroup struct {
+	Name    string
+	Flows   []DataFlow
+	LogStat bool
+	LogFunc func(string, error)
+}
+
 type Argosy struct {
 	//ID - argosID
 	//DataFlowGroups
+	Groups []DataFlowGroup
 }
 
 //New API -> Argosy, return dataFlowGroups populated
