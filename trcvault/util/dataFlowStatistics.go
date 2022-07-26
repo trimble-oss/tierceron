@@ -144,8 +144,8 @@ func (dfs *DataFlowGroup) FinishStatisticLog() {
 	}
 }
 
-//Used for ninja - lastTestedDate will be different for other flows
-func (dfs *DataFlowGroup) StatisticToNinjaMap(mod *kv.Modifier, dfst DataFlowStatistic) map[string]interface{} {
+//Used for flow
+func (dfs *DataFlowGroup) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic, enrichLastTested bool) map[string]interface{} {
 	var elapsedTime string
 	statMap := make(map[string]interface{})
 	statMap["flowGroup"] = dfst.flowGroup
@@ -159,11 +159,14 @@ func (dfs *DataFlowGroup) StatisticToNinjaMap(mod *kv.Modifier, dfst DataFlowSta
 	}
 	statMap["timeSplit"] = elapsedTime
 	statMap["mode"] = dfst.mode
-	ninjaData, ninjaReadErr := mod.ReadData("super-secrets/" + dfst.flowGroup)
-	if ninjaReadErr != nil && dfs.LogFunc != nil {
-		dfs.LogFunc("Error reading Ninja properties from vault", ninjaReadErr)
+
+	if enrichLastTested {
+		flowData, flowReadErr := mod.ReadData("super-secrets/" + dfst.flowGroup)
+		if flowReadErr != nil && dfs.LogFunc != nil {
+			dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
+		}
+		statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
 	}
-	statMap["lastTestedDate"] = ninjaData["lastTestedDate"].(string)
 
 	return statMap
 }
