@@ -253,7 +253,11 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n"
 	//VaultX Section Ends
 	//VaultInit Section Begins
-	il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData), service, false)
+	if strings.Contains(indexPath, "/PublicIndex/") {
+		il.SeedVaultFromData(config, indexPath, []byte(seedData), "", false)
+	} else {
+		il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData), service, false)
+	}
 	return nil
 }
 

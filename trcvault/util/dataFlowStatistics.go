@@ -73,18 +73,18 @@ func (dfs *DataFlowGroup) FinishStatistic(mod *kv.Modifier, id string, indexPath
 	}
 	mod.SectionPath = ""
 	for _, dataFlowStatistic := range dfs.Statistics {
-		var elapsedTime float64
+		var elapsedTime string
 		statMap := make(map[string]interface{})
 		statMap["flowGroup"] = dataFlowStatistic.flowGroup
 		statMap["flowName"] = dataFlowStatistic.flowName
 		statMap["stateName"] = dataFlowStatistic.stateName
 		statMap["stateCode"] = dataFlowStatistic.stateCode
 		if dataFlowStatistic.timeSplit.Seconds() < 0 { //Covering corner case of 0 second time durations being slightly off (-.00004 seconds)
-			elapsedTime = 0
+			elapsedTime = "0s"
 		} else {
-			elapsedTime = dataFlowStatistic.timeSplit.Seconds()
+			elapsedTime = dataFlowStatistic.timeSplit.Truncate(time.Millisecond * 10).String()
 		}
-		statMap["timeSplit"] = fmt.Sprintf("%f", elapsedTime) + " seconds"
+		statMap["timeSplit"] = elapsedTime
 		statMap["mode"] = dataFlowStatistic.mode
 
 		mod.SectionPath = ""
@@ -118,8 +118,7 @@ func (dfs *DataFlowGroup) RetrieveStatistic(mod *kv.Modifier, id string, indexPa
 					df.mode = modeInt
 				}
 			}
-			timeElapsedSeconds, _ := strconv.ParseFloat(strings.Split(data["timeSplit"].(string), " seconds")[0], 64) //Convert time elapsed string to duration
-			df.timeSplit = time.Duration(timeElapsedSeconds * float64(time.Second))
+			df.timeSplit, _ = time.ParseDuration(data["timeSplit"].(string))
 			dfs.Statistics = append(dfs.Statistics, df)
 		}
 	}
@@ -140,4 +139,31 @@ func (dfs *DataFlowGroup) FinishStatisticLog() {
 			dfs.LogFunc(stat.flowName+"-"+stat.stateName, nil)
 		}
 	}
+}
+
+//Used for flow
+func (dfs *DataFlowGroup) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic, enrichLastTested bool) map[string]interface{} {
+	var elapsedTime string
+	statMap := make(map[string]interface{})
+	statMap["flowGroup"] = dfst.flowGroup
+	statMap["flowName"] = dfst.flowName
+	statMap["stateName"] = dfst.stateName
+	statMap["stateCode"] = dfst.stateCode
+	if dfst.timeSplit.Seconds() < 0 { //Covering corner case of 0 second time durations being slightly off (-.00004 seconds)
+		elapsedTime = "0s"
+	} else {
+		elapsedTime = dfst.timeSplit.Truncate(time.Millisecond * 10).String()
+	}
+	statMap["timeSplit"] = elapsedTime
+	statMap["mode"] = dfst.mode
+
+	if enrichLastTested {
+		flowData, flowReadErr := mod.ReadData("super-secrets/" + dfst.flowGroup)
+		if flowReadErr != nil && dfs.LogFunc != nil {
+			dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
+		}
+		statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
+	}
+
+	return statMap
 }
