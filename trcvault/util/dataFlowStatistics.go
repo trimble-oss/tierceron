@@ -27,43 +27,82 @@ type DataFlow struct {
 }
 
 type DataFlowGroup struct {
-	Name    string
-	Flows   []DataFlow
-	LogStat bool
-	LogFunc func(string, error)
+	Name  string
+	Flows []DataFlow
 }
 
 type Argosy struct {
-	//ID - argosID
-	//DataFlowGroups
-	Groups []DataFlowGroup
+	argosID string
+	Groups  []DataFlowGroup
+}
+
+type ArgosyFleet struct {
+	ArgosyName string
+	Argosy     []Argosy
 }
 
 //New API -> Argosy, return dataFlowGroups populated
 
-type ArgosyFleet struct {
-	//[]Argosy
+func InitArgosyFleet(mod *kv.Modifier, argosName string, project string, idName string) (ArgosyFleet, error) {
+	var aFleet ArgosyFleet
+	aFleet.ArgosyName = argosName
+	aFleet.Argosy = make([]Argosy, 0)
+	idListData, idListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName)
+	if idListErr != nil {
+		return aFleet, idListErr
+	}
+	for _, idList := range idListData.Data {
+		for _, id := range idList.([]interface{}) {
+			serviceListData, serviceListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName + "/" + id.(string) + "/DataFlowStatistics/DataFlowGroup")
+			if serviceListErr != nil {
+				return aFleet, serviceListErr
+			}
+			var new Argosy
+			new.argosID = id.(string)
+			new.Groups = make([]DataFlowGroup, 0)
+			for _, serviceList := range serviceListData.Data {
+				for _, service := range serviceList.([]interface{}) {
+					statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName + "/" + id.(string) + "/DataFlowStatistics/DataFlowGroup/" + service.(string) + "/dataFlowName/")
+					if statisticNameListErr != nil {
+						return aFleet, statisticNameListErr
+					}
+
+					for _, statisticName := range statisticNameList.Data {
+						for _, statisticName := range statisticName.([]interface{}) {
+							newDfgroup := InitDataFlowGroup(nil, statisticName.(string), false)
+							newDfgroup.RetrieveStatistic(mod, id.(string), project, idName, service.(string), statisticName.(string))
+							//new.Groups = append(new.Groups, newDfgroup)
+						}
+					}
+				}
+			}
+			aFleet.Argosy = append(aFleet.Argosy, new)
+		}
+	}
+
+	//var newDFStatistic = DataFlowGroup{Name: name, TimeStart: time.Now(), Statistics: nil, LogStat: false, LogFunc: nil}
+	return aFleet, nil
 }
 
-func InitDataFlowGroup(logF func(string, error), name string, logS bool) DataFlowGroup {
+func InitDataFlowGroup(logF func(string, error), name string, logS bool) DataFlow {
 	var stats []DataFlowStatistic
-	var newDFStatistic = DataFlowGroup{Name: name, TimeStart: time.Now(), Statistics: stats, LogStat: logS, LogFunc: logF}
+	var newDFStatistic = DataFlow{Name: name, TimeStart: time.Now(), Statistics: stats, LogStat: logS, LogFunc: logF}
 	return newDFStatistic
 }
 
-func (dfs *DataFlowGroup) UpdateDataFlowStatistic(flowG string, flowN string, stateN string, stateC string, mode int) {
+func (dfs *DataFlow) UpdateDataFlowStatistic(flowG string, flowN string, stateN string, stateC string, mode int) {
 	var newDFStat = DataFlowStatistic{flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
 	dfs.Statistics = append(dfs.Statistics, newDFStat)
 	dfs.Log()
 }
 
-func (dfs *DataFlowGroup) UpdateDataFlowStatisticWithTime(flowG string, flowN string, stateN string, stateC string, mode int, elapsedTime time.Duration) {
+func (dfs *DataFlow) UpdateDataFlowStatisticWithTime(flowG string, flowN string, stateN string, stateC string, mode int, elapsedTime time.Duration) {
 	var newDFStat = DataFlowStatistic{flowG, flowN, stateN, stateC, elapsedTime, mode}
 	dfs.Statistics = append(dfs.Statistics, newDFStat)
 	dfs.Log()
 }
 
-func (dfs *DataFlowGroup) Log() {
+func (dfs *DataFlow) Log() {
 	if dfs.LogStat {
 		stat := dfs.Statistics[len(dfs.Statistics)-1]
 		if strings.Contains(stat.stateName, "Failure") {
@@ -74,7 +113,7 @@ func (dfs *DataFlowGroup) Log() {
 	}
 }
 
-func (dfs *DataFlowGroup) FinishStatistic(mod *kv.Modifier, id string, indexPath string, idName string) {
+func (dfs *DataFlow) FinishStatistic(mod *kv.Modifier, id string, indexPath string, idName string) {
 	//TODO : Write Statistic to vault
 	if !dfs.LogStat && dfs.LogFunc != nil {
 		dfs.FinishStatisticLog()
@@ -103,7 +142,7 @@ func (dfs *DataFlowGroup) FinishStatistic(mod *kv.Modifier, id string, indexPath
 	}
 }
 
-func (dfs *DataFlowGroup) RetrieveStatistic(mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string) {
+func (dfs *DataFlow) RetrieveStatistic(mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string) {
 	listData, listErr := mod.List("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN)
 	if listErr != nil && dfs.LogFunc != nil {
 		dfs.LogFunc("Error reading DataFlowStatistics from vault", listErr)
@@ -133,7 +172,7 @@ func (dfs *DataFlowGroup) RetrieveStatistic(mod *kv.Modifier, id string, indexPa
 }
 
 //Set logFunc and logStat = false to use this otherwise it logs as states change with logStat = true
-func (dfs *DataFlowGroup) FinishStatisticLog() {
+func (dfs *DataFlow) FinishStatisticLog() {
 	if dfs.LogFunc == nil || dfs.LogStat {
 		return
 	}
@@ -150,7 +189,7 @@ func (dfs *DataFlowGroup) FinishStatisticLog() {
 }
 
 //Used for flow
-func (dfs *DataFlowGroup) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic, enrichLastTested bool) map[string]interface{} {
+func (dfs *DataFlow) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic, enrichLastTested bool) map[string]interface{} {
 	var elapsedTime string
 	statMap := make(map[string]interface{})
 	statMap["flowGroup"] = dfst.flowGroup
