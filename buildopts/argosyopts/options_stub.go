@@ -11,7 +11,8 @@ import (
 )
 
 func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
-	Argosys := []*util.Argosy{
+	//Argosys := make([]util.Argosy, 3)
+	Argosys := []util.Argosy{
 		{
 			mashupsdk.MashupDetailedElement{
 				Id:          6,
@@ -25,9 +26,10 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids:   nil,
 				Childids:    nil,
 			},
+			"",
 			[]util.DataFlowGroup{},
 		},
-		{
+		/*{
 			mashupsdk.MashupDetailedElement{
 				Basisid:     -4,
 				State:       &mashupsdk.MashupElementState{Id: -4, State: int64(mashupsdk.Mutable)},
@@ -41,6 +43,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids: []int64{},
 				Childids:  []int64{5},
 			},
+			"",
 			[]util.DataFlowGroup{},
 		},
 		{
@@ -56,6 +59,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids: nil,        //[]int64{},
 				Childids:  []int64{5}, //NOTE: If you want to add all children need to include children in for loop!
 			},
+			"",
 			[]util.DataFlowGroup{},
 		},
 		{
@@ -71,8 +75,9 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids:   []int64{},
 				Childids:    []int64{-4}, // -3 -- generated and replaced by server since it is immutable.
 			},
+			"",
 			[]util.DataFlowGroup{},
-		},
+		},*/
 		{
 			mashupsdk.MashupDetailedElement{
 				Basisid:       -1,
@@ -87,6 +92,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids:     []int64{},
 				Childids:      []int64{1},
 			},
+			"",
 			[]util.DataFlowGroup{},
 		},
 		{
@@ -102,6 +108,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids:     nil,         //[]int64{10},
 				Childids:      []int64{-1}, // -3 -- generated and replaced by server since it is immutable.
 			},
+			"",
 			[]util.DataFlowGroup{},
 		},
 		{
@@ -117,6 +124,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids:     nil,        //[]int64{},
 				Childids:      []int64{1}, //NOTE: If you want to add all children need to include children in for loop!
 			},
+			"",
 			[]util.DataFlowGroup{},
 		},
 		{
@@ -132,6 +140,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids:   []int64{},
 				Childids:    []int64{3},
 			},
+			"",
 			[]util.DataFlowGroup{},
 		},
 		{
@@ -147,6 +156,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids:   nil,         //[]int64{10},
 				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
 			},
+			"",
 			[]util.DataFlowGroup{},
 		},
 		{
@@ -161,12 +171,13 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids:   []int64{},  //[]int64{},
 				Childids:    []int64{7}, //NOTE: If you want to add all children need to include children in for loop!
 			},
+			"",
 			[]util.DataFlowGroup{},
 		},
 	}
 	totalElements := 0
 	for totalElements = 0; totalElements < 100; totalElements++ {
-		Argosys = append(Argosys, &util.Argosy{
+		Argosys = append(Argosys, util.Argosy{
 			mashupsdk.MashupDetailedElement{
 				Id:          int64(8 + totalElements),
 				State:       &mashupsdk.MashupElementState{Id: int64(8 + totalElements), State: int64(mashupsdk.Init)},
@@ -179,12 +190,13 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids:   []int64{},
 				Childids:    []int64{-2}, // -3 -- generated and replaced by server since it is immutable.
 			},
+			"",
 			[]util.DataFlowGroup{},
 		})
 	}
 
-	for i := totalElements + 1; i < totalElements+150; i++ {
-		Argosys = append(Argosys, &util.Argosy{
+	/*for i := totalElements + 1; i < totalElements+150; i++ {
+		Argosys = append(Argosys, util.Argosy{
 			mashupsdk.MashupDetailedElement{
 				Id:          int64(1000 + totalElements + i),
 				State:       &mashupsdk.MashupElementState{Id: int64(1000 + totalElements + i), State: int64(mashupsdk.Init)},
@@ -197,13 +209,14 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Parentids:   []int64{},
 				Childids:    []int64{-4}, // -3 -- generated and replaced by server since it is immutable.
 			},
+			"",
 			[]util.DataFlowGroup{},
 		})
-	}
+	}*/
 
 	return util.ArgosyFleet{
-		Argosies: Argosys,
-		Name:     "Dev Environment",
+		ArgosyName: "Dev Environment",
+		Argosies:   []util.Argosy(Argosys),
 	}
 }
 
