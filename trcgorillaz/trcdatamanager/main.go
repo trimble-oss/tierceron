@@ -172,7 +172,8 @@ func main() {
 				ArgosyFleet := argosyopts.BuildFleet(nil)
 				DetailedElements := []*mashupsdk.MashupDetailedElement{}
 				for _, argosy := range ArgosyFleet.Argosies {
-					DetailedElements = append(DetailedElements, &argosy.MashupDetailedElement)
+					argosyBasis := argosy.MashupDetailedElement
+					DetailedElements = append(DetailedElements, &argosyBasis)
 				}
 
 				log.Printf("Delivering mashup elements.\n")
