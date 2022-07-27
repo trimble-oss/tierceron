@@ -32,8 +32,8 @@ type DataFlowGroup struct {
 }
 
 type Argosy struct {
-	argosID string
-	Groups  []DataFlowGroup
+	ArgosyID string
+	Groups   []DataFlowGroup
 }
 
 type ArgosyFleet struct {
@@ -58,7 +58,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, idName string) (ArgosyFle
 				return aFleet, serviceListErr
 			}
 			var new Argosy
-			new.argosID = id.(string)
+			new.ArgosyID = id.(string)
 			new.Groups = make([]DataFlowGroup, 0)
 			for _, serviceList := range serviceListData.Data {
 				for _, service := range serviceList.([]interface{}) {
