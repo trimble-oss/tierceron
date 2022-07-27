@@ -29,7 +29,7 @@ require (
 	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/mrjrieke/nute v0.0.0-20220715140120-c4fd938ae870
+// github.com/mrjrieke/nute v0.0.0-20220715140120-c4fd938ae870
 )
 
 require (
@@ -55,6 +55,7 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20211219123610-ec9572f70e60 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
+	github.com/mrjrieke/nute v0.0.0-20220727141806-91750accafe0 // indirect
 	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564 // indirect
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
