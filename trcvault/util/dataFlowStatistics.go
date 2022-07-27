@@ -43,9 +43,9 @@ type ArgosyFleet struct {
 
 //New API -> Argosy, return dataFlowGroups populated
 
-func InitArgosyFleet(mod *kv.Modifier, argosName string, project string, idName string) (ArgosyFleet, error) {
+func InitArgosyFleet(mod *kv.Modifier, project string, idName string) (ArgosyFleet, error) {
 	var aFleet ArgosyFleet
-	aFleet.ArgosyName = argosName
+	aFleet.ArgosyName = project
 	aFleet.Argosies = make([]Argosy, 0)
 	idListData, idListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName)
 	if idListErr != nil {
@@ -62,6 +62,9 @@ func InitArgosyFleet(mod *kv.Modifier, argosName string, project string, idName 
 			new.Groups = make([]DataFlowGroup, 0)
 			for _, serviceList := range serviceListData.Data {
 				for _, service := range serviceList.([]interface{}) {
+					var dfgroup DataFlowGroup
+					dfgroup.Name = service.(string)
+
 					statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName + "/" + id.(string) + "/DataFlowStatistics/DataFlowGroup/" + service.(string) + "/dataFlowName/")
 					if statisticNameListErr != nil {
 						return aFleet, statisticNameListErr
@@ -69,11 +72,12 @@ func InitArgosyFleet(mod *kv.Modifier, argosName string, project string, idName 
 
 					for _, statisticName := range statisticNameList.Data {
 						for _, statisticName := range statisticName.([]interface{}) {
-							newDfgroup := InitDataFlowGroup(nil, statisticName.(string), false)
-							newDfgroup.RetrieveStatistic(mod, id.(string), project, idName, service.(string), statisticName.(string))
-							//new.Groups = append(new.Groups, newDfgroup)
+							newDf := InitDataFlow(nil, statisticName.(string), false)
+							newDf.RetrieveStatistic(mod, id.(string), project, idName, service.(string), statisticName.(string))
+							dfgroup.Flows = append(dfgroup.Flows, newDf)
 						}
 					}
+					new.Groups = append(new.Groups, dfgroup)
 				}
 			}
 			aFleet.Argosies = append(aFleet.Argosies, new)
@@ -84,7 +88,7 @@ func InitArgosyFleet(mod *kv.Modifier, argosName string, project string, idName 
 	return aFleet, nil
 }
 
-func InitDataFlowGroup(logF func(string, error), name string, logS bool) DataFlow {
+func InitDataFlow(logF func(string, error), name string, logS bool) DataFlow {
 	var stats []DataFlowStatistic
 	var newDFStatistic = DataFlow{Name: name, TimeStart: time.Now(), Statistics: stats, LogStat: logS, LogFunc: logF}
 	return newDFStatistic
