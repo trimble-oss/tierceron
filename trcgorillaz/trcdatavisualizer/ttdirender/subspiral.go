@@ -10,6 +10,8 @@ import (
 	"fmt"
 
 	//"github.com/g3n/engine/geometry"
+
+	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/graphic"
 	"github.com/g3n/engine/material"
 	"github.com/g3n/engine/math32"
@@ -34,7 +36,7 @@ func (sp *SubSpiralRenderer) NewSubSpiral(vpos *math32.Vector3) *SubSpiralRender
 	return sp
 }
 
-func (sp *SubSpiralRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *Mesh {
+func (sp *SubSpiralRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	//sphereGeom := geometry.NewSphere(.1, 100, 100)
 	spiralGeom := NewSphere(.1, 100, 100) //new geometry seems to be ok but had to comment out bounding box and sphere for it to work
 	color := g3ndpalette.DARK_BLUE
@@ -46,7 +48,7 @@ func (sp *SubSpiralRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement,
 	return sphereMesh
 }
 
-func (sp *SubSpiralRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
+func (sp *SubSpiralRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	return nil
 }
 
@@ -86,7 +88,7 @@ func (sp *SubSpiralRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nD
 		if sp.activeSet == nil {
 			sp.activeSet = map[int64]*math32.Vector3{}
 		}
-		activePosition := mesh.GetGraphic().Position()
+		activePosition := mesh.(*graphic.Mesh).GetGraphic().Position()
 		sp.activeSet[g3nDetailedElement.GetDetailedElement().GetId()] = &activePosition
 		fmt.Printf("Active element centered at %v\n", activePosition)
 	} else {
