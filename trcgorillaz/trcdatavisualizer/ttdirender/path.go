@@ -6,6 +6,7 @@ import (
 	//"sort"
 	//"strings"
 
+	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
 	"github.com/g3n/engine/graphic"
 	"github.com/g3n/engine/material"
@@ -37,7 +38,7 @@ func (sp *SphereRenderer) Sort(worldApp *g3nworld.WorldApp, g3nRenderableElement
 	return g3nRenderableElements
 }*/
 
-func (sp *PathRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
+func (sp *PathRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
 	color := g3ndpalette.DARK_BLUE
 	mat := material.NewStandard(color.Set(0, 0.349, 0.643))
@@ -48,7 +49,7 @@ func (sp *PathRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos
 	return sphereMesh
 }
 
-func (sp *PathRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
+func (sp *PathRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	return nil
 }
 
@@ -79,7 +80,7 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 		if sp.activeSet == nil {
 			sp.activeSet = map[int64]*math32.Vector3{}
 		}
-		activePosition := mesh.GetGraphic().Position()
+		activePosition := mesh.(*graphic.Mesh).GetGraphic().Position()
 		sp.activeSet[g3nDetailedElement.GetDetailedElement().GetId()] = &activePosition
 		fmt.Printf("Active element centered at %v\n", activePosition)
 	} else {
@@ -101,7 +102,7 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 	return g3nDetailedElement.SetColor(g3nColor)
 }
 
-func (sp *PathRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer interface{}) {
+func (sp *PathRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
 	curveRenderer := collaboratingRenderer.(*CurveRenderer)
 	curveRenderer.totalElements = sp.totalElements
 }

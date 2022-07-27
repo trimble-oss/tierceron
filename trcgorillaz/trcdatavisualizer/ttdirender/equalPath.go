@@ -6,6 +6,7 @@ import (
 	//"sort"
 	//"strings"
 
+	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
 	"github.com/g3n/engine/graphic"
 	"github.com/g3n/engine/material"
@@ -35,7 +36,7 @@ func (sp *SphereRenderer) Sort(worldApp *g3nworld.WorldApp, g3nRenderableElement
 	return g3nRenderableElements
 }*/
 
-func (sp *EqualPathRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
+func (sp *EqualPathRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
 	mat := material.NewStandard(g3ndpalette.DARK_BLUE)
 	sphereMesh := graphic.NewMesh(sphereGeom, mat)
@@ -45,7 +46,7 @@ func (sp *EqualPathRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement,
 	return sphereMesh
 }
 
-func (sp *EqualPathRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
+func (sp *EqualPathRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	return nil
 }
 
