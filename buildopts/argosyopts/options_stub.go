@@ -137,8 +137,8 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Renderer:    "Path",
 				Genre:       "Solid",
 				Subgenre:    "Ento",
-				Parentids:   []int64{},
-				Childids:    []int64{3},
+				Parentids:   nil,
+				Childids:    []int64{7},
 			},
 			"",
 			[]util.DataFlowGroup{},
@@ -176,12 +176,13 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		},
 	}
 	totalElements := 0
-	for totalElements = 0; totalElements < 100; totalElements++ {
+	for totalElements = 0; totalElements < 100; totalElements = totalElements + 1 {
+		argosyId := int64(8 + totalElements)
 		Argosys = append(Argosys, util.Argosy{
 			mashupsdk.MashupDetailedElement{
-				Id:          int64(8 + totalElements),
-				State:       &mashupsdk.MashupElementState{Id: int64(8 + totalElements), State: int64(mashupsdk.Init)},
-				Name:        "PathEntity-" + strconv.Itoa(2+totalElements),
+				Id:          argosyId,
+				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Init)},
+				Name:        "PathEntity-" + strconv.Itoa(int(argosyId)),
 				Alias:       "It",
 				Description: "",
 				Renderer:    "Path",
