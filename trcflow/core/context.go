@@ -116,12 +116,13 @@ func (tfmContext *TrcFlowMachineContext) Init(
 				{Name: "id", Type: coreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 			}))
-			tableCreationLock.Unlock()
 			if err != nil {
+				tableCreationLock.Unlock()
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 				return err
 			}
 		}
+		tableCreationLock.Unlock()
 	}
 	eUtils.LogInfo(tfmContext.Config, "Tables creation completed.")
 
