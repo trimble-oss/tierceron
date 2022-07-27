@@ -36,7 +36,9 @@ func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterpris
 	// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
 	configTableMap := templateResult.InterfaceTemplateSection.(map[string]interface{})["templates"].(map[string]interface{})[project].(map[string]interface{})[service].(map[string]interface{})
 	for configTableName, _ := range configTableMap {
+		m.Lock()
 		tableSql, tableOk, _ := te.Database.GetTableInsensitive(te.Context, configTableName)
+		m.Unlock()
 		var table *sqlememory.Table
 
 		valueColumns := templateResult.ValueSection["values"][service]
