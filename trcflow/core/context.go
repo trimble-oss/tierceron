@@ -109,10 +109,9 @@ func (tfmContext *TrcFlowMachineContext) Init(
 
 	for _, tableName := range tableNames {
 		changeTableName := tableName + "_Changes"
-
+		tableCreationLock.Lock()
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
-			tableCreationLock.Lock()
 			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
 				{Name: "id", Type: coreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
