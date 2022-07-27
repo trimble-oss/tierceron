@@ -214,6 +214,8 @@ func (dfs *DataFlow) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic, en
 			dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
 		}
 		statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
+	} else {
+		statMap["lastTestedDate"] = ""
 	}
 
 	return statMap
