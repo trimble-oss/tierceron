@@ -9,6 +9,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"time"
 
 	"tierceron/buildopts/argosyopts"
 	"tierceron/trcgorillaz/trcdatavisualizer/ttdirender"
@@ -79,6 +80,11 @@ func main() {
 			go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
 		}
 		go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
+
+		go func() {
+			time.Sleep(10 * time.Second)
+
+		}()
 
 	}
 

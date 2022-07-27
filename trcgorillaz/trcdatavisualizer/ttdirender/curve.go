@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/graphic"
 	"github.com/g3n/engine/material"
 	"github.com/g3n/engine/math32"
@@ -20,7 +21,7 @@ var sqrtfive float64 = float64(math.Sqrt(float64(5.0)))
 
 type CurveRenderer struct {
 	g3nrender.GenericRenderer
-	CollaboratingRenderer g3nrender.G3nRenderer
+	CollaboratingRenderer g3nrender.IG3nRenderer
 	totalElements         int
 }
 
@@ -30,7 +31,7 @@ func binetFormula(n float64) complex128 {
 	return complex(real, imag)
 }
 
-func (sp *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
+func (sp *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	var path []math32.Vector3
 	var i float64
 	if sp.totalElements == 0 {
@@ -58,7 +59,7 @@ func (sp *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpo
 	return tubeMesh
 }
 
-func (sp *CurveRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) *graphic.Mesh {
+func (sp *CurveRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	return nil
 }
 
@@ -71,13 +72,13 @@ func (sp *CurveRenderer) Layout(worldApp *g3nworld.WorldApp,
 	sp.GenericRenderer.LayoutBase(worldApp, sp, g3nRenderableElements)
 }
 
-func (sp *CurveRenderer) GetRenderer(rendererName string) g3nrender.G3nRenderer {
+func (sp *CurveRenderer) GetRenderer(rendererName string) g3nrender.IG3nRenderer {
 	if sp.CollaboratingRenderer != nil {
 		return sp.CollaboratingRenderer
 	}
 	return nil
 }
 
-func (sp *CurveRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer interface{}) {
+func (sp *CurveRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
 	sp.CollaboratingRenderer.Collaborate(worldApp, sp)
 }
