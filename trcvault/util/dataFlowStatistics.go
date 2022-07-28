@@ -169,6 +169,9 @@ func (dfs *DataFlow) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 					df.mode = modeInt
 				}
 			}
+			if strings.Contains(data["timeSplit"].(string), "seconds") {
+				data["timeSplit"] = strings.ReplaceAll(data["timeSplit"].(string), " seconds", "s")
+			}
 			df.timeSplit, _ = time.ParseDuration(data["timeSplit"].(string))
 			dfs.Statistics = append(dfs.Statistics, df)
 		}
@@ -207,15 +210,17 @@ func (dfs *DataFlow) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic, en
 	}
 	statMap["timeSplit"] = elapsedTime
 	statMap["mode"] = dfst.mode
+	statMap["lastTestedDate"] = ""
 
 	if enrichLastTested {
 		flowData, flowReadErr := mod.ReadData("super-secrets/" + dfst.flowGroup)
 		if flowReadErr != nil && dfs.LogFunc != nil {
 			dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
 		}
-		statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
-	} else {
-		statMap["lastTestedDate"] = ""
+
+		if _, ok := flowData["lastTestedDate"].(string); ok {
+			statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
+		}
 	}
 
 	return statMap
