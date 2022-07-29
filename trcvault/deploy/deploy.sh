@@ -145,7 +145,7 @@ else
         fi
     fi
 
-    if [ "$SHAVAL" != "$FILESHAVAL"]; then
+    if [ "$SHAVAL" != "$FILESHAVAL" ]; then
     echo "Carrier failed to deploy plugin.  Please try again."
     exit -1
     fi
