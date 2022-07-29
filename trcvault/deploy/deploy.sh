@@ -100,7 +100,7 @@ if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
     SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME-prod vaddress=$VAULT_ADDR)
     SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
 
-    if "$SHAVAL" != "$FILESHA" ]; then
+    if ["$SHAVAL" != "$FILESHA" ]; then
     echo "Carrier failed to deploy plugin.  Please try again."
     exit -1
     fi
@@ -143,7 +143,7 @@ else
         fi
     fi
 
-    if "$SHAVAL" != "$FILESHA" ]; then
+    if ["$SHAVAL" != "$FILESHA" ]; then
     echo "Carrier failed to deploy plugin.  Please try again."
     exit -1
     fi
