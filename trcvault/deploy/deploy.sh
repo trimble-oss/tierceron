@@ -143,6 +143,11 @@ else
         fi
     fi
 
+    if "$SHAVAL" != "$FILESHA" ]; then
+    echo "Carrier failed to deploy plugin.  Please try again."
+    exit -1
+    fi
+
     echo "Registering new plugin."
     vault plugin register \
             -command=$TRC_PLUGIN_NAME \
