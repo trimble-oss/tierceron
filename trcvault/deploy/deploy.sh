@@ -93,6 +93,7 @@ echo "Disable and unregister old plugin."
 vault secrets disable $TRC_PLUGIN_NAME/
 vault plugin deregister $TRC_PLUGIN_NAME
 
+sleep 1
 
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
     # Just writing to vault will trigger the carrier plugin...
