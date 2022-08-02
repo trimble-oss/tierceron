@@ -15,6 +15,8 @@ if [ ! -f "$FILESHA" ]; then
     exit 1
 fi
 
+FILESHAVAL=$(cat $FILESHA)
+
 echo "Enter vault host base url: "
 read VAULT_ADDR
 
@@ -91,15 +93,20 @@ echo "Disable and unregister old plugin."
 vault secrets disable $TRC_PLUGIN_NAME/
 vault plugin deregister $TRC_PLUGIN_NAME
 
+sleep 1
 
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
-
     # Just writing to vault will trigger the carrier plugin...
     # First we set Copied to false...
     # This should also trigger the copy process...
     # It should return sha256 of copied plugin on success.
     SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME-prod vaddress=$VAULT_ADDR)
     SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
+    
+    if [ "$SHAVAL" != "$FILESHAVAL" ]; then
+    echo "Carrier failed to deploy plugin.  Please try again."
+    exit -1
+    fi
 
     if [ "$SHAVAL" = "" ]; then
     echo "Failed to obtain sha256 for indicated plugin.   Refusing to continue."
@@ -139,6 +146,11 @@ else
         fi
     fi
 
+    if [ "$SHAVAL" != "$FILESHAVAL" ]; then
+    echo "Carrier failed to deploy plugin.  Please try again."
+    exit -1
+    fi
+
     echo "Registering new plugin."
     vault plugin register \
             -command=$TRC_PLUGIN_NAME \
@@ -152,6 +164,7 @@ else
             -description="Tierceron Vault Plugin" \
             plugin
 fi
+
 
 #Activates/starts the deployed plugin.
 # Note: plugin should update deployed flag for itself.
