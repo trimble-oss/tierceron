@@ -35,9 +35,9 @@ func (sp *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpo
 	var path []math32.Vector3
 	var i float64
 	if sp.totalElements == 0 {
-		sp.totalElements = 100
+		sp.totalElements = 10
 	}
-	for i = -0.1 * float64(sp.totalElements); i <= -0.1; i = i + 0.1 {
+	for i = -0.1 * float64(sp.totalElements); i < -0.1; i = i + 0.1 {
 		c := binetFormula(i)
 		x := real(c)
 		y := imag(c)

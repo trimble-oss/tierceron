@@ -48,7 +48,7 @@ func main() {
 	mashupRenderer.AddRenderer("Background", &ttdirender.BackgroundRenderer{})
 	mashupRenderer.AddRenderer("Path", curveRenderer.CollaboratingRenderer)
 	mashupRenderer.AddRenderer("Curve", curveRenderer)
-	//mashupRenderer.AddRenderer("SubSpiral", &ttdirender.SubSpiralRenderer{})
+	mashupRenderer.AddRenderer("SubSpiral", &ttdirender.SubSpiralRenderer{GenericRenderer: g3nrender.GenericRenderer{RendererType: g3nrender.LAYOUT}})
 
 	worldApp := g3nworld.NewWorldApp(*headless, mashupRenderer)
 
@@ -58,6 +58,9 @@ func main() {
 		ArgosyFleet := argosyopts.BuildFleet(nil)
 		DetailedElements := []*mashupsdk.MashupDetailedElement{}
 		for _, argosy := range ArgosyFleet.Argosies {
+			for i := 0; i < len(argosy.Groups); i++ {
+				DetailedElements = append(DetailedElements, &argosy.Groups[i].MashupDetailedElement)
+			}
 			argosyBasis := argosy.MashupDetailedElement
 			DetailedElements = append(DetailedElements, &argosyBasis)
 		}
