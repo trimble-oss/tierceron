@@ -14,6 +14,8 @@ import (
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
+	"tierceron/trcx/trcxerutil"
+
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
 )
@@ -23,11 +25,7 @@ var wg2 sync.WaitGroup
 
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
-// GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string, error) {
-	if config.WantCerts {
-		return "", false, "", nil
-	}
+func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) ([]byte, bool, error, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -41,8 +39,6 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
 	maxDepth := -1
-
-	endPath := ""
 	service := ""
 	if len(config.IndexFilter) > 0 {
 		service = config.IndexFilter[0]
@@ -101,7 +97,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		_, err := mod.ReadData("apiLogins/meta")
 		if err != nil {
 			eUtils.LogInfo(config, "Cannot genAuth with provided token.")
-			return "", false, "", eUtils.LogAndSafeExit(config, "", 1)
+			return nil, false, eUtils.LogAndSafeExit(config, "", 1), nil, nil, nil
 		}
 	}
 
@@ -141,7 +137,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		versionMetadataMap := eUtils.GetProjectVersionInfo(config, mod)
 
 		if versionMetadataMap == nil {
-			return "", false, "", eUtils.LogAndSafeExit(config, fmt.Sprintf("No version data found - this filter was applied during search: %v\n", config.VersionFilter), 1)
+			return nil, false, eUtils.LogAndSafeExit(config, fmt.Sprintf("No version data found - this filter was applied during search: %v\n", config.VersionFilter), 1), nil, nil, nil
 		} else if version == "versionInfo" { //Version flag
 			var masterKey string
 			first := true
@@ -162,11 +158,11 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					if len(key) > 0 && len(masterKey) < 1 {
 						masterKey = key
 						config.VersionInfo(versionMetadataMap[masterKey], false, "", false)
-						return "", false, "", eUtils.LogAndSafeExit(config, "Version info provided.", 1)
+						return nil, false, eUtils.LogAndSafeExit(config, "Version info provided.", 1), nil, nil, nil
 					}
 				}
 			}
-			return "", false, "", eUtils.LogAndSafeExit(config, "Version info provided.", 1)
+			return nil, false, eUtils.LogAndSafeExit(config, "Version info provided.", 1), nil, nil, nil
 		} else { //Version bound check
 			versionNumbers := eUtils.GetProjectVersions(config, versionMetadataMap)
 			eUtils.BoundCheck(config, versionNumbers, version)
@@ -272,7 +268,9 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 							}
 						}
 						for _, listedService := range serviceSlice {
-							if strings.TrimSuffix(listedService, "/") == service {
+							if service == "" && strings.Contains(templatePath, strings.TrimSuffix(listedService, "/")) {
+								serviceFound = true
+							} else if strings.TrimSuffix(listedService, "/") == service {
 								serviceFound = true
 							}
 						}
@@ -286,7 +284,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			}
 
 			if !anyServiceFound { //Exit for irrelevant enterprises
-				return "", false, "", eUtils.LogAndSafeExit(config, "No relevant services were found for this environment: "+mod.Env, 1)
+				return nil, false, eUtils.LogAndSafeExit(config, "No relevant services were found for this environment: "+mod.Env, 1), nil, nil, nil
 			} else {
 				if len(acceptedTemplatePaths) > 0 {
 					// template paths further trimmed by vault.
@@ -440,7 +438,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 					eUtils.LogErrorObject(config, errA, false)
 				}
 			} else {
-				return "", false, "", eUtils.LogAndSafeExit(config, "Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", 1)
+				return nil, false, eUtils.LogAndSafeExit(config, "Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", 1), nil, nil, nil
 			}
 		} else {
 			authConfigurations := map[string]interface{}{}
@@ -458,6 +456,37 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 				eUtils.LogErrorObject(config, errA, false)
 			}
 		}
+	}
+	return authYaml, multiService, nil, templateCombinedSection, valueCombinedSection, secretCombinedSection
+}
+
+// GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
+func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string, error) {
+	endPath := ""
+	authYaml, multiService, generateErr, templateCombinedSection, valueCombinedSection, secretCombinedSection := GenerateSeedSectionFromVaultRaw(config, fromVault, templatePaths)
+	if generateErr != nil {
+		eUtils.LogErrorObject(config, generateErr, false)
+		return "", false, "", nil
+	}
+
+	if len(config.Trcxe) > 1 { //Validate first then replace fields here?
+		valValidateError := trcxerutil.FieldValidator(config.Trcxe[0]+","+config.Trcxe[1], secretCombinedSection, valueCombinedSection)
+		if valValidateError != nil {
+			eUtils.LogErrorObject(config, valValidateError, false)
+			return "", false, "", valValidateError
+		}
+
+		fieldChangedMap, encryptedChangedMap, promptErr := trcxerutil.PromptUserForFields(config.Trcxe[0], config.Trcxe[1])
+		if promptErr != nil {
+			eUtils.LogErrorObject(config, promptErr, false)
+			return "", false, "", promptErr
+		}
+
+		trcxerutil.FieldReplacer(fieldChangedMap, encryptedChangedMap, secretCombinedSection, valueCombinedSection)
+	}
+
+	if config.WantCerts {
+		return "", false, "", nil
 	}
 
 	// Create seed file structure
@@ -548,6 +577,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	}
 	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 	if errGenerateSeeds != nil {
+		eUtils.LogInfo(config, errGenerateSeeds.Error())
 		return errGenerateSeeds, nil
 	}
 
