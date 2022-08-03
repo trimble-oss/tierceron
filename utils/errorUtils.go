@@ -149,9 +149,14 @@ func LogErrorObject(config *DriverConfig, err error, exit bool) {
 			}
 			config.Log.Fatal(err)
 		} else {
-			if !headlessService {
-				config.Log.Println(err)
-			}
+			config.Log.Println(err)
+			config.Log.SetPrefix(_prefix)
+		}
+	} else {
+		if !headlessService {
+			_prefix := config.Log.Prefix()
+			config.Log.SetPrefix("[INFO]")
+			config.Log.Println(err)
 			config.Log.SetPrefix(_prefix)
 		}
 	}
