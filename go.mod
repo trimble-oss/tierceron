@@ -32,6 +32,8 @@ require (
 // github.com/mrjrieke/nute v0.0.0-20220715140120-c4fd938ae870
 )
 
+require github.com/mrjrieke/nute v0.0.0-20220803145020-b65c1316d6b9 // indirect
+
 require (
 	fyne.io/fyne/v2 v2.1.3 // indirect
 	fyne.io/systray v1.9.1-0.20220331100914-9177bf851614 // indirect
@@ -55,7 +57,7 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20211219123610-ec9572f70e60 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
-	github.com/mrjrieke/nute v0.0.0-20220727141806-91750accafe0 // indirect
+	//	github.com/mrjrieke/nute v0.0.0-20220727141806-91750accafe0 // indirect
 	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564 // indirect
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
@@ -137,7 +139,7 @@ replace VaultConfig.Test => ../VaultConfig.Test
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.11.0-17.2
 
-replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220429130921-1cb788c5a9f8
+replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d
 
 replace fyne.io/fyne/v2 v2.1.3 => github.com/mrjrieke/fyne/v2 v2.1.3-0
 

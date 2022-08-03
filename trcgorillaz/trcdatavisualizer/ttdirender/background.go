@@ -45,5 +45,5 @@ func (br *BackgroundRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3n
 		g3nColor.Set(0.266, 0.266, 0.266)
 	}
 
-	return g3nDetailedElement.SetColor(g3nColor)
+	return g3nDetailedElement.SetColor(g3nColor, 1.0)
 }
