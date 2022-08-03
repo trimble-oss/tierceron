@@ -99,7 +99,7 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 		}
 	}
 
-	return g3nDetailedElement.SetColor(g3nColor)
+	return g3nDetailedElement.SetColor(g3nColor, 1.0)
 }
 
 func (sp *PathRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
