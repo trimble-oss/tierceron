@@ -8,10 +8,10 @@ package ttdirender
 
 import (
 	"fmt"
-
-	//"github.com/g3n/engine/geometry"
+	"log"
 
 	"github.com/g3n/engine/core"
+	"github.com/g3n/engine/geometry"
 	"github.com/g3n/engine/graphic"
 	"github.com/g3n/engine/material"
 	"github.com/g3n/engine/math32"
@@ -29,23 +29,24 @@ type SubSpiralRenderer struct {
 	locnCounter   float64
 	totalElements int
 	activeSet     map[int64]*math32.Vector3
-}
-
-func (sp *SubSpiralRenderer) NewSubSpiral(vpos *math32.Vector3) *SubSpiralRenderer {
-
-	return sp
+	compoundMesh  *CompoundMesh
 }
 
 func (sp *SubSpiralRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
-	//sphereGeom := geometry.NewSphere(.1, 100, 100)
-	spiralGeom := NewSphere(.1, 100, 100) //new geometry seems to be ok but had to comment out bounding box and sphere for it to work
-	color := g3ndpalette.DARK_BLUE
-	mat := material.NewStandard(color.Set(0, 0.349, 0.643))
-	sphereMesh := NewMesh(spiralGeom, mat)
-	fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
-	sphereMesh.SetLoaderID(g3n.GetDisplayName())
-	sphereMesh.SetPositionVec(vpos)
-	return sphereMesh
+	meshes := make([]*graphic.Mesh, 25)
+	for i := 0; i < 25; i++ {
+		geom := geometry.NewSphere(.1, 100, 100) //new geometry seems to be ok but had to comment out bounding box and sphere for it to work
+		color := math32.NewColor("darkred")
+		mat := material.NewStandard(color.Set(0.278, 0.529, 0.741))
+		sphereMesh := graphic.NewMesh(geom, mat)
+		fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
+		sphereMesh.SetLoaderID(g3n.GetDisplayName())
+		sphereMesh.SetPositionVec(math32.NewVector3(float32(i), 0.0, 0.0))
+		meshes[i] = sphereMesh
+	}
+	compoundMesh := NewCompoundMesh(meshes)
+	sp.compoundMesh = compoundMesh
+	return compoundMesh
 }
 
 func (sp *SubSpiralRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
@@ -56,27 +57,18 @@ func (sp *SubSpiralRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, tot
 	sp.totalElements = totalElements
 	if sp.iOffset == 0 {
 		sp.iOffset = 1
-		sp.counter = -0.1 * float64(15.0)
-		sp.locnCounter = -0.1 * float64(totalElements/15)
+		sp.counter = -0.1 * float64(totalElements)
 		return g3n, math32.NewVector3(float32(0.0), float32(0.0), float32(0.0))
-	} else if sp.iOffset%15 == 0 {
-		sp.counter = -0.1 * float64(15.0)
-		sp.iOffset++
-		sp.locnCounter = 0.1 + sp.locnCounter
-		complex := binetFormula(sp.locnCounter)
-		return g3n, math32.NewVector3(float32(-real(complex)), float32(imag(complex)), -float32(sp.locnCounter))
 	} else {
-		sp.iOffset++
 		sp.counter = sp.counter + 0.1
-		complex := binetFormula(sp.locnCounter)
-		complex2 := binetFormula(sp.counter)
-		return g3n, math32.NewVector3(float32(-real(complex)+-real(complex2)), float32(imag(complex)+imag(complex2)), -float32(sp.locnCounter))
+		complex := binetFormula(sp.counter)
+		return g3n, math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-sp.counter))
 	}
 }
 
 func (sp *SubSpiralRenderer) Layout(worldApp *g3nworld.WorldApp,
 	g3nRenderableElements []*g3nmash.G3nDetailedElement) {
-	sp.GenericRenderer.LayoutBase(worldApp, sp, g3nRenderableElements) //Doesn't accept new mesh type in call to layoutbase
+	sp.LayoutBase(worldApp, sp, g3nRenderableElements) //Doesn't accept new mesh type in call to layoutbase
 }
 
 func (sp *SubSpiralRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetailedElement *g3nmash.G3nDetailedElement) bool {
@@ -107,7 +99,62 @@ func (sp *SubSpiralRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nD
 		}
 	}
 
-	return g3nDetailedElement.SetColor(g3nColor)
+	return g3nDetailedElement.SetColor(g3nColor, 1.0)
+}
+
+func (gr *SubSpiralRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
+	g3Renderer *SubSpiralRenderer,
+	g3nRenderableElements []*g3nmash.G3nDetailedElement) {
+	var nextPos *math32.Vector3
+	var prevSolidPos *math32.Vector3
+
+	totalElements := len(g3nRenderableElements)
+
+	if totalElements > 0 {
+		if g3nRenderableElements[0].GetDetailedElement().Colabrenderer != "" {
+			log.Printf("Collab examine: %v\n", g3nRenderableElements[0])
+			log.Printf("Renderer name: %s\n", g3nRenderableElements[0].GetDetailedElement().GetRenderer())
+			protoRenderer := g3Renderer.GetRenderer(g3nRenderableElements[0].GetDetailedElement().GetRenderer())
+			log.Printf("Collaborating %v\n", protoRenderer)
+			g3Renderer.Collaborate(worldApp, protoRenderer)
+		}
+	}
+
+	for _, g3nRenderableElement := range g3nRenderableElements {
+		concreteG3nRenderableElement := g3nRenderableElement
+
+		prevSolidPos = nextPos
+		_, nextPos = g3Renderer.NextCoordinate(concreteG3nRenderableElement, totalElements)
+		g3Renderer.NewSolidAtPosition(concreteG3nRenderableElement, nextPos)
+		counter := -float64(0.1) * float64(len(gr.compoundMesh.meshes))
+		if gr.compoundMesh != nil {
+			for i := 0; i < len(gr.compoundMesh.meshes); i += 1 {
+				complex := binetFormula(counter)
+				gr.compoundMesh.meshes[i].SetPositionVec(math32.NewVector3(float32(-real(complex))+nextPos.X, float32(imag(complex))+nextPos.Y, nextPos.Z+float32(-counter)))
+				counter += 0.1
+				worldApp.AddToScene(gr.compoundMesh.meshes[i])
+				concreteG3nRenderableElement.SetNamedMesh(concreteG3nRenderableElement.GetDisplayName(), gr.compoundMesh.meshes[i])
+			}
+			//worldApp.AddToScene(solidMesh)
+
+		}
+
+		for _, relatedG3n := range worldApp.GetG3nDetailedChildElementsByGenre(concreteG3nRenderableElement, "Related") {
+			relatedMesh := g3Renderer.NewRelatedMeshAtPosition(concreteG3nRenderableElement, nextPos, prevSolidPos)
+			if relatedMesh != nil {
+				worldApp.AddToScene(relatedMesh)
+				concreteG3nRenderableElement.SetNamedMesh(relatedG3n.GetDisplayName(), relatedMesh)
+			}
+		}
+
+		for _, innerG3n := range worldApp.GetG3nDetailedChildElementsByGenre(concreteG3nRenderableElement, "Space") {
+			negativeMesh := g3Renderer.NewInternalMeshAtPosition(innerG3n, nextPos)
+			if negativeMesh != nil {
+				worldApp.AddToScene(negativeMesh)
+				innerG3n.SetNamedMesh(innerG3n.GetDisplayName(), negativeMesh)
+			}
+		}
+	}
 }
 
 /*func (sp *SubSpiralRenderer) GetRenderer(rendererName string) g3nrender.G3nRenderer {
