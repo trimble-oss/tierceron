@@ -288,6 +288,7 @@ func main() {
 			}),
 		)
 
+		displayContent := widget.NewLabel("First-Load Information")
 		//torusMenu.SetTabLocation(container.TabLocationTop)
 
 		list := widget.NewList(
@@ -305,6 +306,8 @@ func main() {
 			if mashupItemIndex, miOk := helloApp.elementLoaderIndex[helloApp.fyneListElements[int64(id+6)].MashupDetailedElement.Name]; miOk {
 				mashupDetailedElement := helloApp.mashupDetailedElementLibrary[mashupItemIndex]
 				if mashupDetailedElement.Alias != "" {
+					displayContent.Text = mashupDetailedElement.Description
+					displayContent.Refresh()
 					//helloApp.fyneWidgetElements[mashupDetailedElement.Alias].GuiWidgetBundle.MashupDetailedElement = mashupDetailedElement
 					helloApp.fyneListElements[int64(id+6)].OnClicked()
 					//helloApp.mainWin.AddToScene(argosyopts)
@@ -319,9 +322,11 @@ func main() {
 		helloApp.list = list
 
 		//fileContent := list
+		//mainContent := container.New(&display{}, list, displayContent)
+		mainContent := container.New(layout.NewGridLayoutWithColumns(2), list, displayContent)
 		//overallContent := container.New(layout.NewBorderLayout(topContent, nil, fileContent, nil), topContent, fileContent, torusMenu)
-		overallContent := container.New(layout.NewBorderLayout(topContent, nil, nil, nil), topContent, list)
-		helloApp.mainWin.SetContent(overallContent)
+		overallContent := container.New(layout.NewBorderLayout(topContent, nil, nil, nil), topContent, mainContent)
+		helloApp.mainWin.SetContent(overallContent) //overallContent)
 		helloApp.mainWin.SetCloseIntercept(func() {
 			helloApp.HelloContext.mashupContext.Client.Shutdown(helloApp.HelloContext.mashupContext, &mashupsdk.MashupEmpty{AuthToken: client.GetServerAuthToken()})
 			os.Exit(0)
@@ -361,8 +366,8 @@ func (mSdk *fyneMashupApiHandler) UpsertMashupElementsState(elementStateBundle *
 
 		if mashupsdk.DisplayElementState(es.State) == mashupsdk.Clicked {
 			detailedElement := helloApp.mashupDetailedElementLibrary[es.GetId()]
-			if helloApp.fyneListElements[detailedElement.Id] != nil {
-				fyneComponent := helloApp.fyneListElements[detailedElement.Id]
+			if helloApp.fyneListElements[detailedElement.Id+6] != nil {
+				fyneComponent := helloApp.fyneListElements[detailedElement.Id+6]
 				fyneComponent.MashupDetailedElement = detailedElement
 				fyneComponent.MashupDetailedElement.State.State = es.State
 				//upsert subspiral here?
