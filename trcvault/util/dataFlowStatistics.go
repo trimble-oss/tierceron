@@ -149,17 +149,17 @@ func (dfs *DataFlow) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 	}
 }
 
-func (dfs *DataFlow) RetrieveStatistic(mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string) {
+func (dfs *DataFlow) RetrieveStatistic(mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string) error {
 	listData, listErr := mod.List("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN)
-	if listErr != nil && dfs.LogFunc != nil {
-		dfs.LogFunc("Error reading DataFlowStatistics from vault", listErr)
+	if listErr != nil {
+		return listErr
 	}
 
 	for _, stateCodeList := range listData.Data {
 		for _, stateCode := range stateCodeList.([]interface{}) {
 			data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN + "/" + stateCode.(string))
-			if readErr != nil && dfs.LogFunc != nil {
-				dfs.LogFunc("Error reading DataFlowStatistics from vault", readErr)
+			if readErr != nil {
+				return readErr
 			}
 			var df DataFlowStatistic
 			df.flowGroup = data["flowGroup"].(string)
@@ -172,10 +172,14 @@ func (dfs *DataFlow) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 					df.mode = modeInt
 				}
 			}
+			if strings.Contains(data["timeSplit"].(string), "seconds") {
+				data["timeSplit"] = strings.ReplaceAll(data["timeSplit"].(string), " seconds", "s")
+			}
 			df.timeSplit, _ = time.ParseDuration(data["timeSplit"].(string))
 			dfs.Statistics = append(dfs.Statistics, df)
 		}
 	}
+	return nil
 }
 
 //Set logFunc and logStat = false to use this otherwise it logs as states change with logStat = true
@@ -210,15 +214,17 @@ func (dfs *DataFlow) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic, en
 	}
 	statMap["timeSplit"] = elapsedTime
 	statMap["mode"] = dfst.mode
+	statMap["lastTestedDate"] = ""
 
 	if enrichLastTested {
 		flowData, flowReadErr := mod.ReadData("super-secrets/" + dfst.flowGroup)
 		if flowReadErr != nil && dfs.LogFunc != nil {
 			dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
 		}
-		statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
-	} else {
-		statMap["lastTestedDate"] = ""
+
+		if _, ok := flowData["lastTestedDate"].(string); ok {
+			statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
+		}
 	}
 
 	return statMap
