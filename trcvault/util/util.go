@@ -136,7 +136,7 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 
 		return jsonData, nil
 	}
-	return nil, errors.New("http status failure")
+	return nil, errors.New(fmt.Sprintf("http status failure: %d", response.StatusCode))
 }
 
 func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
