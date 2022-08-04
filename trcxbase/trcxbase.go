@@ -71,9 +71,10 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 
-	fileAddrPtr := flag.String("seedPath", "", "Path for seed file")
+	fileAddrPtr := flag.String("seedpath", "", "Path for seed file")
 	fieldsPtr := flag.String("fields", "", "Fields to enter")
 	encryptedPtr := flag.String("encrypted", "", "Fields to encrypt")
+	readOnlyPtr := flag.Bool("readonly", false, "Fields to encrypt")
 
 	var insecurePtr *bool
 	if insecurePtrIn == nil {
@@ -166,6 +167,9 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		os.Exit(1)
 	} else if (len(*fieldsPtr) == 0) && len(*fileAddrPtr) != 0 {
 		fmt.Println("The -fields flag must be used with -seedPath flag; -encrypted flag is optional")
+		os.Exit(1)
+	} else if *readOnlyPtr && (len(*encryptedPtr) == 0 || len(*fileAddrPtr) == 0) {
+		fmt.Println("The -encrypted flag must be used with -seedPath flag if -readonly is used")
 		os.Exit(1)
 	}
 
@@ -511,6 +515,7 @@ skipDiff:
 				IndexFilter:     indexFilterSlice,
 				ExitOnFailure:   true,
 				Trcxe:           trcxeList,
+				Trcxr:           *readOnlyPtr,
 			}
 			waitg.Add(1)
 			go func() {
