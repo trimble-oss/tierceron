@@ -1,12 +1,42 @@
 package trcxerutil
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
+	eUtils "tierceron/utils"
+	helperkv "tierceron/vaulthelper/kv"
+
+	"golang.org/x/crypto/pbkdf2"
 )
 
-func PromptUserForFields(fields string, encrypted string) (map[string]interface{}, map[string]interface{}, error) {
+var encryptSecret = ""
+
+func SetEncryptionSecret(config *eUtils.DriverConfig) error {
+	mod, modErr := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
+	if modErr != nil {
+		eUtils.LogErrorObject(config, modErr, false)
+	}
+	mod.Env = strings.Split(config.Env, "_")[0]
+	data, readErr := mod.ReadData("super-secrets/ServiceTechAPIM")
+	if readErr != nil {
+		return readErr
+	}
+	if data == nil {
+		return errors.New("Encryption secret could not be found.")
+	}
+
+	if encrypSec, ok := data["encryptionSecret"].(string); ok && encrypSec != "" {
+		encryptSecret = encrypSec
+	}
+	return nil
+}
+
+func PromptUserForFields(fields string, encrypted string, encryption map[string]interface{}) (map[string]interface{}, map[string]interface{}, error) {
 	fieldMap := map[string]interface{}{}
 	encryptedMap := map[string]interface{}{}
 	//Prompt user for desired value for fields
@@ -20,7 +50,6 @@ func PromptUserForFields(fields string, encrypted string) (map[string]interface{
 			var input string
 			fmt.Printf("Enter desired value for '%s': \n", field)
 			fmt.Scanln(&input)
-			//input = "user"
 			fieldMap[field] = input
 		}
 	}
@@ -32,15 +61,59 @@ func PromptUserForFields(fields string, encrypted string) (map[string]interface{
 		fmt.Scanln(&input)
 		fmt.Printf("Re-enter desired value for '%s': \n", encryptedField)
 		fmt.Scanln(&validateInput)
-		//input = "password"
-		//validateInput = "password"
 		if validateInput != input {
 			return nil, nil, errors.New("Entered values for '" + encryptedField + "' do not match, exiting...")
 		}
-		encryptedMap[encryptedField] = input
+		encryptedInput := encrypt(input, encryption)
+		encryptedMap[encryptedField] = encryptedInput
 	}
 
 	return fieldMap, encryptedMap, nil
+}
+
+func deriveKey(passphrase string, salt []byte) ([]byte, []byte) {
+	return pbkdf2.Key([]byte(passphrase), salt, 1000, 32, sha256.New), salt
+}
+
+func encrypt(input string, encryption map[string]interface{}) string {
+	salt, _ := base64.StdEncoding.DecodeString(encryption["salt"].(string))
+	iv, _ := base64.StdEncoding.DecodeString(encryption["initial_value"].(string))
+	key, _ := deriveKey(encryptSecret, []byte(salt))
+	b, _ := aes.NewCipher(key)
+	aesgcm, _ := cipher.NewGCM(b)
+	data := aesgcm.Seal(nil, []byte(iv), []byte(input), nil)
+	return base64.StdEncoding.EncodeToString(data)
+}
+
+func decrypt(passStr string, saltStr string, ivStr string) string { //This works
+	salt, _ := base64.StdEncoding.DecodeString(saltStr)
+	iv, _ := base64.StdEncoding.DecodeString(ivStr)
+	data, _ := base64.StdEncoding.DecodeString(passStr)
+	key, _ := deriveKey(encryptSecret, salt)
+	b, _ := aes.NewCipher(key)
+	aesgcm, _ := cipher.NewGCM(b)
+	data, _ = aesgcm.Open(nil, iv, data, nil)
+	return string(data)
+}
+
+func GetEncrpytors(secSection map[string]map[string]map[string]string) (map[string]interface{}, error) {
+	encrpytion := map[string]interface{}{}
+	encrpytionList := []string{"salt", "initial_value"}
+	for _, encryptionField := range encrpytionList {
+		for secretSectionMap := range secSection["super-secrets"] {
+			if value, ok := secSection["super-secrets"][secretSectionMap][encryptionField]; ok {
+				if value != "" {
+					encrpytion[encryptionField] = value
+				}
+			}
+		}
+	}
+
+	if ok, ok1 := encrpytion["salt"], encrpytion["initial_value"]; ok == nil || ok1 == nil {
+		return nil, errors.New("could not find encryption values")
+	}
+
+	return encrpytion, nil
 }
 
 func FieldValidator(fields string, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string) error {
@@ -89,7 +162,7 @@ func FieldReplacer(fieldMap map[string]interface{}, encryptedMap map[string]inte
 
 		for valueSectionMap := range valSection["values"] {
 			if _, ok := valSection["values"][valueSectionMap][field]; ok {
-				valSection["super-secrets"][valueSectionMap][field] = valueField.(string)
+				valSection["values"][valueSectionMap][field] = valueField.(string)
 				continue
 			}
 		}
@@ -110,7 +183,7 @@ func FieldReplacer(fieldMap map[string]interface{}, encryptedMap map[string]inte
 
 		for valueSectionMap := range valSection["values"] {
 			if _, ok := valSection["values"][valueSectionMap][field]; ok {
-				valSection["super-secrets"][valueSectionMap][field] = valueField.(string)
+				valSection["values"][valueSectionMap][field] = valueField.(string)
 				continue
 			}
 		}

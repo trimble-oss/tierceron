@@ -476,7 +476,19 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			return "", false, "", valValidateError
 		}
 
-		fieldChangedMap, encryptedChangedMap, promptErr := trcxerutil.PromptUserForFields(config.Trcxe[0], config.Trcxe[1])
+		encryptSecretErr := trcxerutil.SetEncryptionSecret(config)
+		if encryptSecretErr != nil {
+			eUtils.LogErrorObject(config, encryptSecretErr, false)
+			return "", false, "", encryptSecretErr
+		}
+
+		encryption, encryptErr := trcxerutil.GetEncrpytors(secretCombinedSection)
+		if encryptErr != nil {
+			eUtils.LogErrorObject(config, encryptErr, false)
+			return "", false, "", encryptErr
+		}
+
+		fieldChangedMap, encryptedChangedMap, promptErr := trcxerutil.PromptUserForFields(config.Trcxe[0], config.Trcxe[1], encryption)
 		if promptErr != nil {
 			eUtils.LogErrorObject(config, promptErr, false)
 			return "", false, "", promptErr
