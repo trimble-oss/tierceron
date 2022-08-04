@@ -36,6 +36,17 @@ func SetEncryptionSecret(config *eUtils.DriverConfig) error {
 	return nil
 }
 
+func CreateEncrpytedReadMap(encrypted string) map[string]interface{} {
+	encryptedMap := map[string]interface{}{}
+	encryptedSplit := strings.Split(encrypted, ",")
+
+	for _, encryptedField := range encryptedSplit {
+		encryptedMap[encryptedField] = ""
+	}
+
+	return encryptedMap
+}
+
 func PromptUserForFields(fields string, encrypted string, encryption map[string]interface{}) (map[string]interface{}, map[string]interface{}, error) {
 	fieldMap := map[string]interface{}{}
 	encryptedMap := map[string]interface{}{}
@@ -85,9 +96,9 @@ func encrypt(input string, encryption map[string]interface{}) string {
 	return base64.StdEncoding.EncodeToString(data)
 }
 
-func decrypt(passStr string, saltStr string, ivStr string) string { //This works
-	salt, _ := base64.StdEncoding.DecodeString(saltStr)
-	iv, _ := base64.StdEncoding.DecodeString(ivStr)
+func decrypt(passStr string, decryption map[string]interface{}) string { //This works
+	salt, _ := base64.StdEncoding.DecodeString(decryption["salt"].(string))
+	iv, _ := base64.StdEncoding.DecodeString(decryption["initial_value"].(string))
 	data, _ := base64.StdEncoding.DecodeString(passStr)
 	key, _ := deriveKey(encryptSecret, salt)
 	b, _ := aes.NewCipher(key)
@@ -142,6 +153,34 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 		}
 	}
 
+	return nil
+}
+
+func FieldReader(encryptedMap map[string]interface{}, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string, decryption map[string]interface{}) error {
+	for field, _ := range encryptedMap {
+		found := false
+		for secretSectionMap := range secSection["super-secrets"] {
+			if secretVal, ok := secSection["super-secrets"][secretSectionMap][field]; ok {
+				secSection["super-secrets"][secretSectionMap][field] = decrypt(secretVal, decryption)
+				found = true
+				continue
+			}
+		}
+		if found {
+			continue
+		}
+
+		for valueSectionMap := range valSection["values"] {
+			if valueVal, ok := valSection["values"][valueSectionMap][field]; ok {
+				valSection["values"][valueSectionMap][field] = decrypt(valueVal, decryption)
+				found = true
+				continue
+			}
+		}
+		if !found {
+			return errors.New("Could not find encrypted field inside seed file.")
+		}
+	}
 	return nil
 }
 
