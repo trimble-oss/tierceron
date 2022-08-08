@@ -14,7 +14,7 @@ import (
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
-	"tierceron/trcx/trcxerutil"
+	trcxerutil "VaultConfig.TenantConfig/util/trcxerutil"
 
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
