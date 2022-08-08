@@ -27,7 +27,7 @@ type SubSpiralRenderer struct {
 	g3nrender.GenericRenderer
 	iOffset       int
 	counter       float64
-	locnCounter   float64
+	locnCounter   *math32.Vector3
 	totalElements int
 	activeSet     map[int64]*math32.Vector3
 	compoundMesh  *CompoundMesh
@@ -46,9 +46,9 @@ func (sp *SubSpiralRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement,
 		meshes[i] = sphereMesh
 	}
 	compoundMesh := NewCompoundMesh(meshes)
-	compoundMesh.SetLoaderID(g3n.GetDisplayName() + strconv.Itoa(int(g3n.GetDisplayId())))
+	compoundMesh.SetLoaderID(g3n.GetDisplayName())
 	sp.compoundMesh = compoundMesh
-	g3n.SetNamedMesh(g3n.GetDisplayName()+strconv.Itoa(int(g3n.GetDisplayId())), compoundMesh) //compoundMesh.LoaderID(), compoundMesh)
+	g3n.SetNamedMesh(g3n.GetDisplayName(), compoundMesh) //compoundMesh.LoaderID(), compoundMesh)
 	if g3n.IsStateSet(mashupsdk.Hidden) {
 		sp.compoundMesh = nil
 		return nil
@@ -89,10 +89,22 @@ func (sp *SubSpiralRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nD
 		}
 		return true
 	} else {
-		worldApp.UpsertToScene(g3nDetailedElement.GetNamedMesh(g3nDetailedElement.GetDisplayName()))
+		//name := g3nDetailedElement.GetDisplayName()
+		//worldApp.UpsertToScene(g3nDetailedElement.GetNamedMesh(name))
 	}
 
 	if g3nDetailedElement.IsItemActive() {
+		if !g3nDetailedElement.IsStateSet(mashupsdk.Hidden) {
+			name := g3nDetailedElement.GetDisplayName()
+			compoundMesh := g3nDetailedElement.GetNamedMesh(name)
+			//meshes := compoundMesh.(*CompoundMesh).GetMeshes()
+			sp.compoundMesh = compoundMesh.(*CompoundMesh)
+			sp.LayoutMesh(worldApp)
+			// for _, mesh := range meshes {
+			// 	worldApp.AddToScene(mesh)
+			// }
+			//worldApp.UpsertToScene()
+		}
 		g3nColor = math32.NewColor("darkred")
 		// mesh := g3nDetailedElement.GetNamedMesh(g3nDetailedElement.GetDisplayName())
 		// if sp.activeSet == nil {
@@ -120,6 +132,21 @@ func (sp *SubSpiralRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nD
 	return g3nDetailedElement.SetColor(g3nColor, 1.0)
 }
 
+func (sp *SubSpiralRenderer) LayoutMesh(worldApp *g3nworld.WorldApp) {
+	if sp.compoundMesh != nil {
+		counter := -float64(0.1) * float64(len(sp.compoundMesh.meshes))
+
+		for i := 0; i < len(sp.compoundMesh.meshes); i += 1 {
+			complex := binetFormula(counter) //+nextPos.X  nextPos.Z+
+			sp.compoundMesh.meshes[i].SetPositionVec(math32.NewVector3(float32(-real(-complex))+sp.locnCounter.X, float32(imag(complex))+sp.locnCounter.Y, float32(-counter)+sp.locnCounter.Z))
+			counter += 0.1
+			worldApp.AddToScene(sp.compoundMesh.meshes[i])
+			//concreteG3nRenderableElement.GetDisplayName()
+		}
+		//concreteG3nRenderableElement.SetNamedMesh(gr.compoundMesh.LoaderID(), gr.compoundMesh)
+	}
+}
+
 func (gr *SubSpiralRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 	g3Renderer *SubSpiralRenderer,
 	g3nRenderableElements []*g3nmash.G3nDetailedElement) {
@@ -143,6 +170,7 @@ func (gr *SubSpiralRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 
 		prevSolidPos = nextPos
 		_, nextPos = g3Renderer.NextCoordinate(concreteG3nRenderableElement, totalElements)
+		gr.locnCounter = nextPos
 		g3Renderer.NewSolidAtPosition(concreteG3nRenderableElement, nextPos)
 		counter := 0.0
 		if gr.compoundMesh != nil {
