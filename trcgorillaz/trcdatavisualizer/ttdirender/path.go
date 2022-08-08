@@ -5,7 +5,6 @@ import (
 
 	//"sort"
 	//"strings"
-	"strconv"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -83,20 +82,26 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 			for _, childId := range e.GetChildElementIds() {
 				for _, subChildID := range worldApp.ConcreteElements[childId].GetChildElementIds() {
 					element := worldApp.ConcreteElements[subChildID]
-					name := element.GetDisplayName()
-					meshes := element.GetNamedMesh(name + strconv.Itoa(int(element.GetDisplayId())))
-					//
-					if meshes != nil { //worldApp.ConcreteElements[subChildID].GetNamedMesh(worldApp.ConcreteElements[subChildID].GetDisplayName()) != nil {
+					name := element.GetDisplayName() //+ strconv.Itoa(int(element.GetDisplayId()))
+					compoundMesh := element.GetNamedMesh(name)
+					if compoundMesh != nil { //worldApp.ConcreteElements[subChildID].GetNamedMesh(worldApp.ConcreteElements[subChildID].GetDisplayName()) != nil {
 						// for _, mesh := range worldApp.ConcreteElements[subChildID].GetNamedMesh(worldApp.ConcreteElements[subChildID].GetDisplayName()).meshes {
 
 						// }
 
-						element.ApplyState(mashupsdk.Init, false)
+						//element.ApplyState(mashupsdk.Init, false)
+						element.ApplyState(mashupsdk.Hidden, true)
+						element.ApplyState(mashupsdk.Clicked, false)
 						// for _, mesh := range element.MeshComposite {
 						// 	worldApp.AddToScene(mesh)
 						// }
 						// meshcomp.GetNode().meshComposite
-						worldApp.AddToScene(meshes)
+						// meshes := compoundMesh.(*CompoundMesh).GetMeshes()
+						// for _, mesh := range meshes {
+						// 	worldApp.AddToScene(mesh)
+						// }
+
+						//worldApp.AddToScene(compoundMesh)
 					}
 				}
 			}
