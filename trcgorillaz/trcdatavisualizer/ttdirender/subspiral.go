@@ -9,6 +9,7 @@ package ttdirender
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -19,11 +20,11 @@ import (
 	"github.com/mrjrieke/nute/g3nd/g3nworld"
 	g3ndpalette "github.com/mrjrieke/nute/g3nd/palette"
 	"github.com/mrjrieke/nute/g3nd/worldg3n/g3nrender"
+	"github.com/mrjrieke/nute/mashupsdk"
 )
 
 type SubSpiralRenderer struct {
 	g3nrender.GenericRenderer
-	//CollaboratingRenderer g3nrender.G3nRenderer
 	iOffset       int
 	counter       float64
 	locnCounter   float64
@@ -39,13 +40,19 @@ func (sp *SubSpiralRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement,
 		color := math32.NewColor("darkred")
 		mat := material.NewStandard(color.Set(0.278, 0.529, 0.741))
 		sphereMesh := graphic.NewMesh(geom, mat)
-		fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
-		sphereMesh.SetLoaderID(g3n.GetDisplayName())
+		fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName()+strconv.Itoa(int(g3n.GetDisplayId())+i)) //+strconv.Itoa(int(g3n.GetDisplayId()))
+		sphereMesh.SetLoaderID(g3n.GetDisplayName() + strconv.Itoa(int(g3n.GetDisplayId())+i))
 		sphereMesh.SetPositionVec(math32.NewVector3(float32(i), 0.0, 0.0))
 		meshes[i] = sphereMesh
 	}
 	compoundMesh := NewCompoundMesh(meshes)
+	compoundMesh.SetLoaderID(g3n.GetDisplayName() + strconv.Itoa(int(g3n.GetDisplayId())))
 	sp.compoundMesh = compoundMesh
+	g3n.SetNamedMesh(g3n.GetDisplayName()+strconv.Itoa(int(g3n.GetDisplayId())), compoundMesh) //compoundMesh.LoaderID(), compoundMesh)
+	if g3n.IsStateSet(mashupsdk.Hidden) {
+		sp.compoundMesh = nil
+		return nil
+	}
 	return compoundMesh
 }
 
@@ -74,15 +81,26 @@ func (sp *SubSpiralRenderer) Layout(worldApp *g3nworld.WorldApp,
 func (sp *SubSpiralRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetailedElement *g3nmash.G3nDetailedElement) bool {
 	var g3nColor *math32.Color
 
+	if g3nDetailedElement.IsStateSet(mashupsdk.Hidden) {
+		if g3nDetailedElement.GetDetailedElement().Genre == "Collection" && g3nDetailedElement.GetDetailedElement().Subgenre == "SubSpiral" {
+			//sp.TorusParser(worldApp, g3nDetailedElement.GetDetailedElement().Id)
+		} else {
+			log.Printf("Item removed %s: %v", g3nDetailedElement.GetDisplayName(), worldApp.RemoveFromScene(g3nDetailedElement.GetNamedMesh(g3nDetailedElement.GetDisplayName())))
+		}
+		return true
+	} else {
+		worldApp.UpsertToScene(g3nDetailedElement.GetNamedMesh(g3nDetailedElement.GetDisplayName()))
+	}
+
 	if g3nDetailedElement.IsItemActive() {
 		g3nColor = math32.NewColor("darkred")
-		mesh := g3nDetailedElement.GetNamedMesh(g3nDetailedElement.GetDisplayName())
-		if sp.activeSet == nil {
-			sp.activeSet = map[int64]*math32.Vector3{}
-		}
-		activePosition := mesh.(*graphic.Mesh).GetGraphic().Position()
-		sp.activeSet[g3nDetailedElement.GetDetailedElement().GetId()] = &activePosition
-		fmt.Printf("Active element centered at %v\n", activePosition)
+		// mesh := g3nDetailedElement.GetNamedMesh(g3nDetailedElement.GetDisplayName())
+		// if sp.activeSet == nil {
+		// 	sp.activeSet = map[int64]*math32.Vector3{}
+		// }
+		// activePosition := mesh.(*graphic.Mesh).GetGraphic().Position()
+		// sp.activeSet[g3nDetailedElement.GetDetailedElement().GetId()] = &activePosition
+		// fmt.Printf("Active element centered at %v\n", activePosition)
 	} else {
 		if g3nDetailedElement.IsBackgroundElement() {
 			// Axial circle
@@ -126,17 +144,20 @@ func (gr *SubSpiralRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 		prevSolidPos = nextPos
 		_, nextPos = g3Renderer.NextCoordinate(concreteG3nRenderableElement, totalElements)
 		g3Renderer.NewSolidAtPosition(concreteG3nRenderableElement, nextPos)
-		counter := -float64(0.1) * float64(len(gr.compoundMesh.meshes))
+		counter := 0.0
+		if gr.compoundMesh != nil {
+			counter = -float64(0.1) * float64(len(gr.compoundMesh.meshes))
+		}
+
 		if gr.compoundMesh != nil {
 			for i := 0; i < len(gr.compoundMesh.meshes); i += 1 {
-				complex := binetFormula(counter)
-				gr.compoundMesh.meshes[i].SetPositionVec(math32.NewVector3(float32(-real(complex))+nextPos.X, float32(imag(complex))+nextPos.Y, nextPos.Z+float32(-counter)))
+				complex := binetFormula(counter) //+nextPos.X  nextPos.Z+
+				gr.compoundMesh.meshes[i].SetPositionVec(math32.NewVector3(float32(-real(-complex))+nextPos.X, float32(imag(complex))+nextPos.Y, float32(-counter)+nextPos.Z))
 				counter += 0.1
 				worldApp.AddToScene(gr.compoundMesh.meshes[i])
-				concreteG3nRenderableElement.SetNamedMesh(concreteG3nRenderableElement.GetDisplayName(), gr.compoundMesh.meshes[i])
+				//concreteG3nRenderableElement.GetDisplayName()
 			}
-			//worldApp.AddToScene(solidMesh)
-
+			//concreteG3nRenderableElement.SetNamedMesh(gr.compoundMesh.LoaderID(), gr.compoundMesh)
 		}
 
 		for _, relatedG3n := range worldApp.GetG3nDetailedChildElementsByGenre(concreteG3nRenderableElement, "Related") {
