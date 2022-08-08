@@ -189,7 +189,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		},
 	}
 	totalElements := 10
-	for totalElements = 10; totalElements < 110; totalElements = totalElements + 1 {
+	for totalElements = 10; totalElements < 20; totalElements = totalElements + 1 {
 		argosyId := int64(8 + totalElements)
 		Argosys = append(Argosys, util.Argosy{
 			mashupsdk.MashupDetailedElement{
