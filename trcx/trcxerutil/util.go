@@ -22,7 +22,7 @@ func SetEncryptionSecret(config *eUtils.DriverConfig) error {
 		eUtils.LogErrorObject(config, modErr, false)
 	}
 	mod.Env = strings.Split(config.Env, "_")[0]
-	data, readErr := mod.ReadData("super-secrets/ServiceTechAPIM")
+	data, readErr := mod.ReadData("super-secrets/Restricted/VaultDatabase/config")
 	if readErr != nil {
 		return readErr
 	}
@@ -75,7 +75,7 @@ func PromptUserForFields(fields string, encrypted string, encryption map[string]
 		if validateInput != input {
 			return nil, nil, errors.New("Entered values for '" + encryptedField + "' do not match, exiting...")
 		}
-		encryptedInput := encrypt(input, encryption)
+		encryptedInput := Encrypt(input, encryption)
 		encryptedMap[encryptedField] = encryptedInput
 	}
 
@@ -86,7 +86,7 @@ func deriveKey(passphrase string, salt []byte) ([]byte, []byte) {
 	return pbkdf2.Key([]byte(passphrase), salt, 1000, 32, sha256.New), salt
 }
 
-func encrypt(input string, encryption map[string]interface{}) string {
+func Encrypt(input string, encryption map[string]interface{}) string {
 	salt, _ := base64.StdEncoding.DecodeString(encryption["salt"].(string))
 	iv, _ := base64.StdEncoding.DecodeString(encryption["initial_value"].(string))
 	key, _ := deriveKey(encryptSecret, []byte(salt))
@@ -96,7 +96,7 @@ func encrypt(input string, encryption map[string]interface{}) string {
 	return base64.StdEncoding.EncodeToString(data)
 }
 
-func decrypt(passStr string, decryption map[string]interface{}) string { //This works
+func Decrypt(passStr string, decryption map[string]interface{}) string {
 	salt, _ := base64.StdEncoding.DecodeString(decryption["salt"].(string))
 	iv, _ := base64.StdEncoding.DecodeString(decryption["initial_value"].(string))
 	data, _ := base64.StdEncoding.DecodeString(passStr)
@@ -161,7 +161,8 @@ func FieldReader(encryptedMap map[string]interface{}, secSection map[string]map[
 		found := false
 		for secretSectionMap := range secSection["super-secrets"] {
 			if secretVal, ok := secSection["super-secrets"][secretSectionMap][field]; ok {
-				secSection["super-secrets"][secretSectionMap][field] = decrypt(secretVal, decryption)
+				fmt.Printf("field: %s value: %s \n", field, Decrypt(secretVal, decryption))
+				//secSection["super-secrets"][secretSectionMap][field] = Decrypt(secretVal, decryption)
 				found = true
 				continue
 			}
@@ -172,7 +173,8 @@ func FieldReader(encryptedMap map[string]interface{}, secSection map[string]map[
 
 		for valueSectionMap := range valSection["values"] {
 			if valueVal, ok := valSection["values"][valueSectionMap][field]; ok {
-				valSection["values"][valueSectionMap][field] = decrypt(valueVal, decryption)
+				fmt.Printf("field: %s value: %s \n", field, Decrypt(valueVal, decryption))
+				//valSection["values"][valueSectionMap][field] = Decrypt(valueVal, decryption)
 				found = true
 				continue
 			}
