@@ -5,6 +5,7 @@ import (
 
 	//"sort"
 	//"strings"
+	"strconv"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -44,7 +45,7 @@ func (sp *PathRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos
 	color := g3ndpalette.DARK_BLUE
 	mat := material.NewStandard(color.Set(0, 0.349, 0.643))
 	sphereMesh := graphic.NewMesh(sphereGeom, mat)
-	fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
+	//fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
 	sphereMesh.SetLoaderID(g3n.GetDisplayName())
 	sphereMesh.SetPositionVec(vpos)
 	return sphereMesh
@@ -81,17 +82,21 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 			e := worldApp.ConcreteElements[int64(childId)]
 			for _, childId := range e.GetChildElementIds() {
 				for _, subChildID := range worldApp.ConcreteElements[childId].GetChildElementIds() {
-					if worldApp.ConcreteElements[subChildID].GetNamedMesh(worldApp.ConcreteElements[subChildID].GetDisplayName()) != nil {
+					element := worldApp.ConcreteElements[subChildID]
+					name := element.GetDisplayName()
+					meshes := element.GetNamedMesh(name + strconv.Itoa(int(element.GetDisplayId())))
+					//
+					if meshes != nil { //worldApp.ConcreteElements[subChildID].GetNamedMesh(worldApp.ConcreteElements[subChildID].GetDisplayName()) != nil {
 						// for _, mesh := range worldApp.ConcreteElements[subChildID].GetNamedMesh(worldApp.ConcreteElements[subChildID].GetDisplayName()).meshes {
 
 						// }
-						element := worldApp.ConcreteElements[subChildID]
-						element.SetElementState(mashupsdk.Init)
-						for _, mesh := range element.MeshComposite {
-							worldApp.AddToScene(mesh)
-						}
+
+						element.ApplyState(mashupsdk.Init, false)
+						// for _, mesh := range element.MeshComposite {
+						// 	worldApp.AddToScene(mesh)
+						// }
 						// meshcomp.GetNode().meshComposite
-						worldApp.AddToScene(worldApp.ConcreteElements[subChildID].GetNamedMesh(worldApp.ConcreteElements[subChildID].GetDisplayName()))
+						worldApp.AddToScene(meshes)
 					}
 				}
 			}
