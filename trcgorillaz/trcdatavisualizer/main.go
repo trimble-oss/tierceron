@@ -64,7 +64,8 @@ func main() {
 			argosyBasis := argosy.MashupDetailedElement
 			DetailedElements = append(DetailedElements, &argosyBasis)
 		}
-		generatedElements, genErr := worldApp.MSdkApiHandler.UpsertMashupElements(
+
+		_, genErr := worldApp.MSdkApiHandler.UpsertMashupElements(
 			&mashupsdk.MashupDetailedElementBundle{
 				AuthToken:        "",
 				DetailedElements: DetailedElements,
@@ -73,14 +74,6 @@ func main() {
 		if genErr != nil {
 			log.Fatalf(genErr.Error(), genErr)
 		} else {
-			generatedElements.DetailedElements[2].State.State = int64(mashupsdk.Clicked)
-
-			elementStateBundle := mashupsdk.MashupElementStateBundle{
-				AuthToken:     "",
-				ElementStates: []*mashupsdk.MashupElementState{generatedElements.DetailedElements[2].State},
-			}
-
-			worldApp.MSdkApiHandler.UpsertMashupElementsState(&elementStateBundle)
 			go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
 		}
 		go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
