@@ -15,6 +15,7 @@ import (
 	"github.com/mrjrieke/nute/g3nd/g3nworld"
 	g3ndpalette "github.com/mrjrieke/nute/g3nd/palette"
 	"github.com/mrjrieke/nute/g3nd/worldg3n/g3nrender"
+	"github.com/mrjrieke/nute/mashupsdk"
 )
 
 type PathRenderer struct {
@@ -75,6 +76,30 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 	var g3nColor *math32.Color
 
 	if g3nDetailedElement.IsItemActive() {
+		for _, childId := range g3nDetailedElement.GetChildElementIds() {
+			//worldApp.ConcreteElements[int64(childId)].GetDetailedElement().State.State = 4
+			e := worldApp.ConcreteElements[int64(childId)]
+			for _, childId := range e.GetChildElementIds() {
+				for _, subChildID := range worldApp.ConcreteElements[childId].GetChildElementIds() {
+					if worldApp.ConcreteElements[subChildID].GetNamedMesh(worldApp.ConcreteElements[subChildID].GetDisplayName()) != nil {
+						// for _, mesh := range worldApp.ConcreteElements[subChildID].GetNamedMesh(worldApp.ConcreteElements[subChildID].GetDisplayName()).meshes {
+
+						// }
+						element := worldApp.ConcreteElements[subChildID]
+						element.SetElementState(mashupsdk.Init)
+						for _, mesh := range element.MeshComposite {
+							worldApp.AddToScene(mesh)
+						}
+						// meshcomp.GetNode().meshComposite
+						worldApp.AddToScene(worldApp.ConcreteElements[subChildID].GetNamedMesh(worldApp.ConcreteElements[subChildID].GetDisplayName()))
+					}
+				}
+			}
+			// e.SetNamedMesh(e.GetDisplayName()+strconv.Itoa(int(e.GetDisplayId())), e.GetNamedMesh(e.GetDisplayName()+strconv.Itoa(int(e.GetDisplayId()))))
+			// element := e.GetNamedMesh(e.GetDisplayName() + strconv.Itoa(int(e.GetDisplayId())))
+			// worldApp.UpsertToScene(element)
+			// worldApp.AddToScene(worldApp.ConcreteElements[int64(childId)].GetNamedMesh(worldApp.ConcreteElements[int64(childId)].GetDisplayName()))
+		}
 		g3nColor = math32.NewColor("darkred")
 		mesh := g3nDetailedElement.GetNamedMesh(g3nDetailedElement.GetDisplayName())
 		if sp.activeSet == nil {
@@ -82,6 +107,7 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 		}
 		activePosition := mesh.(*graphic.Mesh).GetGraphic().Position()
 		sp.activeSet[g3nDetailedElement.GetDetailedElement().GetId()] = &activePosition
+
 		fmt.Printf("Active element centered at %v\n", activePosition)
 	} else {
 		if g3nDetailedElement.IsBackgroundElement() {
