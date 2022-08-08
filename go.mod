@@ -29,10 +29,9 @@ require (
 	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-// github.com/mrjrieke/nute v0.0.0-20220715140120-c4fd938ae870
 )
 
-require github.com/mrjrieke/nute v0.0.0-20220803145020-b65c1316d6b9 // indirect
+require github.com/mrjrieke/nute v0.0.0-20220804183141-23b8bf4eef8c // indirect
 
 require (
 	fyne.io/fyne/v2 v2.1.3 // indirect
