@@ -89,9 +89,9 @@ func (sp *PathRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetail
 
 						// }
 
-						//element.ApplyState(mashupsdk.Init, false)
-						element.ApplyState(mashupsdk.Hidden, true)
-						element.ApplyState(mashupsdk.Clicked, false)
+						element.ApplyState(mashupsdk.Init, false)
+						element.ApplyState(mashupsdk.Hidden, false)
+						element.ApplyState(mashupsdk.Clicked, true)
 						// for _, mesh := range element.MeshComposite {
 						// 	worldApp.AddToScene(mesh)
 						// }
