@@ -1,6 +1,7 @@
 package trcxbase
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -70,6 +71,11 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 
+	fileAddrPtr := flag.String("seedpath", "", "Path for seed file")
+	fieldsPtr := flag.String("fields", "", "Fields to enter")
+	encryptedPtr := flag.String("encrypted", "", "Fields to encrypt")
+	readOnlyPtr := flag.Bool("readonly", false, "Fields to encrypt")
+
 	var insecurePtr *bool
 	if insecurePtrIn == nil {
 		insecurePtr = flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
@@ -123,15 +129,6 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		fileFilter = strings.Split(*filterTemplatePtr, ",")
 	}
 
-	//Checks for indexed projects
-	if len(*indexedPtr) > 0 {
-		projectSectionsSlice = append(projectSectionsSlice, strings.Split(*indexedPtr, ",")...)
-	}
-
-	if len(*restrictedPtr) > 0 {
-		projectSectionsSlice = append(projectSectionsSlice, strings.Split(*restrictedPtr, ",")...)
-	}
-
 	//check for clean + env flag
 	cleanPresent := false
 	envPresent := false
@@ -168,6 +165,47 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if (strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")) && *addrPtr == "" {
 		fmt.Println("The -addr flag must be used with staging/prod environment")
 		os.Exit(1)
+	} else if (len(*fieldsPtr) == 0) && len(*fileAddrPtr) != 0 {
+		fmt.Println("The -fields flag must be used with -seedPath flag; -encrypted flag is optional")
+		os.Exit(1)
+	} else if *readOnlyPtr && (len(*encryptedPtr) == 0 || len(*fileAddrPtr) == 0) {
+		fmt.Println("The -encrypted flag must be used with -seedPath flag if -readonly is used")
+		os.Exit(1)
+	}
+
+	trcxe := false
+	sectionSlice := []string{""}
+	if len(*fileAddrPtr) != 0 { //Checks if seed file exists & figured out if index/restricted
+		trcxe = true
+		directorySplit := strings.Split(*fileAddrPtr, "/")
+		indexed := false
+		if !*noVaultPtr {
+			pwd, _ := os.Getwd()
+			_, fileErr := os.Open(pwd + "/" + coreopts.GetFolderPrefix() + "_seeds/" + *envPtr + "/Index/" + *fileAddrPtr + "_seed.yml")
+			if errors.Is(fileErr, os.ErrNotExist) {
+				_, fileRErr := os.Open(pwd + "/" + coreopts.GetFolderPrefix() + "_seeds/" + *envPtr + "/Restricted/" + *fileAddrPtr + "_seed.yml")
+				if errors.Is(fileRErr, os.ErrNotExist) {
+					fmt.Println("Specified seed file could not be found.")
+					os.Exit(1)
+				}
+			} else {
+				indexed = true
+			}
+		} else {
+			indexed = true
+		}
+
+		if indexed {
+			if len(directorySplit) >= 3 { //Don't like this, will change later
+				*indexedPtr = directorySplit[0]
+				*indexNameFilterPtr = directorySplit[1]
+				*indexValueFilterPtr = directorySplit[2]
+				sectionSlice = strings.Split(*indexValueFilterPtr, ",")
+			}
+		} else {
+			fmt.Println("Not supported for restricted section.")
+			os.Exit(1)
+		}
 	}
 
 	if len(*indexServiceFilterPtr) != 0 && len(*indexNameFilterPtr) == 0 && len(*restrictedPtr) != 0 {
@@ -313,7 +351,6 @@ skipDiff:
 	logger.SetPrefix("[" + coreopts.GetFolderPrefix() + "x]")
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
-	sectionSlice := []string{""}
 	var subSectionName string
 	if len(*indexNameFilterPtr) > 0 {
 		subSectionName = *indexNameFilterPtr
@@ -331,7 +368,7 @@ skipDiff:
 			}
 
 			newSectionSlice := make([]string, 0)
-			if !*noVaultPtr {
+			if !*noVaultPtr && !trcxe {
 				var baseEnv string
 				if strings.Contains(envSlice[0], "_") {
 					baseEnv = strings.Split(envSlice[0], "_")[0]
@@ -349,6 +386,14 @@ skipDiff:
 					logger.Printf(err.Error())
 				}
 				// Only look at index values....
+				//Checks for indexed projects
+				if len(*indexedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*indexedPtr, ",")...)
+				}
+
+				if len(*restrictedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*restrictedPtr, ",")...)
+				}
 
 				var listValues *api.Secret
 				if len(projectSectionsSlice) > 0 { //If eid -> look inside Index and grab all environments
@@ -376,6 +421,11 @@ skipDiff:
 
 							for _, indexPath := range indexList.Data {
 								for _, indexInterface := range indexPath.([]interface{}) {
+									if len(*indexValueFilterPtr) > 0 {
+										if indexInterface != (*indexValueFilterPtr + "/") {
+											continue
+										}
+									}
 									newSectionSlice = append(newSectionSlice, strings.ReplaceAll(indexInterface.(string), "/", ""))
 								}
 							}
@@ -421,7 +471,7 @@ skipDiff:
 		for _, section := range sectionSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
-
+			var servicesWanted []string
 			if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
 				*tokenPtr = ""
 			}
@@ -436,6 +486,17 @@ skipDiff:
 			} else {
 				*envPtr = envVersion[0] + "_0"
 			}
+
+			var trcxeList []string
+			if trcxe {
+				projectSectionsSlice = append(projectSectionsSlice, strings.Split(*indexedPtr, ",")...)
+
+				trcxeList = append(trcxeList, *fieldsPtr)
+				trcxeList = append(trcxeList, *encryptedPtr)
+				if *noVaultPtr {
+					trcxeList = append(trcxeList, "new")
+				}
+			}
 			config := eUtils.DriverConfig{
 				Context:         ctx,
 				Insecure:        *insecurePtr,
@@ -449,7 +510,7 @@ skipDiff:
 				SubSectionName:  *indexServiceExtFilterPtr,
 				Regions:         regions,
 				SecretMode:      *secretMode,
-				ServicesWanted:  []string{},
+				ServicesWanted:  servicesWanted,
 				StartDir:        append([]string{}, *startDirPtr),
 				EndDir:          *endDirPtr,
 				WantCerts:       *wantCertsPtr,
@@ -463,6 +524,8 @@ skipDiff:
 				ProjectSections: projectSectionsSlice,
 				IndexFilter:     indexFilterSlice,
 				ExitOnFailure:   true,
+				Trcxe:           trcxeList,
+				Trcxr:           *readOnlyPtr,
 			}
 			waitg.Add(1)
 			go func() {
