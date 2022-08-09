@@ -45,6 +45,8 @@ type DriverConfig struct {
 	SubSectionValue string
 	SubSectionName  string
 	IndexFilter     []string
+	Trcxe           []string //Used for TRCXE
+	Trcxr           bool     //Used for TRCXR
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
