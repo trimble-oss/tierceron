@@ -129,7 +129,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	identityColumnName string,
 	vaultIndexColumnName string,
 	vaultSecondIndexColumnName string,
-	syncMysql bool,
+	mysqlPushEnabled bool,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
 
@@ -238,7 +238,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		// Push this change to the flow for delivery to remote data source.
-		if syncMysql {
+		if mysqlPushEnabled {
 			pushError := flowPushRemote(tfContext.RemoteDataSource, rowDataMap)
 			if pushError != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
