@@ -463,13 +463,19 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, fromVault bool
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string, error) {
 	endPath := ""
+	var projectSectionTemp []string //Used for seed file pathing; errors for -novault generation if not empty
+	if len(config.Trcxe) > 2 {
+		projectSectionTemp = config.ProjectSections
+		config.ProjectSections = []string{}
+	}
 	authYaml, multiService, generateErr, templateCombinedSection, valueCombinedSection, secretCombinedSection := GenerateSeedSectionFromVaultRaw(config, fromVault, templatePaths)
 	if generateErr != nil {
 		eUtils.LogErrorObject(config, generateErr, false)
 		return "", false, "", nil
 	}
 
-	if len(config.Trcxe) > 1 { //Validate first then replace fields here?
+	if len(config.Trcxe) > 1 { //Validate first then replace fields
+		config.ProjectSections = projectSectionTemp
 		valValidateError := trcxerutil.FieldValidator(config.Trcxe[0]+","+config.Trcxe[1], secretCombinedSection, valueCombinedSection)
 		if valValidateError != nil {
 			eUtils.LogErrorObject(config, valValidateError, false)

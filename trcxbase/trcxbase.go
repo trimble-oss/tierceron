@@ -174,17 +174,22 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	}
 
 	trcxe := false
+	sectionSlice := []string{""}
 	if len(*fileAddrPtr) != 0 { //Checks if seed file exists & figured out if index/restricted
 		trcxe = true
 		directorySplit := strings.Split(*fileAddrPtr, "/")
 		indexed := false
-		pwd, _ := os.Getwd()
-		_, fileErr := os.Open(pwd + "/" + coreopts.GetFolderPrefix() + "_seeds/" + *envPtr + "/Index/" + *fileAddrPtr + "_seed.yml")
-		if errors.Is(fileErr, os.ErrNotExist) {
-			_, fileRErr := os.Open(pwd + "/" + coreopts.GetFolderPrefix() + "_seeds/" + *envPtr + "/Restricted/" + *fileAddrPtr + "_seed.yml")
-			if errors.Is(fileRErr, os.ErrNotExist) {
-				fmt.Println("Specified seed file could not be found.")
-				os.Exit(1)
+		if !*noVaultPtr {
+			pwd, _ := os.Getwd()
+			_, fileErr := os.Open(pwd + "/" + coreopts.GetFolderPrefix() + "_seeds/" + *envPtr + "/Index/" + *fileAddrPtr + "_seed.yml")
+			if errors.Is(fileErr, os.ErrNotExist) {
+				_, fileRErr := os.Open(pwd + "/" + coreopts.GetFolderPrefix() + "_seeds/" + *envPtr + "/Restricted/" + *fileAddrPtr + "_seed.yml")
+				if errors.Is(fileRErr, os.ErrNotExist) {
+					fmt.Println("Specified seed file could not be found.")
+					os.Exit(1)
+				}
+			} else {
+				indexed = true
 			}
 		} else {
 			indexed = true
@@ -195,6 +200,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 				*indexedPtr = directorySplit[0]
 				*indexNameFilterPtr = directorySplit[1]
 				*indexValueFilterPtr = directorySplit[2]
+				sectionSlice = strings.Split(*indexValueFilterPtr, ",")
 			}
 		} else {
 			fmt.Println("Not supported for restricted section.")
@@ -345,7 +351,6 @@ skipDiff:
 	logger.SetPrefix("[" + coreopts.GetFolderPrefix() + "x]")
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
-	sectionSlice := []string{""}
 	var subSectionName string
 	if len(*indexNameFilterPtr) > 0 {
 		subSectionName = *indexNameFilterPtr
@@ -363,7 +368,7 @@ skipDiff:
 			}
 
 			newSectionSlice := make([]string, 0)
-			if !*noVaultPtr {
+			if !*noVaultPtr && !trcxe {
 				var baseEnv string
 				if strings.Contains(envSlice[0], "_") {
 					baseEnv = strings.Split(envSlice[0], "_")[0]
@@ -484,8 +489,13 @@ skipDiff:
 
 			var trcxeList []string
 			if trcxe {
+				projectSectionsSlice = append(projectSectionsSlice, strings.Split(*indexedPtr, ",")...)
+
 				trcxeList = append(trcxeList, *fieldsPtr)
 				trcxeList = append(trcxeList, *encryptedPtr)
+				if *noVaultPtr {
+					trcxeList = append(trcxeList, "new")
+				}
 			}
 			config := eUtils.DriverConfig{
 				Context:         ctx,
