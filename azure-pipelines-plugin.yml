@@ -86,7 +86,7 @@ steps:
     fi
 
     echo "Compile Prod Linux trc-vault-plugin-prod"
-    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc mysql memonly prod" -o $GOBIN/trc-vault-plugin-prod tierceron/trcvault/plugins/trcdb
+    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc mysqlpull memonly prod" -o $GOBIN/trc-vault-plugin-prod tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/trc-vault-plugin-prod ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
