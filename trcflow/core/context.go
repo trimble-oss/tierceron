@@ -236,7 +236,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 
-	syncMysql := mysql.GetMysqlStatus()
+	mysqlPushEnabled := mysql.IsMysqlPushEnabled()
 	flowChangedChannel := channelMap[tfContext.Flow]
 	flowChangedChannel <- true
 	for {
@@ -250,7 +250,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				identityColumnName,
 				vaultIndexColumnName,
 				vaultSecondIndexColumnName,
-				syncMysql,
+				mysqlPushEnabled,
 				getIndexedPathExt,
 				flowPushRemote)
 		}
