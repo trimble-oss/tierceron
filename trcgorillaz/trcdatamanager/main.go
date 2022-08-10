@@ -354,6 +354,10 @@ func (mSdk *fyneMashupApiHandler) OnResize(displayHint *mashupsdk.MashupDisplayH
 	}
 }
 
+func (mSdk *fyneMashupApiHandler) ResetG3NDetailedElementStates() {
+	log.Printf("Fyne ResetG3NDetailedElementStates - not implemented\n")
+}
+
 func (mSdk *fyneMashupApiHandler) UpsertMashupElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
 	log.Printf("Fyne UpsertMashupElements - not implemented\n")
 	return &mashupsdk.MashupDetailedElementBundle{}, nil
