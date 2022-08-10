@@ -164,6 +164,13 @@ func (dfs *DataFlow) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 			if readErr != nil {
 				return readErr
 			}
+			if data == nil {
+				time.Sleep(1)
+				data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN + "/" + stateCode.(string))
+				if readErr == nil && data == nil {
+					return nil
+				}
+			}
 			var df DataFlowStatistic
 			df.flowGroup = data["flowGroup"].(string)
 			df.flowName = data["flowName"].(string)
