@@ -207,12 +207,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		GetAdditionalFlowsByState: buildopts.GetAdditionalFlowsByState,
 	}
 
-	tfmFlumContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), buildopts.GetDatabaseName())
-	tfmFlumContext.Config = &configBasis
-	tfmFlumContext.TierceronEngine.Context = sqle.NewEmptyContext()
-	tfmFlumContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	tfmFlumContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), buildopts.GetFlowDatabaseName())
+	tfmFlumContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	tfmFlumContext.Init(sourceDatabaseConnectionsMap, []string{tierceronFlowConfigurationTableName}, buildopts.GetAdditionalFlows(), buildopts.GetAdditionalFlows())
+	tfmFlumContext.Config = &configBasis
+	tfmFlumContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 
 	var wg sync.WaitGroup
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
