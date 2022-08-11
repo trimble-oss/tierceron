@@ -179,6 +179,9 @@ func SeedVault(insecure bool,
 							}
 							for _, sectionConfigFile := range sectionConfigFiles {
 								path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
+								if strings.HasPrefix(sectionConfigFile.Name(), ".") {
+									continue
+								}
 								SeedVaultFromFile(config, path, service, uploadCert)
 								seeded = true
 							}
