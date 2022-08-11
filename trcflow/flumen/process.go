@@ -202,6 +202,37 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, buildopts.GetAdditionalFlows(), buildopts.GetAdditionalFlows())
 
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
+		for _, table := range GetTierceronTableNames() {
+			wg.Add(1)
+			go func(tableFlow flowcore.FlowNameType) {
+				eUtils.LogInfo(config, "Beginning flow: "+tableFlow.ServiceName())
+				defer wg.Done()
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				tfContext.Flow = tableFlow
+				tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
+				tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+
+				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				if err != nil {
+					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
+					return
+				}
+				tfContext.FlowSourceAlias = buildopts.GetDatabaseName()
+
+				tfmContext.ProcessFlow(
+					config,
+					&tfContext,
+					FlumenProcessFlowController,
+					vaultDatabaseConfig,
+					sourceDatabaseConnectionMap,
+					tableFlow,
+					flowcore.TableSyncFlow,
+				)
+			}(flowcore.FlowNameType(table))
+		}
+	}
+
+	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range configBasis.VersionFilter {
 			wg.Add(1)
 			go func(tableFlow flowcore.FlowNameType) {
