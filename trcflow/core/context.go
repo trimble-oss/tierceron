@@ -294,6 +294,9 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 			triggerLock.Unlock()
 		}
 		seedInitCompleteChan <- true
+		if importChan, ok := tfContext.RemoteDataSource["vaultImportChannel"].(chan bool); ok {
+			importChan <- true
+		}
 	}
 
 	// Check vault hourly for changes to sync with mysql
