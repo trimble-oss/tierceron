@@ -236,7 +236,7 @@ func SeedVault(insecure bool,
 	if !seeded {
 		eUtils.LogInfo(config, "Environment is not valid - Environment: "+env)
 	} else {
-		eUtils.LogInfo(config, "Environment is not seeded - Environment: "+env)
+		eUtils.LogInfo(config, "Initialization complete for: "+env)
 	}
 	return nil
 }
