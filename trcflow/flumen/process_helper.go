@@ -20,6 +20,10 @@ import (
 	eUtils "tierceron/utils"
 )
 
+const (
+	TierceronControllerFlow flowcore.FlowNameType = "TierceronFlow"
+)
+
 var changesLock sync.Mutex
 
 func getChangeIdQuery(databaseName string, changeTable string) string {
@@ -177,4 +181,14 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 	}
 	logger.Println("PluginDeployedUpdate complete.")
 	return nil
+}
+
+func FlumenProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
+
+	switch trcFlowContext.Flow {
+	case TierceronControllerFlow:
+		return ProcessTierceronFlows(tfmContext, trcFlowContext)
+	}
+
+	return errors.New("Table not implemented.")
 }
