@@ -142,7 +142,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	for _, template := range templateList {
 		source, service, tableTemplateName := eUtils.GetProjectService(template)
 		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
-		configBasis.VersionFilter = append(configBasis.VersionFilter, tableName)
+		if tableName != tierceronFlowConfigurationTableName {
+			configBasis.VersionFilter = append(configBasis.VersionFilter, tableName)
+		}
 		flowTemplateMap[tableName] = template
 		flowSourceMap[tableName] = source
 	}
@@ -197,10 +199,22 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
-
-	var wg sync.WaitGroup
 	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, buildopts.GetAdditionalFlows(), buildopts.GetAdditionalFlows())
 
+	//Initialize tfcContext for flow controller
+	tfmFlumContext := &flowcore.TrcFlowMachineContext{
+		Env:                       pluginConfig["env"].(string),
+		GetAdditionalFlowsByState: buildopts.GetAdditionalFlowsByState,
+	}
+
+	tfmFlumContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), buildopts.GetDatabaseName())
+	tfmFlumContext.Config = &configBasis
+	tfmFlumContext.TierceronEngine.Context = sqle.NewEmptyContext()
+	tfmFlumContext.ExtensionAuthData = tfmContext.ExtensionAuthData
+	tfmFlumContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), buildopts.GetFlowDatabaseName())
+	tfmFlumContext.Init(sourceDatabaseConnectionsMap, []string{tierceronFlowConfigurationTableName}, buildopts.GetAdditionalFlows(), buildopts.GetAdditionalFlows())
+
+	var wg sync.WaitGroup
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range GetTierceronTableNames() {
 			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{})}
@@ -218,9 +232,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
-				tcfContext.FlowSourceAlias = buildopts.GetDatabaseName()
+				tcfContext.FlowSourceAlias = buildopts.GetFlowDatabaseName()
 
-				tfmContext.ProcessFlow(
+				tfmFlumContext.ProcessFlow(
 					config,
 					&tcfContext,
 					FlumenProcessFlowController,
@@ -322,6 +336,23 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	wg.Add(1)
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	interfaceErr := buildopts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{})
+	if interfaceErr != nil {
+		wg.Done()
+		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
+		return interfaceErr
+	}
+
+	wg.Add(1)
+	//add 10 to the port number for flowDatabase
+	portNumber, err := strconv.Atoi(vaultDatabaseConfig["dbport"].(string))
+	if err != nil {
+		eUtils.LogErrorMessage(config, "Failed to parse port number for Flow Database:"+interfaceErr.Error(), false)
+		return interfaceErr
+	}
+	portNumber = portNumber + 10
+	vaultDatabaseConfig["dbport"] = strconv.Itoa(portNumber)
+
+	interfaceErr = buildopts.BuildInterface(config, goMod, tfmFlumContext, vaultDatabaseConfig, &TrcDBServerEventListener{})
 	if interfaceErr != nil {
 		wg.Done()
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)

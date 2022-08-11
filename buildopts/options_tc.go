@@ -75,6 +75,10 @@ func GetDatabaseName() string {
 	return tcutil.GetDatabaseName()
 }
 
+func GetFlowDatabaseName() string {
+	return tcutil.GetFlowDatabaseName()
+}
+
 func GetExtensionAuthComponents(config map[string]interface{}) map[string]interface{} {
 	return tcutil.GetExtensionAuthComponents(config)
 }

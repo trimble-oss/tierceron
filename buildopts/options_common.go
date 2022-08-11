@@ -76,6 +76,10 @@ func GetDatabaseName() string {
 	return ""
 }
 
+func GetFlowDatabaseName() string {
+	return ""
+}
+
 // Which tables synced..
 func GetSyncedTables() []string {
 	return []string{}
