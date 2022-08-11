@@ -31,13 +31,13 @@ func binetFormula(n float64) complex128 {
 	return complex(real, imag)
 }
 
-func (sp *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
+func (cr *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	var path []math32.Vector3
 	var i float64
-	if sp.totalElements == 0 {
-		sp.totalElements = 10
+	if cr.totalElements == 0 {
+		cr.totalElements = 10
 	}
-	for i = -0.1 * float64(sp.totalElements); i < -0.1; i = i + 0.1 {
+	for i = -0.1 * float64(cr.totalElements); i < -0.1; i = i + 0.1 {
 		c := binetFormula(i)
 		x := real(c)
 		y := imag(c)
@@ -63,22 +63,27 @@ func (sp *CurveRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedEleme
 	return nil
 }
 
-func (sp *CurveRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
+func (cr *CurveRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
 	return g3n, math32.NewVector3(float32(0.0), float32(0.0), float32(0.0))
 }
 
-func (sp *CurveRenderer) Layout(worldApp *g3nworld.WorldApp,
+func (cr *CurveRenderer) Layout(worldApp *g3nworld.WorldApp,
 	g3nRenderableElements []*g3nmash.G3nDetailedElement) {
-	sp.GenericRenderer.LayoutBase(worldApp, sp, g3nRenderableElements)
+	cr.GenericRenderer.LayoutBase(worldApp, cr, g3nRenderableElements)
 }
 
-func (sp *CurveRenderer) GetRenderer(rendererName string) g3nrender.IG3nRenderer {
-	if sp.CollaboratingRenderer != nil {
-		return sp.CollaboratingRenderer
+func (cr *CurveRenderer) GetRenderer(rendererName string) g3nrender.IG3nRenderer {
+	if cr.CollaboratingRenderer != nil {
+		return cr.CollaboratingRenderer
 	}
 	return nil
 }
 
-func (sp *CurveRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
-	sp.CollaboratingRenderer.Collaborate(worldApp, sp)
+func (cr *CurveRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
+	// TODO: noop
+	return true
+}
+
+func (cr *CurveRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
+	cr.CollaboratingRenderer.Collaborate(worldApp, cr)
 }
