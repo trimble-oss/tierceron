@@ -34,10 +34,15 @@ func (br *BackgroundRenderer) Layout(worldApp *g3nworld.WorldApp,
 	//return
 }
 
-func (br *BackgroundRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3nDetailedElement *g3nmash.G3nDetailedElement) bool {
+func (br *BackgroundRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
+	// TODO: noop
+	return true
+}
+
+func (br *BackgroundRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) bool {
 	var g3nColor *math32.Color
 
-	if g3nDetailedElement.IsItemActive() {
+	if g3n.IsItemActive() {
 		g3nColor = g3ndpalette.DARK_RED
 		g3nColor.Set(0.266, 0.266, 0.266)
 	} else {
@@ -45,5 +50,5 @@ func (br *BackgroundRenderer) HandleStateChange(worldApp *g3nworld.WorldApp, g3n
 		g3nColor.Set(0.266, 0.266, 0.266)
 	}
 
-	return g3nDetailedElement.SetColor(g3nColor, 1.0)
+	return g3n.SetColor(g3nColor, 1.0)
 }
