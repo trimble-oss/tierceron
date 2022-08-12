@@ -179,7 +179,11 @@ func SeedVault(insecure bool,
 							}
 							for _, sectionConfigFile := range sectionConfigFiles {
 								path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
+								if strings.HasPrefix(sectionConfigFile.Name(), ".") {
+									continue
+								}
 								SeedVaultFromFile(config, path, service, uploadCert)
+								seeded = true
 							}
 						}
 					}
@@ -210,6 +214,10 @@ func SeedVault(insecure bool,
 					continue
 				}
 
+				if seeded {
+					continue
+				}
+
 				ext := filepath.Ext(fileSteppedInto.Name())
 				if strings.HasPrefix(fileSteppedInto.Name(), env) && (ext == ".yaml" || ext == ".yml") { // Only read YAML config files
 					logger.Println("\t\t" + fileSteppedInto.Name())
@@ -230,6 +238,8 @@ func SeedVault(insecure bool,
 	}
 	if !seeded {
 		eUtils.LogInfo(config, "Environment is not valid - Environment: "+env)
+	} else {
+		eUtils.LogInfo(config, "Initialization complete for: "+env)
 	}
 	return nil
 }
