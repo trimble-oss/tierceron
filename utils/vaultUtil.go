@@ -131,7 +131,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	config := DriverConfig{
 		Insecure:       !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
 		Token:          pluginConfig["token"].(string),
-		VaultAddress:   pluginConfig["address"].(string),
+		VaultAddress:   pluginConfig["vaddress"].(string),
 		Env:            pluginConfig["env"].(string),
 		Regions:        pluginConfig["regions"].([]string),
 		SecretMode:     true, //  "Only override secret values in templates?"
