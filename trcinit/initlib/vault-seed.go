@@ -179,7 +179,11 @@ func SeedVault(insecure bool,
 							}
 							for _, sectionConfigFile := range sectionConfigFiles {
 								path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
+								if strings.HasPrefix(sectionConfigFile.Name(), ".") {
+									continue
+								}
 								SeedVaultFromFile(config, path, service, uploadCert)
+								seeded = true
 							}
 						}
 					}
@@ -210,6 +214,10 @@ func SeedVault(insecure bool,
 					continue
 				}
 
+				if seeded {
+					continue
+				}
+
 				ext := filepath.Ext(fileSteppedInto.Name())
 				if strings.HasPrefix(fileSteppedInto.Name(), env) && (ext == ".yaml" || ext == ".yml") { // Only read YAML config files
 					logger.Println("\t\t" + fileSteppedInto.Name())
@@ -230,6 +238,8 @@ func SeedVault(insecure bool,
 	}
 	if !seeded {
 		eUtils.LogInfo(config, "Environment is not valid - Environment: "+env)
+	} else {
+		eUtils.LogInfo(config, "Initialization complete for: "+env)
 	}
 	return nil
 }
@@ -250,7 +260,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	// Unmarshal
 	var rawYaml interface{}
 	hasEmptyValues := bytes.Contains(fData, []byte("<Enter Secret Here>"))
-	isIndexData := strings.HasPrefix(filepath, "Index/")
+	isIndexData := strings.HasPrefix(filepath, "Index/") || strings.Contains(filepath, "/PublicIndex/")
 
 	if hasEmptyValues && !isIndexData {
 		return eUtils.LogAndSafeExit(config, "Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", 1)
@@ -328,7 +338,9 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		return eUtils.LogErrorAndSafeExit(config, err, 1)
 	}
 	mod.Env = config.Env
-	if isIndexData || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
+	if strings.Contains(filepath, "/PublicIndex/") {
+		config.Log.Println("Seeding configuration data for the following templates: DataStatistics")
+	} else if isIndexData || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
 		mod.SectionPath = strings.TrimSuffix(filepath, "_seed.yml")
 		config.Log.Println("Seeding configuration data for the following templates:" + mod.SectionPath)
 	} else {
@@ -496,6 +508,8 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 			if strings.HasSuffix(entry.path, service) || strings.Contains(entry.path, "Common") {
 				WriteData(config, entry.path, entry.data, mod)
 			}
+		} else if strings.Contains(filepath, "/PublicIndex/") && !strings.Contains(entry.path, "templates") {
+			WriteData(config, filepath, entry.data, mod)
 		} else {
 			//			/Index/TrcVault/regionId/<regionEnv>
 			WriteData(config, entry.path, entry.data, mod)

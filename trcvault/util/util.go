@@ -136,7 +136,7 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 
 		return jsonData, nil
 	}
-	return nil, errors.New("http status failure")
+	return nil, errors.New(fmt.Sprintf("http status failure: %d", response.StatusCode))
 }
 
 func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
@@ -253,7 +253,11 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	seedData := templateData + "\n\n\n" + string(value) + "\n\n\n" + string(secret) + "\n\n\n"
 	//VaultX Section Ends
 	//VaultInit Section Begins
-	il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData), service, false)
+	if strings.Contains(indexPath, "/PublicIndex/") {
+		il.SeedVaultFromData(config, indexPath, []byte(seedData), "", false)
+	} else {
+		il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData), service, false)
+	}
 	return nil
 }
 
@@ -267,6 +271,10 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 
 	if err != nil {
 		return nil, err
+	} else {
+		if len(pluginToolConfig) == 0 {
+			return nil, errors.New("Tierceron plugin management presently not configured for env: " + mod.Env)
+		}
 	}
 	for k, v := range pluginConfig {
 		pluginToolConfig[k] = v
