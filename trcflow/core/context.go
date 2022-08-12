@@ -109,20 +109,20 @@ func (tfmContext *TrcFlowMachineContext) Init(
 
 	for _, tableName := range tableNames {
 		changeTableName := tableName + "_Changes"
-
+		tableCreationLock.Lock()
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
-			tableCreationLock.Lock()
 			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
 				{Name: "id", Type: coreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 			}))
-			tableCreationLock.Unlock()
 			if err != nil {
+				tableCreationLock.Unlock()
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 				return err
 			}
 		}
+		tableCreationLock.Unlock()
 	}
 	eUtils.LogInfo(tfmContext.Config, "Tables creation completed.")
 
@@ -185,6 +185,36 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 	}
 }
 
+// Set up call back to enable a trigger to track
+// whenever a row in a table changes...
+func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcFlowContext, iden1 string, iden2 string, iden3 string, insertT func(string, string, string, string, string) string, updateT func(string, string, string, string, string) string) {
+	//Create triggers
+	var updTrigger sqle.TriggerDefinition
+	var insTrigger sqle.TriggerDefinition
+	insTrigger.Name = "tcInsertTrigger_" + trcfc.Flow.TableName()
+	updTrigger.Name = "tcUpdateTrigger_" + trcfc.Flow.TableName()
+	//Prevent duplicate triggers from existing
+	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
+	if err != nil {
+		eUtils.CheckError(tfmContext.Config, err, false)
+	}
+
+	triggerExist := false
+	for _, trigger := range existingTriggers {
+		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name {
+			triggerExist = true
+		}
+	}
+	if !triggerExist {
+		updTrigger.CreateStatement = updateT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2, iden3)
+		insTrigger.CreateStatement = insertT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2, iden3)
+		triggerLock.Lock()
+		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
+		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
+		triggerLock.Unlock()
+	}
+}
+
 func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowContext, flowTemplatePath string) (map[string]interface{}, bool) {
 	flowProject, flowService, flowConfigTemplatePath := eUtils.GetProjectService(flowTemplatePath)
 	flowConfigTemplateName := eUtils.GetTemplateFileName(flowConfigTemplatePath, flowService)
@@ -202,10 +232,11 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
+	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 
-	syncMysql := mysql.GetMysqlStatus()
+	mysqlPushEnabled := mysql.IsMysqlPushEnabled()
 	flowChangedChannel := channelMap[tfContext.Flow]
 	flowChangedChannel <- true
 	for {
@@ -218,7 +249,8 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				tfContext,
 				identityColumnName,
 				vaultIndexColumnName,
-				syncMysql,
+				vaultSecondIndexColumnName,
+				mysqlPushEnabled,
 				getIndexedPathExt,
 				flowPushRemote)
 		}
@@ -303,14 +335,18 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
+	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
 
 	var seedInitComplete chan bool = make(chan bool, 1)
-	go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
-
+	if vaultSecondIndexColumnName == "" {
+		go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
+	} else {
+		seedInitComplete <- true
+	}
 	<-seedInitComplete
-	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote)
+	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote)
 }
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan bool {
@@ -387,7 +423,10 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		var err error
 		if bindings == nil {
 			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
-			if len(matrix) == 0 {
+			if err == nil && tableName == "ok" {
+				changed = true
+				matrix = append(matrix, []interface{}{})
+			} else if len(matrix) == 0 {
 				changed = false
 			}
 		} else {
@@ -489,7 +528,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 
 	tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
 	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
-	if mysql.GetMysqlStatus() {
+	if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() {
 		// Create remote data source with only what is needed.
 		eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
 		dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
