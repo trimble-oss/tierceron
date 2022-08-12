@@ -46,7 +46,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.17.10'
+    version: '1.17.12'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -71,17 +71,17 @@ steps:
 
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
-      GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' tierceron/$p
+      GOBIN= GOGC=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
       fi
-      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' tierceron/$p
+      GOBIN= GOGC=off CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
           echo File $p.exe was not built, aborting.
           exit 1
       fi
-      GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' tierceron/$p
+      GOBIN= GOGC=off CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
@@ -90,21 +90,21 @@ steps:
 
 
     echo Compiling/Verifying trc-vault-plugin
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc memonly" -o $GOBIN/verify-trc-vault-plugin tierceron/trcvault/plugins/trcdb
+    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc memonly" -o $GOBIN/verify-trc-vault-plugin tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/verify-trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo Compiling api
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' tierceron/webapi/apiRouter
+    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' tierceron/webapi/apiRouter
     if [[ ! -f $GOBIN/apiRouter ]] ; then
         echo File apiRouter was not built, aborting.
         exit 1
     fi
 
     echo Compiling conflib
-    GOBIN= GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' tierceron/configlib
+    GOBIN= GOGC=off GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1

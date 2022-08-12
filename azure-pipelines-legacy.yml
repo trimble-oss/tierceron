@@ -48,7 +48,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.17.10'
+    version: '1.17.12'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -74,7 +74,7 @@ steps:
     echo "Compile Linux"
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
-      GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -tags "tc vaultname" -a -ldflags '-w' tierceron/$p
+      GOOS=linux GOGC=off GOARCH=amd64 go install -gcflags=-G=0 -tags "tc vaultname" -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
@@ -84,7 +84,7 @@ steps:
     echo "Compile Windows"
     for p in trcconfig trcpub trcinit trcx trcsub; do
       echo Compiling $p
-      GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -gcflags=-G=0 -tags "tc vaultname" -a -ldflags '-w' tierceron/$p
+      GOBIN= GOGC=off CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -gcflags=-G=0 -tags "tc vaultname" -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
           echo File $p.exe was not built, aborting.
           exit 1
@@ -94,7 +94,7 @@ steps:
     echo "Compile Mac"
     for p in trcconfig trcpub trcx trcsub; do
       echo Compiling $p
-      GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -gcflags=-G=0 -tags "tc vaultname" -a -ldflags '-w' tierceron/$p
+      GOBIN= GOGC=off CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -gcflags=-G=0 -tags "tc vaultname" -a -ldflags '-w' tierceron/$p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
@@ -102,7 +102,7 @@ steps:
     done
 
     echo Compiling conflib
-    GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -buildmode=c-shared -o $GOBIN/nc.so tierceron/configlib
+    GOOS=linux GOGC=off GOARCH=amd64 go build -gcflags=-G=0 -buildmode=c-shared -o $GOBIN/nc.so tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
