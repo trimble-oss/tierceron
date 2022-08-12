@@ -345,7 +345,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		}
 		tokenEnvMap := map[string]interface{}{}
 		tokenEnvMap["env"] = req.Path
-		tokenEnvMap["address"] = vaultHost
+		tokenEnvMap["address"] = vData["vaddress"]
 		tokenEnvMap["insecure"] = true
 		if vData["token"] != nil {
 			logger.Println("Env queued: " + req.Path)
