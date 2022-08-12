@@ -271,6 +271,10 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 
 	if err != nil {
 		return nil, err
+	} else {
+		if len(pluginToolConfig) == 0 {
+			return nil, errors.New("Tierceron plugin management presently not configured for env: " + mod.Env)
+		}
 	}
 	for k, v := range pluginConfig {
 		pluginToolConfig[k] = v
