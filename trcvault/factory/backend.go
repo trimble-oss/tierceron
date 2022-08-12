@@ -47,16 +47,16 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 		for {
 			pluginEnvConfig := <-tokenEnvChan
 
-			if _, ok := pluginEnvConfig["address"]; !ok {
+			if _, ok := pluginEnvConfig["vaddress"]; !ok {
 				// Testflow won't have this set yet.
-				pluginEnvConfig["address"] = GetVaultHost()
+				pluginEnvConfig["vaddress"] = GetVaultHost()
 			}
 
-			if !strings.HasSuffix(pluginEnvConfig["address"].(string), GetVaultPort()) {
+			if !strings.HasSuffix(pluginEnvConfig["vaddress"].(string), GetVaultPort()) {
 				// Missing port.
-				vhost := pluginEnvConfig["address"].(string)
+				vhost := pluginEnvConfig["vaddress"].(string)
 				vhost = vhost + ":" + GetVaultPort()
-				pluginEnvConfig["address"] = vhost
+				pluginEnvConfig["vaddress"] = vhost
 			}
 			pluginEnvConfig["insecure"] = true
 
@@ -218,7 +218,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		return errors.New("missing token")
 	}
 
-	address, aOk := pluginEnvConfig["address"]
+	address, aOk := pluginEnvConfig["vaddress"]
 	if !aOk || address.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing address.")
 		return errors.New("missing address")
@@ -274,7 +274,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 			if _, ok := tokenMap["token"]; ok {
 				tokenMap["env"] = env
 				tokenMap["insecure"] = true
-				tokenMap["address"] = vaultHost
+				tokenMap["vaddress"] = vaultHost
 				PushEnv(tokenMap)
 			}
 		}
@@ -345,7 +345,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		}
 		tokenEnvMap := map[string]interface{}{}
 		tokenEnvMap["env"] = req.Path
-		tokenEnvMap["address"] = vData["vaddress"]
+		tokenEnvMap["vaddress"] = vData["vaddress"]
 		tokenEnvMap["insecure"] = true
 		if vData["token"] != nil {
 			logger.Println("Env queued: " + req.Path)
@@ -389,7 +389,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	tokenEnvMap["env"] = req.Path
-	tokenEnvMap["address"] = vaultHost
+	tokenEnvMap["vaddress"] = vaultHost
 	tokenEnvMap["insecure"] = true
 
 	// Check that some fields are given
@@ -513,7 +513,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, errors.New("Vault Create Url required.")
 	}
 
-	tokenEnvMap["address"] = vaultHost
+	tokenEnvMap["vaddress"] = vaultHost
 	tokenEnvMap["insecure"] = true
 
 	key := req.Path
