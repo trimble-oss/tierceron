@@ -58,14 +58,14 @@ func main() {
 		ArgosyFleet := argosyopts.BuildFleet(nil)
 		DetailedElements := []*mashupsdk.MashupDetailedElement{}
 		for _, argosy := range ArgosyFleet.Argosies {
+			argosyBasis := argosy.MashupDetailedElement
+			argosyBasis.Alias = "Argosy"
+			DetailedElements = append(DetailedElements, &argosyBasis)
 			for i := 0; i < len(argosy.Groups); i++ {
 				detailedElement := argosy.Groups[i].MashupDetailedElement
 				detailedElement.Alias = "DataFlowGroup"
 				DetailedElements = append(DetailedElements, &detailedElement)
 			}
-			argosyBasis := argosy.MashupDetailedElement
-			argosyBasis.Alias = "Argosy"
-			DetailedElements = append(DetailedElements, &argosyBasis)
 		}
 
 		_, genErr := worldApp.MSdkApiHandler.UpsertMashupElements(
