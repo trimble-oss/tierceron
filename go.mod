@@ -31,7 +31,9 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 )
 
-require github.com/mrjrieke/nute v0.0.0-20220810134049-758c0833bd51 // indirect
+require github.com/mrjrieke/nute v0.0.0-20220811135204-c6a6157be9cc // indirect
+
+//require github.com/mrjrieke/nute v0.0.0-20220810134049-758c0833bd51 // indirect
 
 //require github.com/mrjrieke/nute v0.0.0-20220809141050-11ce835fdbad // indirect
 
