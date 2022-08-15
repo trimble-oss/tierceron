@@ -39,26 +39,26 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Genre:       "Solid",
 				Subgenre:    "Ento",
 				Parentids:   []int64{-2},
-				Childids:    []int64{5},
+				Childids:    []int64{},
 			},
 			"SubSpiral",
 			[]util.DataFlowGroup{},
 		},
-		{
-			mashupsdk.MashupDetailedElement{
-				Id:          3,
-				State:       &mashupsdk.MashupElementState{Id: 3, State: int64(mashupsdk.Hidden)},
-				Name:        "SubSpiralGroupOne",
-				Description: "SubSpirals",
-				Renderer:    "Element",
-				Genre:       "Collection",
-				Subgenre:    "SubSpiral",
-				Parentids:   nil,
-				Childids:    []int64{5},
-			},
-			"SubSpiralGroupOne",
-			[]util.DataFlowGroup{},
-		},
+		// {
+		// 	mashupsdk.MashupDetailedElement{
+		// 		Id:          3,
+		// 		State:       &mashupsdk.MashupElementState{Id: 3, State: int64(mashupsdk.Hidden)},
+		// 		Name:        "SubSpiralGroupOne",
+		// 		Description: "SubSpirals",
+		// 		Renderer:    "Element",
+		// 		Genre:       "Collection",
+		// 		Subgenre:    "SubSpiral",
+		// 		Parentids:   nil,
+		// 		Childids:    []int64{5},
+		// 	},
+		// 	"SubSpiralGroupOne",
+		// 	[]util.DataFlowGroup{},
+		// },
 
 		{
 			mashupsdk.MashupDetailedElement{
@@ -85,8 +85,8 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Description:   "",
 				Renderer:      "Curve",
 				Colabrenderer: "Path",
-				Genre:         "Abstract",
-				Subgenre:      "",
+				Genre:         "Solid",
+				Subgenre:      "Skeletal",
 				Parentids:     nil,
 				Childids:      []int64{-1},
 			},
@@ -125,54 +125,54 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 			"{0}-Path",
 			[]util.DataFlowGroup{},
 		},
-		{
-			mashupsdk.MashupDetailedElement{
-				Id:          7,
-				State:       &mashupsdk.MashupElementState{Id: 7, State: int64(mashupsdk.Init)},
-				Name:        "PathEntity-7",
-				Alias:       "It",
-				Description: "",
-				Renderer:    "Element",
-				Genre:       "Abstract",
-				Subgenre:    "",
-				Parentids:   nil,
-				Childids:    []int64{-2, 5, 9}, //, 5
-			},
-			"PathEntity-7",
-			[]util.DataFlowGroup{
-				{
-					MashupDetailedElement: mashupsdk.MashupDetailedElement{
-						Id:          5,
-						State:       &mashupsdk.MashupElementState{Id: int64(5), State: int64(mashupsdk.Hidden)},
-						Name:        "SubSpiralEntity-" + strconv.Itoa(5),
-						Alias:       "It",
-						Description: "",
-						Renderer:    "Element",
-						Genre:       "Abstract",
-						Subgenre:    "",
-						Parentids:   []int64{},
-						Childids:    []int64{-4},
-					},
-					Name:  "SubSpiralEntity-5",
-					Flows: []util.DataFlow{},
-				},
-				{
-					MashupDetailedElement: mashupsdk.MashupDetailedElement{
-						Id:          9,
-						State:       &mashupsdk.MashupElementState{Id: int64(9), State: int64(mashupsdk.Hidden)},
-						Name:        "SubSpiralEntity-" + strconv.Itoa(9),
-						Alias:       "It",
-						Description: "",
-						Renderer:    "Element",
-						Genre:       "Abstract",
-						Subgenre:    "",
-						Parentids:   []int64{},
-						Childids:    []int64{-4},
-					},
-					Name:  "SubSpiralEntity-9",
-					Flows: []util.DataFlow{},
-				}},
-		},
+		// {
+		// 	mashupsdk.MashupDetailedElement{
+		// 		Id:          7,
+		// 		State:       &mashupsdk.MashupElementState{Id: 7, State: int64(mashupsdk.Init)},
+		// 		Name:        "PathEntity-7",
+		// 		Alias:       "It",
+		// 		Description: "",
+		// 		Renderer:    "Element",
+		// 		Genre:       "Abstract",
+		// 		Subgenre:    "",
+		// 		Parentids:   nil,
+		// 		Childids:    []int64{-2, 5, 3}, //, 5
+		// 	},
+		// 	"PathEntity-7",
+		// 	[]util.DataFlowGroup{
+		// 		{
+		// 			MashupDetailedElement: mashupsdk.MashupDetailedElement{
+		// 				Id:          5,
+		// 				State:       &mashupsdk.MashupElementState{Id: int64(5), State: int64(mashupsdk.Hidden)},
+		// 				Name:        "SubSpiralEntity-" + strconv.Itoa(5),
+		// 				Alias:       "It",
+		// 				Description: "",
+		// 				Renderer:    "Element",
+		// 				Genre:       "Abstract",
+		// 				Subgenre:    "",
+		// 				Parentids:   []int64{7},
+		// 				Childids:    []int64{-4},
+		// 			},
+		// 			Name:  "SubSpiralEntity-5",
+		// 			Flows: []util.DataFlow{},
+		// 		},
+		// 		{
+		// 			MashupDetailedElement: mashupsdk.MashupDetailedElement{
+		// 				Id:          3,
+		// 				State:       &mashupsdk.MashupElementState{Id: int64(3), State: int64(mashupsdk.Hidden)},
+		// 				Name:        "SubSpiralEntity-" + strconv.Itoa(3),
+		// 				Alias:       "It",
+		// 				Description: "",
+		// 				Renderer:    "Element",
+		// 				Genre:       "Abstract",
+		// 				Subgenre:    "",
+		// 				Parentids:   []int64{7},
+		// 				Childids:    []int64{-4},
+		// 			},
+		// 			Name:  "SubSpiralEntity-3",
+		// 			Flows: []util.DataFlow{},
+		// 		}},
+		// },
 		// {
 		// 	mashupsdk.MashupDetailedElement{
 		// 		Id:          9,
@@ -189,25 +189,29 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 		// 	"SubSpiralEntity-" + strconv.Itoa(int(9)),
 		// 	[]util.DataFlowGroup{},
 		// },
-		{
-			mashupsdk.MashupDetailedElement{
-				Id:          4,
-				State:       &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
-				Name:        "PathGroupOne",
-				Description: "Paths",
-				Renderer:    "Element",
-				Genre:       "Collection",
-				Subgenre:    "Element",
-				Parentids:   []int64{},
-				Childids:    []int64{7},
-			},
-			"PathGroupOne",
-			[]util.DataFlowGroup{},
-		},
+		// {
+		// 	mashupsdk.MashupDetailedElement{
+		// 		Id:          4,
+		// 		State:       &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
+		// 		Name:        "PathGroupOne",
+		// 		Description: "Paths",
+		// 		Renderer:    "Element",
+		// 		Genre:       "Collection",
+		// 		Subgenre:    "Element",
+		// 		Parentids:   []int64{},
+		// 		Childids:    []int64{},
+		// 	},
+		// 	"PathGroupOne",
+		// 	[]util.DataFlowGroup{},
+		// },
 	}
+	collectionIDs := []int64{7, 5, 3}
 	totalElements := 10
 	for totalElements = 10; totalElements < 20; totalElements = totalElements + 1 {
 		argosyId := int64(8 + totalElements)
+		collectionIDs = append(collectionIDs, argosyId)
+		collectionIDs = append(collectionIDs, argosyId*100+1)
+		collectionIDs = append(collectionIDs, argosyId*100+2)
 		Argosys = append(Argosys, util.Argosy{
 			mashupsdk.MashupDetailedElement{
 				Id:          argosyId,
@@ -216,10 +220,10 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 				Alias:       "It",
 				Description: "",
 				Renderer:    "Element",
-				Genre:       "Abstract",
+				Genre:       "Argosy",
 				Subgenre:    "",
 				Parentids:   []int64{},
-				Childids:    []int64{-2, argosyId*100 + 1}, //, argosyId*100 + 1
+				Childids:    []int64{-2, argosyId*100 + 1, argosyId*100 + 2}, //, argosyId*100 + 1
 			},
 			"PathEntity-" + strconv.Itoa(int(argosyId)),
 			[]util.DataFlowGroup{
@@ -231,14 +235,46 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 						Alias:       "It",
 						Description: "",
 						Renderer:    "Element",
-						Genre:       "Abstract",
+						Genre:       "DataFlowGroup",
 						Subgenre:    "",
 						Parentids:   []int64{argosyId},
 						Childids:    []int64{-4},
 					},
 					Name:  "SubSpiralEntity-" + strconv.Itoa(int(argosyId*100+1)),
 					Flows: []util.DataFlow{},
+				},
+				{
+					MashupDetailedElement: mashupsdk.MashupDetailedElement{
+						Id:          argosyId*100 + 2,
+						State:       &mashupsdk.MashupElementState{Id: int64(argosyId*100 + 2), State: int64(mashupsdk.Hidden)},
+						Name:        "SubSpiralEntity-" + strconv.Itoa(int(argosyId*100+2)),
+						Alias:       "It",
+						Description: "",
+						Renderer:    "Element",
+						Genre:       "DataFlowGroup",
+						Subgenre:    "",
+						Parentids:   []int64{argosyId},
+						Childids:    []int64{-4},
+					},
+					Name:  "SubSpiralEntity-" + strconv.Itoa(int(argosyId*100+2)),
+					Flows: []util.DataFlow{},
 				}},
+		})
+
+		Argosys = append(Argosys, util.Argosy{
+			mashupsdk.MashupDetailedElement{
+				Id:          4,
+				State:       &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
+				Name:        "PathGroupOne",
+				Description: "Paths",
+				Renderer:    "Element",
+				Genre:       "Collection",
+				Subgenre:    "Element",
+				Parentids:   []int64{},
+				Childids:    collectionIDs,
+			},
+			"PathGroupOne",
+			[]util.DataFlowGroup{},
 		})
 	}
 
