@@ -9,7 +9,9 @@ import (
 
 	"tierceron/buildopts/coreopts"
 	il "tierceron/trcinit/initlib"
+	"tierceron/trcvault/opts/memonly"
 	eUtils "tierceron/utils"
+	"tierceron/utils/mlock"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 )
@@ -21,6 +23,9 @@ import (
 // Vault automatically encodes the file into base64
 
 func main() {
+	if memonly.IsMemonly() {
+		mlock.Mlock(nil)
+	}
 	fmt.Println("Version: " + "1.4")
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
 	envPtr := flag.String("env", "dev", "Environement in vault")
@@ -61,6 +66,10 @@ func main() {
 
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		eUtils.CheckError(config, err, true)
+	}
+	if memonly.IsMemonly() {
+		mlock.MunlockAll(nil)
+		mlock.Mlock2(nil, tokenPtr)
 	}
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
