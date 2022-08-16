@@ -98,6 +98,13 @@ func (er *ElementRenderer) Layout(worldApp *g3nworld.WorldApp,
 	er.LayoutBase(worldApp, er, g3nRenderableElements)
 }
 
+//RECURSIVELY LOOP THROU
+func (er *ElementRenderer) loopParentIds(element *g3nmash.G3nDetailedElement) {
+	if len(element.GetParentElementIds()) == 0 {
+
+	}
+}
+
 func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
 	//Initialize location cache
@@ -109,9 +116,17 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 				id := mainElement.GetDetailedElement().GetId()
 				er.locationCache[id] = &location
 				counter := float32(0.0)
+				// MAKE THIS RECURSIVE PROCESS OR INSTEAD ITERATE THROUGH ELEMENTS USING PARENT IDS? --> LESS DUPLICATE LOOKUPS
+				// LOOK THRU PARENT IDS UNTIL MESH IS COME ACROSS AND IF NO PARENT ID JUST LOOK AT MESH POSITION
 				for _, childID := range mainElement.GetChildElementIds() {
 					er.locationCache[childID] = er.calculateLocation(&location, counter)
 					counter = counter - 0.1
+					subCount := float32(0.0)
+					for _, dFGchild := range worldApp.ConcreteElements[childID].GetChildElementIds() {
+						er.locationCache[dFGchild] = er.calculateLocation(er.locationCache[childID], subCount)
+						subCount = subCount - 0.1
+					}
+					// Is it possible to add to concrete elements thing here?
 				}
 			}
 		}
@@ -129,14 +144,27 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 				}
 			}
 			//Case 2: Sub Spiral element and main spiral clicked: have to remove children nodes of parent node
+			// CHANGE THIS TO RECURSIVE METHOD TO ITERATE THROUGH PARENT IDS
 			for _, parentID := range prevElement.clickedElement.GetParentElementIds() {
 				parentElement := worldApp.ConcreteElements[parentID]
-				for _, childID := range parentElement.GetChildElementIds() {
-					if !er.isChildElement(worldApp, parentElement) {
-						worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
-						er.RemoveAll(worldApp, childID)
+				if len(parentElement.GetParentElementIds()) == 0 {
+					for _, childID := range parentElement.GetChildElementIds() {
+						if !er.isChildElement(worldApp, parentElement) {
+							worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
+							er.RemoveAll(worldApp, childID)
+						}
 					}
 				}
+				for _, parent := range parentElement.GetParentElementIds() {
+					parentElement = worldApp.ConcreteElements[parent]
+					for _, childID := range parentElement.GetChildElementIds() {
+						if !er.isChildElement(worldApp, parentElement) {
+							worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
+							er.RemoveAll(worldApp, childID)
+						}
+					}
+				}
+
 			}
 		}
 	}
@@ -152,6 +180,8 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 				childElement.ApplyState(mashupsdk.Hidden, false)
 				childElement.ApplyState(mashupsdk.Clicked, true)
 			}
+			color := g3ndpalette.DARK_BLUE
+			childElement.SetColor(color.Set(0, 0.349, 0.643), 1.0)
 		}
 	}
 
@@ -175,29 +205,37 @@ func (er *ElementRenderer) calculateLocation(center *math32.Vector3, counter flo
 
 // Change color and fade other elements?
 func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) bool {
-	if g3n == worldApp.ClickedElements[len(worldApp.ClickedElements)-1] {
-		if g3n.GetNamedMesh(g3n.GetDisplayName()) != nil {
+	if g3n == worldApp.ClickedElements[len(worldApp.ClickedElements)-1] && g3n.GetNamedMesh(g3n.GetDisplayName()) != nil {
+		// Changes color
+		if g3n.GetDetailedElement().Alias == "Argosy" {
 			g3n.SetColor(math32.NewColor("darkred"), 1.0)
-			for _, childId := range g3n.GetChildElementIds() {
-				element := worldApp.ConcreteElements[childId]
-				if element.GetDetailedElement().Genre != "Solid" {
-					if element.GetNamedMesh(element.GetDisplayName()) == nil {
-						_, nextPos := er.NextCoordinate(element, er.totalElements)
-						solidMesh := er.NewSolidAtPosition(element, nextPos)
-						if solidMesh != nil {
-							log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
-							worldApp.UpsertToScene(solidMesh)
-							element.SetNamedMesh(element.GetDisplayName(), solidMesh)
-						}
-					} else {
-						worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
+		} else if g3n.GetDetailedElement().Alias == "DataFlowGroup" {
+			color := math32.NewColor("olive")
+			g3n.SetColor(color.Set(1.0, 0.224, 0.0), 1.0)
+		} else if g3n.GetDetailedElement().Alias == "DataFlow" {
+			g3n.SetColor(math32.NewColor("olive"), 1.0)
+		}
+
+		for _, childId := range g3n.GetChildElementIds() {
+			element := worldApp.ConcreteElements[childId]
+			if element.GetDetailedElement().Genre != "Solid" {
+				if element.GetNamedMesh(element.GetDisplayName()) == nil {
+					_, nextPos := er.NextCoordinate(element, er.totalElements)
+					solidMesh := er.NewSolidAtPosition(element, nextPos)
+					if solidMesh != nil {
+						log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
+						worldApp.UpsertToScene(solidMesh)
+						element.SetNamedMesh(element.GetDisplayName(), solidMesh)
 					}
+				} else {
+					worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
 				}
 			}
 		}
 
 		return true
 	} else {
+		// add in fade effect here
 		color := g3ndpalette.DARK_BLUE
 		g3n.SetColor(color.Set(0, 0.349, 0.643), 1.0)
 	}
@@ -228,6 +266,7 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 	var prevSolidPos *math32.Vector3
 
 	totalElements := len(g3nRenderableElements)
+	//er.totalElements = totalElements
 
 	if totalElements > 0 {
 		if g3nRenderableElements[0].GetDetailedElement().Colabrenderer != "" {
@@ -269,4 +308,9 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 		}
 
 	}
+}
+
+func (er *ElementRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
+	curveRenderer := collaboratingRenderer.(*CurveRenderer)
+	curveRenderer.totalElements = int(er.counter) // 50 //er.totalElements
 }
