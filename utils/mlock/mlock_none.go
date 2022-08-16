@@ -4,6 +4,7 @@
 package mlock
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
@@ -23,7 +24,7 @@ func Mlock2(logger *log.Logger, sensitive *string) error {
 	if logger != nil {
 		logger.Println("Mlock2 not supported.")
 	} else {
-		out.Println("Mlock2 not supported.")
+		fmt.Println("Mlock2 not supported.")
 	}
 	os.Exit(1)
 	return nil
@@ -33,7 +34,7 @@ func MunlockAll(logger *log.Logger) error {
 	if logger != nil {
 		logger.Println("MunlockAll not supported.")
 	} else {
-		out.Println("MunlockAll not supported.")
+		fmt.Println("MunlockAll not supported.")
 	}
 	os.Exit(1)
 	return nil
