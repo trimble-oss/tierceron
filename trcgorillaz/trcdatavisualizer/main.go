@@ -43,7 +43,7 @@ func main() {
 	mashupRenderer := &g3nrender.MashupRenderer{}
 
 	curveRenderer := &ttdirender.CurveRenderer{
-		CollaboratingRenderer: &ttdirender.PathRenderer{}}
+		CollaboratingRenderer: &ttdirender.ElementRenderer{}}
 
 	mashupRenderer.AddRenderer("Background", &ttdirender.BackgroundRenderer{})
 	mashupRenderer.AddRenderer("Path", curveRenderer.CollaboratingRenderer)
@@ -65,6 +65,11 @@ func main() {
 				detailedElement := argosy.Groups[i].MashupDetailedElement
 				detailedElement.Alias = "DataFlowGroup"
 				DetailedElements = append(DetailedElements, &detailedElement)
+				for j := 0; j < len(argosy.Groups[i].Flows); j++ {
+					element := argosy.Groups[i].Flows[j].MashupDetailedElement
+					element.Alias = "DataFlow"
+					DetailedElements = append(DetailedElements, &element)
+				}
 			}
 		}
 
