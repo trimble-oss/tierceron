@@ -67,9 +67,10 @@ steps:
     go mod download
     echo "Compile start"
 
+    echo "Compile Linux"
+    GOOS=linux GOGC=off GOARCH=amd64 go install -gcflags=-G=0 tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
-      GOOS=linux GOGC=off GOARCH=amd64 go install -gcflags=-G=0 tierceron/$p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
