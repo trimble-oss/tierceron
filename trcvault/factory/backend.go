@@ -9,14 +9,14 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	vcutils "tierceron/trcconfig/utils"
+	"tierceron/trcvault/opts/memonly"
 	trcvutils "tierceron/trcvault/util"
 	eUtils "tierceron/utils"
+	"tierceron/utils/mlock"
 	helperkv "tierceron/vaulthelper/kv"
 	"time"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
-	"gopkg.in/yaml.v2"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -37,15 +37,16 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 	go initVaultHostBootstrap()
 	<-vaultHostInitialized
 
-	var testCompleteChan chan bool = nil
+	var configCompleteChan chan bool = nil
 	if !headless {
-		testCompleteChan = make(chan bool)
+		configCompleteChan = make(chan bool)
 	}
 
 	go func() {
 		<-vaultInitialized
 		for {
 			pluginEnvConfig := <-tokenEnvChan
+			environmentConfigs[pluginEnvConfig["env"].(string)] = pluginEnvConfig
 
 			if _, ok := pluginEnvConfig["vaddress"]; !ok {
 				// Testflow won't have this set yet.
@@ -61,18 +62,18 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 			pluginEnvConfig["insecure"] = true
 
 			logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
-			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfig, testCompleteChan)
+			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfig, configCompleteChan)
 
 			if pecError != nil {
 				logger.Println("Bad configuration data for env: " + pluginEnvConfig["env"].(string) + " error: " + pecError.Error())
-				testCompleteChan <- true
+				configCompleteChan <- true
 			}
 			logger.Println("Config engine setup complete for env: " + pluginEnvConfig["env"].(string))
 		}
 
 	}()
-	if testCompleteChan != nil {
-		<-testCompleteChan
+	if configCompleteChan != nil {
+		<-configCompleteChan
 	}
 	logger.Println("Init ended.")
 }
@@ -88,7 +89,7 @@ var vaultPort string
 var vaultInitialized chan bool = make(chan bool)
 var vaultHostInitialized chan bool = make(chan bool)
 var environments []string = []string{"dev", "QA"}
-var environmentConfigs map[string]*EnvConfig = map[string]*EnvConfig{}
+var environmentConfigs map[string]interface{} = map[string]interface{}{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
 
@@ -168,43 +169,10 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	return tokenMap, nil
 }
 
-func populateTrcVaultDbConfigs(config *eUtils.DriverConfig) error {
-	logger.Println("Begin populateTrcVaultDbConfigs for env: " + config.Env)
-	var goMod *helperkv.Modifier
-	goMod, errModInit := helperkv.NewModifier(true, config.Token, config.VaultAddress, config.Env, []string{}, logger)
-	goMod.Env = config.Env
-
-	if errModInit != nil {
-		logger.Println("Vault connect failure")
-		return errModInit
-	}
-
-	configuredTemplate, _, _, ctErr := vcutils.ConfigTemplate(config, goMod, "/trc_templates/TrcVault/Database/config.tmpl", true, "TrcVault", "Database", false, true)
-	if ctErr != nil {
-		logger.Println("Config template lookup failure: " + ctErr.Error())
-		return ctErr
-	}
-
-	var vaultEnvConfig EnvConfig
-
-	errYaml := yaml.Unmarshal([]byte(configuredTemplate), &vaultEnvConfig)
-	if errYaml != nil {
-		logger.Println("Vault config lookup failure: " + configuredTemplate)
-		return errYaml
-	}
-
-	vaultEnvConfig.Env = config.Env
-	environmentConfigs[config.Env] = &vaultEnvConfig
-	logger.Println("Config created for env: " + config.Env)
-
-	logger.Println("End populateTrcVaultDbConfigs")
-	return nil
-}
-
 func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	processFlows trcvutils.ProcessFlowFunc,
 	pluginEnvConfig map[string]interface{},
-	testCompleteChan chan bool) error {
+	configCompleteChan chan bool) error {
 	logger.Println("ProcessPluginEnvConfig begun.")
 	env, eOk := pluginEnvConfig["env"]
 	if !eOk || env.(string) == "" {
@@ -224,22 +192,29 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		return errors.New("missing address")
 	}
 
-	if _, enabledTrcDb := pluginEnvConfig["enableTrcDbInterface"]; enabledTrcDb {
-		// This isn't even used yet....
-		ptvError := populateTrcVaultDbConfigs(&eUtils.DriverConfig{Env: env.(string), Token: token.(string), VaultAddress: vaultHost, ExitOnFailure: false})
-		if ptvError != nil {
-			logger.Println("Bad configuration data for env: " + env.(string) + ".  error: " + ptvError.Error())
-			return ptvError
-		}
-	}
-
 	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
 	logger.Println("Begin processFlows for env: " + env.(string))
+	if memonly.IsMemonly() {
+		logger.Println("Unlocking everything.")
+		mlock.MunlockAll(nil)
+		for _, environmentConfig := range environmentConfigs {
+			for _, value := range environmentConfig.(map[string]interface{}) {
+				if valueSlice, isValueSlice := value.([]string); isValueSlice {
+					for _, valueEntry := range valueSlice {
+						mlock.Mlock2(nil, &valueEntry)
+					}
+				} else if valueString, isValueString := value.(string); isValueString {
+					mlock.Mlock2(nil, &valueString)
+				}
+			}
+		}
+		logger.Println("Finished selective locks.")
+	}
 
 	go func(pec map[string]interface{}, l *log.Logger) {
 		flowErr := processFlows(pec, l)
-		if testCompleteChan != nil {
-			testCompleteChan <- true
+		if configCompleteChan != nil {
+			configCompleteChan <- true
 		}
 		if flowErr != nil {
 			l.Println("Flow had an error: " + flowErr.Error())
@@ -589,7 +564,6 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 		logger.Println("=============== Initializing Vault Tierceron Plugin ===============")
 		logger.Println("Factory initialization begun.")
 	}
-	environmentConfigs = map[string]*EnvConfig{}
 
 	if err != nil {
 		logger.Println("Factory init failure: " + err.Error())
