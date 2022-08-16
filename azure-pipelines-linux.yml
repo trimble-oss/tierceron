@@ -91,7 +91,7 @@ steps:
     fi
 
     echo Compiling conflib
-    GOOS=linux GOGC=off GOARCH=amd64 go build -gcflags=-G=0 -buildmode=c-shared -o $GOBIN/nc.so tierceron/configlib
+    GOOS=linux GOGC=off GOARCH=amd64 go build -gcflags=-G=0 -buildmode=c-shared -tags "memonly tc" -o $GOBIN/nc.so tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
