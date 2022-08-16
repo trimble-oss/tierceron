@@ -14,7 +14,7 @@ func Mlock(logger *log.Logger) error {
 	if logger != nil {
 		logger.Println("Mlock not supported.")
 	} else {
-		out.Println("Mlock not supported.")
+		fmt.Println("Mlock not supported.")
 	}
 	os.Exit(1)
 	return nil
