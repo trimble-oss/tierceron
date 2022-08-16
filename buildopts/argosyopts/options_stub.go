@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"tierceron/trcvault/util"
 	"tierceron/vaulthelper/kv"
+	"time"
 )
 
 func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
@@ -207,7 +208,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 	}
 	collectionIDs := []int64{7, 5, 3}
 	totalElements := 10
-	for totalElements = 10; totalElements < 20; totalElements = totalElements + 1 {
+	for totalElements = 10; totalElements < 30; totalElements = totalElements + 1 {
 		argosyId := int64(8 + totalElements)
 		collectionIDs = append(collectionIDs, argosyId)
 		collectionIDs = append(collectionIDs, argosyId*100+1)
@@ -238,10 +239,30 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 						Genre:       "DataFlowGroup",
 						Subgenre:    "",
 						Parentids:   []int64{argosyId},
-						Childids:    []int64{-4},
+						Childids:    []int64{-4, argosyId*100 + 3},
 					},
-					Name:  "SubSpiralEntity-" + strconv.Itoa(int(argosyId*100+1)),
-					Flows: []util.DataFlow{},
+					Name: "SubSpiralEntity-" + strconv.Itoa(int(argosyId*100+1)),
+					Flows: []util.DataFlow{
+						{
+							MashupDetailedElement: mashupsdk.MashupDetailedElement{
+								Id:          argosyId*100 + 3,
+								State:       &mashupsdk.MashupElementState{Id: int64(argosyId*100 + 3), State: int64(mashupsdk.Hidden)},
+								Name:        "SubSubSpiralEntity-" + strconv.Itoa(int(argosyId*100+3)),
+								Alias:       "It",
+								Description: "",
+								Renderer:    "Element",
+								Genre:       "DataFlow",
+								Subgenre:    "",
+								Parentids:   []int64{argosyId*100 + 1},
+								Childids:    []int64{-4},
+							},
+							Name:       "SubSubSpiralEntity-" + strconv.Itoa(int(argosyId*100+3)),
+							TimeStart:  time.Now(),
+							Statistics: []util.DataFlowStatistic{},
+							LogStat:    false,
+							LogFunc:    nil,
+						},
+					},
 				},
 				{
 					MashupDetailedElement: mashupsdk.MashupDetailedElement{
@@ -260,23 +281,22 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 					Flows: []util.DataFlow{},
 				}},
 		})
-
-		Argosys = append(Argosys, util.Argosy{
-			mashupsdk.MashupDetailedElement{
-				Id:          4,
-				State:       &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
-				Name:        "PathGroupOne",
-				Description: "Paths",
-				Renderer:    "Element",
-				Genre:       "Collection",
-				Subgenre:    "Element",
-				Parentids:   []int64{},
-				Childids:    collectionIDs,
-			},
-			"PathGroupOne",
-			[]util.DataFlowGroup{},
-		})
 	}
+	Argosys = append(Argosys, util.Argosy{
+		mashupsdk.MashupDetailedElement{
+			Id:          4,
+			State:       &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
+			Name:        "PathGroupOne",
+			Description: "Paths",
+			Renderer:    "Element",
+			Genre:       "Collection",
+			Subgenre:    "Element",
+			Parentids:   []int64{},
+			Childids:    collectionIDs,
+		},
+		"PathGroupOne",
+		[]util.DataFlowGroup{},
+	})
 
 	return util.ArgosyFleet{
 		ArgosyName: "Dev Environment",
