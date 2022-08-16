@@ -35,7 +35,7 @@ func (cr *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpo
 	var path []math32.Vector3
 	var i float64
 	if cr.totalElements == 0 {
-		cr.totalElements = 10
+		cr.totalElements = 20
 	}
 	for i = -0.1 * float64(cr.totalElements); i < -0.1; i = i + 0.1 {
 		c := binetFormula(i)
