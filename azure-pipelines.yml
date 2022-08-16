@@ -69,19 +69,20 @@ steps:
     go mod download
     echo "Compile start"
 
+    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
-      GOBIN= GOGC=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "memonly tc" tierceron/$p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
       fi
-      GOBIN= GOGC=off CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "tc" tierceron/$p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
           echo File $p.exe was not built, aborting.
           exit 1
       fi
-      GOBIN= GOGC=off CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "memonly tc" tierceron/$p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
