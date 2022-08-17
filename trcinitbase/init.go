@@ -11,9 +11,12 @@ import (
 
 	"tierceron/buildopts/coreopts"
 	il "tierceron/trcinit/initlib"
+	"tierceron/trcvault/opts/memonly"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
+
+	"tierceron/utils/mlock"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose
@@ -60,6 +63,10 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 	}
 	flag.Parse()
+	if memonly.IsMemonly() {
+		mlock.MunlockAll(nil)
+		mlock.Mlock2(nil, tokenPtr)
+	}
 
 	// Prints usage if no flags are specified
 	if flag.NFlag() == 0 {
