@@ -436,8 +436,8 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
-github.com/trimble-oss/go-mysql-server v0.11.0-17.2 h1:e34+uQkf9rqdUl0oYdXTFAMpgBFqk6uB6Dqrd3t0kjw=
-github.com/trimble-oss/go-mysql-server v0.11.0-17.2/go.mod h1:tctGAo2umfCywx3/3S6f8rvyUu2FpkdO2H2Bx4E9PJY=
+github.com/trimble-oss/go-mysql-server v0.11.0-17.4 h1:QRU9+uWv+8TWyZJrypHD/hfMrpBd7/VGC+jS1Eq/U4Y=
+github.com/trimble-oss/go-mysql-server v0.11.0-17.4/go.mod h1:tctGAo2umfCywx3/3S6f8rvyUu2FpkdO2H2Bx4E9PJY=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
 github.com/twitchtv/twirp v5.12.1+incompatible h1:UnrJ4Z8llkdjnQbLqJBWRBwaDGojBsU5lft3DrD/SvY=
 github.com/twitchtv/twirp v5.12.1+incompatible/go.mod h1:RRJoFSAmTEh2weEqWtpPE3vFK5YBhA6bqp2l1kfCC5A=
