@@ -253,8 +253,14 @@ retryVaultAccess:
 						} else if _, isBool := dataValues.(bool); isBool {
 							//mlock.Mlock2(nil, &dataValueString)
 							// TODO: don't lock but accept bools.
+						} else if _, isInt64 := dataValues.(int64); isInt64 {
+							//mlock.Mlock2(nil, &dataValueString)
+							// TODO: don't lock but accept int64.
+						} else if _, isInt := dataValues.(int); isInt {
+							//mlock.Mlock2(nil, &dataValueString)
+							// TODO: don't lock but accept int.
 						} else {
-							return nil, errors.New("Unexpected datatype. Refusing to read what we cannot lock.")
+							return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. Nested. %T", dataValues))
 						}
 					}
 				} else if dataValueString, isString := dataValues.(string); isString {
@@ -262,8 +268,14 @@ retryVaultAccess:
 				} else if _, isBool := dataValues.(bool); isBool {
 					//mlock.Mlock2(nil, &dataValueString)
 					// TODO: don't lock but accept bools.
+				} else if _, isInt64 := dataValues.(int64); isInt64 {
+					//mlock.Mlock2(nil, &dataValueString)
+					// TODO: don't lock but accept int64.
+				} else if _, isInt := dataValues.(int); isInt {
+					//mlock.Mlock2(nil, &dataValueString)
+					// TODO: don't lock but accept int.
 				} else {
-					return nil, errors.New("Unexpected datatype. Refusing to read what we cannot lock.")
+					return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. %T", dataValues))
 				}
 			}
 		}
