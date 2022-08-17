@@ -10,7 +10,6 @@ import (
 	"tierceron/trcvault/factory"
 	"tierceron/trcvault/opts/insecure"
 	memonly "tierceron/trcvault/opts/memonly"
-	"tierceron/trcvault/opts/prod"
 	eUtils "tierceron/utils"
 
 	"github.com/hashicorp/vault/api"
@@ -19,6 +18,7 @@ import (
 )
 
 func main() {
+	os.Setenv("MADV_DONTNEED", "0")
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
 		if mLockErr != nil {
@@ -28,7 +28,7 @@ func main() {
 	}
 	eUtils.InitHeadless(true)
 	logFile := "/var/log/trcplugincarrier.log"
-	if !prod.IsProd() && insecure.IsInsecure() {
+	if !memonly.IsMemonly() && insecure.IsInsecure() {
 		logFile = "trcplugincarrier.log"
 	}
 
