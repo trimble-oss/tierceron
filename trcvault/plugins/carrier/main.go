@@ -18,7 +18,6 @@ import (
 )
 
 func main() {
-	os.Setenv("MADV_DONTNEED", "0")
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
 		if mLockErr != nil {
