@@ -250,12 +250,18 @@ retryVaultAccess:
 					for _, dataValues := range dataValuesSlice {
 						if dataValueString, isString := dataValues.(string); isString {
 							mlock.Mlock2(nil, &dataValueString)
+						} else if _, isBool := dataValues.(bool); isBool {
+							//mlock.Mlock2(nil, &dataValueString)
+							// TODO: don't lock but accept bools.
 						} else {
 							return nil, errors.New("Unexpected datatype. Refusing to read what we cannot lock.")
 						}
 					}
 				} else if dataValueString, isString := dataValues.(string); isString {
 					mlock.Mlock2(nil, &dataValueString)
+				} else if _, isBool := dataValues.(bool); isBool {
+					//mlock.Mlock2(nil, &dataValueString)
+					// TODO: don't lock but accept bools.
 				} else {
 					return nil, errors.New("Unexpected datatype. Refusing to read what we cannot lock.")
 				}
