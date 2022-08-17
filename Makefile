@@ -3,66 +3,66 @@ GOBIN=$(shell pwd)/bin
 GOFILES=$(wildcard *.go)
 
 apiprod:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -tags "trcname prod" -a -ldflags '-w' tierceron/webapi/apiRouter
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -tags "trcname prod" -a -ldflags '-w' tierceron/webapi/apiRouter
 api:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/webapi/apiRouter
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  tierceron/webapi/apiRouter
 config:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly"  tierceron/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly"  tierceron/trcconfig
 
 devplugincarrierbuild:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "insecure awsecr" -o trcvault/deploy/target/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "insecure awsecr" -o trcvault/deploy/target/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
 devplugincarriersha:
 	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin.sha256
 devplugincarrier: devplugincarrierbuild devplugincarriersha
 
 devplugintrcdbbuild:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "insecure" -o trcvault/deploy/target/trc-vault-plugin tierceron/trcvault/plugins/trcdb
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "insecure" -o trcvault/deploy/target/trc-vault-plugin tierceron/trcvault/plugins/trcdb
 devplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin.sha256
 devplugintrcdb: devplugintrcdbbuild devplugintrcdbsha
 
 harbingplugintrcdbbuild:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "insecure harbinger" -o trcvault/deploy/target/trc-vault-plugin tierceron/trcvault/plugins/trcdb
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build -gcflags=-G=0 -tags "insecure harbinger" -o trcvault/deploy/target/trc-vault-plugin tierceron/trcvault/plugins/trcdb
 harbingplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin.sha256
 harbingplugintrcdb: harbingplugintrcdbbuild harbingplugintrcdbsha
 
 prodplugintrcdbbuild:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "prod awsecr memonly" -o trcvault/deploy/target/trc-vault-plugin-prod tierceron/trcvault/plugins/trcdb
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "prod awsecr memonly" -o trcvault/deploy/target/trc-vault-plugin-prod tierceron/trcvault/plugins/trcdb
 prodplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin-prod.sha256
 prodplugintrcdb: prodplugintrcdbbuild prodplugintrcdbsha
 
 pluginprodcarrierbuild:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "prod memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin-prod tierceron/trcvault/plugins/carrier
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "prod memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin-prod tierceron/trcvault/plugins/carrier
 pluginprodcarriersha:
 	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin-prod.sha256
 pluginprodcarrier: pluginprodcarrierbuild pluginprodcarriersha
 
 configmac:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $(GOBIN)/trcconfig.mac tierceron/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $(GOBIN)/trcconfig.mac tierceron/trcconfig
 seed:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcinit
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcinit
 seedmac:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $(GOBIN)/trcinit.mac tierceron/trcinit 
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $(GOBIN)/trcinit.mac tierceron/trcinit 
 seedp:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcinitp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcinitp
 x:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcx
 xmac:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $(GOBIN)/trcx.mac tierceron/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $(GOBIN)/trcx.mac tierceron/trcx
 xlib:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -gcflags=-G=0  -buildmode=c-shared -a -ldflags '-w' -tags "memonly" -o $(GOBIN)/nc.so tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -gcflags=-G=0  -buildmode=c-shared -a -ldflags '-w' -tags "memonly" -o $(GOBIN)/nc.so tierceron/configlib
 maclib:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0  -buildmode=c-shared -tags "memonly" -o $(GOBIN)/nc.dylib tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0  -buildmode=c-shared -tags "memonly" -o $(GOBIN)/nc.dylib tierceron/configlib
 xp:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcxp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcxp
 pub:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcpub
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcpub
 sub:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcsub
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcsub
 certify:
-	@GOPATH=$(GOPATH) GOGC=off GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/trcplgtool -tags "memonly awsecr" tierceron/trcvault/trcplgtoolbase
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/trcplgtool -tags "memonly awsecr" tierceron/trcvault/trcplgtoolbase
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
