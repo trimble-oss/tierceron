@@ -1,6 +1,7 @@
 package kv
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -252,13 +253,16 @@ retryVaultAccess:
 							mlock.Mlock2(nil, &dataValueString)
 						} else if _, isBool := dataValues.(bool); isBool {
 							//mlock.Mlock2(nil, &dataValueString)
-							// TODO: don't lock but accept bools.
+							// don't lock but accept bools.
 						} else if _, isInt64 := dataValues.(int64); isInt64 {
 							//mlock.Mlock2(nil, &dataValueString)
-							// TODO: don't lock but accept int64.
+							// don't lock but accept int64.
 						} else if _, isInt := dataValues.(int); isInt {
 							//mlock.Mlock2(nil, &dataValueString)
-							// TODO: don't lock but accept int.
+							// don't lock but accept int.
+						} else if _, isNumber := dataValues.(json.Number); isNumber {
+							//mlock.Mlock2(nil, &dataValueString)
+							// don't lock but accept json.Number.
 						} else {
 							return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. Nested. %T", dataValues))
 						}
@@ -267,13 +271,16 @@ retryVaultAccess:
 					mlock.Mlock2(nil, &dataValueString)
 				} else if _, isBool := dataValues.(bool); isBool {
 					//mlock.Mlock2(nil, &dataValueString)
-					// TODO: don't lock but accept bools.
+					// don't lock but accept bools.
 				} else if _, isInt64 := dataValues.(int64); isInt64 {
 					//mlock.Mlock2(nil, &dataValueString)
-					// TODO: don't lock but accept int64.
+					// don't lock but accept int64.
 				} else if _, isInt := dataValues.(int); isInt {
 					//mlock.Mlock2(nil, &dataValueString)
-					// TODO: don't lock but accept int.
+					// don't lock but accept int.
+				} else if _, isNumber := dataValues.(json.Number); isNumber {
+					//mlock.Mlock2(nil, &dataValueString)
+					// don't lock but accept json.Number.
 				} else {
 					return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. %T", dataValues))
 				}
