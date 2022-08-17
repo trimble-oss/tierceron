@@ -72,7 +72,7 @@ steps:
     echo "Compile start"
 
     echo "Compile Deployer plugin trc-vault-carrier-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc memonly awsecr" -o $GOBIN/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc memonly awsecr insecure" -o $GOBIN/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
     if [[ ! -f $GOBIN/trc-vault-carrier-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
