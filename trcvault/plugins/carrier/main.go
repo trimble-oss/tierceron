@@ -10,9 +10,7 @@ import (
 	"tierceron/trcvault/factory"
 	"tierceron/trcvault/opts/insecure"
 	memonly "tierceron/trcvault/opts/memonly"
-	"tierceron/trcvault/opts/prod"
 	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
 
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
@@ -29,7 +27,7 @@ func main() {
 	}
 	eUtils.InitHeadless(true)
 	logFile := "/var/log/trcplugincarrier.log"
-	if !prod.IsProd() && insecure.IsInsecure() {
+	if !memonly.IsMemonly() && insecure.IsInsecure() {
 		logFile = "trcplugincarrier.log"
 	}
 
@@ -40,7 +38,6 @@ func main() {
 
 	buildopts.SetLogger(logger.Writer())
 	factory.Init(buildopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
-	mlock.Mlock(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()

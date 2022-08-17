@@ -129,7 +129,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	configBasis := eUtils.DriverConfig{
 		Regions:      emptySlice,
 		Token:        pluginConfig["token"].(string),
-		VaultAddress: pluginConfig["address"].(string),
+		VaultAddress: pluginConfig["vaddress"].(string),
 		Insecure:     true, // TODO: investigate insecure implementation...
 		Env:          pluginConfig["env"].(string),
 		Log:          logger,
@@ -180,6 +180,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 		sourceDatabaseConnectionsMap[sourceDatabaseConfig["dbsourceregion"].(string)] = dbSourceConnBundle
 	}
+	//time.Sleep(8 * time.Second)
 
 	// Http query resources include:
 	// 1. Auth -- Auth is provided by the external library.
