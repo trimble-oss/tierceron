@@ -9,7 +9,9 @@ import (
 
 	"tierceron/buildopts/coreopts"
 	il "tierceron/trcinit/initlib"
+	"tierceron/trcvault/opts/memonly"
 	eUtils "tierceron/utils"
+	"tierceron/utils/mlock"
 	helperkv "tierceron/vaulthelper/kv"
 )
 
@@ -20,6 +22,9 @@ import (
 // Vault automatically encodes the file into base64
 
 func main() {
+	if memonly.IsMemonly() {
+		mlock.Mlock(nil)
+	}
 	fmt.Println("Version: " + "1.4")
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
 	envPtr := flag.String("env", "dev", "Environement in vault")
@@ -65,6 +70,11 @@ func main() {
 		fmt.Println("Missing auth components.")
 		os.Exit(1)
 	}
+	if memonly.IsMemonly() {
+		mlock.MunlockAll(nil)
+		mlock.Mlock2(nil, tokenPtr)
+	}
+
 	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
 	eUtils.CheckError(config, err, true)
 	mod.Env = *envPtr
