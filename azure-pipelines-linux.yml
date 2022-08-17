@@ -44,7 +44,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.17.12'
+    version: '1.17.13'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -67,9 +67,10 @@ steps:
     go mod download
     echo "Compile start"
 
+    echo "Compile Linux"
+    GOOS=linux GOGC=off GOARCH=amd64 go install -gcflags=-G=0 tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
-      GOOS=linux GOGC=off GOARCH=amd64 go install -gcflags=-G=0 tierceron/$p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
@@ -91,7 +92,7 @@ steps:
     fi
 
     echo Compiling conflib
-    GOOS=linux GOGC=off GOARCH=amd64 go build -gcflags=-G=0 -buildmode=c-shared -o $GOBIN/nc.so tierceron/configlib
+    GOOS=linux GOGC=off GOARCH=amd64 go build -gcflags=-G=0 -buildmode=c-shared -tags "memonly tc" -o $GOBIN/nc.so tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
