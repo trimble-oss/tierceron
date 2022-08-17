@@ -11,7 +11,9 @@ import (
 	"sync"
 
 	"tierceron/buildopts/coreopts"
+	"tierceron/trcvault/opts/memonly"
 	eUtils "tierceron/utils"
+	"tierceron/utils/mlock"
 	helperkv "tierceron/vaulthelper/kv"
 
 	"github.com/hashicorp/vault/api"
@@ -280,6 +282,11 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		} else {
 			*envPtr = envVersion[0] + "_0"
 		}
+	}
+
+	if memonly.IsMemonly() {
+		mlock.MunlockAll(nil)
+		mlock.Mlock2(nil, tokenPtr)
 	}
 
 	//Duplicate env check
