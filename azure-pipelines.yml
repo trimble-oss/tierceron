@@ -17,6 +17,7 @@ pr:
     - main
     exclude:
     - develop
+    - releases/plugin/*
 
 pool:
   vmImage: 'ubuntu-latest'
