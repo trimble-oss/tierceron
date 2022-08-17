@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"tierceron/trcvault/opts/memonly"
+	"tierceron/utils/mlock"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -242,6 +244,23 @@ retryVaultAccess:
 		return nil, err
 	}
 	if data, ok := secret.Data["data"].(map[string]interface{}); ok {
+		if memonly.IsMemonly() {
+			for _, dataValues := range data {
+				if dataValuesSlice, isSlice := dataValues.([]interface{}); isSlice {
+					for _, dataValues := range dataValuesSlice {
+						if dataValueString, isString := dataValues.(string); isString {
+							mlock.Mlock2(nil, &dataValueString)
+						} else {
+							return nil, errors.New("Unexpected datatype. Refusing to read what we cannot lock.")
+						}
+					}
+				} else if dataValueString, isString := dataValues.(string); isString {
+					mlock.Mlock2(nil, &dataValueString)
+				} else {
+					return nil, errors.New("Unexpected datatype. Refusing to read what we cannot lock.")
+				}
+			}
+		}
 		return data, err
 	}
 	return nil, errors.New("Could not get data from vault response")
