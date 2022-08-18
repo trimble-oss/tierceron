@@ -1,12 +1,11 @@
 //go:build testflow
 // +build testflow
 
-package buildopts
+package testopts
 
 import (
 	flowcore "tierceron/trcflow/core"
 
-	tcutil "VaultConfig.TenantConfig/util"
 	testtcutil "VaultConfig.Test/util"
 )
 
@@ -19,5 +18,5 @@ func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
 }
 
 func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return tcutil.ProcessTestFlowController(tfmContext, trcflowContext)
+	return testtcutil.ProcessTestFlowController(tfmContext, trcFlowContext)
 }

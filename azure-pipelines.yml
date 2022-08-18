@@ -17,6 +17,7 @@ pr:
     - main
     exclude:
     - develop
+    - releases/plugin/*
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -69,20 +70,30 @@ steps:
     go mod download
     echo "Compile start"
 
-    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
-    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
-    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
-
+    echo "Compile Linux"
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
       fi
+    done
+
+    echo "Compile Windows"
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
+      echo Compiling $p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
           echo File $p.exe was not built, aborting.
           exit 1
       fi
+    done
+
+    echo "Compile Mac"
+    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' -tags "memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
+      echo Compiling $p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
           echo File $p was not built, aborting.
           exit 1
@@ -91,21 +102,21 @@ steps:
 
 
     echo Compiling/Verifying trc-vault-plugin
-    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc memonly" -o $GOBIN/verify-trc-vault-plugin tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc memonly" -o $GOBIN/verify-trc-vault-plugin tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/verify-trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo Compiling api
-    GOBIN= GOGC=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' tierceron/webapi/apiRouter
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -gcflags=-G=0 -a -ldflags '-w' tierceron/webapi/apiRouter
     if [[ ! -f $GOBIN/apiRouter ]] ; then
         echo File apiRouter was not built, aborting.
         exit 1
     fi
 
     echo Compiling conflib
-    GOBIN= GOGC=off GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' tierceron/configlib
+    GOBIN= GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
