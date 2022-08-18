@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"tierceron/buildopts"
 	"tierceron/buildopts/coreopts"
 	trcvutils "tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
@@ -71,7 +70,7 @@ func PluginMain() {
 		eUtils.CheckError(config, err, true)
 	}
 	mod.Env = *envPtr
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, buildopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		os.Exit(1)
@@ -120,7 +119,9 @@ func PluginMain() {
 
 	//Checks if image has been copied & deployed
 	if *checkDeployedPtr {
-		if pluginToolConfig["copied"].(bool) && pluginToolConfig["deployed"].(bool) && pluginToolConfig["trcsha256"].(string) == *sha256Ptr { //Compare vault sha with provided sha
+		if (pluginToolConfig["copied"] != nil && pluginToolConfig["copied"].(bool)) &&
+			(pluginToolConfig["deployed"] != nil && pluginToolConfig["deployed"].(bool)) &&
+			(pluginToolConfig["trcsha256"] != nil && pluginToolConfig["trcsha256"].(string) == *sha256Ptr) { //Compare vault sha with provided sha
 			fmt.Println("Plugin has been copied, deployed & certified.")
 			os.Exit(0)
 		}
