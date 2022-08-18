@@ -1,10 +1,10 @@
 //go:build testrunner
 // +build testrunner
 
-package buildopts
+package testopts
 
 import (
-	testtcutil "VaultConfig.TenantConfig/util"
+	testtcutil "VaultConfig.TenantConfig/util/core"
 )
 
 func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
