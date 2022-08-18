@@ -6,7 +6,7 @@ require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
 	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000
 	github.com/denisenkom/go-mssqldb v0.12.0
-	github.com/dolthub/go-mysql-server v0.11.1-0.20220318172025-91b37d4c785d
+	github.com/dolthub/go-mysql-server v0.12.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.7
