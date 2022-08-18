@@ -6,19 +6,9 @@ package coreopts
 import (
 	"database/sql"
 	"errors"
-
-	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
-// Which tables synced..
-func GetSyncedTables() []string {
-	return []string{}
-}
-
-func GetIdColumnType(table string) sqle.Type {
-	return sqle.Text
-}
-
+// Folder prefix for _seed, etc...
 func GetFolderPrefix() string {
 	return "trc"
 }
@@ -39,14 +29,7 @@ func GetVaultHostPort() string {
 	return ""
 }
 
-func DecryptSecretConfig(tenantConfiguration map[string]interface{}, config map[string]interface{}) string {
-	return ""
-}
-
-func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
-	return nil, errors.New("Not implemented")
-}
-
+// Begin old Active Sessions interface
 func GetUserNameField() string {
 	return ""
 }
@@ -55,6 +38,22 @@ func GetUserCodeField() string {
 	return ""
 }
 
+func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
+	return nil, errors.New("Not implemented")
+}
+
+// End old Active Sessions interface
+
 func FindIndexForService(project string, service string) (string, error) {
 	return "", errors.New("Not implemented")
+}
+
+// Which tables synced..
+func GetSyncedTables() []string {
+	return []string{}
+}
+
+// Enrich plugin configs
+func ProcessDeployPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
+	return map[string]interface{}{}
 }
