@@ -9,9 +9,9 @@ import (
 	"sync"
 	"syscall"
 
+	"tierceron/buildopts/coreopts"
 	"tierceron/buildopts/flowcoreopts"
 
-	"tierceron/buildopts/harbingeropts"
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
 	"tierceron/trcx/extract"
@@ -480,7 +480,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 func (tfmContext *TrcFlowMachineContext) GetDbConn(tfContext *TrcFlowContext, dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
 	return trcvutils.OpenDirectConnection(tfmContext.Config, dbUrl,
 		username,
-		harbingeropts.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionsMap[tfContext.RemoteDataSource["dbsourceregion"].(string)]))
+		coreopts.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionsMap[tfContext.RemoteDataSource["dbsourceregion"].(string)]))
 }
 
 // Utilizing provided api auth headers, endpoint, and body data
