@@ -205,6 +205,9 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 					}
 				} else if valueString, isValueString := value.(string); isValueString {
 					mlock.Mlock2(nil, &valueString)
+				} else if _, isBool := value.(bool); isBool {
+					// mlock.Mlock2(nil, &valueString)
+					// TODO: no need to lock bools
 				}
 			}
 		}

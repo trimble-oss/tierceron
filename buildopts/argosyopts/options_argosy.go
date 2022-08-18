@@ -3,8 +3,6 @@
 
 package argosyopts
 
-import "github.com/dolthub/go-mysql-server/server"
-
 func BuildFleet() util.ArgosyFleet {
 	return util.ArgosyFleet{}
 }
