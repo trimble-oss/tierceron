@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"tierceron/buildopts"
+	"tierceron/buildopts/coreopts"
 	"tierceron/trcflow/deploy"
 	"tierceron/trcvault/factory"
 	"tierceron/trcvault/opts/insecure"
@@ -37,7 +38,7 @@ func main() {
 	logger.Println("Beginning plugin startup.")
 
 	buildopts.SetLogger(logger.Writer())
-	factory.Init(buildopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
+	factory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
