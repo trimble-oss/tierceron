@@ -1,6 +1,7 @@
 package flumen
 
 import (
+	"errors"
 	"sync"
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
@@ -27,6 +28,16 @@ func getDeleteChangeQuery(databaseName string, changeTable string, id string) st
 
 func getInsertChangeQuery(databaseName string, changeTable string, id string) string {
 	return `INSERT IGNORE INTO ` + databaseName + `.` + changeTable + `VALUES (` + id + `, current_timestamp());`
+}
+
+func FlumenProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
+
+	switch trcFlowContext.Flow {
+	case TierceronControllerFlow:
+		return ProcessTierceronFlows(tfmContext, trcFlowContext)
+	}
+
+	return errors.New("Table not implemented.")
 }
 
 func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,

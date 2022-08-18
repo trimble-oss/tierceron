@@ -11,6 +11,13 @@ import (
 const tierceronFlowIdColumnName = "flowName"
 const tierceronFlowConfigurationTableName = "TierceronFlow"
 
+var flowInit = true
+
+func UpdateTierceronFlowState(newState string, flowName string) string {
+	//rows := tfmContext.CallDBQuery(tfContext, "update " + tierceronFlowConfigurationTableName + "." + flowopts.GetFlowDatabaseName() + "set state=" + newState +" where flowName='TenantConfiguration' "+, nil, false, "SELECT", nil, "")
+	return ""
+}
+
 func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error) {
 	indexName, idValue := "", ""
 	if tierceronFlowName, ok := rowDataMap[vaultIndexColumnName].(string); ok {
@@ -37,11 +44,34 @@ func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
 
 //cancel contex through all the flows to cancel and stop all the sync cycles.
 
+func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
+	tfFlow := make(map[string]interface{})
+	if len(arr) == 4 {
+		tfFlow[tierceronFlowIdColumnName] = arr[0]
+		tfFlow["state"] = arr[1]
+		tfFlow["syncMode"] = arr[2]
+		tfFlow["lastModified"] = arr[3]
+	}
+	return tfFlow
+}
+
 func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) ([]map[string]interface{}, error) {
+	flowControllerMap := tfContext.RemoteDataSource["flowControllerMap"].(map[string]chan int64)
+	rows := tfmContext.CallDBQuery(tfContext, "select * from "+tfContext.FlowSourceAlias+"."+string(tfContext.Flow), nil, false, "SELECT", nil, "")
+	for _, value := range rows {
+		tfFlow := arrayToTierceronFlow(value)
+		if len(tfFlow) == 4 {
+			stateChannel := flowControllerMap[tfFlow[tierceronFlowIdColumnName].(string)]
+			stateMsg := tfFlow["state"].(int64)
+			stateChannel <- stateMsg
+		}
+	}
 
-	//go to vault, grab latest settings, see which is the newest using lastModified -> update
+	if flowInit { //Used to signal other flows to begin, now that states have been loaded on init
+		<-tfContext.RemoteDataSource["vaultImportChannel"].(chan bool)
+		flowInit = false
+	}
 
-	//tfmContext.CallDBQuery(tfContext, "INSERT IGNORE INTO TierceronFlow(flowName, state, syncMode, lastModified) VALUES ('TenantConfiguration', '0', '0', current_timestamp());", nil, true, "INSERT", nil, "")
 	return nil, nil
 }
 
@@ -51,6 +81,7 @@ func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext.Flow.TableName())
 	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
 
+	//cancelCtx, _ := context.WithCancel(context.Background())
 	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil)
 	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
 	if sqlIngestInterval > 0 {
@@ -60,9 +91,9 @@ func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext
 		for {
 			select {
 			case <-time.After(time.Millisecond * afterTime):
-				afterTime = sqlIngestInterval
+				afterTime = 5000
 				tfmContext.Log("Tierceron Flows... checking for changes.", nil)
-				// 3. Retrieve tenant configurations from tenant config table.
+				// Periodically checks the table for updates and send out state changes to flows.
 				_, err := tierceronFlowImport(tfmContext, tfContext)
 				if err != nil {
 					tfmContext.Log("Error grabbing configurations for tierceron flows", err)

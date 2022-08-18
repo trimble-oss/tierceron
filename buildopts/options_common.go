@@ -39,27 +39,6 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]i
 	return map[string]interface{}{}
 }
 
-<<<<<<< HEAD
-// Process a test flow.
-func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return errors.New("Table not implemented.")
-}
-
-func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return nil
-}
-
-// Name of database
-func GetDatabaseName() string {
-	return ""
-}
-
-func GetFlowDatabaseName() string {
-	return ""
-}
-
-=======
->>>>>>> develop
 // Which tables synced..
 func GetSyncedTables() []string {
 	return []string{}

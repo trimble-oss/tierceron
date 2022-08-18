@@ -27,3 +27,7 @@ func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowCo
 func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
 	return tcutil.ProcessFlowController(tfmContext, trcFlowContext)
 }
+
+func GetFlowDatabaseName() string {
+	return "FlumDatabase"
+}

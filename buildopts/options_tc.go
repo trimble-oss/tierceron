@@ -38,7 +38,7 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]i
 }
 
 func GetFlowDatabaseName() string {
-	return tcutil.GetFlowDatabaseName()
+	return "FlumDatabase"
 }
 
 func GetExtensionAuthComponents(config map[string]interface{}) map[string]interface{} {
