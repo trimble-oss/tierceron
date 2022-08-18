@@ -4,57 +4,58 @@
 package coreopts
 
 import (
-	configcore "VaultConfig.Bootstrap/configcore"
+	bcore "VaultConfig.Bootstrap/configcore"
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
-	tvUtils "VaultConfig.TenantConfig/util/buildtrcprefix"
+	trcprefix "VaultConfig.TenantConfig/util/buildopts/trcprefix"
+	tccore "VaultConfig.TenantConfig/util/core"
 
 	"database/sql"
-	sqle "github.com/dolthub/go-mysql-server/sql"
 )
+
+//
+func GetFolderPrefix() string {
+	return trcprefix.GetFolderPrefix()
+}
+
+func GetSupportedTemplates() []string {
+	return bcore.GetSupportedTemplates()
+}
+
+func GetLocalHost() string {
+	return bcore.LocalHost
+}
+
+func GetVaultHost() string {
+	return bcore.VaultHost
+}
+
+func GetVaultHostPort() string {
+	return bcore.VaultHostPort
+}
+
+// Begin old Active Sessions interface
+func GetUserNameField() string {
+	return bcore.UserNameField
+}
+
+func GetUserCodeField() string {
+	return bcore.UserCodeField
+}
+
+func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
+	return bcore.ActiveSessions(db)
+}
+
+// End old Active Sessions interface
+
+func FindIndexForService(project string, service string) (string, error) {
+	return tcbuildopts.FindIndexForService(project, service)
+}
 
 func GetSyncedTables() []string {
 	return tcbuildopts.GetSyncedTables()
 }
 
-func GetIdColumnType(table string) sqle.Type {
-	return tcbuildopts.GetIdColumnType(table)
-}
-
-func GetFolderPrefix() string {
-	return tvUtils.GetFolderPrefix()
-}
-
-func DecryptSecretConfig(tenantConfiguration map[string]interface{}, config map[string]interface{}) string {
-	return configcore.DecryptSecretConfig(tenantConfiguration, config)
-}
-
-func GetSupportedTemplates() []string {
-	return configcore.GetSupportedTemplates()
-}
-
-func GetLocalHost() string {
-	return configcore.LocalHost
-}
-
-func GetVaultHost() string {
-	return configcore.VaultHost
-}
-
-func GetVaultHostPort() string {
-	return configcore.VaultHostPort
-}
-
-func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
-	return configcore.ActiveSessions(db)
-}
-func GetUserNameField() string {
-	return configcore.UserNameField
-}
-
-func GetUserCodeField() string {
-	return configcore.UserCodeField
-}
-
-func FindIndexForService(project string, service string) (string, error) {
-	return tcbuildopts.FindIndexForService(project, service)
+func ProcessDeployPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
+	return tccore.ProcessDeployPluginEnvConfig(pluginEnvConfig)
 }
