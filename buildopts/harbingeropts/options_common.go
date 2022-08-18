@@ -22,7 +22,3 @@ func GetDatabaseName() string {
 func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContext interface{}, vaultDatabaseConfig map[string]interface{}, serverListener interface{}) error {
 	return nil
 }
-
-func DecryptSecretConfig(tenantConfiguration map[string]interface{}, config map[string]interface{}) string {
-	return ""
-}
