@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 	"tierceron/buildopts"
+	"tierceron/buildopts/coreopts"
 	"tierceron/trcflow/deploy"
 	"tierceron/trcvault/factory"
 	eUtils "tierceron/utils"
@@ -39,7 +40,7 @@ func main() {
 	//Grabbing configs
 	envMap := buildopts.GetTestDeployConfig(*tokenPtr)
 
-	go factory.Init(buildopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
+	go factory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "QA"
 	envMap["insecure"] = true
 	factory.PushEnv(envMap)

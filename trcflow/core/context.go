@@ -9,16 +9,18 @@ import (
 	"sync"
 	"syscall"
 
+	"tierceron/buildopts/coreopts"
+	"tierceron/buildopts/flowcoreopts"
+
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
 	"tierceron/trcx/extract"
 	sys "tierceron/vaulthelper/system"
 
-	"tierceron/buildopts/coreopts"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
-	"VaultConfig.TenantConfig/util/mysql"
+	"VaultConfig.TenantConfig/util/buildopts/mysql"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -113,7 +115,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
 			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
-				{Name: "id", Type: coreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
+				{Name: "id", Type: flowcoreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 			}))
 			if err != nil {
