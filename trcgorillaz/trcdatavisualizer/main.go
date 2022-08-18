@@ -57,6 +57,8 @@ func main() {
 	if *headless {
 		ArgosyFleet := argosyopts.BuildFleet(nil)
 		DetailedElements := []*mashupsdk.MashupDetailedElement{}
+
+		//MAKE THIS PROCESS RECURSIVE!!!!
 		for _, argosy := range ArgosyFleet.Argosies {
 			argosyBasis := argosy.MashupDetailedElement
 			argosyBasis.Alias = "Argosy"
@@ -69,6 +71,11 @@ func main() {
 					element := argosy.Groups[i].Flows[j].MashupDetailedElement
 					element.Alias = "DataFlow"
 					DetailedElements = append(DetailedElements, &element)
+					for k := 0; k < len(argosy.Groups[i].Flows[j].Statistics); k++ {
+						el := argosy.Groups[i].Flows[j].Statistics[k].MashupDetailedElement
+						el.Alias = "DataFlowStatistic"
+						DetailedElements = append(DetailedElements, &el)
+					}
 				}
 			}
 		}
