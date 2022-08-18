@@ -59,3 +59,7 @@ func GetSyncedTables() []string {
 func ProcessDeployPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
 	return tccore.ProcessDeployPluginEnvConfig(pluginEnvConfig)
 }
+
+func DecryptSecretConfig(tenantConfiguration map[string]interface{}, config map[string]interface{}) string {
+	return bcore.DecryptSecretConfig(tenantConfiguration, config)
+}
