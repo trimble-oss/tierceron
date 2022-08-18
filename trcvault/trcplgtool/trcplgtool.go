@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"tierceron/buildopts"
 	"tierceron/buildopts/coreopts"
 	trcvutils "tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
@@ -71,7 +70,7 @@ func PluginMain() {
 		eUtils.CheckError(config, err, true)
 	}
 	mod.Env = *envPtr
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, buildopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		os.Exit(1)
