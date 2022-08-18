@@ -2,6 +2,7 @@ package ttdirender
 
 import (
 	"log"
+	"sync"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -30,7 +31,7 @@ type ElementRenderer struct {
 	totalElements int
 	locationCache map[int64]*math32.Vector3
 	//compoundMesh  *CompoundMesh
-
+	//MAKE CLICKEDELEMENTS PUBLIC SO CURVE RENDERER CAN ACCESS IT
 	clickedElements []*ClickedG3nDetailElement //ClickedG3nDetailElement // Stack containing clicked spiral (sub as well) g3n elements.
 }
 
@@ -64,7 +65,16 @@ func (er *ElementRenderer) Top() *ClickedG3nDetailElement {
 func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
 	color := g3ndpalette.DARK_BLUE
-	mat := material.NewStandard(color.Set(0, 0.349, 0.643))
+	if g3n.GetDetailedElement().Alias == "Argosy" {
+		color.Set(0, 0.349, 0.643)
+	} else if g3n.GetDetailedElement().Alias == "DataFlowGroup" {
+		color.Set(1.0, 0.224, 0.0)
+	} else if g3n.GetDetailedElement().Alias == "DataFlow" {
+		color = math32.NewColor("olive")
+	} else if g3n.GetDetailedElement().Alias == "DataFlowStatistic" {
+		color = math32.NewColor("forestgreen")
+	}
+	mat := material.NewStandard(color)
 	sphereMesh := graphic.NewMesh(sphereGeom, mat)
 	sphereMesh.SetLoaderID(g3n.GetDisplayName())
 	sphereMesh.SetPositionVec(vpos)
@@ -76,18 +86,21 @@ func (er *ElementRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedEle
 }
 
 func (er *ElementRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
-	er.totalElements = totalElements // Not sure if this is necessary
-	if er.locationCache != nil {
+	er.totalElements = totalElements
+	if er.iOffset == 2 {
 		id := g3n.GetDisplayId()
 		return g3n, er.locationCache[id]
-	} else { // This is because locn cache is not set until clicked element :(
+	} else {
 		if er.iOffset == 0 {
 			er.iOffset = 1
 			er.counter = 0.0
+			er.locationCache = make(map[int64]*math32.Vector3)
+			er.locationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(0, 0, 0)
 			return g3n, math32.NewVector3(float32(0.0), float32(0.0), float32(0.0))
 		} else {
 			er.counter = er.counter - 0.1
 			complex := binetFormula(er.counter)
+			er.locationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
 			return g3n, math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
 		}
 	}
@@ -98,38 +111,73 @@ func (er *ElementRenderer) Layout(worldApp *g3nworld.WorldApp,
 	er.LayoutBase(worldApp, er, g3nRenderableElements)
 }
 
-//RECURSIVELY LOOP THROU
-func (er *ElementRenderer) loopParentIds(element *g3nmash.G3nDetailedElement) {
-	if len(element.GetParentElementIds()) == 0 {
+func (er *ElementRenderer) deselectElements(worldApp *g3nworld.WorldApp, element *g3nmash.G3nDetailedElement) *g3nmash.G3nDetailedElement {
+	for _, childID := range element.GetChildElementIds() {
+		if !er.isChildElement(worldApp, element) && element != worldApp.ClickedElements[len(worldApp.ClickedElements)-1] {
+			worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
+			er.RemoveAll(worldApp, childID)
+		}
+	}
+	if len(element.GetParentElementIds()) == 0 || (len(worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetParentElementIds()) != 0 && element.GetParentElementIds()[0] == worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetParentElementIds()[0]) {
+		return element
+	} else {
+		return er.deselectElements(worldApp, worldApp.ConcreteElements[element.GetParentElementIds()[0]])
+	}
+}
 
+func (er *ElementRenderer) calcLocnStarter(worldApp *g3nworld.WorldApp, ids []int64, counter float32, wg *sync.WaitGroup) {
+	for _, id := range ids {
+		element := worldApp.ConcreteElements[id]
+		for _, parent := range element.GetParentElementIds() {
+			if parent > 0 && er.locationCache[parent] != nil {
+				er.locationCache[id] = er.calculateLocation(er.locationCache[parent], counter)
+				counter = counter - 0.1
+			}
+		}
+	}
+	//wg.Done()
+}
+
+func (er *ElementRenderer) calculateLocation(center *math32.Vector3, counter float32) *math32.Vector3 {
+	complex := binetFormula(float64(counter))
+	return math32.NewVector3(float32(-real(complex))+center.X, float32(imag(complex))+center.Y, float32(-counter)+center.Z)
+}
+
+func (er *ElementRenderer) initLocnCache(worldApp *g3nworld.WorldApp, element *g3nmash.G3nDetailedElement) {
+	if len(element.GetChildElementIds()) != 0 {
+		var waitGroup sync.WaitGroup
+		//waitGroup.Add(1) //len(element.GetChildElementIds())/2
+		if element.GetDetailedElement().Genre != "Solid" {
+			er.calcLocnStarter(worldApp, element.GetChildElementIds(), -0.1, &waitGroup)
+
+		}
+		//go er.calcLocnStarter(worldApp, element.GetChildElementIds()[len(element.GetChildElementIds())/2:], -0.1*float32(len(element.GetChildElementIds())/2), &waitGroup)
+
+		//waitGroup.Wait()
+
+		for _, childID := range element.GetChildElementIds() {
+			if worldApp.ConcreteElements[childID].GetDetailedElement().Genre != "Solid" {
+				er.initLocnCache(worldApp, worldApp.ConcreteElements[childID])
+			}
+		}
 	}
 }
 
 func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
 	//Initialize location cache
-	if er.locationCache == nil {
-		er.locationCache = make(map[int64]*math32.Vector3)
-		for _, mainElement := range worldApp.ConcreteElements {
-			if mainElement.GetNamedMesh(mainElement.GetDisplayName()) != nil && mainElement.GetDetailedElement().Renderer == "Element" {
-				location := mainElement.GetNamedMesh(mainElement.GetDisplayName()).Position()
-				id := mainElement.GetDetailedElement().GetId()
-				er.locationCache[id] = &location
-				counter := float32(0.0)
-				// MAKE THIS RECURSIVE PROCESS OR INSTEAD ITERATE THROUGH ELEMENTS USING PARENT IDS? --> LESS DUPLICATE LOOKUPS
-				// LOOK THRU PARENT IDS UNTIL MESH IS COME ACROSS AND IF NO PARENT ID JUST LOOK AT MESH POSITION
-				for _, childID := range mainElement.GetChildElementIds() {
-					er.locationCache[childID] = er.calculateLocation(&location, counter)
-					counter = counter - 0.1
-					subCount := float32(0.0)
-					for _, dFGchild := range worldApp.ConcreteElements[childID].GetChildElementIds() {
-						er.locationCache[dFGchild] = er.calculateLocation(er.locationCache[childID], subCount)
-						subCount = subCount - 0.1
-					}
-					// Is it possible to add to concrete elements thing here?
-				}
+	if er.iOffset != 2 {
+		copyCache := make(map[int64]*math32.Vector3)
+		for k, v := range er.locationCache {
+			copyCache[k] = v
+		}
+		for key, _ := range copyCache {
+			element := worldApp.ConcreteElements[key]
+			if element.GetDetailedElement().Genre != "Solid" {
+				er.initLocnCache(worldApp, element)
 			}
 		}
+		er.iOffset = 2
 	}
 
 	// Hide the elements that should be hidden when a different element is clicked
@@ -144,28 +192,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 				}
 			}
 			//Case 2: Sub Spiral element and main spiral clicked: have to remove children nodes of parent node
-			// CHANGE THIS TO RECURSIVE METHOD TO ITERATE THROUGH PARENT IDS
-			for _, parentID := range prevElement.clickedElement.GetParentElementIds() {
-				parentElement := worldApp.ConcreteElements[parentID]
-				if len(parentElement.GetParentElementIds()) == 0 {
-					for _, childID := range parentElement.GetChildElementIds() {
-						if !er.isChildElement(worldApp, parentElement) {
-							worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
-							er.RemoveAll(worldApp, childID)
-						}
-					}
-				}
-				for _, parent := range parentElement.GetParentElementIds() {
-					parentElement = worldApp.ConcreteElements[parent]
-					for _, childID := range parentElement.GetChildElementIds() {
-						if !er.isChildElement(worldApp, parentElement) {
-							worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
-							er.RemoveAll(worldApp, childID)
-						}
-					}
-				}
-
-			}
+			er.deselectElements(worldApp, prevElement.clickedElement)
 		}
 	}
 
@@ -180,8 +207,6 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 				childElement.ApplyState(mashupsdk.Hidden, false)
 				childElement.ApplyState(mashupsdk.Clicked, true)
 			}
-			color := g3ndpalette.DARK_BLUE
-			childElement.SetColor(color.Set(0, 0.349, 0.643), 1.0)
 		}
 	}
 
@@ -198,23 +223,10 @@ func (er *ElementRenderer) isChildElement(worldApp *g3nworld.WorldApp, prevEleme
 	return false
 }
 
-func (er *ElementRenderer) calculateLocation(center *math32.Vector3, counter float32) *math32.Vector3 {
-	complex := binetFormula(float64(counter))
-	return math32.NewVector3(float32(-real(complex))+center.X, float32(imag(complex))+center.Y, float32(-counter)+center.Z)
-}
-
-// Change color and fade other elements?
 func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) bool {
 	if g3n == worldApp.ClickedElements[len(worldApp.ClickedElements)-1] && g3n.GetNamedMesh(g3n.GetDisplayName()) != nil {
 		// Changes color
-		if g3n.GetDetailedElement().Alias == "Argosy" {
-			g3n.SetColor(math32.NewColor("darkred"), 1.0)
-		} else if g3n.GetDetailedElement().Alias == "DataFlowGroup" {
-			color := math32.NewColor("olive")
-			g3n.SetColor(color.Set(1.0, 0.224, 0.0), 1.0)
-		} else if g3n.GetDetailedElement().Alias == "DataFlow" {
-			g3n.SetColor(math32.NewColor("olive"), 1.0)
-		}
+		g3n.SetColor(math32.NewColor("darkred"), 1.0)
 
 		for _, childId := range g3n.GetChildElementIds() {
 			element := worldApp.ConcreteElements[childId]
@@ -235,9 +247,30 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 
 		return true
 	} else {
-		// add in fade effect here
 		color := g3ndpalette.DARK_BLUE
-		g3n.SetColor(color.Set(0, 0.349, 0.643), 1.0)
+		if g3n.GetDetailedElement().Alias == "Argosy" {
+			color.Set(0, 0.349, 0.643)
+		} else if g3n.GetDetailedElement().Alias == "DataFlowGroup" {
+			color.Set(1.0, 0.224, 0.0)
+		} else if g3n.GetDetailedElement().Alias == "DataFlow" {
+			color = math32.NewColor("olive")
+		} else if g3n.GetDetailedElement().Alias == "DataFlowStatistic" {
+			color = math32.NewColor("forestgreen")
+		}
+
+		clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+		for _, childID := range clickedElement.GetChildElementIds() {
+			if g3n == worldApp.ConcreteElements[childID] {
+				g3n.SetColor(color, 1.0)
+				return true
+			} else {
+				g3n.SetColor(color, 0.15)
+			}
+		}
+		if clickedElement.IsBackground() || clickedElement.GetDetailedElement().Subgenre == "Skeletal" {
+			g3n.SetColor(color, 1.0)
+		}
+
 	}
 	return true
 }
@@ -266,7 +299,6 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 	var prevSolidPos *math32.Vector3
 
 	totalElements := len(g3nRenderableElements)
-	//er.totalElements = totalElements
 
 	if totalElements > 0 {
 		if g3nRenderableElements[0].GetDetailedElement().Colabrenderer != "" {
@@ -310,6 +342,7 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 	}
 }
 
+//CURVE RENDERER NEEDS REFERENCE TO ER SO JUST PASS INSTANCE BC DATA SHOULD BE FILLED LATER
 func (er *ElementRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
 	curveRenderer := collaboratingRenderer.(*CurveRenderer)
 	curveRenderer.totalElements = int(er.counter) // 50 //er.totalElements
