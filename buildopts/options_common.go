@@ -6,11 +6,6 @@ package buildopts
 import (
 	"database/sql"
 	"errors"
-	flowcore "tierceron/trcflow/core"
-	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
-
-	"github.com/dolthub/go-mysql-server/server"
 )
 
 func SetLogger(logger interface{}) {
@@ -31,19 +26,6 @@ func GetSupportedSourceRegions() []string {
 	return []string{}
 }
 
-// Flow names
-func GetAdditionalFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
-}
-
-func GetAdditionalTestFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{} // Noop
-}
-
-func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
-}
-
 // Test configurations.
 func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
 	return map[string]interface{}{}
@@ -53,15 +35,11 @@ func GetTestDeployConfig(token string) map[string]interface{} {
 	return map[string]interface{}{}
 }
 
-// Enrich plugin configs
-func ProcessDeployPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
-	return map[string]interface{}{}
-}
-
 func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
 	return map[string]interface{}{}
 }
 
+<<<<<<< HEAD
 // Process a test flow.
 func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
 	return errors.New("Table not implemented.")
@@ -80,6 +58,8 @@ func GetFlowDatabaseName() string {
 	return ""
 }
 
+=======
+>>>>>>> develop
 // Which tables synced..
 func GetSyncedTables() []string {
 	return []string{}
@@ -88,11 +68,6 @@ func GetSyncedTables() []string {
 // GetExtensionAuthComponents - obtains an auth components
 func GetExtensionAuthComponents(config map[string]interface{}) map[string]interface{} {
 	return map[string]interface{}{}
-}
-
-// Build interface
-func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContext *flowcore.TrcFlowMachineContext, vaultDatabaseConfig map[string]interface{}, serverListener server.ServerEventListener) error {
-	return nil
 }
 
 func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, string, error) {
