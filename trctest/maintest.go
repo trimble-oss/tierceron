@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
-	"tierceron/buildopts"
+	"tierceron/buildopts/testopts"
 	trcflow "tierceron/trcflow/flumen"
 	"tierceron/trcvault/opts/memonly"
 	eUtils "tierceron/utils"
@@ -25,7 +25,7 @@ func main() {
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
-	pluginConfig := buildopts.GetTestConfig(*tokenPtr, false)
+	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
 	if memonly.IsMemonly() {
 		mlock.MunlockAll(nil)
 		for _, value := range pluginConfig {
