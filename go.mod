@@ -6,7 +6,7 @@ require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
 	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000
 	github.com/denisenkom/go-mssqldb v0.12.0
-	github.com/dolthub/go-mysql-server v0.11.1-0.20220318172025-91b37d4c785d
+	github.com/dolthub/go-mysql-server v0.12.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.7
@@ -30,12 +30,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 )
 
-require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-)
+require github.com/jmespath/go-jmespath v0.4.0 // indirect
 
 require (
 	github.com/armon/go-radix v1.0.0 // indirect
@@ -105,4 +100,4 @@ replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 
 replace VaultConfig.Test => ../VaultConfig.Test
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.11.0-17.2
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.11.0-17.4
