@@ -10,7 +10,9 @@ import (
 	tclib "VaultConfig.TenantConfig/lib"
 
 	configcore "VaultConfig.Bootstrap/configcore"
+
 	"database/sql"
+	trcf "tierceron/trcflow/core/flowcorehelper"
 )
 
 func SetLogger(logger interface{}) {
@@ -38,7 +40,7 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]i
 }
 
 func GetFlowDatabaseName() string {
-	return "FlumDatabase"
+	return trcf.GetFlowDBName()
 }
 
 func GetExtensionAuthComponents(config map[string]interface{}) map[string]interface{} {
