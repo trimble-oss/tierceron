@@ -514,5 +514,9 @@ func (v *Vault) GetStatus() (map[string]interface{}, error) {
 
 // Proper shutdown of modifier.
 func (v *Vault) Close() {
-	v.httpClient.CloseIdleConnections()
+	if v.httpClient != nil {
+		v.httpClient.CloseIdleConnections()
+		v.httpClient.Transport = nil
+		v.httpClient = nil
+	}
 }
