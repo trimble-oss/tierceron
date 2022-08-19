@@ -158,6 +158,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		flowStateRecieverMap[tableName] = make(chan flowcorehelper.FlowStateUpdate, 1)
 	}
 
+	for _, enhancement := range flowopts.GetAdditionalFlows() {
+		flowStateControllerMap[enhancement.TableName()] = make(chan int64, 1)
+		flowStateRecieverMap[enhancement.TableName()] = make(chan flowcorehelper.FlowStateUpdate, 1)
+	}
+
 	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), harbingeropts.GetDatabaseName())
 	tfmContext.Config = &configBasis
 
@@ -308,6 +313,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				defer wg.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
 				tfContext.Flow = enhancementFlow
+				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
+				tfContext.RemoteDataSource["flowStateReciever"] = flowStateRecieverMap[enhancementFlow.TableName()]
 
 				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
