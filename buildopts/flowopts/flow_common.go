@@ -6,6 +6,7 @@ package flowopts
 import (
 	"errors"
 	flowcore "tierceron/trcflow/core"
+	trcf "tierceron/trcflow/core/flowcorehelper"
 )
 
 // Flow names
@@ -31,5 +32,5 @@ func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowCo
 }
 
 func GetFlowDatabaseName() string {
-	return ""
+	return trcf.GetFlowDBName()
 }
