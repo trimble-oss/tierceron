@@ -1,22 +1,20 @@
 package flumen
 
 import (
+	"context"
 	"errors"
+
 	flowcore "tierceron/trcflow/core"
+
+	flowcorehelper "tierceron/trcflow/core/flowcorehelper"
 	"time"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
 const tierceronFlowIdColumnName = "flowName"
-const tierceronFlowConfigurationTableName = "TierceronFlow"
 
 var flowInit = true
-
-func UpdateTierceronFlowState(newState string, flowName string) string {
-	//rows := tfmContext.CallDBQuery(tfContext, "update " + tierceronFlowConfigurationTableName + "." + flowopts.GetFlowDatabaseName() + "set state=" + newState +" where flowName='TenantConfiguration' "+, nil, false, "SELECT", nil, "")
-	return ""
-}
 
 func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error) {
 	indexName, idValue := "", ""
@@ -30,7 +28,7 @@ func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap 
 }
 
 func GetTierceronTableNames() []string {
-	return []string{tierceronFlowConfigurationTableName}
+	return []string{flowcorehelper.TierceronFlowConfigurationTableName}
 }
 
 func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
@@ -56,22 +54,42 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 }
 
 func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) ([]map[string]interface{}, error) {
-	flowControllerMap := tfContext.RemoteDataSource["flowControllerMap"].(map[string]chan int64)
+	flowControllerMap := tfContext.RemoteDataSource["flowStateControllerMap"].(map[string]chan int64)
 	rows := tfmContext.CallDBQuery(tfContext, "select * from "+tfContext.FlowSourceAlias+"."+string(tfContext.Flow), nil, false, "SELECT", nil, "")
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)
 		if len(tfFlow) == 4 {
 			stateChannel := flowControllerMap[tfFlow[tierceronFlowIdColumnName].(string)]
 			stateMsg := tfFlow["state"].(int64)
-			stateChannel <- stateMsg
+			select {
+			case stateChannel <- stateMsg:
+			default:
+				continue
+			}
 		}
 	}
 
 	if flowInit { //Used to signal other flows to begin, now that states have been loaded on init
-		<-tfContext.RemoteDataSource["vaultImportChannel"].(chan bool)
-		flowInit = false
+		initAlertChan := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool)
+		select {
+		case initAlertChan <- flowInit:
+			flowInit = false
+		default:
+
+		}
 	}
 
+	flowStateRecieverMap := tfContext.RemoteDataSource["flowStateRecieverMap"].(map[string]chan flowcorehelper.FlowStateUpdate)
+	for _, reciever := range flowStateRecieverMap {
+		select {
+		case x, ok := <-reciever:
+			if ok {
+				tfmContext.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate), nil, true, "UPDATE", nil, "")
+			}
+		default:
+			continue //No update pending on channel, moving on...
+		}
+	}
 	return nil, nil
 }
 
@@ -81,8 +99,8 @@ func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext.Flow.TableName())
 	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
 
-	//cancelCtx, _ := context.WithCancel(context.Background())
-	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil)
+	cancelCtx, _ := context.WithCancel(context.Background())
+	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil, cancelCtx)
 	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
 	if sqlIngestInterval > 0 {
 		// Implement pull from remote data source.
