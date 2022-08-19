@@ -66,12 +66,14 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 			if stateChannel == nil {
 				return nil, errors.New("State channel for flow controller was nil.")
 			}
-			stateMsg := tfFlow["state"].(int64)
-			select {
-			case stateChannel <- stateMsg:
-			default:
-				continue
+			if stateMsg, ok := tfFlow["state"].(int64); ok {
+				select {
+				case stateChannel <- stateMsg:
+				default:
+					continue
+				}
 			}
+
 		}
 	}
 
