@@ -267,7 +267,7 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 				g3n.SetColor(color, 0.15)
 			}
 		}
-		if clickedElement.IsBackground() || clickedElement.GetDetailedElement().Subgenre == "Skeletal" {
+		if clickedElement.IsBackground() || clickedElement.GetDetailedElement().Subgenre == "Skeletal" || (clickedElement.GetDetailedElement().Alias == "DataFlowStatistic" && g3n.GetDetailedElement().Alias == "DataFlowStatistic") {
 			g3n.SetColor(color, 1.0)
 		}
 
@@ -342,8 +342,7 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 	}
 }
 
-//CURVE RENDERER NEEDS REFERENCE TO ER SO JUST PASS INSTANCE BC DATA SHOULD BE FILLED LATER
 func (er *ElementRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
 	curveRenderer := collaboratingRenderer.(*CurveRenderer)
-	curveRenderer.totalElements = int(er.counter) // 50 //er.totalElements
+	curveRenderer.ElementRenderer = er
 }
