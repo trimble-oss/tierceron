@@ -21,6 +21,7 @@ var sqrtfive float64 = float64(math.Sqrt(float64(5.0)))
 
 type CurveRenderer struct {
 	g3nrender.GenericRenderer
+	*ElementRenderer
 	CollaboratingRenderer g3nrender.IG3nRenderer
 	totalElements         int
 }
@@ -64,6 +65,9 @@ func (sp *CurveRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedEleme
 }
 
 func (cr *CurveRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
+	if cr.ElementRenderer.locationCache != nil && cr.ElementRenderer.locationCache[g3n.GetDetailedElement().Id] != nil {
+		return g3n, cr.ElementRenderer.locationCache[g3n.GetDetailedElement().Id]
+	}
 	return g3n, math32.NewVector3(float32(0.0), float32(0.0), float32(0.0))
 }
 
@@ -81,6 +85,27 @@ func (cr *CurveRenderer) GetRenderer(rendererName string) g3nrender.IG3nRenderer
 
 func (cr *CurveRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
+	return true
+}
+
+func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedElement *g3nmash.G3nDetailedElement) bool {
+	//var g3nColor *math32.Color
+	// var path []math32.Vector3
+	// clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+	// _, position := cr.NextCoordinate(clickedElement, len(clickedElement.GetChildElementIds()))
+	// for i := -0.1 * float64(len(clickedElement.GetChildElementIds())); i < -0.1; i = i + 0.1 {
+	// 	c := binetFormula(i)
+	// 	x := real(c)
+	// 	y := imag(c)
+	// 	z := -i
+	// 	path = append(path, *math32.NewVector3(float32(-x+4), float32(y+4), float32(z+4)))
+	// }
+	// tubeGeometry := geometry.NewTube(path, .007, 32, true)
+	// color := math32.NewColor("darkmagenta")
+	// mat := material.NewStandard(color.Set(float32(148)/255.0, float32(120)/255.0, float32(42)/255.0))
+	// tubeMesh := graphic.NewMesh(tubeGeometry, mat)
+	// tubeMesh.SetPositionVec(position)
+	// worldApp.UpsertToScene(tubeMesh)
 	return true
 }
 
