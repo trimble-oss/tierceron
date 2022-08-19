@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -374,16 +375,18 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 
 	wg.Add(1)
-	//add 10 to the port number for flowDatabase
-	portNumber, err := strconv.Atoi(vaultDatabaseConfig["dbport"].(string))
-	if err != nil {
-		eUtils.LogErrorMessage(config, "Failed to parse port number for Flow Database:"+interfaceErr.Error(), false)
-		return interfaceErr
+	//Set up controller config
+	controllerVaultDatabaseConfig := make(map[string]interface{})
+	for index, config := range vaultDatabaseConfig {
+		if val, ok := vaultDatabaseConfig["controller"+index]; ok {
+			controllerVaultDatabaseConfig[index] = val
+		} else {
+			controllerVaultDatabaseConfig[index] = config
+		}
 	}
-	portNumber = portNumber + 10
-	vaultDatabaseConfig["dbport"] = strconv.Itoa(portNumber)
 
-	interfaceErr = harbingeropts.BuildInterface(config, goMod, tfmFlumContext, vaultDatabaseConfig, &TrcDBServerEventListener{})
+	controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0] + ":" + controllerVaultDatabaseConfig["dbport"].(string)
+	interfaceErr = harbingeropts.BuildInterface(config, goMod, tfmFlumContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{})
 	if interfaceErr != nil {
 		wg.Done()
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
