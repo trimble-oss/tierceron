@@ -91,6 +91,13 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 			continue
 		}
 
+		if refreshErr := tfmContext.Vault.RefreshClient(); refreshErr != nil {
+			// Panic situation...  Can't connect to vault... Wait until next cycle to try again.
+			eUtils.LogErrorMessage(tfmContext.Config, "Failure to connect to vault.  It may be down...", false)
+			eUtils.LogErrorObject(tfmContext.Config, refreshErr, false)
+			continue
+		}
+
 		seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), vaultAddress, tfmContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
