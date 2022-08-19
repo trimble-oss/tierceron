@@ -6,7 +6,7 @@ require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
 	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000
 	github.com/denisenkom/go-mssqldb v0.12.0
-	github.com/dolthub/go-mysql-server v0.11.1-0.20220318172025-91b37d4c785d
+	github.com/dolthub/go-mysql-server v0.12.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.7
@@ -31,7 +31,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 )
 
-require github.com/mrjrieke/nute v0.0.0-20220811135204-c6a6157be9cc // indirect
+require github.com/mrjrieke/nute v0.0.0-20220811135204-c6a6157be9cc
 
 //require github.com/mrjrieke/nute v0.0.0-20220810134049-758c0833bd51 // indirect
 
@@ -40,7 +40,7 @@ require github.com/mrjrieke/nute v0.0.0-20220811135204-c6a6157be9cc // indirect
 //require github.com/mrjrieke/nute v0.0.0-20220804183141-23b8bf4eef8c // indirect
 
 require (
-	fyne.io/fyne/v2 v2.1.3 // indirect
+	fyne.io/fyne/v2 v2.1.3
 	fyne.io/systray v1.9.1-0.20220331100914-9177bf851614 // indirect
 	gioui.org v0.0.0-20220318070519-8833a6738a3b // indirect
 	gioui.org/cpu v0.0.0-20210817075930-8d6a761490d2 // indirect
@@ -142,7 +142,7 @@ replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 
 replace VaultConfig.Test => ../VaultConfig.Test
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.11.0-17.2
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.11.0-17.4
 
 replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d
 

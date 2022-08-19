@@ -13,7 +13,9 @@ import (
 
 	"tierceron/buildopts/coreopts"
 	vcutils "tierceron/trcconfig/utils"
+	"tierceron/trcvault/opts/memonly"
 	eUtils "tierceron/utils"
+	"tierceron/utils/mlock"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -74,6 +76,9 @@ func reciever() {
 }
 
 func main() {
+	if memonly.IsMemonly() {
+		mlock.Mlock(nil)
+	}
 	fmt.Println("Version: " + "1.25")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
@@ -279,6 +284,11 @@ func main() {
 			} else {
 				*envPtr = envVersion[0] + "_0"
 			}
+			if memonly.IsMemonly() {
+				mlock.MunlockAll(nil)
+				mlock.Mlock2(nil, tokenPtr)
+			}
+
 			config := eUtils.DriverConfig{
 				Insecure:       *insecurePtr,
 				Token:          *tokenPtr,
@@ -305,6 +315,11 @@ func main() {
 			}()
 		}
 	} else {
+		if memonly.IsMemonly() {
+			mlock.MunlockAll(nil)
+			mlock.Mlock2(nil, tokenPtr)
+		}
+
 		if *templateInfoPtr {
 			envVersion := strings.Split(*envPtr, "_")
 			*envPtr = envVersion[0] + "_templateInfo"
