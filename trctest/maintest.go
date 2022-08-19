@@ -4,14 +4,17 @@ import (
 	"flag"
 	"log"
 	"os"
-	"tierceron/buildopts"
+	"tierceron/buildopts/testopts"
 	trcflow "tierceron/trcflow/flumen"
+	"tierceron/trcvault/opts/memonly"
 	eUtils "tierceron/utils"
+	"tierceron/utils/mlock"
 )
 
 // This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
 func main() {
+
 	// Supported build flags:
 	//    insecure harbinger tc testrunner ( mysql, testflow -- auto registration -- warning do not use!)
 	logFilePtr := flag.String("log", "./trcdbplugin.log", "Output path for log file")
@@ -22,7 +25,19 @@ func main() {
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
-	pluginConfig := buildopts.GetTestConfig(*tokenPtr, false)
+	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
+	if memonly.IsMemonly() {
+		mlock.MunlockAll(nil)
+		for _, value := range pluginConfig {
+			if valueSlice, isValueSlice := value.([]string); isValueSlice {
+				for _, valueEntry := range valueSlice {
+					mlock.Mlock2(nil, &valueEntry)
+				}
+			} else if valueString, isValueString := value.(string); isValueString {
+				mlock.Mlock2(nil, &valueString)
+			}
+		}
+	}
 
 	trcflow.ProcessFlows(pluginConfig, logger)
 }
