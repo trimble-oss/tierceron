@@ -55,11 +55,17 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 
 func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) ([]map[string]interface{}, error) {
 	flowControllerMap := tfContext.RemoteDataSource["flowStateControllerMap"].(map[string]chan int64)
+	if flowControllerMap == nil {
+		return nil, errors.New("Channel map for flow controller was nil.")
+	}
 	rows := tfmContext.CallDBQuery(tfContext, "select * from "+tfContext.FlowSourceAlias+"."+string(tfContext.Flow), nil, false, "SELECT", nil, "")
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)
 		if len(tfFlow) == 4 {
 			stateChannel := flowControllerMap[tfFlow[tierceronFlowIdColumnName].(string)]
+			if stateChannel == nil {
+				return nil, errors.New("State channel for flow controller was nil.")
+			}
 			stateMsg := tfFlow["state"].(int64)
 			select {
 			case stateChannel <- stateMsg:
@@ -71,6 +77,9 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 
 	if flowInit { //Used to signal other flows to begin, now that states have been loaded on init
 		initAlertChan := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool)
+		if initAlertChan == nil {
+			return nil, errors.New("Alert channel for flow controller was nil.")
+		}
 		select {
 		case initAlertChan <- flowInit:
 			flowInit = false
