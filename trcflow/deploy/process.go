@@ -12,6 +12,7 @@ import (
 	"strings"
 	"tierceron/trcvault/factory"
 	"tierceron/trcvault/opts/insecure"
+	"tierceron/trcvault/opts/prod"
 	trcvutils "tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
 
@@ -135,6 +136,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				pluginCopied = true
 				eUtils.LogInfo(config, "Image has been copied.")
 			} else {
+				fmt.Sprintf("PluginDeployFlow failure: Refusing to copy since vault certification does not match plugin sha256 signature.  Downloaded: %s, Expected: %s", vaultPluginSignature["imagesha256"], vaultPluginSignature["trcsha256"])
 				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Refusing to copy since vault certification does not match plugin sha256 signature.", false)
 				continue
 			}
@@ -165,5 +167,60 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	logger.Println("PluginDeployFlow complete.")
 
+	return nil
+}
+
+//Updated deployed to true for any plugin
+func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logger *log.Logger) error {
+	logger.Println("PluginDeployedUpdate start.")
+
+	for _, pluginName := range pluginNameList {
+		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
+		if err != nil {
+			return err
+		}
+		if pluginData == nil {
+			if !prod.IsProd() && insecure.IsInsecure() {
+				pluginData = make(map[string]interface{})
+				pluginData["trcplugin"] = pluginName
+				logger.Println("Checking file.")
+				if imageFile, err := os.Open("/etc/opt/vault/plugins/" + pluginName); err == nil {
+					sha256 := sha256.New()
+
+					defer imageFile.Close()
+					if _, err := io.Copy(sha256, imageFile); err != nil {
+						continue
+					}
+
+					filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
+					pluginData["trcsha256"] = filesystemsha256
+					pluginData["copied"] = true
+				}
+			} else {
+				return errors.New("Plugin not certified.")
+			}
+		}
+
+		if copied, okCopied := pluginData["copied"]; !okCopied || !copied.(bool) {
+			logger.Println("Cannot certify plugin.  Plugin not copied: " + pluginName)
+			continue
+		}
+
+		if deployed, okDeployed := pluginData["deployed"]; !okDeployed || deployed.(bool) {
+			continue
+		}
+
+		writeMap := make(map[string]interface{})
+		writeMap["trcplugin"] = pluginData["trcplugin"]
+		writeMap["trcsha256"] = pluginData["trcsha256"]
+		writeMap["copied"] = pluginData["copied"]
+		writeMap["deployed"] = true
+
+		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap)
+		if err != nil {
+			return err
+		}
+	}
+	logger.Println("PluginDeployedUpdate complete.")
 	return nil
 }

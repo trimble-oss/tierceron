@@ -1,12 +1,15 @@
 package kv
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"tierceron/trcvault/opts/memonly"
+	"tierceron/utils/mlock"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -242,6 +245,47 @@ retryVaultAccess:
 		return nil, err
 	}
 	if data, ok := secret.Data["data"].(map[string]interface{}); ok {
+		if memonly.IsMemonly() {
+			for _, dataValues := range data {
+				if dataValuesSlice, isSlice := dataValues.([]interface{}); isSlice {
+					for _, dataValues := range dataValuesSlice {
+						if dataValueString, isString := dataValues.(string); isString {
+							mlock.Mlock2(nil, &dataValueString)
+						} else if _, isBool := dataValues.(bool); isBool {
+							//mlock.Mlock2(nil, &dataValueString)
+							// don't lock but accept bools.
+						} else if _, isInt64 := dataValues.(int64); isInt64 {
+							//mlock.Mlock2(nil, &dataValueString)
+							// don't lock but accept int64.
+						} else if _, isInt := dataValues.(int); isInt {
+							//mlock.Mlock2(nil, &dataValueString)
+							// don't lock but accept int.
+						} else if _, isNumber := dataValues.(json.Number); isNumber {
+							//mlock.Mlock2(nil, &dataValueString)
+							// don't lock but accept json.Number.
+						} else {
+							return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. Nested. %T", dataValues))
+						}
+					}
+				} else if dataValueString, isString := dataValues.(string); isString {
+					mlock.Mlock2(nil, &dataValueString)
+				} else if _, isBool := dataValues.(bool); isBool {
+					//mlock.Mlock2(nil, &dataValueString)
+					// don't lock but accept bools.
+				} else if _, isInt64 := dataValues.(int64); isInt64 {
+					//mlock.Mlock2(nil, &dataValueString)
+					// don't lock but accept int64.
+				} else if _, isInt := dataValues.(int); isInt {
+					//mlock.Mlock2(nil, &dataValueString)
+					// don't lock but accept int.
+				} else if _, isNumber := dataValues.(json.Number); isNumber {
+					//mlock.Mlock2(nil, &dataValueString)
+					// don't lock but accept json.Number.
+				} else {
+					return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. %T", dataValues))
+				}
+			}
+		}
 		return data, err
 	}
 	return nil, errors.New("Could not get data from vault response")
