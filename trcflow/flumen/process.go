@@ -15,6 +15,7 @@ import (
 	trcdb "tierceron/trcx/db"
 
 	flowcore "tierceron/trcflow/core"
+	flowcorehelper "tierceron/trcflow/core/flowcorehelper"
 	"tierceron/trcflow/deploy"
 	helperkv "tierceron/vaulthelper/kv"
 
@@ -142,17 +143,19 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	templateList := pluginConfig["templatePath"].([]string)
 	flowTemplateMap := map[string]string{}
 	flowSourceMap := map[string]string{}
-	flowControllerMap := map[string]chan int64{}
+	flowStateControllerMap := map[string]chan int64{}
+	flowStateRecieverMap := map[string]chan flowcorehelper.FlowStateUpdate{}
 
 	for _, template := range templateList {
 		source, service, tableTemplateName := eUtils.GetProjectService(template)
 		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
-		if tableName != tierceronFlowConfigurationTableName {
+		if tableName != flowcorehelper.TierceronFlowConfigurationTableName {
 			configBasis.VersionFilter = append(configBasis.VersionFilter, tableName)
 		}
 		flowTemplateMap[tableName] = template
 		flowSourceMap[tableName] = source
-		flowControllerMap[tableName] = make(chan int64)
+		flowStateControllerMap[tableName] = make(chan int64, 1)
+		flowStateRecieverMap[tableName] = make(chan flowcorehelper.FlowStateUpdate, 1)
 	}
 
 	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), harbingeropts.GetDatabaseName())
@@ -216,7 +219,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	tfmFlumContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())
 	tfmFlumContext.TierceronEngine.Context = sqle.NewEmptyContext()
-	tfmFlumContext.Init(sourceDatabaseConnectionsMap, []string{tierceronFlowConfigurationTableName}, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
+	tfmFlumContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
 	tfmFlumContext.Config = &configBasis
 	tfmFlumContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 
@@ -224,8 +227,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range GetTierceronTableNames() {
 			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{})}
-			tfContext.RemoteDataSource["flowControllerMap"] = flowControllerMap
-			tfContext.RemoteDataSource["vaultImportChannel"] = make(chan bool)
+			tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
+			tfContext.RemoteDataSource["flowStateRecieverMap"] = flowStateRecieverMap
+			tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
 			wg.Add(1)
 			go func(tableFlow flowcore.FlowNameType, tcfContext flowcore.TrcFlowContext) {
 				eUtils.LogInfo(config, "Beginning flow: "+tableFlow.ServiceName())
@@ -251,7 +255,18 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					flowcore.TableSyncFlow,
 				)
 			}(flowcore.FlowNameType(table), tfContext)
-			<-tfContext.RemoteDataSource["vaultImportChannel"].(chan bool)
+
+		initAlert: //This waits for flow states to be loaded before starting all non-controller flows
+			for {
+				select {
+				case _, ok := <-tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool):
+					if ok {
+						break initAlert
+					}
+				default:
+					time.Sleep(time.Duration(time.Second))
+				}
+			}
 		}
 	}
 
@@ -262,7 +277,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogInfo(config, "Beginning flow: "+tableFlow.ServiceName())
 				defer wg.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
-				tfContext.RemoteDataSource["flowStateChannel"] = flowControllerMap[tableFlow.TableName()]
+				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
+				tfContext.RemoteDataSource["flowStateReciever"] = flowStateRecieverMap[tableFlow.TableName()]
 				tfContext.Flow = tableFlow
 				tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 				tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
