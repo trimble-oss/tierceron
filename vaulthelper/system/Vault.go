@@ -80,6 +80,30 @@ func NewVaultWithNonlocal(insecure bool, address string, env string, newVault bo
 		shards: nil}, err
 }
 
+// Confirms we have a valid and active connection to vault.  If it doesn't, it re-establishes a new connection.
+func (v *Vault) RefreshClient() error {
+	tries := 0
+	var refreshErr error
+
+	for tries < 3 {
+		if _, err := v.GetStatus(); err != nil {
+			v.httpClient.CloseIdleConnections()
+
+			client, err := api.NewClient(&api.Config{Address: v.client.Address(), HttpClient: v.client.CloneConfig().HttpClient})
+			if err != nil {
+				refreshErr = err
+			} else {
+				v.client = client
+				return nil
+			}
+
+			tries = tries + 1
+		}
+	}
+
+	return refreshErr
+}
+
 // SetToken Stores the access token for this vault
 func (v *Vault) SetToken(token string) {
 	v.client.SetToken(token)
