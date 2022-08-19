@@ -4,19 +4,13 @@
 package buildopts
 
 import (
-	flowcore "tierceron/trcflow/core"
-	eUtils "tierceron/utils"
-
-	tcutil "VaultConfig.TenantConfig/util"
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
+	tccoreutil "VaultConfig.TenantConfig/util/core"
 
 	tclib "VaultConfig.TenantConfig/lib"
-	tcharbinger "VaultConfig.TenantConfig/util/harbinger"
-	helperkv "tierceron/vaulthelper/kv"
 
 	configcore "VaultConfig.Bootstrap/configcore"
 	"database/sql"
-	"github.com/dolthub/go-mysql-server/server"
 )
 
 func SetLogger(logger interface{}) {
@@ -28,60 +22,27 @@ func SetErrorLogger(logger interface{}) {
 }
 
 func GetLocalVaultAddr() string {
-	return tcutil.GetLocalVaultAddr()
+	return tccoreutil.GetLocalVaultAddr()
 }
 
 func GetSupportedSourceRegions() []string {
-	return tcutil.GetSupportedSourceRegions()
-}
-
-func ProcessDeployPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
-	return tcutil.ProcessDeployPluginEnvConfig(pluginEnvConfig)
-}
-
-func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return tcutil.ProcessFlowController(tfmContext, trcFlowContext)
-}
-
-func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return tcutil.ProcessFlowController(tfmContext, trcFlowContext)
-}
-
-func GetAdditionalFlows() []flowcore.FlowNameType {
-	return tcutil.GetAdditionalFlows()
-}
-
-func GetAdditionalTestFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{} // Noop
-}
-
-func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{} // Noop
+	return tccoreutil.GetSupportedSourceRegions()
 }
 
 func GetTestDeployConfig(token string) map[string]interface{} {
-	return tcutil.GetTestDeployConfig(token)
+	return tccoreutil.GetTestDeployConfig(token)
 }
 
 func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
-	return tcutil.ProcessPluginEnvConfig(pluginEnvConfig)
+	return tccoreutil.ProcessPluginEnvConfig(pluginEnvConfig)
+}
+
+func GetExtensionAuthComponents(config map[string]interface{}) map[string]interface{} {
+	return tccoreutil.GetExtensionAuthComponents(config)
 }
 
 func GetSyncedTables() []string {
 	return tcbuildopts.GetSyncedTables()
-}
-
-func GetDatabaseName() string {
-	return tcutil.GetDatabaseName()
-}
-
-func GetExtensionAuthComponents(config map[string]interface{}) map[string]interface{} {
-	return tcutil.GetExtensionAuthComponents(config)
-}
-
-// Build interface
-func BuildInterface(config *eUtils.DriverConfig, goMod *helperkv.Modifier, tfmContext *flowcore.TrcFlowMachineContext, vaultDatabaseConfig map[string]interface{}, serverListener server.ServerEventListener) error {
-	return tcharbinger.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, serverListener)
 }
 
 func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, string, error) {
