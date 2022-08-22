@@ -98,6 +98,9 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 	}
 
 	if flowStateReceiverMap, ok := tfContext.RemoteDataSource["flowStateReceiverMap"].(map[string]chan flowcorehelper.FlowStateUpdate); ok {
+		if flowStateReceiverMap == nil {
+			return nil, errors.New("Receiver map channel for flow controller was nil.")
+		}
 		for _, reciever := range flowStateReceiverMap {
 			select {
 			case x, ok := <-reciever:
