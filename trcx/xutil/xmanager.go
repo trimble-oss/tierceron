@@ -25,7 +25,7 @@ var wg2 sync.WaitGroup
 
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
-func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) ([]byte, bool, error, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string) {
+func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, error, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -401,7 +401,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, fromVault bool
 				tp,
 				project,
 				service,
-				fromVault,
+				templateFromVault,
 				&(templateResult.InterfaceTemplateSection),
 				&(templateResult.ValueSection),
 				&(templateResult.SecretSection),
@@ -597,7 +597,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 		}
 		templatePaths = templatePathsAccepted
 	}
-	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(config, config.Token != "novault", templatePaths)
+	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 	if errGenerateSeeds != nil {
 		eUtils.LogInfo(config, errGenerateSeeds.Error())
 		return errGenerateSeeds, nil
