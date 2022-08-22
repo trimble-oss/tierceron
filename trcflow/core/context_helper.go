@@ -238,7 +238,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		// Push this change to the flow for delivery to remote data source.
-		if mysqlPushEnabled {
+		if mysqlPushEnabled && flowPushRemote != nil {
 			pushError := flowPushRemote(tfContext.RemoteDataSource, rowDataMap)
 			if pushError != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
