@@ -15,6 +15,7 @@ import (
 	"tierceron/trcvault/opts/prod"
 	trcvutils "tierceron/trcvault/util"
 	"tierceron/trcvault/util/repository"
+	sys "tierceron/vaulthelper/system"
 
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
@@ -25,14 +26,19 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	logger.Println("PluginDeployFlow begun.")
 	var config *eUtils.DriverConfig
 	var goMod *helperkv.Modifier
+	var vault *sys.Vault
 	var err error
 
 	//Grabbing configs
-	config, goMod, _, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if err != nil {
+		if vault != nil {
+			defer vault.Close()
+		}
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
 	}
+	defer vault.Close()
 
 	logger.Println("PluginDeployFlow begin processing plugins.")
 	for _, pluginName := range pluginConfig["pluginNameList"].([]string) {
@@ -103,6 +109,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			}
 			if vaultPluginSignature["imagesha256"] == vaultPluginSignature["trcsha256"] { //Sha256 from download matches in vault
 				err = ioutil.WriteFile("/etc/opt/vault/plugins/"+vaultPluginSignature["trcplugin"].(string), vaultPluginSignature["rawImageFile"].([]byte), 0644)
+				vaultPluginSignature["rawImageFile"] = nil
 
 				if err != nil {
 					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not write out download image.", false)
