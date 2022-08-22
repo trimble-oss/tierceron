@@ -52,6 +52,23 @@ type HelloApp struct {
 	list                         *widget.List
 }
 
+func (fwb *FyneWidgetBundle) OnStatusChanged() {
+	selectedDetailedElement := fwb.MashupDetailedElement
+	if helloApp.HelloContext.mashupContext == nil {
+		return
+	}
+
+	elementStateBundle := mashupsdk.MashupElementStateBundle{
+		AuthToken:     client.GetServerAuthToken(),
+		ElementStates: []*mashupsdk.MashupElementState{selectedDetailedElement.State},
+	}
+	helloApp.HelloContext.mashupContext.Client.ResetG3NDetailedElementStates(helloApp.HelloContext.mashupContext, &mashupsdk.MashupEmpty{AuthToken: client.GetServerAuthToken()})
+
+	log.Printf("Display fields set to: %d", selectedDetailedElement.State.State)
+	helloApp.HelloContext.mashupContext.Client.UpsertMashupElementsState(helloApp.HelloContext.mashupContext, &elementStateBundle)
+	helloApp.mashupDisplayContext.MainWinDisplay.Focused = false
+}
+
 func (fwb *FyneWidgetBundle) OnClicked() {
 	fwb.MashupDetailedElement.State.State = int64(mashupsdk.Clicked)
 
@@ -235,13 +252,19 @@ func main() {
 			if helloApp.mashupDisplayContext.GetYoffset() == 0 {
 				helloApp.mashupDisplayContext.SetYoffset(yoffset + 3)
 			}
-
-			helloApp.OnResize(&mashupsdk.MashupDisplayHint{
-				Xpos:   int64(xpos),
-				Ypos:   int64(ypos),
-				Width:  int64(width),
-				Height: int64(height),
-			})
+			focused := false
+			if helloApp.mashupDisplayContext.MainWinDisplay != nil {
+				focused = helloApp.mashupDisplayContext.MainWinDisplay.Focused
+			}
+			helloApp.mashupDisplayContext.MainWinDisplay = &mashupsdk.MashupDisplayHint{
+				Focused: focused,
+				Xpos:    int64(xpos),
+				Ypos:    int64(ypos),
+				Width:   int64(width),
+				Height:  int64(height),
+			}
+			helloApp.OnResize(helloApp.mashupDisplayContext.MainWinDisplay)
+			helloApp.mashupDisplayContext.MainWinDisplay.Focused = false
 		})
 		helloApp.mainWin = a.NewWindow("Hello Fyne World")
 		logoIconBytes, _ := logoIcon.ReadFile("logo.png")
@@ -309,14 +332,14 @@ func main() {
 					displayContent.Text = mashupDetailedElement.Description
 					displayContent.Refresh()
 					//helloApp.fyneWidgetElements[mashupDetailedElement.Alias].GuiWidgetBundle.MashupDetailedElement = mashupDetailedElement
-					helloApp.fyneListElements[int64(id+6)].OnClicked()
+					helloApp.fyneListElements[int64(id+6)].OnStatusChanged() //OnClicked()
 					//helloApp.mainWin.AddToScene(argosyopts)
 					//helloApp.fyneWidgetElements[mashupDetailedElement.Alias].OnClicked()
 					return
 				}
 			}
 			fmt.Println(helloApp.fyneListElements[int64(id)+6].MashupDetailedElement.Name)
-			helloApp.fyneWidgetElements[helloApp.fyneListElements[int64(id+6)].MashupDetailedElement.Alias].OnClicked()
+			helloApp.fyneWidgetElements[helloApp.fyneListElements[int64(id+6)].MashupDetailedElement.Alias].OnStatusChanged() //OnClicked()
 
 		}
 		helloApp.list = list
