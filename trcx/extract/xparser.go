@@ -38,7 +38,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 	templatePath string,
 	project string,
 	service string,
-	fromVault bool,
+	templateFromVault bool,
 	interfaceTemplateSection *interface{},
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
@@ -53,7 +53,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 
 	// Gets the template file
 	var newTemplate string
-	if fromVault {
+	if templateFromVault {
 		templatePathExtended := ""
 		serviceRaw := service
 		if project == "Common" {
