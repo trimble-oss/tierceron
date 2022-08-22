@@ -1,6 +1,7 @@
 package flumen
 
 import (
+	"errors"
 	"sync"
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
@@ -9,6 +10,10 @@ import (
 	flowcore "tierceron/trcflow/core"
 
 	eUtils "tierceron/utils"
+)
+
+const (
+	TierceronControllerFlow flowcore.FlowNameType = "TierceronFlow"
 )
 
 var changesLock sync.Mutex
@@ -23,6 +28,16 @@ func getDeleteChangeQuery(databaseName string, changeTable string, id string) st
 
 func getInsertChangeQuery(databaseName string, changeTable string, id string) string {
 	return `INSERT IGNORE INTO ` + databaseName + `.` + changeTable + `VALUES (` + id + `, current_timestamp());`
+}
+
+func FlumenProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
+
+	switch trcFlowContext.Flow {
+	case TierceronControllerFlow:
+		return ProcessTierceronFlows(tfmContext, trcFlowContext)
+	}
+
+	return errors.New("Table not implemented.")
 }
 
 func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
@@ -88,6 +103,13 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
+			continue
+		}
+
+		if refreshErr := tfmContext.Vault.RefreshClient(); refreshErr != nil {
+			// Panic situation...  Can't connect to vault... Wait until next cycle to try again.
+			eUtils.LogErrorMessage(tfmContext.Config, "Failure to connect to vault.  It may be down...", false)
+			eUtils.LogErrorObject(tfmContext.Config, refreshErr, false)
 			continue
 		}
 
