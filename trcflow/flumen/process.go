@@ -377,14 +377,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	wg.Add(1)
 	//Set up controller config
 	controllerVaultDatabaseConfig := make(map[string]interface{})
-	controllerPart := 0
 	for index, config := range vaultDatabaseConfig {
-		if val, ok := vaultDatabaseConfig["controller"+index]; ok {
-			controllerVaultDatabaseConfig[index] = val
-			controllerPart++
-		} else {
-			controllerVaultDatabaseConfig[index] = config
-		}
+		controllerVaultDatabaseConfig[index] = config
 	}
 
 	controllerCheck := 0
