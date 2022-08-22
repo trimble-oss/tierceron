@@ -377,20 +377,38 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	wg.Add(1)
 	//Set up controller config
 	controllerVaultDatabaseConfig := make(map[string]interface{})
+	controllerPart := 0
 	for index, config := range vaultDatabaseConfig {
 		if val, ok := vaultDatabaseConfig["controller"+index]; ok {
 			controllerVaultDatabaseConfig[index] = val
+			controllerPart++
 		} else {
 			controllerVaultDatabaseConfig[index] = config
 		}
 	}
 
-	controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0] + ":" + controllerVaultDatabaseConfig["dbport"].(string)
-	interfaceErr = harbingeropts.BuildInterface(config, goMod, tfmFlumContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{})
-	if interfaceErr != nil {
-		wg.Done()
-		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
-		return interfaceErr
+	controllerCheck := 0
+	if cdbport, ok := vaultDatabaseConfig["controllerdbport"]; ok {
+		controllerVaultDatabaseConfig["dbport"] = cdbport
+		controllerCheck++
+	}
+	if cdbpass, ok := vaultDatabaseConfig["controllerdbpassword"]; ok {
+		controllerVaultDatabaseConfig["dbpassword"] = cdbpass
+		controllerCheck++
+	}
+	if cdbuser, ok := vaultDatabaseConfig["controllerdbuser"]; ok {
+		controllerVaultDatabaseConfig["dbuser"] = cdbuser
+		controllerCheck++
+	}
+
+	if controllerCheck == 3 {
+		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0] + ":" + controllerVaultDatabaseConfig["dbport"].(string)
+		interfaceErr = harbingeropts.BuildInterface(config, goMod, tfmFlumContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{})
+		if interfaceErr != nil {
+			wg.Done()
+			eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
+			return interfaceErr
+		}
 	}
 	wg.Wait()
 	logger.Println("ProcessFlows complete.")
