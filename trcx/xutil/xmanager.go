@@ -25,7 +25,7 @@ var wg2 sync.WaitGroup
 
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
-func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) ([]byte, bool, error, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string) {
+func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, error, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string) {
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -381,6 +381,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, fromVault bool
 					}
 				}
 				if config.Token != "novault" {
+					// TODO: Chebacca Monday!
 					cds.Init(config, goMod, c.SecretMode, true, project, cPaths, service)
 				}
 				if len(goMod.VersionFilter) >= 1 && strings.Contains(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!") {
@@ -400,7 +401,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, fromVault bool
 				tp,
 				project,
 				service,
-				fromVault,
+				templateFromVault,
 				&(templateResult.InterfaceTemplateSection),
 				&(templateResult.ValueSection),
 				&(templateResult.SecretSection),
