@@ -6,6 +6,7 @@ package flowopts
 import (
 	"errors"
 	flowcore "tierceron/trcflow/core"
+	trcf "tierceron/trcflow/core/flowcorehelper"
 )
 
 // Flow names
@@ -28,4 +29,8 @@ func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFl
 
 func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
 	return nil
+}
+
+func GetFlowDatabaseName() string {
+	return trcf.GetFlowDBName()
 }
