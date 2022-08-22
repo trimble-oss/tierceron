@@ -6,6 +6,7 @@ package flowopts
 import (
 	tcutil "VaultConfig.TenantConfig/util"
 	flowcore "tierceron/trcflow/core"
+	trcf "tierceron/trcflow/core/flowcorehelper"
 )
 
 func GetAdditionalFlows() []flowcore.FlowNameType {
@@ -26,4 +27,8 @@ func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowCo
 
 func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
 	return tcutil.ProcessFlowController(tfmContext, trcFlowContext)
+}
+
+func GetFlowDatabaseName() string {
+	return trcf.GetFlowDBName()
 }
