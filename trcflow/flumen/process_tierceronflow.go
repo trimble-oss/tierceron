@@ -22,7 +22,7 @@ func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap 
 		indexName = vaultIndexColumnName
 		idValue = tierceronFlowName
 	} else {
-		return "", errors.New("flowName not found for TierceronFlow: " + rowDataMap[vaultIndexColumnName].(string))
+		return "", errors.New("flowName not found for TierceronFlow: " + vaultIndexColumnName)
 	}
 	return "/" + indexName + "/" + idValue, nil
 }
