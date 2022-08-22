@@ -381,6 +381,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, fromVault bool
 					}
 				}
 				if config.Token != "novault" {
+					// TODO: Chebacca Monday!
 					cds.Init(config, goMod, c.SecretMode, true, project, cPaths, service)
 				}
 				if len(goMod.VersionFilter) >= 1 && strings.Contains(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!") {
@@ -596,7 +597,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 		}
 		templatePaths = templatePathsAccepted
 	}
-	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(config, false, templatePaths)
+	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(config, config.Token != "novault", templatePaths)
 	if errGenerateSeeds != nil {
 		eUtils.LogInfo(config, errGenerateSeeds.Error())
 		return errGenerateSeeds, nil
