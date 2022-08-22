@@ -7,11 +7,14 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unsafe"
 
 	"tierceron/buildopts/coreopts"
 	vcutils "tierceron/trcconfig/utils"
+	"tierceron/trcvault/opts/memonly"
 	"tierceron/trcx/extract"
 	eUtils "tierceron/utils"
+	"tierceron/utils/mlock"
 	helperkv "tierceron/vaulthelper/kv"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -22,6 +25,19 @@ import (
 )
 
 var m sync.Mutex
+
+// TODO: revisit this in 1.19 or later...
+func stringClone(s string) string {
+	b := make([]byte, len(s))
+	copy(b, s)
+	if memonly.IsMemonly() {
+		newData := *(*string)(unsafe.Pointer(&b))
+		mlock.Mlock2(nil, &newData)
+		return newData
+	} else {
+		return *(*string)(unsafe.Pointer(&b))
+	}
+}
 
 func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterprise string, version string, project string, projectAlias string, service string, templateResult *extract.TemplateResultData) {
 
@@ -94,7 +110,7 @@ func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterpris
 						iVar = nil
 					}
 				} else {
-					iVar, _ = column.Type.Convert(value)
+					iVar, _ = column.Type.Convert(stringClone(value))
 					allDefaults = false
 				}
 				row = append(row, iVar)
@@ -114,7 +130,7 @@ func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterpris
 						iVar = nil
 					}
 				} else {
-					iVar, _ = column.Type.Convert(secretValue)
+					iVar, _ = column.Type.Convert(stringClone(secretValue))
 					allDefaults = false
 				}
 				row = append(row, iVar)
