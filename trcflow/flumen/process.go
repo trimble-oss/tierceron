@@ -218,16 +218,16 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
 
 	//Initialize tfcContext for flow controller
-	tfmFlumContext := &flowcore.TrcFlowMachineContext{
+	tfmFlumeContext := &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
 	}
 
-	tfmFlumContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())
-	tfmFlumContext.TierceronEngine.Context = sqle.NewEmptyContext()
-	tfmFlumContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
-	tfmFlumContext.Config = &configBasis
-	tfmFlumContext.ExtensionAuthData = tfmContext.ExtensionAuthData
+	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())
+	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
+	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
+	tfmFlumeContext.Config = &configBasis
+	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 
 	var wg sync.WaitGroup
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
@@ -251,7 +251,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				}
 				tcfContext.FlowSourceAlias = flowopts.GetFlowDatabaseName()
 
-				tfmFlumContext.ProcessFlow(
+				tfmFlumeContext.ProcessFlow(
 					config,
 					&tcfContext,
 					FlumenProcessFlowController,
@@ -397,7 +397,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	if controllerCheck == 3 {
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0] + ":" + controllerVaultDatabaseConfig["dbport"].(string)
-		interfaceErr = harbingeropts.BuildInterface(config, goMod, tfmFlumContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{})
+		interfaceErr = harbingeropts.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{})
 		if interfaceErr != nil {
 			wg.Done()
 			eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
