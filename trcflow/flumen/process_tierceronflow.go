@@ -71,8 +71,6 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 						flowMsg := flowcorehelper.CurrentFlowState{State: stateMsg, SyncMode: syncModeMsg}
 						select {
 						case stateChannel <- flowMsg:
-						default:
-							continue
 						}
 					}
 				}
@@ -110,8 +108,6 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 							if ok {
 								tfmContext.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate), nil, true, "UPDATE", nil, "")
 							}
-						default:
-							continue //No update pending on channel, moving on...
 						}
 					}
 				}(receiver)
