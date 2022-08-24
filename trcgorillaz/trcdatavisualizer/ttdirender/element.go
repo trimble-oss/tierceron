@@ -29,7 +29,7 @@ type ElementRenderer struct {
 	//subCounter    float64
 	//locnCounter   *math32.Vector3
 	totalElements int
-	locationCache map[int64]*math32.Vector3
+	LocationCache map[int64]*math32.Vector3
 	//compoundMesh  *CompoundMesh
 	//MAKE CLICKEDELEMENTS PUBLIC SO CURVE RENDERER CAN ACCESS IT
 	clickedElements []*ClickedG3nDetailElement //ClickedG3nDetailElement // Stack containing clicked spiral (sub as well) g3n elements.
@@ -87,20 +87,20 @@ func (er *ElementRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedEle
 
 func (er *ElementRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
 	er.totalElements = totalElements
-	if er.iOffset == 2 {
+	if er.iOffset >= 2 {
 		id := g3n.GetDisplayId()
-		return g3n, er.locationCache[id]
+		return g3n, er.LocationCache[id]
 	} else {
 		if er.iOffset == 0 {
 			er.iOffset = 1
 			er.counter = 0.0
-			er.locationCache = make(map[int64]*math32.Vector3)
-			er.locationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(0, 0, 0)
+			er.LocationCache = make(map[int64]*math32.Vector3)
+			er.LocationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(0, 0, 0)
 			return g3n, math32.NewVector3(float32(0.0), float32(0.0), float32(0.0))
 		} else {
 			er.counter = er.counter - 0.1
 			complex := binetFormula(er.counter)
-			er.locationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
+			er.LocationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
 			return g3n, math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
 		}
 	}
@@ -129,8 +129,8 @@ func (er *ElementRenderer) calcLocnStarter(worldApp *g3nworld.WorldApp, ids []in
 	for _, id := range ids {
 		element := worldApp.ConcreteElements[id]
 		for _, parent := range element.GetParentElementIds() {
-			if parent > 0 && er.locationCache[parent] != nil {
-				er.locationCache[id] = er.calculateLocation(er.locationCache[parent], counter)
+			if parent > 0 && er.LocationCache[parent] != nil {
+				er.LocationCache[id] = er.calculateLocation(er.LocationCache[parent], counter)
 				counter = counter - 0.1
 			}
 		}
@@ -168,7 +168,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	//Initialize location cache
 	if er.iOffset != 2 {
 		copyCache := make(map[int64]*math32.Vector3)
-		for k, v := range er.locationCache {
+		for k, v := range er.LocationCache {
 			copyCache[k] = v
 		}
 		for key, _ := range copyCache {
@@ -344,5 +344,5 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 
 func (er *ElementRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
 	curveRenderer := collaboratingRenderer.(*CurveRenderer)
-	curveRenderer.ElementRenderer = er
+	curveRenderer.er = er
 }
