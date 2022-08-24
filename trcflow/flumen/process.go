@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	trcdb "tierceron/trcx/db"
 
 	flowcore "tierceron/trcflow/core"
+	flowcorehelper "tierceron/trcflow/core/flowcorehelper"
 	"tierceron/trcflow/deploy"
 	helperkv "tierceron/vaulthelper/kv"
 
@@ -142,13 +144,24 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	templateList := pluginConfig["templatePath"].([]string)
 	flowTemplateMap := map[string]string{}
 	flowSourceMap := map[string]string{}
+	flowStateControllerMap := map[string]chan int64{}
+	flowStateReceiverMap := map[string]chan flowcorehelper.FlowStateUpdate{}
 
 	for _, template := range templateList {
 		source, service, tableTemplateName := eUtils.GetProjectService(template)
 		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
-		configBasis.VersionFilter = append(configBasis.VersionFilter, tableName)
+		if tableName != flowcorehelper.TierceronFlowConfigurationTableName {
+			configBasis.VersionFilter = append(configBasis.VersionFilter, tableName)
+		}
 		flowTemplateMap[tableName] = template
 		flowSourceMap[tableName] = source
+		flowStateControllerMap[tableName] = make(chan int64, 1)
+		flowStateReceiverMap[tableName] = make(chan flowcorehelper.FlowStateUpdate, 1)
+	}
+
+	for _, enhancement := range flowopts.GetAdditionalFlows() {
+		flowStateControllerMap[enhancement.TableName()] = make(chan int64, 1)
+		flowStateReceiverMap[enhancement.TableName()] = make(chan flowcorehelper.FlowStateUpdate, 1)
 	}
 
 	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), harbingeropts.GetDatabaseName())
@@ -202,9 +215,66 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
+	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
+
+	//Initialize tfcContext for flow controller
+	tfmFlumContext := &flowcore.TrcFlowMachineContext{
+		Env:                       pluginConfig["env"].(string),
+		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
+	}
+
+	tfmFlumContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())
+	tfmFlumContext.TierceronEngine.Context = sqle.NewEmptyContext()
+	tfmFlumContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
+	tfmFlumContext.Config = &configBasis
+	tfmFlumContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 
 	var wg sync.WaitGroup
-	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
+	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
+		for _, table := range GetTierceronTableNames() {
+			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{})}
+			tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
+			tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
+			tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
+			wg.Add(1)
+			go func(tableFlow flowcore.FlowNameType, tcfContext flowcore.TrcFlowContext) {
+				eUtils.LogInfo(config, "Beginning flow: "+tableFlow.ServiceName())
+				defer wg.Done()
+				tcfContext.Flow = tableFlow
+				tcfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
+				tcfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+
+				config, tcfContext.GoMod, tcfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				if err != nil {
+					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
+					return
+				}
+				tcfContext.FlowSourceAlias = flowopts.GetFlowDatabaseName()
+
+				tfmFlumContext.ProcessFlow(
+					config,
+					&tcfContext,
+					FlumenProcessFlowController,
+					vaultDatabaseConfig,
+					sourceDatabaseConnectionMap,
+					tableFlow,
+					flowcore.TableSyncFlow,
+				)
+			}(flowcore.FlowNameType(table), tfContext)
+
+		initAlert: //This waits for flow states to be loaded before starting all non-controller flows
+			for {
+				select {
+				case _, ok := <-tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool):
+					if ok {
+						break initAlert
+					}
+				default:
+					time.Sleep(time.Duration(time.Second))
+				}
+			}
+		}
+	}
 
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range configBasis.VersionFilter {
@@ -213,6 +283,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogInfo(config, "Beginning flow: "+tableFlow.ServiceName())
 				defer wg.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
+				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
 				tfContext.Flow = tableFlow
 				tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 				tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
@@ -242,6 +314,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				defer wg.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
 				tfContext.Flow = enhancementFlow
+				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
+				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
 
 				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 				if err != nil {
@@ -298,6 +372,37 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		wg.Done()
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
 		return interfaceErr
+	}
+
+	wg.Add(1)
+	//Set up controller config
+	controllerVaultDatabaseConfig := make(map[string]interface{})
+	for index, config := range vaultDatabaseConfig {
+		controllerVaultDatabaseConfig[index] = config
+	}
+
+	controllerCheck := 0
+	if cdbport, ok := vaultDatabaseConfig["controllerdbport"]; ok {
+		controllerVaultDatabaseConfig["dbport"] = cdbport
+		controllerCheck++
+	}
+	if cdbpass, ok := vaultDatabaseConfig["controllerdbpassword"]; ok {
+		controllerVaultDatabaseConfig["dbpassword"] = cdbpass
+		controllerCheck++
+	}
+	if cdbuser, ok := vaultDatabaseConfig["controllerdbuser"]; ok {
+		controllerVaultDatabaseConfig["dbuser"] = cdbuser
+		controllerCheck++
+	}
+
+	if controllerCheck == 3 {
+		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0] + ":" + controllerVaultDatabaseConfig["dbport"].(string)
+		interfaceErr = harbingeropts.BuildInterface(config, goMod, tfmFlumContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{})
+		if interfaceErr != nil {
+			wg.Done()
+			eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
+			return interfaceErr
+		}
 	}
 	wg.Wait()
 	logger.Println("ProcessFlows complete.")
