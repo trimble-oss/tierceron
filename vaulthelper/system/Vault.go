@@ -87,7 +87,9 @@ func (v *Vault) RefreshClient() error {
 
 	for tries < 3 {
 		if _, err := v.GetStatus(); err != nil {
-			v.httpClient.CloseIdleConnections()
+			if v.httpClient != nil {
+				v.httpClient.CloseIdleConnections()
+			}
 
 			client, err := api.NewClient(&api.Config{Address: v.client.Address(), HttpClient: v.client.CloneConfig().HttpClient})
 			if err != nil {
