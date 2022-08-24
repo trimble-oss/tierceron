@@ -54,7 +54,7 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 }
 
 func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) ([]map[string]interface{}, error) {
-	if flowControllerMap, ok := tfContext.RemoteDataSource["flowStateControllerMap"].(map[string]chan int64); ok {
+	if flowControllerMap, ok := tfContext.RemoteDataSource["flowStateControllerMap"].(map[string]chan flowcorehelper.CurrentFlowState); ok {
 		if flowControllerMap == nil {
 			return nil, errors.New("Channel map for flow controller was nil.")
 		}
@@ -67,10 +67,13 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 					return nil, errors.New("State channel for flow controller was nil.")
 				}
 				if stateMsg, ok := tfFlow["state"].(int64); ok {
-					select {
-					case stateChannel <- stateMsg:
-					default:
-						continue
+					if syncModeMsg, ok := tfFlow["syncMode"].(string); ok {
+						flowMsg := flowcorehelper.CurrentFlowState{State: stateMsg, SyncMode: syncModeMsg}
+						select {
+						case stateChannel <- flowMsg:
+						default:
+							continue
+						}
 					}
 				}
 
@@ -81,7 +84,6 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 	}
 
 	if flowInit { //Used to signal other flows to begin, now that states have been loaded on init
-
 		if initAlertChan, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
 			if initAlertChan == nil {
 				return nil, errors.New("Alert channel for flow controller was nil.")
@@ -95,26 +97,32 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 		} else {
 			return nil, errors.New("Alert channel for flow controller is wrong type.")
 		}
+
+		if flowStateReceiverMap, ok := tfContext.RemoteDataSource["flowStateReceiverMap"].(map[string]chan flowcorehelper.FlowStateUpdate); ok {
+			if flowStateReceiverMap == nil {
+				return nil, errors.New("Receiver map channel for flow controller was nil.")
+			}
+			for _, receiver := range flowStateReceiverMap {
+				go func(currentReceiver chan flowcorehelper.FlowStateUpdate) {
+					for {
+						select {
+						case x, ok := <-currentReceiver:
+							if ok {
+								tfmContext.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate), nil, true, "UPDATE", nil, "")
+							}
+						default:
+							continue //No update pending on channel, moving on...
+						}
+					}
+				}(receiver)
+			}
+			return nil, nil
+		} else {
+			return nil, errors.New("Receiver map for flow controller is wrong type.")
+		}
 	}
 
-	if flowStateReceiverMap, ok := tfContext.RemoteDataSource["flowStateReceiverMap"].(map[string]chan flowcorehelper.FlowStateUpdate); ok {
-		if flowStateReceiverMap == nil {
-			return nil, errors.New("Receiver map channel for flow controller was nil.")
-		}
-		for _, reciever := range flowStateReceiverMap {
-			select {
-			case x, ok := <-reciever:
-				if ok {
-					tfmContext.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate), nil, true, "UPDATE", nil, "")
-				}
-			default:
-				continue //No update pending on channel, moving on...
-			}
-		}
-		return nil, nil
-	} else {
-		return nil, errors.New("Receiver map for flow controller is wrong type.")
-	}
+	return nil, nil
 }
 
 //Only pull from vault on init
@@ -133,8 +141,8 @@ func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext
 		for {
 			select {
 			case <-time.After(time.Millisecond * afterTime):
-				afterTime = sqlIngestInterval / 2
-				tfmContext.Log("Tierceron Flows is running and checking for changes.", nil)
+				afterTime = sqlIngestInterval / 3
+				//tfmContext.Log("Tierceron Flows is running and checking for changes.", nil)
 				// Periodically checks the table for updates and send out state changes to flows.
 				_, err := tierceronFlowImport(tfmContext, tfContext)
 				if err != nil {

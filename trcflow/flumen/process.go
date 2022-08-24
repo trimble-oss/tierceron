@@ -144,7 +144,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	templateList := pluginConfig["templatePath"].([]string)
 	flowTemplateMap := map[string]string{}
 	flowSourceMap := map[string]string{}
-	flowStateControllerMap := map[string]chan int64{}
+	flowStateControllerMap := map[string]chan flowcorehelper.CurrentFlowState{}
 	flowStateReceiverMap := map[string]chan flowcorehelper.FlowStateUpdate{}
 
 	for _, template := range templateList {
@@ -155,12 +155,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 		flowTemplateMap[tableName] = template
 		flowSourceMap[tableName] = source
-		flowStateControllerMap[tableName] = make(chan int64, 1)
+		flowStateControllerMap[tableName] = make(chan flowcorehelper.CurrentFlowState, 1)
 		flowStateReceiverMap[tableName] = make(chan flowcorehelper.FlowStateUpdate, 1)
 	}
 
 	for _, enhancement := range flowopts.GetAdditionalFlows() {
-		flowStateControllerMap[enhancement.TableName()] = make(chan int64, 1)
+		flowStateControllerMap[enhancement.TableName()] = make(chan flowcorehelper.CurrentFlowState, 1)
 		flowStateReceiverMap[enhancement.TableName()] = make(chan flowcorehelper.FlowStateUpdate, 1)
 	}
 
