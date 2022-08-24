@@ -10,6 +10,11 @@ type FlowStateUpdate struct {
 	StateUpdate string
 }
 
+type CurrentFlowState struct {
+	State    int64
+	SyncMode string
+}
+
 func GetFlowDBName() string {
 	return TierceronFlowDB
 }
