@@ -68,12 +68,9 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 				}
 				if stateMsg, ok := tfFlow["state"].(int64); ok {
 					if syncModeMsg, ok := tfFlow["syncMode"].(string); ok {
-						flowMsg := flowcorehelper.CurrentFlowState{State: stateMsg, SyncMode: syncModeMsg}
-						select {
-						case stateChannel <- flowMsg:
-						default:
-							continue
-						}
+						go func() {
+							stateChannel <- flowcorehelper.CurrentFlowState{State: stateMsg, SyncMode: syncModeMsg}
+						}()
 					}
 				}
 
@@ -110,8 +107,6 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 							if ok {
 								tfmContext.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate), nil, true, "UPDATE", nil, "")
 							}
-						default:
-							continue //No update pending on channel, moving on...
 						}
 					}
 				}(receiver)
