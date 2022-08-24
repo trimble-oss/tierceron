@@ -229,7 +229,7 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 		eUtils.LogErrorObject(tfmContext.Config, refreshErr, false)
 		return nil, false
 	}
-	properties, err := trcvutils.NewProperties(tfmContext.Config, tfmContext.Vault, trcfc.GoMod, tfmContext.Env, flowProject, flowProject)
+	properties, err := trcvutils.NewProperties(tfmContext.Config, trcfc.Vault, trcfc.GoMod, tfmContext.Env, flowProject, flowProject)
 	if err != nil {
 		return nil, false
 	}
