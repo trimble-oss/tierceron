@@ -21,9 +21,42 @@ var sqrtfive float64 = float64(math.Sqrt(float64(5.0)))
 
 type CurveRenderer struct {
 	g3nrender.GenericRenderer
-	*ElementRenderer
+	er                    *ElementRenderer
 	CollaboratingRenderer g3nrender.IG3nRenderer
 	totalElements         int
+	clickedPaths          []*CurveMesh
+}
+
+type CurveMesh struct {
+	path       *graphic.Mesh
+	g3nElement *g3nmash.G3nDetailedElement
+}
+
+func (cr *CurveRenderer) isEmpty() bool {
+	return len(cr.clickedPaths) == 0
+}
+
+func (cr *CurveRenderer) length() int {
+	return len(cr.clickedPaths)
+}
+
+func (cr *CurveRenderer) push(spiralPath *graphic.Mesh, g3nDetailedElement *g3nmash.G3nDetailedElement) {
+	element := CurveMesh{
+		path:       spiralPath,
+		g3nElement: g3nDetailedElement,
+	}
+	cr.clickedPaths = append(cr.clickedPaths, &element)
+}
+
+func (cr *CurveRenderer) pop() *CurveMesh {
+	size := len(cr.clickedPaths)
+	element := cr.clickedPaths[size-1]
+	cr.clickedPaths = cr.clickedPaths[:size-1]
+	return element
+}
+
+func (cr *CurveRenderer) top() *CurveMesh {
+	return cr.clickedPaths[cr.length()-1]
 }
 
 func binetFormula(n float64) complex128 {
@@ -38,7 +71,7 @@ func (cr *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpo
 	if cr.totalElements == 0 {
 		cr.totalElements = 20
 	}
-	for i = -0.1 * float64(cr.totalElements); i < -0.1; i = i + 0.1 {
+	for i = -0.1 * float64(cr.totalElements-1); i < -0.1; i = i + 0.1 {
 		c := binetFormula(i)
 		x := real(c)
 		y := imag(c)
@@ -65,9 +98,6 @@ func (sp *CurveRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedEleme
 }
 
 func (cr *CurveRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
-	if cr.ElementRenderer.locationCache != nil && cr.ElementRenderer.locationCache[g3n.GetDetailedElement().Id] != nil {
-		return g3n, cr.ElementRenderer.locationCache[g3n.GetDetailedElement().Id]
-	}
 	return g3n, math32.NewVector3(float32(0.0), float32(0.0), float32(0.0))
 }
 
@@ -83,29 +113,59 @@ func (cr *CurveRenderer) GetRenderer(rendererName string) g3nrender.IG3nRenderer
 	return nil
 }
 
+func (cr *CurveRenderer) removeRelated(worldApp *g3nworld.WorldApp, clickedElement *g3nmash.G3nDetailedElement, element *g3nmash.G3nDetailedElement) {
+	if !cr.isEmpty() {
+		toRemove := cr.pop()
+		worldApp.RemoveFromScene(toRemove.path)
+		if !cr.isEmpty() && !(len(element.GetParentElementIds()) != 0 && len(clickedElement.GetParentElementIds()) != 0 && element.GetParentElementIds()[0] == clickedElement.GetParentElementIds()[0]) {
+			cr.removeRelated(worldApp, clickedElement, cr.top().g3nElement)
+		}
+	}
+}
+
 func (cr *CurveRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
+	if !cr.isEmpty() && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Alias != "DataFlowStatistic" && !cr.er.isChildElement(worldApp, cr.top().g3nElement) {
+		cr.removeRelated(worldApp, worldApp.ClickedElements[len(worldApp.ClickedElements)-1], cr.top().g3nElement)
+	}
 	return true
 }
 
 func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedElement *g3nmash.G3nDetailedElement) bool {
-	//var g3nColor *math32.Color
-	// var path []math32.Vector3
-	// clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
-	// _, position := cr.NextCoordinate(clickedElement, len(clickedElement.GetChildElementIds()))
-	// for i := -0.1 * float64(len(clickedElement.GetChildElementIds())); i < -0.1; i = i + 0.1 {
-	// 	c := binetFormula(i)
-	// 	x := real(c)
-	// 	y := imag(c)
-	// 	z := -i
-	// 	path = append(path, *math32.NewVector3(float32(-x+4), float32(y+4), float32(z+4)))
-	// }
-	// tubeGeometry := geometry.NewTube(path, .007, 32, true)
-	// color := math32.NewColor("darkmagenta")
-	// mat := material.NewStandard(color.Set(float32(148)/255.0, float32(120)/255.0, float32(42)/255.0))
-	// tubeMesh := graphic.NewMesh(tubeGeometry, mat)
-	// tubeMesh.SetPositionVec(position)
-	// worldApp.UpsertToScene(tubeMesh)
+	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+	if g3nDetailedElement.GetDetailedElement().Id == 2 {
+		position := math32.NewVector3(1.0, 2.0, 3.0)
+		var path []math32.Vector3
+		if clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil && clickedElement.GetDetailedElement().Genre != "Solid" {
+			locn := clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
+			position = &locn
+		}
+		if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Alias != "DataFlowStatistic" {
+			for i := -0.1 * 20.0; i < -0.1; i = i + 0.1 { //float64(len(clickedElement.GetChildElementIds())-1)
+				c := binetFormula(i)
+				x := real(c)
+				y := imag(c)
+				z := -i
+				path = append(path, *math32.NewVector3(float32(-x), float32(y), float32(z)))
+			}
+			path = append(path, *math32.NewVector3(float32(0.0), float32(0.0), float32(0.0)))
+			tubeGeometry := geometry.NewTube(path, .007, 32, true)
+			color := math32.NewColor("darkmagenta")
+			if clickedElement.GetDetailedElement().Alias == "Argosy" {
+				color.Set(0.435, 0.541, 0.420)
+			} else if clickedElement.GetDetailedElement().Alias == "DataFlowGroup" {
+				color.Set(0.675, 0.624, 0.773)
+			} else if clickedElement.GetDetailedElement().Alias == "DataFlow" {
+				color.Set(0.773, 0.675, 0.624)
+			}
+			mat := material.NewStandard(color)
+			tubeMesh := graphic.NewMesh(tubeGeometry, mat)
+			tubeMesh.SetLoaderID(clickedElement.GetDisplayName() + "-Curve")
+			tubeMesh.SetPositionVec(position)
+			cr.push(tubeMesh, clickedElement)
+			worldApp.UpsertToScene(tubeMesh)
+		}
+	}
 	return true
 }
 
