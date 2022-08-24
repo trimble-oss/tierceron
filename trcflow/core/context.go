@@ -12,6 +12,7 @@ import (
 
 	"tierceron/buildopts/coreopts"
 	"tierceron/buildopts/flowcoreopts"
+	"tierceron/trcflow/core/flowcorehelper"
 
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
@@ -21,7 +22,6 @@ import (
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
-	"VaultConfig.TenantConfig/util/buildopts/mysql"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -244,9 +244,10 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
-	ctx context.Context) {
+	ctx context.Context,
+	sqlState bool) {
 
-	mysqlPushEnabled := mysql.IsMysqlPushEnabled()
+	mysqlPushEnabled := sqlState
 	flowChangedChannel := channelMap[tfContext.Flow]
 	flowChangedChannel <- true
 	for {
@@ -361,7 +362,8 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
-	ctx context.Context) {
+	ctx context.Context,
+	sqlState bool) {
 
 	var seedInitComplete chan bool = make(chan bool, 1)
 	if vaultSecondIndexColumnName == "" {
@@ -370,7 +372,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, ctx)
+	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, ctx, sqlState)
 }
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan bool {
@@ -552,8 +554,9 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 
 	tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
 	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
-	if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() {
-		// Create remote data source with only what is needed.
+	//if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() { //Flag is now replaced by syncMode in controller
+	// Create remote data source with only what is needed.
+	if flow.ServiceName() != flowcorehelper.TierceronFlowConfigurationTableName {
 		eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
 		dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
@@ -565,6 +568,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 
 		tfContext.RemoteDataSource["connection"] = dbsourceConn
 	}
+	//}
 	//
 	// Hand processing off to process flow implementor.
 	//
