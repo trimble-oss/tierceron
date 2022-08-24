@@ -12,12 +12,12 @@ import (
 	"time"
 )
 
-func buildArgosies(startID int64, size int) ([]util.Argosy, []int64) {
+func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfstatsize int) ([]util.Argosy, []int64) {
 	argosyId := startID - 1
 	argosies := []util.Argosy{}
 	collectionIDs := []int64{}
-	for i := 0; i < size; i++ {
-		argosyId = startID + int64(i)*int64(1.0+float64(size)+math.Pow(float64(size), 2.0)+math.Pow(float64(size), 3.0))
+	for i := 0; i < argosysize; i++ {
+		argosyId = startID + int64(i)*int64(1.0+float64(dfgsize)+math.Pow(float64(dfsize), 2.0)+math.Pow(float64(dfstatsize), 3.0))
 		collectionIDs = append(collectionIDs, argosyId)
 		argosy := util.Argosy{
 			MashupDetailedElement: mashupsdk.MashupDetailedElement{
@@ -25,7 +25,7 @@ func buildArgosies(startID int64, size int) ([]util.Argosy, []int64) {
 				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Init)},
 				Name:        "Argosy-" + strconv.Itoa(int(argosyId)),
 				Alias:       "It",
-				Description: "",
+				Description: "Testing to see if description will properly change!",
 				Renderer:    "Element",
 				Genre:       "Argosy",
 				Subgenre:    "",
@@ -37,7 +37,7 @@ func buildArgosies(startID int64, size int) ([]util.Argosy, []int64) {
 		}
 		collection := []int64{}
 		children := []int64{}
-		argosy.Groups, collection, children = buildDataFlowGroups(argosyId+1, size, argosyId)
+		argosy.Groups, collection, children = buildDataFlowGroups(argosyId+1, dfgsize, dfsize, dfstatsize, argosyId)
 		for _, id := range collection {
 			collectionIDs = append(collectionIDs, id)
 		}
@@ -46,16 +46,17 @@ func buildArgosies(startID int64, size int) ([]util.Argosy, []int64) {
 		}
 		argosies = append(argosies, argosy)
 	}
+
 	return argosies, collectionIDs
 }
 
-func buildDataFlowGroups(startID int64, size int, parentID int64) ([]util.DataFlowGroup, []int64, []int64) {
+func buildDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int, parentID int64) ([]util.DataFlowGroup, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
 	groups := []util.DataFlowGroup{}
-	for i := 0; i < size; i++ {
-		argosyId = startID + int64(i)*int64(1.0+float64(size)+math.Pow(float64(size), 2.0))
+	for i := 0; i < dfgsize; i++ {
+		argosyId = startID + int64(i)*int64(1.0+float64(dfsize)+math.Pow(float64(dfstatsize), 2.0))
 		collectionIDs = append(collectionIDs, argosyId)
 		childIDs = append(childIDs, argosyId)
 		group := util.DataFlowGroup{
@@ -76,7 +77,7 @@ func buildDataFlowGroups(startID int64, size int, parentID int64) ([]util.DataFl
 		}
 		collection := []int64{}
 		children := []int64{}
-		group.Flows, collection, children = buildDataFlows(argosyId+1, size, argosyId)
+		group.Flows, collection, children = buildDataFlows(argosyId+1, dfsize, dfstatsize, argosyId)
 		for _, id := range collection {
 			collectionIDs = append(collectionIDs, id)
 		}
@@ -88,13 +89,13 @@ func buildDataFlowGroups(startID int64, size int, parentID int64) ([]util.DataFl
 	return groups, collectionIDs, childIDs
 }
 
-func buildDataFlows(startID int64, size int, parentID int64) ([]util.DataFlow, []int64, []int64) {
+func buildDataFlows(startID int64, dfsize int, dfstatsize int, parentID int64) ([]util.DataFlow, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
 	flows := []util.DataFlow{}
-	for i := 0; i < size; i++ {
-		argosyId = startID + int64(i)*int64(1.0+float64(size))
+	for i := 0; i < dfsize; i++ {
+		argosyId = startID + int64(i)*int64(1.0+float64(dfstatsize))
 		collectionIDs = append(collectionIDs, argosyId)
 		childIDs = append(childIDs, argosyId)
 		flow := util.DataFlow{
@@ -116,7 +117,7 @@ func buildDataFlows(startID int64, size int, parentID int64) ([]util.DataFlow, [
 		}
 		otherIds := []int64{}
 		children := []int64{}
-		flow.Statistics, otherIds, children = buildDataFlowStatistics(argosyId+1, size, argosyId)
+		flow.Statistics, otherIds, children = buildDataFlowStatistics(argosyId+1, dfstatsize, argosyId)
 		for _, id := range otherIds {
 			collectionIDs = append(collectionIDs, id)
 		}
@@ -128,12 +129,12 @@ func buildDataFlows(startID int64, size int, parentID int64) ([]util.DataFlow, [
 	return flows, collectionIDs, childIDs
 }
 
-func buildDataFlowStatistics(startID int64, size int, parentID int64) ([]util.DataFlowStatistic, []int64, []int64) {
+func buildDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]util.DataFlowStatistic, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
 	stats := []util.DataFlowStatistic{}
-	for i := 0; i < size; i++ {
+	for i := 0; i < dfstatsize; i++ {
 		argosyId = argosyId + 1
 		collectionIDs = append(collectionIDs, argosyId)
 		childIDs = append(childIDs, argosyId)
@@ -256,7 +257,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 			[]util.DataFlowGroup{},
 		},
 	}
-	tempArgosies, collectionIDs := buildArgosies(5, 20)
+	tempArgosies, collectionIDs := buildArgosies(5, 20, 10, 5, 10)
 	for _, argosy := range tempArgosies {
 		Argosys = append(Argosys, argosy)
 	}
