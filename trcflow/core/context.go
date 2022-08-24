@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"database/sql"
 	"io"
 	"os"
@@ -222,6 +223,12 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 	flowConfigTemplateName := eUtils.GetTemplateFileName(flowConfigTemplatePath, flowService)
 	trcfc.GoMod.SectionKey = "/Restricted/"
 	trcfc.GoMod.SectionName = flowService
+	if refreshErr := tfmContext.Vault.RefreshClient(); refreshErr != nil {
+		// Panic situation...  Can't connect to vault... Wait until next cycle to try again.
+		eUtils.LogErrorMessage(tfmContext.Config, "Failure to connect to vault.  It may be down...", false)
+		eUtils.LogErrorObject(tfmContext.Config, refreshErr, false)
+		return nil, false
+	}
 	properties, err := trcvutils.NewProperties(tfmContext.Config, tfmContext.Vault, trcfc.GoMod, tfmContext.Env, flowProject, flowProject)
 	if err != nil {
 		return nil, false
@@ -236,7 +243,8 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	vaultIndexColumnName string,
 	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
+	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
+	ctx context.Context) {
 
 	mysqlPushEnabled := mysql.IsMysqlPushEnabled()
 	flowChangedChannel := channelMap[tfContext.Flow]
@@ -255,6 +263,16 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				mysqlPushEnabled,
 				getIndexedPathExt,
 				flowPushRemote)
+		case <-ctx.Done():
+			tfmContext.vaultPersistPushRemoteChanges(
+				tfContext,
+				identityColumnName,
+				vaultIndexColumnName,
+				vaultSecondIndexColumnName,
+				mysqlPushEnabled,
+				getIndexedPathExt,
+				flowPushRemote)
+			return
 		}
 	}
 }
@@ -296,6 +314,9 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 			triggerLock.Unlock()
 		}
 		seedInitCompleteChan <- true
+		if importChan, ok := tfContext.RemoteDataSource["vaultImportChannel"].(chan bool); ok {
+			importChan <- true
+		}
 	}
 
 	// Check vault hourly for changes to sync with mysql
@@ -339,7 +360,8 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	vaultIndexColumnName string,
 	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) {
+	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
+	ctx context.Context) {
 
 	var seedInitComplete chan bool = make(chan bool, 1)
 	if vaultSecondIndexColumnName == "" {
@@ -348,7 +370,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote)
+	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, ctx)
 }
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan bool {
