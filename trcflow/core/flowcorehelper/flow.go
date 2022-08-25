@@ -21,5 +21,5 @@ func GetFlowDBName() string {
 }
 
 func UpdateTierceronFlowState(flowName string, newState string) string {
-	return "update " + TierceronFlowDB + "." + TierceronFlowConfigurationTableName + " set state=" + newState + " where flowName='" + flowName + "'"
+	return "update " + TierceronFlowDB + "." + TierceronFlowConfigurationTableName + " set lastModified=current_timestamp(), state=" + newState + " where flowName='" + flowName + "'"
 }
