@@ -76,9 +76,9 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 			}
 			if stateMsg, ok := tfFlow["state"].(int64); ok {
 				if syncModeMsg, ok := tfFlow["syncMode"].(string); ok {
-					go func() {
-						stateChannel <- flowcorehelper.CurrentFlowState{State: stateMsg, SyncMode: syncModeMsg}
-					}()
+					go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string) {
+						sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage}
+					}(stateChannel, stateMsg, syncModeMsg)
 				}
 			}
 		}
