@@ -99,16 +99,16 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 		sendUpdates(tfmContext, tfContext, flowControllerMap, "")
 
 		if flowInit { //Sending off listener for state updates
-			go func() {
+			go func(tfmc *flowcore.TrcFlowMachineContext, tfc *flowcore.TrcFlowContext, fcmap map[string]chan flowcorehelper.CurrentFlowState) {
 				for {
 					select {
 					case tierceronFlowName, ok := <-tableChangeAlertChan:
 						if ok {
-							sendUpdates(tfmContext, tfContext, flowControllerMap, tierceronFlowName)
+							sendUpdates(tfmc, tfc, fcmap, tierceronFlowName)
 						}
 					}
 				}
-			}()
+			}(tfmContext, tfContext, flowControllerMap)
 		}
 	} else {
 		return nil, errors.New("Flow controller map is the wrong type.")
@@ -133,16 +133,16 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 				return nil, errors.New("Receiver map channel for flow controller was nil.")
 			}
 			for _, receiver := range flowStateReceiverMap { //Receiver is used to update the flow state for shutdowns & inits from other flows
-				go func(currentReceiver chan flowcorehelper.FlowStateUpdate) {
+				go func(currentReceiver chan flowcorehelper.FlowStateUpdate, tfmc *flowcore.TrcFlowMachineContext) {
 					for {
 						select {
 						case x, ok := <-currentReceiver:
 							if ok {
-								tfmContext.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate), nil, true, "UPDATE", nil, "")
+								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate), nil, true, "UPDATE", nil, "")
 							}
 						}
 					}
-				}(receiver)
+				}(receiver, tfmContext)
 			}
 			return nil, nil
 		} else {
