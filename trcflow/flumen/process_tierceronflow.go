@@ -41,6 +41,7 @@ func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
 		{Name: tierceronFlowIdColumnName, Type: sqle.Text, Source: tableName, PrimaryKey: true},
 		{Name: "state", Type: sqle.Int64, Source: tableName},
 		{Name: "syncMode", Type: sqle.Text, Source: tableName},
+		{Name: "syncFilter", Type: sqle.Text, Source: tableName},
 		{Name: "lastModified", Type: sqle.Timestamp, Source: tableName},
 	})
 }
@@ -49,11 +50,12 @@ func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
 
 func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 	tfFlow := make(map[string]interface{})
-	if len(arr) == 4 {
+	if len(arr) == 5 {
 		tfFlow[tierceronFlowIdColumnName] = arr[0]
 		tfFlow["state"] = arr[1]
 		tfFlow["syncMode"] = arr[2]
-		tfFlow["lastModified"] = arr[3]
+		tfFlow["syncFilter"] = arr[3]
+		tfFlow["lastModified"] = arr[4]
 	}
 	return tfFlow
 }
@@ -68,17 +70,19 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 	}
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)
-		if len(tfFlow) == 4 {
-			stateChannel := flowControllerMap[tfFlow[tierceronFlowIdColumnName].(string)]
+		if flowId, ok := tfFlow[tierceronFlowIdColumnName].(string); ok {
+			stateChannel := flowControllerMap[flowId]
 			if stateChannel == nil {
 				tfmContext.Log("Tierceron Flow could not find the flow:"+tfFlow[tierceronFlowIdColumnName].(string), errors.New("State channel for flow controller was nil."))
 				continue
 			}
 			if stateMsg, ok := tfFlow["state"].(int64); ok {
 				if syncModeMsg, ok := tfFlow["syncMode"].(string); ok {
-					go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string) {
-						sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage}
-					}(stateChannel, stateMsg, syncModeMsg)
+					if syncFilterMsg, ok := tfFlow["syncFilter"].(string); ok {
+						go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string) {
+							sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage}
+						}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg)
+					}
 				}
 			}
 		}
