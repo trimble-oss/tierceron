@@ -100,6 +100,8 @@ func (v *Vault) RefreshClient() error {
 			}
 
 			tries = tries + 1
+		} else {
+			tries = 3
 		}
 	}
 
