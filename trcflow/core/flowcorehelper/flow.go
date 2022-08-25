@@ -11,8 +11,9 @@ type FlowStateUpdate struct {
 }
 
 type CurrentFlowState struct {
-	State    int64
-	SyncMode string
+	State      int64
+	SyncMode   string
+	SyncFilter string
 }
 
 func GetFlowDBName() string {
