@@ -149,21 +149,11 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 	return nil, nil
 }
 
-func getRestartTrigger(databaseName string, tableName string, idColumnName string) string {
-	return `CREATE TRIGGER tcRestartTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName +
-		`UPDATE ` + tableName + ` SET state=1 WHERE flowName=NEW.flowName;`
-}
-
 //Only pull from vault on init
 //Listen to a change channel ->
 func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) error {
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext.Flow.TableName())
 	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
-
-	var resTrigger sqle.TriggerDefinition
-	resTrigger.Name = "tcRestartTrigger_" + tfContext.Flow.TableName()
-	resTrigger.CreateStatement = getRestartTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.Flow.TableName(), tierceronFlowIdColumnName)
-	//tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, resTrigger)
 
 	cancelCtx, _ := context.WithCancel(context.Background())
 	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil, cancelCtx, false)
