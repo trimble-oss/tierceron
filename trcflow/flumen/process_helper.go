@@ -106,7 +106,7 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 			continue
 		}
 
-		if refreshErr := tfmContext.Vault.RefreshClient(); refreshErr != nil {
+		if refreshErr := tfContext.Vault.RefreshClient(); refreshErr != nil {
 			// Panic situation...  Can't connect to vault... Wait until next cycle to try again.
 			eUtils.LogErrorMessage(tfmContext.Config, "Failure to connect to vault.  It may be down...", false)
 			eUtils.LogErrorObject(tfmContext.Config, refreshErr, false)
