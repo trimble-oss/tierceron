@@ -8,6 +8,7 @@ const TierceronFlowDB = "FlumeDatabase"
 type FlowStateUpdate struct {
 	FlowName    string
 	StateUpdate string
+	SyncFilter  string
 }
 
 type CurrentFlowState struct {
@@ -20,6 +21,6 @@ func GetFlowDBName() string {
 	return TierceronFlowDB
 }
 
-func UpdateTierceronFlowState(flowName string, newState string) string {
-	return "update " + TierceronFlowDB + "." + TierceronFlowConfigurationTableName + " set lastModified=current_timestamp(), state=" + newState + " where flowName='" + flowName + "'"
+func UpdateTierceronFlowState(flowName string, newState string, syncFilter string) string {
+	return "update " + TierceronFlowDB + "." + TierceronFlowConfigurationTableName + " set lastModified=current_timestamp(), state=" + newState + ", SyncFilter='" + syncFilter + "' where flowName='" + flowName + "'"
 }

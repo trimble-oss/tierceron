@@ -11,6 +11,7 @@ import (
 	"time"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 const tierceronFlowIdColumnName = "flowName"
@@ -37,12 +38,16 @@ func GetTierceronTableNames() []string {
 }
 
 func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
+	stateDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral(0, sqle.Int64), sqle.Int64, true, false)
+	syncModeDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral("0", sqle.Text), sqle.Text, true, false)
+	syncFilterDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral("", sqle.Text), sqle.Text, true, false)
+	timestampDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral(time.Now().UTC(), sqle.Timestamp), sqle.Timestamp, true, false)
 	return sqle.NewPrimaryKeySchema(sqle.Schema{
 		{Name: tierceronFlowIdColumnName, Type: sqle.Text, Source: tableName, PrimaryKey: true},
-		{Name: "state", Type: sqle.Int64, Source: tableName},
-		{Name: "syncMode", Type: sqle.Text, Source: tableName},
-		{Name: "syncFilter", Type: sqle.Text, Source: tableName},
-		{Name: "lastModified", Type: sqle.Timestamp, Source: tableName},
+		{Name: "state", Type: sqle.Int64, Source: tableName, Default: stateDefault},
+		{Name: "syncMode", Type: sqle.Text, Source: tableName, Default: syncModeDefault},
+		{Name: "syncFilter", Type: sqle.Text, Source: tableName, Default: syncFilterDefault},
+		{Name: "lastModified", Type: sqle.Timestamp, Source: tableName, Default: timestampDefault},
 	})
 }
 
@@ -138,7 +143,7 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 						select {
 						case x, ok := <-currentReceiver:
 							if ok {
-								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate), nil, true, "UPDATE", nil, "")
+								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter), nil, true, "UPDATE", nil, "")
 							}
 						}
 					}
