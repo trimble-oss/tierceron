@@ -76,9 +76,9 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 			}
 			if stateMsg, ok := tfFlow["state"].(int64); ok {
 				if syncModeMsg, ok := tfFlow["syncMode"].(string); ok {
-					go func() {
-						stateChannel <- flowcorehelper.CurrentFlowState{State: stateMsg, SyncMode: syncModeMsg}
-					}()
+					go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string) {
+						sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage}
+					}(stateChannel, stateMsg, syncModeMsg)
 				}
 			}
 		}
@@ -175,7 +175,7 @@ func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext
 		for {
 			select {
 			case <-time.After(time.Millisecond * afterTime):
-				afterTime = sqlIngestInterval
+				afterTime = sqlIngestInterval * 2
 				tfmContext.Log("Tierceron Flows is running and checking for changes.", nil)
 				// Periodically checks the table for updates and send out state changes to flows.
 				_, err := tierceronFlowImport(tfmContext, tfContext)

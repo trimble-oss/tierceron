@@ -249,7 +249,10 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 
 	mysqlPushEnabled := sqlState
 	flowChangedChannel := channelMap[tfContext.Flow]
-	flowChangedChannel <- true
+	go func(fcc chan bool) {
+		fcc <- true
+	}(flowChangedChannel)
+
 	for {
 		select {
 		case <-signalChannel:
