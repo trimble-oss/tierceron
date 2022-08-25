@@ -368,8 +368,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	wg.Add(1)
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	interfaceErr := harbingeropts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{})
+	wg.Done()
 	if interfaceErr != nil {
-		wg.Done()
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
 		return interfaceErr
 	}
@@ -398,8 +398,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	if controllerCheck == 3 {
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
 		interfaceErr = harbingeropts.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{})
+		wg.Done()
 		if interfaceErr != nil {
-			wg.Done()
 			eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
 			return interfaceErr
 		}
