@@ -124,13 +124,20 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
-	logFile := fmt.Sprintf("/var/log/trcpluginvault-%s.log", pluginConfig["env"].(string))
-	if !prod.IsProd() && insecure.IsInsecure() {
-		logFile = fmt.Sprintf("trcpluginvault-%s.log", pluginConfig["env"].(string))
+	logPrefix := fmt.Sprintf("[trcpluginvault-%s]", pluginConfig["env"].(string))
+	var trcdbEnvLogger *log.Logger
+
+	if logger.Prefix() != logPrefix {
+		logFile := fmt.Sprintf("/var/log/trcpluginvault-%s.log", pluginConfig["env"].(string))
+		if !prod.IsProd() && insecure.IsInsecure() {
+			logFile = fmt.Sprintf("trcpluginvault-%s.log", pluginConfig["env"].(string))
+		}
+		f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		trcdbEnvLogger = log.New(f, fmt.Sprintf("[trcpluginvault-%s]", pluginConfig["env"].(string)), log.LstdFlags)
+		CheckError(&DriverConfig{Insecure: true, Log: trcdbEnvLogger, ExitOnFailure: true}, logErr, true)
+	} else {
+		trcdbEnvLogger = logger
 	}
-	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	trcdbEnvLogger := log.New(f, fmt.Sprintf("[trcpluginvault-%s]", pluginConfig["env"].(string)), log.LstdFlags)
-	CheckError(&DriverConfig{Insecure: true, Log: trcdbEnvLogger, ExitOnFailure: true}, logErr, true)
 
 	trcdbEnvLogger.Println("InitVaultModForPlugin begin..")
 	exitOnFailure := false
