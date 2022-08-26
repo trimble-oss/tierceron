@@ -43,7 +43,7 @@ type DriverConfig struct {
 	SectionKey      string // Restricted or Index
 	SectionName     string // extension provided name
 	SubSectionValue string
-	SubSectionName  string
+	SubSectionName  string // extension provided subsection name
 	IndexFilter     []string
 	Trcxe           []string //Used for TRCXE
 	Trcxr           bool     //Used for TRCXR
