@@ -221,6 +221,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmFlumeContext := &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
+		FlowControllerInit:        true,
+		FlowControllerUpdateLock:  sync.Mutex{},
+		FlowControllerUpdateAlert: make(chan string, 1),
 	}
 
 	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())
