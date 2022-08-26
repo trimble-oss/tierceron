@@ -138,7 +138,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		VaultAddress: pluginConfig["vaddress"].(string),
 		Insecure:     true, // TODO: investigate insecure implementation...
 		Env:          pluginConfig["env"].(string),
-		Log:          logger,
+		Log:          config.Log,
 	}
 
 	templateList := pluginConfig["templatePath"].([]string)
