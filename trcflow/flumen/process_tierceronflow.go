@@ -3,7 +3,6 @@ package flumen
 import (
 	"context"
 	"errors"
-	"sync"
 
 	flowcore "tierceron/trcflow/core"
 
@@ -15,16 +14,15 @@ import (
 
 const tierceronFlowIdColumnName = "flowName"
 
-var tableChangeAlertChan = make(chan string, 1)
-var tableChangeLock = &sync.Mutex{}
-var flowInit = true
+func GetTierceronFlowIdColName() string {
+	return tierceronFlowIdColumnName
+}
 
 func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error) {
 	indexName, idValue := "", ""
 	if tierceronFlowName, ok := rowDataMap[vaultIndexColumnName].(string); ok {
 		indexName = vaultIndexColumnName
 		idValue = tierceronFlowName
-		tableChangeAlertChan <- tierceronFlowName
 
 	} else {
 		return "", errors.New("flowName not found for TierceronFlow: " + vaultIndexColumnName)
@@ -59,7 +57,7 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 }
 
 func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext, flowControllerMap map[string]chan flowcorehelper.CurrentFlowState, tierceronFlowName string) {
-	tableChangeLock.Lock()
+	tfmContext.FlowControllerUpdateLock.Lock()
 	var rows [][]interface{}
 	if tierceronFlowName != "" {
 		rows = tfmContext.CallDBQuery(tfContext, "select * from "+tfContext.FlowSourceAlias+"."+string(tfContext.Flow)+" WHERE "+tierceronFlowIdColumnName+"='"+tierceronFlowName+"'", nil, false, "SELECT", nil, "")
@@ -83,7 +81,7 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 			}
 		}
 	}
-	tableChangeLock.Unlock()
+	tfmContext.FlowControllerUpdateLock.Unlock()
 }
 
 func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) ([]map[string]interface{}, error) {
@@ -94,11 +92,11 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 
 		sendUpdates(tfmContext, tfContext, flowControllerMap, "")
 
-		if flowInit { //Sending off listener for state updates
+		if tfmContext.FlowControllerInit { //Sending off listener for state updates
 			go func() {
 				for {
 					select {
-					case tierceronFlowName, ok := <-tableChangeAlertChan:
+					case tierceronFlowName, ok := <-tfmContext.FlowControllerUpdateAlert:
 						if ok {
 							sendUpdates(tfmContext, tfContext, flowControllerMap, tierceronFlowName)
 						}
@@ -110,14 +108,14 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 		return nil, errors.New("Flow controller map is the wrong type.")
 	}
 
-	if flowInit { //Used to signal other flows to begin, now that states have been loaded on init
+	if tfmContext.FlowControllerInit { //Used to signal other flows to begin, now that states have been loaded on init
 		if initAlertChan, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
 			if initAlertChan == nil {
 				return nil, errors.New("Alert channel for flow controller was nil.")
 			}
 			select {
-			case initAlertChan <- flowInit:
-				flowInit = false
+			case initAlertChan <- tfmContext.FlowControllerInit:
+				tfmContext.FlowControllerInit = false
 			default:
 			}
 		} else {
