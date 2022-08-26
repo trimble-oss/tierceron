@@ -73,6 +73,9 @@ func TriggerAllChangeChannel() {
 type TrcFlowMachineContext struct {
 	Region                    string
 	Env                       string
+	FlowControllerInit        bool
+	FlowControllerUpdateLock  sync.Mutex
+	FlowControllerUpdateAlert chan string
 	Config                    *eUtils.DriverConfig
 	Vault                     *sys.Vault
 	TierceronEngine           *trcdb.TierceronEngine

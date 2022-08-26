@@ -38,7 +38,8 @@ type Modifier struct {
 	TemplatePath     string   // Path to template we are processing.
 	ProjectIndex     []string // Which projects are indexed.
 	SectionKey       string   // The section key: Index or Restricted.
-	SectionName      string   // The name of the actual subsection.
+	SectionName      string   // The name of the actual section.
+	SubSectionName   string   // The name of the actual subsection.
 	SubSectionValue  string   // The actual value for the sub section.
 	SectionPath      string   // The path to the Index (both seed and vault)
 }
@@ -539,7 +540,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 				if path != "" {
 					foundService := false
 					for _, service := range mod.VersionFilter {
-						if strings.HasSuffix(path, service) && !foundService {
+						if (strings.HasSuffix(path, service) || strings.HasSuffix(path, service+"/")) && !foundService {
 							foundService = true
 							break
 						}
@@ -549,6 +550,14 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 						continue
 					}
 					path = enginePath + "/" + path
+					if mod.SubSectionName != "" {
+						subSectionName := mod.SubSectionName
+						if strings.HasPrefix(subSectionName, "/") {
+							subSectionName = subSectionName[1:]
+						}
+						path = path + subSectionName
+					}
+
 					if _, ok := versionDataMap[path]; !ok {
 						metadataValue, err := mod.ReadTemplateVersions(path)
 						if err != nil {

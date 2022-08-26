@@ -138,7 +138,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		VaultAddress: pluginConfig["vaddress"].(string),
 		Insecure:     true, // TODO: investigate insecure implementation...
 		Env:          pluginConfig["env"].(string),
-		Log:          logger,
+		Log:          config.Log,
 	}
 
 	templateList := pluginConfig["templatePath"].([]string)
@@ -221,6 +221,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmFlumeContext := &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
+		FlowControllerInit:        true,
+		FlowControllerUpdateLock:  sync.Mutex{},
+		FlowControllerUpdateAlert: make(chan string, 1),
 	}
 
 	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())
@@ -245,9 +248,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tcfContext.Flow = tableFlow
 				tcfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 				tcfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
-				var initError error
-				config, tcfContext.GoMod, tcfContext.Vault, initError = eUtils.InitVaultModForPlugin(pluginConfig, logger)
-				if initError != nil {
+				var initErr error
+				config, tcfContext.GoMod, tcfContext.Vault, initErr = eUtils.InitVaultMod(config)
+				if initErr != nil {
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
@@ -292,9 +295,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfContext.Flow = tableFlow
 				tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 				tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
-				var initError error
-				dc, tfContext.GoMod, tfContext.Vault, initError = eUtils.InitVaultModForPlugin(pluginConfig, logger)
-				if initError != nil {
+				var initErr error
+				config, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(config)
+				if initErr != nil {
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
@@ -320,9 +323,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfContext.Flow = enhancementFlow
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
-				var initError error
-				dc, tfContext.GoMod, tfContext.Vault, initError = eUtils.InitVaultModForPlugin(pluginConfig, logger)
-				if initError != nil {
+				var initErr error
+				config, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(config)
+				if initErr != nil {
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
@@ -346,8 +349,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				defer wg.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
 				tfContext.Flow = testFlow
-				dc, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
-				if err != nil {
+				var initErr error
+				config, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(config)
+				if initErr != nil {
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
