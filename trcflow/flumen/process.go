@@ -244,7 +244,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tcfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 				tcfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
 
-				config, tcfContext.GoMod, tcfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				config, tcfContext.GoMod, tcfContext.Vault, err = eUtils.InitVaultMod(config)
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
@@ -289,7 +289,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 				tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
 
-				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultMod(config)
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
@@ -317,7 +317,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
 
-				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultMod(config)
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
@@ -342,7 +342,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				defer wg.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
 				tfContext.Flow = testFlow
-				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+				config, tfContext.GoMod, tfContext.Vault, err = eUtils.InitVaultMod(config)
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
