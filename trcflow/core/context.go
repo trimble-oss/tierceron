@@ -94,6 +94,10 @@ type TrcFlowContext struct {
 
 var tableCreationLock sync.Mutex
 
+func (tfmContext *TrcFlowMachineContext) GetTableLock() *sync.Mutex {
+	return &tableCreationLock
+}
+
 func (tfmContext *TrcFlowMachineContext) Init(
 	sdbConnMap map[string]map[string]interface{},
 	tableNames []string,
@@ -570,6 +574,10 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		defer dbsourceConn.Close()
 
 		tfContext.RemoteDataSource["connection"] = dbsourceConn
+	}
+
+	if initConfigWG, ok := tfContext.RemoteDataSource["initConfigWG"].(*sync.WaitGroup); ok {
+		initConfigWG.Done()
 	}
 	//}
 	//

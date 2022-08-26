@@ -161,8 +161,10 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 //Only pull from vault on init
 //Listen to a change channel ->
 func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) error {
+	tfmContext.GetTableLock().Lock()
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext.Flow.TableName())
 	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
+	tfmContext.GetTableLock().Unlock()
 
 	cancelCtx, _ := context.WithCancel(context.Background())
 	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil, cancelCtx, false)
