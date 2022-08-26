@@ -168,6 +168,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 // Set up call back to enable a trigger to track
 // whenever a row in a table changes...
 func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowContext, identityColumnName string) {
+	tableCreationLock.Lock()
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
@@ -193,6 +194,7 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
 		triggerLock.Unlock()
 	}
+	tableCreationLock.Unlock()
 }
 
 // Set up call back to enable a trigger to track
