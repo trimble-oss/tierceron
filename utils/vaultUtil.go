@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 	"tierceron/buildopts/coreopts"
-	"tierceron/trcvault/opts/insecure"
 	"tierceron/trcvault/opts/prod"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
@@ -129,7 +128,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 
 	if logger.Prefix() != logPrefix {
 		logFile := fmt.Sprintf("/var/log/trcpluginvault-%s.log", pluginConfig["env"].(string))
-		if !prod.IsProd() && insecure.IsInsecure() {
+		if !prod.IsProd() && coreopts.IsTestRunner() {
 			logFile = fmt.Sprintf("trcpluginvault-%s.log", pluginConfig["env"].(string))
 		}
 		f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
