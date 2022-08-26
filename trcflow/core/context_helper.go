@@ -226,6 +226,14 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			}
 		}
 
+		if identityColumnName == "flowName" {
+			if alert, ok := rowDataMap[identityColumnName].(string); ok {
+				if tfmContext.FlowControllerUpdateAlert != nil {
+					tfmContext.FlowControllerUpdateAlert <- alert
+				}
+			}
+		}
+
 		seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.Config.VaultAddress, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
