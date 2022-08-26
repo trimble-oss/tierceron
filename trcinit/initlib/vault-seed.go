@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -38,48 +37,25 @@ type writeCollection struct {
 var templateWritten map[string]bool
 
 // SeedVault seeds the vault with seed files in the given directory -> only init uses this
-func SeedVault(insecure bool,
-	dir string,
-	addr string,
-	token string,
-	env string,
-	subSectionSlice []string,
-	logger *log.Logger,
-	service string,
-	uploadCert bool) error {
+func SeedVault(config *eUtils.DriverConfig) error {
 
-	logger.SetPrefix("[SEED]")
-	logger.Printf("Seeding vault from seeds in: %s\n", dir)
+	config.Log.SetPrefix("[SEED]")
+	config.Log.Printf("Seeding vault from seeds in: %s\n", config.StartDir[0])
 
-	files, err := ioutil.ReadDir(dir)
+	files, err := ioutil.ReadDir(config.StartDir[0])
 
 	templateWritten = make(map[string]bool)
-	var config *eUtils.DriverConfig
-	if len(files) == 1 && files[0].Name() == "certs" && uploadCert {
+	if len(files) == 1 && files[0].Name() == "certs" && config.WantCerts {
 		// Cert rotation support without templates
-		logger.Printf("No templates available, Common service requested.: %s\n", dir)
+		config.Log.Printf("No templates available, Common service requested.: %s\n", config.StartDir[0])
 
 		var templatePaths = coreopts.GetSupportedTemplates()
 		regions := []string{}
 
-		if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
+		if strings.HasPrefix(config.Env, "staging") || strings.HasPrefix(config.Env, "prod") || strings.HasPrefix(config.Env, "dev") {
 			regions = eUtils.GetSupportedProdRegions()
 		}
-
-		config = &eUtils.DriverConfig{
-			Insecure:       insecure,
-			Token:          token,
-			VaultAddress:   addr,
-			Env:            env,
-			Regions:        regions,
-			SecretMode:     true, //  "Only override secret values in templates?"
-			ServicesWanted: []string{service},
-			StartDir:       append([]string{}, ""),
-			EndDir:         "",
-			WantCerts:      false,
-			GenAuth:        false,
-			Log:            logger,
-		}
+		config.Regions = regions
 
 		_, _, seedData, errGenerateSeeds := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
 		if errGenerateSeeds != nil {
@@ -88,53 +64,39 @@ func SeedVault(insecure bool,
 
 		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
 
-		SeedVaultFromData(config, "", []byte(seedData), service, true)
+		SeedVaultFromData(config, "", []byte(seedData))
 		return nil
-	} else {
-		config = &eUtils.DriverConfig{
-			Insecure:       insecure,
-			Token:          token,
-			VaultAddress:   addr,
-			Env:            env,
-			SecretMode:     true, //  "Only override secret values in templates?"
-			ServicesWanted: []string{service},
-			StartDir:       append([]string{}, ""),
-			EndDir:         "",
-			WantCerts:      false,
-			GenAuth:        false,
-			Log:            logger,
-		}
-
 	}
+
 	eUtils.LogErrorObject(config, err, true)
 
-	_, suffix, indexedEnvNot, _ := helperkv.PreCheckEnvironment(env)
+	_, suffix, indexedEnvNot, _ := helperkv.PreCheckEnvironment(config.Env)
 
 	seeded := false
 	starEnv := false
-	if strings.Contains(env, "*") {
+	if strings.Contains(config.Env, "*") {
 		starEnv = true
-		env = strings.Split(env, "*")[0]
+		config.Env = strings.Split(config.Env, "*")[0]
 	}
 	for _, envDir := range files {
-		if strings.HasPrefix(env, envDir.Name()) || (strings.HasPrefix(env, "local") && envDir.Name() == "local") {
-			logger.Println("\tStepping into: " + envDir.Name())
+		if strings.HasPrefix(config.Env, envDir.Name()) || (strings.HasPrefix(config.Env, "local") && envDir.Name() == "local") {
+			config.Log.Println("\tStepping into: " + envDir.Name())
 			var filesSteppedInto []fs.FileInfo
 			if indexedEnvNot {
-				filesSteppedInto, err = ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + suffix)
+				filesSteppedInto, err = ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + suffix)
 			} else {
-				filesSteppedInto, err = ioutil.ReadDir(dir + "/" + envDir.Name())
+				filesSteppedInto, err = ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name())
 			}
 			eUtils.LogErrorObject(config, err, true)
 
 			conflictingFile := false
 			for _, fileSteppedInto := range filesSteppedInto {
-				if !strings.HasPrefix(fileSteppedInto.Name(), env) {
-					if strings.Contains(env, ".") {
-						secondCheck := strings.Split(env, ".")[0]
+				if !strings.HasPrefix(fileSteppedInto.Name(), config.Env) {
+					if strings.Contains(config.Env, ".") {
+						secondCheck := strings.Split(config.Env, ".")[0]
 						if !strings.HasPrefix(fileSteppedInto.Name(), secondCheck) {
 							conflictingFile = true
-							logger.Printf("Found conflicting env seed file: %s \n", fileSteppedInto.Name())
+							config.Log.Printf("Found conflicting env seed file: %s \n", fileSteppedInto.Name())
 						}
 					}
 				}
@@ -144,21 +106,21 @@ func SeedVault(insecure bool,
 			}
 
 			normalEnv := false
-			if !starEnv && !strings.Contains(env, ".") {
+			if !starEnv && !strings.Contains(config.Env, ".") {
 				normalEnv = true
 			}
 
 			for _, fileSteppedInto := range filesSteppedInto {
 				if fileSteppedInto.Name() == "Index" || fileSteppedInto.Name() == "Restricted" {
-					projectDirectories, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
+					projectDirectories, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
 					if err != nil {
-						logger.Printf("Couldn't read into: %s \n", fileSteppedInto.Name())
+						config.Log.Printf("Couldn't read into: %s \n", fileSteppedInto.Name())
 					}
 					// Iterate of projects...
 					for _, projectDirectory := range projectDirectories {
-						if len(subSectionSlice) > 0 {
+						if len(config.ProjectSections) > 0 {
 							acceptProject := false
-							for _, index := range subSectionSlice {
+							for _, index := range config.ProjectSections {
 								if index == projectDirectory.Name() {
 									acceptProject = true
 									break
@@ -168,21 +130,21 @@ func SeedVault(insecure bool,
 								continue
 							}
 						}
-						sectionNames, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name())
+						sectionNames, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name())
 						if err != nil {
-							logger.Printf("Couldn't read into: %s \n", projectDirectory.Name())
+							config.Log.Printf("Couldn't read into: %s \n", projectDirectory.Name())
 						}
 						for _, sectionName := range sectionNames {
-							sectionConfigFiles, err := ioutil.ReadDir(dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name())
+							sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name())
 							if err != nil {
-								logger.Printf("Couldn't read into: %s \n", sectionName.Name())
+								config.Log.Printf("Couldn't read into: %s \n", sectionName.Name())
 							}
 							for _, sectionConfigFile := range sectionConfigFiles {
-								path := dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
+								path := config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
 								if strings.HasPrefix(sectionConfigFile.Name(), ".") {
 									continue
 								}
-								SeedVaultFromFile(config, path, service, uploadCert)
+								SeedVaultFromFile(config, path)
 								seeded = true
 							}
 						}
@@ -219,41 +181,41 @@ func SeedVault(insecure bool,
 				}
 
 				ext := filepath.Ext(fileSteppedInto.Name())
-				if strings.HasPrefix(fileSteppedInto.Name(), env) && (ext == ".yaml" || ext == ".yml") { // Only read YAML config files
-					logger.Println("\t\t" + fileSteppedInto.Name())
-					logger.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
+				if strings.HasPrefix(fileSteppedInto.Name(), config.Env) && (ext == ".yaml" || ext == ".yml") { // Only read YAML config files
+					config.Log.Println("\t\t" + fileSteppedInto.Name())
+					config.Log.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
 					var path string
 					if indexedEnvNot {
-						path = dir + "/" + envDir.Name() + "/" + suffix + "/" + fileSteppedInto.Name()
+						path = config.StartDir[0] + "/" + envDir.Name() + "/" + suffix + "/" + fileSteppedInto.Name()
 					} else {
-						path = dir + "/" + envDir.Name() + "/" + fileSteppedInto.Name()
+						path = config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name()
 					}
-					logger.Println("\tSeeding vault with: " + fileSteppedInto.Name())
+					config.Log.Println("\tSeeding vault with: " + fileSteppedInto.Name())
 
-					SeedVaultFromFile(config, path, service, uploadCert)
+					SeedVaultFromFile(config, path)
 					seeded = true
 				}
 			}
 		}
 	}
 	if !seeded {
-		eUtils.LogInfo(config, "Environment is not valid - Environment: "+env)
+		eUtils.LogInfo(config, "Environment is not valid - Environment: "+config.Env)
 	} else {
-		eUtils.LogInfo(config, "Initialization complete for: "+env)
+		eUtils.LogInfo(config, "Initialization complete for: "+config.Env)
 	}
 	return nil
 }
 
 //SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string, service string, uploadCert bool) {
+func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	eUtils.LogErrorAndSafeExit(config, err, 1)
-	SeedVaultFromData(config, strings.SplitAfterN(filepath, "/", 3)[2], rawFile, service, uploadCert)
+	SeedVaultFromData(config, strings.SplitAfterN(filepath, "/", 3)[2], rawFile)
 }
 
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byte, service string, uploadCert bool) error {
+func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byte) error {
 	config.Log.SetPrefix("[SEED]")
 	config.Log.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
@@ -294,7 +256,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		// Convert nested maps into vault writable data
 		for k, v := range current.data {
 			if v == nil { // Don't write empty valus, Vault does not handle them
-				if !uploadCert {
+				if !config.WantCerts {
 					config.Log.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
 				}
 			} else if current.path == "" && k.(string) == "verification" { // Found verification on top level, store for later
@@ -354,7 +316,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		// Write data and ouput any errors
 		if strings.HasPrefix(entry.path, "values/") {
 			if certPathData, certPathOk := entry.data["certSourcePath"]; certPathOk {
-				if !uploadCert {
+				if !config.WantCerts {
 					continue
 				}
 				certPath := fmt.Sprintf("%s", certPathData)
@@ -483,7 +445,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 					continue
 				}
 			} else {
-				if uploadCert {
+				if config.WantCerts {
 					// Skip non-certs.
 					continue
 				}
@@ -493,19 +455,21 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 			_, certDataOK := entry.data["certData"]
 
 			if certPathOk || certDataOK {
-				if !uploadCert {
+				if !config.WantCerts {
 					continue
 				}
 			} else {
-				if uploadCert {
+				if config.WantCerts {
 					// Skip non-certs.
 					continue
 				}
 			}
 		}
 
-		if service != "" {
-			if strings.HasSuffix(entry.path, service) || strings.Contains(entry.path, "Common") {
+		// TODO: Support all services, so range over ServicesWanted....
+		// Populate as a slice...
+		if config.ServicesWanted[0] != "" {
+			if strings.HasSuffix(entry.path, config.ServicesWanted[0]) || strings.Contains(entry.path, "Common") {
 				WriteData(config, entry.path, entry.data, mod)
 			}
 		} else if strings.Contains(filepath, "/PublicIndex/") && !strings.Contains(entry.path, "templates") {
