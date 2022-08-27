@@ -225,6 +225,7 @@ func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	eUtils.LogErrorAndSafeExit(config, err, 1)
+	eUtils.LogInfo(config, "Seed written to vault from "+filepath)
 	SeedVaultFromData(config, strings.SplitAfterN(filepath, "/", 3)[2], rawFile)
 }
 
@@ -501,6 +502,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	if !isIndexData {
 		eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
 	}
+
 	return nil
 }
 
