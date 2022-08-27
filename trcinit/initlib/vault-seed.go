@@ -141,10 +141,24 @@ func SeedVault(config *eUtils.DriverConfig) error {
 							}
 							for _, sectionConfigFile := range sectionConfigFiles {
 								path := config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
-								if strings.HasPrefix(sectionConfigFile.Name(), ".") {
+								if strings.HasPrefix(sectionConfigFile.Name(), ".") || (config.SubSectionValue != "" && (sectionConfigFile.Name() != config.SubSectionValue)) {
 									continue
 								}
-								SeedVaultFromFile(config, path)
+								if config.SubSectionName != "" {
+									subSectionConfigFiles, err := ioutil.ReadDir(path)
+									if err != nil {
+										config.Log.Printf("Couldn't read into: %s \n", config.SubSectionName)
+									}
+									for _, subSectionConfigFile := range subSectionConfigFiles {
+										subSectionPath := config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name() + "/" + subSectionConfigFile.Name()
+										if strings.HasPrefix(sectionConfigFile.Name(), ".") || (config.SubSectionName != "" && (!strings.HasPrefix("/"+subSectionConfigFile.Name(), config.SubSectionName))) {
+											continue
+										}
+										SeedVaultFromFile(config, subSectionPath)
+									}
+								} else {
+									SeedVaultFromFile(config, path)
+								}
 								seeded = true
 							}
 						}
