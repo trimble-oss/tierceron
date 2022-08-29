@@ -12,6 +12,7 @@ import (
 
 	"tierceron/buildopts/coreopts"
 	"tierceron/buildopts/flowcoreopts"
+	"tierceron/trcflow/core/flowcorehelper"
 
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
@@ -21,7 +22,6 @@ import (
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
-	"VaultConfig.TenantConfig/util/buildopts/mysql"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -37,8 +37,6 @@ const (
 	TableEnrichFlow
 	TableTestFlow
 )
-
-var triggerLock sync.Mutex
 
 func getUpdateTrigger(databaseName string, tableName string, idColumnName string) string {
 	return `CREATE TRIGGER tcUpdateTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
@@ -95,7 +93,11 @@ type TrcFlowContext struct {
 	ChangeFlowName   string // Change flow table name.
 }
 
-var tableCreationLock sync.Mutex
+var tableModifierLock sync.Mutex
+
+func (tfmContext *TrcFlowMachineContext) GetTableModifierLock() *sync.Mutex {
+	return &tableModifierLock
+}
 
 func (tfmContext *TrcFlowMachineContext) Init(
 	sdbConnMap map[string]map[string]interface{},
@@ -115,7 +117,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 
 	for _, tableName := range tableNames {
 		changeTableName := tableName + "_Changes"
-		tableCreationLock.Lock()
+		tfmContext.GetTableModifierLock().Lock()
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
 			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
@@ -123,12 +125,12 @@ func (tfmContext *TrcFlowMachineContext) Init(
 				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 			}))
 			if err != nil {
-				tableCreationLock.Unlock()
+				tfmContext.GetTableModifierLock().Unlock()
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 				return err
 			}
 		}
-		tableCreationLock.Unlock()
+		tfmContext.GetTableModifierLock().Unlock()
 	}
 	eUtils.LogInfo(tfmContext.Config, "Tables creation completed.")
 
@@ -150,7 +152,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 
 func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.PrimaryKeySchema, tableName string) {
 	// Create table if necessary.
-	tableCreationLock.Lock()
+	tfmContext.GetTableModifierLock().Lock()
 	if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, tableName); !ok {
 		//	ii. Init database and tables in local mysql engine instance.
 		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema)
@@ -158,12 +160,13 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 			tfmContext.Log("Could not create table.", err)
 		}
 	}
-	tableCreationLock.Unlock()
+	tfmContext.GetTableModifierLock().Unlock()
 }
 
 // Set up call back to enable a trigger to track
 // whenever a row in a table changes...
 func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowContext, identityColumnName string) {
+	tfmContext.GetTableModifierLock().Lock()
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
@@ -184,16 +187,16 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 	if !triggerExist {
 		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
 		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
-		triggerLock.Lock()
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
-		triggerLock.Unlock()
 	}
+	tfmContext.GetTableModifierLock().Unlock()
 }
 
 // Set up call back to enable a trigger to track
 // whenever a row in a table changes...
 func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcFlowContext, iden1 string, iden2 string, iden3 string, insertT func(string, string, string, string, string) string, updateT func(string, string, string, string, string) string) {
+	tfmContext.GetTableModifierLock().Lock()
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
@@ -202,6 +205,7 @@ func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcF
 	//Prevent duplicate triggers from existing
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
+		tfmContext.GetTableModifierLock().Unlock()
 		eUtils.CheckError(tfmContext.Config, err, false)
 	}
 
@@ -214,11 +218,10 @@ func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcF
 	if !triggerExist {
 		updTrigger.CreateStatement = updateT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2, iden3)
 		insTrigger.CreateStatement = insertT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2, iden3)
-		triggerLock.Lock()
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
-		triggerLock.Unlock()
 	}
+	tfmContext.GetTableModifierLock().Unlock()
 }
 
 func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowContext, flowTemplatePath string) (map[string]interface{}, bool) {
@@ -247,9 +250,10 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
-	ctx context.Context) {
+	ctx context.Context,
+	sqlState bool) {
 
-	mysqlPushEnabled := mysql.IsMysqlPushEnabled()
+	mysqlPushEnabled := sqlState
 	flowChangedChannel := channelMap[tfContext.Flow]
 	go func(fcc chan bool) {
 		fcc <- true
@@ -294,13 +298,12 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 
 	if bootStrap {
 		removedTriggers := []sqle.TriggerDefinition{}
+		tfmContext.GetTableModifierLock().Lock()
 		triggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 		if err == nil {
 			for _, trigger := range triggers {
 				if strings.HasSuffix(trigger.Name, "_"+string(tfContext.Flow)) {
-					triggerLock.Lock()
 					err := tfmContext.TierceronEngine.Database.DropTrigger(tfmContext.TierceronEngine.Context, trigger.Name)
-					triggerLock.Unlock()
 					if err == nil {
 						removedTriggers = append(removedTriggers, trigger)
 					}
@@ -315,10 +318,9 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 			getIndexedPathExt,
 			flowPushRemote)
 		for _, trigger := range removedTriggers {
-			triggerLock.Lock()
 			tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, trigger)
-			triggerLock.Unlock()
 		}
+		tfmContext.GetTableModifierLock().Unlock()
 		seedInitCompleteChan <- true
 		if importChan, ok := tfContext.RemoteDataSource["vaultImportChannel"].(chan bool); ok {
 			importChan <- true
@@ -367,7 +369,8 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
-	ctx context.Context) {
+	ctx context.Context,
+	sqlState bool) {
 
 	var seedInitComplete chan bool = make(chan bool, 1)
 	if vaultSecondIndexColumnName == "" {
@@ -376,7 +379,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, ctx)
+	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, ctx, sqlState)
 }
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan bool {
@@ -409,7 +412,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	if operation == "INSERT" {
 		var matrix [][]interface{}
 		var err error
+		tfmContext.GetTableModifierLock().Lock()
 		if bindings == nil {
+
 			_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
 			if len(matrix) == 0 {
 				changed = false
@@ -422,6 +427,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				matrix = append(matrix, []interface{}{})
 			}
 		}
+		tfmContext.GetTableModifierLock().Unlock()
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -451,6 +457,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		var tableName string
 		var matrix [][]interface{}
 		var err error
+		tfmContext.GetTableModifierLock().Unlock()
 		if bindings == nil {
 			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
 			if err == nil && tableName == "ok" {
@@ -467,6 +474,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				matrix = append(matrix, []interface{}{})
 			}
 		}
+		tfmContext.GetTableModifierLock().Lock()
 
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
@@ -494,7 +502,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			}
 		}
 	} else if operation == "SELECT" {
+		tfmContext.GetTableModifierLock().Lock()
 		_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, query)
+		tfmContext.GetTableModifierLock().Unlock()
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -558,8 +568,9 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 
 	tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
 	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
-	if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() {
-		// Create remote data source with only what is needed.
+	//if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() { //Flag is now replaced by syncMode in controller
+	// Create remote data source with only what is needed.
+	if flow.ServiceName() != flowcorehelper.TierceronFlowConfigurationTableName {
 		eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
 		dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
@@ -571,6 +582,11 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 
 		tfContext.RemoteDataSource["connection"] = dbsourceConn
 	}
+
+	if initConfigWG, ok := tfContext.RemoteDataSource["initConfigWG"].(*sync.WaitGroup); ok {
+		initConfigWG.Done()
+	}
+	//}
 	//
 	// Hand processing off to process flow implementor.
 	//
