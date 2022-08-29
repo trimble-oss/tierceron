@@ -457,7 +457,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		var tableName string
 		var matrix [][]interface{}
 		var err error
-		tfmContext.GetTableModifierLock().Unlock()
+		tfmContext.GetTableModifierLock().Lock()
 		if bindings == nil {
 			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
 			if err == nil && tableName == "ok" {
@@ -474,7 +474,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				matrix = append(matrix, []interface{}{})
 			}
 		}
-		tfmContext.GetTableModifierLock().Lock()
+		tfmContext.GetTableModifierLock().Unlock()
 
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
