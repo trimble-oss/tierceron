@@ -115,9 +115,9 @@ func (tfmContext *TrcFlowMachineContext) Init(
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
+	tfmContext.GetTableModifierLock().Lock()
 	for _, tableName := range tableNames {
 		changeTableName := tableName + "_Changes"
-		tfmContext.GetTableModifierLock().Lock()
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
 			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
@@ -130,8 +130,8 @@ func (tfmContext *TrcFlowMachineContext) Init(
 				return err
 			}
 		}
-		tfmContext.GetTableModifierLock().Unlock()
 	}
+	tfmContext.GetTableModifierLock().Unlock()
 	eUtils.LogInfo(tfmContext.Config, "Tables creation completed.")
 
 	channelMap = make(map[FlowNameType]chan bool)
@@ -157,6 +157,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 		//	ii. Init database and tables in local mysql engine instance.
 		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema)
 		if err != nil {
+			tfmContext.GetTableModifierLock().Unlock()
 			tfmContext.Log("Could not create table.", err)
 		}
 	}
@@ -175,6 +176,7 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 	//Prevent duplicate triggers from existing
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
+		tfmContext.GetTableModifierLock().Unlock()
 		eUtils.CheckError(tfmContext.Config, err, false)
 	}
 
@@ -196,7 +198,6 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 // Set up call back to enable a trigger to track
 // whenever a row in a table changes...
 func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcFlowContext, iden1 string, iden2 string, iden3 string, insertT func(string, string, string, string, string) string, updateT func(string, string, string, string, string) string) {
-	tfmContext.GetTableModifierLock().Lock()
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
@@ -221,7 +222,6 @@ func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcF
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
 	}
-	tfmContext.GetTableModifierLock().Unlock()
 }
 
 func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowContext, flowTemplatePath string) (map[string]interface{}, bool) {
@@ -310,13 +310,17 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 				}
 			}
 		}
+		tfmContext.GetTableModifierLock().Unlock()
 		tfmContext.seedTrcDbFromChanges(
 			tfContext,
 			identityColumnName,
 			vaultIndexColumnName,
 			true,
 			getIndexedPathExt,
-			flowPushRemote)
+			flowPushRemote,
+			tfmContext.GetTableModifierLock(),
+		)
+		tfmContext.GetTableModifierLock().Lock()
 		for _, trigger := range removedTriggers {
 			tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, trigger)
 		}
@@ -412,7 +416,6 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	if operation == "INSERT" {
 		var matrix [][]interface{}
 		var err error
-		tfmContext.GetTableModifierLock().Lock()
 		if bindings == nil {
 
 			_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
@@ -427,7 +430,6 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				matrix = append(matrix, []interface{}{})
 			}
 		}
-		tfmContext.GetTableModifierLock().Unlock()
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -457,7 +459,6 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		var tableName string
 		var matrix [][]interface{}
 		var err error
-		tfmContext.GetTableModifierLock().Lock()
 		if bindings == nil {
 			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
 			if err == nil && tableName == "ok" {
@@ -474,7 +475,6 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				matrix = append(matrix, []interface{}{})
 			}
 		}
-		tfmContext.GetTableModifierLock().Unlock()
 
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
@@ -502,9 +502,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			}
 		}
 	} else if operation == "SELECT" {
-		tfmContext.GetTableModifierLock().Lock()
 		_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, query)
-		tfmContext.GetTableModifierLock().Unlock()
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
