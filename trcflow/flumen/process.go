@@ -1,6 +1,7 @@
 package flumen
 
 import (
+	"errors"
 	"io"
 	"log"
 	"strconv"
@@ -268,19 +269,25 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(flowcore.FlowNameType(table), tfContext, config)
 
 			initConfigWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
-			initReciever := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool)
-		initAlert: //This waits for flow states to be loaded before starting all non-controller flows
-			for {
-				select {
-				case _, ok := <-initReciever:
-					if ok {
-						break initAlert
+			if initReciever, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
+			initAlert: //This waits for flow states to be loaded before starting all non-controller flows
+				for {
+					select {
+					case _, ok := <-initReciever:
+						if ok {
+							break initAlert
+						}
+					default:
+						time.Sleep(time.Duration(time.Second))
 					}
-				default:
-					time.Sleep(time.Duration(time.Second))
 				}
+			} else {
+				initRecieverErr := errors.New("Failed to retrieve channel alert for controller init")
+				eUtils.LogErrorMessage(config, initRecieverErr.Error(), false)
+				return initRecieverErr
 			}
 		}
+
 	}
 
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
