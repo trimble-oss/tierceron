@@ -91,6 +91,7 @@ type TrcFlowContext struct {
 	FlowPath         string
 	FlowData         interface{}
 	ChangeFlowName   string // Change flow table name.
+	FlowLock         *sync.Mutex
 }
 
 var tableModifierLock sync.Mutex
@@ -418,12 +419,12 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		var err error
 		if bindings == nil {
 
-			_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
+			_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query, tfContext.FlowLock)
 			if len(matrix) == 0 {
 				changed = false
 			}
 		} else {
-			tableName, _, _, err := trcdb.QueryWithBindings(tfmContext.TierceronEngine, query, bindings)
+			tableName, _, _, err := trcdb.QueryWithBindings(tfmContext.TierceronEngine, query, bindings, tfContext.FlowLock)
 
 			if err == nil && tableName == "ok" {
 				changed = true
@@ -460,7 +461,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		var matrix [][]interface{}
 		var err error
 		if bindings == nil {
-			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query)
+			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, query, tfContext.FlowLock)
 			if err == nil && tableName == "ok" {
 				changed = true
 				matrix = append(matrix, []interface{}{})
@@ -468,7 +469,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				changed = false
 			}
 		} else {
-			tableName, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, query, bindings)
+			tableName, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, query, bindings, tfContext.FlowLock)
 
 			if err == nil && tableName == "ok" {
 				changed = true
@@ -502,7 +503,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			}
 		}
 	} else if operation == "SELECT" {
-		_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, query)
+		_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, query, tfContext.FlowLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
@@ -554,7 +555,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	//     a. Get project, service, and table config template name.
 	if flowType == TableSyncFlow {
 		tfContext.ChangeFlowName = tfContext.Flow.TableName() + "_Changes"
-
+		tfContext.FlowLock = &sync.Mutex{}
 		// 3. Create a base seed template for use in vault seed process.
 		var baseTableTemplate extract.TemplateResultData
 		trcvutils.LoadBaseTemplate(config, &baseTableTemplate, tfContext.GoMod, tfContext.FlowSource, tfContext.Flow.ServiceName(), tfContext.FlowPath)
