@@ -172,7 +172,7 @@ func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext
 		for {
 			select {
 			case <-time.After(time.Millisecond * afterTime):
-				afterTime = sqlIngestInterval * 2
+				afterTime = sqlIngestInterval
 				tfmContext.Log("Tierceron Flows is running and checking for changes.", nil)
 				// Periodically checks the table for updates and send out state changes to flows.
 				_, err := tierceronFlowImport(tfmContext, tfContext)
