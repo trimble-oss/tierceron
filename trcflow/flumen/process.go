@@ -296,7 +296,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(tableFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning flow: "+tableFlow.ServiceName())
 				defer wg.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}}
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
 				tfContext.Flow = tableFlow
@@ -326,7 +326,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(enhancementFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning flow: "+enhancementFlow.ServiceName())
 				defer wg.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}}
 				tfContext.Flow = enhancementFlow
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
@@ -354,7 +354,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc, "Beginning flow: "+testFlow.ServiceName())
 				defer wg.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}}
 				tfContext.Flow = testFlow
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
@@ -382,8 +382,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// be sure to enable encryption on the connection...
 	wg.Add(1)
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
+	tfmContext.GetTableModifierLock().Lock()
 	interfaceErr := harbingeropts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{})
 	wg.Done()
+	tfmContext.GetTableModifierLock().Unlock()
 	if interfaceErr != nil {
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
 		return interfaceErr
@@ -412,8 +414,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	if controllerCheck == 3 {
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
+		tfmContext.GetTableModifierLock().Lock()
 		interfaceErr = harbingeropts.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{})
 		wg.Done()
+		tfmContext.GetTableModifierLock().Unlock()
 		if interfaceErr != nil {
 			eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
 			return interfaceErr
