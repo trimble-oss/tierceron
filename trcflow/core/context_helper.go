@@ -265,7 +265,8 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	vaultIndexColumnName string,
 	isInit bool,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
+	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
+	tableLock *sync.Mutex) error {
 	trcdb.TransformConfig(tfContext.GoMod,
 		tfmContext.TierceronEngine,
 		tfmContext.Env,
@@ -273,7 +274,8 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 		tfContext.FlowSource,
 		tfContext.FlowSourceAlias,
 		string(tfContext.Flow),
-		tfmContext.Config)
+		tfmContext.Config,
+		tableLock)
 
 	return nil
 }
