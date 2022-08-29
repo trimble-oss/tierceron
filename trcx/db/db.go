@@ -197,7 +197,7 @@ func templateToTableRowHelper(goMod *helperkv.Modifier, te *TierceronEngine, env
 	return nil
 }
 
-func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig) error {
+func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig, tableLock *sync.Mutex) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath)
 	if err != nil {
@@ -237,6 +237,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 			}
 		}
 
+		tableLock.Lock()
 		for _, indexValue := range indexValues {
 			if indexValue != "" {
 				goMod.SectionKey = "/Index/"
@@ -267,7 +268,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 				}
 			}
 		}
-
+		tableLock.Unlock()
 	}
 
 	return nil
