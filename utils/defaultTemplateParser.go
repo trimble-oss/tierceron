@@ -121,8 +121,10 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 
 		if len(config.VersionFilter) == 0 {
 			for _, projectFile := range projectFilesComplete {
-				if !strings.HasSuffix(projectFile.Name(), ".DS_Store") {
-					config.VersionFilter = append(config.VersionFilter, projectFile.Name())
+				for _, projectSection := range config.ProjectSections {
+					if !strings.HasSuffix(projectFile.Name(), ".DS_Store") && projectFile.Name() == projectSection {
+						config.VersionFilter = append(config.VersionFilter, projectFile.Name())
+					}
 				}
 			}
 		}
