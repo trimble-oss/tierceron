@@ -254,9 +254,13 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	//VaultX Section Ends
 	//VaultInit Section Begins
 	if strings.Contains(indexPath, "/PublicIndex/") {
-		il.SeedVaultFromData(config, indexPath, []byte(seedData), "", false)
+		config.ServicesWanted = []string{""}
+		config.WantCerts = false
+		il.SeedVaultFromData(config, indexPath, []byte(seedData))
 	} else {
-		il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData), service, false)
+		config.ServicesWanted = []string{service}
+		config.WantCerts = false
+		il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData))
 	}
 	return nil
 }
