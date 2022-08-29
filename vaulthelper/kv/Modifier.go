@@ -333,8 +333,8 @@ func (m *Modifier) ReadMetadata(path string) (map[string]interface{}, error) {
 	return nil, errors.New("Could not get metadata from vault response")
 }
 
-//ReadTemplateVersions Reads the Metadata of all versions from the path referenced by this Modifier
-func (m *Modifier) ReadTemplateVersions(path string) (map[string]interface{}, error) {
+//ReadVersionMetadata Reads the Metadata of all versions from the path referenced by this Modifier
+func (m *Modifier) ReadVersionMetadata(path string) (map[string]interface{}, error) {
 	// Create full path
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	fullPath := pathBlocks[0] + "metadata/"
@@ -522,7 +522,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 		certPaths = filteredCertPaths
 		for _, certPath := range certPaths {
 			if _, ok := versionDataMap[certPath]; !ok {
-				metadataValue, err := mod.ReadTemplateVersions(certPath)
+				metadataValue, err := mod.ReadVersionMetadata(certPath)
 				if err != nil {
 					err := fmt.Errorf("Unable to fetch data from %s", certPath)
 					return nil, err
@@ -559,7 +559,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 					}
 
 					if _, ok := versionDataMap[path]; !ok {
-						metadataValue, err := mod.ReadTemplateVersions(path)
+						metadataValue, err := mod.ReadVersionMetadata(path)
 						if err != nil {
 							logger.Println("Couldn't read version data at " + path)
 						}
@@ -603,7 +603,7 @@ func (m *Modifier) recursivePathFinder(filePaths []string, versionDataMap map[st
 			logger.Println(err.Error())
 		}
 
-		metadataValue, err := m.ReadTemplateVersions(filePath)
+		metadataValue, err := m.ReadVersionMetadata(filePath)
 		if len(metadataValue) == 0 {
 			continue
 		}
