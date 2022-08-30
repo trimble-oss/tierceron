@@ -612,7 +612,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		tfContext.RemoteDataSource["connection"] = dbsourceConn
 	}
 
-	if initConfigWG, ok := tfContext.RemoteDataSource["initConfigWG"].(*sync.WaitGroup); ok {
+	if initConfigWG, ok := tfContext.RemoteDataSource["controllerInitWG"].(*sync.WaitGroup); ok {
 		initConfigWG.Done()
 	}
 	//}
