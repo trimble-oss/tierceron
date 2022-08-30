@@ -70,7 +70,7 @@ func TriggerAllChangeChannel() {
 }
 
 type TrcFlowMachineContext struct {
-	InitConfigWG sync.WaitGroup
+	InitConfigWG *sync.WaitGroup
 
 	Region                    string
 	Env                       string
@@ -175,7 +175,11 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 					tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 				case <-time.After(7 * time.Second):
 					{
-						tfmContext.InitConfigWG.Done()
+						tfmContext.FlowControllerUpdateLock.Lock()
+						if tfmContext.InitConfigWG != nil {
+							tfmContext.InitConfigWG.Done()
+						}
+						tfmContext.FlowControllerUpdateLock.Unlock()
 						tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 0, SyncMode: "0", SyncFilter: ""}
 						tfmContext.Log("Flow ready for use (but inactive due to invalid setup): "+tfContext.Flow.TableName(), nil)
 					}
@@ -407,12 +411,18 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
+	tfContext.FlowLock.Lock()
 	if tfContext.FlowState.State == 2 {
-		tfmContext.InitConfigWG.Done()
+		tfmContext.FlowControllerUpdateLock.Lock()
+		if tfmContext.InitConfigWG != nil {
+			tfmContext.InitConfigWG.Done()
+		}
+		tfmContext.FlowControllerUpdateLock.Unlock()
 		tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 	} else {
 		tfmContext.Log("Unexpected flow state: "+tfContext.Flow.TableName(), nil)
 	}
+	tfContext.FlowLock.Unlock()
 
 	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, ctx, sqlState)
 }
@@ -613,7 +623,11 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	}
 
 	if initConfigWG, ok := tfContext.RemoteDataSource["controllerInitWG"].(*sync.WaitGroup); ok {
-		initConfigWG.Done()
+		tfmContext.FlowControllerUpdateLock.Lock()
+		if initConfigWG != nil {
+			initConfigWG.Done()
+		}
+		tfmContext.FlowControllerUpdateLock.Unlock()
 	}
 	//}
 	//
