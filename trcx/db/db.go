@@ -370,19 +370,19 @@ func CreateEngine(config *eUtils.DriverConfig,
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func Query(te *TierceronEngine, query string, tableLock *sync.Mutex) (string, []string, [][]interface{}, error) {
+func Query(te *TierceronEngine, query string, queryLock *sync.Mutex) (string, []string, [][]interface{}, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sqles.NewContext(context.Background())
 
-	tableLock.Lock()
+	queryLock.Lock()
 	m.Lock()
 	//	te.Context = ctx
 	schema, r, err := te.Engine.Query(ctx, query)
 	m.Unlock()
-	tableLock.Unlock()
+	queryLock.Unlock()
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -403,9 +403,11 @@ func Query(te *TierceronEngine, query string, tableLock *sync.Mutex) (string, []
 		// Iterate results and print them.
 		okResult := false
 		for {
+			queryLock.Lock()
 			m.Lock()
 			row, err := r.Next(ctx)
 			m.Unlock()
+			queryLock.Unlock()
 			if err == io.EOF {
 				break
 			}
@@ -436,18 +438,18 @@ func Query(te *TierceronEngine, query string, tableLock *sync.Mutex) (string, []
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sql.Expression, tableLock *sync.Mutex) (string, []string, [][]string, error) {
+func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sql.Expression, queryLock *sync.Mutex) (string, []string, [][]string, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sql.NewContext(context.Background())
-	tableLock.Lock()
+	queryLock.Lock()
 	m.Lock()
 	//	te.Context = ctx
 	schema, r, queryErr := te.Engine.QueryWithBindings(te.Context, query, bindings)
 	m.Unlock()
-	tableLock.Unlock()
+	queryLock.Unlock()
 	if queryErr != nil {
 		return "", nil, nil, queryErr
 	}
@@ -468,9 +470,11 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 		// Iterate results and print them.
 		okResult := false
 		for {
+			queryLock.Lock()
 			m.Lock()
 			row, err := r.Next(ctx)
 			m.Unlock()
+			queryLock.Unlock()
 			if err == io.EOF {
 				break
 			}
