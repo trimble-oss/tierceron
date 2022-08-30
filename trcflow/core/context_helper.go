@@ -131,7 +131,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	vaultSecondIndexColumnName string,
 	mysqlPushEnabled bool,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
+	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error) error {
 
 	var matrixChangedEntries [][]interface{}
 	var removeErr error
@@ -179,7 +179,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			for _, column := range changedTableColumns {
 				rowDataMap[column] = ""
 			}
-			pushError := flowPushRemote(tfContext.RemoteDataSource, rowDataMap)
+			pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
 			if pushError != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
@@ -247,7 +247,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 		// Push this change to the flow for delivery to remote data source.
 		if mysqlPushEnabled && flowPushRemote != nil {
-			pushError := flowPushRemote(tfContext.RemoteDataSource, rowDataMap)
+			pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
 			if pushError != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
@@ -265,7 +265,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	vaultIndexColumnName string,
 	isInit bool,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
+	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
 	tableLock *sync.Mutex) error {
 	trcdb.TransformConfig(tfContext.GoMod,
 		tfmContext.TierceronEngine,
