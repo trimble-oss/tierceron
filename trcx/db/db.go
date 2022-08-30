@@ -197,7 +197,7 @@ func templateToTableRowHelper(goMod *helperkv.Modifier, te *TierceronEngine, env
 	return nil
 }
 
-func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig) error {
+func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig, tableLock *sync.Mutex) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath)
 	if err != nil {
@@ -237,6 +237,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 			}
 		}
 
+		tableLock.Lock()
 		for _, indexValue := range indexValues {
 			if indexValue != "" {
 				goMod.SectionKey = "/Index/"
@@ -267,7 +268,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 				}
 			}
 		}
-
+		tableLock.Unlock()
 	}
 
 	return nil
@@ -369,18 +370,19 @@ func CreateEngine(config *eUtils.DriverConfig,
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func Query(te *TierceronEngine, query string) (string, []string, [][]interface{}, error) {
+func Query(te *TierceronEngine, query string, queryLock *sync.Mutex) (string, []string, [][]interface{}, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sqles.NewContext(context.Background())
 
+	queryLock.Lock()
 	m.Lock()
 	//	te.Context = ctx
 	schema, r, err := te.Engine.Query(ctx, query)
 	m.Unlock()
-
+	queryLock.Unlock()
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -401,7 +403,11 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]interface{}
 		// Iterate results and print them.
 		okResult := false
 		for {
+			queryLock.Lock()
+			m.Lock()
 			row, err := r.Next(ctx)
+			m.Unlock()
+			queryLock.Unlock()
 			if err == io.EOF {
 				break
 			}
@@ -432,18 +438,18 @@ func Query(te *TierceronEngine, query string) (string, []string, [][]interface{}
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sql.Expression) (string, []string, [][]string, error) {
+func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sql.Expression, queryLock *sync.Mutex) (string, []string, [][]string, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sql.NewContext(context.Background())
-
+	queryLock.Lock()
 	m.Lock()
 	//	te.Context = ctx
 	schema, r, queryErr := te.Engine.QueryWithBindings(te.Context, query, bindings)
 	m.Unlock()
-
+	queryLock.Unlock()
 	if queryErr != nil {
 		return "", nil, nil, queryErr
 	}
@@ -464,7 +470,11 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 		// Iterate results and print them.
 		okResult := false
 		for {
+			queryLock.Lock()
+			m.Lock()
 			row, err := r.Next(ctx)
+			m.Unlock()
+			queryLock.Unlock()
 			if err == io.EOF {
 				break
 			}
