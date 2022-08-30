@@ -297,7 +297,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			flowWG.Add(1)
 			tfmContext.InitConfigWG.Add(1)
 			go func(tableFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
-				eUtils.LogInfo(dc, "Beginning flow: "+tableFlow.ServiceName())
+				eUtils.LogInfo(dc, "Beginning data source flow: "+tableFlow.ServiceName())
 				defer flowWG.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}}
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
@@ -329,7 +329,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			tfmContext.InitConfigWG.Add(1)
 
 			go func(enhancementFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
-				eUtils.LogInfo(dc, "Beginning flow: "+enhancementFlow.ServiceName())
+				eUtils.LogInfo(dc, "Beginning additional flow: "+enhancementFlow.ServiceName())
 				defer flowWG.Done()
 				tfmContext.InitConfigWG.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}}
@@ -359,7 +359,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			flowWG.Add(1)
 			tfmContext.InitConfigWG.Add(1)
 			go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
-				eUtils.LogInfo(dc, "Beginning flow: "+testFlow.ServiceName())
+				eUtils.LogInfo(dc, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
 				tfmContext.InitConfigWG.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}}
