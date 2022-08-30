@@ -69,6 +69,8 @@ func TriggerAllChangeChannel() {
 }
 
 type TrcFlowMachineContext struct {
+	InitConfigWG sync.WaitGroup
+
 	Region                    string
 	Env                       string
 	FlowControllerInit        bool
@@ -157,6 +159,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 	if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, tableName); !ok {
 		//	ii. Init database and tables in local mysql engine instance.
 		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema)
+		tfmContext.InitConfigWG.Done()
 		if err != nil {
 			tfmContext.GetTableModifierLock().Unlock()
 			tfmContext.Log("Could not create table.", err)
