@@ -290,9 +290,9 @@ func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig,
 			continue
 		}
 
-		data, err = mod.ReadTemplateVersions(path)
+		data, err = mod.ReadVersionMetadata(path)
 		if data == nil {
-			deeperData, _ = mod.ReadTemplateVersions(path + "template-file")
+			deeperData, _ = mod.ReadVersionMetadata(path + "template-file")
 		}
 		if err != nil || deeperData == nil && data == nil {
 			eUtils.LogInfo(config, fmt.Sprintf("Couldn't read version data for %s\n", path))
