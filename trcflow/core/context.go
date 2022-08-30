@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"tierceron/buildopts/coreopts"
 	"tierceron/buildopts/flowcoreopts"
@@ -161,13 +162,28 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 	if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, tableName); !ok {
 		//	ii. Init database and tables in local mysql engine instance.
 		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema)
-		if tfContext.FlowState.State != 2 {
-			tfmContext.InitConfigWG.Done()
-		}
+
 		if err != nil {
-			tfmContext.GetTableModifierLock().Unlock()
+			tfContext.FlowState = flowcorehelper.CurrentFlowState{State: -1, SyncMode: "Could not create table.", SyncFilter: ""}
 			tfmContext.Log("Could not create table.", err)
+		} else {
+			if tfContext.Flow.TableName() == "TierceronFlow" {
+				tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 2, SyncMode: "0", SyncFilter: ""}
+			} else {
+				select {
+				case tfContext.FlowState = <-tfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState):
+					tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
+				case <-time.After(7 * time.Second):
+					{
+						tfmContext.InitConfigWG.Done()
+						tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 0, SyncMode: "0", SyncFilter: ""}
+						tfmContext.Log("Flow ready for use (but inactive due to invalid setup): "+tfContext.Flow.TableName(), nil)
+					}
+				}
+			}
 		}
+	} else {
+		tfmContext.Log("Unrecognized table: "+tfContext.Flow.TableName(), nil)
 	}
 	tfmContext.GetTableModifierLock().Unlock()
 }
@@ -393,6 +409,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	<-seedInitComplete
 	if tfContext.FlowState.State == 2 {
 		tfmContext.InitConfigWG.Done()
+		tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
+	} else {
+		tfmContext.Log("Unexpected flow state: "+tfContext.Flow.TableName(), nil)
 	}
 
 	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, ctx, sqlState)
