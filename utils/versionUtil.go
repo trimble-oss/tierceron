@@ -30,6 +30,7 @@ func GetProjectVersionInfo(config *DriverConfig, mod *helperkv.Modifier) map[str
 	var secretMetadataMap map[string]map[string]interface{}
 	var err error
 	mod.SectionKey = config.SectionKey
+	mod.SubSectionName = config.SubSectionName
 	mod.RawEnv = strings.Split(config.EnvRaw, ".")[0]
 	if !config.WantCerts {
 		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "super-secrets", config.Log)
@@ -44,9 +45,14 @@ func GetProjectVersionInfo(config *DriverConfig, mod *helperkv.Modifier) map[str
 	for key, value := range secretMetadataMap {
 		foundService := false
 		for _, service := range mod.VersionFilter {
-			if strings.HasSuffix(key, service) && !foundService {
+			if strings.HasSuffix(key, service) {
 				foundService = true
 				foundKey = key
+				break
+			} else if mod.SectionKey == "/Index/" && mod.SubSectionName != "" && strings.HasPrefix(key, "super-secrets"+mod.SectionKey+service+"/") {
+				foundService = true
+				foundKey = key
+				break
 			}
 		}
 		if foundService && len(foundKey) > 0 {

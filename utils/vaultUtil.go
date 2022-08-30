@@ -1,9 +1,12 @@
 package utils
 
 import (
+	"fmt"
 	"log"
+	"os"
 	"strings"
 	"tierceron/buildopts/coreopts"
+	"tierceron/trcvault/opts/prod"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
 )
@@ -120,13 +123,28 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
-	logger.Println("InitVaultModForPlugin begin..")
+	logPrefix := fmt.Sprintf("[trcpluginvault-%s]", pluginConfig["env"].(string))
+	var trcdbEnvLogger *log.Logger
+
+	if logger.Prefix() != logPrefix {
+		logFile := fmt.Sprintf("/var/log/trcpluginvault-%s.log", pluginConfig["env"].(string))
+		if !prod.IsProd() && coreopts.IsTestRunner() {
+			logFile = fmt.Sprintf("trcpluginvault-%s.log", pluginConfig["env"].(string))
+		}
+		f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		trcdbEnvLogger = log.New(f, fmt.Sprintf("[trcpluginvault-%s]", pluginConfig["env"].(string)), log.LstdFlags)
+		CheckError(&DriverConfig{Insecure: true, Log: trcdbEnvLogger, ExitOnFailure: true}, logErr, true)
+	} else {
+		trcdbEnvLogger = logger
+	}
+
+	trcdbEnvLogger.Println("InitVaultModForPlugin begin..")
 	exitOnFailure := false
 	if _, ok := pluginConfig["exitOnFailure"]; ok {
 		exitOnFailure = pluginConfig["exitOnFailure"].(bool)
 	}
 
-	logger.Println("InitVaultModForPlugin initialize DriverConfig.")
+	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
 
 	config := DriverConfig{
 		Insecure:       !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
@@ -141,9 +159,9 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		WantCerts:      false,
 		GenAuth:        false,
 		ExitOnFailure:  exitOnFailure,
-		Log:            logger,
+		Log:            trcdbEnvLogger,
 	}
-	logger.Println("InitVaultModForPlugin ends..")
+	trcdbEnvLogger.Println("InitVaultModForPlugin ends..")
 
 	return InitVaultMod(&config)
 }
