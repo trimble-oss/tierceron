@@ -23,16 +23,12 @@ type ClickedG3nDetailElement struct {
 
 type ElementRenderer struct {
 	g3nrender.GenericRenderer
-	iOffset int
-	//subOffset     int
-	counter float64
-	//subCounter    float64
-	//locnCounter   *math32.Vector3
-	totalElements int
-	LocationCache map[int64]*math32.Vector3
-	//compoundMesh  *CompoundMesh
-	//MAKE CLICKEDELEMENTS PUBLIC SO CURVE RENDERER CAN ACCESS IT
-	clickedElements []*ClickedG3nDetailElement //ClickedG3nDetailElement // Stack containing clicked spiral (sub as well) g3n elements.
+	iOffset         int
+	counter         float64
+	Checking        bool
+	totalElements   int
+	LocationCache   map[int64]*math32.Vector3
+	clickedElements []*ClickedG3nDetailElement // Stack containing clicked spiral (subcomponent as well) g3n elements.
 }
 
 func (er *ElementRenderer) IsEmpty() bool {
@@ -71,8 +67,6 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 		color.Set(1.0, 0.224, 0.0)
 	} else if g3n.GetDetailedElement().Alias == "DataFlow" {
 		color = math32.NewColor("olive")
-	} else if g3n.GetDetailedElement().Alias == "DataFlowStatistic" {
-		color = math32.NewColor("forestgreen")
 	}
 	mat := material.NewStandard(color)
 	sphereMesh := graphic.NewMesh(sphereGeom, mat)
@@ -199,7 +193,10 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// Handle state change here and then in render element just render all the elements that are not yet showing but are hidden
 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
 	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" {
-		center := clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
+		name := clickedElement.GetDisplayName()
+		mesh := clickedElement.GetNamedMesh(name)
+		pos := mesh.Position()
+		center := pos //clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
 		er.Push(clickedElement, &center)
 		for _, childID := range clickedElement.GetChildElementIds() {
 			childElement := worldApp.ConcreteElements[childID]
@@ -230,7 +227,7 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 
 		for _, childId := range g3n.GetChildElementIds() {
 			element := worldApp.ConcreteElements[childId]
-			if element.GetDetailedElement().Genre != "Solid" {
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Alias != "DataFlowStatistic" {
 				if element.GetNamedMesh(element.GetDisplayName()) == nil {
 					_, nextPos := er.NextCoordinate(element, er.totalElements)
 					solidMesh := er.NewSolidAtPosition(element, nextPos)
@@ -254,8 +251,6 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 			color.Set(1.0, 0.224, 0.0)
 		} else if g3n.GetDetailedElement().Alias == "DataFlow" {
 			color = math32.NewColor("olive")
-		} else if g3n.GetDetailedElement().Alias == "DataFlowStatistic" {
-			color = math32.NewColor("forestgreen")
 		}
 
 		clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
