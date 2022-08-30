@@ -52,6 +52,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	restrictedPtr := flag.String("restricted", "", "Specfies which projects have restricted access.")
 	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
 
+	indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
+	indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // Table names
+	indexNameFilterPtr := flag.String("indexFilter", "", "Specifies which index names to filter")                            // column index, table to filter.
+	indexValueFilterPtr := flag.String("indexValueFilter", "", "Specifies which index values to filter")                     // column index value to filter on.
+
 	allowNonLocal := false
 
 	args := os.Args[1:]
@@ -103,6 +108,18 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				*insecurePtr = false
 			}
 		}
+	}
+
+	if (len(*indexServiceFilterPtr) == 0 || len(*indexNameFilterPtr) == 0) && len(*indexedPtr) != 0 {
+		fmt.Println("-serviceFilter and -indexFilter must be specified to use -indexed flag")
+		os.Exit(1)
+	} else if len(*indexServiceFilterPtr) == 0 && len(*restrictedPtr) != 0 {
+		fmt.Println("-serviceFilter must be specified to use -restricted flag")
+		os.Exit(1)
+	}
+
+	if len(*indexServiceFilterPtr) != 0 && len(*indexNameFilterPtr) == 0 && len(*restrictedPtr) != 0 {
+		indexNameFilterPtr = indexServiceFilterPtr
 	}
 
 	var indexSlice = make([]string, 0) //Checks for indexed projects
@@ -499,7 +516,71 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		} else if len(indexSlice) > 0 {
 			subSectionSlice = indexSlice
 		}
-		il.SeedVault(*insecurePtr, *seedPtr, *addrPtr, v.GetToken(), *envPtr, subSectionSlice, logger, *servicePtr, *uploadCertPtr)
+
+		var filteredSectionSlice []string
+		var indexFilterSlice []string
+		sectionSlice := []string{*indexValueFilterPtr}
+
+		// Chewbacca: redo this next if section
+		if len(*indexValueFilterPtr) > 0 {
+			filterSlice := strings.Split(*indexValueFilterPtr, ",")
+			for _, filter := range filterSlice {
+				for _, section := range sectionSlice {
+					if filter == section {
+						filteredSectionSlice = append(filteredSectionSlice, section)
+					}
+				}
+			}
+			sectionSlice = filteredSectionSlice
+		}
+		if len(*indexServiceFilterPtr) > 0 {
+			if len(sectionSlice) == 0 {
+				eUtils.LogAndSafeExit(config, "No available indexes found for "+*indexValueFilterPtr, 1)
+			}
+			indexFilterSlice = strings.Split(*indexServiceFilterPtr, ",")
+			if len(*indexServiceExtFilterPtr) > 0 {
+				*indexServiceExtFilterPtr = "/" + *indexServiceExtFilterPtr //added "/" - used path later
+			}
+		}
+		sectionKey := "/"
+		if len(*indexValueFilterPtr) > 0 && len(*indexedPtr) > 0 {
+			if len(*indexedPtr) > 0 || len(*restrictedPtr) > 0 {
+				if len(*indexedPtr) > 0 {
+					sectionKey = "/Index/"
+				} else if len(*restrictedPtr) > 0 {
+					sectionKey = "/Restricted/"
+				}
+			}
+		}
+		var subSectionName string
+		if len(*indexNameFilterPtr) > 0 {
+			subSectionName = *indexNameFilterPtr
+		} else {
+			subSectionName = ""
+		}
+
+		config = &eUtils.DriverConfig{
+			Insecure:        *insecurePtr,
+			Token:           v.GetToken(),
+			VaultAddress:    *addrPtr,
+			Env:             *envPtr,
+			SectionKey:      sectionKey,
+			SectionName:     subSectionName,
+			SubSectionValue: *indexValueFilterPtr,
+			SubSectionName:  *indexServiceExtFilterPtr,
+
+			SecretMode:      true, //  "Only override secret values in templates?"
+			ProjectSections: subSectionSlice,
+			IndexFilter:     indexFilterSlice,
+			ServicesWanted:  []string{*servicePtr},
+			StartDir:        append([]string{}, *seedPtr),
+			EndDir:          "",
+			WantCerts:       *uploadCertPtr, // TODO: this was false...
+			GenAuth:         false,
+			Log:             logger,
+		}
+
+		il.SeedVault(config)
 	}
 
 	logger.SetPrefix("[INIT]")

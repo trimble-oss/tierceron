@@ -43,7 +43,7 @@ type DriverConfig struct {
 	SectionKey      string // Restricted or Index
 	SectionName     string // extension provided name
 	SubSectionValue string
-	SubSectionName  string
+	SubSectionName  string // extension provided subsection name
 	IndexFilter     []string
 	Trcxe           []string //Used for TRCXE
 	Trcxr           bool     //Used for TRCXR
@@ -121,8 +121,10 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 
 		if len(config.VersionFilter) == 0 {
 			for _, projectFile := range projectFilesComplete {
-				if !strings.HasSuffix(projectFile.Name(), ".DS_Store") {
-					config.VersionFilter = append(config.VersionFilter, projectFile.Name())
+				for _, projectSection := range config.ProjectSections {
+					if !strings.HasSuffix(projectFile.Name(), ".DS_Store") && projectFile.Name() == projectSection {
+						config.VersionFilter = append(config.VersionFilter, projectFile.Name())
+					}
 				}
 			}
 		}
