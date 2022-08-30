@@ -59,6 +59,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmContext = &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
+		InitConfigWG:              &sync.WaitGroup{},
 	}
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
@@ -220,7 +221,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	//Initialize tfcContext for flow controller
 	tfmFlumeContext := &flowcore.TrcFlowMachineContext{
-		InitConfigWG:              sync.WaitGroup{},
+		InitConfigWG:              &sync.WaitGroup{},
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
 		FlowControllerInit:        true,
@@ -384,6 +385,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 	}
 	tfmFlumeContext.InitConfigWG.Wait()
+	tfmFlumeContext.FlowControllerUpdateLock.Lock()
+	tfmFlumeContext.InitConfigWG = nil
+	tfmFlumeContext.FlowControllerUpdateLock.Unlock()
 
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	//Set up controller config
@@ -419,7 +423,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	// Wait for all tables to be built before starting interface.
 	tfmContext.InitConfigWG.Wait()
-
+	tfmContext.FlowControllerUpdateLock.Lock()
+	tfmContext.InitConfigWG = nil
+	tfmContext.FlowControllerUpdateLock.Unlock()
 	// TODO: Start up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
 	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.
 	// The engine is in tfmContext...  that's the one we need to make available for connecting via dbvis...
