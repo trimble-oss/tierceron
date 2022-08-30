@@ -240,9 +240,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 			tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
 			tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
-			var initConfigWG sync.WaitGroup
-			tfContext.RemoteDataSource["initConfigWG"] = &initConfigWG
-			initConfigWG.Add(1)
+			var controllerInitWG sync.WaitGroup
+			tfContext.RemoteDataSource["controllerInitWG"] = &controllerInitWG
+			controllerInitWG.Add(1)
 			tfmFlumeContext.InitConfigWG.Add(1)
 			flowWG.Add(1)
 			go func(tableFlow flowcore.FlowNameType, tcfContext flowcore.TrcFlowContext, dc *eUtils.DriverConfig) {
@@ -270,7 +270,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				)
 			}(flowcore.FlowNameType(table), tfContext, config)
 
-			initConfigWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
+			controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
 			if initReciever, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
 			initAlert: //This waits for flow states to be loaded before starting all non-controller flows
 				for {
