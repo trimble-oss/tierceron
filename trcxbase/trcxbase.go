@@ -467,6 +467,9 @@ skipDiff:
 		sectionSlice = filteredSectionSlice
 	}
 	if len(*indexServiceFilterPtr) > 0 {
+		if len(sectionSlice) == 0 {
+			eUtils.LogAndSafeExit(config, "No available indexes found for "+*indexValueFilterPtr, 1)
+		}
 		indexFilterSlice = strings.Split(*indexServiceFilterPtr, ",")
 		if len(*indexServiceExtFilterPtr) > 0 {
 			*indexServiceExtFilterPtr = "/" + *indexServiceExtFilterPtr //added "/" - used path later
