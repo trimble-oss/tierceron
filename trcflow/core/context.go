@@ -173,6 +173,15 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 				select {
 				case tfContext.FlowState = <-tfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState):
 					tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
+					tfContext.FlowLock.Lock()
+					if tfContext.FlowState.State != 2 {
+						tfmContext.FlowControllerUpdateLock.Lock()
+						if tfmContext.InitConfigWG != nil {
+							tfmContext.InitConfigWG.Done()
+						}
+						tfmContext.FlowControllerUpdateLock.Unlock()
+					}
+					tfContext.FlowLock.Unlock()
 				case <-time.After(7 * time.Second):
 					{
 						tfmContext.FlowControllerUpdateLock.Lock()
