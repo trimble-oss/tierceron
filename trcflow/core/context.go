@@ -93,6 +93,7 @@ type TrcFlowContext struct {
 	FlowPath         string
 	FlowData         interface{}
 	ChangeFlowName   string // Change flow table name.
+	FlowState        flowcorehelper.CurrentFlowState
 	FlowLock         *sync.Mutex
 }
 
@@ -153,13 +154,16 @@ func (tfmContext *TrcFlowMachineContext) Init(
 	return nil
 }
 
-func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.PrimaryKeySchema, tableName string) {
+func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.PrimaryKeySchema, tfContext *TrcFlowContext) {
+	tableName := tfContext.Flow.TableName()
 	// Create table if necessary.
 	tfmContext.GetTableModifierLock().Lock()
 	if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, tableName); !ok {
 		//	ii. Init database and tables in local mysql engine instance.
 		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema)
-		tfmContext.InitConfigWG.Done()
+		if tfContext.FlowState.State != 2 {
+			tfmContext.InitConfigWG.Done()
+		}
 		if err != nil {
 			tfmContext.GetTableModifierLock().Unlock()
 			tfmContext.Log("Could not create table.", err)
@@ -253,7 +257,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	vaultIndexColumnName string,
 	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
+	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
 	ctx context.Context,
 	sqlState bool) {
 
@@ -296,7 +300,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 	identityColumnName string,
 	vaultIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
+	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
 	bootStrap bool,
 	seedInitCompleteChan chan bool) {
 
@@ -376,7 +380,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	vaultIndexColumnName string,
 	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(map[string]interface{}, map[string]interface{}) error,
+	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
 	ctx context.Context,
 	sqlState bool) {
 
@@ -387,6 +391,10 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
+	if tfContext.FlowState.State == 2 {
+		tfmContext.InitConfigWG.Done()
+	}
+
 	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, ctx, sqlState)
 }
 
