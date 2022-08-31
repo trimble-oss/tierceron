@@ -54,19 +54,19 @@ func InitArgosyFleet(mod *kv.Modifier, project string) (ArgosyFleet, error) {
 	aFleet.ArgosyName = project
 	aFleet.Argosies = make([]Argosy, 0)
 	idNameListData, serviceListErr := mod.List("super-secrets/PublicIndex/" + project)
-	if serviceListErr != nil {
+	if serviceListErr != nil || idNameListData == nil {
 		return aFleet, serviceListErr
 	}
 	for _, idNameList := range idNameListData.Data {
 		for _, idName := range idNameList.([]interface{}) {
 			idListData, idListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName.(string))
-			if idListErr != nil {
+			if idListErr != nil || idListData == nil {
 				return aFleet, idListErr
 			}
 			for _, idList := range idListData.Data {
 				for _, id := range idList.([]interface{}) {
 					serviceListData, serviceListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName.(string) + "/" + id.(string) + "/DataFlowStatistics/DataFlowGroup")
-					if serviceListErr != nil {
+					if serviceListErr != nil || idListData == nil {
 						return aFleet, serviceListErr
 					}
 					var new Argosy
@@ -78,7 +78,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string) (ArgosyFleet, error) {
 							dfgroup.Name = service.(string)
 
 							statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName.(string) + "/" + id.(string) + "/DataFlowStatistics/DataFlowGroup/" + service.(string) + "/dataFlowName/")
-							if statisticNameListErr != nil {
+							if statisticNameListErr != nil || statisticNameList == nil {
 								return aFleet, statisticNameListErr
 							}
 
