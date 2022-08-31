@@ -8,8 +8,8 @@ import (
 	"tierceron/vaulthelper/kv"
 )
 
-func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
-	return util.ArgosyFleet{}
+func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
+	return util.ArgosyFleet{}, nil
 }
 
 func GetDataFlowGroups(mod *kv.Modifier, argosy *util.Argosy) []util.DataFlowGroup {

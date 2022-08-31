@@ -211,7 +211,12 @@ func buildDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]u
 	return stats, collectionIDs, childIDs, curveCollection
 }
 
-func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
+func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
+	argosy, err := util.InitArgosyFleet(mod, "TenantDatabase")
+	if err != nil {
+		return util.ArgosyFleet{}, err
+	}
+	fmt.Println(argosy)
 	Argosys := []util.Argosy{
 		{
 			mashupsdk.MashupDetailedElement{
@@ -335,7 +340,7 @@ func BuildFleet(mod *kv.Modifier) util.ArgosyFleet {
 	return util.ArgosyFleet{
 		ArgosyName: "Dev Environment",
 		Argosies:   []util.Argosy(Argosys),
-	}
+	}, nil
 }
 
 func GetDataFlowGroups(mod *kv.Modifier, argosy *util.Argosy) []util.DataFlowGroup {
