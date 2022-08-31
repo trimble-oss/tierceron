@@ -57,29 +57,49 @@ func InitArgosyFleet(mod *kv.Modifier, project string) (ArgosyFleet, error) {
 	if serviceListErr != nil || idNameListData == nil {
 		return aFleet, serviceListErr
 	}
+
+	if serviceListErr != nil || idNameListData == nil {
+		return aFleet, errors.New("No project was found for argosyFleet")
+	}
+
 	for _, idNameList := range idNameListData.Data {
 		for _, idName := range idNameList.([]interface{}) {
-			idListData, idListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName.(string))
+			idListData, idListErr := mod.List("super-secrets/Index/" + project + "/tenantId")
 			if idListErr != nil || idListData == nil {
 				return aFleet, idListErr
 			}
+
+			if idListData == nil {
+				return aFleet, errors.New("No argosId were found for argosyFleet")
+			}
+
 			for _, idList := range idListData.Data {
 				for _, id := range idList.([]interface{}) {
 					serviceListData, serviceListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName.(string) + "/" + id.(string) + "/DataFlowStatistics/DataFlowGroup")
-					if serviceListErr != nil || idListData == nil {
+					if serviceListErr != nil {
 						return aFleet, serviceListErr
 					}
 					var new Argosy
 					new.ArgosyID = id.(string)
 					new.Groups = make([]DataFlowGroup, 0)
+
+					if serviceListData == nil { //No existing dfs for this tenant -> continue
+						aFleet.Argosies = append(aFleet.Argosies, new)
+						continue
+					}
+
 					for _, serviceList := range serviceListData.Data {
 						for _, service := range serviceList.([]interface{}) {
 							var dfgroup DataFlowGroup
 							dfgroup.Name = service.(string)
 
 							statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName.(string) + "/" + id.(string) + "/DataFlowStatistics/DataFlowGroup/" + service.(string) + "/dataFlowName/")
-							if statisticNameListErr != nil || statisticNameList == nil {
+							if statisticNameListErr != nil {
 								return aFleet, statisticNameListErr
+							}
+
+							if statisticNameList == nil {
+								continue
 							}
 
 							for _, statisticName := range statisticNameList.Data {
