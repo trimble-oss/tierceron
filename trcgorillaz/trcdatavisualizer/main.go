@@ -11,6 +11,9 @@ import (
 	"os"
 	"time"
 
+	eUtils "tierceron/utils"
+	helperkv "tierceron/vaulthelper/kv"
+
 	"tierceron/buildopts/argosyopts"
 	"tierceron/trcgorillaz/trcdatavisualizer/ttdirender"
 
@@ -66,12 +69,13 @@ func main() {
 	callerCreds := flag.String("CREDS", "", "Credentials of caller")
 	insecure := flag.Bool("insecure", false, "Skip server validation")
 	headless := flag.Bool("headless", false, "Run headless")
+	envPtr := flag.String("env", "QA", "Environment to configure")
 	flag.Parse()
 	worldLog, err := os.OpenFile("trcdatavisualizer.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.SetOutput(worldLog)
+	logger := log.New(worldLog, "[trcdatavisualizer]", log.LstdFlags)
 
 	mashupsdk.InitCertKeyPair(mashupCert, mashupKey)
 
@@ -94,7 +98,23 @@ func main() {
 	worldApp.InitServer(*callerCreds, *insecure)
 
 	if *headless {
-		ArgosyFleet := argosyopts.BuildFleet(nil)
+		config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
+		secretID := ""
+		appRoleID := ""
+		address := ""
+		token := ""
+		empty := ""
+
+		autoErr := eUtils.AutoAuth(&config, &secretID, &appRoleID, &token, &empty, envPtr, &address, false)
+		eUtils.CheckError(&config, autoErr, true)
+
+		mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, logger)
+		mod.Env = *envPtr
+		eUtils.CheckError(&config, modErr, true)
+
+		ArgosyFleet, argosyErr := argosyopts.BuildFleet(mod)
+		eUtils.CheckError(&config, argosyErr, true)
+
 		DetailedElements := []*mashupsdk.MashupDetailedElement{}
 
 		for _, argosy := range ArgosyFleet.Argosies {
