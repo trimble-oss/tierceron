@@ -123,7 +123,7 @@ func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterpris
 					if decodeErr != nil {
 						continue
 					}
-					iVar = string(decodedValue)
+					iVar = []uint8(decodedValue)
 				} else if secretValue == "<Enter Secret Here>" || secretValue == "" {
 					iVar, cErr = column.Type.Convert("")
 					if cErr != nil {
