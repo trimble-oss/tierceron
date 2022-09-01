@@ -222,7 +222,10 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 		if identityColumnName == "MysqlFilePath" {
 			if !strings.HasSuffix(rowDataMap["MysqlFileContent"].(string), "==") {
-				rowDataMap["MysqlFileContent"] = base64.StdEncoding.EncodeToString([]byte(rowDataMap["MysqlFileContent"].(string)))
+				_, decodeErr := base64.StdEncoding.DecodeString(rowDataMap["MysqlFileContent"].(string))
+				if decodeErr != nil {
+					rowDataMap["MysqlFileContent"] = []uint8(base64.StdEncoding.EncodeToString([]byte(rowDataMap["MysqlFileContent"].(string))))
+				}
 			}
 		}
 
