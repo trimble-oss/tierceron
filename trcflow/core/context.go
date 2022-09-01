@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/howeyc/crc16"
+
 	"tierceron/buildopts/coreopts"
 	"tierceron/buildopts/flowcoreopts"
 	"tierceron/trcflow/core/flowcorehelper"
@@ -107,6 +109,11 @@ func (tfmContext *TrcFlowMachineContext) GetTableModifierLock() *sync.Mutex {
 	return &tableModifierLock
 }
 
+func TableCollationIdGen(tableName string) sqle.CollationID {
+	checksum := crc16.Checksum([]byte(tableName), crc16.MBusTable)
+	return sqle.CollationID(checksum)
+}
+
 func (tfmContext *TrcFlowMachineContext) Init(
 	sdbConnMap map[string]map[string]interface{},
 	tableNames []string,
@@ -128,10 +135,13 @@ func (tfmContext *TrcFlowMachineContext) Init(
 		changeTableName := tableName + "_Changes"
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
-			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
-				{Name: "id", Type: flowcoreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
-				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
-			}))
+			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName,
+				sqle.NewPrimaryKeySchema(sqle.Schema{
+					{Name: "id", Type: flowcoreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
+					{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
+				}),
+				TableCollationIdGen(tableName),
+			)
 			if err != nil {
 				tfmContext.GetTableModifierLock().Unlock()
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
@@ -165,7 +175,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 	tfmContext.GetTableModifierLock().Lock()
 	if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, tableName); !ok {
 		//	ii. Init database and tables in local mysql engine instance.
-		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema)
+		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema, TableCollationIdGen(tableName))
 
 		if err != nil {
 			tfContext.FlowState = flowcorehelper.CurrentFlowState{State: -1, SyncMode: "Could not create table.", SyncFilter: ""}
