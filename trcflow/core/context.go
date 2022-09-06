@@ -98,7 +98,7 @@ type TrcFlowContext struct {
 	FlowData         interface{}
 	ChangeFlowName   string // Change flow table name.
 	FlowState        flowcorehelper.CurrentFlowState
-	FlowLock         *sync.Mutex
+	FlowLock         *sync.Mutex //This is for sync concurrent changes to FlowState
 }
 
 var tableModifierLock sync.Mutex
