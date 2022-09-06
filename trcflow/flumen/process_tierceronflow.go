@@ -10,6 +10,7 @@ import (
 	"time"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 const tierceronFlowIdColumnName = "flowName"
@@ -35,11 +36,16 @@ func GetTierceronTableNames() []string {
 }
 
 func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
+	stateDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral(0, sqle.Int64), sqle.Int64, true, false)
+	syncModeDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral("nosync", sqle.Text), sqle.Text, true, false)
+	syncFilterDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral("", sqle.Text), sqle.Text, true, false)
+	timestampDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral(time.Now().UTC(), sqle.Timestamp), sqle.Timestamp, true, false)
 	return sqle.NewPrimaryKeySchema(sqle.Schema{
 		{Name: tierceronFlowIdColumnName, Type: sqle.Text, Source: tableName, PrimaryKey: true},
-		{Name: "state", Type: sqle.Int64, Source: tableName},
-		{Name: "syncMode", Type: sqle.Text, Source: tableName},
-		{Name: "lastModified", Type: sqle.Timestamp, Source: tableName},
+		{Name: "state", Type: sqle.Int64, Source: tableName, Default: stateDefault},
+		{Name: "syncMode", Type: sqle.Text, Source: tableName, Default: syncModeDefault},
+		{Name: "syncFilter", Type: sqle.Text, Source: tableName, Default: syncFilterDefault},
+		{Name: "lastModified", Type: sqle.Timestamp, Source: tableName, Default: timestampDefault},
 	})
 }
 
@@ -47,11 +53,12 @@ func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
 
 func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 	tfFlow := make(map[string]interface{})
-	if len(arr) == 4 {
+	if len(arr) == 5 {
 		tfFlow[tierceronFlowIdColumnName] = arr[0]
 		tfFlow["state"] = arr[1]
 		tfFlow["syncMode"] = arr[2]
-		tfFlow["lastModified"] = arr[3]
+		tfFlow["syncFilter"] = arr[3]
+		tfFlow["lastModified"] = arr[4]
 	}
 	return tfFlow
 }
@@ -66,17 +73,19 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 	}
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)
-		if len(tfFlow) == 4 {
-			stateChannel := flowControllerMap[tfFlow[tierceronFlowIdColumnName].(string)]
+		if flowId, ok := tfFlow[tierceronFlowIdColumnName].(string); ok {
+			stateChannel := flowControllerMap[flowId]
 			if stateChannel == nil {
 				tfmContext.Log("Tierceron Flow could not find the flow:"+tfFlow[tierceronFlowIdColumnName].(string), errors.New("State channel for flow controller was nil."))
 				continue
 			}
 			if stateMsg, ok := tfFlow["state"].(int64); ok {
 				if syncModeMsg, ok := tfFlow["syncMode"].(string); ok {
-					go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string) {
-						sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage}
-					}(stateChannel, stateMsg, syncModeMsg)
+					if syncFilterMsg, ok := tfFlow["syncFilter"].(string); ok {
+						go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string) {
+							sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage}
+						}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg)
+					}
 				}
 			}
 		}
@@ -93,16 +102,16 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 		sendUpdates(tfmContext, tfContext, flowControllerMap, "")
 
 		if tfmContext.FlowControllerInit { //Sending off listener for state updates
-			go func() {
+			go func(tfmc *flowcore.TrcFlowMachineContext, tfc *flowcore.TrcFlowContext, fcmap map[string]chan flowcorehelper.CurrentFlowState) {
 				for {
 					select {
 					case tierceronFlowName, ok := <-tfmContext.FlowControllerUpdateAlert:
 						if ok {
-							sendUpdates(tfmContext, tfContext, flowControllerMap, tierceronFlowName)
+							sendUpdates(tfmc, tfc, fcmap, tierceronFlowName)
 						}
 					}
 				}
-			}()
+			}(tfmContext, tfContext, flowControllerMap)
 		}
 	} else {
 		return nil, errors.New("Flow controller map is the wrong type.")
@@ -127,16 +136,16 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 				return nil, errors.New("Receiver map channel for flow controller was nil.")
 			}
 			for _, receiver := range flowStateReceiverMap { //Receiver is used to update the flow state for shutdowns & inits from other flows
-				go func(currentReceiver chan flowcorehelper.FlowStateUpdate) {
+				go func(currentReceiver chan flowcorehelper.FlowStateUpdate, tfmc *flowcore.TrcFlowMachineContext) {
 					for {
 						select {
 						case x, ok := <-currentReceiver:
 							if ok {
-								tfmContext.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate), nil, true, "UPDATE", nil, "")
+								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode), nil, true, "UPDATE", nil, "")
 							}
 						}
 					}
-				}(receiver)
+				}(receiver, tfmContext)
 			}
 			return nil, nil
 		} else {
@@ -150,11 +159,11 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 //Only pull from vault on init
 //Listen to a change channel ->
 func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) error {
-	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext.Flow.TableName())
+	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext)
 	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
 
 	cancelCtx, _ := context.WithCancel(context.Background())
-	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil, cancelCtx)
+	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil, cancelCtx, false)
 	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
 	if sqlIngestInterval > 0 {
 		// Implement pull from remote data source.
@@ -163,7 +172,7 @@ func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext
 		for {
 			select {
 			case <-time.After(time.Millisecond * afterTime):
-				afterTime = sqlIngestInterval * 2
+				afterTime = sqlIngestInterval
 				tfmContext.Log("Tierceron Flows is running and checking for changes.", nil)
 				// Periodically checks the table for updates and send out state changes to flows.
 				_, err := tierceronFlowImport(tfmContext, tfContext)
