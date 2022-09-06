@@ -12,6 +12,7 @@ configwin:
     @GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -gcflags=-G=0  -o $(GOBIN)/trcconfig.exe trcconfig/trcconfig.go
 config:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcconfig
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcconfig
 
 devplugincarrierbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "tc insecure awsecr memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
@@ -47,28 +48,36 @@ configmac:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $(GOBIN)/trcconfig.mac tierceron/trcconfig
 seed:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcinit
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcinit
 seedmac:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $(GOBIN)/trcinit.mac tierceron/trcinit 
 seedp:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcinitp
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcinitp
 x:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcx
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcx
 xmac:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0 -tags "memonly" -o $(GOBIN)/trcx.mac tierceron/trcx
 xlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -gcflags=-G=0  -buildmode=c-shared -a -ldflags '-w' -tags "memonly" -o $(GOBIN)/nc.so tierceron/configlib
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/nc.so
 maclib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -gcflags=-G=0  -buildmode=c-shared -tags "memonly" -o $(GOBIN)/nc.dylib tierceron/configlib
 winlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -gcflags=-G=0  -buildmode=c-shared -o $(GOBIN)/nc.dll tierceron/configlib
 xp:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcxp
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcxp
 pub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0 -tags "memonly" tierceron/trcpub
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcsub
 sub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install -gcflags=-G=0  -tags "memonly" tierceron/trcsub
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcsub
 certify:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/trcplgtool -tags "tc awsecr memonly" tierceron/trcvault/trcplgtoolbase
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcplgtool
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
