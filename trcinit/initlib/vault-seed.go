@@ -152,16 +152,18 @@ func SeedVault(config *eUtils.DriverConfig) error {
 								if len(subSectionConfigFiles) > 0 {
 									for _, subSectionConfigFile := range subSectionConfigFiles {
 										subSectionPath := config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name() + "/" + subSectionConfigFile.Name()
-										if strings.HasPrefix(sectionConfigFile.Name(), ".") || (config.SubSectionName != "" && (!strings.HasPrefix("/"+subSectionConfigFile.Name(), config.SubSectionName))) {
+										if strings.HasPrefix(sectionConfigFile.Name(), ".") ||
+											(config.SubSectionName != "" && (!strings.HasPrefix("/"+subSectionConfigFile.Name(), config.SubSectionName))) ||
+											(config.SectionName != "" && (!strings.HasPrefix("/"+sectionName.Name()+"/", "/"+config.SectionName+"/"))) {
 											continue
 										}
 										SeedVaultFromFile(config, subSectionPath)
+										seeded = true
 									}
 								} else {
 									SeedVaultFromFile(config, path)
+									seeded = true
 								}
-
-								seeded = true
 							}
 						}
 					}
@@ -482,6 +484,8 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 				}
 			}
 		}
+
+		// Write Secrets...
 
 		// TODO: Support all services, so range over ServicesWanted....
 		// Populate as a slice...
