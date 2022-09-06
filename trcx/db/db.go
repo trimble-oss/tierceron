@@ -128,12 +128,13 @@ func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterpris
 							continue
 						}
 					} else {
-						if _, fpOk := valueColumns["MysqlFilePath"]; fpOk {
-							eUtils.LogErrorMessage(config, fmt.Sprintf("Found non encoded data for: %s", valueColumns["MysqlFilePath"]), false)
+						if _, fpOk := secretColumns["MysqlFilePath"]; fpOk {
+							eUtils.LogErrorMessage(config, fmt.Sprintf("Found non encoded data for: %s", secretColumns["MysqlFilePath"]), false)
+							decodedValue = []byte(secretValue)
 						} else {
 							eUtils.LogErrorMessage(config, "Missing MysqlFilePath.", false)
+							continue
 						}
-						continue
 					}
 					iVar = []uint8(decodedValue)
 				} else if secretValue == "<Enter Secret Here>" || secretValue == "" {
