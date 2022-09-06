@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -119,8 +120,19 @@ func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterpris
 				var cErr error
 				if column.Name == "MysqlFileContent" && secretValue != "<Enter Secret Here>" && secretValue != "" {
 					var decodeErr error
-					decodedValue, decodeErr := base64.StdEncoding.DecodeString(string(secretValue))
-					if decodeErr != nil {
+					var decodedValue []byte
+					if strings.HasPrefix(string(secretValue), "TierceronBase64") {
+						secretValue = secretValue[len("TierceronBase64"):]
+						decodedValue, decodeErr = base64.StdEncoding.DecodeString(string(secretValue))
+						if decodeErr != nil {
+							continue
+						}
+					} else {
+						if _, fpOk := valueColumns["MysqlFilePath"]; fpOk {
+							eUtils.LogErrorMessage(config, fmt.Sprintf("Found non encoded data for: %s", valueColumns["MysqlFilePath"]), false)
+						} else {
+							eUtils.LogErrorMessage(config, "Missing MysqlFilePath.", false)
+						}
 						continue
 					}
 					iVar = []uint8(decodedValue)
