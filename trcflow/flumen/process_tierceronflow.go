@@ -37,7 +37,7 @@ func GetTierceronTableNames() []string {
 
 func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
 	stateDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral(0, sqle.Int64), sqle.Int64, true, false)
-	syncModeDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral("0", sqle.Text), sqle.Text, true, false)
+	syncModeDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral("nosync", sqle.Text), sqle.Text, true, false)
 	syncFilterDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral("", sqle.Text), sqle.Text, true, false)
 	timestampDefault, _ := sqle.NewColumnDefaultValue(expression.NewLiteral(time.Now().UTC(), sqle.Timestamp), sqle.Timestamp, true, false)
 	return sqle.NewPrimaryKeySchema(sqle.Schema{
