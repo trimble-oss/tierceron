@@ -323,6 +323,9 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		config.Log.Println("Seeding configuration data for the following templates: DataStatistics")
 	} else if isIndexData || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
 		mod.SectionPath = strings.TrimSuffix(filepath, "_seed.yml")
+		if len(config.IndexFilter) > 0 && isIndexData {
+			mod.SectionPath = mod.SectionPath[:strings.LastIndex(mod.SectionPath, "/")+1] + config.IndexFilter[0] + mod.SectionPath[strings.LastIndex(mod.SectionPath, "/"):] //This is for mysqlFile
+		}
 		config.Log.Println("Seeding configuration data for the following templates:" + mod.SectionPath)
 	} else {
 		config.Log.Println("Seeding configuration data for the following templates:" + filepath)
