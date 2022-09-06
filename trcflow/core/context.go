@@ -98,7 +98,7 @@ type TrcFlowContext struct {
 	FlowData         interface{}
 	ChangeFlowName   string // Change flow table name.
 	FlowState        flowcorehelper.CurrentFlowState
-	FlowLock         *sync.Mutex
+	FlowLock         *sync.Mutex //This is for sync concurrent changes to FlowState
 }
 
 var tableModifierLock sync.Mutex
@@ -172,7 +172,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 			tfmContext.Log("Could not create table.", err)
 		} else {
 			if tfContext.Flow.TableName() == "TierceronFlow" {
-				tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 2, SyncMode: "0", SyncFilter: ""}
+				tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 2, SyncMode: "nosync", SyncFilter: ""}
 			} else {
 				select {
 				case tfContext.FlowState = <-tfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState):
@@ -193,7 +193,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 							tfmContext.InitConfigWG.Done()
 						}
 						tfmContext.FlowControllerUpdateLock.Unlock()
-						tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 0, SyncMode: "0", SyncFilter: ""}
+						tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 0, SyncMode: "nosync", SyncFilter: ""}
 						tfmContext.Log("Flow ready for use (but inactive due to invalid setup): "+tfContext.Flow.TableName(), nil)
 					}
 				}

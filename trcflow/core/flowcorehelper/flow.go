@@ -9,6 +9,7 @@ type FlowStateUpdate struct {
 	FlowName    string
 	StateUpdate string
 	SyncFilter  string
+	SyncMode    string
 }
 
 type CurrentFlowState struct {
@@ -21,6 +22,6 @@ func GetFlowDBName() string {
 	return TierceronFlowDB
 }
 
-func UpdateTierceronFlowState(flowName string, newState string, syncFilter string) string {
-	return "update " + TierceronFlowDB + "." + TierceronFlowConfigurationTableName + " set lastModified=current_timestamp(), state=" + newState + ", SyncFilter='" + syncFilter + "' where flowName='" + flowName + "'"
+func UpdateTierceronFlowState(flowName string, newState string, syncFilter string, syncMode string) string {
+	return "update " + TierceronFlowDB + "." + TierceronFlowConfigurationTableName + " set lastModified=current_timestamp(), syncMode='" + syncMode + "', state=" + newState + ", SyncFilter='" + syncFilter + "' where flowName='" + flowName + "'"
 }
