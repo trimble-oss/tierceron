@@ -82,9 +82,9 @@ gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
 ttdimanager:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/ttdimanager -tags "insecure fyneboot argosystub" -ldflags="$(LD_FLAGS)" tierceron/trcgorillaz/trcdatamanager
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/ttdimanager -tags "insecure fyneboot argosy" -ldflags="$(LD_FLAGS)" tierceron/trcgorillaz/trcdatamanager
 
 ttdivisualizer:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/ttdivisualizer -tags "insecure g3nboot argosystub" -ldflags="$(LD_FLAGS)" tierceron/trcgorillaz/trcdatavisualizer	
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/ttdivisualizer -tags "insecure g3nboot argosy" -ldflags="$(LD_FLAGS)" tierceron/trcgorillaz/trcdatavisualizer	
 
 all: api config devplugintrcdb config seed x xlib pub sub
