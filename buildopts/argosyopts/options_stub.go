@@ -4,7 +4,6 @@
 package argosyopts
 
 import (
-	"fmt"
 	"github.com/mrjrieke/nute/mashupsdk"
 	"math"
 	"strconv"
@@ -50,11 +49,11 @@ var TimeData = map[string][]float64{
 var pointer int
 
 func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfstatsize int) ([]util.Argosy, []int64, []int64) {
-	for j := 0; j < len(data); j++ {
-		for i := 0; i < len(TimeData[data[j]])-1; i++ {
-			fmt.Println(TimeData[data[j]][i+1] - TimeData[data[j]][i])
-		}
-	}
+	// for j := 0; j < len(data); j++ {
+	// 	for i := 0; i < len(TimeData[data[j]])-1; i++ {
+	// 		fmt.Println(TimeData[data[j]][i+1] - TimeData[data[j]][i])
+	// 	}
+	// }
 	argosyId := startID - 1
 	pointer = 0
 	argosies := []util.Argosy{}
@@ -212,11 +211,6 @@ func buildDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]u
 }
 
 func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
-	argosy, err := util.InitArgosyFleet(mod, "TenantDatabase")
-	if err != nil {
-		return util.ArgosyFleet{}, err
-	}
-	fmt.Println(argosy)
 	Argosys := []util.Argosy{
 		{
 			mashupsdk.MashupDetailedElement{
