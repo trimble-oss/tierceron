@@ -3,21 +3,22 @@ package main
 import (
 	"embed"
 	"flag"
-	"fmt"
 	"log"
+	"math"
 	"os"
-
-	//"strconv"
-	"strings"
-
+	"sort"
 	"tierceron/buildopts/argosyopts"
+	"tierceron/trcgorillaz/trcdatavisualizer/ttdirender"
 
-	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/theme"
+	eUtils "tierceron/utils"
+	helperkv "tierceron/vaulthelper/kv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+
+	//"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/mrjrieke/nute/g3nd/worldg3n/g3nrender"
 	"github.com/mrjrieke/nute/mashupsdk"
 	"github.com/mrjrieke/nute/mashupsdk/client"
 	"github.com/mrjrieke/nute/mashupsdk/guiboot"
@@ -30,14 +31,11 @@ type HelloContext struct {
 type fyneMashupApiHandler struct {
 }
 
-//var helloContext HelloContext
+var helloContext HelloContext
 
 type FyneWidgetBundle struct {
 	mashupsdk.GuiWidgetBundle
-}
-
-type FyneListBundle struct {
-	mashupsdk.GuiWidgetBundle
+	Elements []*mashupsdk.MashupDetailedElement
 }
 
 type HelloApp struct {
@@ -47,9 +45,7 @@ type HelloApp struct {
 	mashupDisplayContext         *mashupsdk.MashupDisplayContext
 	mashupDetailedElementLibrary map[int64]*mashupsdk.MashupDetailedElement
 	elementLoaderIndex           map[string]int64 // mashup indexes by Name
-	fyneWidgetElements           map[string]*FyneWidgetBundle
-	fyneListElements             map[int64]*FyneWidgetBundle
-	list                         *widget.List
+	fyneWidgetElements           map[string][]*FyneWidgetBundle
 }
 
 func (fwb *FyneWidgetBundle) OnStatusChanged() {
@@ -66,56 +62,44 @@ func (fwb *FyneWidgetBundle) OnStatusChanged() {
 
 	log.Printf("Display fields set to: %d", selectedDetailedElement.State.State)
 	helloApp.HelloContext.mashupContext.Client.UpsertMashupElementsState(helloApp.HelloContext.mashupContext, &elementStateBundle)
-	helloApp.mashupDisplayContext.MainWinDisplay.Focused = false
-}
-
-func (fwb *FyneWidgetBundle) OnClicked() {
-	fwb.MashupDetailedElement.State.State = int64(mashupsdk.Clicked)
-
-	elementStateBundle := mashupsdk.MashupElementStateBundle{
-		AuthToken:     client.GetServerAuthToken(),
-		ElementStates: []*mashupsdk.MashupElementState{fwb.MashupDetailedElement.State},
-	}
-	helloApp.HelloContext.mashupContext.Client.UpsertMashupElementsState(helloApp.HelloContext.mashupContext, &elementStateBundle)
 }
 
 func (ha *HelloApp) OnResize(displayHint *mashupsdk.MashupDisplayHint) {
 	resize := ha.mashupDisplayContext.OnResize(displayHint)
 
-	if resize {
-		if ha.HelloContext.mashupContext == nil {
-			return
-		}
+	if ha.HelloContext.mashupContext == nil {
+		return
+	}
 
-		if ha.HelloContext.mashupContext != nil {
-			ha.HelloContext.mashupContext.Client.OnResize(ha.HelloContext.mashupContext,
-				&mashupsdk.MashupDisplayBundle{
-					AuthToken:         client.GetServerAuthToken(),
-					MashupDisplayHint: ha.mashupDisplayContext.MainWinDisplay,
-				})
-		}
+	if resize || !ha.mashupDisplayContext.MainWinDisplay.Focused {
+		ha.mashupDisplayContext.MainWinDisplay.Focused = true
+		ha.HelloContext.mashupContext.Client.OnResize(ha.HelloContext.mashupContext,
+			&mashupsdk.MashupDisplayBundle{
+				AuthToken:         client.GetServerAuthToken(),
+				MashupDisplayHint: ha.mashupDisplayContext.MainWinDisplay,
+			})
 	}
 }
 
-func (ha *HelloApp) TorusParser(childId int64) {
-	/*
-	   child := helloApp.mashupDetailedElementLibrary[childId]
-	   if child.Alias != "" {
-	       helloApp.fyneWidgetElements[child.Alias].MashupDetailedElement = child
-	   }
+// func (ha *HelloApp) TorusParser(childId int64) {
+// 	child := helloApp.mashupDetailedElementLibrary[childId]
+// 	if child.Alias != "" {
+// 		helloApp.fyneWidgetElements[child.Alias].MashupDetailedElement.Copy(child)
+// 		helloApp.fyneWidgetElements[child.Alias].GuiComponent.(*container.TabItem).Text = child.Name
+// 	}
 
-	   if len(child.GetChildids()) > 0 {
-	       for _, cId := range child.GetChildids() {
-	           ha.TorusParser(cId)
-	       }
+// 	if len(child.GetChildids()) > 0 {
+// 		for _, cId := range child.GetChildids() {
+// 			ha.TorusParser(cId)
+// 		}
 
-	   }*/
-}
+// 	}
+// }
 
 var helloApp HelloApp
 
 //go:embed logo.png
-var logoIcon embed.FS
+var logo embed.FS
 
 //go:embed tls/mashup.crt
 var mashupCert embed.FS
@@ -123,15 +107,46 @@ var mashupCert embed.FS
 //go:embed tls/mashup.key
 var mashupKey embed.FS
 
+func detailMappedFyneComponent(id, description string, de *mashupsdk.MashupDetailedElement) *container.TabItem {
+	// tabLabel := widget.NewLabel(description)
+	// tabLabel.Wrapping = fyne.TextWrapWord
+	// tabItem := container.NewTabItem(id, container.NewBorder(nil, nil, layout.NewSpacer(), nil, container.NewVBox(tabLabel, container.NewAdaptiveGrid(2,
+	// 	widget.NewButton("Show", func() {
+	// 		// Workaround... mashupdetailedelement points at wrong element sometimes, but shouldn't!
+	// 		mashupIndex := helloApp.elementLoaderIndex[helloApp.fyneWidgetElements[de.Alias].GuiComponent.(*container.TabItem).Text]
+	// 		helloApp.fyneWidgetElements[de.Alias].MashupDetailedElement = helloApp.mashupDetailedElementLibrary[mashupIndex]
+
+	// 		helloApp.fyneWidgetElements[de.Alias].MashupDetailedElement.ApplyState(mashupsdk.Hidden, false)
+	// 		if helloApp.fyneWidgetElements[de.Alias].MashupDetailedElement.Genre == "Collection" {
+	// 			helloApp.fyneWidgetElements[de.Alias].MashupDetailedElement.ApplyState(mashupsdk.Recursive, true)
+	// 		}
+	// 		helloApp.fyneWidgetElements[de.Alias].OnStatusChanged()
+	// 	}), widget.NewButton("Hide", func() {
+	// 		// Workaround... mashupdetailedelement points at wrong element sometimes, but shouldn't!
+	// 		mashupIndex := helloApp.elementLoaderIndex[helloApp.fyneWidgetElements[de.Alias].GuiComponent.(*container.TabItem).Text]
+	// 		helloApp.fyneWidgetElements[de.Alias].MashupDetailedElement = helloApp.mashupDetailedElementLibrary[mashupIndex]
+
+	// 		helloApp.fyneWidgetElements[de.Alias].MashupDetailedElement.ApplyState(mashupsdk.Hidden, true)
+	// 		if helloApp.fyneWidgetElements[de.Alias].MashupDetailedElement.Genre == "Collection" {
+	// 			helloApp.fyneWidgetElements[de.Alias].MashupDetailedElement.ApplyState(mashupsdk.Recursive, true)
+	// 		}
+	// 		helloApp.fyneWidgetElements[de.Alias].OnStatusChanged()
+	// 	})))),
+	// )
+	return nil //tabItem
+}
+
 func main() {
 	insecure := flag.Bool("insecure", false, "Skip server validation")
+	envPtr := flag.String("env", "QA", "Environment to configure")
 	flag.Parse()
 
 	helloLog, err := os.OpenFile("ttdimanager.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatalf(err.Error(), err)
 	}
-	log.SetOutput(helloLog)
+	logger := log.New(helloLog, "[ttdivisualizer]", log.LstdFlags)
+	//log.SetOutput(helloLog)
 
 	mashupsdk.InitCertKeyPair(mashupCert, mashupKey)
 
@@ -142,57 +157,174 @@ func main() {
 		mashupDisplayContext:         &mashupsdk.MashupDisplayContext{MainWinDisplay: &mashupsdk.MashupDisplayHint{}},
 		mashupDetailedElementLibrary: map[int64]*mashupsdk.MashupDetailedElement{}, // mashupDetailedElementLibrary,
 		elementLoaderIndex:           map[string]int64{},                           // elementLoaderIndex
-		fyneWidgetElements: map[string]*FyneWidgetBundle{
-			"Inside": {
-				GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
-					GuiComponent:          container.NewTabItem("Inside", widget.NewLabel("The magnetic field inside a toroid is always tangential to the circular closed path.  These magnetic field lines are concentric circles.")),
-					MashupDetailedElement: nil, // mashupDetailedElementLibrary["{0}-AxialCircle"],
+		fyneWidgetElements: map[string][]*FyneWidgetBundle{
+			"Outside": []*FyneWidgetBundle{
+				{
+					GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
+						GuiComponent:          nil,
+						MashupDetailedElement: &mashupsdk.MashupDetailedElement{}, //mashupDetailedElementLibrary["Outside"],
+					},
 				},
 			},
-			"Outside": {
-				GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
-					GuiComponent:          container.NewTabItem("Outside", widget.NewLabel("The magnetic field at any point outside the toroid is zero.")),
-					MashupDetailedElement: nil, //mashupDetailedElementLibrary["Outside"],
+			"Argosy": []*FyneWidgetBundle{
+				{
+					GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
+						GuiComponent:          nil,
+						MashupDetailedElement: &mashupsdk.MashupDetailedElement{}, //mashupDetailedElementLibrary["{0}-Torus"],
+					},
 				},
 			},
-			"It": {
-				GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
-					GuiComponent:          container.NewTabItem("It", widget.NewLabel("The magnetic field inside the empty space surrounded by the toroid is zero.")),
-					MashupDetailedElement: nil, //mashupDetailedElementLibrary["{0}-Torus"],
+			"DataFlowGroup": []*FyneWidgetBundle{
+				{
+					GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
+						GuiComponent:          nil,
+						MashupDetailedElement: &mashupsdk.MashupDetailedElement{}, //mashupDetailedElementLibrary["{0}-SharedAttitude"],
+					},
 				},
 			},
-			"Up-Side-Down": {
-				GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
-					GuiComponent:          container.NewTabItem("Up-Side-Down", widget.NewLabel("Torus is up-side-down")),
-					MashupDetailedElement: nil, //mashupDetailedElementLibrary["{0}-SharedAttitude"],
+			"DataFlow": []*FyneWidgetBundle{
+				{
+					GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
+						GuiComponent:          nil,
+						MashupDetailedElement: &mashupsdk.MashupDetailedElement{}, //mashupDetailedElementLibrary["{0}-SharedAttitude"],
+					},
+				},
+			},
+			"DataFlowStatistic": []*FyneWidgetBundle{
+				{
+					GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
+						GuiComponent:          nil,
+						MashupDetailedElement: &mashupsdk.MashupDetailedElement{}, //mashupDetailedElementLibrary["{0}-SharedAttitude"],
+					},
 				},
 			},
 		},
-		fyneListElements: map[int64]*FyneWidgetBundle{},
-		list:             &widget.List{},
 	}
 
 	// Build G3nDetailedElement cache.
-	for _, fc := range helloApp.fyneWidgetElements {
-		fc.GuiComponent.(*container.TabItem).Content.(*widget.Label).Wrapping = fyne.TextWrapWord
-	}
 
 	// Sync initialization.
 	initHandler := func(a fyne.App) {
+		a.Lifecycle().SetOnExitedForeground(func() {
+			log.Printf("OnExitedForeground.\n")
+			helloApp.mashupDisplayContext.MainWinDisplay.Focused = false
+		})
+
+		a.Lifecycle().SetOnStarted(func() {
+			log.Printf("SetOnEnteredForeground: %v\n", helloApp.mashupDisplayContext.MainWinDisplay.Focused)
+		})
+
 		a.Lifecycle().SetOnEnteredForeground(func() {
+			log.Printf("SetOnEnteredForeground: %v\n", helloApp.mashupDisplayContext.MainWinDisplay.Focused)
 			if helloApp.HelloContext.mashupContext == nil {
 				helloApp.HelloContext.mashupContext = client.BootstrapInit("ttdivisualizer", helloApp.fyneMashupApiHandler, nil, nil, insecure)
 
 				var upsertErr error
 				var concreteElementBundle *mashupsdk.MashupDetailedElementBundle
 
-				ArgosyFleet := argosyopts.BuildFleet(nil)
-				DetailedElements := []*mashupsdk.MashupDetailedElement{}
-				for _, argosy := range ArgosyFleet.Argosies {
-					argosyBasis := argosy.MashupDetailedElement
-					DetailedElements = append(DetailedElements, &argosyBasis)
-				}
+				config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
+				secretID := ""
+				appRoleID := ""
+				address := ""
+				token := ""
+				empty := ""
 
+				autoErr := eUtils.AutoAuth(&config, &secretID, &appRoleID, &token, &empty, envPtr, &address, false)
+				eUtils.CheckError(&config, autoErr, true)
+
+				mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, logger)
+				mod.Env = *envPtr
+				eUtils.CheckError(&config, modErr, true)
+
+				ArgosyFleet, argosyErr := argosyopts.BuildFleet(mod)
+				eUtils.CheckError(&config, argosyErr, true)
+
+				DetailedElements := []*mashupsdk.MashupDetailedElement{}
+				dfstatData := map[string]float64{}
+				statGroup := []float64{}
+				testTimes := []float64{}
+				for a := 0; a < len(ArgosyFleet.Argosies); a++ {
+					argosyBasis := ArgosyFleet.Argosies[a].MashupDetailedElement
+					argosyBasis.Alias = "Argosy"
+					argwidgetElement := FyneWidgetBundle{
+						GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
+							GuiComponent:          widget.NewLabel(argosyBasis.Name),
+							MashupDetailedElement: &argosyBasis, //mashupDetailedElementLibrary["{0}-SharedAttitude"],
+						},
+					}
+					helloApp.fyneWidgetElements["Argosy"] = append(helloApp.fyneWidgetElements["Argosy"], &argwidgetElement)
+					helloApp.fyneWidgetElements[argosyBasis.Name] = append(helloApp.fyneWidgetElements[argosyBasis.Name], &argwidgetElement)
+					DetailedElements = append(DetailedElements, &argosyBasis)
+
+					for i := 0; i < len(ArgosyFleet.Argosies[a].Groups); i++ {
+						detailedElement := ArgosyFleet.Argosies[a].Groups[i].MashupDetailedElement
+						detailedElement.Alias = "DataFlowGroup"
+						dfgwidgetElement := FyneWidgetBundle{
+							GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
+								GuiComponent:          widget.NewLabel(detailedElement.Name),
+								MashupDetailedElement: &detailedElement, //mashupDetailedElementLibrary["{0}-SharedAttitude"],
+							},
+						}
+						helloApp.fyneWidgetElements[argosyBasis.Name] = append(helloApp.fyneWidgetElements[argosyBasis.Name], &dfgwidgetElement)
+						// MAKE IT SO HAVE SAME LIST ID AS PREVIOUS ELEMENT TO NAVIGATE THRU AND LINK THEM
+						helloApp.fyneWidgetElements["DataFlowGroup"] = append(helloApp.fyneWidgetElements["DataFlowGroup"], &dfgwidgetElement)
+						//HAVE TO REDO THIS SO THAT ARRAY ISN'T RESET EA TIME
+						// MAKE A FYNE WIDGET ELEMENT WITH NIL GUI COMP AND SET MASHUPEL TO GIVEN EL AT TIME
+						DetailedElements = append(DetailedElements, &detailedElement)
+						for j := 0; j < len(ArgosyFleet.Argosies[a].Groups[i].Flows); j++ {
+							element := ArgosyFleet.Argosies[a].Groups[i].Flows[j].MashupDetailedElement
+							element.Alias = "DataFlow"
+							dfwidgetElement := FyneWidgetBundle{
+								GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
+									GuiComponent:          widget.NewLabel(element.Name),
+									MashupDetailedElement: &element, //mashupDetailedElementLibrary["{0}-SharedAttitude"],
+								},
+							}
+							helloApp.fyneWidgetElements["DataFlow"] = append(helloApp.fyneWidgetElements["DataFlow"], &dfwidgetElement)
+							helloApp.fyneWidgetElements[detailedElement.Name] = append(helloApp.fyneWidgetElements[argosyBasis.Name], &dfwidgetElement)
+							DetailedElements = append(DetailedElements, &element)
+							for k := 0; k < len(ArgosyFleet.Argosies[a].Groups[i].Flows[j].Statistics); k++ {
+								el := ArgosyFleet.Argosies[a].Groups[i].Flows[j].Statistics[k].MashupDetailedElement
+								el.Alias = "DataFlowStatistic"
+								timeNanoSeconds := int64(ArgosyFleet.Argosies[a].Groups[i].Flows[j].Statistics[k].TimeSplit)
+								timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
+								dfstatData[el.Name] = timeSeconds
+								statGroup = append(statGroup, timeSeconds)
+								statwidgetElement := FyneWidgetBundle{
+									GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
+										GuiComponent:          widget.NewLabel(el.Name),
+										MashupDetailedElement: &el, //mashupDetailedElementLibrary["{0}-SharedAttitude"],
+									},
+								}
+								helloApp.fyneWidgetElements["DataFlowStatistic"] = append(helloApp.fyneWidgetElements["DataFlowStatistic"], &statwidgetElement)
+								helloApp.fyneWidgetElements[element.Name] = append(helloApp.fyneWidgetElements[element.Name], &statwidgetElement)
+								DetailedElements = append(DetailedElements, &el)
+							}
+							for l := 0; l < len(statGroup)-1; l++ {
+								if statGroup[l+1]-statGroup[l] > 0 {
+									testTimes = append(testTimes, statGroup[l+1]-statGroup[l])
+								}
+							}
+						}
+					}
+				}
+				sort.Float64s(testTimes)
+				mashupRenderer := &g3nrender.MashupRenderer{}
+
+				curveRenderer := &ttdirender.CurveRenderer{
+					CollaboratingRenderer: &ttdirender.ElementRenderer{
+						GenericRenderer: g3nrender.GenericRenderer{RendererType: g3nrender.LAYOUT},
+					},
+					TimeData:    dfstatData,
+					SortedTimes: testTimes,
+				}
+				mashupRenderer.AddRenderer("Background", &ttdirender.BackgroundRenderer{})
+				mashupRenderer.AddRenderer("Curve", curveRenderer)
+				mashupRenderer.AddRenderer("Element", curveRenderer.CollaboratingRenderer)
+
+				for _, detailedElement := range helloApp.mashupDetailedElementLibrary {
+					DetailedElements = append(DetailedElements, detailedElement)
+				}
 				log.Printf("Delivering mashup elements.\n")
 
 				// Connection with mashup fully established.  Initialize mashup elements.
@@ -207,44 +339,31 @@ func main() {
 				}
 
 				for _, concreteElement := range concreteElementBundle.DetailedElements {
+					//helloApp.fyneComponentCache[generatedComponent.Basisid]
 					helloApp.mashupDetailedElementLibrary[concreteElement.Id] = concreteElement
 					helloApp.elementLoaderIndex[concreteElement.Name] = concreteElement.Id
 
 					if concreteElement.GetName() == "Outside" {
-						helloApp.fyneWidgetElements["Outside"].MashupDetailedElement = concreteElement
+						helloApp.fyneWidgetElements["Outside"][0].MashupDetailedElement.Copy(concreteElement) //assuming only 1 outside element!
 					}
 				}
-				for _, detailedElement := range concreteElementBundle.DetailedElements {
-					//if detailedElement.Id >= int64(6) {
-					//if detailedElement.Renderer == "Path" {
-					guiWidgetBundle := mashupsdk.GuiWidgetBundle{
-						GuiComponent:          widget.NewLabel(detailedElement.Name),
-						MashupDetailedElement: detailedElement,
-					}
-					fyneWidgetBundle := FyneWidgetBundle{
-						guiWidgetBundle,
-					}
 
-					helloApp.fyneListElements[detailedElement.Id] = &fyneWidgetBundle
-					//}
-
-					//}
-				}
-
-				for _, concreteElement := range concreteElementBundle.DetailedElements {
-					if strings.HasPrefix(concreteElement.GetName(), "PathEntity") {
-						for _, childId := range concreteElement.Childids {
-							helloApp.TorusParser(childId)
-						}
-					}
-				}
+				// for _, concreteElement := range concreteElementBundle.DetailedElements {
+				// 	if concreteElement.GetSubgenre() == "Torus" {
+				// 		helloApp.TorusParser(concreteElement.Id)
+				// 	}
+				// }
 
 				log.Printf("Mashup elements delivered.\n")
 
 				helloApp.mashupDisplayContext.ApplySettled(mashupsdk.AppInitted, false)
 			}
-			helloApp.OnResize(helloApp.mashupDisplayContext.MainWinDisplay)
+			if helloApp.mashupDisplayContext.MainWinDisplay != nil {
+				helloApp.OnResize(helloApp.mashupDisplayContext.MainWinDisplay)
+				helloApp.mashupDisplayContext.MainWinDisplay.Focused = true
+			}
 		})
+
 		a.Lifecycle().SetOnResized(func(xpos int, ypos int, yoffset int, width int, height int) {
 			log.Printf("Received resize: %d %d %d %d %d\n", xpos, ypos, yoffset, width, height)
 			helloApp.mashupDisplayContext.ApplySettled(mashupsdk.Configured|mashupsdk.Position|mashupsdk.Frame, false)
@@ -263,95 +382,181 @@ func main() {
 				Width:   int64(width),
 				Height:  int64(height),
 			}
+
 			helloApp.OnResize(helloApp.mashupDisplayContext.MainWinDisplay)
-			helloApp.mashupDisplayContext.MainWinDisplay.Focused = false
 		})
 		helloApp.mainWin = a.NewWindow("Hello Fyne World")
-		logoIconBytes, _ := logoIcon.ReadFile("logo.png")
+		logoIconBytes, _ := logo.ReadFile("logo.png")
 
 		helloApp.mainWin.SetIcon(fyne.NewStaticResource("Logo", logoIconBytes))
-		//go *g3nworld.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
-		//go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
-
 		helloApp.mainWin.Resize(fyne.NewSize(800, 100))
 		helloApp.mainWin.SetFixedSize(false)
 
-		/*torusMenu := container.NewAppTabs(
-			helloApp.fyneWidgetElements["Inside"].GuiComponent.(*container.TabItem),       // inside
-			helloApp.fyneWidgetElements["Outside"].GuiComponent.(*container.TabItem),      // outside
-			helloApp.fyneWidgetElements["It"].GuiComponent.(*container.TabItem),           // It
-			helloApp.fyneWidgetElements["Up-Side-Down"].GuiComponent.(*container.TabItem), // Upside down
-		)
-		torusMenu.OnSelected = func(tabItem *container.TabItem) {
-			// Too bad fyne doesn't have the ability for user to assign an id to TabItem...
-			// Lookup by name instead and try to keep track of any name changes instead...
-			log.Printf("Selected: %s\n", tabItem.Text)
-			if mashupItemIndex, miOk := helloApp.elementLoaderIndex[tabItem.Text]; miOk {
-				mashupDetailedElement := helloApp.mashupDetailedElementLibrary[mashupItemIndex]
-				if mashupDetailedElement.Alias != "" {
-					helloApp.fyneWidgetElements[mashupDetailedElement.Alias].OnClicked()
-					return
-				}
-			}
-			helloApp.fyneWidgetElements[tabItem.Text].OnClicked()
-		}*/
-
-		topContent := widget.NewToolbar(
-			widget.NewToolbarSpacer(),
-			widget.NewToolbarAction(theme.AccountIcon(), func() {
-				accountWindow := a.NewWindow("Account Information")
-				accountWindow.SetContent(widget.NewLabel("User: "))
-				accountWindow.Show()
-			}),
-			widget.NewToolbarSeparator(),
-			widget.NewToolbarAction(theme.SettingsIcon(), func() {
-				settingWindow := a.NewWindow("Settings")
-				settingWindow.SetContent(widget.NewLabel("Light Theme: "))
-				settingWindow.Show()
-			}),
-		)
-
-		displayContent := widget.NewLabel("First-Load Information")
-		//torusMenu.SetTabLocation(container.TabLocationTop)
-
-		list := widget.NewList(
-			func() int { return len(helloApp.fyneListElements) },
+		argosyList := widget.NewList(
+			func() int { return len(helloApp.fyneWidgetElements["Argosy"]) },
 			func() fyne.CanvasObject { return widget.NewLabel("") },
 			func(lii widget.ListItemID, co fyne.CanvasObject) {
-				if helloApp.fyneListElements[int64(lii+6)] != nil {
-					co.(*widget.Label).SetText(helloApp.fyneListElements[int64(lii+6)].MashupDetailedElement.Name)
-				}
+				co.(*widget.Label).SetText(helloApp.fyneWidgetElements["Argosy"][lii].MashupDetailedElement.Name)
 			},
 		)
 
-		list.OnSelected = func(id widget.ListItemID) {
-			log.Printf("Selected: %s\n", helloApp.fyneListElements[int64(id+6)].MashupDetailedElement.Name)
-			if mashupItemIndex, miOk := helloApp.elementLoaderIndex[helloApp.fyneListElements[int64(id+6)].MashupDetailedElement.Name]; miOk {
-				mashupDetailedElement := helloApp.mashupDetailedElementLibrary[mashupItemIndex]
-				if mashupDetailedElement.Alias != "" {
-					displayContent.Text = mashupDetailedElement.Description
-					displayContent.Refresh()
-					//helloApp.fyneWidgetElements[mashupDetailedElement.Alias].GuiWidgetBundle.MashupDetailedElement = mashupDetailedElement
-					helloApp.fyneListElements[int64(id+6)].OnStatusChanged() //OnClicked()
-					//helloApp.mainWin.AddToScene(argosyopts)
-					//helloApp.fyneWidgetElements[mashupDetailedElement.Alias].OnClicked()
-					return
-				}
-			}
-			fmt.Println(helloApp.fyneListElements[int64(id)+6].MashupDetailedElement.Name)
-			helloApp.fyneWidgetElements[helloApp.fyneListElements[int64(id+6)].MashupDetailedElement.Alias].OnStatusChanged() //OnClicked()
+		dfgList := widget.NewList(
+			func() int { return len(helloApp.fyneWidgetElements["DataFlowGroup"]) },
+			func() fyne.CanvasObject { return widget.NewLabel("") },
+			func(lii widget.ListItemID, co fyne.CanvasObject) {
+				co.(*widget.Label).SetText(helloApp.fyneWidgetElements["DataFlowGroup"][lii].MashupDetailedElement.Name)
+			},
+		)
 
+		dfList := widget.NewList(
+			func() int { return len(helloApp.fyneWidgetElements["DataFlow"]) },
+			func() fyne.CanvasObject { return widget.NewLabel("") },
+			func(lii widget.ListItemID, co fyne.CanvasObject) {
+				co.(*widget.Label).SetText(helloApp.fyneWidgetElements["DataFlow"][lii].MashupDetailedElement.Name)
+			},
+		)
+
+		dfstatList := widget.NewList(
+			func() int { return len(helloApp.fyneWidgetElements["DataFlowStatistic"]) },
+			func() fyne.CanvasObject { return widget.NewLabel("") },
+			func(lii widget.ListItemID, co fyne.CanvasObject) {
+				co.(*widget.Label).SetText(helloApp.fyneWidgetElements["DataFlowStatistic"][lii].MashupDetailedElement.Name)
+			},
+		)
+
+		helloApp.fyneWidgetElements["Argosy"][0].GuiComponent = container.NewTabItem("Argosy", argosyList)
+		helloApp.fyneWidgetElements["DataFlowGroup"][0].GuiComponent = container.NewTabItem("DataFlowGroup", dfgList)
+		helloApp.fyneWidgetElements["DataFlow"][0].GuiComponent = container.NewTabItem("DataFlow", dfList)
+		helloApp.fyneWidgetElements["DataFlowStatistic"][0].GuiComponent = container.NewTabItem("DataFlowStatistic", dfstatList)
+		menu := container.NewAppTabs(
+			helloApp.fyneWidgetElements["Argosy"][0].GuiComponent.(*container.TabItem),
+			helloApp.fyneWidgetElements["DataFlowGroup"][0].GuiComponent.(*container.TabItem),
+			helloApp.fyneWidgetElements["DataFlow"][0].GuiComponent.(*container.TabItem),
+			helloApp.fyneWidgetElements["DataFlowStatistic"][0].GuiComponent.(*container.TabItem),
+		)
+
+		argosyList.OnSelected = func(id widget.ListItemID) {
+			menu.Select(helloApp.fyneWidgetElements["DataFlowGroup"][0].GuiComponent.(*container.TabItem))
+			//FIGURE OUT HOW TO MAKE IT CHANGE DATA IN LIST IF OTHER ELEMENT SELECTED
+			// dfgList = widget.NewList(
+			// 	func() int {
+			// 		if helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][id].MashupDetailedElement.Name] != nil {
+			// 			return len(helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][id].MashupDetailedElement.Name])
+			// 		} else {
+			// 			return len(helloApp.fyneWidgetElements["DataFlowGroup"])
+			// 		}
+			// 	},
+			// 	func() fyne.CanvasObject { return widget.NewLabel("") },
+			// 	func(lii widget.ListItemID, co fyne.CanvasObject) {
+			// 		if helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][lii].MashupDetailedElement.Name] != nil {
+			// 			co.(*widget.Label).SetText(helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][id].MashupDetailedElement.Name][id].MashupDetailedElement.Name)
+			// 		} else {
+			// 			co.(*widget.Label).SetText("hi") //helloApp.fyneWidgetElements["DataFlowGroup"][lii].MashupDetailedElement.Name)
+			// 		}
+			// 	},
+			// )
 		}
-		helloApp.list = list
 
-		//fileContent := list
-		//mainContent := container.New(&display{}, list, displayContent)
-		mainContent := container.New(layout.NewGridLayoutWithColumns(2), list, displayContent)
-		//overallContent := container.New(layout.NewBorderLayout(topContent, nil, fileContent, nil), topContent, fileContent, torusMenu)
-		overallContent := container.New(layout.NewBorderLayout(topContent, nil, nil, nil), topContent, mainContent)
-		helloApp.mainWin.SetContent(overallContent) //overallContent)
+		dfgList.OnSelected = func(id widget.ListItemID) {
+			menu.Select(helloApp.fyneWidgetElements["DataFlow"][0].GuiComponent.(*container.TabItem))
+			//FIGURE OUT HOW TO MAKE IT CHANGE DATA IN LIST IF OTHER ELEMENT SELECTED
+			// dfgList = widget.NewList(
+			// 	func() int {
+			// 		if helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][id].MashupDetailedElement.Name] != nil {
+			// 			return len(helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][id].MashupDetailedElement.Name])
+			// 		} else {
+			// 			return len(helloApp.fyneWidgetElements["DataFlowGroup"])
+			// 		}
+			// 	},
+			// 	func() fyne.CanvasObject { return widget.NewLabel("") },
+			// 	func(lii widget.ListItemID, co fyne.CanvasObject) {
+			// 		if helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][lii].MashupDetailedElement.Name] != nil {
+			// 			co.(*widget.Label).SetText(helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][id].MashupDetailedElement.Name][id].MashupDetailedElement.Name)
+			// 		} else {
+			// 			co.(*widget.Label).SetText("hi") //helloApp.fyneWidgetElements["DataFlowGroup"][lii].MashupDetailedElement.Name)
+			// 		}
+			// 	},
+			// )
+		}
+
+		dfList.OnSelected = func(id widget.ListItemID) {
+			menu.Select(helloApp.fyneWidgetElements["DataFlowStatistic"][0].GuiComponent.(*container.TabItem))
+			//FIGURE OUT HOW TO MAKE IT CHANGE DATA IN LIST IF OTHER ELEMENT SELECTED
+			// dfgList = widget.NewList(
+			// 	func() int {
+			// 		if helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][id].MashupDetailedElement.Name] != nil {
+			// 			return len(helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][id].MashupDetailedElement.Name])
+			// 		} else {
+			// 			return len(helloApp.fyneWidgetElements["DataFlowGroup"])
+			// 		}
+			// 	},
+			// 	func() fyne.CanvasObject { return widget.NewLabel("") },
+			// 	func(lii widget.ListItemID, co fyne.CanvasObject) {
+			// 		if helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][lii].MashupDetailedElement.Name] != nil {
+			// 			co.(*widget.Label).SetText(helloApp.fyneWidgetElements[helloApp.fyneWidgetElements["Argosy"][id].MashupDetailedElement.Name][id].MashupDetailedElement.Name)
+			// 		} else {
+			// 			co.(*widget.Label).SetText("hi") //helloApp.fyneWidgetElements["DataFlowGroup"][lii].MashupDetailedElement.Name)
+			// 		}
+			// 	},
+			// )
+		}
+
+		// menu.OnSelected = func(tabItem *container.TabItem) {
+		// 	// Too bad fyne doesn't have the ability for user to assign an id to TabItem...
+		// 	// Lookup by name instead and try to keep track of any name changes instead...
+		// 	log.Printf("Selected: %s\n", tabItem.Text)
+		// 	if mashupItemIndex, miOk := helloApp.elementLoaderIndex[tabItem.Text]; miOk {
+		// 		mashupDetailedElement := helloApp.mashupDetailedElementLibrary[mashupItemIndex]
+		// 		if mashupDetailedElement.Alias != "" {
+		// 			if mashupDetailedElement.Genre != "Collection" {
+		// 				mashupDetailedElement.State.State |= int64(mashupsdk.Clicked)
+		// 			}
+		// 			helloApp.fyneWidgetElements[mashupDetailedElement.Alias].MashupDetailedElement = mashupDetailedElement
+		// 			helloApp.fyneWidgetElements[mashupDetailedElement.Alias].OnStatusChanged()
+		// 			return
+		// 		}
+		// 	}
+		// 	helloApp.fyneWidgetElements[tabItem.Text].OnStatusChanged()
+		// }
+
+		// helloApp.fyneWidgetElements["Outside"].GuiComponent = detailMappedFyneComponent("Inside", "The magnetic field inside a toroid is always tangential to the circular closed path.  These magnetic field lines are concentric circles.", helloApp.fyneWidgetElements["Outside"].MashupDetailedElement)
+		// helloApp.fyneWidgetElements["Argosy"].GuiComponent = detailMappedFyneComponent("Outside", "The magnetic field at any point outside the toroid is zero.", helloApp.fyneWidgetElements["Argosy"].MashupDetailedElement)
+		// helloApp.fyneWidgetElements["DataFlowGroup"].GuiComponent = detailMappedFyneComponent("It", "The magnetic field inside the empty space surrounded by the toroid is zero.", helloApp.fyneWidgetElements["DataFlowGroup"].MashupDetailedElement)
+		// helloApp.fyneWidgetElements["DataFlow"].GuiComponent = detailMappedFyneComponent("Up-Side-Down", "Torus is up-side-down", helloApp.fyneWidgetElements["DataFlow"].MashupDetailedElement)
+		// helloApp.fyneWidgetElements["DataFlowStatistic"].GuiComponent = detailMappedFyneComponent("All", "A group of torus or a tori.", helloApp.fyneWidgetElements["DataFlowStatistic"].MashupDetailedElement)
+
+		// torusMenu := container.NewAppTabs(
+		// 	helloApp.fyneWidgetElements["Outside"].GuiComponent.(*container.TabItem),
+		// 	helloApp.fyneWidgetElements["Argosy"].GuiComponent.(*container.TabItem),
+		// 	helloApp.fyneWidgetElements["DataFlowGroup"].GuiComponent.(*container.TabItem),
+		// 	helloApp.fyneWidgetElements["DataFlow"].GuiComponent.(*container.TabItem),
+		// 	helloApp.fyneWidgetElements["DataFlowStatistic"].GuiComponent.(*container.TabItem),
+		// )
+		// torusMenu.OnSelected = func(tabItem *container.TabItem) {
+		// 	// Too bad fyne doesn't have the ability for user to assign an id to TabItem...
+		// 	// Lookup by name instead and try to keep track of any name changes instead...
+		// 	log.Printf("Selected: %s\n", tabItem.Text)
+		// 	if mashupItemIndex, miOk := helloApp.elementLoaderIndex[tabItem.Text]; miOk {
+		// 		mashupDetailedElement := helloApp.mashupDetailedElementLibrary[mashupItemIndex]
+		// 		if mashupDetailedElement.Alias != "" {
+		// 			if mashupDetailedElement.Genre != "Collection" {
+		// 				mashupDetailedElement.State.State |= int64(mashupsdk.Clicked)
+		// 			}
+		// 			helloApp.fyneWidgetElements[mashupDetailedElement.Alias].MashupDetailedElement = mashupDetailedElement
+		// 			helloApp.fyneWidgetElements[mashupDetailedElement.Alias].OnStatusChanged()
+		// 			return
+		// 		}
+		// 	}
+		// 	helloApp.fyneWidgetElements[tabItem.Text].OnStatusChanged()
+		// }
+
+		// torusMenu.SetTabLocation(container.TabLocationTop)
+		menu.SetTabLocation(container.TabLocationTop)
+		helloApp.mainWin.SetContent(menu)
 		helloApp.mainWin.SetCloseIntercept(func() {
-			helloApp.HelloContext.mashupContext.Client.Shutdown(helloApp.HelloContext.mashupContext, &mashupsdk.MashupEmpty{AuthToken: client.GetServerAuthToken()})
+			if helloApp.HelloContext.mashupContext != nil {
+				helloApp.HelloContext.mashupContext.Client.Shutdown(helloApp.HelloContext.mashupContext, &mashupsdk.MashupEmpty{AuthToken: client.GetServerAuthToken()})
+			}
 			os.Exit(0)
 		})
 	}
@@ -367,6 +572,7 @@ func main() {
 func (mSdk *fyneMashupApiHandler) OnResize(displayHint *mashupsdk.MashupDisplayHint) {
 	log.Printf("Fyne OnResize - not implemented yet..\n")
 	if helloApp.mainWin != nil {
+		helloApp.mashupDisplayContext.MainWinDisplay.Focused = displayHint.Focused
 		// TODO: Resize without infinite looping....
 		// The moment fyne is resized, it'll want to resize g3n...
 		// Which then wants to resize fyne ad-infinitum
@@ -377,8 +583,9 @@ func (mSdk *fyneMashupApiHandler) OnResize(displayHint *mashupsdk.MashupDisplayH
 	}
 }
 
-func (mSdk *fyneMashupApiHandler) ResetG3NDetailedElementStates() {
-	log.Printf("Fyne ResetG3NDetailedElementStates - not implemented\n")
+func (mSdk *fyneMashupApiHandler) GetMashupElements() (*mashupsdk.MashupDetailedElementBundle, error) {
+	log.Printf("Fyne GetMashupElements - not implemented\n")
+	return &mashupsdk.MashupDetailedElementBundle{}, nil
 }
 
 func (mSdk *fyneMashupApiHandler) UpsertMashupElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
@@ -386,89 +593,47 @@ func (mSdk *fyneMashupApiHandler) UpsertMashupElements(detailedElementBundle *ma
 	return &mashupsdk.MashupDetailedElementBundle{}, nil
 }
 
-//upserts from g3n to fyne
+func (mSdk *fyneMashupApiHandler) ResetG3NDetailedElementStates() {
+	log.Printf("Fyne ResetG3NDetailedElementStates - not implemented\n")
+}
+
 func (mSdk *fyneMashupApiHandler) UpsertMashupElementsState(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
-	log.Printf("Fyne UpsertMashupElementsState called\n")
-	for _, es := range elementStateBundle.ElementStates {
+	// log.Printf("Fyne UpsertMashupElementsState called\n")
+	// for _, es := range elementStateBundle.ElementStates {
+	// 	detailedElement := helloApp.mashupDetailedElementLibrary[es.GetId()]
 
-		if mashupsdk.DisplayElementState(es.State) == mashupsdk.Clicked {
-			detailedElement := helloApp.mashupDetailedElementLibrary[es.GetId()]
-			if helloApp.fyneListElements[detailedElement.Id+6] != nil {
-				fyneComponent := helloApp.fyneListElements[detailedElement.Id+6]
-				fyneComponent.MashupDetailedElement = detailedElement
-				fyneComponent.MashupDetailedElement.State.State = es.State
-				//upsert subspiral here?
-				list := helloApp.list //helloApp.mainWin.Content().(*container.AppTabs)
-				// Select the item.
-				//fyneComponent.GuiComponent.(*widget.List) = detailedElement.Name
-				list.Select(int(detailedElement.Id - 6))
-			}
+	// 	helloApp.fyneWidgetElements[detailedElement.GetAlias()].MashupDetailedElement = detailedElement
+	// 	helloApp.fyneWidgetElements[detailedElement.GetAlias()].MashupDetailedElement.State.State = es.State
 
-			/*for _, childId := range detailedElement.GetChildids() {
-				if childDetailedElement, childDetailOk := helloApp.mashupDetailedElementLibrary[childId]; childDetailOk {
-					if childFyneComponent, childFyneOk := helloApp.fyneWidgetElements[childDetailedElement.GetAlias()]; childFyneOk {
-						childFyneComponent.MashupDetailedElement = childDetailedElement
-						childFyneComponent.GuiComponent.(*container.TabItem).Text = childDetailedElement.Name
-					}
-				}
-			}
-			for _, parentId := range detailedElement.GetParentids() {
-				if parentDetailedElement, parentDetailOk := helloApp.mashupDetailedElementLibrary[parentId]; parentDetailOk {
-					if parentFyneComponent, parentFyneOk := helloApp.fyneWidgetElements[parentDetailedElement.GetAlias()]; parentFyneOk {
-						parentFyneComponent.MashupDetailedElement = parentDetailedElement
-						parentFyneComponent.GuiComponent.(*container.TabItem).Text = parentDetailedElement.Name
-					}
-				}
-			}*/
-
-			/*if detailedElement.Id > 109 {
-				list.Select(int(helloApp.fyneListElements[detailedElement.Id].MashupDetailedElement.Id - 107))
-			} else {
-				list.Select(int(helloApp.fyneListElements[detailedElement.Id].MashupDetailedElement.Id) - 7)
-			}*/
-
-		}
-	}
-	log.Printf("Fyne UpsertMashupElementsState complete\n")
+	// 	if (mashupsdk.DisplayElementState(es.State) & mashupsdk.Clicked) == mashupsdk.Clicked {
+	// 		for _, childId := range detailedElement.GetChildids() {
+	// 			if childDetailedElement, childDetailOk := helloApp.mashupDetailedElementLibrary[childId]; childDetailOk {
+	// 				if childFyneComponent, childFyneOk := helloApp.fyneWidgetElements[childDetailedElement.GetAlias()]; childFyneOk {
+	// 					childFyneComponent.MashupDetailedElement = childDetailedElement
+	// 					childFyneComponent.GuiComponent.(*container.TabItem).Text = childFyneComponent.MashupDetailedElement.Name
+	// 				}
+	// 			}
+	// 		}
+	// 		for _, parentId := range detailedElement.GetParentids() {
+	// 			if parentDetailedElement, parentDetailOk := helloApp.mashupDetailedElementLibrary[parentId]; parentDetailOk {
+	// 				if parentFyneComponent, parentFyneOk := helloApp.fyneWidgetElements[parentDetailedElement.GetAlias()]; parentFyneOk {
+	// 					parentFyneComponent.MashupDetailedElement = parentDetailedElement
+	// 					parentFyneComponent.GuiComponent.(*container.TabItem).Text = parentFyneComponent.MashupDetailedElement.Name
+	// 				}
+	// 			}
+	// 		}
+	// 		if detailedLookupElement, detailLookupOk := helloApp.mashupDetailedElementLibrary[detailedElement.Id]; detailLookupOk {
+	// 			if detailedFyneComponent, detailedFyneOk := helloApp.fyneWidgetElements[detailedLookupElement.GetAlias()]; detailedFyneOk {
+	// 				detailedFyneComponent.MashupDetailedElement = detailedLookupElement
+	// 				detailedFyneComponent.GuiComponent.(*container.TabItem).Text = detailedFyneComponent.MashupDetailedElement.Name
+	// 			}
+	// 		}
+	// 		torusMenu := helloApp.mainWin.Content().(*container.AppTabs)
+	// 		// Select the item.
+	// 		helloApp.fyneWidgetElements[detailedElement.GetAlias()].GuiComponent.(*container.TabItem).Text = helloApp.fyneWidgetElements[detailedElement.GetAlias()].MashupDetailedElement.Name
+	// 		torusMenu.Select(helloApp.fyneWidgetElements[detailedElement.GetAlias()].GuiComponent.(*container.TabItem))
+	// 	}
+	// }
+	// log.Printf("Fyne UpsertMashupElementsState complete\n")
 	return &mashupsdk.MashupElementStateBundle{}, nil
 }
-
-/*
-//upserts from g3n to fyne
-func (mSdk *fyneMashupApiHandler) UpsertMashupElementsState(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
-   log.Printf("Fyne UpsertMashupElementsState called\n")
-   for _, es := range elementStateBundle.ElementStates {
-       detailedElement := helloApp.mashupDetailedElementLibrary[es.GetId()]
-
-       fyneComponent := helloApp.fyneWidgetElements[detailedElement.GetAlias()]
-       fyneComponent.MashupDetailedElement = detailedElement
-       fyneComponent.MashupDetailedElement.State.State = es.State
-
-       if mashupsdk.DisplayElementState(es.State) == mashupsdk.Clicked {
-           for _, childId := range detailedElement.GetChildids() {
-               if childDetailedElement, childDetailOk := helloApp.mashupDetailedElementLibrary[childId]; childDetailOk {
-                   if childFyneComponent, childFyneOk := helloApp.fyneWidgetElements[childDetailedElement.GetAlias()]; childFyneOk {
-                       childFyneComponent.MashupDetailedElement = childDetailedElement
-                       childFyneComponent.GuiComponent.(*container.TabItem).Text = childDetailedElement.Name
-                   }
-               }
-           }
-           for _, parentId := range detailedElement.GetParentids() {
-               if parentDetailedElement, parentDetailOk := helloApp.mashupDetailedElementLibrary[parentId]; parentDetailOk {
-                   if parentFyneComponent, parentFyneOk := helloApp.fyneWidgetElements[parentDetailedElement.GetAlias()]; parentFyneOk {
-                       parentFyneComponent.MashupDetailedElement = parentDetailedElement
-					   parentFyneComponent.GuiComponent.(*container.TabItem).Text = parentDetailedElement.Name
-                   }
-               }
-           }
-
-           torusMenu := helloApp.tabMenu //helloApp.mainWin.Content().(*container.AppTabs)
-           // Select the item.
-           fyneComponent.GuiComponent.(*container.TabItem).Text = detailedElement.Name
-           torusMenu.Select(fyneComponent.GuiComponent.(*container.TabItem))
-       }
-   }
-   log.Printf("Fyne UpsertMashupElementsState complete\n")
-   return &mashupsdk.MashupElementStateBundle{}, nil
-}
-*/
