@@ -176,9 +176,10 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 
 	// Hide the elements that should be hidden when a different element is clicked
 	if !er.IsEmpty() {
-		prevElement := er.Pop()
-		if !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" {
+		prevElement := er.Top()
+		if !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
 			//Case 1: Main spiral element: have to remove children nodes
+			er.Pop()
 			for _, childID := range prevElement.clickedElement.GetChildElementIds() {
 				if !er.isChildElement(worldApp, prevElement.clickedElement) {
 					worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
@@ -262,10 +263,6 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 				g3n.SetColor(color, 0.15)
 			}
 		}
-		if clickedElement.IsBackground() || clickedElement.GetDetailedElement().Subgenre == "Skeletal" || (clickedElement.GetDetailedElement().Alias == "DataFlowStatistic" && g3n.GetDetailedElement().Alias == "DataFlowStatistic") {
-			g3n.SetColor(color, 1.0)
-		}
-
 	}
 	return true
 }

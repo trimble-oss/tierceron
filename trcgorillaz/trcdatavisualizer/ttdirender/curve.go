@@ -138,7 +138,7 @@ func (cr *CurveRenderer) removeRelated(worldApp *g3nworld.WorldApp, clickedEleme
 
 func (cr *CurveRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
-	if !cr.isEmpty() && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Alias != "DataFlowStatistic" && !cr.er.isChildElement(worldApp, cr.top().g3nElement) {
+	if !cr.isEmpty() && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Alias != "DataFlowStatistic" && !cr.er.isChildElement(worldApp, cr.top().g3nElement) && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
 		cr.removeRelated(worldApp, worldApp.ClickedElements[len(worldApp.ClickedElements)-1], cr.top().g3nElement)
 	}
 	return true
