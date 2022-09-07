@@ -80,7 +80,7 @@ func main() {
 	mod.Env = *envPtr
 
 	if *projectInfoPtr {
-		templateList, err := mod.List("templates/")
+		templateList, err := mod.List("templates/", logger)
 		if err != nil {
 			eUtils.CheckError(config, err, true)
 		}
