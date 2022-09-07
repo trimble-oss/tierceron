@@ -530,7 +530,7 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 		}
 	}
 
-	warn, err := mod.Write(path, data)
+	warn, err := mod.Write(path, data, config.Log)
 
 	eUtils.LogWarningsObject(config, warn, false)
 	eUtils.LogErrorObject(config, err, false)
@@ -541,7 +541,7 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 		for _, v := range data {
 			if templateKey, ok := v.([]interface{}); ok {
 				metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
-				mod.AdjustValue("value-metrics/credentials", metricsKey, 1)
+				mod.AdjustValue("value-metrics/credentials", metricsKey, 1, config.Log)
 			}
 		}
 	}

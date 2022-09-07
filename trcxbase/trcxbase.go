@@ -405,7 +405,7 @@ skipDiff:
 				var listValues *api.Secret
 				if len(projectSectionsSlice) > 0 { //If eid -> look inside Index and grab all environments
 					subSectionPath := projectSectionsSlice[0] + "/"
-					listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath)
+					listValues, err = testMod.ListEnv("super-secrets/"+testMod.Env+sectionKey+subSectionPath, config.Log)
 					if err != nil {
 						if strings.Contains(err.Error(), "permission denied") {
 							eUtils.LogErrorMessage(config, "Attempt to access restricted section of the vault denied.", true)
@@ -421,7 +421,7 @@ skipDiff:
 							if indexNameInterface != (subSectionName + "/") {
 								continue
 							}
-							indexList, err := testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath + "/" + indexNameInterface.(string))
+							indexList, err := testMod.ListEnv("super-secrets/"+testMod.Env+sectionKey+subSectionPath+"/"+indexNameInterface.(string), config.Log)
 							if err != nil {
 								logger.Printf(err.Error())
 							}
@@ -440,7 +440,7 @@ skipDiff:
 						delete(listValues.Data, k) //delete it so it doesn't repeat below
 					}
 				} else {
-					listValues, err = testMod.ListEnv("values/")
+					listValues, err = testMod.ListEnv("values/", config.Log)
 				}
 				if err != nil {
 					logger.Printf(err.Error())
