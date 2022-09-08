@@ -19,7 +19,7 @@ func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifi
 		filterTemplateSlice = strings.Split(*templateFilter, ",")
 	}
 
-	templateList, err := mod.List("templates/")
+	templateList, err := mod.List("templates/", config.Log)
 	if err != nil {
 		eUtils.LogErrorMessage(config, "Couldn't read into paths under templates/", true)
 	}
@@ -42,7 +42,7 @@ func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifi
 				}
 			}
 
-			allTemplateFilePaths, err1 := mod.GetTemplateFilePaths("templates/" + project + "/")
+			allTemplateFilePaths, err1 := mod.GetTemplateFilePaths("templates/"+project+"/", config.Log)
 			if err1 != nil {
 				eUtils.LogErrorMessage(config, "Couldn't read into paths under templates/"+project+"/", false)
 				continue
