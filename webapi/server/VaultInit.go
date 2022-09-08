@@ -91,7 +91,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	eUtils.LogErrorObject(config, err, false)
 
 	mod.Env = "bamboo"
-	warn, err := mod.Write("super-secrets/tokens", tokenMap)
+	warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 	eUtils.LogErrorObject(config, err, false)
 	eUtils.LogWarningsObject(config, warn, false)
 
