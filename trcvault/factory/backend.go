@@ -104,17 +104,23 @@ func PushEnv(envMap map[string]interface{}) {
 func StartPluginSettingEater() {
 	go func() {
 		for { //Infinite loop
-			for plugin, pluginSetChan := range pluginSettingsChan {
-				select {
-				case set := <-pluginSetChan:
-					if time.Now().After(set.Add(time.Second * 30)) { //If signal was sent more than 30 seconds ago
-						logger.Println("Emptying stale update alert for " + plugin)
-						time.Sleep(time.Millisecond * 50)
-					} else {
-						pluginSetChan <- set
+			if pluginSettingsChan != nil {
+				for plugin, pluginSetChan := range pluginSettingsChan {
+					select {
+					case set := <-pluginSetChan:
+						if time.Now().After(set.Add(time.Second * 30)) { //If signal was sent more than 30 seconds ago
+							if logger != nil {
+								logger.Println("Emptying stale update alert for " + plugin)
+							}
+							time.Sleep(time.Millisecond * 50)
+						} else {
+							if pluginSetChan != nil {
+								pluginSetChan <- set
+							}
+						}
+					default:
+						continue
 					}
-				default:
-					continue
 				}
 			}
 			time.Sleep(time.Minute * 5) //Check every 5 minutes
