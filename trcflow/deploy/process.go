@@ -22,6 +22,10 @@ import (
 	//"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
+func init() {
+	factory.StartPluginSettingEater()
+}
+
 func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
 	var config *eUtils.DriverConfig
@@ -40,7 +44,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	}
 	defer vault.Close()
 
-	factory.StartPluginSettingEater(config)
 	logger.Println("PluginDeployFlow begin processing plugins.")
 	for _, pluginName := range pluginConfig["pluginNameList"].([]string) {
 		logger.Println("PluginDeployFlow begun for plugin: " + pluginName)
