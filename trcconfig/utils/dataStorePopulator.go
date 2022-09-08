@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	eUtils "tierceron/utils"
@@ -290,9 +291,9 @@ func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig,
 			continue
 		}
 
-		data, err = mod.ReadVersionMetadata(path)
+		data, err = mod.ReadVersionMetadata(path, config.Log)
 		if data == nil {
-			deeperData, _ = mod.ReadVersionMetadata(path + "template-file")
+			deeperData, _ = mod.ReadVersionMetadata(path+"template-file", config.Log)
 		}
 		if err != nil || deeperData == nil && data == nil {
 			eUtils.LogInfo(config, fmt.Sprintf("Couldn't read version data for %s\n", path))
@@ -395,7 +396,7 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *helperkv.Modifier, pr
 	paths := []string{}
 	var err error
 	if mod.SecretDictionary == nil {
-		mod.SecretDictionary, err = mod.List("templates")
+		mod.SecretDictionary, err = mod.List("templates", config.Log)
 	}
 	secrets := mod.SecretDictionary
 	var innerService string
@@ -421,7 +422,7 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *helperkv.Modifier, pr
 
 				if !projectAvailable { //If project not found, search one path deeper
 					for _, availProject := range availProjects {
-						innerPathList, err := mod.List("templates/" + availProject.(string)) //Looks for services one path deeper
+						innerPathList, err := mod.List("templates/"+availProject.(string), config.Log) //Looks for services one path deeper
 						if err != nil {
 							eUtils.LogInfo(config, "Unable to read into nested template path: "+err.Error())
 						}
@@ -454,7 +455,7 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *helperkv.Modifier, pr
 		}
 		var pathErr error
 		if !config.WantCerts && mod.TemplatePath != "" {
-			pathErr = verifyTemplatePath(mod)
+			pathErr = verifyTemplatePath(mod, config.Log)
 			if pathErr != nil {
 				return nil, pathErr
 			}
@@ -498,8 +499,8 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *helperkv.Modifier, pr
 	}
 }
 
-func verifyTemplatePath(mod *helperkv.Modifier) error {
-	secrets, err := mod.List(mod.TemplatePath)
+func verifyTemplatePath(mod *helperkv.Modifier, logger *log.Logger) error {
+	secrets, err := mod.List(mod.TemplatePath, logger)
 	if err != nil {
 		return err
 	} else if secrets != nil {
@@ -513,7 +514,7 @@ func verifyTemplatePath(mod *helperkv.Modifier) error {
 }
 
 func getPaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {
-	secrets, err := mod.List(pathName)
+	secrets, err := mod.List(pathName, config.Log)
 	if err != nil {
 		return nil, err
 	} else if secrets != nil {
@@ -539,7 +540,7 @@ func getPaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, pathName stri
 					continue
 				}
 				path := pathName + pathEnd.(string)
-				lookAhead, err2 := mod.List(path)
+				lookAhead, err2 := mod.List(path, config.Log)
 				if err2 != nil || lookAhead == nil {
 					//don't add on to paths until you're sure it's an END path
 					pathList = append(pathList, path)

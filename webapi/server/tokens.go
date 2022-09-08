@@ -36,7 +36,7 @@ func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (st
 				"Issued":  currentTime,
 				"Expires": expTime,
 			}
-			warn, err := mod.Write("apiLogins/"+user, tokenData)
+			warn, err := mod.Write("apiLogins/"+user, tokenData, config.Log)
 			eUtils.LogWarningsObject(config, warn, false)
 			eUtils.LogErrorObject(config, err, false)
 		}()

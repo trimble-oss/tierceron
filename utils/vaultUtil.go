@@ -45,7 +45,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 
 	if modCheck != nil {
 		envVersion := SplitEnv(config.Env)
-		serviceInterface, err := modCheck.ListEnv("super-secrets/" + envVersion[0])
+		serviceInterface, err := modCheck.ListEnv("super-secrets/"+envVersion[0], config.Log)
 		modCheck.Env = config.Env
 		if err != nil {
 			return nil, err
@@ -69,9 +69,9 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 			if len(config.ProjectSections) > 0 { //Filter by project
 				for _, projectSection := range config.ProjectSections {
 					if strings.Contains(templatePath, "/"+projectSection+"/") {
-						listValues, err := modCheck.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName)
+						listValues, err := modCheck.ListEnv("super-secrets/"+strings.Split(config.EnvRaw, ".")[0]+config.SectionKey+config.ProjectSections[0]+"/"+config.SectionName, config.Log)
 						if err != nil || listValues == nil {
-							listValues, err = modCheck.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0])
+							listValues, err = modCheck.ListEnv("super-secrets/"+strings.Split(config.EnvRaw, ".")[0]+config.SectionKey+config.ProjectSections[0], config.Log)
 							if listValues == nil {
 								LogErrorObject(config, err, false)
 								LogInfo(config, "Couldn't list services for project path")
