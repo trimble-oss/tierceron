@@ -34,7 +34,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 	}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
-		userPaths, err := mod.List("values/")
+		userPaths, err := mod.List("values/", s.Log)
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +83,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 							return nil, err
 						}
 						//Get metadata of versions for each filePath
-						versions, err := mod.ReadVersionMetadata(filePath)
+						versions, err := mod.ReadVersionMetadata(filePath, s.Log)
 						var dates []time.Time
 						for _, v := range versions {
 							if val, ok := v.(map[string]interface{}); ok {
@@ -107,7 +107,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 							secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: string(i), Value: creationTime, Source: "versions"})
 						}
 						// Find secrets groups in this environment
-						vSecret, err := mod.List("super-secrets")
+						vSecret, err := mod.List("super-secrets", s.Log)
 						if err != nil {
 							return nil, err
 						}

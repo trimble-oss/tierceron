@@ -96,13 +96,13 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 			logger.Printf("\tUploading values to path:\t%s\n", valuePath)
 
 			// Write templates to vault and output errors/warnings
-			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext})
+			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext}, logger)
 			if err != nil || len(warn) > 0 {
 				return err, warn
 			}
 
 			// Write values to vault and output any errors/warnings
-			warn, err = mod.Write(valuePath, extractedValues)
+			warn, err = mod.Write(valuePath, extractedValues, logger)
 			if err != nil || len(warn) > 0 {
 				return err, warn
 			}
