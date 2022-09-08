@@ -101,14 +101,14 @@ func PushEnv(envMap map[string]interface{}) {
 }
 
 //This is to flush pluginSettingsChan on an interval to prevent deadlocks.
-func StartPluginSettingEater(config *eUtils.DriverConfig) {
+func StartPluginSettingEater() {
 	go func() {
 		for { //Infinite loop
 			for plugin, pluginSetChan := range pluginSettingsChan {
 				select {
 				case set := <-pluginSetChan:
 					if time.Now().After(set.Add(time.Second * 30)) { //If signal was sent more than 30 seconds ago
-						eUtils.LogInfo(config, "Emptying stale update alert for "+plugin)
+						logger.Println("Emptying stale update alert for " + plugin)
 						time.Sleep(time.Millisecond * 50)
 					} else {
 						pluginSetChan <- set
