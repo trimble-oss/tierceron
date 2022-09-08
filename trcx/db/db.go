@@ -212,7 +212,7 @@ func templateToTableRowHelper(goMod *helperkv.Modifier, te *TierceronEngine, env
 
 func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig, tableLock *sync.Mutex) error {
 	listPath := "templates/" + project + "/" + service
-	secret, err := goMod.List(listPath)
+	secret, err := goMod.List(listPath, config.Log)
 	if err != nil {
 		return nil
 	}
@@ -242,7 +242,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 				goMod.SectionName = index
 			}
 			if goMod.SectionName != "" {
-				indexValues, err = goMod.ListSubsection("/Index/", project, goMod.SectionName)
+				indexValues, err = goMod.ListSubsection("/Index/", project, goMod.SectionName, config.Log)
 				if err != nil {
 					eUtils.LogErrorObject(config, err, false)
 					return err
@@ -256,7 +256,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 				goMod.SectionKey = "/Index/"
 				//	goMod.SubSectionValue = flowService
 				goMod.SectionPath = "super-secrets/Index/" + project + "/" + goMod.SectionName + "/" + indexValue + "/" + service
-				subsectionValues, err := goMod.List(goMod.SectionPath)
+				subsectionValues, err := goMod.List(goMod.SectionPath, config.Log)
 				if err != nil {
 					return err
 				}
@@ -308,7 +308,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 
 	var envEnterprises []string
 	goMod.Env = ""
-	tempEnterprises, err := goMod.List("values")
+	tempEnterprises, err := goMod.List("values", config.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
