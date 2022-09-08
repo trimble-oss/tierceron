@@ -3,6 +3,7 @@ package util
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"tierceron/vaulthelper/kv"
@@ -43,17 +44,17 @@ type ArgosyFleet struct {
 
 //New API -> Argosy, return dataFlowGroups populated
 
-func InitArgosyFleet(mod *kv.Modifier, project string, idName string) (ArgosyFleet, error) {
+func InitArgosyFleet(mod *kv.Modifier, project string, idName string, logger *log.Logger) (ArgosyFleet, error) {
 	var aFleet ArgosyFleet
 	aFleet.ArgosyName = project
 	aFleet.Argosies = make([]Argosy, 0)
-	idListData, idListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName)
+	idListData, idListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName, logger)
 	if idListErr != nil {
 		return aFleet, idListErr
 	}
 	for _, idList := range idListData.Data {
 		for _, id := range idList.([]interface{}) {
-			serviceListData, serviceListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName + "/" + id.(string) + "/DataFlowStatistics/DataFlowGroup")
+			serviceListData, serviceListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName+"/"+id.(string)+"/DataFlowStatistics/DataFlowGroup", logger)
 			if serviceListErr != nil {
 				return aFleet, serviceListErr
 			}
@@ -65,7 +66,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, idName string) (ArgosyFle
 					var dfgroup DataFlowGroup
 					dfgroup.Name = service.(string)
 
-					statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName + "/" + id.(string) + "/DataFlowStatistics/DataFlowGroup/" + service.(string) + "/dataFlowName/")
+					statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName+"/"+id.(string)+"/DataFlowStatistics/DataFlowGroup/"+service.(string)+"/dataFlowName/", logger)
 					if statisticNameListErr != nil {
 						return aFleet, statisticNameListErr
 					}
@@ -73,7 +74,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, idName string) (ArgosyFle
 					for _, statisticName := range statisticNameList.Data {
 						for _, statisticName := range statisticName.([]interface{}) {
 							newDf := InitDataFlow(nil, statisticName.(string), false)
-							newDf.RetrieveStatistic(mod, id.(string), project, idName, service.(string), statisticName.(string))
+							newDf.RetrieveStatistic(mod, id.(string), project, idName, service.(string), statisticName.(string), logger)
 							dfgroup.Flows = append(dfgroup.Flows, newDf)
 						}
 					}
@@ -117,7 +118,7 @@ func (dfs *DataFlow) Log() {
 	}
 }
 
-func (dfs *DataFlow) FinishStatistic(mod *kv.Modifier, id string, indexPath string, idName string) {
+func (dfs *DataFlow) FinishStatistic(mod *kv.Modifier, id string, indexPath string, idName string, logger *log.Logger) {
 	//TODO : Write Statistic to vault
 	if !dfs.LogStat && dfs.LogFunc != nil {
 		dfs.FinishStatisticLog()
@@ -139,15 +140,15 @@ func (dfs *DataFlow) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 		statMap["mode"] = dataFlowStatistic.mode
 
 		mod.SectionPath = ""
-		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+dataFlowStatistic.flowGroup+"/dataFlowName/"+dataFlowStatistic.flowName+"/"+dataFlowStatistic.stateCode, statMap)
+		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+dataFlowStatistic.flowGroup+"/dataFlowName/"+dataFlowStatistic.flowName+"/"+dataFlowStatistic.stateCode, statMap, logger)
 		if writeErr != nil && dfs.LogFunc != nil {
 			dfs.LogFunc("Error writing out DataFlowStatistics to vault", writeErr)
 		}
 	}
 }
 
-func (dfs *DataFlow) RetrieveStatistic(mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string) error {
-	listData, listErr := mod.List("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN)
+func (dfs *DataFlow) RetrieveStatistic(mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
+	listData, listErr := mod.List("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+flowG+"/dataFlowName/"+flowN, logger)
 	if listErr != nil {
 		return listErr
 	}
