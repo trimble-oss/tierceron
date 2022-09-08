@@ -93,21 +93,43 @@ var environmentConfigs map[string]interface{} = map[string]interface{}{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
 
-var pluginSettingsChan map[string]chan bool = map[string]chan bool{}
+var pluginSettingsChan map[string]chan time.Time = map[string]chan time.Time{}
 var pluginShaMap map[string]string = map[string]string{}
 
 func PushEnv(envMap map[string]interface{}) {
 	tokenEnvChan <- envMap
 }
 
+//This is to flush pluginSettingsChan on an interval to prevent deadlocks.
+func StartPluginSettingEater(config *eUtils.DriverConfig) {
+	go func() {
+		for { //Infinite loop
+			for plugin, pluginSetChan := range pluginSettingsChan {
+				select {
+				case set := <-pluginSetChan:
+					if time.Now().After(set.Add(time.Second * 30)) { //If signal was sent more than 30 seconds ago
+						eUtils.LogInfo(config, "Emptying stale update alert for "+plugin)
+						time.Sleep(time.Millisecond * 50)
+					} else {
+						pluginSetChan <- set
+					}
+				default:
+					continue
+				}
+			}
+			time.Sleep(time.Minute * 5) //Check every 5 minutes
+		}
+	}()
+}
+
 func PushPluginSha(config *eUtils.DriverConfig, plugin string, sha string) {
 	pluginShaMap[plugin] = sha
 	if _, pscOk := pluginSettingsChan[plugin]; !pscOk {
 		eUtils.LogInfo(config, "Creating new plugin chan.")
-		pluginSettingsChan[plugin] = make(chan bool, 1)
+		pluginSettingsChan[plugin] = make(chan time.Time, 1)
 	}
 
-	pluginSettingsChan[plugin] <- true
+	pluginSettingsChan[plugin] <- time.Now()
 }
 
 func GetVaultHost() string {
@@ -416,7 +438,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		// Then this is the carrier calling.
 		tokenEnvMap["trcplugin"] = plugin.(string)
 		if _, pscOk := pluginSettingsChan[plugin.(string)]; !pscOk {
-			pluginSettingsChan[plugin.(string)] = make(chan bool, 1)
+			pluginSettingsChan[plugin.(string)] = make(chan time.Time, 1)
 		}
 		logger.Println("TrcUpdate begin setup for plugin settings init")
 
