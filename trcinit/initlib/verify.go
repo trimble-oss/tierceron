@@ -68,7 +68,7 @@ func verify(config *eUtils.DriverConfig, mod *helperkv.Modifier, v map[interface
 		warn, err := mod.Write(path, map[string]interface{}{
 			"type":     vType,
 			"verified": isValid,
-		})
+		}, config.Log)
 		if len(warn) > 0 || err != nil {
 			return warn, err
 		}
