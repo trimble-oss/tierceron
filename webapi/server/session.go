@@ -111,7 +111,7 @@ func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) 
 	mod.Env = ""
 
 	sessions := []map[string]interface{}{}
-	paths, err := mod.List("apiLogins/" + env)
+	paths, err := mod.List("apiLogins/"+env, s.Log)
 	if paths == nil {
 		return nil, fmt.Errorf("Nothing found under apiLogins/" + env)
 	}
