@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"tierceron/buildopts/coreopts"
 	"tierceron/trcvault/opts/memonly"
@@ -550,6 +551,14 @@ skipDiff:
 		waitg.Add(1)
 		go func() {
 			defer waitg.Done()
+			retry := 0
+			for {
+				time.Sleep(time.Duration(time.Second))
+				if len(resultMap) != len(envSlice)*len(sectionSlice) || retry == 3 {
+					break
+				}
+				retry++
+			}
 			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, mutex)
 		}()
 	}
