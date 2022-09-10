@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 
+	//"tierceron/trcgorillaz/trcserver"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"github.com/mrjrieke/nute/g3nd/g3nmash"
@@ -12,6 +14,9 @@ import (
 	"github.com/mrjrieke/nute/mashupsdk/guiboot"
 	"github.com/mrjrieke/nute/mashupsdk/server"
 )
+
+var Dfstatistics map[string]float64
+var TestTimeData []float64
 
 type mashupSdkApiHandler struct {
 }
@@ -132,7 +137,10 @@ func (w *CustosWorldApp) InitMainWindow() {
 		CUWorldApp.TorusMenu = container.NewAppTabs()
 
 		for id, tabItemFunc := range CUWorldApp.CustomTabItems {
-			CUWorldApp.TorusMenu.Append(tabItemFunc(CUWorldApp, id))
+			if CUWorldApp.FyneWidgetElements[id] != nil {
+				CUWorldApp.TorusMenu.Append(tabItemFunc(CUWorldApp, id))
+			}
+
 		}
 
 		CUWorldApp.TorusMenu.OnSelected = func(tabItem *container.TabItem) {
@@ -216,12 +224,15 @@ func (mSdk *mashupSdkApiHandler) OnResize(displayHint *mashupsdk.MashupDisplayHi
 
 func (custosWorldApp *CustosWorldApp) DetailMappedFyneComponent(id, description string, genre string, tabItemFunc func(custosWorlApp *CustosWorldApp, id string) *container.TabItem) {
 	de := &mashupsdk.MashupDetailedElement{Alias: id, Description: description, Genre: genre}
-	custosWorldApp.FyneWidgetElements[id][0] = &FyneWidgetBundle{
-		GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
-			GuiComponent:          nil,
-			MashupDetailedElement: de,
-		},
+	if custosWorldApp.FyneWidgetElements[id] != nil {
+		custosWorldApp.FyneWidgetElements[id][0] = &FyneWidgetBundle{
+			GuiWidgetBundle: mashupsdk.GuiWidgetBundle{
+				GuiComponent:          nil,
+				MashupDetailedElement: de,
+			},
+		}
 	}
+
 	custosWorldApp.CustomTabItems[id] = tabItemFunc
 }
 
@@ -356,3 +367,7 @@ func (mSdk *mashupSdkApiHandler) UpsertMashupElementsState(elementStateBundle *m
 	log.Printf("CustosWorld End UpsertMashupElementsState called\n")
 	return &mashupsdk.MashupElementStateBundle{}, nil
 }
+
+// func GetStatistics() (map[string]float64, []float64) {
+// 	return main.GetData()
+// }
