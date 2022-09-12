@@ -149,7 +149,11 @@ func (cr *CurveRenderer) succeeded(worldApp *g3nworld.WorldApp, element *g3nmash
 	for i := 0; i < len(element.GetChildElementIds()); i++ {
 		child := worldApp.ConcreteElements[element.GetChildElementIds()[i]]
 		if child.GetDetailedElement().Genre != "Solid" {
-			timeSeconds := cr.TimeData[child.GetDetailedElement().Name]
+			timeNanoSeconds, err := strconv.ParseInt(child.GetDetailedElement().Data, 10, 64)
+			if err != nil {
+				return false, timesplit
+			}
+			timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
 			timesplit = append(timesplit, timeSeconds)
 		}
 	}
