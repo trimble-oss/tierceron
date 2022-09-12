@@ -4,15 +4,13 @@
 package argosyopts
 
 import (
-	//"fmt"
+	"fmt"
 	"github.com/mrjrieke/nute/mashupsdk"
 	"math"
 	"strconv"
 	"tierceron/trcvault/util"
 	"tierceron/vaulthelper/kv"
 )
-
-var total int64
 
 func getGroupSize(groups []util.DataFlowGroup) (float64, float64, float64) {
 	groupsize := 0.0
@@ -33,7 +31,6 @@ func buildArgosies(startID int64, args util.ArgosyFleet) (util.ArgosyFleet, []in
 	collectionIDs := []int64{}
 	curveCollection := []int64{}
 	for i := 0; i < len(args.Argosies); i++ {
-		total = 0
 		dfgsize, dfsize, dfstatsize := getGroupSize(args.Argosies[i].Groups)
 		argosyId = startID + int64(i)*int64(1.0+float64(dfgsize)+math.Pow(float64(dfsize), 2.0)+math.Pow(float64(dfstatsize), 3.0))
 		collectionIDs = append(collectionIDs, argosyId)
@@ -63,7 +60,7 @@ func buildArgosies(startID int64, args util.ArgosyFleet) (util.ArgosyFleet, []in
 		for _, id := range children {
 			argosy.MashupDetailedElement.Childids = append(argosy.MashupDetailedElement.Childids, id)
 		}
-		//argosy.Data = fmt.Sprintf("%f", float64(total)/dfstatsize)
+
 		args.Argosies[i] = argosy
 	}
 
@@ -135,9 +132,10 @@ func buildDataFlows(startID int64, group util.DataFlowGroup, dfsize float64, dfs
 		}
 		otherIds := []int64{}
 		children := []int64{}
+		var total int64
 
-		flow.Statistics, otherIds, children, curveCollection, flow = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
-
+		flow.Statistics, otherIds, children, curveCollection, flow, total = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
+		flow.MashupDetailedElement.Data = fmt.Sprintf("%f", float64(total)/float64(len(flow.Statistics)))
 		for _, id := range otherIds {
 			collectionIDs = append(collectionIDs, id)
 		}
@@ -149,17 +147,18 @@ func buildDataFlows(startID int64, group util.DataFlowGroup, dfsize float64, dfs
 	return group.Flows, collectionIDs, childIDs, curveCollection, group
 }
 
-func buildDataFlowStatistics(startID int64, flow util.DataFlow, dfstatsize float64, parentID int64) ([]util.DataFlowStatistic, []int64, []int64, []int64, util.DataFlow) {
+func buildDataFlowStatistics(startID int64, flow util.DataFlow, dfstatsize float64, parentID int64) ([]util.DataFlowStatistic, []int64, []int64, []int64, util.DataFlow, int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
 	curveCollection := []int64{}
+	total := int64(0)
 	for i := 0; i < len(flow.Statistics); i++ {
 		argosyId = argosyId + 1
 		childIDs = append(childIDs, argosyId)
 		curveCollection = append(curveCollection, argosyId)
 		stat := flow.Statistics[i]
-		total += int64(stat.TimeSplit)
+		total = int64(total) + int64(stat.TimeSplit)
 		stat.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             argosyId,
 			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
@@ -177,7 +176,7 @@ func buildDataFlowStatistics(startID int64, flow util.DataFlow, dfstatsize float
 		}
 		flow.Statistics[i] = stat
 	}
-	return flow.Statistics, collectionIDs, childIDs, curveCollection, flow
+	return flow.Statistics, collectionIDs, childIDs, curveCollection, flow, int64(total)
 }
 
 func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
