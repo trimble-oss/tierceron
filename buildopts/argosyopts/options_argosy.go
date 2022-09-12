@@ -12,6 +12,8 @@ import (
 	"tierceron/vaulthelper/kv"
 )
 
+var total int64
+
 func getGroupSize(groups []util.DataFlowGroup) (float64, float64, float64) {
 	groupsize := 0.0
 	flowsize := 0.0
@@ -31,21 +33,24 @@ func buildArgosies(startID int64, args util.ArgosyFleet) (util.ArgosyFleet, []in
 	collectionIDs := []int64{}
 	curveCollection := []int64{}
 	for i := 0; i < len(args.Argosies); i++ {
+		total = 0
 		dfgsize, dfsize, dfstatsize := getGroupSize(args.Argosies[i].Groups)
 		argosyId = startID + int64(i)*int64(1.0+float64(dfgsize)+math.Pow(float64(dfsize), 2.0)+math.Pow(float64(dfstatsize), 3.0))
 		collectionIDs = append(collectionIDs, argosyId)
 		argosy := args.Argosies[i]
 		argosy.MashupDetailedElement = mashupsdk.MashupDetailedElement{
-			Id:          argosyId,
-			State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Init)},
-			Name:        argosy.ArgosyID,
-			Alias:       "It",
-			Description: "Testing to see if description will properly change!",
-			Renderer:    "Element",
-			Genre:       "Argosy",
-			Subgenre:    "",
-			Parentids:   []int64{},
-			Childids:    []int64{-2},
+			Id:             argosyId,
+			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Init)},
+			Name:           argosy.ArgosyID,
+			Alias:          "It",
+			Description:    "Testing to see if description will properly change!",
+			Data:           "",
+			Custosrenderer: "",
+			Renderer:       "Element",
+			Genre:          "Argosy",
+			Subgenre:       "",
+			Parentids:      []int64{},
+			Childids:       []int64{-2},
 		}
 
 		collection := []int64{}
@@ -58,6 +63,7 @@ func buildArgosies(startID int64, args util.ArgosyFleet) (util.ArgosyFleet, []in
 		for _, id := range children {
 			argosy.MashupDetailedElement.Childids = append(argosy.MashupDetailedElement.Childids, id)
 		}
+		//argosy.Data = fmt.Sprintf("%f", float64(total)/dfstatsize)
 		args.Argosies[i] = argosy
 	}
 
@@ -75,16 +81,18 @@ func buildDataFlowGroups(startID int64, argosy util.Argosy, dfgsize float64, dfs
 		childIDs = append(childIDs, argosyId)
 		group := argosy.Groups[i]
 		group.MashupDetailedElement = mashupsdk.MashupDetailedElement{
-			Id:          argosyId,
-			State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
-			Name:        group.Name, //"DataFlowGroup-" + strconv.Itoa(int(argosyId)),
-			Alias:       "It",
-			Description: "",
-			Renderer:    "Element",
-			Genre:       "DataFlowGroup",
-			Subgenre:    "",
-			Parentids:   []int64{parentID},
-			Childids:    []int64{-4},
+			Id:             argosyId,
+			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
+			Name:           group.Name, //"DataFlowGroup-" + strconv.Itoa(int(argosyId)),
+			Alias:          "It",
+			Description:    "",
+			Data:           "",
+			Custosrenderer: "",
+			Renderer:       "Element",
+			Genre:          "DataFlowGroup",
+			Subgenre:       "",
+			Parentids:      []int64{parentID},
+			Childids:       []int64{-4},
 		}
 		collection := []int64{}
 		children := []int64{}
@@ -112,16 +120,18 @@ func buildDataFlows(startID int64, group util.DataFlowGroup, dfsize float64, dfs
 		childIDs = append(childIDs, argosyId)
 		flow := group.Flows[i]
 		flow.MashupDetailedElement = mashupsdk.MashupDetailedElement{
-			Id:          argosyId,
-			State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
-			Name:        flow.Name, //"DataFlow-" + strconv.Itoa(int(argosyId)),
-			Alias:       "It",
-			Description: "",
-			Renderer:    "Element",
-			Genre:       "DataFlow",
-			Subgenre:    "",
-			Parentids:   []int64{parentID},
-			Childids:    []int64{-4},
+			Id:             argosyId,
+			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
+			Name:           flow.Name, //"DataFlow-" + strconv.Itoa(int(argosyId)),
+			Alias:          "It",
+			Description:    "",
+			Data:           "",
+			Custosrenderer: "",
+			Renderer:       "Element",
+			Genre:          "DataFlow",
+			Subgenre:       "",
+			Parentids:      []int64{parentID},
+			Childids:       []int64{-4},
 		}
 		otherIds := []int64{}
 		children := []int64{}
@@ -149,17 +159,21 @@ func buildDataFlowStatistics(startID int64, flow util.DataFlow, dfstatsize float
 		childIDs = append(childIDs, argosyId)
 		curveCollection = append(curveCollection, argosyId)
 		stat := flow.Statistics[i]
+		total += int64(stat.TimeSplit)
 		stat.MashupDetailedElement = mashupsdk.MashupDetailedElement{
-			Id:          argosyId,
-			State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
-			Name:        stat.StateName + "-" + strconv.Itoa(int(argosyId)), //"DataFlowStatistic-" + strconv.Itoa(int(argosyId)), //data[pointer], //
-			Alias:       "It",
-			Description: "",
-			Renderer:    "Curve",
-			Genre:       "DataFlowStatistic",
-			Subgenre:    "",
-			Parentids:   []int64{parentID},
-			Childids:    []int64{-1},
+			Id:             argosyId,
+			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
+			Name:           stat.StateName + "-" + strconv.Itoa(int(argosyId)), //"DataFlowStatistic-" + strconv.Itoa(int(argosyId)), //data[pointer], //
+			Alias:          "It",
+			Description:    "",
+			Data:           strconv.FormatInt(int64(stat.TimeSplit), 10), //time in nanoseconds
+			Custosrenderer: "",
+			Renderer:       "Curve",
+			Genre:          "DataFlowStatistic",
+			Subgenre:       "",
+			//Data:        strconv.Itoa(stat.TimeSplit),
+			Parentids: []int64{parentID},
+			Childids:  []int64{-1},
 		}
 		flow.Statistics[i] = stat
 	}
@@ -170,81 +184,91 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 	argosies := []util.Argosy{
 		{
 			mashupsdk.MashupDetailedElement{
-				Id:          3,
-				State:       &mashupsdk.MashupElementState{Id: 3, State: int64(mashupsdk.Init)},
-				Name:        "Outside",
-				Alias:       "Outside",
-				Description: "The background was selected",
-				Renderer:    "Background",
-				Genre:       "Space",
-				Subgenre:    "Exo",
-				Parentids:   nil,
-				Childids:    nil,
+				Id:             3,
+				State:          &mashupsdk.MashupElementState{Id: 3, State: int64(mashupsdk.Init)},
+				Name:           "Outside",
+				Alias:          "Outside",
+				Description:    "The background was selected",
+				Data:           "",
+				Custosrenderer: "",
+				Renderer:       "Background",
+				Genre:          "Space",
+				Subgenre:       "Exo",
+				Parentids:      nil,
+				Childids:       nil,
 			},
 			"Outside",
 			[]util.DataFlowGroup{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
-				Basisid:     -4,
-				State:       &mashupsdk.MashupElementState{Id: -4, State: int64(mashupsdk.Hidden)},
-				Name:        "{0}-SubSpiral",
-				Alias:       "It",
-				Description: "",
-				Renderer:    "Element",
-				Genre:       "Solid",
-				Subgenre:    "Ento",
-				Parentids:   []int64{-2},
-				Childids:    []int64{},
+				Basisid:        -4,
+				State:          &mashupsdk.MashupElementState{Id: -4, State: int64(mashupsdk.Hidden)},
+				Name:           "{0}-SubSpiral",
+				Alias:          "It",
+				Description:    "",
+				Data:           "",
+				Custosrenderer: "",
+				Renderer:       "Element",
+				Genre:          "Solid",
+				Subgenre:       "Ento",
+				Parentids:      []int64{-2},
+				Childids:       []int64{},
 			},
 			"SubSpiral",
 			[]util.DataFlowGroup{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
-				Basisid:       -1,
-				State:         &mashupsdk.MashupElementState{Id: -1, State: int64(mashupsdk.Mutable)},
-				Name:          "Curve",
-				Alias:         "It",
-				Description:   "",
-				Renderer:      "Curve",
-				Colabrenderer: "Path",
-				Genre:         "Solid",
-				Subgenre:      "Skeletal",
-				Parentids:     []int64{},
-				Childids:      []int64{},
+				Basisid:        -1,
+				State:          &mashupsdk.MashupElementState{Id: -1, State: int64(mashupsdk.Mutable)},
+				Name:           "Curve",
+				Alias:          "It",
+				Description:    "",
+				Data:           "",
+				Custosrenderer: "",
+				Renderer:       "Curve",
+				Colabrenderer:  "Path",
+				Genre:          "Solid",
+				Subgenre:       "Skeletal",
+				Parentids:      []int64{},
+				Childids:       []int64{},
 			},
 			"Curve",
 			[]util.DataFlowGroup{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
-				Id:            1,
-				State:         &mashupsdk.MashupElementState{Id: 1, State: int64(mashupsdk.Init)},
-				Name:          "CurvePathEntity-1",
-				Description:   "",
-				Renderer:      "Curve",
-				Colabrenderer: "Path",
-				Genre:         "Solid",
-				Subgenre:      "Skeletal",
-				Parentids:     nil,
-				Childids:      []int64{-1},
+				Id:             1,
+				State:          &mashupsdk.MashupElementState{Id: 1, State: int64(mashupsdk.Init)},
+				Name:           "CurvePathEntity-1",
+				Description:    "",
+				Data:           "",
+				Custosrenderer: "",
+				Renderer:       "Curve",
+				Colabrenderer:  "Path",
+				Genre:          "Solid",
+				Subgenre:       "Skeletal",
+				Parentids:      nil,
+				Childids:       []int64{-1},
 			},
 			"CurvePathEntity-1",
 			[]util.DataFlowGroup{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
-				Basisid:     -2,
-				State:       &mashupsdk.MashupElementState{Id: -2, State: int64(mashupsdk.Mutable)},
-				Name:        "{0}-Path",
-				Alias:       "It",
-				Description: "Path was selected",
-				Renderer:    "Element",
-				Genre:       "Solid",
-				Subgenre:    "Ento",
-				Parentids:   nil,
-				Childids:    []int64{-4},
+				Basisid:        -2,
+				State:          &mashupsdk.MashupElementState{Id: -2, State: int64(mashupsdk.Mutable)},
+				Name:           "{0}-Path",
+				Alias:          "It",
+				Description:    "Path was selected",
+				Data:           "",
+				Custosrenderer: "",
+				Renderer:       "Element",
+				Genre:          "Solid",
+				Subgenre:       "Ento",
+				Parentids:      nil,
+				Childids:       []int64{-4},
 			},
 			"{0}-Path",
 			[]util.DataFlowGroup{},
@@ -261,15 +285,17 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 	//argosies = append(argosies, args)
 	argosies = append(argosies, util.Argosy{
 		mashupsdk.MashupDetailedElement{
-			Id:          4,
-			State:       &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
-			Name:        "PathGroupOne",
-			Description: "Paths",
-			Renderer:    "Element",
-			Genre:       "Collection",
-			Subgenre:    "Element",
-			Parentids:   []int64{},
-			Childids:    elementCollection,
+			Id:             4,
+			State:          &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
+			Name:           "PathGroupOne",
+			Description:    "Paths",
+			Data:           "",
+			Custosrenderer: "",
+			Renderer:       "Element",
+			Genre:          "Collection",
+			Subgenre:       "Element",
+			Parentids:      []int64{},
+			Childids:       elementCollection,
 		},
 		"PathGroupOne",
 		[]util.DataFlowGroup{},
@@ -277,21 +303,22 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 	curveCollection = append(curveCollection, 1)
 	argosies = append(argosies, util.Argosy{
 		mashupsdk.MashupDetailedElement{
-			Id:            2,
-			State:         &mashupsdk.MashupElementState{Id: 2, State: int64(mashupsdk.Init)},
-			Name:          "CurvesGroupOne",
-			Description:   "Curves",
-			Renderer:      "Curve",
-			Colabrenderer: "Path",
-			Genre:         "Collection",
-			Subgenre:      "Skeletal",
-			Parentids:     nil,
-			Childids:      curveCollection,
+			Id:             2,
+			State:          &mashupsdk.MashupElementState{Id: 2, State: int64(mashupsdk.Init)},
+			Name:           "CurvesGroupOne",
+			Description:    "Curves",
+			Data:           "",
+			Custosrenderer: "",
+			Renderer:       "Curve",
+			Colabrenderer:  "Path",
+			Genre:          "Collection",
+			Subgenre:       "Skeletal",
+			Parentids:      nil,
+			Childids:       curveCollection,
 		},
 		"CurvesGroupOne",
 		[]util.DataFlowGroup{},
 	})
-
 	for _, arg := range argosies {
 		args.Argosies = append(args.Argosies, arg)
 	}
