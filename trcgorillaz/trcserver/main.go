@@ -100,12 +100,12 @@ func main() {
 
 	tenantDataRenderer := &trcRenderers.TenantDataRenderer{}
 	custosWorld := custosworld.NewCustosWorldApp(*headless, DetailedElements, tenantDataRenderer)
-
+	tenantDataRenderer.CustosWorldApp = custosWorld
 	// Initialize a tab item renderer
 	// This will be called during upsert elements phase.
 	// indexed by subgenre
-	custosWorld.CustomTabItemRenderer["TabItemRenderer"] = tenantDataRenderer
-	custosWorld.CustomTabItemRenderer["ControllerTabItemRenderer"] = &trcRenderers.SearchRenderer{CustosWorldApp: custosWorld}
+	custosWorld.CustomTabItemRenderer["TenantDataRenderer"] = tenantDataRenderer
+	custosWorld.CustomTabItemRenderer["SearchRenderer"] = &trcRenderers.SearchRenderer{CustosWorldApp: custosWorld}
 
 	custosWorld.Title = "Hello Custos"
 	custosWorld.MainWindowSize = fyne.NewSize(800, 100)
