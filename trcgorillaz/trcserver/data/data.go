@@ -72,11 +72,11 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
 	//dfstatData := map[string]float64{}
-	statGroup := []float64{}
-	testTimes := []float64{}
+	//statGroup := []float64{}
 	for a := 0; a < len(ArgosyFleet.Argosies); a++ {
 		argosyBasis := ArgosyFleet.Argosies[a].MashupDetailedElement
 		argosyBasis.Alias = "Argosy"
+		argosyBasis.Custosrenderer = "TenantDataRenderer"
 		DetailedElements = append(DetailedElements, &argosyBasis)
 
 		for i := 0; i < len(ArgosyFleet.Argosies[a].Groups); i++ {
@@ -94,21 +94,16 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 					timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
 					total += timeSeconds
 					el.Data = strconv.FormatInt(timeNanoSeconds, 10) //time in nanoseconds
-					statGroup = append(statGroup, timeSeconds)
+					//statGroup = append(statGroup, timeSeconds)
 					DetailedElements = append(DetailedElements, &el)
 				}
 				element.Data = fmt.Sprintf("%f", total/float64(len(ArgosyFleet.Argosies[a].Groups[i].Flows[j].Statistics)))
 				DetailedElements = append(DetailedElements, &element)
-				for l := 0; l < len(statGroup)-1; l++ {
-					if statGroup[l+1]-statGroup[l] > 0 {
-						testTimes = append(testTimes, statGroup[l+1]-statGroup[l])
-					}
-				}
 
 			}
 		}
 	}
-	sort.Float64s(testTimes)
+	//sort.Float64s(testTimes)
 	return DetailedElements
 }
 
