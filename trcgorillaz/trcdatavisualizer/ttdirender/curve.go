@@ -3,6 +3,7 @@ package ttdirender
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 
 	"github.com/g3n/engine/core"
@@ -202,9 +203,17 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 					complex := binetFormula(lastLocation)
 					path = append(path, *math32.NewVector3(float32(-real(complex)), float32(imag(complex)), -float32(lastLocation)))
 					if len(path) > 1 {
-						median := cr.SortedTimes[len(cr.SortedTimes)/2]
-						upperQuartile := cr.SortedTimes[3*len(cr.SortedTimes)/4]
-						lowerQuartile := cr.SortedTimes[len(cr.SortedTimes)/4]
+						var sortedTimes []float64
+						for i := 0; i < len(timeSplits)-1; i++ {
+							if timeSplits[i+1]-timeSplits[i] == 0 && i+1 == len(timeSplits)-1 {
+								break
+							}
+							sortedTimes = append(sortedTimes, timeSplits[i+1]-timeSplits[i])
+						}
+						sort.Float64s(sortedTimes)
+						median := sortedTimes[len(sortedTimes)/2]
+						upperQuartile := sortedTimes[3*len(sortedTimes)/4]
+						lowerQuartile := sortedTimes[len(sortedTimes)/4]
 						if diff < lowerQuartile {
 							color.Set(0.953, 0.569, 0.125)
 						} else if diff < median {
