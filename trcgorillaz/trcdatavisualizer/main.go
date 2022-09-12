@@ -22,7 +22,6 @@ import (
 
 	"tierceron/buildopts/argosyopts"
 	"tierceron/trcgorillaz/trcdatavisualizer/ttdirender"
-	"tierceron/trcgorillaz/trcserver/ttdisupport"
 
 	"github.com/mrjrieke/nute/g3nd/g3nworld"
 	"github.com/mrjrieke/nute/g3nd/worldg3n/g3nrender"
@@ -103,27 +102,6 @@ func main() {
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
 	if *custos && *headless {
 		worldApp.MashupContext = client.BootstrapInit("ttdiserver", worldApp.MSdkApiHandler, []string{"HOME=" + os.Getenv("HOME")}, []string{"-headless=true"}, insecure) //=true
-		// libraryElementBundle, upsertErr := worldApp.MashupContext.Client.GetMashupElements(
-		// 	worldApp.MashupContext,
-		// 	&mashupsdk.MashupEmpty{AuthToken: client.GetServerAuthToken()},
-		// )
-		// if upsertErr != nil {
-		// 	log.Printf("G3n Element initialization failure: %s\n", upsertErr.Error())
-		// }
-
-		// DetailedElements = libraryElementBundle.DetailedElements
-		// dfstatData := ttdisupport.Dfstatistics
-		// timeData := ttdisupport.TestTimeData
-		// // for _, el := range DetailedElements {
-		// // 	el.Colabrenderer = ""
-		// // }
-		// curveRenderer.TimeData = dfstatData
-		// curveRenderer.SortedTimes = timeData
-		// worldApp.MSdkApiHandler.UpsertMashupElements( //generatedElementsBundle //genErr
-		// 	&mashupsdk.MashupDetailedElementBundle{
-		// 		AuthToken:        "",
-		// 		DetailedElements: DetailedElements,
-		// 	})
 
 	} else if *custos {
 		worldApp.MashupContext = client.BootstrapInit("ttdiserver", worldApp.MSdkApiHandler, []string{"HOME=" + os.Getenv("HOME")}, nil, insecure) //=true
@@ -132,27 +110,20 @@ func main() {
 	if *custos {
 		libraryElementBundle, upsertErr := worldApp.MashupContext.Client.GetMashupElements(
 			worldApp.MashupContext,
-			&mashupsdk.MashupEmpty{AuthToken: client.GetServerAuthToken()},
+			&mashupsdk.MashupEmpty{AuthToken: worldApp.GetAuthToken()},
 		)
 		if upsertErr != nil {
 			log.Printf("G3n Element initialization failure: %s\n", upsertErr.Error())
 		}
 
 		DetailedElements = libraryElementBundle.DetailedElements
-		dfstatData := ttdisupport.Dfstatistics
-		timeData := ttdisupport.TestTimeData
-		// for _, el := range DetailedElements {
-		// 	el.Colabrenderer = ""
-		// }
-		curveRenderer.TimeData = dfstatData
-		curveRenderer.SortedTimes = timeData
 		worldApp.MSdkApiHandler.UpsertMashupElements( //generatedElementsBundle //genErr
 			&mashupsdk.MashupDetailedElementBundle{
 				AuthToken:        "",
 				DetailedElements: DetailedElements,
 			})
 
-	} else if *headless {
+	} else if *headless && !*custos {
 		config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
 		ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil) //mod)
 		eUtils.CheckError(&config, argosyErr, true)
@@ -200,24 +171,6 @@ func main() {
 		curveRenderer.TimeData = dfstatData
 		curveRenderer.SortedTimes = testTimes
 
-		// _, genErr := worldApp.MSdkApiHandler.UpsertMashupElements(
-		// 	&mashupsdk.MashupDetailedElementBundle{
-		// 		AuthToken:        "",
-		// 		DetailedElements: DetailedElements,
-		// 	})
-
-		// if genErr != nil {
-		// 	log.Fatalf(genErr.Error(), genErr)
-		// } else {
-		// 	go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
-		// }
-		// go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 800, Height: 800})
-
-		// go func() {
-		// 	time.Sleep(10 * time.Second)
-
-		// }()
-
 	} else {
 		worldApp.InitServer(*callerCreds, *insecure)
 	}
@@ -239,7 +192,7 @@ func main() {
 			_, custosUpsertErr := worldApp.MashupContext.Client.UpsertMashupElements(
 				worldApp.MashupContext,
 				&mashupsdk.MashupDetailedElementBundle{
-					AuthToken:        client.GetServerAuthToken(),
+					AuthToken:        worldApp.GetAuthToken(),
 					DetailedElements: generatedElementsBundle.DetailedElements,
 				})
 
