@@ -2,6 +2,7 @@ package trcRenderers
 
 // World is a basic gomobile app.
 import (
+	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/mrjrieke/nute/custos/custosworld"
 	"github.com/mrjrieke/nute/mashupsdk"
 )
@@ -69,15 +71,11 @@ type TenantDataRenderer struct {
 	ConcreteElements []*mashupsdk.MashupDetailedElement
 }
 
-func (tr *TenantDataRenderer) PreRender() {
-	tr.ConcreteElements = []*mashupsdk.MashupDetailedElement{}
-}
-
-func (tr *TenantDataRenderer) GetPriority() int64 {
+func (tr *TenantDataRenderer) GetPriority() int64 { //1
 	return 2
 }
 
-func (tr *TenantDataRenderer) BuildTabItem(childId int64, concreteElement *mashupsdk.MashupDetailedElement) {
+func (tr *TenantDataRenderer) BuildTabItem(childId int64, concreteElement *mashupsdk.MashupDetailedElement) { //2
 	child := tr.CustosWorldApp.MashupDetailedElementLibrary[childId]
 	if child != nil && child.Alias != "" {
 		log.Printf("TenantDataRenderer.BuildTabItem lookup on: %s name: %s\n", child.Alias, child.Name)
@@ -100,9 +98,13 @@ func (tr *TenantDataRenderer) BuildTabItem(childId int64, concreteElement *mashu
 	}
 }
 
+func (tr *TenantDataRenderer) PreRender() { //3
+	tr.ConcreteElements = []*mashupsdk.MashupDetailedElement{}
+}
+
 func (tr *TenantDataRenderer) renderTabItemHelper(concreteElement *mashupsdk.MashupDetailedElement) {
 	log.Printf("TorusRender Widget lookup: %s\n", concreteElement.Alias)
-
+	log.Print(spew.Sdump(concreteElement))
 	if concreteElement.IsStateSet(mashupsdk.Clicked) {
 		log.Printf("TorusRender Widget looking up: %s\n", concreteElement.Alias)
 		if fyneWidgetElement, fyneOk := tr.CustosWorldApp.FyneWidgetElements[concreteElement.Name]; fyneOk {
@@ -127,11 +129,11 @@ func (tr *TenantDataRenderer) renderTabItemHelper(concreteElement *mashupsdk.Mas
 	log.Printf("End TorusRender Widget lookup: %s\n", concreteElement.Alias)
 }
 
-func (tr *TenantDataRenderer) RenderTabItem(concreteElement *mashupsdk.MashupDetailedElement) {
+func (tr *TenantDataRenderer) RenderTabItem(concreteElement *mashupsdk.MashupDetailedElement) { //4
 	tr.ConcreteElements = append(tr.ConcreteElements, concreteElement)
 }
 
-func (tr *TenantDataRenderer) Refresh() {
+func (tr *TenantDataRenderer) Refresh() { //5
 	sort.Slice(tr.ConcreteElements, func(i, j int) bool {
 		return strings.Compare(tr.ConcreteElements[i].Name, tr.ConcreteElements[j].Name) == -1
 	})
@@ -165,16 +167,26 @@ func (tr *TenantDataRenderer) OnSelected(tabItem *container.TabItem) {
 
 func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWorldApp, id string) *container.TabItem {
 	de := CustosWorldApp.FyneWidgetElements[id].MashupDetailedElement
+	fmt.Println(len(de.Childids))
 	//build tab item
 	tabLabel := widget.NewLabel(de.Description)
 	tabLabel.Wrapping = fyne.TextWrapWord
 	dfgList := widget.NewList(
 		func() int { return len(de.GetChildids()) },
-		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func() fyne.CanvasObject {
+			return container.NewVBox(widget.NewLabel(""), widget.NewAccordion(widget.NewAccordionItem("", widget.NewLabel(""))))
+		},
 		func(lii widget.ListItemID, co fyne.CanvasObject) {
-			co.(*widget.Label).SetText("List argosy dataflowgroups")
+			co.(*widget.Label).SetText(CustosWorldApp.MashupDetailedElementLibrary[de.Childids[lii]].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
 		},
 	)
+	//var dfgaccordionitems []*widget.AccordionItem
+	for i := 0; i < len(de.Childids); i++ {
+		//dfgitem := widget.NewAccordionItem(CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]].Name, )
+		//dfgaccordionitems = append(dfgaccordionitems, dfgitem)
+	}
+	//dfgaccordion := widget.NewAccordion(dfgaccordionitems)
+
 	//var dfList widget.List
 	// for _, childID := range de.GetChildids() {
 	// 	 :=
