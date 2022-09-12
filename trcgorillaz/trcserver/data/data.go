@@ -76,7 +76,6 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	for a := 0; a < len(ArgosyFleet.Argosies); a++ {
 		argosyBasis := ArgosyFleet.Argosies[a].MashupDetailedElement
 		argosyBasis.Alias = "Argosy"
-		argosyBasis.Custosrenderer = "TenantDataRenderer"
 		DetailedElements = append(DetailedElements, &argosyBasis)
 
 		for i := 0; i < len(ArgosyFleet.Argosies[a].Groups); i++ {
