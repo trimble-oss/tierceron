@@ -1,9 +1,11 @@
 package data
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"sort"
+	"strconv"
 	"tierceron/buildopts/argosyopts"
 
 	//"tierceron/trcgorillaz/trcserver/ttdisupport"
@@ -69,7 +71,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	eUtils.CheckError(&config, argosyErr, true)
 
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
-	dfstatData := map[string]float64{}
+	//dfstatData := map[string]float64{}
 	statGroup := []float64{}
 	testTimes := []float64{}
 	for a := 0; a < len(ArgosyFleet.Argosies); a++ {
@@ -84,16 +86,19 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 			for j := 0; j < len(ArgosyFleet.Argosies[a].Groups[i].Flows); j++ {
 				element := ArgosyFleet.Argosies[a].Groups[i].Flows[j].MashupDetailedElement
 				element.Alias = "DataFlow"
-				DetailedElements = append(DetailedElements, &element)
+				total := 0.0
 				for k := 0; k < len(ArgosyFleet.Argosies[a].Groups[i].Flows[j].Statistics); k++ {
 					el := ArgosyFleet.Argosies[a].Groups[i].Flows[j].Statistics[k].MashupDetailedElement
 					el.Alias = "DataFlowStatistic"
 					timeNanoSeconds := int64(ArgosyFleet.Argosies[a].Groups[i].Flows[j].Statistics[k].TimeSplit)
 					timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
-					dfstatData[el.Name] = timeSeconds
+					total += timeSeconds
+					el.Data = strconv.FormatInt(timeNanoSeconds, 10) //time in nanoseconds
 					statGroup = append(statGroup, timeSeconds)
 					DetailedElements = append(DetailedElements, &el)
 				}
+				element.Data = fmt.Sprintf("%f", total/float64(len(ArgosyFleet.Argosies[a].Groups[i].Flows[j].Statistics)))
+				DetailedElements = append(DetailedElements, &element)
 				for l := 0; l < len(statGroup)-1; l++ {
 					if statGroup[l+1]-statGroup[l] > 0 {
 						testTimes = append(testTimes, statGroup[l+1]-statGroup[l])
