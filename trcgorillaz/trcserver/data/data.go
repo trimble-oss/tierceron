@@ -102,6 +102,20 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 			}
 		}
 	}
+	DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
+		Basisid:        5,
+		State:          &mashupsdk.MashupElementState{Id: 5, State: int64(mashupsdk.Mutable)},
+		Name:           "SearchElement",
+		Alias:          "It",
+		Description:    "Search Element",
+		Data:           "",
+		Custosrenderer: "SearchRenderer",
+		Renderer:       "",
+		Genre:          "",
+		Subgenre:       "Ento",
+		Parentids:      nil,
+		Childids:       []int64{},
+	})
 	//sort.Float64s(testTimes)
 	return DetailedElements
 }
@@ -150,6 +164,20 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 			}
 		}
 	}
+	DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
+		Basisid:        5,
+		State:          &mashupsdk.MashupElementState{Id: 5, State: int64(mashupsdk.Mutable)},
+		Name:           "SearchElement",
+		Alias:          "SearchElement",
+		Description:    "Search Element",
+		Data:           "",
+		Custosrenderer: "SearchRenderer",
+		Renderer:       "",
+		Genre:          "",
+		Subgenre:       "Ento",
+		Parentids:      nil,
+		Childids:       []int64{},
+	})
 	sort.Float64s(testTimes)
 	return DetailedElements
 }
