@@ -30,7 +30,7 @@ var envSlice = make([]string, 0)
 var projectSectionsSlice = make([]string, 0)
 var resultChannel = make(chan *ResultData, 5)
 var envLength int
-var mutex = &sync.Mutex{}
+var resultMapLock = &sync.Mutex{}
 
 func messenger(inData *string, inPath string) {
 	var data ResultData
@@ -44,9 +44,9 @@ func reciever() {
 		select {
 		case data := <-resultChannel:
 			if data != nil && data.inData != nil && data.inPath != "" {
-				mutex.Lock()
+				resultMapLock.Lock()
 				resultMap[data.inPath] = data.inData
-				mutex.Unlock()
+				resultMapLock.Unlock()
 			}
 		}
 	}
@@ -553,13 +553,16 @@ skipDiff:
 			defer waitg.Done()
 			retry := 0
 			for {
-				time.Sleep(time.Duration(time.Second))
-				if len(resultMap) != len(envSlice)*len(sectionSlice) || retry == 3 {
+				resultMapLock.Lock()
+				if len(resultMap) == len(envSlice)*len(sectionSlice) || retry == 3 {
+					resultMapLock.Unlock()
 					break
 				}
+				resultMapLock.Unlock()
+				time.Sleep(time.Duration(time.Second))
 				retry++
 			}
-			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, mutex)
+			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, resultMapLock)
 		}()
 	}
 	waitg.Wait() //Wait for diff
