@@ -279,7 +279,7 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 	}
 	elementCollection := []int64{}
 	curveCollection := []int64{}
-	args, elementCollection, curveCollection = buildArgosies(5, args)
+	args, elementCollection, curveCollection = buildArgosies(6, args)
 	//args.Argosies = append(args.Argosies, argosies)
 	//argosies = append(argosies, args)
 	argosies = append(argosies, util.Argosy{
