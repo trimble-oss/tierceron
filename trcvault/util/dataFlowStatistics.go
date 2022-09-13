@@ -91,7 +91,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string) (ArgosyFleet, error) {
 					for _, serviceList := range serviceListData.Data {
 						for _, service := range serviceList.([]interface{}) {
 							var dfgroup DataFlowGroup
-							dfgroup.Name = service.(string)
+							dfgroup.Name = strings.TrimSuffix(service.(string), "/")
 
 							statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/" + project + "/" + idName.(string) + "/" + id.(string) + "/DataFlowStatistics/DataFlowGroup/" + service.(string) + "/dataFlowName/")
 							if statisticNameListErr != nil {
