@@ -95,7 +95,6 @@ func main() {
 		DetailedElements = data.GetHeadlessData(insecure, logger)
 	} else {
 		DetailedElements = data.GetData(insecure, logger, envPtr)
-
 	}
 
 	tenantDataRenderer := &trcRenderers.TenantDataRenderer{}
