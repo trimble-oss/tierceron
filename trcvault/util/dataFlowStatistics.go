@@ -80,7 +80,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string) (ArgosyFleet, error) {
 						return aFleet, serviceListErr
 					}
 					var new Argosy
-					new.ArgosyID = id.(string)
+					new.ArgosyID = strings.TrimSuffix(id.(string), "/")
 					new.Groups = make([]DataFlowGroup, 0)
 
 					if serviceListData == nil { //No existing dfs for this tenant -> continue
@@ -104,7 +104,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string) (ArgosyFleet, error) {
 
 							for _, statisticName := range statisticNameList.Data {
 								for _, statisticName := range statisticName.([]interface{}) {
-									newDf := InitDataFlow(nil, statisticName.(string), false)
+									newDf := InitDataFlow(nil, strings.TrimSuffix(statisticName.(string), "/"), false)
 									newDf.RetrieveStatistic(mod, id.(string), project, idName.(string), service.(string), statisticName.(string))
 									dfgroup.Flows = append(dfgroup.Flows, newDf)
 								}
