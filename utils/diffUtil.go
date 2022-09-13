@@ -98,13 +98,19 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	}
 
 	//Diff Calculation
-	timeOut := time.Date(9999, 1, 1, 12, 0, 0, 0, time.UTC)
+	diffTimeout := false
+	timeOut := time.Now().Add(time.Minute * 1)
 	if stringA == nil || stringB == nil {
 		fmt.Println("A null string was found while diffing")
 		return ""
 	}
 	diffs := dmp.DiffBisect(*stringA, *stringB, timeOut)
 	diffs = dmp.DiffCleanupSemantic(diffs)
+
+	if time.Now().After(timeOut) {
+		diffTimeout = true
+		diffs = diffs[:0]
+	}
 
 	//Seperates diff into red and green lines
 	var redBuffer bytes.Buffer
@@ -201,6 +207,13 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 
 	//Diff vs no Diff output
 	if len(strings.TrimSpace(result)) == 0 && patchData {
+		if diffTimeout {
+			if runtime.GOOS == "windows" {
+				return "@@ Diff Timed Out @@"
+			}
+			return Cyan + "@@ Diff Timed Out @@" + Reset
+		}
+
 		if runtime.GOOS == "windows" {
 			return "@@ No Differences @@"
 		}
