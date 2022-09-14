@@ -2,7 +2,10 @@ package trcRenderers
 
 // World is a basic gomobile app.
 import (
+	"fmt"
+	"math"
 	"sort"
+	"strconv"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -349,7 +352,40 @@ func (tr *TenantDataRenderer) RefreshList(CustosWorldApp *custosworld.CustosWorl
 			return widget.NewLabel("")
 		},
 		func(lii widget.ListItemID, co fyne.CanvasObject) {
-			co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
+			if tr.CurrentListElements[lii].Alias == "DataFlowStatistic" {
+				time := tr.CurrentListElements[lii].Data
+				if time != "" {
+					timeNanoSeconds, err := strconv.Atoi(time)
+					if err != nil {
+						co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name)
+					}
+					seconds := (float64(timeNanoSeconds) * math.Pow(10.0, -9.0))
+					minutes := seconds / 60.0
+					seconds = math.Mod(seconds, 60.0)
+					wholeMinutes := int(minutes)
+
+					//wholeSeconds := int(seconds)
+					//milliSeconds := math.Mod(seconds, float64(wholeSeconds)) * 1000
+					fullName := tr.CurrentListElements[lii].Name
+					fullName = strings.Split(fullName, "-")[0]
+					if wholeMinutes == 0 {
+						fullName = fullName + "-" + fmt.Sprintf("%.2f", seconds) + "s"
+					} else {
+						fullName = fullName + "-" + strconv.Itoa(wholeMinutes) + "m" + fmt.Sprintf("%.2f", seconds) + "s"
+					}
+
+					// if seconds > 0 {
+					// 	fullName = fullName + "-" + strconv.Itoa(wholeMinutes) + "m" + fmt.Sprintf("%.2f", seconds)
+
+					// } else {
+
+					// }
+					co.(*widget.Label).SetText(fullName)
+				}
+			} else {
+				co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
+
+			}
 		},
 	)
 	updatedList.OnSelected = func(id widget.ListItemID) {
