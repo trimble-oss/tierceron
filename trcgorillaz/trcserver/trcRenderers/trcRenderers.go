@@ -216,15 +216,17 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 	dfgtab := container.NewTabItem("Dataflow Groups", tr.Elementlist)
 	tr.DataTabs = append(tr.DataTabs, dfgtab)
 	tr.DataMenu = container.NewAppTabs(tr.DataTabs[0])
-
+	tr.Elementlist.Resize(fyne.NewSize(500, 500))
 	tr.Elementlist.OnSelected = func(id widget.ListItemID) {
 		//log.Printf("tr.Elementlist selected")
-		//Update ClickedElements
-		for i := 0; i < len(tr.DataTabs); i++ {
-			tr.DataMenu.Remove(tr.DataTabs[i])
-		}
-		tr.DataTabs = []*container.TabItem{}
+		// tr.DataMenu.SetItems([]*container.TabItem{})
+		// tr.DataTabs = []*container.TabItem{}
+		// for i := 0; i < len(tr.DataTabs); i++ {
+		// 	tr.DataMenu.Remove(tr.DataTabs[i])
+		// }
+		// tr.DataTabs = []*container.TabItem{}
 		clickedElement := tr.CurrentListElements[id]
+		//Update ClickedElements
 		tr.ClickedElements = append(tr.ClickedElements, clickedElement)
 		//Update contents of list and refresh it
 		tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
@@ -236,10 +238,10 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 		tr.Elementlist.Refresh()
 		//Set text of old tab to clickedElement.Name
 		//tr.DataMenu = container.NewAppTabs() //reset tabs
-		for i := 0; i < len(tr.ClickedElements); i++ {
-			tr.DataTabs = append(tr.DataTabs, container.NewTabItem(tr.ClickedElements[i].Name, tr.Elementlist))
-			tr.DataMenu.Append(tr.DataTabs[i])
-		}
+		// for i := 0; i < len(tr.ClickedElements); i++ {
+		// 	tr.DataTabs = append(tr.DataTabs, container.NewTabItem(tr.ClickedElements[i].Name, tr.Elementlist))
+		// 	tr.DataMenu.Append(tr.DataTabs[i])
+		// }
 		//Create new tab
 		var newTab *container.TabItem
 		if clickedElement.Alias == "DataFlow" {
@@ -249,12 +251,22 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 		}
 		tr.DataTabs = append(tr.DataTabs, newTab)
 		tr.DataMenu.Append(tr.DataTabs[len(tr.DataTabs)-1])
+		// for i := 0; i < len(tr.DataTabs); i++ {
+		// 	tr.DataMenu.Append(tr.DataTabs[i])
+		// }
 		//Select new tab
-		tr.DataMenu.Select(newTab)
+		tr.DataMenu.Select(tr.DataTabs[len(tr.DataTabs)-1])
 		//log.Printf("Finished selecting tr.Elementlist")
 	}
 	//log.Printf("Successful for setting tr.Elementlist.OnSelected")
 	tr.DataMenu.OnSelected = func(tab *container.TabItem) {
+		//Initialize new tabs from list selection
+		// for i := 0; i < len(tr.DataTabs); i++ {
+		// 	tr.DataMenu.Remove(tr.DataTabs[i])
+		// }
+
+		tr.DataMenu.SetItems([]*container.TabItem{})
+		tr.DataTabs = []*container.TabItem{}
 		//Update ClickedElements
 		size := len(tr.ClickedElements) - 1 //not sure if put in for loop condition if it will change when tr.ClickedElements is changed
 		for i := size; i >= 0; i-- {
@@ -262,39 +274,61 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 				break
 			} else {
 				// remove from ClickedElements
-				tr.ClickedElements = tr.ClickedElements[:len(tr.ClickedElements)-1] //Don't know if this will work
+				tr.ClickedElements = tr.ClickedElements[:i] //len(tr.ClickedElements)-1] //Don't know if this will work
 			}
 		}
-		//Update list content -- Don't forget to refresh list
+
+		//Update the tabs --> the selected tab needs to revert to generic name
 		if len(tr.ClickedElements) == 0 {
-			//Case 1: list dataflowgroups --> get data from overall tab name
+			tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", tr.Elementlist))
+			tr.DataMenu.Append(tr.DataTabs[len(tr.DataTabs)-1])
 			tr.CurrentListElements = tr.InitialListElements
 			tr.Elementlist.Refresh()
-			//tr.DataMenu = container.NewAppTabs()
-			if len(tr.DataTabs) > 0 {
-				tr.DataMenu.Remove(tr.DataTabs[0])
-				tr.DataTabs = []*container.TabItem{}
-			}
-			tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", tr.Elementlist))
-			tr.DataMenu.Append(tr.DataTabs[0])
+			tr.DataMenu.Refresh()
 		} else {
-			//Case 2: Dataflows (middle tab) --> get data from clickedelement childids
-			clickedElement := tr.ClickedElements[len(tr.ClickedElements)-1]
-			tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
-			for i := 0; i < len(clickedElement.Childids); i++ {
-				if CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]] != nil {
-					tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]])
-				}
+			for i := 0; i < len(tr.ClickedElements); i++ {
+				tr.DataTabs = append(tr.DataTabs, container.NewTabItem(tr.ClickedElements[i].Name, tr.Elementlist))
+				tr.DataMenu.Append(tr.DataTabs[i])
 			}
-			tr.Elementlist.Refresh()
-			var newTab *container.TabItem
-			if clickedElement.Alias == "DataFlow" {
-				newTab = container.NewTabItem("Dataflow Statistics", tr.Elementlist)
-			} else {
-				newTab = container.NewTabItem("Dataflows", tr.Elementlist)
-			}
-			tr.DataMenu.Append(newTab)
+			// clickedElement := tr.ClickedElements[len(tr.ClickedElements)-1]
+			// if clickedElement.Alias == "DataFlow" {
+			// 	newTab = container.NewTabItem("Dataflow Statistics", tr.Elementlist)
+			// } else {
+			// 	newTab = container.NewTabItem("Dataflows", tr.Elementlist)
+			// }
 		}
+
+		//Update list content -- Don't forget to refresh list
+		// if len(tr.ClickedElements) == 0 {
+		// 	//Case 1: list dataflowgroups --> get data from overall tab name
+		// 	tr.CurrentListElements = tr.InitialListElements
+		// 	tr.Elementlist.Refresh()
+		// 	//tr.DataMenu = container.NewAppTabs()
+		// 	if len(tr.DataTabs) > 0 {
+		// 		tr.DataMenu.Remove(tr.DataTabs[0])
+		// 		tr.DataTabs = []*container.TabItem{}
+		// 	}
+		// 	tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", tr.Elementlist))
+		// 	tr.DataMenu.Append(tr.DataTabs[0])
+		// } else {
+		// 	//Case 2: Dataflows (middle tab) --> get data from clickedelement childids
+		// 	clickedElement := tr.ClickedElements[len(tr.ClickedElements)-1]
+		// 	tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
+		// 	for i := 0; i < len(clickedElement.Childids); i++ {
+		// 		if CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]] != nil {
+		// 			tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]])
+		// 		}
+		// 	}
+		// 	tr.Elementlist.Refresh()
+		// 	var newTab *container.TabItem
+		// 	if clickedElement.Alias == "DataFlow" {
+		// 		newTab = container.NewTabItem("Dataflow Statistics", tr.Elementlist)
+		// 	} else {
+		// 		newTab = container.NewTabItem("Dataflows", tr.Elementlist)
+		// 	}
+		// 	tr.DataTabs = append(tr.DataTabs, newTab)
+		// 	tr.DataMenu.Append(tr.DataTabs[len(tr.DataTabs)-1])
+		// }
 		//Reset tabs -- find index of this tab? then change name then delete all tabs after
 		//tr.DataMenu = container.NewAppTabs() //reset tabs
 
