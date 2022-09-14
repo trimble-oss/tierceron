@@ -187,31 +187,19 @@ func (tr *TenantDataRenderer) OnSelected(tabItem *container.TabItem) {
 			}
 		}
 	}
-	//CUWorldApp.fyneWidgetElements[tabItem.Text].OnStatusChanged()
 }
 
 func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWorldApp, id string) *container.TabItem {
-	//log.Printf("Started BuildDetailMappedTabItemFyneComponent for " + id)
 	de := CustosWorldApp.FyneWidgetElements[id].MashupDetailedElement
 	tabLabel := widget.NewLabel(de.Description)
 	tabLabel.Wrapping = fyne.TextWrapWord
-	// Search tab
 	if de.Name == "SearchElement" {
 		return container.NewTabItem(id, container.NewBorder(nil, nil, layout.NewSpacer(), nil, container.NewVBox(tabLabel, container.NewAdaptiveGrid(2,
 			widget.NewLabel("Search: "),
 			widget.NewLabel("Results: "),
 		))))
 	}
-	//log.Printf("Successful for SearchElement")
 	tr := CustosWorldApp.CustomTabItemRenderer["TenantDataRenderer"].(*TenantDataRenderer)
-	// for i := 0; i < len(de.Childids); i++ {
-	// 	if CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]] != nil {
-	// 		if CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]].Genre != "Solid" {
-	// 			tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]])
-	// 		}
-	// 	}
-	// }
-
 	tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
 	for i := 0; i < len(de.Childids); i++ {
 		if CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]] != nil {
@@ -220,32 +208,17 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 	}
 	tr.InitialListElements = tr.CurrentListElements
 	tr.Elementlist = tr.RefreshList(CustosWorldApp, nil)
-	// tr.Elementlist = widget.NewList(
-	// 	func() int { return len(tr.CurrentListElements) },
-	// 	func() fyne.CanvasObject {
-	// 		return widget.NewLabel("")
-	// 	},
-	// 	func(lii widget.ListItemID, co fyne.CanvasObject) {
-	// 		co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
-	// 	},
-	// )
-	// tr.Elementlist.OnSelected = tempList.OnSelected
 	tr.Elementlist.Refresh()
-	//content := container.New(layout.NewPaddedLayout(), tr.Elementlist) //container.NewVBox(tr.Elementlist)
-	//content.Resize(fyne.NewSize(500.0, 500.0))
 	tr.DataTabs = []*container.TabItem{}
 
 	tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", tr.Elementlist))
 	tr.DataMenu = container.NewAppTabs(tr.DataTabs[0])
-	//tr.DataMenu.Append(tr.DataTabs[0])
 	tr.Elementlist.Resize(fyne.NewSize(500, 500))
 
 	tr.DataMenu.OnSelected = func(tab *container.TabItem) {
 		if CustosWorldApp.FyneWidgetElements[tab.Text] != nil {
 			if tr.TabCheck != 0 {
-				//tr.TabCheck = 1
 				newTabs := []*container.TabItem{}
-				// tr.DataMenu.SetItems([]*container.TabItem{})
 				clickedElement := CustosWorldApp.FyneWidgetElements[tab.Text].MashupDetailedElement
 				size := len(tr.ClickedElements) - 1
 				for i := size; i >= 0; i-- {
@@ -267,21 +240,6 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 				}
 
 				tr.Elementlist.Refresh()
-
-				// tempList := tr.Elementlist
-				// tr.Elementlist = widget.NewList(
-				// 	func() int { return len(tr.CurrentListElements) },
-				// 	func() fyne.CanvasObject {
-				// 		return widget.NewLabel("")
-				// 	},
-				// 	func(lii widget.ListItemID, co fyne.CanvasObject) {
-				// 		co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
-				// 	},
-				// )
-
-				// tr.Elementlist.OnSelected = tempList.OnSelected
-				//content := container.New(layout.NewPaddedLayout(), tr.Elementlist) //container.NewVBox(tr.Elementlist)
-				//content.Resize(fyne.NewSize(500.0, 500.0))
 				for i := 0; i < len(tr.ClickedElements); i++ {
 					newTabs = append(newTabs, container.NewTabItem(tr.ClickedElements[i].Name, tr.Elementlist))
 				}
@@ -293,24 +251,15 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 				}
 				tr.TabCheck = 0
 				newTabs = append(newTabs, tab)
-				//tempMenu := tr.DataMenu
 				tr.DataTabs = []*container.TabItem{}
-				tr.DataTabs = newTabs //tr.DataTabs[:len(tr.ClickedElements)+1]
-				//tr.DataMenu = container.NewAppTabs()
+				tr.DataTabs = newTabs
 				tr.DataMenu.SetItems(tr.DataTabs)
-				// tr.DataMenu.SetItems([]*container.TabItem{})
-				// for i := 0; i < len(tr.DataTabs); i++ {
-				// 	tr.DataMenu.Append(tr.DataTabs[i])
-				// }
 				tr.DataMenu.Select(tr.DataTabs[len(tr.DataTabs)-1])
 				tr.TabCheck = 1
-				//tr.DataMenu.OnSelected = tempMenu.OnSelected
-				//tr.DataMenu.Refresh()
-				//tr.Elementlist.Refresh()
 			}
 
 		} else if tr.ClickedElements != nil && len(tr.ClickedElements) > 0 {
-			clickedElement := tr.ClickedElements[len(tr.ClickedElements)-1] //tr.ElementData
+			clickedElement := tr.ClickedElements[len(tr.ClickedElements)-1]
 			tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
 
 			for i := 0; i < len(clickedElement.Childids); i++ {
@@ -319,17 +268,6 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 				}
 			}
 			tr.Elementlist.Refresh()
-			// tempList := tr.Elementlist
-			// tr.Elementlist = widget.NewList(
-			// 	func() int { return len(tr.CurrentListElements) },
-			// 	func() fyne.CanvasObject {
-			// 		return widget.NewLabel("")
-			// 	},
-			// 	func(lii widget.ListItemID, co fyne.CanvasObject) {
-			// 		co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
-			// 	},
-			// )
-			// tr.Elementlist.OnSelected = tempList.OnSelected
 			tab.Content = tr.Elementlist
 
 			tr.Elementlist.Refresh()
@@ -339,13 +277,10 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 	tabItem := container.NewTabItem(id, container.NewBorder(nil, nil, layout.NewSpacer(), nil, container.New(layout.NewPaddedLayout(), container.NewAdaptiveGrid(1,
 		tr.DataMenu,
 	))))
-	//log.Printf("Finished BuildDetailMappedTabItemFyneComponent")
 	return tabItem
 }
 
 func (tr *TenantDataRenderer) RefreshList(CustosWorldApp *custosworld.CustosWorldApp, clickedTab *mashupsdk.MashupDetailedElement) *widget.List {
-	//tr.CurrentListElements = currentListElements
-
 	updatedList := widget.NewList(
 		func() int { return len(tr.CurrentListElements) },
 		func() fyne.CanvasObject {
@@ -363,27 +298,22 @@ func (tr *TenantDataRenderer) RefreshList(CustosWorldApp *custosworld.CustosWorl
 					minutes := seconds / 60.0
 					seconds = math.Mod(seconds, 60.0)
 					wholeMinutes := int(minutes)
-
-					//wholeSeconds := int(seconds)
-					//milliSeconds := math.Mod(seconds, float64(wholeSeconds)) * 1000
+					milliSecondsCheck := int(seconds * 1000)
 					fullName := tr.CurrentListElements[lii].Name
 					fullName = strings.Split(fullName, "-")[0]
 					if wholeMinutes == 0 {
-						fullName = fullName + "-" + fmt.Sprintf("%.2f", seconds) + "s"
+						if milliSecondsCheck/100 != 0 && milliSecondsCheck/1000 == 0 {
+							fullName = fullName + "-" + strconv.Itoa(milliSecondsCheck) + "ms"
+						} else {
+							fullName = fullName + "-" + fmt.Sprintf("%.2f", seconds) + "s"
+						}
 					} else {
 						fullName = fullName + "-" + strconv.Itoa(wholeMinutes) + "m" + fmt.Sprintf("%.2f", seconds) + "s"
 					}
-
-					// if seconds > 0 {
-					// 	fullName = fullName + "-" + strconv.Itoa(wholeMinutes) + "m" + fmt.Sprintf("%.2f", seconds)
-
-					// } else {
-
-					// }
 					co.(*widget.Label).SetText(fullName)
 				}
 			} else {
-				co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
+				co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name)
 
 			}
 		},
@@ -392,77 +322,31 @@ func (tr *TenantDataRenderer) RefreshList(CustosWorldApp *custosworld.CustosWorl
 		tr.TabCheck = 1
 		clickedElement := tr.CurrentListElements[id]
 
-		if clickedElement.Alias != "DataFlowStatistic" {
-			// tr.DataTabs = []*container.TabItem{}
-			// tr.DataMenu.SetItems([]*container.TabItem{})
-			//Update ClickedElements
+		if len(tr.ClickedElements) == 0 || tr.ClickedElements == nil || (tr.ClickedElements != nil && tr.ClickedElements[len(tr.ClickedElements)-1].Alias != "DataFlow") {
 			tr.ClickedElements = append(tr.ClickedElements, clickedElement)
 
 			tr.DataTabs[len(tr.DataTabs)-1].Text = clickedElement.Name
 			tr.DataMenu.Refresh()
-			// tr.DataMenu.SetItems([]*container.TabItem{})
-			// for i := 0; i < len(tr.DataTabs); i++ {
-			// 	tr.DataMenu.Append(tr.DataTabs[i])
-			// }
-			//Update contents of list and refresh it
-			// tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
-			// // if clickedTab != nil {
-			// // 	tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
-			// // 	for i := 0; i < len(clickedTab.Parentids); i++ {
-			// // 		if CustosWorldApp.MashupDetailedElementLibrary[clickedTab.Parentids[i]] != nil {
-			// // 			for j := 0; j < len(CustosWorldApp.MashupDetailedElementLibrary[clickedTab.Parentids[i]].Childids); j++ {
-			// // 				if CustosWorldApp.MashupDetailedElementLibrary[CustosWorldApp.MashupDetailedElementLibrary[clickedTab.Parentids[i]].Childids[j]] != nil {
-			// // 					tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[CustosWorldApp.MashupDetailedElementLibrary[clickedTab.Parentids[i]].Childids[j]])
-			// // 				}
-			// // 			}
-			// // 		}
-			// // 	}
-			// // } else {
-			// for i := 0; i < len(clickedElement.Childids); i++ {
-			// 	if CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]] != nil {
-			// 		tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]])
-			// 	}
-			// }
-			//}
-
-			//Set text of old tab to clickedElement.Name
-			//tr.DataMenu = container.NewAppTabs() //reset tabs
-
-			//Create new tab
 			var newTab *container.TabItem
-			content := container.New(layout.NewPaddedLayout(), tr.Elementlist) //container.NewVBox(tr.Elementlist)
-			//content.Resize(fyne.NewSize(500.0, 500.0))
 			if clickedElement.Alias == "DataFlow" {
-				newTab = container.NewTabItem("Dataflow Statistics", content)
+				newTab = container.NewTabItem("Dataflow Statistics", tr.Elementlist)
 			} else {
-				newTab = container.NewTabItem("Dataflows", content)
+				newTab = container.NewTabItem("Dataflows", tr.Elementlist)
 			}
-			//tr.ElementData = clickedElement
-			var contains bool
-			for _, dataTab := range tr.DataTabs {
-				if newTab.Text == dataTab.Text {
-					contains = true
-					break
-				}
-				contains = false
-			}
-			if !contains {
-				tr.DataTabs = append(tr.DataTabs, newTab)
-				tr.DataMenu.Append(tr.DataTabs[len(tr.DataTabs)-1]) // //container.NewTabItem("Dataflows", tr.Elementlist)
-				tr.DataMenu.Select(tr.DataTabs[len(tr.DataTabs)-1])
-
-			}
-
-			// for i := 0; i < len(tr.DataTabs); i++ {
-			// 	tr.DataMenu.Append(tr.DataTabs[i])
+			// var contains bool
+			// for _, dataTab := range tr.DataTabs {
+			// 	if newTab.Text == dataTab.Text {
+			// 		contains = true
+			// 		break
+			// 	}
+			// 	contains = false
 			// }
-
-			//Select new tab
-
-			//tr.Elementlist.Refresh()
-			//tr.DataMenu.Select(tr.DataTabs[len(tr.DataTabs)-1])
+			//if !contains {
+			tr.DataTabs = append(tr.DataTabs, newTab)
+			tr.DataMenu.Append(tr.DataTabs[len(tr.DataTabs)-1])
+			tr.DataMenu.Select(tr.DataTabs[len(tr.DataTabs)-1])
+			//}
 		}
-		//log.Printf("Finished selecting tr.Elementlist")
 	}
 	return updatedList
 }
