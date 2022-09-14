@@ -204,8 +204,9 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 	tr.InitialListElements = tr.CurrentListElements
 
 	tr.Elementlist = tr.RefreshList(CustosWorldApp, nil)
-
-	tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", tr.Elementlist))
+	content := container.New(layout.NewPaddedLayout(), tr.Elementlist) //container.NewVBox(tr.Elementlist)
+	//content.Resize(fyne.NewSize(500.0, 500.0))
+	tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", content))
 	tr.DataMenu = container.NewAppTabs(tr.DataTabs[0])
 	tr.Elementlist.Resize(fyne.NewSize(500, 500))
 
@@ -245,8 +246,10 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 			)
 
 			tr.Elementlist.OnSelected = tempList.OnSelected
+			content := container.New(layout.NewPaddedLayout(), tr.Elementlist) //container.NewVBox(tr.Elementlist)
+			//content.Resize(fyne.NewSize(500.0, 500.0))
 			for i := 0; i < len(tr.ClickedElements); i++ {
-				newTabs = append(newTabs, container.NewTabItem(tr.ClickedElements[i].Name, tr.Elementlist))
+				newTabs = append(newTabs, container.NewTabItem(tr.ClickedElements[i].Name, content))
 			}
 			tab.Content = tr.Elementlist
 			if parentElement.Alias == "DataFlowGroup" {
@@ -315,7 +318,7 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 		// }
 
 	}
-	tabItem := container.NewTabItem(id, container.NewBorder(nil, nil, layout.NewSpacer(), nil, container.NewVBox(tabLabel, container.NewAdaptiveGrid(2,
+	tabItem := container.NewTabItem(id, container.NewBorder(nil, nil, layout.NewSpacer(), nil, container.New(layout.NewPaddedLayout(), container.NewAdaptiveGrid(1,
 		tr.DataMenu,
 	))))
 	//log.Printf("Finished BuildDetailMappedTabItemFyneComponent")
@@ -375,10 +378,12 @@ func (tr *TenantDataRenderer) RefreshList(CustosWorldApp *custosworld.CustosWorl
 
 			//Create new tab
 			var newTab *container.TabItem
+			content := container.New(layout.NewPaddedLayout(), tr.Elementlist) //container.NewVBox(tr.Elementlist)
+			//content.Resize(fyne.NewSize(500.0, 500.0))
 			if clickedElement.Alias == "DataFlow" {
-				newTab = container.NewTabItem("Dataflow Statistics", tr.Elementlist)
+				newTab = container.NewTabItem("Dataflow Statistics", content)
 			} else {
-				newTab = container.NewTabItem("Dataflows", tr.Elementlist)
+				newTab = container.NewTabItem("Dataflows", content)
 			}
 			tr.ElementData = clickedElement
 			var contains bool
