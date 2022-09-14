@@ -121,12 +121,18 @@ func (tr *TenantDataRenderer) renderTabItemHelper(concreteElement *mashupsdk.Mas
 		//log.Printf("TorusRender Widget looking up: %s\n", concreteElement.Alias)
 		if fyneWidgetElement, fyneOk := tr.CustosWorldApp.FyneWidgetElements[concreteElement.Name]; fyneOk {
 			//log.Printf("TorusRender Widget lookup found: %s\n", concreteElement.Alias)
+			fyneWidgetElement.GuiComponent = nil
 			if fyneWidgetElement.GuiComponent == nil {
 				fyneWidgetElement.GuiComponent = tr.CustosWorldApp.CustomTabItems[concreteElement.Name](tr.CustosWorldApp, concreteElement.Name)
 			}
+
+			// tr.CurrentListElements = tr.InitialListElements //Shouldn't need this...
+			// tr.Elementlist.Refresh()
+			// tr.DataMenu.Refresh()
 			tr.CustosWorldApp.TabItemMenu.Append(fyneWidgetElement.GuiComponent.(*container.TabItem))
 		}
 	} else {
+
 		// Remove it if torus.
 		// CUWorldApp.fyneWidgetElements["Inside"].GuiComponent.(*container.TabItem),
 		// Remove the formerly clicked elements..
@@ -136,6 +142,7 @@ func (tr *TenantDataRenderer) renderTabItemHelper(concreteElement *mashupsdk.Mas
 			if fyneWidgetElement.GuiComponent != nil {
 				tr.CustosWorldApp.TabItemMenu.Remove(fyneWidgetElement.GuiComponent.(*container.TabItem))
 			}
+			fyneWidgetElement.GuiComponent = nil
 		}
 	}
 	//log.Printf("End TorusRender Widget lookup: %s\n", concreteElement.Alias)
@@ -194,26 +201,43 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 	}
 	//log.Printf("Successful for SearchElement")
 	tr := CustosWorldApp.CustomTabItemRenderer["TenantDataRenderer"].(*TenantDataRenderer)
+	// for i := 0; i < len(de.Childids); i++ {
+	// 	if CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]] != nil {
+	// 		if CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]].Genre != "Solid" {
+	// 			tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]])
+	// 		}
+	// 	}
+	// }
+
+	tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
 	for i := 0; i < len(de.Childids); i++ {
 		if CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]] != nil {
-			if CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]].Genre != "Solid" {
-				tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]])
-			}
+			tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]])
 		}
 	}
 	tr.InitialListElements = tr.CurrentListElements
-
 	tr.Elementlist = tr.RefreshList(CustosWorldApp, nil)
-	content := container.New(layout.NewPaddedLayout(), tr.Elementlist) //container.NewVBox(tr.Elementlist)
+	// tr.Elementlist = widget.NewList(
+	// 	func() int { return len(tr.CurrentListElements) },
+	// 	func() fyne.CanvasObject {
+	// 		return widget.NewLabel("")
+	// 	},
+	// 	func(lii widget.ListItemID, co fyne.CanvasObject) {
+	// 		co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
+	// 	},
+	// )
+	// tr.Elementlist.OnSelected = tempList.OnSelected
+	tr.Elementlist.Refresh()
+	//content := container.New(layout.NewPaddedLayout(), tr.Elementlist) //container.NewVBox(tr.Elementlist)
 	//content.Resize(fyne.NewSize(500.0, 500.0))
-	tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", content))
+	tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", tr.Elementlist))
 	tr.DataMenu = container.NewAppTabs(tr.DataTabs[0])
 	tr.Elementlist.Resize(fyne.NewSize(500, 500))
 
 	tr.DataMenu.OnSelected = func(tab *container.TabItem) {
 		if CustosWorldApp.FyneWidgetElements[tab.Text] != nil {
 			if tr.TabCheck != 0 {
-				tr.TabCheck = 1
+				//tr.TabCheck = 1
 				newTabs := []*container.TabItem{}
 				// tr.DataMenu.SetItems([]*container.TabItem{})
 				clickedElement := CustosWorldApp.FyneWidgetElements[tab.Text].MashupDetailedElement
@@ -236,18 +260,20 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 					}
 				}
 
-				tempList := tr.Elementlist
-				tr.Elementlist = widget.NewList(
-					func() int { return len(tr.CurrentListElements) },
-					func() fyne.CanvasObject {
-						return widget.NewLabel("")
-					},
-					func(lii widget.ListItemID, co fyne.CanvasObject) {
-						co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
-					},
-				)
+				tr.Elementlist.Refresh()
 
-				tr.Elementlist.OnSelected = tempList.OnSelected
+				// tempList := tr.Elementlist
+				// tr.Elementlist = widget.NewList(
+				// 	func() int { return len(tr.CurrentListElements) },
+				// 	func() fyne.CanvasObject {
+				// 		return widget.NewLabel("")
+				// 	},
+				// 	func(lii widget.ListItemID, co fyne.CanvasObject) {
+				// 		co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
+				// 	},
+				// )
+
+				// tr.Elementlist.OnSelected = tempList.OnSelected
 				//content := container.New(layout.NewPaddedLayout(), tr.Elementlist) //container.NewVBox(tr.Elementlist)
 				//content.Resize(fyne.NewSize(500.0, 500.0))
 				for i := 0; i < len(tr.ClickedElements); i++ {
@@ -265,10 +291,11 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 				tr.DataTabs = []*container.TabItem{}
 				tr.DataTabs = newTabs //tr.DataTabs[:len(tr.ClickedElements)+1]
 				//tr.DataMenu = container.NewAppTabs()
-				tr.DataMenu.SetItems([]*container.TabItem{})
-				for i := 0; i < len(tr.DataTabs); i++ {
-					tr.DataMenu.Append(tr.DataTabs[i])
-				}
+				tr.DataMenu.SetItems(tr.DataTabs)
+				// tr.DataMenu.SetItems([]*container.TabItem{})
+				// for i := 0; i < len(tr.DataTabs); i++ {
+				// 	tr.DataMenu.Append(tr.DataTabs[i])
+				// }
 				tr.DataMenu.Select(tr.DataTabs[len(tr.DataTabs)-1])
 				tr.TabCheck = 1
 				//tr.DataMenu.OnSelected = tempMenu.OnSelected
@@ -285,17 +312,18 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 					tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]])
 				}
 			}
-			tempList := tr.Elementlist
-			tr.Elementlist = widget.NewList(
-				func() int { return len(tr.CurrentListElements) },
-				func() fyne.CanvasObject {
-					return widget.NewLabel("")
-				},
-				func(lii widget.ListItemID, co fyne.CanvasObject) {
-					co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
-				},
-			)
-			tr.Elementlist.OnSelected = tempList.OnSelected
+			tr.Elementlist.Refresh()
+			// tempList := tr.Elementlist
+			// tr.Elementlist = widget.NewList(
+			// 	func() int { return len(tr.CurrentListElements) },
+			// 	func() fyne.CanvasObject {
+			// 		return widget.NewLabel("")
+			// 	},
+			// 	func(lii widget.ListItemID, co fyne.CanvasObject) {
+			// 		co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
+			// 	},
+			// )
+			// tr.Elementlist.OnSelected = tempList.OnSelected
 			tab.Content = tr.Elementlist
 
 			tr.Elementlist.Refresh()
@@ -330,6 +358,7 @@ func (tr *TenantDataRenderer) RefreshList(CustosWorldApp *custosworld.CustosWorl
 			// tr.DataMenu.SetItems([]*container.TabItem{})
 			//Update ClickedElements
 			tr.ClickedElements = append(tr.ClickedElements, clickedElement)
+
 			tr.DataTabs[len(tr.DataTabs)-1].Text = clickedElement.Name
 			tr.DataMenu.Refresh()
 			// tr.DataMenu.SetItems([]*container.TabItem{})
