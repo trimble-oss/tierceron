@@ -76,6 +76,7 @@ type TenantDataRenderer struct {
 	DataMenu            *container.AppTabs
 	InitialListElements []*mashupsdk.MashupDetailedElement
 	DataTabs            []*container.TabItem
+	ElementData         *mashupsdk.MashupDetailedElement
 }
 
 func (tr *TenantDataRenderer) GetPriority() int64 { //1
@@ -201,9 +202,130 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 		}
 	}
 	tr.InitialListElements = tr.CurrentListElements
-	//log.Printf("Successful for initializing tr.CurrentElements")
 
-	tr.Elementlist = widget.NewList(
+	tr.Elementlist = tr.RefreshList(CustosWorldApp, nil)
+
+	tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", tr.Elementlist))
+	tr.DataMenu = container.NewAppTabs(tr.DataTabs[0])
+	tr.Elementlist.Resize(fyne.NewSize(500, 500))
+
+	tr.DataMenu.OnSelected = func(tab *container.TabItem) {
+		if CustosWorldApp.FyneWidgetElements[tab.Text] != nil {
+			newTabs := []*container.TabItem{}
+			// tr.DataMenu.SetItems([]*container.TabItem{})
+			clickedElement := CustosWorldApp.FyneWidgetElements[tab.Text].MashupDetailedElement
+			size := len(tr.ClickedElements) - 1
+			for i := size; i >= 0; i-- {
+				if tr.ClickedElements[i].Name == CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Parentids[0]].Name {
+					break
+				} else {
+					tr.ClickedElements = tr.ClickedElements[:i]
+				}
+			}
+
+			tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
+			parentElement := CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Parentids[0]]
+			if parentElement != nil {
+				for i := 0; i < len(parentElement.Childids); i++ {
+					if CustosWorldApp.MashupDetailedElementLibrary[parentElement.Childids[i]] != nil {
+						tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[parentElement.Childids[i]])
+					}
+				}
+			}
+
+			tempList := tr.Elementlist
+			tr.Elementlist = widget.NewList(
+				func() int { return len(tr.CurrentListElements) },
+				func() fyne.CanvasObject {
+					return widget.NewLabel("")
+				},
+				func(lii widget.ListItemID, co fyne.CanvasObject) {
+					co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
+				},
+			)
+
+			tr.Elementlist.OnSelected = tempList.OnSelected
+			for i := 0; i < len(tr.ClickedElements); i++ {
+				newTabs = append(newTabs, container.NewTabItem(tr.ClickedElements[i].Name, tr.Elementlist))
+			}
+			tab.Content = tr.Elementlist
+			if parentElement.Alias == "DataFlowGroup" {
+				tab.Text = "Dataflows"
+			} else {
+				tab.Text = "Dataflow Groups"
+			}
+			newTabs = append(newTabs, tab)
+			tr.DataTabs = newTabs //tr.DataTabs[:len(tr.ClickedElements)+1]
+			tr.DataMenu.Refresh()
+			tr.Elementlist.Refresh()
+		} else if tr.ClickedElements != nil && len(tr.ClickedElements) > 0 {
+			clickedElement := tr.ClickedElements[len(tr.ClickedElements)-1] //tr.ElementData
+			tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
+
+			for i := 0; i < len(clickedElement.Childids); i++ {
+				if CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]] != nil {
+					tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]])
+				}
+			}
+			tempList := tr.Elementlist
+			tr.Elementlist = widget.NewList(
+				func() int { return len(tr.CurrentListElements) },
+				func() fyne.CanvasObject {
+					return widget.NewLabel("")
+				},
+				func(lii widget.ListItemID, co fyne.CanvasObject) {
+					co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
+				},
+			)
+			tr.Elementlist.OnSelected = tempList.OnSelected
+			tab.Content = tr.Elementlist
+
+			// for i := 0; i < len(tr.ClickedElements); i++ {
+			// 	if tr.DataTabs != nil && tr.DataTabs[i] != nil {
+			// 		dataTab := tr.DataTabs[i]
+			// 		dataTab.Text = tr.ClickedElements[i].Name
+			// 		tr.DataTabs[i] = dataTab
+			// 	}
+			// }
+			tr.Elementlist.Refresh()
+		}
+		// else if tr.ClickedElements != nil && tr.ClickedElements[len(tr.ClickedElements)-1] != nil {
+		// 	clickedElement := tr.ClickedElements[len(tr.ClickedElements)-1]
+		// 	tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
+
+		// 	for i := 0; i < len(clickedElement.Childids); i++ {
+		// 		if CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]] != nil {
+		// 			tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]])
+		// 		}
+		// 	}
+		// 	tempList := tr.Elementlist
+		// 	tr.Elementlist = widget.NewList(
+		// 		func() int { return len(tr.CurrentListElements) },
+		// 		func() fyne.CanvasObject {
+		// 			return widget.NewLabel("")
+		// 		},
+		// 		func(lii widget.ListItemID, co fyne.CanvasObject) {
+		// 			co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
+		// 		},
+		// 	)
+		// 	tr.Elementlist.OnSelected = tempList.OnSelected
+		// 	//tr.Elementlist = tr.RefreshList(CustosWorldApp, clickedElement)
+		// 	tab.Content = tr.Elementlist
+		// 	tr.Elementlist.Refresh()
+		// }
+
+	}
+	tabItem := container.NewTabItem(id, container.NewBorder(nil, nil, layout.NewSpacer(), nil, container.NewVBox(tabLabel, container.NewAdaptiveGrid(2,
+		tr.DataMenu,
+	))))
+	//log.Printf("Finished BuildDetailMappedTabItemFyneComponent")
+	return tabItem
+}
+
+func (tr *TenantDataRenderer) RefreshList(CustosWorldApp *custosworld.CustosWorldApp, clickedTab *mashupsdk.MashupDetailedElement) *widget.List {
+	//tr.CurrentListElements = currentListElements
+
+	updatedList := widget.NewList(
 		func() int { return len(tr.CurrentListElements) },
 		func() fyne.CanvasObject {
 			return widget.NewLabel("")
@@ -212,135 +334,78 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 			co.(*widget.Label).SetText(tr.CurrentListElements[lii].Name) //assuming MashupDetailedElementLibrary holds all concrete elements from world
 		},
 	)
-	//log.Printf("Successful for initializing tr.ElementList")
-	dfgtab := container.NewTabItem("Dataflow Groups", tr.Elementlist)
-	tr.DataTabs = append(tr.DataTabs, dfgtab)
-	tr.DataMenu = container.NewAppTabs(tr.DataTabs[0])
-	tr.Elementlist.Resize(fyne.NewSize(500, 500))
-	tr.Elementlist.OnSelected = func(id widget.ListItemID) {
-		//log.Printf("tr.Elementlist selected")
-		// tr.DataMenu.SetItems([]*container.TabItem{})
-		// tr.DataTabs = []*container.TabItem{}
-		// for i := 0; i < len(tr.DataTabs); i++ {
-		// 	tr.DataMenu.Remove(tr.DataTabs[i])
-		// }
-		// tr.DataTabs = []*container.TabItem{}
+	updatedList.OnSelected = func(id widget.ListItemID) {
+
 		clickedElement := tr.CurrentListElements[id]
-		//Update ClickedElements
-		tr.ClickedElements = append(tr.ClickedElements, clickedElement)
-		//Update contents of list and refresh it
-		tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
-		for i := 0; i < len(clickedElement.Childids); i++ {
-			if CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]] != nil {
-				tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]])
+
+		if clickedElement.Alias != "DataFlowStatistic" {
+			// tr.DataTabs = []*container.TabItem{}
+			// tr.DataMenu.SetItems([]*container.TabItem{})
+			//Update ClickedElements
+			tr.ClickedElements = append(tr.ClickedElements, clickedElement)
+			tr.DataTabs[len(tr.DataTabs)-1].Text = clickedElement.Name
+			tr.DataMenu.Refresh()
+			// tr.DataMenu.SetItems([]*container.TabItem{})
+			// for i := 0; i < len(tr.DataTabs); i++ {
+			// 	tr.DataMenu.Append(tr.DataTabs[i])
+			// }
+			//Update contents of list and refresh it
+			// tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
+			// // if clickedTab != nil {
+			// // 	tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
+			// // 	for i := 0; i < len(clickedTab.Parentids); i++ {
+			// // 		if CustosWorldApp.MashupDetailedElementLibrary[clickedTab.Parentids[i]] != nil {
+			// // 			for j := 0; j < len(CustosWorldApp.MashupDetailedElementLibrary[clickedTab.Parentids[i]].Childids); j++ {
+			// // 				if CustosWorldApp.MashupDetailedElementLibrary[CustosWorldApp.MashupDetailedElementLibrary[clickedTab.Parentids[i]].Childids[j]] != nil {
+			// // 					tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[CustosWorldApp.MashupDetailedElementLibrary[clickedTab.Parentids[i]].Childids[j]])
+			// // 				}
+			// // 			}
+			// // 		}
+			// // 	}
+			// // } else {
+			// for i := 0; i < len(clickedElement.Childids); i++ {
+			// 	if CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]] != nil {
+			// 		tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]])
+			// 	}
+			// }
+			//}
+
+			//Set text of old tab to clickedElement.Name
+			//tr.DataMenu = container.NewAppTabs() //reset tabs
+
+			//Create new tab
+			var newTab *container.TabItem
+			if clickedElement.Alias == "DataFlow" {
+				newTab = container.NewTabItem("Dataflow Statistics", tr.Elementlist)
+			} else {
+				newTab = container.NewTabItem("Dataflows", tr.Elementlist)
 			}
+			tr.ElementData = clickedElement
+			var contains bool
+			for _, dataTab := range tr.DataTabs {
+				if newTab.Text == dataTab.Text {
+					contains = true
+					break
+				}
+				contains = false
+			}
+			if !contains {
+				tr.DataTabs = append(tr.DataTabs, newTab)
+				tr.DataMenu.Append(tr.DataTabs[len(tr.DataTabs)-1]) // //container.NewTabItem("Dataflows", tr.Elementlist)
+				tr.DataMenu.Select(tr.DataTabs[len(tr.DataTabs)-1])
+
+			}
+
+			// for i := 0; i < len(tr.DataTabs); i++ {
+			// 	tr.DataMenu.Append(tr.DataTabs[i])
+			// }
+
+			//Select new tab
+
+			//tr.Elementlist.Refresh()
+			//tr.DataMenu.Select(tr.DataTabs[len(tr.DataTabs)-1])
 		}
-		tr.Elementlist.Refresh()
-		//Set text of old tab to clickedElement.Name
-		//tr.DataMenu = container.NewAppTabs() //reset tabs
-		// for i := 0; i < len(tr.ClickedElements); i++ {
-		// 	tr.DataTabs = append(tr.DataTabs, container.NewTabItem(tr.ClickedElements[i].Name, tr.Elementlist))
-		// 	tr.DataMenu.Append(tr.DataTabs[i])
-		// }
-		//Create new tab
-		var newTab *container.TabItem
-		if clickedElement.Alias == "DataFlow" {
-			newTab = container.NewTabItem("Dataflow Statistics", tr.Elementlist)
-		} else {
-			newTab = container.NewTabItem("Dataflows", tr.Elementlist)
-		}
-		tr.DataTabs = append(tr.DataTabs, newTab)
-		tr.DataMenu.Append(tr.DataTabs[len(tr.DataTabs)-1])
-		// for i := 0; i < len(tr.DataTabs); i++ {
-		// 	tr.DataMenu.Append(tr.DataTabs[i])
-		// }
-		//Select new tab
-		tr.DataMenu.Select(tr.DataTabs[len(tr.DataTabs)-1])
 		//log.Printf("Finished selecting tr.Elementlist")
 	}
-	//log.Printf("Successful for setting tr.Elementlist.OnSelected")
-	tr.DataMenu.OnSelected = func(tab *container.TabItem) {
-		//Initialize new tabs from list selection
-		// for i := 0; i < len(tr.DataTabs); i++ {
-		// 	tr.DataMenu.Remove(tr.DataTabs[i])
-		// }
-
-		tr.DataMenu.SetItems([]*container.TabItem{})
-		tr.DataTabs = []*container.TabItem{}
-		//Update ClickedElements
-		size := len(tr.ClickedElements) - 1 //not sure if put in for loop condition if it will change when tr.ClickedElements is changed
-		for i := size; i >= 0; i-- {
-			if tr.ClickedElements[i].Name == tab.Text {
-				break
-			} else {
-				// remove from ClickedElements
-				tr.ClickedElements = tr.ClickedElements[:i] //len(tr.ClickedElements)-1] //Don't know if this will work
-			}
-		}
-
-		//Update the tabs --> the selected tab needs to revert to generic name
-		if len(tr.ClickedElements) == 0 {
-			tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", tr.Elementlist))
-			tr.DataMenu.Append(tr.DataTabs[len(tr.DataTabs)-1])
-			tr.CurrentListElements = tr.InitialListElements
-			tr.Elementlist.Refresh()
-			tr.DataMenu.Refresh()
-		} else {
-			for i := 0; i < len(tr.ClickedElements); i++ {
-				tr.DataTabs = append(tr.DataTabs, container.NewTabItem(tr.ClickedElements[i].Name, tr.Elementlist))
-				tr.DataMenu.Append(tr.DataTabs[i])
-			}
-			// clickedElement := tr.ClickedElements[len(tr.ClickedElements)-1]
-			// if clickedElement.Alias == "DataFlow" {
-			// 	newTab = container.NewTabItem("Dataflow Statistics", tr.Elementlist)
-			// } else {
-			// 	newTab = container.NewTabItem("Dataflows", tr.Elementlist)
-			// }
-		}
-
-		//Update list content -- Don't forget to refresh list
-		// if len(tr.ClickedElements) == 0 {
-		// 	//Case 1: list dataflowgroups --> get data from overall tab name
-		// 	tr.CurrentListElements = tr.InitialListElements
-		// 	tr.Elementlist.Refresh()
-		// 	//tr.DataMenu = container.NewAppTabs()
-		// 	if len(tr.DataTabs) > 0 {
-		// 		tr.DataMenu.Remove(tr.DataTabs[0])
-		// 		tr.DataTabs = []*container.TabItem{}
-		// 	}
-		// 	tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", tr.Elementlist))
-		// 	tr.DataMenu.Append(tr.DataTabs[0])
-		// } else {
-		// 	//Case 2: Dataflows (middle tab) --> get data from clickedelement childids
-		// 	clickedElement := tr.ClickedElements[len(tr.ClickedElements)-1]
-		// 	tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
-		// 	for i := 0; i < len(clickedElement.Childids); i++ {
-		// 		if CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]] != nil {
-		// 			tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[clickedElement.Childids[i]])
-		// 		}
-		// 	}
-		// 	tr.Elementlist.Refresh()
-		// 	var newTab *container.TabItem
-		// 	if clickedElement.Alias == "DataFlow" {
-		// 		newTab = container.NewTabItem("Dataflow Statistics", tr.Elementlist)
-		// 	} else {
-		// 		newTab = container.NewTabItem("Dataflows", tr.Elementlist)
-		// 	}
-		// 	tr.DataTabs = append(tr.DataTabs, newTab)
-		// 	tr.DataMenu.Append(tr.DataTabs[len(tr.DataTabs)-1])
-		// }
-		//Reset tabs -- find index of this tab? then change name then delete all tabs after
-		//tr.DataMenu = container.NewAppTabs() //reset tabs
-
-		// for i := 0; i < len(tr.ClickedElements); i++ {
-		// 	tr.DataMenu.Append(container.NewTabItem(tr.ClickedElements[i].Name, tr.Elementlist))
-		// }
-
-	}
-	//log.Printf("Successful for setting tr.ElementTabs.OnSelected")
-	tabItem := container.NewTabItem(id, container.NewBorder(nil, nil, layout.NewSpacer(), nil, container.NewVBox(tabLabel, container.NewAdaptiveGrid(2,
-		tr.DataMenu,
-	))))
-	//log.Printf("Finished BuildDetailMappedTabItemFyneComponent")
-	return tabItem
+	return updatedList
 }
