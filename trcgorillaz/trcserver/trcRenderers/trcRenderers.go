@@ -230,8 +230,11 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 	tr.Elementlist.Refresh()
 	//content := container.New(layout.NewPaddedLayout(), tr.Elementlist) //container.NewVBox(tr.Elementlist)
 	//content.Resize(fyne.NewSize(500.0, 500.0))
+	tr.DataTabs = []*container.TabItem{}
+
 	tr.DataTabs = append(tr.DataTabs, container.NewTabItem("Dataflow Groups", tr.Elementlist))
 	tr.DataMenu = container.NewAppTabs(tr.DataTabs[0])
+	//tr.DataMenu.Append(tr.DataTabs[0])
 	tr.Elementlist.Resize(fyne.NewSize(500, 500))
 
 	tr.DataMenu.OnSelected = func(tab *container.TabItem) {
