@@ -36,22 +36,8 @@ require github.com/mrjrieke/nute v0.0.0-20220916135129-7ce6fd091ba9
 require (
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
-	//github.com/mrjrieke/nute v0.0.0-20220915133509-24912385113c
 	github.com/tevino/abool v1.2.0 // indirect
 )
-
-// require github.com/mrjrieke/nute v0.0.0-20220913142324-00541e4b6c5b // indirect
-
-// require github.com/mrjrieke/nute v0.0.0-20220911001548-dd655af1c586
-
-//require github.com/mrjrieke/nute v0.0.0-20220811135204-c6a6157be9cc
-
-//require github.com/mrjrieke/nute v0.0.0-20220810134049-758c0833bd51 // indirect
-
-//require github.com/mrjrieke/nute v0.0.0-20220809141050-11ce835fdbad // indirect
-
-//require github.com/mrjrieke/nute v0.0.0-20220804183141-23b8bf4eef8c // indirect
-
 require (
 	fyne.io/fyne/v2 v2.1.3
 	fyne.io/systray v1.10.1-0.20220621085403-9a2652634e93 // indirect
@@ -74,7 +60,6 @@ require (
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
-	//	github.com/mrjrieke/nute v0.0.0-20220727141806-91750accafe0 // indirect
 	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564 // indirect
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9 // indirect
 	github.com/stretchr/testify v1.7.2 // indirect
