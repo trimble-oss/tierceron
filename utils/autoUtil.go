@@ -29,9 +29,9 @@ func GetSupportedProdRegions() []string {
 }
 
 func (c *cert) getCert(logger *log.Logger) (*cert, error) {
-	userHome, err := os.UserHomeDir()
+	userHome, err := userHome(logger)
 	if err != nil {
-		logger.Printf("User home directory #%v ", err)
+		return nil, err
 	}
 
 	yamlFile, err := ioutil.ReadFile(userHome + "/.tierceron/config.yml")
@@ -45,6 +45,15 @@ func (c *cert) getCert(logger *log.Logger) (*cert, error) {
 	}
 
 	return c, err
+}
+
+func userHome(logger *log.Logger) (string, error) {
+	userHome, err := os.UserHomeDir()
+	if err != nil {
+		logger.Printf("User home directory #%v ", err)
+		return "", err
+	}
+	return userHome, err
 }
 
 // AutoAuth attempts to authenticate a user.
@@ -66,11 +75,11 @@ func AutoAuth(config *DriverConfig,
 		// For token based auth, auto auth not
 		return nil
 	}
-
+	var err error
 	// Get current user's home directory
-	userHome, err := os.UserHomeDir()
+	userHome, err := userHome(config.Log)
 	if err != nil {
-		config.Log.Printf("User home directory #%v ", err)
+		return err
 	}
 
 	// New values available for the cert file
@@ -85,6 +94,7 @@ func AutoAuth(config *DriverConfig,
 		appRoleIDPtr = nil
 		secretIDPtr = nil
 	} else {
+		config.Log.Printf("User home directory %v ", userHome)
 		if _, err := os.Stat(userHome + "/.tierceron/config.yml"); !os.IsNotExist(err) {
 			exists = true
 			_, certErr := c.getCert(config.Log)
@@ -107,6 +117,8 @@ func AutoAuth(config *DriverConfig,
 					}
 				}
 			}
+		} else {
+			config.Log.Printf("Invalid home directory %v ", err)
 		}
 	}
 
