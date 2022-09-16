@@ -8,7 +8,7 @@ import (
 	"tierceron/vaulthelper/kv"
 )
 
-func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
+func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.ArgosyFleet, error) {
 	return util.ArgosyFleet{}, nil
 }
 
