@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -119,11 +120,23 @@ func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterpris
 				var cErr error
 				if column.Name == "MysqlFileContent" && secretValue != "<Enter Secret Here>" && secretValue != "" {
 					var decodeErr error
-					decodedValue, decodeErr := base64.StdEncoding.DecodeString(string(secretValue))
-					if decodeErr != nil {
-						continue
+					var decodedValue []byte
+					if strings.HasPrefix(string(secretValue), "TierceronBase64") {
+						secretValue = secretValue[len("TierceronBase64"):]
+						decodedValue, decodeErr = base64.StdEncoding.DecodeString(string(secretValue))
+						if decodeErr != nil {
+							continue
+						}
+					} else {
+						if _, fpOk := secretColumns["MysqlFilePath"]; fpOk {
+							eUtils.LogErrorMessage(config, fmt.Sprintf("Found non encoded data for: %s", secretColumns["MysqlFilePath"]), false)
+							decodedValue = []byte(secretValue)
+						} else {
+							eUtils.LogErrorMessage(config, "Missing MysqlFilePath.", false)
+							continue
+						}
 					}
-					iVar = string(decodedValue)
+					iVar = []uint8(decodedValue)
 				} else if secretValue == "<Enter Secret Here>" || secretValue == "" {
 					iVar, cErr = column.Type.Convert("")
 					if cErr != nil {
@@ -199,7 +212,7 @@ func templateToTableRowHelper(goMod *helperkv.Modifier, te *TierceronEngine, env
 
 func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig, tableLock *sync.Mutex) error {
 	listPath := "templates/" + project + "/" + service
-	secret, err := goMod.List(listPath)
+	secret, err := goMod.List(listPath, config.Log)
 	if err != nil {
 		return nil
 	}
@@ -229,7 +242,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 				goMod.SectionName = index
 			}
 			if goMod.SectionName != "" {
-				indexValues, err = goMod.ListSubsection("/Index/", project, goMod.SectionName)
+				indexValues, err = goMod.ListSubsection("/Index/", project, goMod.SectionName, config.Log)
 				if err != nil {
 					eUtils.LogErrorObject(config, err, false)
 					return err
@@ -243,7 +256,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 				goMod.SectionKey = "/Index/"
 				//	goMod.SubSectionValue = flowService
 				goMod.SectionPath = "super-secrets/Index/" + project + "/" + goMod.SectionName + "/" + indexValue + "/" + service
-				subsectionValues, err := goMod.List(goMod.SectionPath)
+				subsectionValues, err := goMod.List(goMod.SectionPath, config.Log)
 				if err != nil {
 					return err
 				}
@@ -295,7 +308,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 
 	var envEnterprises []string
 	goMod.Env = ""
-	tempEnterprises, err := goMod.List("values")
+	tempEnterprises, err := goMod.List("values", config.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err

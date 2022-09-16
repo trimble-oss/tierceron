@@ -1,7 +1,6 @@
 package core
 
 import (
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"sync"
@@ -218,12 +217,6 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 		if indexPath == "" && indexPathErr == nil {
 			continue //This case is for when SEC row can't find a matching tenant
-		}
-
-		if identityColumnName == "MysqlFilePath" {
-			if !strings.HasSuffix(rowDataMap["MysqlFileContent"].(string), "==") {
-				rowDataMap["MysqlFileContent"] = base64.StdEncoding.EncodeToString([]byte(rowDataMap["MysqlFileContent"].(string)))
-			}
 		}
 
 		if identityColumnName == "flowName" {
