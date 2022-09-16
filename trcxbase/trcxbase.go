@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"tierceron/buildopts/coreopts"
 	"tierceron/trcvault/opts/memonly"
@@ -29,7 +30,7 @@ var envSlice = make([]string, 0)
 var projectSectionsSlice = make([]string, 0)
 var resultChannel = make(chan *ResultData, 5)
 var envLength int
-var mutex = &sync.Mutex{}
+var resultMapLock = &sync.Mutex{}
 
 func messenger(inData *string, inPath string) {
 	var data ResultData
@@ -43,9 +44,9 @@ func reciever() {
 		select {
 		case data := <-resultChannel:
 			if data != nil && data.inData != nil && data.inPath != "" {
-				mutex.Lock()
+				resultMapLock.Lock()
 				resultMap[data.inPath] = data.inData
-				mutex.Unlock()
+				resultMapLock.Unlock()
 			}
 		}
 	}
@@ -405,7 +406,7 @@ skipDiff:
 				var listValues *api.Secret
 				if len(projectSectionsSlice) > 0 { //If eid -> look inside Index and grab all environments
 					subSectionPath := projectSectionsSlice[0] + "/"
-					listValues, err = testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath)
+					listValues, err = testMod.ListEnv("super-secrets/"+testMod.Env+sectionKey+subSectionPath, config.Log)
 					if err != nil {
 						if strings.Contains(err.Error(), "permission denied") {
 							eUtils.LogErrorMessage(config, "Attempt to access restricted section of the vault denied.", true)
@@ -421,7 +422,7 @@ skipDiff:
 							if indexNameInterface != (subSectionName + "/") {
 								continue
 							}
-							indexList, err := testMod.ListEnv("super-secrets/" + testMod.Env + sectionKey + subSectionPath + "/" + indexNameInterface.(string))
+							indexList, err := testMod.ListEnv("super-secrets/"+testMod.Env+sectionKey+subSectionPath+"/"+indexNameInterface.(string), config.Log)
 							if err != nil {
 								logger.Printf(err.Error())
 							}
@@ -440,7 +441,7 @@ skipDiff:
 						delete(listValues.Data, k) //delete it so it doesn't repeat below
 					}
 				} else {
-					listValues, err = testMod.ListEnv("values/")
+					listValues, err = testMod.ListEnv("values/", config.Log)
 				}
 				if err != nil {
 					logger.Printf(err.Error())
@@ -550,7 +551,18 @@ skipDiff:
 		waitg.Add(1)
 		go func() {
 			defer waitg.Done()
-			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, mutex)
+			retry := 0
+			for {
+				resultMapLock.Lock()
+				if len(resultMap) == len(envSlice)*len(sectionSlice) || retry == 3 {
+					resultMapLock.Unlock()
+					break
+				}
+				resultMapLock.Unlock()
+				time.Sleep(time.Duration(time.Second))
+				retry++
+			}
+			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, resultMapLock)
 		}()
 	}
 	waitg.Wait() //Wait for diff
