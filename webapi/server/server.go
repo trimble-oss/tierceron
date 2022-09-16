@@ -71,7 +71,7 @@ func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb
 	}
 
 	listPath := "templates/" + req.Project + "/" + req.Service
-	secret, err := mod.List(listPath)
+	secret, err := mod.List(listPath, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
@@ -177,7 +177,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 	}
 	for _, e := range envStrings {
 		mod.Env = "local/" + e
-		userPaths, err := mod.List("values/")
+		userPaths, err := mod.List("values/", s.Log)
 		if err != nil {
 			return nil, err
 		}
@@ -269,7 +269,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 	}, nil
 }
 func (s *Server) getPaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
-	secrets, err := mod.List(pathName)
+	secrets, err := mod.List(pathName, s.Log)
 	//fmt.Println("secrets " + pathName)
 	//fmt.Println(secrets)
 	pathList := []string{}
@@ -296,7 +296,7 @@ func (s *Server) getPaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, p
 	return pathList, nil
 }
 func (s *Server) getTemplateFilePaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
-	secrets, err := mod.List(pathName)
+	secrets, err := mod.List(pathName, s.Log)
 	pathList := []string{}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -327,7 +327,7 @@ func (s *Server) getTemplateFilePaths(config *eUtils.DriverConfig, mod *helperkv
 }
 func (s *Server) templateFileRecurse(config *eUtils.DriverConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
 	subPathList := []string{}
-	subsecrets, err := mod.List(pathName)
+	subsecrets, err := mod.List(pathName, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return subPathList, err

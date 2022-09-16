@@ -420,7 +420,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				fmt.Printf("Secret ID: %s\n", secretID)
 
 				// Store all new tokens to new appRole.
-				warn, err := mod.Write("super-secrets/tokens", tokenMap)
+				warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 				eUtils.LogErrorObject(config, err, true)
 				eUtils.LogWarningsObject(config, warn, true)
 			}
@@ -492,7 +492,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Printf("Secret ID: %s\n", secretID)
 
 			// Store all new tokens to new appRole.
-			warn, err := mod.Write("super-secrets/tokens", tokenMap)
+			warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 			eUtils.LogErrorObject(config, err, true)
 			eUtils.LogWarningsObject(config, warn, true)
 		}
