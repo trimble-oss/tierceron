@@ -29,9 +29,9 @@ import (
 type FlowType int64
 type FlowNameType string
 
-var channelMap map[FlowNameType]chan bool
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]interface{}
+var tfmContextMap = make(map[string]*TrcFlowMachineContext, 5)
 
 const (
 	TableSyncFlow FlowType = iota
@@ -62,9 +62,11 @@ func (fnt FlowNameType) ServiceName() string {
 }
 
 func TriggerAllChangeChannel() {
-	for _, changeChannel := range channelMap {
-		if len(changeChannel) < 3 {
-			changeChannel <- true
+	for _, tfmContext := range tfmContextMap {
+		for _, changeChannel := range tfmContext.ChannelMap {
+			if len(changeChannel) < 3 {
+				changeChannel <- true
+			}
 		}
 	}
 }
@@ -82,6 +84,7 @@ type TrcFlowMachineContext struct {
 	TierceronEngine           *trcdb.TierceronEngine
 	ExtensionAuthData         map[string]interface{}
 	GetAdditionalFlowsByState func(teststate string) []FlowNameType
+	ChannelMap                map[FlowNameType]chan bool
 }
 
 type TrcFlowContext struct {
@@ -95,7 +98,7 @@ type TrcFlowContext struct {
 	FlowData         interface{}
 	ChangeFlowName   string // Change flow table name.
 	FlowState        flowcorehelper.CurrentFlowState
-	FlowLock         *sync.Mutex
+	FlowLock         *sync.Mutex //This is for sync concurrent changes to FlowState
 }
 
 var tableModifierLock sync.Mutex
@@ -139,19 +142,20 @@ func (tfmContext *TrcFlowMachineContext) Init(
 	tfmContext.GetTableModifierLock().Unlock()
 	eUtils.LogInfo(tfmContext.Config, "Tables creation completed.")
 
-	channelMap = make(map[FlowNameType]chan bool)
+	tfmContext.ChannelMap = make(map[FlowNameType]chan bool)
 
 	for _, table := range tableNames {
-		channelMap[FlowNameType(table)] = make(chan bool, 5)
+		tfmContext.ChannelMap[FlowNameType(table)] = make(chan bool, 5)
 	}
 
 	for _, f := range additionalFlowNames {
-		channelMap[f] = make(chan bool, 5)
+		tfmContext.ChannelMap[f] = make(chan bool, 5)
 	}
 
 	for _, f := range testFlowNames {
-		channelMap[f] = make(chan bool, 5)
+		tfmContext.ChannelMap[f] = make(chan bool, 5)
 	}
+	tfmContextMap[tfmContext.TierceronEngine.Database.Name()+"_"+tfmContext.Env] = tfmContext
 	return nil
 }
 
@@ -168,7 +172,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 			tfmContext.Log("Could not create table.", err)
 		} else {
 			if tfContext.Flow.TableName() == "TierceronFlow" {
-				tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 2, SyncMode: "0", SyncFilter: ""}
+				tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 2, SyncMode: "nosync", SyncFilter: ""}
 			} else {
 				select {
 				case tfContext.FlowState = <-tfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState):
@@ -189,7 +193,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 							tfmContext.InitConfigWG.Done()
 						}
 						tfmContext.FlowControllerUpdateLock.Unlock()
-						tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 0, SyncMode: "0", SyncFilter: ""}
+						tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 0, SyncMode: "nosync", SyncFilter: ""}
 						tfmContext.Log("Flow ready for use (but inactive due to invalid setup): "+tfContext.Flow.TableName(), nil)
 					}
 				}
@@ -291,7 +295,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	sqlState bool) {
 
 	mysqlPushEnabled := sqlState
-	flowChangedChannel := channelMap[tfContext.Flow]
+	flowChangedChannel := tfmContext.ChannelMap[tfContext.Flow]
 	go func(fcc chan bool) {
 		fcc <- true
 	}(flowChangedChannel)
@@ -374,7 +378,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 
 		afterTime := time.Duration(time.Hour * 1) // More expensive to test vault for changes.
 	                                              // Only check once an hour for changes in vault.
-		flowChangedChannel := channelMap[tfContext.Flow]
+		flowChangedChannel := tfmContext.ChannelMap[tfContext.Flow]
 
 		for {
 			select {
@@ -437,7 +441,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 }
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan bool {
-	if notificationFlowChannel, ok := channelMap[tfContext.Flow]; ok {
+	if notificationFlowChannel, ok := tfmContext.ChannelMap[tfContext.Flow]; ok {
 		return notificationFlowChannel
 	}
 	tfmContext.Log("Could not find channel for flow.", nil)
@@ -461,7 +465,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		return nil
 	}
 	if changed {
-		changedChannel = channelMap[FlowNameType(tfContext.Flow.TableName())]
+		changedChannel = tfmContext.ChannelMap[FlowNameType(tfContext.Flow.TableName())]
 	}
 	if operation == "INSERT" {
 		var matrix [][]interface{}
@@ -484,13 +488,13 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
 		if changed && len(matrix) > 0 {
-			if changedChannel != nil {
+			if changedChannel != nil && len(changedChannel) < 5 {
 				changedChannel <- true
 			}
 			if len(flowNotifications) > 0 {
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
-					if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						notificationFlowChannel <- true
 					}
 				}
@@ -499,7 +503,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			if flowtestState != "" {
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
-					if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						notificationFlowChannel <- true
 					}
 				}
@@ -530,13 +534,13 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
 		if changed && (len(matrix) > 0 || tableName != "") {
-			if changedChannel != nil {
+			if changedChannel != nil && len(changedChannel) < 5 {
 				changedChannel <- true
 			}
 			if len(flowNotifications) > 0 {
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
-					if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						notificationFlowChannel <- true
 					}
 				}
@@ -545,7 +549,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			if flowtestState != "" {
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
-					if notificationFlowChannel, ok := channelMap[flowNotification]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						notificationFlowChannel <- true
 					}
 				}
