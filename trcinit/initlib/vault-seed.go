@@ -45,27 +45,29 @@ func SeedVault(config *eUtils.DriverConfig) error {
 	files, err := ioutil.ReadDir(config.StartDir[0])
 
 	templateWritten = make(map[string]bool)
-	if len(files) == 1 && files[0].Name() == "certs" && config.WantCerts {
-		// Cert rotation support without templates
-		config.Log.Printf("No templates available, Common service requested.: %s\n", config.StartDir[0])
+	for _, file := range files {
+		if file.Name() == "certs" && config.WantCerts {
+			// Cert rotation support without templates
+			config.Log.Printf("Initializing certificates.  Common service requested.: %s\n", config.StartDir[0])
 
-		var templatePaths = coreopts.GetSupportedTemplates()
-		regions := []string{}
+			var templatePaths = coreopts.GetSupportedTemplates()
+			regions := []string{}
 
-		if strings.HasPrefix(config.Env, "staging") || strings.HasPrefix(config.Env, "prod") || strings.HasPrefix(config.Env, "dev") {
-			regions = eUtils.GetSupportedProdRegions()
+			if strings.HasPrefix(config.Env, "staging") || strings.HasPrefix(config.Env, "prod") || strings.HasPrefix(config.Env, "dev") {
+				regions = eUtils.GetSupportedProdRegions()
+			}
+			config.Regions = regions
+
+			_, _, seedData, errGenerateSeeds := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
+			if errGenerateSeeds != nil {
+				return eUtils.LogErrorAndSafeExit(config, errGenerateSeeds, -1)
+			}
+
+			seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
+
+			SeedVaultFromData(config, "", []byte(seedData))
+			return nil
 		}
-		config.Regions = regions
-
-		_, _, seedData, errGenerateSeeds := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
-		if errGenerateSeeds != nil {
-			return eUtils.LogErrorAndSafeExit(config, errGenerateSeeds, -1)
-		}
-
-		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
-
-		SeedVaultFromData(config, "", []byte(seedData))
-		return nil
 	}
 
 	eUtils.LogErrorObject(config, err, true)
