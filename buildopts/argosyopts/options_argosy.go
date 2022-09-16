@@ -273,7 +273,7 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 			[]util.DataFlowGroup{},
 		},
 	}
-	args, err := util.InitArgosyFleet(mod, "TenantDatabase")
+	args, err := util.InitArgosyFleet(mod, "TenantDatabase", mod.Log)
 	if err != nil {
 		return util.ArgosyFleet{}, err
 	}

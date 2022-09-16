@@ -22,6 +22,10 @@ import (
 	//"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
+func init() {
+	factory.StartPluginSettingEater()
+}
+
 func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
 	var config *eUtils.DriverConfig
@@ -162,7 +166,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			writeMap["trcsha256"] = vaultPluginSignature["trcsha256"].(string)
 			writeMap["copied"] = true
 			writeMap["deployed"] = false
-			_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap)
+			_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
 			if err != nil {
 				logger.Println("PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
 				continue
@@ -223,7 +227,7 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 		writeMap["copied"] = pluginData["copied"]
 		writeMap["deployed"] = true
 
-		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap)
+		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap, logger)
 		if err != nil {
 			return err
 		}
