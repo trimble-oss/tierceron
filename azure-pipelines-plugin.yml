@@ -79,7 +79,7 @@ steps:
     fi
 
     echo "Compile Test Linux trc-vault-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc harbinger memonly" -o $GOBIN/trc-vault-plugin tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags=-G=0 -tags "tc harbinger mysqlpull mysqlpush memonly" -o $GOBIN/trc-vault-plugin tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
