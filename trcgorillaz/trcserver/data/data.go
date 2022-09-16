@@ -67,7 +67,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, logger)
 	mod.Env = *envPtr
 	eUtils.CheckError(&config, modErr, true)
-	ArgosyFleet, argosyErr := argosyopts.BuildFleet(mod)
+	ArgosyFleet, argosyErr := argosyopts.BuildFleet(mod, logger)
 	eUtils.CheckError(&config, argosyErr, true)
 
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
@@ -122,7 +122,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 
 func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDetailedElement {
 	config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
-	ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil) //mod)
+	ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil, logger) //mod)
 	eUtils.CheckError(&config, argosyErr, true)
 
 	dfstatData := map[string]float64{}
