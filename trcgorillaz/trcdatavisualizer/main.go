@@ -125,7 +125,7 @@ func main() {
 
 	} else if *headless && !*custos {
 		config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
-		ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil) //mod)
+		ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil, logger) //mod)
 		eUtils.CheckError(&config, argosyErr, true)
 
 		dfstatData := map[string]float64{}
