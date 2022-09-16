@@ -236,7 +236,7 @@ func main() {
 				mod.Env = *envPtr
 				eUtils.CheckError(&config, modErr, true)
 
-				ArgosyFleet, argosyErr := argosyopts.BuildFleet(mod)
+				ArgosyFleet, argosyErr := argosyopts.BuildFleet(mod, logger)
 				eUtils.CheckError(&config, argosyErr, true)
 
 				DetailedElements := []*mashupsdk.MashupDetailedElement{}
