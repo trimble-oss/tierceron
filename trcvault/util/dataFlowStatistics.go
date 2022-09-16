@@ -49,39 +49,67 @@ type ArgosyFleet struct {
 }
 
 //New API -> Argosy, return dataFlowGroups populated
-
-func InitArgosyFleet(mod *kv.Modifier, project string, idName string, logger *log.Logger) (ArgosyFleet, error) {
+func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (ArgosyFleet, error) {
 	var aFleet ArgosyFleet
 	aFleet.ArgosyName = project
 	aFleet.Argosies = make([]Argosy, 0)
-	idListData, idListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName, logger)
-	if idListErr != nil {
-		return aFleet, idListErr
+	idNameListData, serviceListErr := mod.List("super-secrets/PublicIndex/"+project, logger)
+	if serviceListErr != nil || idNameListData == nil {
+		return aFleet, serviceListErr
 	}
-	for _, idList := range idListData.Data {
-		for _, id := range idList.([]interface{}) {
-			serviceListData, serviceListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName+"/"+id.(string)+"/DataFlowStatistics/DataFlowGroup", logger)
-			if serviceListErr != nil {
-				return aFleet, serviceListErr
-			}
-			var new Argosy
-			new.ArgosyID = id.(string)
-			new.Groups = make([]DataFlowGroup, 0)
-			for _, serviceList := range serviceListData.Data {
-				for _, service := range serviceList.([]interface{}) {
-					var dfgroup DataFlowGroup
-					dfgroup.Name = service.(string)
 
-					statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName+"/"+id.(string)+"/DataFlowStatistics/DataFlowGroup/"+service.(string)+"/dataFlowName/", logger)
-					if statisticNameListErr != nil {
-						return aFleet, statisticNameListErr
+	if serviceListErr != nil || idNameListData == nil {
+		return aFleet, errors.New("No project was found for argosyFleet")
+	}
+
+	for _, idNameList := range idNameListData.Data {
+		for _, idName := range idNameList.([]interface{}) {
+			idListData, idListErr := mod.List("super-secrets/Index/"+project+"/tenantId", logger)
+			if idListErr != nil || idListData == nil {
+				return aFleet, idListErr
+			}
+
+			if idListData == nil {
+				return aFleet, errors.New("No argosId were found for argosyFleet")
+			}
+
+			for _, idList := range idListData.Data {
+				for _, id := range idList.([]interface{}) {
+					serviceListData, serviceListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName.(string)+"/"+id.(string)+"/DataFlowStatistics/DataFlowGroup", logger)
+					if serviceListErr != nil {
+						return aFleet, serviceListErr
+					}
+					var new Argosy
+					new.ArgosyID = strings.TrimSuffix(id.(string), "/")
+					new.Groups = make([]DataFlowGroup, 0)
+
+					if serviceListData == nil { //No existing dfs for this tenant -> continue
+						aFleet.Argosies = append(aFleet.Argosies, new)
+						continue
 					}
 
-					for _, statisticName := range statisticNameList.Data {
-						for _, statisticName := range statisticName.([]interface{}) {
-							newDf := InitDataFlow(nil, statisticName.(string), false)
-							newDf.RetrieveStatistic(mod, id.(string), project, idName, service.(string), statisticName.(string), logger)
-							dfgroup.Flows = append(dfgroup.Flows, newDf)
+					for _, serviceList := range serviceListData.Data {
+						for _, service := range serviceList.([]interface{}) {
+							var dfgroup DataFlowGroup
+							dfgroup.Name = strings.TrimSuffix(service.(string), "/")
+
+							statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName.(string)+"/"+id.(string)+"/DataFlowStatistics/DataFlowGroup/"+service.(string)+"/dataFlowName/", logger)
+							if statisticNameListErr != nil {
+								return aFleet, statisticNameListErr
+							}
+
+							if statisticNameList == nil {
+								continue
+							}
+
+							for _, statisticName := range statisticNameList.Data {
+								for _, statisticName := range statisticName.([]interface{}) {
+									newDf := InitDataFlow(nil, strings.TrimSuffix(statisticName.(string), "/"), false)
+									newDf.RetrieveStatistic(mod, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
+									dfgroup.Flows = append(dfgroup.Flows, newDf)
+								}
+							}
+							new.Groups = append(new.Groups, dfgroup)
 						}
 					}
 					aFleet.Argosies = append(aFleet.Argosies, new)
