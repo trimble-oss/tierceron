@@ -1,14 +1,18 @@
-//go:build !argosy
-// +build !argosy
+//go:build !argosy && !argosystub
+// +build !argosy,!argosystub
 
 package argosyopts
 
-import "tierceron/trcvault/util"
+import (
+	"log"
+	"tierceron/trcvault/util"
+	"tierceron/vaulthelper/kv"
+)
 
-func BuildFleet() util.ArgosyFleet {
-	return util.ArgosyFleet{}
+func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.ArgosyFleet, error) {
+	return util.ArgosyFleet{}, nil
 }
 
-func GetDataFlowGroups(argosy *util.Argosy) []util.DataFlowGroup {
+func GetDataFlowGroups(mod *kv.Modifier, argosy *util.Argosy) []util.DataFlowGroup {
 	return nil
 }
