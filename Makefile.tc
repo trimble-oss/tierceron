@@ -84,6 +84,9 @@ gen:
 ttdimanager:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/ttdimanager -tags "insecure fyneboot argosy" -ldflags="$(LD_FLAGS)" tierceron/trcgorillaz/trcdatamanager
 
+ttdiserver:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/ttdiserver -tags "insecure fyneboot argosy" -ldflags="$(LD_FLAGS)" tierceron/trcgorillaz/trcserver
+
 ttdivisualizer:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/ttdivisualizer -tags "insecure g3nboot argosy" -ldflags="$(LD_FLAGS)" tierceron/trcgorillaz/trcdatavisualizer	
 
