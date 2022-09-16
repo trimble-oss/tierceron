@@ -152,16 +152,18 @@ func SeedVault(config *eUtils.DriverConfig) error {
 								if len(subSectionConfigFiles) > 0 {
 									for _, subSectionConfigFile := range subSectionConfigFiles {
 										subSectionPath := config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name() + "/" + subSectionConfigFile.Name()
-										if strings.HasPrefix(sectionConfigFile.Name(), ".") || (config.SubSectionName != "" && (!strings.HasPrefix("/"+subSectionConfigFile.Name(), config.SubSectionName))) {
+										if strings.HasPrefix(sectionConfigFile.Name(), ".") ||
+											(config.SubSectionName != "" && (!strings.HasPrefix("/"+subSectionConfigFile.Name(), config.SubSectionName))) ||
+											(config.SectionName != "" && (!strings.HasPrefix("/"+sectionName.Name()+"/", "/"+config.SectionName+"/"))) {
 											continue
 										}
 										SeedVaultFromFile(config, subSectionPath)
+										seeded = true
 									}
 								} else {
 									SeedVaultFromFile(config, path)
+									seeded = true
 								}
-
-								seeded = true
 							}
 						}
 					}
@@ -321,6 +323,9 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		config.Log.Println("Seeding configuration data for the following templates: DataStatistics")
 	} else if isIndexData || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
 		mod.SectionPath = strings.TrimSuffix(filepath, "_seed.yml")
+		if len(config.IndexFilter) > 0 && isIndexData && !strings.Contains(mod.SectionPath, config.IndexFilter[0]) {
+			mod.SectionPath = mod.SectionPath[:strings.LastIndex(mod.SectionPath, "/")+1] + config.IndexFilter[0] + mod.SectionPath[strings.LastIndex(mod.SectionPath, "/"):]
+		}
 		config.Log.Println("Seeding configuration data for the following templates:" + mod.SectionPath)
 	} else {
 		config.Log.Println("Seeding configuration data for the following templates:" + filepath)
@@ -483,6 +488,8 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 			}
 		}
 
+		// Write Secrets...
+
 		// TODO: Support all services, so range over ServicesWanted....
 		// Populate as a slice...
 		if config.ServicesWanted[0] != "" {
@@ -523,7 +530,7 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 		}
 	}
 
-	warn, err := mod.Write(path, data)
+	warn, err := mod.Write(path, data, config.Log)
 
 	eUtils.LogWarningsObject(config, warn, false)
 	eUtils.LogErrorObject(config, err, false)
@@ -534,7 +541,7 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 		for _, v := range data {
 			if templateKey, ok := v.([]interface{}); ok {
 				metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
-				mod.AdjustValue("value-metrics/credentials", metricsKey, 1)
+				mod.AdjustValue("value-metrics/credentials", metricsKey, 1, config.Log)
 			}
 		}
 	}

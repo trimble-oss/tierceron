@@ -20,12 +20,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var wg sync.WaitGroup
-var wg2 sync.WaitGroup
-
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
 func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, error, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string) {
+	var wg sync.WaitGroup
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -239,16 +237,16 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					var listValues *api.Secret
 					var err error
 					if config.SectionKey == "/Index/" && len(config.ProjectSections) > 0 {
-						listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/")
+						listValues, err = mod.ListEnv("super-secrets/"+strings.Split(config.EnvRaw, ".")[0]+config.SectionKey+config.ProjectSections[0]+"/"+config.SectionName+"/"+config.SubSectionValue+"/", config.Log)
 					} else if len(config.ProjectSections) > 0 { //If eid -> look inside Index and grab all environments
-						listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName)
+						listValues, err = mod.ListEnv("super-secrets/"+strings.Split(config.EnvRaw, ".")[0]+config.SectionKey+config.ProjectSections[0]+"/"+config.SectionName, config.Log)
 						if listValues == nil {
-							listValues, err = mod.ListEnv("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0])
+							listValues, err = mod.ListEnv("super-secrets/"+strings.Split(config.EnvRaw, ".")[0]+config.SectionKey+config.ProjectSections[0], config.Log)
 						}
 					} else if indexed {
-						listValues, err = mod.ListEnv("super-secrets/" + mod.Env + "/")
+						listValues, err = mod.ListEnv("super-secrets/"+mod.Env+"/", config.Log)
 					} else {
-						listValues, err = mod.ListEnv("values/" + mod.Env + "/") //Fix values to add to project to directory
+						listValues, err = mod.ListEnv("values/"+mod.Env+"/", config.Log) //Fix values to add to project to directory
 					}
 					if err != nil {
 						eUtils.LogErrorObject(config, err, false)

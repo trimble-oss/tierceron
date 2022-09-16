@@ -73,7 +73,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		if services[i] == "Database" {
 			goMod.SectionName = "regionId"
 			goMod.SectionKey = "/Index/"
-			regions, err := goMod.ListSubsection("/Index/", projects[i], goMod.SectionName)
+			regions, err := goMod.ListSubsection("/Index/", projects[i], goMod.SectionName, logger)
 			if err != nil {
 				eUtils.LogErrorObject(config, err, false)
 				return err
