@@ -6,6 +6,7 @@ package argosyopts
 import (
 	"fmt"
 	"github.com/mrjrieke/nute/mashupsdk"
+	"log"
 	"math"
 	"strconv"
 	"tierceron/trcvault/util"
@@ -179,7 +180,7 @@ func buildDataFlowStatistics(startID int64, flow util.DataFlow, dfstatsize float
 	return flow.Statistics, collectionIDs, childIDs, curveCollection, flow, int64(total)
 }
 
-func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
+func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.ArgosyFleet, error) {
 	argosies := []util.Argosy{
 		{
 			mashupsdk.MashupDetailedElement{
@@ -273,7 +274,7 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 			[]util.DataFlowGroup{},
 		},
 	}
-	args, err := util.InitArgosyFleet(mod, "TenantDatabase", mod.Log)
+	args, err := util.InitArgosyFleet(mod, "TenantDatabase", logger)
 	if err != nil {
 		return util.ArgosyFleet{}, err
 	}
