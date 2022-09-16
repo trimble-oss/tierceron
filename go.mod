@@ -31,10 +31,12 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 )
 
+require github.com/mrjrieke/nute v0.0.0-20220916135129-7ce6fd091ba9
+
 require (
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
-	github.com/mrjrieke/nute v0.0.0-20220915133509-24912385113c
+	//github.com/mrjrieke/nute v0.0.0-20220915133509-24912385113c
 	github.com/tevino/abool v1.2.0 // indirect
 )
 
