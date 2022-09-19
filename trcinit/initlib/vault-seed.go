@@ -118,7 +118,10 @@ func SeedVault(config *eUtils.DriverConfig) error {
 			}
 
 			for _, fileSteppedInto := range filesSteppedInto {
-				if fileSteppedInto.Name() == "Index" || fileSteppedInto.Name() == "Restricted" {
+				if strings.HasSuffix(fileSteppedInto.Name(), ".yml") {
+					SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+fileSteppedInto.Name())
+					seeded = true
+				} else if fileSteppedInto.Name() == "Index" || fileSteppedInto.Name() == "Restricted" {
 					projectDirectories, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
 					if err != nil {
 						config.Log.Printf("Couldn't read into: %s \n", fileSteppedInto.Name())
