@@ -31,13 +31,14 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 )
 
-require github.com/mrjrieke/nute v0.0.0-20220916135129-7ce6fd091ba9
+require github.com/mrjrieke/nute v0.0.0-20220917150643-a6d82baf07fa
 
 require (
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/tevino/abool v1.2.0 // indirect
 )
+
 require (
 	fyne.io/fyne/v2 v2.1.3
 	fyne.io/systray v1.10.1-0.20220621085403-9a2652634e93 // indirect
