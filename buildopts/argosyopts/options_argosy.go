@@ -1,9 +1,10 @@
-//go:build argosy
-// +build argosy
+//go:build argosy && tc
+// +build argosy,tc
 
 package argosyopts
 
 import (
+	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
 	"fmt"
 	"github.com/mrjrieke/nute/mashupsdk"
 	"log"
@@ -14,6 +15,11 @@ import (
 )
 
 var maxTime int64
+
+func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
+	//	return data, TimeData
+	return tcbuildopts.GetStubbedDataFlowStatistics()
+}
 
 func getGroupSize(groups []util.DataFlowGroup) (float64, float64, float64) {
 	groupsize := 0.0
@@ -189,6 +195,10 @@ func buildDataFlowStatistics(startID int64, flow util.DataFlow, dfstatsize float
 }
 
 func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.ArgosyFleet, error) {
+	if mod == nil {
+		return BuildStubFleet(mod, logger)
+	}
+
 	argosies := []util.Argosy{
 		{
 			mashupsdk.MashupDetailedElement{
