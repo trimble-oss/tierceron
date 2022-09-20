@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 var IndexServiceExtFilterPtr = flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
@@ -18,7 +19,10 @@ var OnlyBasePtr = false
 func checkInitFlagHelper() {
 	if len(*IndexValueFilterPtr) > 0 {
 		if len(*IndexNameFilterPtr) > 0 {
-			//good to go
+			if strings.Contains(*RestrictedPtr, ",") || strings.Contains(*IndexedPtr, ",") {
+				fmt.Println("Usage of comma delimited -restricted or -indexed is not allowed with additional filters")
+				os.Exit(1)
+			}
 		} else {
 			fmt.Println("Usage of -indexFilter is required for -indexValueFilter")
 			os.Exit(1)
