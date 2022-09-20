@@ -45,9 +45,16 @@ func SeedVault(config *eUtils.DriverConfig) error {
 	files, err := ioutil.ReadDir(config.StartDir[0])
 
 	templateWritten = make(map[string]bool)
+	//
+	// The following logic section for server based certificate loading is for when it is known that
+	// all templates for the certs exist in vault.
+	//
+	// For general certificate loading (where templates may not have yet been pushed to vault)
+	// a separate path deeper into the code is used for certificate loading.
+	//
 	if len(files) == 1 && files[0].Name() == "certs" && config.WantCerts {
 		// Cert rotation support without templates
-		config.Log.Printf("No templates available, Common service requested.: %s\n", config.StartDir[0])
+		config.Log.Printf("Initializing certificates.  Common service requested.: %s\n", config.StartDir[0])
 
 		var templatePaths = coreopts.GetSupportedTemplates()
 		regions := []string{}
@@ -111,7 +118,16 @@ func SeedVault(config *eUtils.DriverConfig) error {
 			}
 
 			for _, fileSteppedInto := range filesSteppedInto {
-				if fileSteppedInto.Name() == "Index" || fileSteppedInto.Name() == "Restricted" {
+				if strings.HasSuffix(fileSteppedInto.Name(), ".yml") {
+					if !*eUtils.BasePtr {
+						continue
+					}
+					SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+fileSteppedInto.Name())
+					seeded = true
+				} else if fileSteppedInto.Name() == "Index" || fileSteppedInto.Name() == "Restricted" {
+					if eUtils.OnlyBasePtr {
+						continue
+					}
 					projectDirectories, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
 					if err != nil {
 						config.Log.Printf("Couldn't read into: %s \n", fileSteppedInto.Name())
@@ -135,16 +151,22 @@ func SeedVault(config *eUtils.DriverConfig) error {
 							config.Log.Printf("Couldn't read into: %s \n", projectDirectory.Name())
 						}
 						for _, sectionName := range sectionNames {
+							if config.SectionName != "" && sectionName.Name() != config.SectionName {
+								continue
+							}
+
 							sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name())
 							if err != nil {
 								config.Log.Printf("Couldn't read into: %s \n", sectionName.Name())
 							}
+
 							for _, sectionConfigFile := range sectionConfigFiles {
 								path := config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
 								if strings.HasPrefix(sectionConfigFile.Name(), ".") || (config.SubSectionValue != "" && (sectionConfigFile.Name() != config.SubSectionValue)) {
 									continue
 								}
 								subSectionConfigFiles, err := ioutil.ReadDir(path)
+
 								if err != nil {
 									config.Log.Printf("Couldn't read into: %s \n", config.SubSectionName)
 								}
@@ -161,8 +183,17 @@ func SeedVault(config *eUtils.DriverConfig) error {
 										seeded = true
 									}
 								} else {
-									SeedVaultFromFile(config, path)
-									seeded = true
+									if len(config.IndexFilter) > 0 {
+										for _, filter := range config.IndexFilter {
+											if strings.HasSuffix(path, filter+"_seed.yml") {
+												SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+fileSteppedInto.Name()+"/"+projectDirectory.Name()+"/"+sectionName.Name()+"/"+sectionConfigFile.Name())
+												seeded = true
+											}
+										}
+									} else {
+										SeedVaultFromFile(config, path)
+										seeded = true
+									}
 								}
 							}
 						}
@@ -219,7 +250,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 	if !seeded {
 		eUtils.LogInfo(config, "Environment is not valid - Environment: "+config.Env)
 	} else {
-		eUtils.LogInfo(config, "Initialization complete for: "+config.Env)
+		eUtils.LogInfo(config, "\nInitialization complete for: "+config.Env+"\n")
 	}
 	return nil
 }
@@ -242,7 +273,6 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	var rawYaml interface{}
 	hasEmptyValues := bytes.Contains(fData, []byte("<Enter Secret Here>"))
 	isIndexData := strings.HasPrefix(filepath, "Index/") || strings.Contains(filepath, "/PublicIndex/")
-
 	if hasEmptyValues && !isIndexData {
 		return eUtils.LogAndSafeExit(config, "Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", 1)
 	}
@@ -508,10 +538,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	warn, err := verify(config, mod, verificationData)
 	eUtils.LogErrorObject(config, err, false)
 	eUtils.LogWarningsObject(config, warn, false)
-	if !isIndexData {
-		eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
-	}
-
+	eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
 	return nil
 }
 

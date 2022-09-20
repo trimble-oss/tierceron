@@ -50,5 +50,7 @@ trcvault/trc_seeds/
 
 tierceron.iml
 trcvault/deploy/deploy_dev.sh
+trcgorillaz/trcdatavisualizer/__debug_bin
+trcgorillaz/trcdatavisualizer/tls/mashup.*
 
 
