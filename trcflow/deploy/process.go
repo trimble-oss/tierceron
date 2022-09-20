@@ -22,6 +22,10 @@ import (
 	//"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
+func init() {
+	factory.StartPluginSettingEater()
+}
+
 func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
 	var config *eUtils.DriverConfig
