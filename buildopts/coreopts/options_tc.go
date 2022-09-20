@@ -18,7 +18,7 @@ func GetFolderPrefix() string {
 }
 
 func GetSupportedTemplates() []string {
-	return bcore.GetSupportedTemplates()
+	return bcore.GetSupportedTemplates(GetFolderPrefix())
 }
 
 func GetLocalHost() string {
