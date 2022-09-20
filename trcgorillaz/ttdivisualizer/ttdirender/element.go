@@ -1,7 +1,9 @@
 package ttdirender
 
 import (
+	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -19,6 +21,8 @@ type ClickedG3nDetailElement struct {
 	clickedElement *g3nmash.G3nDetailedElement
 	center         *math32.Vector3
 }
+
+var maxTime int
 
 type ElementRenderer struct {
 	g3nrender.GenericRenderer
@@ -66,6 +70,10 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
 	color := g3ndpalette.DARK_BLUE
 	if g3n.GetDetailedElement().Alias == "Argosy" {
+		if g3n.GetDetailedElement().Data != "" {
+			fmt.Println(g3n.GetDetailedElement().Data)
+			maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
+		}
 		color.Set(0, 0.349, 0.643)
 	} else if g3n.GetDetailedElement().Alias == "DataFlowGroup" {
 		color.Set(1.0, 0.224, 0.0)
@@ -335,5 +343,6 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 
 func (er *ElementRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
 	curveRenderer := collaboratingRenderer.(*CurveRenderer)
+	curveRenderer.maxTime = maxTime
 	curveRenderer.er = er
 }
