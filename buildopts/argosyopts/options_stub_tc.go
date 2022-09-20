@@ -1,5 +1,5 @@
-//go:build tc && argosystub
-// +build tc,argosystub
+//go:build tc && argosy
+// +build tc,argosy
 
 package argosyopts
 
@@ -19,7 +19,7 @@ var pointer int
 var data []string
 var TimeData map[string][]float64
 
-func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfstatsize int) ([]util.Argosy, []int64, []int64) {
+func buildStubArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfstatsize int) ([]util.Argosy, []int64, []int64) {
 	data, TimeData = tcbuildopts.GetStubbedDataFlowStatistics()
 	if TimeData != nil {
 		for j := 0; j < len(data); j++ {
@@ -55,7 +55,7 @@ func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfsta
 		collection := []int64{}
 		children := []int64{}
 
-		argosy.Groups, collection, children, curveCollection = buildDataFlowGroups(argosyId+1, dfgsize, dfsize, dfstatsize, argosyId)
+		argosy.Groups, collection, children, curveCollection = buildStubDataFlowGroups(argosyId+1, dfgsize, dfsize, dfstatsize, argosyId)
 		for _, id := range collection {
 			collectionIDs = append(collectionIDs, id)
 		}
@@ -68,7 +68,7 @@ func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfsta
 	return argosies, collectionIDs, curveCollection
 }
 
-func buildDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int, parentID int64) ([]util.DataFlowGroup, []int64, []int64, []int64) {
+func buildStubDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int, parentID int64) ([]util.DataFlowGroup, []int64, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
@@ -97,7 +97,7 @@ func buildDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int,
 		collection := []int64{}
 		children := []int64{}
 
-		group.Flows, collection, children, curveCollection = buildDataFlows(argosyId+1, dfsize, dfstatsize, argosyId)
+		group.Flows, collection, children, curveCollection = buildStubDataFlows(argosyId+1, dfsize, dfstatsize, argosyId)
 		for _, id := range collection {
 			collectionIDs = append(collectionIDs, id)
 		}
@@ -109,7 +109,7 @@ func buildDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int,
 	return groups, collectionIDs, childIDs, curveCollection
 }
 
-func buildDataFlows(startID int64, dfsize int, dfstatsize int, parentID int64) ([]util.DataFlow, []int64, []int64, []int64) {
+func buildStubDataFlows(startID int64, dfsize int, dfstatsize int, parentID int64) ([]util.DataFlow, []int64, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
@@ -139,7 +139,7 @@ func buildDataFlows(startID int64, dfsize int, dfstatsize int, parentID int64) (
 		otherIds := []int64{}
 		children := []int64{}
 
-		flow.Statistics, otherIds, children, curveCollection = buildDataFlowStatistics(argosyId+1, dfstatsize, argosyId)
+		flow.Statistics, otherIds, children, curveCollection = buildStubDataFlowStatistics(argosyId+1, dfstatsize, argosyId)
 		for _, id := range otherIds {
 			collectionIDs = append(collectionIDs, id)
 		}
@@ -151,7 +151,7 @@ func buildDataFlows(startID int64, dfsize int, dfstatsize int, parentID int64) (
 	return flows, collectionIDs, childIDs, curveCollection
 }
 
-func buildDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]util.DataFlowStatistic, []int64, []int64, []int64) {
+func buildStubDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]util.DataFlowStatistic, []int64, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
@@ -184,7 +184,7 @@ func buildDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]u
 	return stats, collectionIDs, childIDs, curveCollection
 }
 
-func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.ArgosyFleet, error) {
+func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.ArgosyFleet, error) {
 	Argosys := []util.Argosy{
 		{
 			mashupsdk.MashupDetailedElement{
@@ -268,7 +268,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.ArgosyFleet, error) 
 			[]util.DataFlowGroup{},
 		},
 	}
-	tempArgosies, collectionIDs, curveIDs := buildArgosies(5, 20, 10, 5, 10)
+	tempArgosies, collectionIDs, curveIDs := buildStubArgosies(5, 20, 10, 5, 10)
 	for _, argosy := range tempArgosies {
 		Argosys = append(Argosys, argosy)
 	}
@@ -311,6 +311,6 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.ArgosyFleet, error) 
 	}, nil
 }
 
-func GetDataFlowGroups(mod *kv.Modifier, argosy *util.Argosy) []util.DataFlowGroup {
+func GetStubDataFlowGroups(mod *kv.Modifier, argosy *util.Argosy) []util.DataFlowGroup {
 	return nil
 }
