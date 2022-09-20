@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"tierceron/buildopts/argosyopts"
 
-	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
-
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 
@@ -92,7 +90,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 
 //Returns an array of mashup detailed elements populated with stub data
 func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDetailedElement {
-	data, TimeData := tcbuildopts.GetStubbedDataFlowStatistics()
+	data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
 
 	config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
 	ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil, logger) //mod)
