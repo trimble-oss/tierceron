@@ -365,7 +365,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				if goMod.SectionName != "" && (goMod.SubSectionValue != "" || goMod.SectionKey == "/Restricted/") {
+				if goMod.SectionName != "" && (goMod.SubSectionValue != "" || goMod.SectionKey == "/Restricted/" || goMod.SectionKey == "/Protected/") {
 					if goMod.SectionKey == "/Index/" {
 						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + config.SubSectionName
 					} else if goMod.SectionKey == "/Restricted/" {
@@ -373,6 +373,10 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 							goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
 						} else {
 							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + config.SectionName
+						}
+					} else if goMod.SectionKey == "/Protected/" {
+						if service != config.SectionName {
+							goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
 						}
 					} else {
 						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
@@ -638,7 +642,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 			if config.SectionKey == "/Index/" {
 				sectionNamePath = "/" + config.SectionName + "/"
 				subSectionValuePath = config.SubSectionValue
-			} else if config.SectionKey == "/Restricted/" {
+			} else if config.SectionKey == "/Restricted/" || config.SectionKey == "/Protected/" {
 				sectionNamePath = "/" + config.SectionName + "/"
 				subSectionValuePath = config.Env
 			}
