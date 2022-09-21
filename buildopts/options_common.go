@@ -56,3 +56,8 @@ func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, st
 func GetSupportedTemplates() []string {
 	return []string{}
 }
+
+// Whether to memlock data.
+func CheckMemLock(bucket string, key string) bool {
+	return true
+}
