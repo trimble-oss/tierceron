@@ -113,6 +113,7 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 			continue
 		}
 
+		eUtils.LogInfo(tfmContext.Config, "Attempting to seed:"+indexPath)
 		seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), vaultAddress, tfmContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
