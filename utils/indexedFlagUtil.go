@@ -50,8 +50,8 @@ func CheckInitFlags() {
 		os.Exit(1)
 	}
 
-	if len(*ProtectedPtr) > 0 && filtered {
-		fmt.Println("Cannot use -protected with filters.")
+	if len(*RestrictedPtr) > 0 && len(*ProtectedPtr) > 0 && filtered {
+		fmt.Println("Cannot use -restricted and -protected at the same time while trying to specify a seed file.")
 		os.Exit(1)
 	}
 

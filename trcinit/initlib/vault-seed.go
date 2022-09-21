@@ -281,7 +281,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		return eUtils.LogAndSafeExit(config, "Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", 1)
 	}
 
-	if strings.HasPrefix(filepath, "Restricted/") { //Fix incoming pathing for restricted projects
+	if strings.HasPrefix(filepath, "Restricted/") || strings.HasPrefix(filepath, "Protected/") { //Fix incoming pathing for restricted projects
 		i := strings.LastIndex(filepath, "/"+config.Env)
 		filepath = filepath[:i]
 	}
