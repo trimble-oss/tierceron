@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"tierceron/buildopts"
 	"tierceron/trcvault/opts/memonly"
 	"tierceron/utils/mlock"
 
@@ -214,6 +215,7 @@ retryQuery:
 // @return	A Secret pointer that contains key,value pairs and metadata
 //			errors generated from reading
 func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
+	bucket := path
 	// Create full path
 	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") && !strings.HasPrefix(path, "value-metrics") { //Template paths are not indexed -> values & super-secrets are
 		if strings.Contains(path, "values") {
@@ -265,8 +267,11 @@ retryVaultAccess:
 		return nil, err
 	}
 	if data, ok := secret.Data["data"].(map[string]interface{}); ok {
-		if memonly.IsMemonly() {
-			for _, dataValues := range data {
+		if memonly.IsMemonly() && !strings.HasPrefix(path, "templates") { // Don't lock templates
+			for dataKey, dataValues := range data {
+				if !buildopts.CheckMemLock(bucket, dataKey) {
+					continue
+				}
 				if dataValuesSlice, isSlice := dataValues.([]interface{}); isSlice {
 					for _, dataValues := range dataValuesSlice {
 						if dataValueString, isString := dataValues.(string); isString {
