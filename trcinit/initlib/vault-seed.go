@@ -261,6 +261,10 @@ func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string) {
 	// Open file
 	eUtils.LogErrorAndSafeExit(config, err, 1)
 	eUtils.LogInfo(config, "Seed written to vault from "+filepath)
+	if len(config.IndexFilter) > 0 && !strings.Contains(filepath, config.IndexFilter[0]) {
+		lastSlashIndex := strings.LastIndex(filepath, "/")
+		filepath = filepath[:lastSlashIndex] + "/" + config.IndexFilter[0] + "/" + filepath[lastSlashIndex+1:]
+	}
 	SeedVaultFromData(config, strings.SplitAfterN(filepath, "/", 3)[2], rawFile)
 }
 
