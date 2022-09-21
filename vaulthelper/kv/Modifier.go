@@ -394,7 +394,10 @@ retryQuery:
 			retries = retries + 1
 			goto retryQuery
 		}
+	} else if secret == nil || secret.Data["versions"] == nil {
+		return nil, errors.New("No version data.")
 	}
+
 	if err != nil {
 		logger.Printf("Modifier failing after %d retries.\n", retries)
 	}
