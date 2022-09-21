@@ -48,14 +48,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
-	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")
-	restrictedPtr := flag.String("restricted", "", "Specfies which projects have restricted access.")
 	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
-
-	indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
-	indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // Table names
-	indexNameFilterPtr := flag.String("indexFilter", "", "Specifies which index names to filter")                            // column index, table to filter.
-	indexValueFilterPtr := flag.String("indexValueFilter", "", "Specifies which index values to filter")                     // column index value to filter on.
 
 	allowNonLocal := false
 
@@ -68,6 +61,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 	}
 	flag.Parse()
+	eUtils.CheckInitFlags()
 	if memonly.IsMemonly() {
 		mlock.MunlockAll(nil)
 		mlock.Mlock2(nil, tokenPtr)
@@ -81,11 +75,6 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	if *namespaceVariable == "" && *newPtr {
 		fmt.Println("Namespace (-namespace) required to initialize a new vault.")
-		os.Exit(1)
-	}
-
-	if len(*indexedPtr) > 0 && len(*restrictedPtr) > 0 {
-		fmt.Println("-indexed and -restricted flag cannot be used together.")
 		os.Exit(1)
 	}
 
@@ -110,26 +99,18 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 	}
 
-	if (len(*indexServiceFilterPtr) == 0 || len(*indexNameFilterPtr) == 0) && len(*indexedPtr) != 0 {
-		fmt.Println("-serviceFilter and -indexFilter must be specified to use -indexed flag")
-		os.Exit(1)
-	} else if len(*indexServiceFilterPtr) == 0 && len(*restrictedPtr) != 0 {
-		fmt.Println("-serviceFilter must be specified to use -restricted flag")
-		os.Exit(1)
-	}
-
-	if len(*indexServiceFilterPtr) != 0 && len(*indexNameFilterPtr) == 0 && len(*restrictedPtr) != 0 {
-		indexNameFilterPtr = indexServiceFilterPtr
+	if len(*eUtils.IndexServiceFilterPtr) != 0 && len(*eUtils.IndexNameFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
+		eUtils.IndexNameFilterPtr = eUtils.IndexServiceFilterPtr
 	}
 
 	var indexSlice = make([]string, 0) //Checks for indexed projects
-	if len(*indexedPtr) > 0 {
-		indexSlice = append(indexSlice, strings.Split(*indexedPtr, ",")...)
+	if len(*eUtils.IndexedPtr) > 0 {
+		indexSlice = append(indexSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
 	}
 
 	var restrictedSlice = make([]string, 0) //Checks for restricted projects
-	if len(*restrictedPtr) > 0 {
-		restrictedSlice = append(restrictedSlice, strings.Split(*restrictedPtr, ",")...)
+	if len(*eUtils.RestrictedPtr) > 0 {
+		restrictedSlice = append(restrictedSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
 	}
 
 	namespaceTokenConfigs := "vault_namespaces" + string(os.PathSeparator) + "token_files"
@@ -512,18 +493,19 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 		var subSectionSlice = make([]string, 0) //Assign slice with the appriopiate slice
 		if len(restrictedSlice) > 0 {
-			subSectionSlice = restrictedSlice
-		} else if len(indexSlice) > 0 {
-			subSectionSlice = indexSlice
+			subSectionSlice = append(subSectionSlice, restrictedSlice...)
+		}
+		if len(indexSlice) > 0 {
+			subSectionSlice = append(subSectionSlice, indexSlice...)
 		}
 
 		var filteredSectionSlice []string
 		var indexFilterSlice []string
-		sectionSlice := []string{*indexValueFilterPtr}
+		sectionSlice := []string{*eUtils.IndexValueFilterPtr}
 
 		// Chewbacca: redo this next if section
-		if len(*indexValueFilterPtr) > 0 {
-			filterSlice := strings.Split(*indexValueFilterPtr, ",")
+		if len(*eUtils.IndexValueFilterPtr) > 0 {
+			filterSlice := strings.Split(*eUtils.IndexValueFilterPtr, ",")
 			for _, filter := range filterSlice {
 				for _, section := range sectionSlice {
 					if filter == section {
@@ -533,28 +515,31 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			}
 			sectionSlice = filteredSectionSlice
 		}
-		if len(*indexServiceFilterPtr) > 0 {
+		if len(*eUtils.IndexServiceFilterPtr) > 0 {
 			if len(sectionSlice) == 0 {
-				eUtils.LogAndSafeExit(config, "No available indexes found for "+*indexValueFilterPtr, 1)
+				eUtils.LogAndSafeExit(config, "No available indexes found for "+*eUtils.IndexValueFilterPtr, 1)
 			}
-			indexFilterSlice = strings.Split(*indexServiceFilterPtr, ",")
-			if len(*indexServiceExtFilterPtr) > 0 {
-				*indexServiceExtFilterPtr = "/" + *indexServiceExtFilterPtr //added "/" - used path later
+			indexFilterSlice = strings.Split(*eUtils.IndexServiceFilterPtr, ",")
+			if len(*eUtils.IndexServiceExtFilterPtr) > 0 {
+				*eUtils.IndexServiceExtFilterPtr = "/" + *eUtils.IndexServiceExtFilterPtr //added "/" - used path later
 			}
 		}
+		if len(indexFilterSlice) > 0 {
+			indexFilterSlice = strings.Split(*eUtils.IndexServiceFilterPtr, ",")
+		}
 		sectionKey := "/"
-		if len(*indexValueFilterPtr) > 0 && len(*indexedPtr) > 0 {
-			if len(*indexedPtr) > 0 || len(*restrictedPtr) > 0 {
-				if len(*indexedPtr) > 0 {
+		if len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0 { //*******
+			if len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 {
+				if len(*eUtils.IndexedPtr) > 0 {
 					sectionKey = "/Index/"
-				} else if len(*restrictedPtr) > 0 {
+				} else if len(*eUtils.RestrictedPtr) > 0 {
 					sectionKey = "/Restricted/"
 				}
 			}
 		}
 		var subSectionName string
-		if len(*indexNameFilterPtr) > 0 {
-			subSectionName = *indexNameFilterPtr
+		if len(*eUtils.IndexNameFilterPtr) > 0 {
+			subSectionName = *eUtils.IndexNameFilterPtr
 		} else {
 			subSectionName = ""
 		}
@@ -566,8 +551,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			Env:             *envPtr,
 			SectionKey:      sectionKey,
 			SectionName:     subSectionName,
-			SubSectionValue: *indexValueFilterPtr,
-			SubSectionName:  *indexServiceExtFilterPtr,
+			SubSectionValue: *eUtils.IndexValueFilterPtr,
+			SubSectionName:  *eUtils.IndexServiceExtFilterPtr,
 
 			SecretMode:      true, //  "Only override secret values in templates?"
 			ProjectSections: subSectionSlice,
