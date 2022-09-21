@@ -81,4 +81,10 @@ certify:
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
+ttdiserver:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/ttdiserver -tags "insecure fyneboot argosy tc" -ldflags="$(LD_FLAGS)" tierceron/trcgorillaz/ttdiserver
+
+ttdivisualizer:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -gcflags=-G=0 -o $(GOBIN)/ttdivisualizer -tags "insecure g3nboot argosy tc" -ldflags="$(LD_FLAGS)" tierceron/trcgorillaz/ttdivisualizer	
+
 all: api config devplugintrcdb config seed x xlib pub sub
