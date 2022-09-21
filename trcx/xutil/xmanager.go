@@ -20,12 +20,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var wg sync.WaitGroup
-var wg2 sync.WaitGroup
-
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
 func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, error, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string) {
+	var wg sync.WaitGroup
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
