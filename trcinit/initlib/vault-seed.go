@@ -124,7 +124,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 					}
 					SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+fileSteppedInto.Name())
 					seeded = true
-				} else if fileSteppedInto.Name() == "Index" || fileSteppedInto.Name() == "Restricted" {
+				} else if fileSteppedInto.Name() == "Index" || fileSteppedInto.Name() == "Restricted" || fileSteppedInto.Name() == "Protected" {
 					if eUtils.OnlyBasePtr {
 						continue
 					}
@@ -355,7 +355,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	mod.Env = config.Env
 	if strings.Contains(filepath, "/PublicIndex/") {
 		config.Log.Println("Seeding configuration data for the following templates: DataStatistics")
-	} else if isIndexData || strings.HasPrefix(filepath, "Restricted/") { //Sets restricted to indexpath due to forward logic using indexpath
+	} else if isIndexData || strings.HasPrefix(filepath, "Restricted/") || strings.HasPrefix(filepath, "Protected/") { //Sets restricted to indexpath due to forward logic using indexpath
 		mod.SectionPath = strings.TrimSuffix(filepath, "_seed.yml")
 		if len(config.IndexFilter) > 0 && isIndexData && !strings.Contains(mod.SectionPath, config.IndexFilter[0]) {
 			mod.SectionPath = mod.SectionPath[:strings.LastIndex(mod.SectionPath, "/")+1] + config.IndexFilter[0] + mod.SectionPath[strings.LastIndex(mod.SectionPath, "/"):]

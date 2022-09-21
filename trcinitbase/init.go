@@ -113,6 +113,10 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		restrictedSlice = append(restrictedSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
 	}
 
+	if len(*eUtils.ProtectedPtr) > 0 {
+		restrictedSlice = append(restrictedSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
+	}
+
 	namespaceTokenConfigs := "vault_namespaces" + string(os.PathSeparator) + "token_files"
 	namespaceRoleConfigs := "vault_namespaces" + string(os.PathSeparator) + "role_files"
 	namespacePolicyConfigs := "vault_namespaces" + string(os.PathSeparator) + "policy_files"
@@ -529,13 +533,15 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 		sectionKey := "/"
 		if len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0 { //*******
-			if len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 {
+			if len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 || len(*eUtils.ProtectedPtr) > 0 {
 				if len(*eUtils.IndexedPtr) > 0 {
 					sectionKey = "/Index/"
 				} else if len(*eUtils.RestrictedPtr) > 0 {
 					sectionKey = "/Restricted/"
 				}
 			}
+		} else if len(*eUtils.ProtectedPtr) > 0 {
+			sectionKey = "/Protected/"
 		}
 		var subSectionName string
 		if len(*eUtils.IndexNameFilterPtr) > 0 {
