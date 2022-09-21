@@ -34,20 +34,30 @@ func checkInitFlagHelper() {
 	}
 }
 func CheckInitFlags() {
+	filtered := false
 	//Cannot specify a pathed indexed/restricted seed file while specifying a restricted/indexed section.
-	if len(*RestrictedPtr) > 0 && len(*IndexedPtr) > 0 && (len(*IndexNameFilterPtr) > 0 || len(*IndexServiceFilterPtr) > 0 || len(*IndexValueFilterPtr) > 0 || len(*IndexServiceExtFilterPtr) > 0) {
-		fmt.Println("Cannot use -restricted and -indexed at the same time while trying to specify a seed file")
+	if len(*IndexNameFilterPtr) > 0 || len(*IndexServiceFilterPtr) > 0 || len(*IndexValueFilterPtr) > 0 || len(*IndexServiceExtFilterPtr) > 0 {
+		filtered = true
+	}
+	if len(*RestrictedPtr) > 0 && len(*IndexedPtr) > 0 && filtered {
+		fmt.Println("Cannot use -restricted and -indexed at the same time while trying to specify a seed file.")
 		os.Exit(1)
 	}
 
 	//Same reason as above, but with protected.
 	if len(*ProtectedPtr) > 0 && len(*IndexedPtr) > 0 {
-		fmt.Println("Cannot use -protected with -indexed")
+		fmt.Println("Cannot use -protected with -indexed.")
 		os.Exit(1)
 	}
 
-	if len(*RestrictedPtr) > 0 && len(*IndexedPtr) > 0 {
-		fmt.Println()
+	if len(*ProtectedPtr) > 0 && filtered {
+		fmt.Println("Cannot use -protected with filters.")
+		os.Exit(1)
+	}
+
+	if (len(*RestrictedPtr) > 0 || len(*IndexedPtr) > 0) && filtered && (strings.Contains(*RestrictedPtr, ",") || strings.Contains(*IndexedPtr, ",")) {
+		fmt.Println("Cannot use comma delimited lists with filters.")
+		os.Exit(1)
 	}
 
 	if len(*RestrictedPtr) > 0 || len(*IndexedPtr) > 0 {
