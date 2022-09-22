@@ -423,7 +423,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	if controllerCheck == 3 {
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
 		tfmContext.GetTableModifierLock().Lock()
-		controllerInterfaceErr := harbingeropts.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{})
+		controllerInterfaceErr := harbingeropts.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
 		tfmContext.GetTableModifierLock().Unlock()
 		if controllerInterfaceErr != nil {
 			eUtils.LogErrorMessage(config, "Failed to start up controller database interface:"+controllerInterfaceErr.Error(), false)
@@ -450,7 +450,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 
 	tfmContext.GetTableModifierLock().Lock()
-	interfaceErr := harbingeropts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{})
+	interfaceErr := harbingeropts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
 	tfmContext.GetTableModifierLock().Unlock()
 	if interfaceErr != nil {
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
