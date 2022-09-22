@@ -448,6 +448,18 @@ skipDiff:
 				if len(newSectionSlice) > 0 {
 					sectionSlice = newSectionSlice
 				}
+			} else { //novault takes this path
+				if len(*eUtils.IndexedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+				}
+
+				if len(*eUtils.RestrictedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
+				}
+
+				if len(*eUtils.ProtectedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
+				}
 			}
 		}
 	}

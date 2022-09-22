@@ -581,7 +581,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	}
 	var mod *helperkv.Modifier
 
-	if config.Token != "novault" {
+	if config.Token != "novault" { //Filter unneeded templates
 		var err error
 		// TODO: Redo/deleted the indexedEnv work...
 		// Get filtered using mod and templates.
@@ -598,6 +598,18 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 			eUtils.LogAndSafeExit(config, "", 1)
 		}
 		templatePaths = templatePathsAccepted
+	} else {
+		templatePathsAccepted := []string{}
+		for _, project := range config.ProjectSections {
+			for _, templatePath := range templatePaths {
+				if strings.Contains(templatePath, project) {
+					templatePathsAccepted = append(templatePathsAccepted, templatePath)
+				}
+			}
+		}
+		if len(templatePathsAccepted) > 0 {
+			templatePaths = templatePathsAccepted
+		}
 	}
 	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(config, false, templatePaths)
 	if errGenerateSeeds != nil {
