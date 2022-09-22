@@ -361,11 +361,13 @@ skipDiff:
 	var waitg sync.WaitGroup
 	sectionKey := "/"
 	if len(envSlice) == 1 || (len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0) {
-		if strings.Contains(envSlice[0], "*") || len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 {
+		if strings.Contains(envSlice[0], "*") || len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 || len(*eUtils.ProtectedPtr) > 0 {
 			if len(*eUtils.IndexedPtr) > 0 {
 				sectionKey = "/Index/"
 			} else if len(*eUtils.RestrictedPtr) > 0 {
 				sectionKey = "/Restricted/"
+			} else if len(*eUtils.ProtectedPtr) > 0 {
+				sectionKey = "/Protected/"
 			}
 
 			newSectionSlice := make([]string, 0)
@@ -394,6 +396,10 @@ skipDiff:
 
 				if len(*eUtils.RestrictedPtr) > 0 {
 					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
+				}
+
+				if len(*eUtils.ProtectedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
 				}
 
 				var listValues *api.Secret
@@ -441,6 +447,18 @@ skipDiff:
 				}
 				if len(newSectionSlice) > 0 {
 					sectionSlice = newSectionSlice
+				}
+			} else { //novault takes this path
+				if len(*eUtils.IndexedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+				}
+
+				if len(*eUtils.RestrictedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
+				}
+
+				if len(*eUtils.ProtectedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
 				}
 			}
 		}
