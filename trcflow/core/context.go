@@ -99,6 +99,7 @@ type TrcFlowContext struct {
 	ChangeFlowName   string // Change flow table name.
 	FlowState        flowcorehelper.CurrentFlowState
 	FlowLock         *sync.Mutex //This is for sync concurrent changes to FlowState
+	Restart          bool
 }
 
 var tableModifierLock sync.Mutex
@@ -323,6 +324,25 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				mysqlPushEnabled,
 				getIndexedPathExt,
 				flowPushRemote)
+			if tfContext.Restart {
+				go tfmContext.SyncTableCycle(tfContext,
+					identityColumnName,
+					vaultIndexColumnName,
+					vaultSecondIndexColumnName,
+					getIndexedPathExt,
+					flowPushRemote,
+					ctx,
+					sqlState)
+				tfContext.FlowLock.Lock()
+				if tfContext.FlowState.SyncMode == "pullonce" {
+					tfContext.FlowState.SyncMode = "pullcomplete"
+					stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
+					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "pullcomplete"}
+				}
+				tfContext.FlowLock.Unlock()
+
+				tfContext.Restart = false
+			}
 			return
 		}
 	}
@@ -418,7 +438,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	sqlState bool) {
 
 	var seedInitComplete chan bool = make(chan bool, 1)
-	if vaultSecondIndexColumnName == "" {
+	if vaultSecondIndexColumnName == "" && !tfContext.Restart {
 		go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
 	} else {
 		seedInitComplete <- true
@@ -489,8 +509,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						if len(notificationFlowChannel) < 5 {
-							// TODO: Maybe should be non-blocking in case of data race.
-							notificationFlowChannel <- true
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
 						}
 					}
 				}
@@ -501,8 +522,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						if len(notificationFlowChannel) < 5 {
-							// TODO: Maybe should be non-blocking in case of data race.
-							notificationFlowChannel <- true
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
 						}
 					}
 				}
@@ -541,8 +563,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						if len(notificationFlowChannel) < 5 {
-							// TODO: Maybe should be non-blocking in case of data race.
-							notificationFlowChannel <- true
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
 						}
 					}
 				}
@@ -553,8 +576,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						if len(notificationFlowChannel) < 5 {
-							// TODO: Maybe should be non-blocking in case of data race.
-							notificationFlowChannel <- true
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
 						}
 					}
 				}
