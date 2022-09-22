@@ -279,7 +279,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	}
 
-	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration) {
+	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration || *updateRole) {
 		if *tokenExpiration {
 			fmt.Println("Checking token expiration.")
 			roleId, lease, err := v.GetRoleID("bamboo")
