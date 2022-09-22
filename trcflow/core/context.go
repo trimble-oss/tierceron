@@ -457,15 +457,11 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	bindings map[string]sqle.Expression, // Optional param
 	changed bool,
 	operation string,
-	flowNotifications []FlowNameType,
+	flowNotifications []FlowNameType, // On successful completion, which flows to notify.
 	flowtestState string) [][]interface{} {
-	var changedChannel chan bool
 
 	if query == "" {
 		return nil
-	}
-	if changed {
-		changedChannel = tfmContext.ChannelMap[FlowNameType(tfContext.Flow.TableName())]
 	}
 	if operation == "INSERT" {
 		var matrix [][]interface{}
@@ -488,14 +484,15 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
 		if changed && len(matrix) > 0 {
-			if changedChannel != nil && len(changedChannel) < 5 {
-				changedChannel <- true
-			}
 			if len(flowNotifications) > 0 {
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						notificationFlowChannel <- true
+						if len(notificationFlowChannel) < 5 {
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
+						}
 					}
 				}
 			}
@@ -504,7 +501,11 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						notificationFlowChannel <- true
+						if len(notificationFlowChannel) < 5 {
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
+						}
 					}
 				}
 			}
@@ -527,6 +528,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			if err == nil && tableName == "ok" {
 				changed = true
 				matrix = append(matrix, []interface{}{})
+				tfmContext.Log("UPDATE successful.", nil)
+			} else {
+				tfmContext.Log("UPDATE failed.", nil)
 			}
 		}
 
@@ -534,14 +538,15 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
 		if changed && (len(matrix) > 0 || tableName != "") {
-			if changedChannel != nil && len(changedChannel) < 5 {
-				changedChannel <- true
-			}
 			if len(flowNotifications) > 0 {
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						notificationFlowChannel <- true
+						if len(notificationFlowChannel) < 5 {
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
+						}
 					}
 				}
 			}
@@ -550,7 +555,11 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						notificationFlowChannel <- true
+						if len(notificationFlowChannel) < 5 {
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
+						}
 					}
 				}
 			}
