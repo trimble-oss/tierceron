@@ -334,7 +334,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 					ctx,
 					sqlState)
 				tfContext.FlowLock.Lock()
-				if tfContext.FlowState.SyncMode == "pullonce" {
+				if tfContext.FlowState.SyncMode == "pullsynccomplete" {
 					tfContext.FlowState.SyncMode = "pullcomplete"
 					stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
 					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "pullcomplete"}
