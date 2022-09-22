@@ -64,6 +64,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
 	var vaultDatabaseConfig map[string]interface{}
+	var spiralDatabaseConfig map[string]interface{}
 	var trcIdentityConfig map[string]interface{}
 	logger.Println("Grabbing configs.")
 	for i := 0; i < len(projects); i++ {
@@ -86,6 +87,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		if services[i] == "VaultDatabase" || services[i] == "Identity" {
 			goMod.SectionName = "config"
 			goMod.SectionKey = "/Restricted/"
+		} else if services[i] == "SpiralDatabase" {
+			goMod.SectionName = "config"
+			goMod.SectionKey = "/Protected/"
 		}
 
 		for _, indexValue := range indexValues {
@@ -120,6 +124,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				}
 			case "VaultDatabase":
 				vaultDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
+				if !ok {
+					eUtils.LogErrorMessage(config, "Couldn't get config values.", false)
+					return err
+				}
+			case "SpiralDatabase":
+				spiralDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok {
 					eUtils.LogErrorMessage(config, "Couldn't get config values.", false)
 					return err
@@ -430,6 +440,15 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.
 	// The engine is in tfmContext...  that's the one we need to make available for connecting via dbvis...
 	// be sure to enable encryption on the connection...
+
+	//Setting up DFS USER
+	if dfsUser, ok := spiralDatabaseConfig["dbuser"]; ok {
+		vaultDatabaseConfig["dfsUser"] = dfsUser
+	}
+	if dfsPass, ok := spiralDatabaseConfig["dbpassword"]; ok {
+		vaultDatabaseConfig["dfsPass"] = dfsPass
+	}
+
 	tfmContext.GetTableModifierLock().Lock()
 	interfaceErr := harbingeropts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
 	tfmContext.GetTableModifierLock().Unlock()
