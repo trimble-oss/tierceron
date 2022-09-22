@@ -404,6 +404,41 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				fmt.Printf("Role ID: %s\n", roleID)
 				fmt.Printf("Secret ID: %s\n", secretID)
 
+				//
+				// Wipe existing protected app role.
+				// Recreate the protected app role.
+				//
+				for _, token := range tokens {
+					if !strings.Contains(token.Name, "protected") {
+						continue
+					}
+
+					resp, role_cleanup := v.DeleteRole(token.Name)
+					eUtils.LogErrorObject(config, role_cleanup, false)
+
+					if resp.StatusCode == 404 {
+						err = v.EnableAppRole()
+						eUtils.LogErrorObject(config, err, true)
+					}
+
+					err = v.CreateNewRole(token.Name, &sys.NewRoleOptions{
+						TokenTTL:    "10m",
+						TokenMaxTTL: "15m",
+						Policies:    []string{token.Name},
+					})
+					eUtils.LogErrorObject(config, err, true)
+
+					tokenRoleID, _, err := v.GetRoleID(token.Name)
+					eUtils.LogErrorObject(config, err, true)
+
+					tokenSecretID, err := v.GetSecretID(token.Name)
+					eUtils.LogErrorObject(config, err, true)
+
+					fmt.Printf("Rotated role id and secret id for " + token.Name + ".\n")
+					fmt.Printf("Role ID: %s\n", tokenRoleID)
+					fmt.Printf("Secret ID: %s\n", tokenSecretID)
+				}
+
 				// Store all new tokens to new appRole.
 				warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 				eUtils.LogErrorObject(config, err, true)
@@ -475,6 +510,41 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Printf("Rotated role id and secret id.\n")
 			fmt.Printf("Role ID: %s\n", roleID)
 			fmt.Printf("Secret ID: %s\n", secretID)
+
+			//
+			// Wipe existing protected app role.
+			// Recreate the protected app role.
+			//
+			for _, token := range tokens {
+				if !strings.Contains(token.Name, "protected") {
+					continue
+				}
+
+				resp, role_cleanup := v.DeleteRole(token.Name)
+				eUtils.LogErrorObject(config, role_cleanup, false)
+
+				if resp.StatusCode == 404 {
+					err = v.EnableAppRole()
+					eUtils.LogErrorObject(config, err, true)
+				}
+
+				err = v.CreateNewRole(token.Name, &sys.NewRoleOptions{
+					TokenTTL:    "10m",
+					TokenMaxTTL: "15m",
+					Policies:    []string{token.Name},
+				})
+				eUtils.LogErrorObject(config, err, true)
+
+				tokenRoleID, _, err := v.GetRoleID(token.Name)
+				eUtils.LogErrorObject(config, err, true)
+
+				tokenSecretID, err := v.GetSecretID(token.Name)
+				eUtils.LogErrorObject(config, err, true)
+
+				fmt.Printf("Rotated role id and secret id for " + token.Name + ".\n")
+				fmt.Printf("Role ID: %s\n", tokenRoleID)
+				fmt.Printf("Secret ID: %s\n", tokenSecretID)
+			}
 
 			// Store all new tokens to new appRole.
 			warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
