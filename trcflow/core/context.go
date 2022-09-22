@@ -489,8 +489,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						if len(notificationFlowChannel) < 5 {
-							// TODO: Maybe should be non-blocking in case of data race.
-							notificationFlowChannel <- true
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
 						}
 					}
 				}
@@ -501,8 +502,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						if len(notificationFlowChannel) < 5 {
-							// TODO: Maybe should be non-blocking in case of data race.
-							notificationFlowChannel <- true
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
 						}
 					}
 				}
@@ -541,8 +543,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						if len(notificationFlowChannel) < 5 {
-							// TODO: Maybe should be non-blocking in case of data race.
-							notificationFlowChannel <- true
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
 						}
 					}
 				}
@@ -553,8 +556,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
 						if len(notificationFlowChannel) < 5 {
-							// TODO: Maybe should be non-blocking in case of data race.
-							notificationFlowChannel <- true
+							go func(nfc chan bool) {
+								nfc <- true
+							}(notificationFlowChannel)
 						}
 					}
 				}
