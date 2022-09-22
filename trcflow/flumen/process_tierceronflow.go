@@ -64,7 +64,6 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 }
 
 func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext, flowControllerMap map[string]chan flowcorehelper.CurrentFlowState, tierceronFlowName string) {
-	tfmContext.FlowControllerUpdateLock.Lock()
 	var rows [][]interface{}
 	if tierceronFlowName != "" {
 		rows = tfmContext.CallDBQuery(tfContext, "select * from "+tfContext.FlowSourceAlias+"."+string(tfContext.Flow)+" WHERE "+tierceronFlowIdColumnName+"='"+tierceronFlowName+"'", nil, false, "SELECT", nil, "")
@@ -74,7 +73,9 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)
 		if flowId, ok := tfFlow[tierceronFlowIdColumnName].(string); ok {
+			tfmContext.FlowControllerUpdateLock.Lock()
 			stateChannel := flowControllerMap[flowId]
+			tfmContext.FlowControllerUpdateLock.Unlock()
 			if stateChannel == nil {
 				tfmContext.Log("Tierceron Flow could not find the flow:"+tfFlow[tierceronFlowIdColumnName].(string), errors.New("State channel for flow controller was nil."))
 				continue
@@ -90,7 +91,6 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 			}
 		}
 	}
-	tfmContext.FlowControllerUpdateLock.Unlock()
 }
 
 func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) ([]map[string]interface{}, error) {
