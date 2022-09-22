@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -316,6 +317,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				getIndexedPathExt,
 				flowPushRemote)
 		case <-ctx.Done():
+			tfmContext.Log(fmt.Sprintf("Flow shutdown: %s\n", tfContext.Flow), nil)
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
@@ -325,6 +327,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				getIndexedPathExt,
 				flowPushRemote)
 			if tfContext.Restart {
+				tfmContext.Log(fmt.Sprintf("Restarting flow: %s\n", tfContext.Flow), nil)
 				go tfmContext.SyncTableCycle(tfContext,
 					identityColumnName,
 					vaultIndexColumnName,
@@ -337,7 +340,9 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				if tfContext.FlowState.SyncMode == "pullsynccomplete" {
 					tfContext.FlowState.SyncMode = "pullcomplete"
 					stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
-					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "pullcomplete"}
+					go func(ftn string, sf string) {
+						stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: ftn, StateUpdate: "2", SyncFilter: sf, SyncMode: "pullcomplete"}
+					}(tfContext.Flow.TableName(), tfContext.FlowState.SyncFilter)
 				}
 				tfContext.FlowLock.Unlock()
 
@@ -439,6 +444,16 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 
 	var seedInitComplete chan bool = make(chan bool, 1)
 	if vaultSecondIndexColumnName == "" && !tfContext.Restart {
+		tfContext.FlowLock.Lock()
+		// if it's in sync complete on startup, reset the mode to pullcomplete.
+		if tfContext.FlowState.SyncMode == "pullsynccomplete" {
+			tfContext.FlowState.SyncMode = "pullcomplete"
+			stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
+			go func(ftn string, sf string) {
+				stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: ftn, StateUpdate: "2", SyncFilter: sf, SyncMode: "pullcomplete"}
+			}(tfContext.Flow.TableName(), tfContext.FlowState.SyncFilter)
+		}
+		tfContext.FlowLock.Unlock()
 		go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
 	} else {
 		seedInitComplete <- true
