@@ -1,7 +1,6 @@
 package flumen
 
 import (
-	"context"
 	"errors"
 
 	flowcore "tierceron/trcflow/core"
@@ -162,8 +161,7 @@ func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext)
 	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
 
-	cancelCtx, _ := context.WithCancel(context.Background())
-	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil, cancelCtx, false)
+	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil, false)
 	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
 	if sqlIngestInterval > 0 {
 		// Implement pull from remote data source.

@@ -92,15 +92,24 @@ type TrcFlowContext struct {
 	RemoteDataSource map[string]interface{}
 	GoMod            *helperkv.Modifier
 	Vault            *sys.Vault
-	FlowSource       string       // The name of the flow source identified by project.
-	FlowSourceAlias  string       // May be a database name
-	Flow             FlowNameType // May be a table name.
-	FlowPath         string
-	FlowData         interface{}
-	ChangeFlowName   string // Change flow table name.
-	FlowState        flowcorehelper.CurrentFlowState
-	FlowLock         *sync.Mutex //This is for sync concurrent changes to FlowState
-	Restart          bool
+
+	// Recommended not to store contexts, but because we
+	// are working with flows, this is a different pattern.
+	// This just means some analytic tools won't be able to
+	// perform analysis which are based on the Context.
+	ContextNotifyChan chan bool
+	Context           context.Context
+	CancelContext     context.CancelFunc
+
+	FlowSource      string       // The name of the flow source identified by project.
+	FlowSourceAlias string       // May be a database name
+	Flow            FlowNameType // May be a table name.
+	FlowPath        string
+	FlowData        interface{}
+	ChangeFlowName  string // Change flow table name.
+	FlowState       flowcorehelper.CurrentFlowState
+	FlowLock        *sync.Mutex //This is for sync concurrent changes to FlowState
+	Restart         bool
 }
 
 var tableModifierLock sync.Mutex
@@ -293,7 +302,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
-	ctx context.Context,
 	sqlState bool) {
 
 	mysqlPushEnabled := sqlState
@@ -316,8 +324,8 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				mysqlPushEnabled,
 				getIndexedPathExt,
 				flowPushRemote)
-		case <-ctx.Done():
-			tfmContext.Log(fmt.Sprintf("Flow shutdown: %s\n", tfContext.Flow), nil)
+		case <-tfContext.Context.Done():
+			tfmContext.Log(fmt.Sprintf("Flow shutdown: %s", tfContext.Flow), nil)
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
@@ -327,28 +335,18 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				getIndexedPathExt,
 				flowPushRemote)
 			if tfContext.Restart {
-				tfmContext.Log(fmt.Sprintf("Restarting flow: %s\n", tfContext.Flow), nil)
+				tfmContext.Log(fmt.Sprintf("Restarting flow: %s", tfContext.Flow), nil)
+				// Reload table from vault...
 				go tfmContext.SyncTableCycle(tfContext,
 					identityColumnName,
 					vaultIndexColumnName,
 					vaultSecondIndexColumnName,
 					getIndexedPathExt,
 					flowPushRemote,
-					ctx,
 					sqlState)
-				tfContext.FlowLock.Lock()
-				if tfContext.FlowState.SyncMode == "pullsynccomplete" {
-					tfContext.FlowState.SyncMode = "pullcomplete"
-					stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
-					go func(ftn string, sf string) {
-						stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: ftn, StateUpdate: "2", SyncFilter: sf, SyncMode: "pullcomplete"}
-					}(tfContext.Flow.TableName(), tfContext.FlowState.SyncFilter)
-				}
-				tfContext.FlowLock.Unlock()
-
 				tfContext.Restart = false
 			}
-			return
+		case <-tfContext.ContextNotifyChan:
 		}
 	}
 }
@@ -439,21 +437,26 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	vaultSecondIndexColumnName string,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
-	ctx context.Context,
 	sqlState bool) {
 
+	tfContext.Context, tfContext.CancelContext = context.WithCancel(context.Background())
+	go func() {
+		tfContext.ContextNotifyChan <- true
+	}()
+
 	var seedInitComplete chan bool = make(chan bool, 1)
+	tfContext.FlowLock.Lock()
+	// if it's in sync complete on startup, reset the mode to pullcomplete.
+	if tfContext.FlowState.SyncMode == "pullsynccomplete" {
+		tfContext.FlowState.SyncMode = "pullcomplete"
+		stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
+		go func(ftn string, sf string) {
+			stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: ftn, StateUpdate: "2", SyncFilter: sf, SyncMode: "pullcomplete"}
+		}(tfContext.Flow.TableName(), tfContext.FlowState.SyncFilter)
+	}
+	tfContext.FlowLock.Unlock()
+
 	if vaultSecondIndexColumnName == "" && !tfContext.Restart {
-		tfContext.FlowLock.Lock()
-		// if it's in sync complete on startup, reset the mode to pullcomplete.
-		if tfContext.FlowState.SyncMode == "pullsynccomplete" {
-			tfContext.FlowState.SyncMode = "pullcomplete"
-			stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
-			go func(ftn string, sf string) {
-				stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: ftn, StateUpdate: "2", SyncFilter: sf, SyncMode: "pullcomplete"}
-			}(tfContext.Flow.TableName(), tfContext.FlowState.SyncFilter)
-		}
-		tfContext.FlowLock.Unlock()
 		go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
 	} else {
 		seedInitComplete <- true
@@ -472,7 +475,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	}
 	tfContext.FlowLock.Unlock()
 
-	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, ctx, sqlState)
+	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, sqlState)
 }
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan bool {
