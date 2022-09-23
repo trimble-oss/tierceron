@@ -113,6 +113,10 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		restrictedSlice = append(restrictedSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
 	}
 
+	if len(*eUtils.ProtectedPtr) > 0 {
+		restrictedSlice = append(restrictedSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
+	}
+
 	namespaceTokenConfigs := "vault_namespaces" + string(os.PathSeparator) + "token_files"
 	namespaceRoleConfigs := "vault_namespaces" + string(os.PathSeparator) + "role_files"
 	namespacePolicyConfigs := "vault_namespaces" + string(os.PathSeparator) + "policy_files"
@@ -275,7 +279,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	}
 
-	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration) {
+	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration || *updateRole) {
 		if *tokenExpiration {
 			fmt.Println("Checking token expiration.")
 			roleId, lease, err := v.GetRoleID("bamboo")
@@ -331,6 +335,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				// Dev, QA specific token creation.
 				//
 				tokenMap := map[string]interface{}{}
+				protectedTokenMap := map[string]interface{}{}
 
 				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
 				eUtils.LogErrorObject(config, err, false)
@@ -369,6 +374,9 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 					if token.Name != "admin" && token.Name != "webapp" && !strings.Contains(token.Name, "unrestricted") {
 						tokenMap[token.Name] = token.Value
 					}
+					if strings.Contains(token.Name, "protected") {
+						protectedTokenMap[token.Name] = token.Value
+					}
 				}
 
 				//
@@ -396,7 +404,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				secretID, err := v.GetSecretID("bamboo")
 				eUtils.LogErrorObject(config, err, true)
 
-				fmt.Printf("Rotated role id and secret id.\n")
+				fmt.Printf("Rotated role id and secret id for bamboo.\n")
 				fmt.Printf("Role ID: %s\n", roleID)
 				fmt.Printf("Secret ID: %s\n", secretID)
 
@@ -404,6 +412,40 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 				eUtils.LogErrorObject(config, err, true)
 				eUtils.LogWarningsObject(config, warn, true)
+				//
+				// Wipe existing protected app role.
+				// Recreate the protected app role.
+				//
+
+				caneResp, caneRole_cleanup := v.DeleteRole("sugarcane")
+				eUtils.LogErrorObject(config, caneRole_cleanup, false)
+
+				if caneResp.StatusCode == 404 {
+					err = v.EnableAppRole()
+					eUtils.LogErrorObject(config, err, true)
+				}
+
+				err = v.CreateNewRole("sugarcane", &sys.NewRoleOptions{
+					TokenTTL:    "10m",
+					TokenMaxTTL: "15m",
+					Policies:    []string{"sugarcane"},
+				})
+				eUtils.LogErrorObject(config, err, true)
+
+				tokenRoleID, _, err := v.GetRoleID("sugarcane")
+				eUtils.LogErrorObject(config, err, true)
+
+				tokenSecretID, err := v.GetSecretID("sugarcane")
+				eUtils.LogErrorObject(config, err, true)
+
+				fmt.Printf("Rotated role id and secret id for sugarcane.\n")
+				fmt.Printf("Role ID: %s\n", tokenRoleID)
+				fmt.Printf("Secret ID: %s\n", tokenSecretID)
+				mod.Env = "sugarcane"
+				// Store all new tokens to new appRole.
+				caneWarn, caneErr := mod.Write("super-secrets/tokens", protectedTokenMap, config.Log)
+				eUtils.LogErrorObject(config, caneErr, true)
+				eUtils.LogWarningsObject(config, caneWarn, true)
 			}
 		}
 		os.Exit(0)
@@ -472,6 +514,41 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Printf("Role ID: %s\n", roleID)
 			fmt.Printf("Secret ID: %s\n", secretID)
 
+			//
+			// Wipe existing protected app role.
+			// Recreate the protected app role.
+			//
+			for _, token := range tokens {
+				if !strings.Contains(token.Name, "protected") {
+					continue
+				}
+
+				resp, role_cleanup := v.DeleteRole(token.Name)
+				eUtils.LogErrorObject(config, role_cleanup, false)
+
+				if resp.StatusCode == 404 {
+					err = v.EnableAppRole()
+					eUtils.LogErrorObject(config, err, true)
+				}
+
+				err = v.CreateNewRole(token.Name, &sys.NewRoleOptions{
+					TokenTTL:    "10m",
+					TokenMaxTTL: "15m",
+					Policies:    []string{token.Name},
+				})
+				eUtils.LogErrorObject(config, err, true)
+
+				tokenRoleID, _, err := v.GetRoleID(token.Name)
+				eUtils.LogErrorObject(config, err, true)
+
+				tokenSecretID, err := v.GetSecretID(token.Name)
+				eUtils.LogErrorObject(config, err, true)
+
+				fmt.Printf("Rotated role id and secret id for " + token.Name + ".\n")
+				fmt.Printf("Role ID: %s\n", tokenRoleID)
+				fmt.Printf("Secret ID: %s\n", tokenSecretID)
+			}
+
 			// Store all new tokens to new appRole.
 			warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 			eUtils.LogErrorObject(config, err, true)
@@ -529,13 +606,15 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 		sectionKey := "/"
 		if len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0 { //*******
-			if len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 {
+			if len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 || len(*eUtils.ProtectedPtr) > 0 {
 				if len(*eUtils.IndexedPtr) > 0 {
 					sectionKey = "/Index/"
 				} else if len(*eUtils.RestrictedPtr) > 0 {
 					sectionKey = "/Restricted/"
 				}
 			}
+		} else if len(*eUtils.ProtectedPtr) > 0 {
+			sectionKey = "/Protected/"
 		}
 		var subSectionName string
 		if len(*eUtils.IndexNameFilterPtr) > 0 {
