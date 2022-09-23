@@ -582,10 +582,6 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
-		// If triggers are ever fixed, this can be removed.
-		if _, changeIdOk := queryMap["TrcChangeId"]; changeIdOk {
-			fmt.Println("SHould change.")
-		}
 		if changed && (len(matrix) > 0 || tableName != "") {
 			// If triggers are ever fixed, this can be removed.
 			if changeId, changeIdOk := queryMap["TrcChangeId"]; changeIdOk {
