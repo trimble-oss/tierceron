@@ -524,7 +524,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 
 			// If triggers are ever fixed, this can be removed.
 			if changeId, changeIdOk := queryMap["TrcChangeId"]; changeIdOk {
-				changeQuery := `INSERT IGNORE INTO ` + tfContext.ChangeFlowName + ` VALUES ("` + changeId + `", current_timestamp());`
+				changeQuery := `INSERT IGNORE INTO ` + tfContext.FlowSourceAlias + `.` + tfContext.ChangeFlowName + ` VALUES ("` + changeId + `", current_timestamp());`
 				_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, changeQuery, tfContext.FlowLock)
 			}
 
@@ -589,7 +589,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		if changed && (len(matrix) > 0 || tableName != "") {
 			// If triggers are ever fixed, this can be removed.
 			if changeId, changeIdOk := queryMap["TrcChangeId"]; changeIdOk {
-				changeQuery := `INSERT IGNORE INTO ` + tfContext.ChangeFlowName + ` VALUES ("` + changeId + `", current_timestamp());`
+				changeQuery := `INSERT IGNORE INTO ` + tfContext.FlowSourceAlias + `.` + tfContext.ChangeFlowName + ` VALUES ("` + changeId + `", current_timestamp());`
 				_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, changeQuery, tfContext.FlowLock)
 			}
 
