@@ -302,10 +302,18 @@ func AutoAuth(config *DriverConfig,
 			return err
 		}
 		mod.Env = "bamboo"
-
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {
-			return err
+			if strings.Contains(err.Error(), "permission denied") {
+				mod.Env = "sugarcane"
+				sugarToken, sugarErr := mod.ReadValue("super-secrets/tokens", *tokenNamePtr+"_protected")
+				if sugarErr != nil {
+					return err
+				}
+				*tokenPtr = sugarToken
+			} else {
+				return err
+			}
 		}
 	}
 	return nil
