@@ -13,6 +13,7 @@ var IndexNameFilterPtr = flag.String("indexFilter", "", "Specifies which index n
 var IndexValueFilterPtr = flag.String("indexValueFilter", "", "Specifies which index values to filter")                     // column index value to filter on.
 var IndexedPtr = flag.String("indexed", "", "Specifies which projects are indexed")                                         // Indicates indexed projects...
 var RestrictedPtr = flag.String("restricted", "", "Specifies which projects have restricted access.")
+var ProtectedPtr = flag.String("protected", "", "Specifies which projects have protected access.")
 var BasePtr = flag.Bool("base", false, "Specifies whether the base env seed file will be seeded")
 var OnlyBasePtr = false
 
@@ -33,9 +34,29 @@ func checkInitFlagHelper() {
 	}
 }
 func CheckInitFlags() {
+	filtered := false
 	//Cannot specify a pathed indexed/restricted seed file while specifying a restricted/indexed section.
-	if len(*RestrictedPtr) > 0 && len(*IndexedPtr) > 0 && (len(*IndexNameFilterPtr) > 0 || len(*IndexServiceFilterPtr) > 0 || len(*IndexValueFilterPtr) > 0 || len(*IndexServiceExtFilterPtr) > 0) {
-		fmt.Println("Cannot use -restricted and -indexed at the same time while trying to specify a seed file")
+	if len(*IndexNameFilterPtr) > 0 || len(*IndexServiceFilterPtr) > 0 || len(*IndexValueFilterPtr) > 0 || len(*IndexServiceExtFilterPtr) > 0 {
+		filtered = true
+	}
+	if len(*RestrictedPtr) > 0 && len(*IndexedPtr) > 0 && filtered {
+		fmt.Println("Cannot use -restricted and -indexed at the same time while trying to specify a seed file.")
+		os.Exit(1)
+	}
+
+	//Same reason as above, but with protected.
+	if len(*ProtectedPtr) > 0 && len(*IndexedPtr) > 0 {
+		fmt.Println("Cannot use -protected with -indexed.")
+		os.Exit(1)
+	}
+
+	if len(*RestrictedPtr) > 0 && len(*ProtectedPtr) > 0 && filtered {
+		fmt.Println("Cannot use -restricted and -protected at the same time while trying to specify a seed file.")
+		os.Exit(1)
+	}
+
+	if (len(*RestrictedPtr) > 0 || len(*IndexedPtr) > 0) && filtered && (strings.Contains(*RestrictedPtr, ",") || strings.Contains(*IndexedPtr, ",")) {
+		fmt.Println("Cannot use comma delimited lists with filters.")
 		os.Exit(1)
 	}
 
@@ -47,7 +68,7 @@ func CheckInitFlags() {
 		}
 	}
 
-	if len(*RestrictedPtr) == 0 && len(*IndexedPtr) == 0 {
+	if len(*RestrictedPtr) == 0 && len(*IndexedPtr) == 0 && len(*ProtectedPtr) == 0 {
 		if *BasePtr {
 			OnlyBasePtr = true
 		}
