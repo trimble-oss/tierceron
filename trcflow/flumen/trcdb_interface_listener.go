@@ -21,7 +21,6 @@ func (tl *TrcDBServerEventListener) ClientDisconnected() {}
 func (tl *TrcDBServerEventListener) QueryStarted() {}
 
 func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, duration time.Duration) {
-	tl.Log.Println("Query completed.")
 	if success && (strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update")) {
 		// TODO: one could implement exactly which flows to notify based on the query.
 		changeLock.Lock()
