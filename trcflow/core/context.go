@@ -346,6 +346,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 					sqlState)
 				tfContext.Restart = false
 			}
+			return
 		case <-tfContext.ContextNotifyChan:
 		}
 	}
