@@ -376,15 +376,20 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 			}
 		}
 		tfmContext.GetTableModifierLock().Unlock()
-		tfmContext.seedTrcDbFromChanges(
-			tfContext,
-			identityColumnName,
-			vaultIndexColumnName,
-			true,
-			getIndexedPathExt,
-			flowPushRemote,
-			tfmContext.GetTableModifierLock(),
-		)
+
+		/*
+			tfmContext.seedTrcDbFromChanges(			//Old implementation
+				tfContext,								//Templatized approach
+				identityColumnName,
+				vaultIndexColumnName,
+				true,
+				getIndexedPathExt,
+				flowPushRemote,
+				tfmContext.GetTableModifierLock(),
+			)
+		*/
+		tfmContext.seedTrcDbFromVault(tfContext) //New implementation - direct approach
+
 		tfmContext.GetTableModifierLock().Lock()
 		for _, trigger := range removedTriggers {
 			tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, trigger)
