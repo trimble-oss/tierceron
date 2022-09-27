@@ -48,8 +48,6 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
-	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")
-	restrictedPtr := flag.String("restricted", "", "Specfies which projects have restricted access.")
 	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
 
 	indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
@@ -68,6 +66,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 	}
 	flag.Parse()
+	eUtils.CheckInitFlags()
 	if memonly.IsMemonly() {
 		mlock.MunlockAll(nil)
 		mlock.Mlock2(nil, tokenPtr)
@@ -81,11 +80,6 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	if *namespaceVariable == "" && *newPtr {
 		fmt.Println("Namespace (-namespace) required to initialize a new vault.")
-		os.Exit(1)
-	}
-
-	if len(*indexedPtr) > 0 && len(*restrictedPtr) > 0 {
-		fmt.Println("-indexed and -restricted flag cannot be used together.")
 		os.Exit(1)
 	}
 
@@ -110,26 +104,22 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 	}
 
-	if (len(*indexServiceFilterPtr) == 0 || len(*indexNameFilterPtr) == 0) && len(*indexedPtr) != 0 {
-		fmt.Println("-serviceFilter and -indexFilter must be specified to use -indexed flag")
-		os.Exit(1)
-	} else if len(*indexServiceFilterPtr) == 0 && len(*restrictedPtr) != 0 {
-		fmt.Println("-serviceFilter must be specified to use -restricted flag")
-		os.Exit(1)
-	}
-
-	if len(*indexServiceFilterPtr) != 0 && len(*indexNameFilterPtr) == 0 && len(*restrictedPtr) != 0 {
-		indexNameFilterPtr = indexServiceFilterPtr
+	if len(*eUtils.IndexServiceFilterPtr) != 0 && len(*eUtils.IndexNameFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
+		eUtils.IndexNameFilterPtr = eUtils.IndexServiceFilterPtr
 	}
 
 	var indexSlice = make([]string, 0) //Checks for indexed projects
-	if len(*indexedPtr) > 0 {
-		indexSlice = append(indexSlice, strings.Split(*indexedPtr, ",")...)
+	if len(*eUtils.IndexedPtr) > 0 {
+		indexSlice = append(indexSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
 	}
 
 	var restrictedSlice = make([]string, 0) //Checks for restricted projects
-	if len(*restrictedPtr) > 0 {
-		restrictedSlice = append(restrictedSlice, strings.Split(*restrictedPtr, ",")...)
+	if len(*eUtils.RestrictedPtr) > 0 {
+		restrictedSlice = append(restrictedSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
+	}
+
+	if len(*eUtils.ProtectedPtr) > 0 {
+		restrictedSlice = append(restrictedSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
 	}
 
 	namespaceTokenConfigs := "vault_namespaces" + string(os.PathSeparator) + "token_files"
@@ -294,7 +284,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	}
 
-	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration) {
+	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration || *updateRole) {
 		if *tokenExpiration {
 			fmt.Println("Checking token expiration.")
 			roleId, lease, err := v.GetRoleID("bamboo")
@@ -350,6 +340,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				// Dev, QA specific token creation.
 				//
 				tokenMap := map[string]interface{}{}
+				protectedTokenMap := map[string]interface{}{}
 
 				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
 				eUtils.LogErrorObject(config, err, false)
@@ -388,6 +379,9 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 					if token.Name != "admin" && token.Name != "webapp" && !strings.Contains(token.Name, "unrestricted") {
 						tokenMap[token.Name] = token.Value
 					}
+					if strings.Contains(token.Name, "protected") {
+						protectedTokenMap[token.Name] = token.Value
+					}
 				}
 
 				//
@@ -415,7 +409,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				secretID, err := v.GetSecretID("bamboo")
 				eUtils.LogErrorObject(config, err, true)
 
-				fmt.Printf("Rotated role id and secret id.\n")
+				fmt.Printf("Rotated role id and secret id for bamboo.\n")
 				fmt.Printf("Role ID: %s\n", roleID)
 				fmt.Printf("Secret ID: %s\n", secretID)
 
@@ -423,6 +417,40 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 				eUtils.LogErrorObject(config, err, true)
 				eUtils.LogWarningsObject(config, warn, true)
+				//
+				// Wipe existing protected app role.
+				// Recreate the protected app role.
+				//
+
+				caneResp, caneRole_cleanup := v.DeleteRole("sugarcane")
+				eUtils.LogErrorObject(config, caneRole_cleanup, false)
+
+				if caneResp.StatusCode == 404 {
+					err = v.EnableAppRole()
+					eUtils.LogErrorObject(config, err, true)
+				}
+
+				err = v.CreateNewRole("sugarcane", &sys.NewRoleOptions{
+					TokenTTL:    "10m",
+					TokenMaxTTL: "15m",
+					Policies:    []string{"sugarcane"},
+				})
+				eUtils.LogErrorObject(config, err, true)
+
+				tokenRoleID, _, err := v.GetRoleID("sugarcane")
+				eUtils.LogErrorObject(config, err, true)
+
+				tokenSecretID, err := v.GetSecretID("sugarcane")
+				eUtils.LogErrorObject(config, err, true)
+
+				fmt.Printf("Rotated role id and secret id for sugarcane.\n")
+				fmt.Printf("Role ID: %s\n", tokenRoleID)
+				fmt.Printf("Secret ID: %s\n", tokenSecretID)
+				mod.Env = "sugarcane"
+				// Store all new tokens to new appRole.
+				caneWarn, caneErr := mod.Write("super-secrets/tokens", protectedTokenMap, config.Log)
+				eUtils.LogErrorObject(config, caneErr, true)
+				eUtils.LogWarningsObject(config, caneWarn, true)
 			}
 		}
 		os.Exit(0)
@@ -491,6 +519,41 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Printf("Role ID: %s\n", roleID)
 			fmt.Printf("Secret ID: %s\n", secretID)
 
+			//
+			// Wipe existing protected app role.
+			// Recreate the protected app role.
+			//
+			for _, token := range tokens {
+				if !strings.Contains(token.Name, "protected") {
+					continue
+				}
+
+				resp, role_cleanup := v.DeleteRole(token.Name)
+				eUtils.LogErrorObject(config, role_cleanup, false)
+
+				if resp.StatusCode == 404 {
+					err = v.EnableAppRole()
+					eUtils.LogErrorObject(config, err, true)
+				}
+
+				err = v.CreateNewRole(token.Name, &sys.NewRoleOptions{
+					TokenTTL:    "10m",
+					TokenMaxTTL: "15m",
+					Policies:    []string{token.Name},
+				})
+				eUtils.LogErrorObject(config, err, true)
+
+				tokenRoleID, _, err := v.GetRoleID(token.Name)
+				eUtils.LogErrorObject(config, err, true)
+
+				tokenSecretID, err := v.GetSecretID(token.Name)
+				eUtils.LogErrorObject(config, err, true)
+
+				fmt.Printf("Rotated role id and secret id for " + token.Name + ".\n")
+				fmt.Printf("Role ID: %s\n", tokenRoleID)
+				fmt.Printf("Secret ID: %s\n", tokenSecretID)
+			}
+
 			// Store all new tokens to new appRole.
 			warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 			eUtils.LogErrorObject(config, err, true)
@@ -512,18 +575,19 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 		var subSectionSlice = make([]string, 0) //Assign slice with the appriopiate slice
 		if len(restrictedSlice) > 0 {
-			subSectionSlice = restrictedSlice
-		} else if len(indexSlice) > 0 {
-			subSectionSlice = indexSlice
+			subSectionSlice = append(subSectionSlice, restrictedSlice...)
+		}
+		if len(indexSlice) > 0 {
+			subSectionSlice = append(subSectionSlice, indexSlice...)
 		}
 
 		var filteredSectionSlice []string
 		var indexFilterSlice []string
-		sectionSlice := []string{*indexValueFilterPtr}
+		sectionSlice := []string{*eUtils.IndexValueFilterPtr}
 
 		// Chewbacca: redo this next if section
-		if len(*indexValueFilterPtr) > 0 {
-			filterSlice := strings.Split(*indexValueFilterPtr, ",")
+		if len(*eUtils.IndexValueFilterPtr) > 0 {
+			filterSlice := strings.Split(*eUtils.IndexValueFilterPtr, ",")
 			for _, filter := range filterSlice {
 				for _, section := range sectionSlice {
 					if filter == section {
@@ -533,28 +597,33 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			}
 			sectionSlice = filteredSectionSlice
 		}
-		if len(*indexServiceFilterPtr) > 0 {
+		if len(*eUtils.IndexServiceFilterPtr) > 0 {
 			if len(sectionSlice) == 0 {
-				eUtils.LogAndSafeExit(config, "No available indexes found for "+*indexValueFilterPtr, 1)
+				eUtils.LogAndSafeExit(config, "No available indexes found for "+*eUtils.IndexValueFilterPtr, 1)
 			}
-			indexFilterSlice = strings.Split(*indexServiceFilterPtr, ",")
-			if len(*indexServiceExtFilterPtr) > 0 {
-				*indexServiceExtFilterPtr = "/" + *indexServiceExtFilterPtr //added "/" - used path later
+			indexFilterSlice = strings.Split(*eUtils.IndexServiceFilterPtr, ",")
+			if len(*eUtils.IndexServiceExtFilterPtr) > 0 {
+				*eUtils.IndexServiceExtFilterPtr = "/" + *eUtils.IndexServiceExtFilterPtr //added "/" - used path later
 			}
 		}
+		if len(indexFilterSlice) > 0 {
+			indexFilterSlice = strings.Split(*eUtils.IndexServiceFilterPtr, ",")
+		}
 		sectionKey := "/"
-		if len(*indexValueFilterPtr) > 0 && len(*indexedPtr) > 0 {
-			if len(*indexedPtr) > 0 || len(*restrictedPtr) > 0 {
-				if len(*indexedPtr) > 0 {
+		if len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0 { //*******
+			if len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 || len(*eUtils.ProtectedPtr) > 0 {
+				if len(*eUtils.IndexedPtr) > 0 {
 					sectionKey = "/Index/"
-				} else if len(*restrictedPtr) > 0 {
+				} else if len(*eUtils.RestrictedPtr) > 0 {
 					sectionKey = "/Restricted/"
 				}
 			}
+		} else if len(*eUtils.ProtectedPtr) > 0 {
+			sectionKey = "/Protected/"
 		}
 		var subSectionName string
-		if len(*indexNameFilterPtr) > 0 {
-			subSectionName = *indexNameFilterPtr
+		if len(*eUtils.IndexNameFilterPtr) > 0 {
+			subSectionName = *eUtils.IndexNameFilterPtr
 		} else {
 			subSectionName = ""
 		}
@@ -566,8 +635,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			Env:             *envPtr,
 			SectionKey:      sectionKey,
 			SectionName:     subSectionName,
-			SubSectionValue: *indexValueFilterPtr,
-			SubSectionName:  *indexServiceExtFilterPtr,
+			SubSectionValue: *eUtils.IndexValueFilterPtr,
+			SubSectionName:  *eUtils.IndexServiceExtFilterPtr,
 
 			SecretMode:      true, //  "Only override secret values in templates?"
 			ProjectSections: subSectionSlice,

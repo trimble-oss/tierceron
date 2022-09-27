@@ -112,11 +112,12 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 	var template string
 	var err error
 
-	config.Log.Println("Configuring cert")
 	if !config.WantCerts {
 		relativeTemplatePathParts := strings.Split(emptyFilePath, coreopts.GetFolderPrefix()+"_templates")
 		templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
 		modifier.TemplatePath = "templates" + templatePathParts[0]
+	} else {
+		config.Log.Println("Configuring cert")
 	}
 
 	if zc {
