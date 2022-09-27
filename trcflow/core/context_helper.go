@@ -272,3 +272,59 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 
 	return nil
 }
+
+// seedTrcDbFromVault - optimized implementation of seedTrcDbFromChanges
+func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
+	tfContext *TrcFlowContext) error {
+	var indexValues []string = []string{}
+	var secondaryIndexes []string
+	var err error
+	if tfContext.GoMod != nil {
+		tfContext.GoMod.Env = tfmContext.Env
+		tfContext.GoMod.Version = "0"
+
+		index, indexE, indexErr := coreopts.FindIndexForService(tfContext.FlowSource, tfContext.Flow.ServiceName())
+		if indexErr == nil && index != "" {
+			tfContext.GoMod.SectionName = index
+			secondaryIndexes = indexE
+		}
+		if tfContext.GoMod.SectionName != "" {
+			indexValues, err = tfContext.GoMod.ListSubsection("/Index/", tfContext.FlowSource, tfContext.GoMod.SectionName, tfmContext.Config.Log)
+			if err != nil {
+				eUtils.LogErrorObject(tfmContext.Config, err, false)
+				return err
+			}
+		}
+	}
+
+	tfmContext.GetTableModifierLock().Lock()
+	for _, indexValue := range indexValues {
+		if indexValue != "" {
+			tfContext.GoMod.SectionKey = "/Index/"
+			tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + tfContext.Flow.ServiceName()
+			if len(secondaryIndexes) > 0 {
+				for _, secondaryIndex := range secondaryIndexes {
+					tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + tfContext.Flow.ServiceName() + "/" + secondaryIndex
+					rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+					if rowErr != nil {
+						return rowErr
+					}
+				}
+			} else {
+				rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+				if rowErr != nil {
+					return rowErr
+				}
+			}
+		} else {
+			rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+			if rowErr != nil {
+				return rowErr
+			}
+		}
+	}
+
+	tfmContext.GetTableModifierLock().Unlock()
+
+	return nil
+}
