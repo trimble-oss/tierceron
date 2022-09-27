@@ -54,3 +54,8 @@ func GetSyncedTables() []string {
 func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, string, error) {
 	return configcore.Authorize(db, userIdentifier, userPassword)
 }
+
+// Whether to memlock data.
+func CheckMemLock(bucket string, key string) bool {
+	return tcbuildopts.CheckMemLock(bucket, key)
+}
