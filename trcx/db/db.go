@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -40,6 +41,113 @@ func stringClone(s string) string {
 	}
 }
 
+func writeToTableHelper(te *TierceronEngine, configTableName string, valueColumns map[string]string, secretColumns map[string]string, config *eUtils.DriverConfig) {
+	m.Lock()
+	tableSql, tableOk, _ := te.Database.GetTableInsensitive(te.Context, configTableName)
+	m.Unlock()
+	var table *sqlememory.Table
+
+	// TODO: Do we want back lookup by enterpriseId on all rows?
+	// if enterpriseId, ok := secretColumns["EnterpriseId"]; ok {
+	// 	valueColumns["_EnterpriseId_"] = enterpriseId
+	// }
+	// valueColumns["_Version_"] = version
+
+	if !tableOk {
+		// This is cacheable...
+		tableSchema := sqles.NewPrimaryKeySchema([]*sqles.Column{})
+
+		columnKeys := []string{}
+
+		for valueKeyColumn, _ := range valueColumns {
+			columnKeys = append(columnKeys, valueKeyColumn)
+		}
+
+		for secretKeyColumn, _ := range secretColumns {
+			columnKeys = append(columnKeys, secretKeyColumn)
+		}
+
+		// Alpha sort -- yay...?
+		sort.Strings(columnKeys)
+
+		for _, columnKey := range columnKeys {
+			column := sqles.Column{Name: columnKey, Type: sqles.Text, Source: configTableName}
+			tableSchema.Schema = append(tableSchema.Schema, &column)
+		}
+
+		table = sqlememory.NewTable(configTableName, tableSchema)
+		m.Lock()
+		te.Database.AddTable(configTableName, table)
+		m.Unlock()
+	} else {
+		table = tableSql.(*sqlememory.Table)
+	}
+
+	row := []interface{}{}
+
+	// TODO: Add Enterprise, Environment, and Version....
+	allDefaults := true
+	for _, column := range table.Schema() {
+		if value, ok := valueColumns[column.Name]; ok {
+			var iVar interface{}
+			var cErr error
+			if value == "<Enter Secret Here>" || value == "" || value == "0" {
+				iVar, cErr = column.Type.Convert("")
+				if cErr != nil {
+					iVar = nil
+				}
+			} else {
+				iVar, _ = column.Type.Convert(stringClone(value))
+				allDefaults = false
+			}
+			row = append(row, iVar)
+		} else if secretValue, svOk := secretColumns[column.Name]; svOk {
+			var iVar interface{}
+			var cErr error
+			if column.Name == "MysqlFileContent" && secretValue != "<Enter Secret Here>" && secretValue != "" {
+				var decodeErr error
+				var decodedValue []byte
+				if strings.HasPrefix(string(secretValue), "TierceronBase64") {
+					secretValue = secretValue[len("TierceronBase64"):]
+					decodedValue, decodeErr = base64.StdEncoding.DecodeString(string(secretValue))
+					if decodeErr != nil {
+						continue
+					}
+				} else {
+					if _, fpOk := secretColumns["MysqlFilePath"]; fpOk {
+						eUtils.LogErrorMessage(config, fmt.Sprintf("Found non encoded data for: %s", secretColumns["MysqlFilePath"]), false)
+						decodedValue = []byte(secretValue)
+					} else {
+						eUtils.LogErrorMessage(config, "Missing MysqlFilePath.", false)
+						continue
+					}
+				}
+				iVar = []uint8(decodedValue)
+			} else if secretValue == "<Enter Secret Here>" || secretValue == "" {
+				iVar, cErr = column.Type.Convert("")
+				if cErr != nil {
+					iVar = nil
+				}
+			} else {
+				iVar, _ = column.Type.Convert(stringClone(secretValue))
+				allDefaults = false
+			}
+			row = append(row, iVar)
+		}
+	}
+
+	if !allDefaults {
+		m.Lock()
+
+		insertErr := table.Insert(te.Context, sqles.NewRow(row...))
+		if insertErr != nil {
+			eUtils.LogErrorObject(config, insertErr, false)
+		}
+		m.Unlock()
+	}
+
+}
+
 func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterprise string, version string, project string, projectAlias string, service string, templateResult *extract.TemplateResultData) {
 
 	//
@@ -53,112 +161,9 @@ func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterpris
 	// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
 	configTableMap := templateResult.InterfaceTemplateSection.(map[string]interface{})["templates"].(map[string]interface{})[project].(map[string]interface{})[service].(map[string]interface{})
 	for configTableName, _ := range configTableMap {
-		m.Lock()
-		tableSql, tableOk, _ := te.Database.GetTableInsensitive(te.Context, configTableName)
-		m.Unlock()
-		var table *sqlememory.Table
-
 		valueColumns := templateResult.ValueSection["values"][service]
 		secretColumns := templateResult.SecretSection["super-secrets"][service]
-
-		// TODO: Do we want back lookup by enterpriseId on all rows?
-		// if enterpriseId, ok := secretColumns["EnterpriseId"]; ok {
-		// 	valueColumns["_EnterpriseId_"] = enterpriseId
-		// }
-		// valueColumns["_Version_"] = version
-
-		if !tableOk {
-			// This is cacheable...
-			tableSchema := sqles.NewPrimaryKeySchema([]*sqles.Column{})
-
-			columnKeys := []string{}
-
-			for valueKeyColumn, _ := range valueColumns {
-				columnKeys = append(columnKeys, valueKeyColumn)
-			}
-
-			for secretKeyColumn, _ := range secretColumns {
-				columnKeys = append(columnKeys, secretKeyColumn)
-			}
-
-			// Alpha sort -- yay...?
-			sort.Strings(columnKeys)
-
-			for _, columnKey := range columnKeys {
-				column := sqles.Column{Name: columnKey, Type: sqles.Text, Source: configTableName}
-				tableSchema.Schema = append(tableSchema.Schema, &column)
-			}
-
-			table = sqlememory.NewTable(configTableName, tableSchema)
-			m.Lock()
-			te.Database.AddTable(configTableName, table)
-			m.Unlock()
-		} else {
-			table = tableSql.(*sqlememory.Table)
-		}
-
-		row := []interface{}{}
-
-		// TODO: Add Enterprise, Environment, and Version....
-		allDefaults := true
-		for _, column := range table.Schema() {
-			if value, ok := valueColumns[column.Name]; ok {
-				var iVar interface{}
-				var cErr error
-				if value == "<Enter Secret Here>" || value == "" || value == "0" {
-					iVar, cErr = column.Type.Convert("")
-					if cErr != nil {
-						iVar = nil
-					}
-				} else {
-					iVar, _ = column.Type.Convert(stringClone(value))
-					allDefaults = false
-				}
-				row = append(row, iVar)
-			} else if secretValue, svOk := secretColumns[column.Name]; svOk {
-				var iVar interface{}
-				var cErr error
-				if column.Name == "MysqlFileContent" && secretValue != "<Enter Secret Here>" && secretValue != "" {
-					var decodeErr error
-					var decodedValue []byte
-					if strings.HasPrefix(string(secretValue), "TierceronBase64") {
-						secretValue = secretValue[len("TierceronBase64"):]
-						decodedValue, decodeErr = base64.StdEncoding.DecodeString(string(secretValue))
-						if decodeErr != nil {
-							continue
-						}
-					} else {
-						if _, fpOk := secretColumns["MysqlFilePath"]; fpOk {
-							eUtils.LogErrorMessage(config, fmt.Sprintf("Found non encoded data for: %s", secretColumns["MysqlFilePath"]), false)
-							decodedValue = []byte(secretValue)
-						} else {
-							eUtils.LogErrorMessage(config, "Missing MysqlFilePath.", false)
-							continue
-						}
-					}
-					iVar = []uint8(decodedValue)
-				} else if secretValue == "<Enter Secret Here>" || secretValue == "" {
-					iVar, cErr = column.Type.Convert("")
-					if cErr != nil {
-						iVar = nil
-					}
-				} else {
-					iVar, _ = column.Type.Convert(stringClone(secretValue))
-					allDefaults = false
-				}
-				row = append(row, iVar)
-			}
-		}
-
-		if !allDefaults {
-			m.Lock()
-
-			insertErr := table.Insert(te.Context, sqles.NewRow(row...))
-			if insertErr != nil {
-				eUtils.LogErrorObject(config, insertErr, false)
-			}
-			m.Unlock()
-		}
+		writeToTableHelper(te, configTableName, valueColumns, secretColumns, config)
 	}
 }
 
@@ -207,6 +212,25 @@ func templateToTableRowHelper(goMod *helperkv.Modifier, te *TierceronEngine, env
 	}
 
 	writeToTable(te, config, envEnterprise, version, project, projectAlias, service, &templateResult)
+	return nil
+}
+
+func PathToTableRowHelper(te *TierceronEngine, goMod *helperkv.Modifier, config *eUtils.DriverConfig, tableName string) error {
+	dataMap, readErr := goMod.ReadData(goMod.SectionPath)
+	if readErr != nil {
+		return readErr
+	}
+
+	rowDataMap := make(map[string]string, 1)
+	for columnName, columnData := range dataMap {
+		if dataString, ok := columnData.(string); ok {
+			rowDataMap[columnName] = dataString
+		} else {
+			return errors.New("Found data that was not a string - unable to write columnName: " + columnName + " to " + tableName)
+		}
+	}
+	writeToTableHelper(te, tableName, nil, rowDataMap, config)
+
 	return nil
 }
 
