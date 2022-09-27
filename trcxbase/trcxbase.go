@@ -91,13 +91,6 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter") // -templateFilter=config.yml
 
-	indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
-	indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // Table names
-	indexNameFilterPtr := flag.String("indexFilter", "", "Specifies which index names to filter")                            // column index, table to filter.
-	indexValueFilterPtr := flag.String("indexValueFilter", "", "Specifies which index values to filter")                     // column index value to filter on.
-	indexedPtr := flag.String("indexed", "", "Specifies which projects are indexed")                                         // Indicates indexed projects...
-	restrictedPtr := flag.String("restricted", "", "Specifies which projects have restricted access.")
-
 	// Checks for proper flag input
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -150,19 +143,19 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if *diffPtr && *versionPtr {
 		fmt.Println("-version flag cannot be used with -diff flag")
 		os.Exit(1)
-	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexNameFilterPtr) == 0) && len(*indexedPtr) != 0 {
+	} else if (len(*eUtils.IndexServiceFilterPtr) == 0 || len(*eUtils.IndexNameFilterPtr) == 0) && len(*eUtils.IndexedPtr) != 0 {
 		fmt.Println("-serviceFilter and -indexFilter must be specified to use -indexed flag")
 		os.Exit(1)
-	} else if len(*indexServiceFilterPtr) == 0 && len(*restrictedPtr) != 0 {
+	} else if len(*eUtils.IndexServiceFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
 		fmt.Println("-serviceFilter must be specified to use -restricted flag")
 		os.Exit(1)
-	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexValueFilterPtr) == 0) && *diffPtr && len(*indexedPtr) != 0 {
+	} else if (len(*eUtils.IndexServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *diffPtr && len(*eUtils.IndexedPtr) != 0 {
 		fmt.Println("-indexFilter and -indexValueFilter must be specified to use -indexed & -diff flag")
 		os.Exit(1)
-	} else if (len(*indexServiceFilterPtr) == 0 || len(*indexValueFilterPtr) == 0) && *versionPtr && len(*indexedPtr) != 0 {
+	} else if (len(*eUtils.IndexServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *versionPtr && len(*eUtils.IndexedPtr) != 0 {
 		fmt.Println("-indexFilter and -indexValueFilter must be specified to use -indexed & -versions flag")
 		os.Exit(1)
-	} else if *versionPtr && len(*restrictedPtr) > 0 {
+	} else if *versionPtr && len(*eUtils.RestrictedPtr) > 0 {
 		fmt.Println("-restricted flags cannot be used with -versions flag")
 		os.Exit(1)
 	} else if (strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")) && *addrPtr == "" {
@@ -200,10 +193,10 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 
 		if indexed {
 			if len(directorySplit) >= 3 { //Don't like this, will change later
-				*indexedPtr = directorySplit[0]
-				*indexNameFilterPtr = directorySplit[1]
-				*indexValueFilterPtr = directorySplit[2]
-				sectionSlice = strings.Split(*indexValueFilterPtr, ",")
+				*eUtils.IndexedPtr = directorySplit[0]
+				*eUtils.IndexNameFilterPtr = directorySplit[1]
+				*eUtils.IndexValueFilterPtr = directorySplit[2]
+				sectionSlice = strings.Split(*eUtils.IndexValueFilterPtr, ",")
 			}
 		} else {
 			fmt.Println("Not supported for restricted section.")
@@ -211,8 +204,8 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		}
 	}
 
-	if len(*indexServiceFilterPtr) != 0 && len(*indexNameFilterPtr) == 0 && len(*restrictedPtr) != 0 {
-		indexNameFilterPtr = indexServiceFilterPtr
+	if len(*eUtils.IndexServiceFilterPtr) != 0 && len(*eUtils.IndexNameFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
+		eUtils.IndexNameFilterPtr = eUtils.IndexServiceFilterPtr
 	}
 
 	keysCheck := make(map[string]bool)
@@ -360,19 +353,21 @@ skipDiff:
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
 	var subSectionName string
-	if len(*indexNameFilterPtr) > 0 {
-		subSectionName = *indexNameFilterPtr
+	if len(*eUtils.IndexNameFilterPtr) > 0 {
+		subSectionName = *eUtils.IndexNameFilterPtr
 	} else {
 		subSectionName = ""
 	}
 	var waitg sync.WaitGroup
 	sectionKey := "/"
-	if len(envSlice) == 1 || (len(*indexValueFilterPtr) > 0 && len(*indexedPtr) > 0) {
-		if strings.Contains(envSlice[0], "*") || len(*indexedPtr) > 0 || len(*restrictedPtr) > 0 {
-			if len(*indexedPtr) > 0 {
+	if len(envSlice) == 1 || (len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0) {
+		if strings.Contains(envSlice[0], "*") || len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 || len(*eUtils.ProtectedPtr) > 0 {
+			if len(*eUtils.IndexedPtr) > 0 {
 				sectionKey = "/Index/"
-			} else if len(*restrictedPtr) > 0 {
+			} else if len(*eUtils.RestrictedPtr) > 0 {
 				sectionKey = "/Restricted/"
+			} else if len(*eUtils.ProtectedPtr) > 0 {
+				sectionKey = "/Protected/"
 			}
 
 			newSectionSlice := make([]string, 0)
@@ -395,12 +390,16 @@ skipDiff:
 				}
 				// Only look at index values....
 				//Checks for indexed projects
-				if len(*indexedPtr) > 0 {
-					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*indexedPtr, ",")...)
+				if len(*eUtils.IndexedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
 				}
 
-				if len(*restrictedPtr) > 0 {
-					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*restrictedPtr, ",")...)
+				if len(*eUtils.RestrictedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
+				}
+
+				if len(*eUtils.ProtectedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
 				}
 
 				var listValues *api.Secret
@@ -429,8 +428,8 @@ skipDiff:
 
 							for _, indexPath := range indexList.Data {
 								for _, indexInterface := range indexPath.([]interface{}) {
-									if len(*indexValueFilterPtr) > 0 {
-										if indexInterface != (*indexValueFilterPtr + "/") {
+									if len(*eUtils.IndexValueFilterPtr) > 0 {
+										if indexInterface != (*eUtils.IndexValueFilterPtr + "/") {
 											continue
 										}
 									}
@@ -449,6 +448,18 @@ skipDiff:
 				if len(newSectionSlice) > 0 {
 					sectionSlice = newSectionSlice
 				}
+			} else { //novault takes this path
+				if len(*eUtils.IndexedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+				}
+
+				if len(*eUtils.RestrictedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
+				}
+
+				if len(*eUtils.ProtectedPtr) > 0 {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
+				}
 			}
 		}
 	}
@@ -456,8 +467,8 @@ skipDiff:
 	var filteredSectionSlice []string
 	var indexFilterSlice []string
 
-	if len(*indexValueFilterPtr) > 0 {
-		filterSlice := strings.Split(*indexValueFilterPtr, ",")
+	if len(*eUtils.IndexValueFilterPtr) > 0 {
+		filterSlice := strings.Split(*eUtils.IndexValueFilterPtr, ",")
 		for _, filter := range filterSlice {
 			for _, section := range sectionSlice {
 				if filter == section {
@@ -467,13 +478,13 @@ skipDiff:
 		}
 		sectionSlice = filteredSectionSlice
 	}
-	if len(*indexServiceFilterPtr) > 0 {
+	if len(*eUtils.IndexServiceFilterPtr) > 0 {
 		if len(sectionSlice) == 0 {
-			eUtils.LogAndSafeExit(config, "No available indexes found for "+*indexValueFilterPtr, 1)
+			eUtils.LogAndSafeExit(config, "No available indexes found for "+*eUtils.IndexValueFilterPtr, 1)
 		}
-		indexFilterSlice = strings.Split(*indexServiceFilterPtr, ",")
-		if len(*indexServiceExtFilterPtr) > 0 {
-			*indexServiceExtFilterPtr = "/" + *indexServiceExtFilterPtr //added "/" - used path later
+		indexFilterSlice = strings.Split(*eUtils.IndexServiceFilterPtr, ",")
+		if len(*eUtils.IndexServiceExtFilterPtr) > 0 {
+			*eUtils.IndexServiceExtFilterPtr = "/" + *eUtils.IndexServiceExtFilterPtr //added "/" - used path later
 		}
 	}
 
@@ -500,7 +511,7 @@ skipDiff:
 
 			var trcxeList []string
 			if trcxe {
-				projectSectionsSlice = append(projectSectionsSlice, strings.Split(*indexedPtr, ",")...)
+				projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
 
 				trcxeList = append(trcxeList, *fieldsPtr)
 				trcxeList = append(trcxeList, *encryptedPtr)
@@ -518,7 +529,7 @@ skipDiff:
 				SectionKey:      sectionKey,
 				SectionName:     subSectionName,
 				SubSectionValue: section,
-				SubSectionName:  *indexServiceExtFilterPtr,
+				SubSectionName:  *eUtils.IndexServiceExtFilterPtr,
 				Regions:         regions,
 				SecretMode:      *secretMode,
 				ServicesWanted:  servicesWanted,
