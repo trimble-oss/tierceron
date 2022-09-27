@@ -1,17 +1,26 @@
-//go:build argosy
-// +build argosy
+//go:build argosy && tc
+// +build argosy,tc
 
 package argosyopts
 
 import (
 	"fmt"
-	"github.com/mrjrieke/nute/mashupsdk"
 	"log"
 	"math"
 	"strconv"
 	"tierceron/trcvault/util"
 	"tierceron/vaulthelper/kv"
+
+	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
+	"github.com/mrjrieke/nute/mashupsdk"
 )
+
+var maxTime int64
+
+func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
+	//	return data, TimeData
+	return tcbuildopts.GetStubbedDataFlowStatistics()
+}
 
 func getGroupSize(groups []util.DataFlowGroup) (float64, float64, float64) {
 	groupsize := 0.0
@@ -31,6 +40,7 @@ func buildArgosies(startID int64, args util.ArgosyFleet) (util.ArgosyFleet, []in
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	curveCollection := []int64{}
+	maxTime = 0
 	for i := 0; i < len(args.Argosies); i++ {
 		dfgsize, dfsize, dfstatsize := getGroupSize(args.Argosies[i].Groups)
 		argosyId = startID + int64(i)*int64(1.0+float64(dfgsize)+math.Pow(float64(dfsize), 2.0)+math.Pow(float64(dfstatsize), 3.0))
@@ -61,10 +71,12 @@ func buildArgosies(startID int64, args util.ArgosyFleet) (util.ArgosyFleet, []in
 		for _, id := range children {
 			argosy.MashupDetailedElement.Childids = append(argosy.MashupDetailedElement.Childids, id)
 		}
-
 		args.Argosies[i] = argosy
 	}
-
+	lastArgosy := args.Argosies[len(args.Argosies)-1]
+	lastArgosy.MashupDetailedElement.Data = strconv.Itoa(int(maxTime))
+	args.Argosies[len(args.Argosies)-1] = lastArgosy
+	fmt.Println(args.Argosies[len(args.Argosies)-1].MashupDetailedElement.Data)
 	return args, collectionIDs, curveCollection
 }
 
@@ -160,6 +172,9 @@ func buildDataFlowStatistics(startID int64, flow util.DataFlow, dfstatsize float
 		curveCollection = append(curveCollection, argosyId)
 		stat := flow.Statistics[i]
 		total = int64(total) + int64(stat.TimeSplit)
+		if int64(stat.TimeSplit) > maxTime {
+			maxTime = int64(stat.TimeSplit)
+		}
 		stat.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             argosyId,
 			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
@@ -181,6 +196,10 @@ func buildDataFlowStatistics(startID int64, flow util.DataFlow, dfstatsize float
 }
 
 func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.ArgosyFleet, error) {
+	if mod == nil {
+		return BuildStubFleet(mod, logger)
+	}
+
 	argosies := []util.Argosy{
 		{
 			mashupsdk.MashupDetailedElement{
