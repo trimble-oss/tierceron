@@ -237,7 +237,8 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 			goMod.Env = envEnterprise
 			goMod.Version = version
 
-			index, indexErr := coreopts.FindIndexForService(project, service)
+			// TODO: Replace _ with secondaryIndexSlice
+			index, _, indexErr := coreopts.FindIndexForService(project, service)
 			if indexErr == nil && index != "" {
 				goMod.SectionName = index
 			}
