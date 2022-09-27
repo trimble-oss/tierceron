@@ -1,7 +1,6 @@
 package flumen
 
 import (
-	"context"
 	"errors"
 
 	flowcore "tierceron/trcflow/core"
@@ -19,7 +18,7 @@ func GetTierceronFlowIdColName() string {
 	return tierceronFlowIdColumnName
 }
 
-func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error) {
+func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]string) (string, []string, [][]interface{}, error)) (string, error) {
 	indexName, idValue := "", ""
 	if tierceronFlowName, ok := rowDataMap[vaultIndexColumnName].(string); ok {
 		indexName = vaultIndexColumnName
@@ -64,17 +63,18 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 }
 
 func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext, flowControllerMap map[string]chan flowcorehelper.CurrentFlowState, tierceronFlowName string) {
-	tfmContext.FlowControllerUpdateLock.Lock()
 	var rows [][]interface{}
 	if tierceronFlowName != "" {
-		rows = tfmContext.CallDBQuery(tfContext, "select * from "+tfContext.FlowSourceAlias+"."+string(tfContext.Flow)+" WHERE "+tierceronFlowIdColumnName+"='"+tierceronFlowName+"'", nil, false, "SELECT", nil, "")
+		rows = tfmContext.CallDBQuery(tfContext, map[string]string{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
 	} else {
-		rows = tfmContext.CallDBQuery(tfContext, "select * from "+tfContext.FlowSourceAlias+"."+string(tfContext.Flow), nil, false, "SELECT", nil, "")
+		rows = tfmContext.CallDBQuery(tfContext, map[string]string{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow)}, nil, false, "SELECT", nil, "")
 	}
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)
 		if flowId, ok := tfFlow[tierceronFlowIdColumnName].(string); ok {
+			tfmContext.FlowControllerUpdateLock.Lock()
 			stateChannel := flowControllerMap[flowId]
+			tfmContext.FlowControllerUpdateLock.Unlock()
 			if stateChannel == nil {
 				tfmContext.Log("Tierceron Flow could not find the flow:"+tfFlow[tierceronFlowIdColumnName].(string), errors.New("State channel for flow controller was nil."))
 				continue
@@ -90,7 +90,6 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 			}
 		}
 	}
-	tfmContext.FlowControllerUpdateLock.Unlock()
 }
 
 func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) ([]map[string]interface{}, error) {
@@ -141,7 +140,7 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 						select {
 						case x, ok := <-currentReceiver:
 							if ok {
-								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode), nil, true, "UPDATE", nil, "")
+								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode), nil, true, "UPDATE", []flowcore.FlowNameType{flowcore.FlowNameType(flowcorehelper.TierceronFlowConfigurationTableName)}, "")
 							}
 						}
 					}
@@ -162,8 +161,7 @@ func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext)
 	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
 
-	cancelCtx, _ := context.WithCancel(context.Background())
-	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil, cancelCtx, false)
+	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil, false)
 	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
 	if sqlIngestInterval > 0 {
 		// Implement pull from remote data source.

@@ -22,6 +22,9 @@ func GetFlowDBName() string {
 	return TierceronFlowDB
 }
 
-func UpdateTierceronFlowState(flowName string, newState string, syncFilter string, syncMode string) string {
-	return "update " + TierceronFlowDB + "." + TierceronFlowConfigurationTableName + " set lastModified=current_timestamp(), syncMode='" + syncMode + "', state=" + newState + ", SyncFilter='" + syncFilter + "' where flowName='" + flowName + "'"
+func UpdateTierceronFlowState(flowName string, newState string, syncFilter string, syncMode string) map[string]string {
+	return map[string]string{
+		"TrcQuery":    "update " + TierceronFlowDB + "." + TierceronFlowConfigurationTableName + " set lastModified=current_timestamp(), syncMode='" + syncMode + "', state=" + newState + ", SyncFilter='" + syncFilter + "' where flowName='" + flowName + "'",
+		"TrcChangeId": flowName,
+	}
 }

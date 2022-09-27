@@ -51,6 +51,10 @@ trcvault/trc_seeds/
 tierceron.iml
 trcvault/deploy/deploy_dev.sh
 trcgorillaz/trcdatavisualizer/__debug_bin
-trcgorillaz/trcdatavisualizer/tls/mashup.*
+trcgorillaz/ttdivisualizer/tls/mashup.*
+trcgorillaz/ttdiserver/tls/mashup.*
+trcgorillaz/ttdivisualizer/__debug_bin
+trcgorillaz/ttdiserver/__debug_bin
+
 
 
