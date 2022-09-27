@@ -283,10 +283,10 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		tfContext.GoMod.Env = tfmContext.Env
 		tfContext.GoMod.Version = "0"
 
-		index, indexE, indexErr := coreopts.FindIndexForService(tfContext.FlowSource, tfContext.Flow.ServiceName())
+		index, secondaryI, indexErr := coreopts.FindIndexForService(tfContext.FlowSource, tfContext.Flow.ServiceName())
 		if indexErr == nil && index != "" {
 			tfContext.GoMod.SectionName = index
-			secondaryIndexes = indexE
+			secondaryIndexes = secondaryI
 		}
 		if tfContext.GoMod.SectionName != "" {
 			indexValues, err = tfContext.GoMod.ListSubsection("/Index/", tfContext.FlowSource, tfContext.GoMod.SectionName, tfmContext.Config.Log)
