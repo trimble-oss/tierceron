@@ -27,6 +27,7 @@ type CurveRenderer struct {
 	CollaboratingRenderer g3nrender.IG3nRenderer
 	totalElements         int
 	clickedPaths          []*CurveMesh
+	maxTime               int
 }
 
 type CurveMesh struct {
@@ -98,7 +99,7 @@ func (cr *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpo
 	tubeGeometry := geometry.NewTube(path, .007, 32, true)
 	color := math32.NewColor("darkmagenta")
 	mat := material.NewStandard(color.Set(float32(148)/255.0, float32(120)/255.0, float32(42)/255.0))
-	mat.SetOpacity(0.1)
+	mat.SetOpacity(0.25)
 	tubeMesh := graphic.NewMesh(tubeGeometry, mat)
 	fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
 	tubeMesh.SetLoaderID(g3n.GetDisplayName())
@@ -157,20 +158,24 @@ func (cr *CurveRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 }
 
 // Returns an array of time splits for given element's child ids in seconds
-func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3nmash.G3nDetailedElement) []float64 {
+func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3nmash.G3nDetailedElement) ([]float64, bool) {
 	timesplit := []float64{}
+	succeeded := false
 	for i := 0; i < len(element.GetChildElementIds()); i++ {
 		child := worldApp.ConcreteElements[element.GetChildElementIds()[i]]
 		if child.GetDetailedElement().Genre != "Solid" {
+			if strings.Contains(child.GetDetailedElement().Name, "Successful") {
+				succeeded = true
+			}
 			timeNanoSeconds, err := strconv.ParseInt(child.GetDetailedElement().Data, 10, 64)
 			if err != nil {
-				return timesplit
+				return timesplit, succeeded
 			}
 			timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
 			timesplit = append(timesplit, timeSeconds)
 		}
 	}
-	return timesplit
+	return timesplit, succeeded
 }
 
 // Renders elements based on last clicked element
@@ -180,23 +185,25 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 	var path []math32.Vector3
 	if g3nDetailedElement.GetDetailedElement().Id == 2 {
 		if clickedElement != nil && clickedElement.GetDetailedElement().Alias == "DataFlow" && clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil {
-			timeSplits := cr.getTimeSplits(worldApp, clickedElement)
+			timeSplits, successful := cr.getTimeSplits(worldApp, clickedElement)
+			fmt.Println(successful)
 			if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Alias != "DataFlowStatistic" {
 				section := (-0.1 * 20.0) / float64(len(clickedElement.GetChildElementIds()))
 				lastLocation := 0.0
 				color := math32.NewColor("white")
 				diff := 0.0
-				total := 0.0
-				for l := len(timeSplits) - 1; l >= 0; l-- {
-					if timeSplits[l] != 0 {
-						total = timeSplits[l]
-						break
-					}
-				}
+				// total := 0.0
+				// for l := len(timeSplits) - 1; l >= 0; l-- {
+				// 	if timeSplits[l] != 0 {
+				// 		total = timeSplits[l]
+				// 		break
+				// 	}
+				// }
+				maxTotalTime := float64(cr.maxTime) * math.Pow(10.0, -9.0)
 				for j := 0.0; j < float64(len(timeSplits)); j = j + 1.0 {
 					if len(timeSplits) > int(j+1) {
 						diff = timeSplits[int(j+1)] - timeSplits[int(j)]
-						section = (((timeSplits[int(j+1)] - timeSplits[int(j)]) / total) * -2) + lastLocation
+						section = (((timeSplits[int(j+1)] - timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation //total --> maxTotalTime
 					}
 					if section != 0 && section-lastLocation != 0 {
 						for i := section; i < lastLocation; i = i + math.Abs((section-lastLocation)/((section-lastLocation)*100)) {
@@ -206,6 +213,15 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 							z := -i
 							location := *math32.NewVector3(float32(-x), float32(y), float32(z))
 							path = append(path, location)
+						}
+					}
+					if j == float64(len(timeSplits)-1) {
+						for i := -2.0; i < lastLocation; i = i + 0.01 {
+							c := binetFormula(i)
+							x := real(c)
+							y := imag(c)
+							z := -i
+							path = append(path, *math32.NewVector3(float32(-x), float32(y), float32(z)))
 						}
 					}
 					complex := binetFormula(lastLocation)
@@ -228,13 +244,27 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 							} else {
 								color.Set(0.031, 0.227, 0.427)
 							}
+							if j == float64(len(timeSplits)-1) {
+								//color.Set()
+								if successful {
+									color = math32.NewColor("black")
+								} else {
+									color = math32.NewColor("black")
+								}
+							}
 						}
 						lastLocation = section
 						tubeGeometry := geometry.NewTube(path, .007, 32, true)
 						mat := material.NewStandard(color)
+						if j == float64(len(timeSplits)-1) {
+							mat.SetOpacity(0.1)
+						}
 						tubeMesh := graphic.NewMesh(tubeGeometry, mat)
 						tubeMesh.SetLoaderID(clickedElement.GetDisplayName() + "-Curve" + strconv.Itoa(int(j)))
 						locn := clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
+						locn.X = locn.X - 0.005
+						locn.Y = locn.Y + 0.0999
+						locn.Z = locn.Z - 0.001 //Need to find correct z-component so centered properly
 						tubeMesh.SetPositionVec(&locn)
 						cr.push(tubeMesh, clickedElement)
 						worldApp.UpsertToScene(tubeMesh)
