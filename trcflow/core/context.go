@@ -110,6 +110,7 @@ type TrcFlowContext struct {
 	FlowState       flowcorehelper.CurrentFlowState
 	FlowLock        *sync.Mutex //This is for sync concurrent changes to FlowState
 	Restart         bool
+	ReadOnly        bool
 }
 
 var tableModifierLock sync.Mutex

@@ -227,15 +227,17 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			}
 		}
 
-		seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.Config.VaultAddress, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
-		if seedError != nil {
-			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
-			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.FlowLock)
-			if err != nil {
-				eUtils.LogErrorObject(tfmContext.Config, err, false)
+		if !tfContext.ReadOnly {
+			seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.Config.VaultAddress, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
+			if seedError != nil {
+				eUtils.LogErrorObject(tfmContext.Config, seedError, false)
+				// Re-inject into changes because it might not be here yet...
+				_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.FlowLock)
+				if err != nil {
+					eUtils.LogErrorObject(tfmContext.Config, err, false)
+				}
+				continue
 			}
-			continue
 		}
 
 		// Push this change to the flow for delivery to remote data source.
