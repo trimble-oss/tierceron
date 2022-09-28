@@ -222,7 +222,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmContext.ExtensionAuthData, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
-		return err
+		//return err
 	}
 
 	// 2. Initialize Engine and create changes table.
