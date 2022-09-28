@@ -222,7 +222,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmContext.ExtensionAuthData, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
-		return err
+		//return err
 	}
 
 	// 2. Initialize Engine and create changes table.
@@ -247,7 +247,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var flowWG sync.WaitGroup
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range GetTierceronTableNames() {
-			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{})}
+			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false}
 			tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 			tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
 			tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
@@ -310,7 +310,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(tableFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning data source flow: "+tableFlow.ServiceName())
 				defer flowWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
 				tfContext.Flow = tableFlow
@@ -343,7 +343,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogInfo(dc, "Beginning additional flow: "+enhancementFlow.ServiceName())
 				defer flowWG.Done()
 				tfmContext.InitConfigWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
 				tfContext.Flow = enhancementFlow
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
@@ -373,7 +373,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogInfo(dc, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
 				tfmContext.InitConfigWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
 				tfContext.Flow = testFlow
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
