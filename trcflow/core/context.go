@@ -64,9 +64,11 @@ func (fnt FlowNameType) ServiceName() string {
 
 func TriggerAllChangeChannel() {
 	for _, tfmContext := range tfmContextMap {
-		for _, changeChannel := range tfmContext.ChannelMap {
-			if len(changeChannel) < 3 {
-				changeChannel <- true
+		for _, notificationFlowChannel := range tfmContext.ChannelMap {
+			if len(notificationFlowChannel) < 3 {
+				go func(nfc chan bool) {
+					nfc <- true
+				}(notificationFlowChannel)
 			}
 		}
 	}
