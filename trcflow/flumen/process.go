@@ -437,7 +437,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	//Set up controller config
-	controllerVaultDatabaseConfig := make(map[string]interface{})
+	controllerVaultDatabaseConfig = make(map[string]interface{})
 	for index, config := range vaultDatabaseConfig {
 		controllerVaultDatabaseConfig[index] = config
 	}
