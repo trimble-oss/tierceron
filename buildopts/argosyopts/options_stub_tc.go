@@ -305,7 +305,7 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error)
 		[]util.TTDINode{},
 	})
 
-	return util.TTDINode{}, nil
+	return util.TTDINode{ChildNodes: Argosys}, nil
 	// util.ArgosyFleet{
 	// 	ArgosyName: "Dev Environment",
 	// 	Argosies:   []util.Argosy(Argosys),

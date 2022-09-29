@@ -75,7 +75,9 @@ func buildArgosies(startID int64, args util.TTDINode) (util.TTDINode, []int64, [
 
 		args.ChildNodes[i] = argosy
 	}
-
+	lastarg := args.ChildNodes[len(args.ChildNodes)-1]
+	lastarg.MashupDetailedElement.Data = strconv.Itoa(int(maxTime))
+	args.ChildNodes[len(args.ChildNodes)-1] = lastarg
 	return args, collectionIDs, curveCollection
 }
 
@@ -185,6 +187,9 @@ func buildDataFlowStatistics(startID int64, flow util.TTDINode, dfstatsize float
 			break
 		}
 		total = int64(total) + int64(decodedStatData["TimeSplit"].(float64))
+		if int64(decodedStatData["TimeSplit"].(float64)) > maxTime {
+			maxTime = int64(decodedStatData["TimeSplit"].(float64))
+		}
 		stat.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             argosyId,
 			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
