@@ -15,6 +15,8 @@ import (
 	"github.com/mrjrieke/nute/mashupsdk"
 )
 
+var maxTime int64
+
 //Returns an array of mashup detailed elements populated with Argosy data
 func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.MashupDetailedElement {
 	config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
@@ -125,11 +127,13 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 	statGroup := []float64{}
 	testTimes := []float64{}
 	pointer := 0
+	maxTime = 0
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
-	for _, argosy := range ArgosyFleet.ChildNodes {
+	for m := 0; m < len(ArgosyFleet.ChildNodes); m++ { //_, argosy := range ArgosyFleet.ChildNodes {
+		argosy := ArgosyFleet.ChildNodes[m]
 		argosyBasis := argosy.MashupDetailedElement
 		argosyBasis.Alias = "Argosy"
-		DetailedElements = append(DetailedElements, &argosyBasis)
+
 		for i := 0; i < len(argosy.ChildNodes); i++ {
 			detailedElement := argosy.ChildNodes[i].MashupDetailedElement
 			detailedElement.Alias = "DataFlowGroup"
@@ -147,6 +151,9 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 					el := argosy.ChildNodes[i].ChildNodes[j].ChildNodes[k].MashupDetailedElement
 					el.Alias = "DataFlowStatistic"
 					timeSeconds := TimeData[data[pointer]][k]
+					if maxTime < int64(timeSeconds*math.Pow(10.0, 9.0)) {
+						maxTime = int64(timeSeconds * math.Pow(10.0, 9.0))
+					}
 					dfstatData[el.Name] = timeSeconds
 					statGroup = append(statGroup, timeSeconds)
 					DetailedElements = append(DetailedElements, &el)
@@ -158,7 +165,13 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 				}
 			}
 		}
+		if m == len(ArgosyFleet.ChildNodes)-1 {
+			argosyBasis.Data = strconv.Itoa(int(maxTime))
+
+		}
+		DetailedElements = append(DetailedElements, &argosyBasis)
 	}
+
 	DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
 		Basisid:        5,
 		State:          &mashupsdk.MashupElementState{Id: 5, State: int64(mashupsdk.Mutable)},

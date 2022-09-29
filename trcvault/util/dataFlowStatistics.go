@@ -197,7 +197,7 @@ func (dfs *TTDINode) Log() {
 	var decoded interface{}
 	err := json.Unmarshal(dfs.Data, &decoded)
 	if err != nil {
-		log.Println("Error in decoding data in UpdateDataFlowStatistic")
+		log.Println("Error in decoding data in Log")
 		return
 	}
 	decodedData := decoded.(map[string]interface{})
@@ -206,7 +206,7 @@ func (dfs *TTDINode) Log() {
 		var decodedstat interface{}
 		err := json.Unmarshal(stat.Data, &decodedstat)
 		if err != nil {
-			log.Println("Error in decoding data in UpdateDataFlowStatistic")
+			log.Println("Error in decoding data in Log")
 			return
 		}
 		decodedStatData := decodedstat.(map[string]interface{})
@@ -228,7 +228,7 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 	var decoded interface{}
 	err := json.Unmarshal(dfs.Data, &decoded)
 	if err != nil {
-		log.Println("Error in decoding data in UpdateDataFlowStatistic")
+		log.Println("Error in decoding data in FinishStatistic")
 		return
 	}
 	decodedData := decoded.(map[string]interface{})
@@ -240,7 +240,7 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 		var decodedstat interface{}
 		err := json.Unmarshal(dataFlowStatistic.Data, &decodedstat)
 		if err != nil {
-			log.Println("Error in decoding data in UpdateDataFlowStatistic")
+			log.Println("Error in decoding data in FinishStatistic")
 			return
 		}
 		decodedStatData := decodedstat.(map[string]interface{})
@@ -322,7 +322,7 @@ func (dfs *TTDINode) FinishStatisticLog() {
 	var decoded interface{}
 	err := json.Unmarshal(dfs.Data, &decoded)
 	if err != nil {
-		log.Println("Error in decoding data in UpdateDataFlowStatistic")
+		log.Println("Error in decoding data in FinishStatisticLog")
 		return
 	}
 	decodedData := decoded.(map[string]interface{})
@@ -333,7 +333,7 @@ func (dfs *TTDINode) FinishStatisticLog() {
 		var decodedstat interface{}
 		err := json.Unmarshal(stat.Data, &decodedstat)
 		if err != nil {
-			log.Println("Error in decoding data in UpdateDataFlowStatistic")
+			log.Println("Error in decoding data in FinishStatisticLog")
 			return
 		}
 		decodedStatData := decodedstat.(map[string]interface{})
@@ -360,7 +360,7 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 	var decodedstat interface{}
 	err := json.Unmarshal(dfst.Data, &decodedstat)
 	if err != nil {
-		log.Println("Error in decoding data in UpdateDataFlowStatistic")
+		log.Println("Error in decoding data in StatisticToMap")
 		return statMap
 	}
 	decodedStatData := decodedstat.(map[string]interface{})
@@ -382,7 +382,7 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 		var decoded interface{}
 		err := json.Unmarshal(dfs.Data, &decoded)
 		if err != nil {
-			log.Println("Error in decoding data in UpdateDataFlowStatistic")
+			log.Println("Error in decoding data in StatisticToMap")
 			return statMap
 		}
 		decodedData := decoded.(map[string]interface{})
