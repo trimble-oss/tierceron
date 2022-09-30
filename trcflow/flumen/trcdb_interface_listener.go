@@ -37,18 +37,20 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 		if err == nil {
 			if sqlInsert, sqlInsertOk := stmt.(*sqlparser.Insert); sqlInsertOk {
 				tableName = sqlInsert.Table.Name.String()
-				if sqlValues, sqlValuesOk := sqlInsert.Rows.(sqlparser.Values); sqlValuesOk {
-					for _, sqlValue := range sqlValues {
-						for sqlExprIndex, sqlExpr := range sqlValue {
-							if sqlValueIdentity, sqlValueIdentityOk := sqlExpr.(*sqlparser.SQLVal); sqlValueIdentityOk {
-								if sqlValueIdentity.Type == sqlparser.StrVal {
-									columnName := sqlInsert.Columns[sqlExprIndex].String()
-									changeIds[columnName] = string(sqlValueIdentity.Val)
-								}
-							}
-						}
-					}
-				}
+				// Query with bindings may not be deadlock safe.
+				// Disable this for now and hope the triggers work.
+				// if sqlValues, sqlValuesOk := sqlInsert.Rows.(sqlparser.Values); sqlValuesOk {
+				// 	for _, sqlValue := range sqlValues {
+				// 		for sqlExprIndex, sqlExpr := range sqlValue {
+				// 			if sqlValueIdentity, sqlValueIdentityOk := sqlExpr.(*sqlparser.SQLVal); sqlValueIdentityOk {
+				// 				if sqlValueIdentity.Type == sqlparser.StrVal {
+				// 					columnName := sqlInsert.Columns[sqlExprIndex].String()
+				// 					changeIds[columnName] = string(sqlValueIdentity.Val)
+				// 				}
+				// 			}
+				// 		}
+				// 	}
+				// }
 			} else if sqlUpdate, sqlUpdateOk := stmt.(*sqlparser.Update); sqlUpdateOk {
 				for _, tableExpr := range sqlUpdate.TableExprs {
 					if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
