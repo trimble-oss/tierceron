@@ -60,6 +60,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
 		InitConfigWG:              &sync.WaitGroup{},
+		FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
 	}
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
@@ -256,12 +257,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			controllerInitWG.Add(1)
 			tfmFlumeContext.InitConfigWG.Add(1)
 			flowWG.Add(1)
-			go func(tableFlow flowcore.FlowNameType, tcfContext flowcore.TrcFlowContext, dc *eUtils.DriverConfig) {
+			go func(tableFlow flowcore.FlowNameType, tcfContext *flowcore.TrcFlowContext, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning flow: "+tableFlow.ServiceName())
 				defer flowWG.Done()
 				tcfContext.Flow = tableFlow
 				tcfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 				tcfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+				tfmContext.FlowMap[tcfContext.Flow] = tcfContext
 				var initErr error
 				dc, tcfContext.GoMod, tcfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 				if initErr != nil {
@@ -272,14 +274,14 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 				tfmFlumeContext.ProcessFlow(
 					dc,
-					&tcfContext,
+					tcfContext,
 					FlumenProcessFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
 					tableFlow,
 					flowcore.TableSyncFlow,
 				)
-			}(flowcore.FlowNameType(table), tfContext, config)
+			}(flowcore.FlowNameType(table), &tfContext, config)
 
 			controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
 			if initReciever, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
@@ -316,6 +318,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfContext.Flow = tableFlow
 				tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 				tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+				tfmContext.FlowMap[tfContext.Flow] = &tfContext
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 				if initErr != nil {
