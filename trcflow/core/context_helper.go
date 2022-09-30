@@ -38,7 +38,7 @@ func getInsertChangeQuery(databaseName string, changeTable string, id interface{
 	if _, iOk := id.(int64); iOk {
 		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (%d, current_timestamp())", databaseName, changeTable, id)
 	} else {
-		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (%s, current_timestamp())", databaseName, changeTable, id)
+		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES ('%s', current_timestamp())", databaseName, changeTable, id)
 	}
 }
 
