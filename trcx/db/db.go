@@ -476,7 +476,7 @@ func Query(te *TierceronEngine, query string, queryLock *sync.Mutex) (string, []
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sql.Expression, queryLock *sync.Mutex) (string, []string, [][]string, error) {
+func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sql.Expression, queryLock *sync.Mutex) (string, []string, [][]interface{}, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
@@ -493,7 +493,7 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 	}
 
 	columns := []string{}
-	matrix := [][]string{}
+	matrix := [][]interface{}{}
 	tableName := ""
 
 	for _, col := range schema {
@@ -516,7 +516,7 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 			if err == io.EOF {
 				break
 			}
-			rowData := []string{}
+			rowData := []interface{}{}
 			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
 				okResult = true
 				if len(row) > 0 {
