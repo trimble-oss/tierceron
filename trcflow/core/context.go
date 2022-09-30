@@ -25,6 +25,8 @@ import (
 	helperkv "tierceron/vaulthelper/kv"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
+	sqlee "github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 type FlowType int64
@@ -62,8 +64,31 @@ func (fnt FlowNameType) ServiceName() string {
 	return string(fnt)
 }
 
-func TriggerAllChangeChannel() {
+func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 	for _, tfmContext := range tfmContextMap {
+
+		// If changIds identified, manually trigger a change.
+		if table != "" {
+			for changeIdKey, changeIdValue := range changeIds {
+				if tfContext, tfContextOk := tfmContext.FlowMap[FlowNameType(table)]; tfContextOk {
+					if tfContext.ChangeIdKey == changeIdKey {
+						changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
+						bindings := map[string]sqle.Expression{
+							"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+						}
+						_, _, _, _ = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+						break
+					}
+				}
+			}
+			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
+				go func(nfc chan bool) {
+					nfc <- true
+				}(notificationFlowChannel)
+				return
+			}
+		}
+
 		for _, notificationFlowChannel := range tfmContext.ChannelMap {
 			if len(notificationFlowChannel) < 3 {
 				go func(nfc chan bool) {
@@ -88,6 +113,7 @@ type TrcFlowMachineContext struct {
 	ExtensionAuthData         map[string]interface{}
 	GetAdditionalFlowsByState func(teststate string) []FlowNameType
 	ChannelMap                map[FlowNameType]chan bool
+	FlowMap                   map[FlowNameType]*TrcFlowContext // Map of all running flows for engine
 }
 
 type TrcFlowContext struct {
@@ -106,6 +132,7 @@ type TrcFlowContext struct {
 	FlowSource      string       // The name of the flow source identified by project.
 	FlowSourceAlias string       // May be a database name
 	Flow            FlowNameType // May be a table name.
+	ChangeIdKey     string
 	FlowPath        string
 	FlowData        interface{}
 	ChangeFlowName  string // Change flow table name.
@@ -223,6 +250,10 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 // whenever a row in a table changes...
 func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowContext, identityColumnName string) {
 	tfmContext.GetTableModifierLock().Lock()
+
+	// Workaround triggers not firing: 9/30/2022
+	trcfc.ChangeIdKey = identityColumnName
+
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
@@ -532,8 +563,8 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		if changed && len(matrix) > 0 {
 
 			// If triggers are ever fixed, this can be removed.
-			if changeId, changeIdOk := queryMap["TrcChangeId"]; changeIdOk {
-				changeQuery := `INSERT IGNORE INTO ` + tfContext.FlowSourceAlias + `.` + tfContext.ChangeFlowName + ` VALUES ("` + changeId + `", current_timestamp());`
+			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"]; changeIdValueOk {
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES ('%s', current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changeIdValue)
 				_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, changeQuery, tfContext.FlowLock)
 			}
 
@@ -593,8 +624,8 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		}
 		if changed && (len(matrix) > 0 || tableName != "") {
 			// If triggers are ever fixed, this can be removed.
-			if changeId, changeIdOk := queryMap["TrcChangeId"]; changeIdOk {
-				changeQuery := `INSERT IGNORE INTO ` + tfContext.FlowSourceAlias + `.` + tfContext.ChangeFlowName + ` VALUES ("` + changeId + `", current_timestamp());`
+			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"]; changeIdValueOk {
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES ('%s', current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changeIdValue)
 				_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, changeQuery, tfContext.FlowLock)
 			}
 
