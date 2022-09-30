@@ -564,8 +564,11 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 
 			// If triggers are ever fixed, this can be removed.
 			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"]; changeIdValueOk {
-				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES ('%s', current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changeIdValue)
-				_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, changeQuery, tfContext.FlowLock)
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
+				bindings := map[string]sqle.Expression{
+					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+				}
+				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
 			}
 
 			if len(flowNotifications) > 0 {
@@ -625,8 +628,11 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		if changed && (len(matrix) > 0 || tableName != "") {
 			// If triggers are ever fixed, this can be removed.
 			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"]; changeIdValueOk {
-				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES ('%s', current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changeIdValue)
-				_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, changeQuery, tfContext.FlowLock)
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
+				bindings := map[string]sqle.Expression{
+					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+				}
+				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
 			}
 
 			if len(flowNotifications) > 0 {
