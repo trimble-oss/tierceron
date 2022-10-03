@@ -217,6 +217,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 	if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, tableName); !ok {
 		//	ii. Init database and tables in local mysql engine instance.
 		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema, TableCollationIdGen(tableName))
+		tfmContext.GetTableModifierLock().Unlock()
 
 		if err != nil {
 			tfContext.FlowState = flowcorehelper.CurrentFlowState{State: -1, SyncMode: "Could not create table.", SyncFilter: ""}
