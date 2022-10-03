@@ -399,6 +399,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 		}
 		*/
 		te.Engine = sqle.NewDefault(sqlememory.NewMemoryDBProvider(te.Database))
+		te.Engine.Analyzer.Debug = false
 		te.Engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
 	}
 	return te, nil
