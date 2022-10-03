@@ -29,15 +29,20 @@ require (
 	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/mrjrieke/nute v0.0.0-20220921134623-cc15740032f6
 )
 
 //require github.com/mrjrieke/nute v0.0.0-20220917150643-a6d82baf07fa
 
 require (
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
+	github.com/gocraft/dbr/v2 v2.7.2 // indirect
+	github.com/google/flatbuffers v2.0.6+incompatible // indirect
+	github.com/howeyc/crc16 v0.0.0-20171223171357-2b2a61e366a6 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
-	github.com/mrjrieke/nute v0.0.0-20220921134623-cc15740032f6 // indirect
 	github.com/tevino/abool v1.2.0 // indirect
+	go.opentelemetry.io/otel v1.7.0 // indirect
+	go.opentelemetry.io/otel/trace v1.7.0 // indirect
 )
 
 require (
@@ -77,7 +82,7 @@ require (
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/aws/aws-sdk-go v1.43.30
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/dolthub/vitess v0.0.0-20220826175112-8dd4ffc9eda1 // indirect
+	github.com/dolthub/vitess v0.0.0-20220930181015-759b1acd9188
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/frankban/quicktest v1.14.1 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
@@ -117,8 +122,7 @@ require (
 	github.com/sendgrid/rest v2.6.0+incompatible // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/src-d/go-oniguruma v1.1.0 // indirect
-	golang.org/x/mod v0.5.1 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
@@ -139,7 +143,7 @@ replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 
 replace VaultConfig.Test => ../VaultConfig.Test
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.2
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.3
 
 replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d
 
