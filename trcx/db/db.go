@@ -42,9 +42,8 @@ func stringClone(s string) string {
 }
 
 func writeToTableHelper(te *TierceronEngine, configTableName string, valueColumns map[string]string, secretColumns map[string]string, config *eUtils.DriverConfig) {
-	m.Lock()
-	tableSql, tableOk, _ := te.Database.GetTableInsensitive(te.Context, configTableName)
-	m.Unlock()
+
+	tableSql, tableOk, _ := te.Database.GetTableInsensitive(nil, configTableName)
 	var table *sqlememory.Table
 
 	// TODO: Do we want back lookup by enterpriseId on all rows?
@@ -137,13 +136,10 @@ func writeToTableHelper(te *TierceronEngine, configTableName string, valueColumn
 	}
 
 	if !allDefaults {
-		m.Lock()
-
 		insertErr := table.Insert(te.Context, sqles.NewRow(row...))
 		if insertErr != nil {
 			eUtils.LogErrorObject(config, insertErr, false)
 		}
-		m.Unlock()
 	}
 
 }
@@ -416,10 +412,8 @@ func Query(te *TierceronEngine, query string, queryLock *sync.Mutex) (string, []
 	ctx := sqles.NewContext(context.Background())
 
 	queryLock.Lock()
-	m.Lock()
 	//	te.Context = ctx
 	schema, r, err := te.Engine.Query(ctx, query)
-	m.Unlock()
 	queryLock.Unlock()
 	if err != nil {
 		return "", nil, nil, err
@@ -442,9 +436,7 @@ func Query(te *TierceronEngine, query string, queryLock *sync.Mutex) (string, []
 		okResult := false
 		for {
 			queryLock.Lock()
-			m.Lock()
 			row, err := r.Next(ctx)
-			m.Unlock()
 			queryLock.Unlock()
 			if err == io.EOF {
 				break
@@ -483,10 +475,8 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sql.NewContext(context.Background())
 	queryLock.Lock()
-	m.Lock()
 	//	te.Context = ctx
-	schema, r, queryErr := te.Engine.QueryWithBindings(te.Context, query, bindings)
-	m.Unlock()
+	schema, r, queryErr := te.Engine.QueryWithBindings(ctx, query, bindings)
 	queryLock.Unlock()
 	if queryErr != nil {
 		return "", nil, nil, queryErr
@@ -509,9 +499,7 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 		okResult := false
 		for {
 			queryLock.Lock()
-			m.Lock()
 			row, err := r.Next(ctx)
-			m.Unlock()
 			queryLock.Unlock()
 			if err == io.EOF {
 				break
