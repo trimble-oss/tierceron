@@ -48,7 +48,7 @@ func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
 
 // End old Active Sessions interface
 
-func FindIndexForService(project string, service string) (string, error) {
+func FindIndexForService(project string, service string) (string, []string, error) {
 	return tcbuildopts.FindIndexForService(project, service)
 }
 
