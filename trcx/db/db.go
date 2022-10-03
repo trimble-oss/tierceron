@@ -22,6 +22,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	sqles "github.com/dolthub/go-mysql-server/sql"
 )
@@ -74,7 +75,7 @@ func writeToTableHelper(te *TierceronEngine, configTableName string, valueColumn
 			tableSchema.Schema = append(tableSchema.Schema, &column)
 		}
 
-		table = sqlememory.NewTable(configTableName, tableSchema)
+		table = sqlememory.NewTable(configTableName, tableSchema, nil)
 		m.Lock()
 		te.Database.AddTable(configTableName, table)
 		m.Unlock()
@@ -398,6 +399,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 		}
 		*/
 		te.Engine = sqle.NewDefault(sqlememory.NewMemoryDBProvider(te.Database))
+		te.Engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
 	}
 	return te, nil
 }
