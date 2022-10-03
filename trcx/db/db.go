@@ -76,7 +76,7 @@ func writeToTableHelper(te *TierceronEngine, configTableName string, valueColumn
 			tableSchema.Schema = append(tableSchema.Schema, &column)
 		}
 
-		table = sqlememory.NewTable(configTableName, tableSchema)
+		table = sqlememory.NewTable(configTableName, tableSchema, nil)
 		m.Lock()
 		te.Database.AddTable(configTableName, table)
 		m.Unlock()
