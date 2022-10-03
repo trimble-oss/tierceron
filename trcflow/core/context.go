@@ -230,13 +230,15 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 					tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 					tfContext.FlowLock.Lock()
 					if tfContext.FlowState.State != 2 {
+						tfContext.FlowLock.Unlock()
 						tfmContext.FlowControllerUpdateLock.Lock()
 						if tfmContext.InitConfigWG != nil {
 							tfmContext.InitConfigWG.Done()
 						}
 						tfmContext.FlowControllerUpdateLock.Unlock()
+					} else {
+						tfContext.FlowLock.Unlock()
 					}
-					tfContext.FlowLock.Unlock()
 				case <-time.After(7 * time.Second):
 					{
 						tfmContext.FlowControllerUpdateLock.Lock()
@@ -251,9 +253,9 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 			}
 		}
 	} else {
+		tfmContext.GetTableModifierLock().Unlock()
 		tfmContext.Log("Unrecognized table: "+tfContext.Flow.TableName(), nil)
 	}
-	tfmContext.GetTableModifierLock().Unlock()
 }
 
 // Set up call back to enable a trigger to track
@@ -514,6 +516,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	<-seedInitComplete
 	tfContext.FlowLock.Lock()
 	if tfContext.FlowState.State == 2 {
+		tfContext.FlowLock.Unlock()
 		tfmContext.FlowControllerUpdateLock.Lock()
 		if tfmContext.InitConfigWG != nil {
 			tfmContext.InitConfigWG.Done()
@@ -521,9 +524,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		tfmContext.FlowControllerUpdateLock.Unlock()
 		tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 	} else {
+		tfContext.FlowLock.Unlock()
 		tfmContext.Log("Unexpected flow state: "+tfContext.Flow.TableName(), nil)
 	}
-	tfContext.FlowLock.Unlock()
 
 	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, sqlState)
 }
