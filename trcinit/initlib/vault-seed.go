@@ -268,6 +268,142 @@ func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string) {
 	SeedVaultFromData(config, strings.SplitAfterN(filepath, "/", 3)[2], rawFile)
 }
 
+//seedVaultWithCertsFromEntry takes entry from writestack and if it contains a cert, writes it to vault.
+func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modifier, writeStack *[]writeCollection, entry *writeCollection) {
+	certPathData, certPathOk := entry.data["certSourcePath"]
+	if !certPathOk {
+		eUtils.LogErrorMessage(config, "Missing cert path.", false)
+		return
+	}
+
+	certPath := fmt.Sprintf("%s", certPathData)
+	eUtils.LogInfo(config, fmt.Sprintf("Inspecting certificate: "+certPath+"."))
+
+	if strings.Contains(certPath, "ENV") {
+		if len(config.Env) >= 5 && (config.Env)[:5] == "local" {
+			envParts := strings.SplitN(config.Env, "/", 3)
+			certPath = strings.Replace(certPath, "ENV", envParts[1], 1)
+		} else {
+			certPath = strings.Replace(certPath, "ENV", config.Env, 1)
+		}
+	}
+	certPath = coreopts.GetFolderPrefix() + "_seeds/" + certPath
+	cert, err := ioutil.ReadFile(certPath)
+	if err != nil {
+		eUtils.LogErrorObject(config, err, false)
+		return
+	}
+
+	if err == nil {
+		//if pfx file size greater than 25 KB, print warning
+		if len(cert) > 32000 {
+			eUtils.LogInfo(config, "Unreasonable size for certificate type file. Not written to vault")
+			return
+		}
+
+		isValidCert := false
+		var certValidationErr error
+		if strings.HasSuffix(certPath, ".pfx") {
+			eUtils.LogInfo(config, "Inspecting pfx: "+certPath+".")
+			isValidCert, certValidationErr = validator.IsPfxRfc7292(cert)
+		} else if strings.HasSuffix(certPath, ".cer") {
+			eUtils.LogInfo(config, "Inspecting cer: "+certPath+".")
+			cert, certValidationErr := x509.ParseCertificate(cert)
+			if certValidationErr == nil {
+				isValidCert = true
+			} else {
+				eUtils.LogInfo(config, "failed to parse and verify certificate: "+certValidationErr.Error())
+			}
+			var certHost string
+			if certHostData, certHostOk := entry.data["certHost"]; certHostOk {
+				certHost = fmt.Sprintf("%s", certHostData)
+			} else {
+				eUtils.LogInfo(config, "Missing certHost, cannot validate cert.  Not written to vault")
+				return
+			}
+			switch config.Env {
+			case "dev":
+				certHost = strings.Replace(certHost, "*", "develop", 1)
+				break
+			case "QA":
+				certHost = strings.Replace(certHost, "*", "qa", 1)
+				break
+			case "performance":
+				certHost = strings.Replace(certHost, "*", "performance", 1)
+				break
+			}
+
+			opts := x509.VerifyOptions{
+				DNSName: certHost,
+			}
+
+			if _, err := cert.Verify(opts); err != nil {
+				if _, isUnknownAuthority := err.(x509.UnknownAuthorityError); !isUnknownAuthority {
+					eUtils.LogInfo(config, "Unknown authority: failed to verify certificate: "+err.Error())
+					return
+				}
+			}
+		} else if strings.HasSuffix(certPath, ".pem") {
+			eUtils.LogInfo(config, "Inspecting pem: "+certPath+".")
+			pemBlock, _ := pem.Decode(cert)
+			if pemBlock == nil {
+				eUtils.LogInfo(config, "failed to verify certificate PEM.")
+			} else {
+				isValidCert = true
+			}
+		} else if strings.HasSuffix(certPath, ".jks") {
+			isValidCert = true
+		}
+		if isValidCert {
+			eUtils.LogInfo(config, "Certificate passed validation: "+certPath+".")
+			certBase64 := base64.StdEncoding.EncodeToString(cert)
+			if _, ok := entry.data["certData"]; ok {
+				// insecure value entry.
+				entry.data["certData"] = certBase64
+				eUtils.LogInfo(config, "Public cert updated: "+certPath+".")
+			} else {
+				entryPathParts := strings.Split(entry.path, "/")
+				if len(entryPathParts) == 2 {
+					secretPath := "super-secrets/" + entryPathParts[1]
+					done := false
+					// Look up in private entry.
+					for _, secretEntry := range *writeStack {
+						if secretPath == secretEntry.path {
+							if _, ok := secretEntry.data["certData"]; ok {
+								secretEntry.data["certData"] = certBase64
+								WriteData(config, secretEntry.path, secretEntry.data, mod)
+								WriteData(config, entry.path, entry.data, mod)
+								done = true
+								return
+							}
+						}
+					}
+					eUtils.LogInfo(config, "Cert loaded from: "+certPath+".")
+
+					if done {
+						return
+					}
+				}
+			}
+		} else {
+			if certValidationErr == nil {
+				eUtils.LogInfo(config, "Cert validation failure. Cert will not be loaded.")
+			} else {
+				eUtils.LogInfo(config, "Cert validation failure.  Cert will not be loaded."+certValidationErr.Error())
+			}
+			delete(entry.data, "certData")
+			delete(entry.data, "certHost")
+			delete(entry.data, "certSourcePath")
+			delete(entry.data, "certDestPath")
+			return
+		}
+	} else {
+		eUtils.LogInfo(config, "Missing expected cert at: "+certPath+".  Cert will not be loaded.")
+		return
+	}
+	return
+}
+
 //SeedVaultFromData takes file bytes and seeds the vault with contained data
 func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byte) error {
 	config.Log.SetPrefix("[SEED]")
@@ -368,173 +504,34 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	config.Log.Println("Please verify that these templates exist in each service")
 
 	for _, entry := range writeStack {
+		seedCert := false
 		// Output data being written
 		// Write data and ouput any errors
+		_, isCertData := entry.data["certData"]
+		seedData := !config.WantCerts && !isCertData
+
 		if strings.HasPrefix(entry.path, "values/") {
-			if certPathData, certPathOk := entry.data["certSourcePath"]; certPathOk {
-				if !config.WantCerts {
-					continue
-				}
-				certPath := fmt.Sprintf("%s", certPathData)
-				eUtils.LogInfo(config, fmt.Sprintf("Inspecting certificate: "+certPath+"."))
-
-				if strings.Contains(certPath, "ENV") {
-					if len(config.Env) >= 5 && (config.Env)[:5] == "local" {
-						envParts := strings.SplitN(config.Env, "/", 3)
-						certPath = strings.Replace(certPath, "ENV", envParts[1], 1)
-					} else {
-						certPath = strings.Replace(certPath, "ENV", config.Env, 1)
-					}
-				}
-				certPath = coreopts.GetFolderPrefix() + "_seeds/" + certPath
-				cert, err := ioutil.ReadFile(certPath)
-				if err != nil {
-					eUtils.LogErrorObject(config, err, false)
-					continue
-				}
-
-				if err == nil {
-					//if pfx file size greater than 25 KB, print warning
-					if len(cert) > 32000 {
-						eUtils.LogInfo(config, "Unreasonable size for certificate type file. Not written to vault")
-						continue
-					}
-
-					isValidCert := false
-					var certValidationErr error
-					if strings.HasSuffix(certPath, ".pfx") {
-						eUtils.LogInfo(config, "Inspecting pfx: "+certPath+".")
-						isValidCert, certValidationErr = validator.IsPfxRfc7292(cert)
-					} else if strings.HasSuffix(certPath, ".cer") {
-						eUtils.LogInfo(config, "Inspecting cer: "+certPath+".")
-						cert, certValidationErr := x509.ParseCertificate(cert)
-						if certValidationErr == nil {
-							isValidCert = true
-						} else {
-							eUtils.LogInfo(config, "failed to parse and verify certificate: "+certValidationErr.Error())
-						}
-						var certHost string
-						if certHostData, certHostOk := entry.data["certHost"]; certHostOk {
-							certHost = fmt.Sprintf("%s", certHostData)
-						} else {
-							eUtils.LogInfo(config, "Missing certHost, cannot validate cert.  Not written to vault")
-							continue
-						}
-						switch config.Env {
-						case "dev":
-							certHost = strings.Replace(certHost, "*", "develop", 1)
-							break
-						case "QA":
-							certHost = strings.Replace(certHost, "*", "qa", 1)
-							break
-						case "performance":
-							certHost = strings.Replace(certHost, "*", "performance", 1)
-							break
-						}
-
-						opts := x509.VerifyOptions{
-							DNSName: certHost,
-						}
-
-						if _, err := cert.Verify(opts); err != nil {
-							if _, isUnknownAuthority := err.(x509.UnknownAuthorityError); !isUnknownAuthority {
-								eUtils.LogInfo(config, "Unknown authority: failed to verify certificate: "+err.Error())
-								continue
-							}
-						}
-					} else if strings.HasSuffix(certPath, ".pem") {
-						eUtils.LogInfo(config, "Inspecting pem: "+certPath+".")
-						pemBlock, _ := pem.Decode(cert)
-						if pemBlock == nil {
-							eUtils.LogInfo(config, "failed to verify certificate PEM.")
-						} else {
-							isValidCert = true
-						}
-					} else if strings.HasSuffix(certPath, ".jks") {
-						isValidCert = true
-					}
-					if isValidCert {
-						eUtils.LogInfo(config, "Certificate passed validation: "+certPath+".")
-						certBase64 := base64.StdEncoding.EncodeToString(cert)
-						if _, ok := entry.data["certData"]; ok {
-							// insecure value entry.
-							entry.data["certData"] = certBase64
-							eUtils.LogInfo(config, "Public cert updated: "+certPath+".")
-						} else {
-							entryPathParts := strings.Split(entry.path, "/")
-							if len(entryPathParts) == 2 {
-								secretPath := "super-secrets/" + entryPathParts[1]
-								done := false
-								// Look up in private entry.
-								for _, secretEntry := range writeStack {
-									if secretPath == secretEntry.path {
-										if _, ok := secretEntry.data["certData"]; ok {
-											secretEntry.data["certData"] = certBase64
-											WriteData(config, secretEntry.path, secretEntry.data, mod)
-											WriteData(config, entry.path, entry.data, mod)
-											done = true
-											break
-										}
-									}
-								}
-								eUtils.LogInfo(config, "Cert loaded from: "+certPath+".")
-
-								if done {
-									continue
-								}
-							}
-						}
-					} else {
-						if certValidationErr == nil {
-							eUtils.LogInfo(config, "Cert validation failure. Cert will not be loaded.")
-						} else {
-							eUtils.LogInfo(config, "Cert validation failure.  Cert will not be loaded."+certValidationErr.Error())
-						}
-						delete(entry.data, "certData")
-						delete(entry.data, "certHost")
-						delete(entry.data, "certSourcePath")
-						delete(entry.data, "certDestPath")
-						continue
-					}
-				} else {
-					eUtils.LogInfo(config, "Missing expected cert at: "+certPath+".  Cert will not be loaded.")
-					continue
-				}
-			} else {
-				if config.WantCerts {
-					// Skip non-certs.
-					continue
-				}
-			}
-		} else {
-			_, certPathOk := entry.data["certSourcePath"]
-			_, certDataOK := entry.data["certData"]
-
-			if certPathOk || certDataOK {
-				if !config.WantCerts {
-					continue
-				}
-			} else {
-				if config.WantCerts {
-					// Skip non-certs.
-					continue
-				}
-			}
+			_, isCertPath := entry.data["certSourcePath"]
+			seedCert = (isCertPath || isCertData) && config.WantCerts
 		}
 
 		// Write Secrets...
-
-		// TODO: Support all services, so range over ServicesWanted....
-		// Populate as a slice...
-		if config.ServicesWanted[0] != "" {
-			if strings.HasSuffix(entry.path, config.ServicesWanted[0]) || strings.Contains(entry.path, "Common") {
+		if seedCert {
+			seedVaultWithCertsFromEntry(config, mod, &writeStack, &entry)
+		} else if seedData {
+			// TODO: Support all services, so range over ServicesWanted....
+			// Populate as a slice...
+			if config.ServicesWanted[0] != "" {
+				if strings.HasSuffix(entry.path, config.ServicesWanted[0]) || strings.Contains(entry.path, "Common") {
+					WriteData(config, entry.path, entry.data, mod)
+				}
+			} else if strings.Contains(filepath, "/PublicIndex/") && !strings.Contains(entry.path, "templates") {
+				WriteData(config, filepath, entry.data, mod)
+			} else {
 				WriteData(config, entry.path, entry.data, mod)
 			}
-		} else if strings.Contains(filepath, "/PublicIndex/") && !strings.Contains(entry.path, "templates") {
-			WriteData(config, filepath, entry.data, mod)
 		} else {
-			//			/Index/TrcVault/regionId/<regionEnv>
-			WriteData(config, entry.path, entry.data, mod)
+			config.Log.Printf("\nSkipping non-matching seed data: " + entry.path)
 		}
 	}
 
@@ -572,11 +569,6 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 	if root == "templates" {
 		//Printing out path of each entry so that users can verify that folder structure in seed files are correct
 		config.Log.Println(coreopts.GetFolderPrefix() + "_" + path + ".*.tmpl")
-		for _, v := range data {
-			if templateKey, ok := v.([]interface{}); ok {
-				metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
-				mod.AdjustValue("value-metrics/credentials", metricsKey, 1, config.Log)
-			}
-		}
+		mod.AdjustValue("value-metrics/credentials", data, 1, config.Log)
 	}
 }
