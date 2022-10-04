@@ -413,7 +413,7 @@ func Query(te *TierceronEngine, query string, queryLock *sync.Mutex) (string, []
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sqles.NewContext(context.Background())
-
+	ctx.WithQuery(query)
 	queryLock.Lock()
 	//	te.Context = ctx
 	schema, r, err := te.Engine.Query(ctx, query)
@@ -477,6 +477,7 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sql.NewContext(context.Background())
+	ctx.WithQuery(query)
 	queryLock.Lock()
 	//	te.Context = ctx
 	schema, r, queryErr := te.Engine.QueryWithBindings(ctx, query, bindings)
