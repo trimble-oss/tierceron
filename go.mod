@@ -143,7 +143,7 @@ replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 
 replace VaultConfig.Test => ../VaultConfig.Test
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.3
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.4
 
 replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d
 
