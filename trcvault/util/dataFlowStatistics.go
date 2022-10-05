@@ -171,6 +171,7 @@ func (dfs *DataFlow) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 		}
 		statMap["timeSplit"] = elapsedTime
 		statMap["mode"] = dataFlowStatistic.Mode
+		statMap["lastTestedDate"] = dfs.TimeStart.Format(time.RFC3339)
 
 		mod.SectionPath = ""
 		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+dataFlowStatistic.FlowGroup+"/dataFlowName/"+dataFlowStatistic.FlowName+"/"+dataFlowStatistic.StateCode, statMap, logger)
