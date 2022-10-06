@@ -173,23 +173,24 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
 	dfs.Log()
 }
-	// decodedData := decoded.(map[string]interface{})
-	// if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
-	// 	stat := dfs.ChildNodes[len(dfs.ChildNodes)-1]
-	// 	var decodedstat interface{}
-	// 	err := json.Unmarshal(stat.Data, &decodedstat)
-	// 	if err != nil {
-	// 		log.Println("Error in decoding data in Log")
-	// 		return
-	// 	}
-	// 	decodedStatData := decodedstat.(map[string]interface{})
-	// 	if decodedStatData["StateName"] != nil && strings.Contains(decodedStatData["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
-	// 		logFunc := decodedData["LogFunc"].(func(string, error))
-	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
-	// 		//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
-	// 	} else if decodedData["LogFunc"] != nil {
-	// 		logFunc := decodedData["LogFunc"].(func(string, error))
-	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), nil)
+
+// decodedData := decoded.(map[string]interface{})
+// if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
+// 	stat := dfs.ChildNodes[len(dfs.ChildNodes)-1]
+// 	var decodedstat interface{}
+// 	err := json.Unmarshal(stat.Data, &decodedstat)
+// 	if err != nil {
+// 		log.Println("Error in decoding data in Log")
+// 		return
+// 	}
+// 	decodedStatData := decodedstat.(map[string]interface{})
+// 	if decodedStatData["StateName"] != nil && strings.Contains(decodedStatData["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
+// 		logFunc := decodedData["LogFunc"].(func(string, error))
+// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
+// 		//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
+// 	} else if decodedData["LogFunc"] != nil {
+// 		logFunc := decodedData["LogFunc"].(func(string, error))
+// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), nil)
 
 func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string, stateN string, stateC string, mode int, elapsedTime time.Duration) {
 	newData := make(map[string]interface{})
@@ -403,7 +404,7 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 	if enrichLastTested && decodedStatData["LastTestedDate"].(string) == "" {
 		var decoded interface{}
 		err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
-		if err != nil { 
+		if err != nil {
 			log.Println("Error in decoding data in StatisticToMap")
 			return statMap
 		}
