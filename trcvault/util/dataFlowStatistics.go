@@ -14,12 +14,13 @@ import (
 
 type DataFlowStatistic struct {
 	mashupsdk.MashupDetailedElement
-	FlowGroup string
-	FlowName  string
-	StateName string
-	StateCode string
-	TimeSplit time.Duration
-	Mode      int
+	FlowGroup      string
+	FlowName       string
+	StateName      string
+	StateCode      string
+	TimeSplit      time.Duration
+	Mode           int
+	LastTestedDate string
 }
 
 type DataFlow struct {
@@ -129,13 +130,13 @@ func InitDataFlow(logF func(string, error), name string, logS bool) DataFlow {
 }
 
 func (dfs *DataFlow) UpdateDataFlowStatistic(flowG string, flowN string, stateN string, stateC string, mode int) {
-	var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
+	var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode, ""}
 	dfs.Statistics = append(dfs.Statistics, newDFStat)
 	dfs.Log()
 }
 
 func (dfs *DataFlow) UpdateDataFlowStatisticWithTime(flowG string, flowN string, stateN string, stateC string, mode int, elapsedTime time.Duration) {
-	var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, elapsedTime, mode}
+	var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, elapsedTime, mode, ""}
 	dfs.Statistics = append(dfs.Statistics, newDFStat)
 	dfs.Log()
 }
@@ -171,6 +172,7 @@ func (dfs *DataFlow) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 		}
 		statMap["timeSplit"] = elapsedTime
 		statMap["mode"] = dataFlowStatistic.Mode
+		statMap["lastTestedDate"] = dfs.TimeStart.Format(time.RFC3339)
 
 		mod.SectionPath = ""
 		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+dataFlowStatistic.FlowGroup+"/dataFlowName/"+dataFlowStatistic.FlowName+"/"+dataFlowStatistic.StateCode, statMap, logger)
@@ -214,6 +216,10 @@ func (dfs *DataFlow) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 				data["timeSplit"] = strings.ReplaceAll(data["timeSplit"].(string), " seconds", "s")
 			}
 			df.TimeSplit, _ = time.ParseDuration(data["timeSplit"].(string))
+
+			if testedDate, testedDateOk := data["lastTestedDate"].(string); testedDateOk {
+				df.LastTestedDate = testedDate
+			}
 			dfs.Statistics = append(dfs.Statistics, df)
 		}
 	}
@@ -254,7 +260,7 @@ func (dfs *DataFlow) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic, en
 	statMap["mode"] = dfst.Mode
 	statMap["lastTestedDate"] = ""
 
-	if enrichLastTested {
+	if enrichLastTested && dfst.LastTestedDate == "" {
 		flowData, flowReadErr := mod.ReadData("super-secrets/" + dfst.FlowGroup)
 		if flowReadErr != nil && dfs.LogFunc != nil {
 			dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
@@ -263,6 +269,8 @@ func (dfs *DataFlow) StatisticToMap(mod *kv.Modifier, dfst DataFlowStatistic, en
 		if _, ok := flowData["lastTestedDate"].(string); ok {
 			statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
 		}
+	} else {
+		statMap["lastTestedDate"] = dfst.LastTestedDate
 	}
 
 	return statMap
