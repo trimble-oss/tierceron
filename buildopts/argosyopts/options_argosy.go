@@ -16,7 +16,7 @@ import (
 	"github.com/mrjrieke/nute/mashupsdk"
 )
 
-var maxTime int64
+//var maxTime int64
 
 func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
 	//	return data, TimeData
@@ -47,13 +47,14 @@ func buildArgosies(startID int64, args util.TTDINode) (util.TTDINode, []int64, [
 		collectionIDs = append(collectionIDs, argosyId)
 		argosy := args.ChildNodes[i]
 		name := argosy.MashupDetailedElement.Name
+		data := argosy.MashupDetailedElement.Data
 		argosy.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             argosyId,
 			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Init)},
 			Name:           name,
 			Alias:          "It",
 			Description:    "Testing to see if description will properly change!",
-			Data:           "",
+			Data:           data,
 			Custosrenderer: "TenantDataRenderer",
 			Renderer:       "Element",
 			Genre:          "Argosy",
@@ -75,9 +76,20 @@ func buildArgosies(startID int64, args util.TTDINode) (util.TTDINode, []int64, [
 
 		args.ChildNodes[i] = argosy
 	}
-	lastarg := args.ChildNodes[len(args.ChildNodes)-1]
-	lastarg.MashupDetailedElement.Data = strconv.Itoa(int(maxTime))
-	args.ChildNodes[len(args.ChildNodes)-1] = lastarg
+	// lastarg := args.ChildNodes[len(args.ChildNodes)-1]
+	// var decoded interface{}
+	// err := json.Unmarshal(lastarg.Data, &decoded)
+	// if err != nil {
+	// 	log.Println("Error in decoding data in buildArgosies")
+	// }
+	// decodedData := decoded.(map[string]interface{})
+	// decodedData["MaxTime"] = int(maxTime)
+	// encodeddata, err := json.Marshal(decodedData) //strconv.Itoa(int(maxTime))
+	// if err != nil {
+	// 	log.Println("Error in encoding data in buildArgosies")
+	// }
+	// lastarg.MashupDetailedElement.Data = string(encodeddata)
+	// args.ChildNodes[len(args.ChildNodes)-1] = lastarg
 	return args, collectionIDs, curveCollection
 }
 
@@ -92,13 +104,14 @@ func buildDataFlowGroups(startID int64, argosy util.TTDINode, dfgsize float64, d
 		childIDs = append(childIDs, argosyId)
 		group := argosy.ChildNodes[i]
 		name := group.MashupDetailedElement.Name
+		data := group.MashupDetailedElement.Data
 		group.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             argosyId,
 			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
-			Name:           name, //"DataFlowGroup-" + strconv.Itoa(int(argosyId)),
+			Name:           name,
 			Alias:          "It",
 			Description:    "",
-			Data:           "",
+			Data:           data,
 			Custosrenderer: "",
 			Renderer:       "Element",
 			Genre:          "DataFlowGroup",
@@ -132,13 +145,14 @@ func buildDataFlows(startID int64, group util.TTDINode, dfsize float64, dfstatsi
 		childIDs = append(childIDs, argosyId)
 		flow := group.ChildNodes[i]
 		name := flow.MashupDetailedElement.Name
+		data := flow.MashupDetailedElement.Data
 		flow.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             argosyId,
 			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
 			Name:           name, //"DataFlow-" + strconv.Itoa(int(argosyId)),
 			Alias:          "It",
 			Description:    "",
-			Data:           "",
+			Data:           data,
 			Custosrenderer: "",
 			Renderer:       "Element",
 			Genre:          "DataFlow",
@@ -148,10 +162,10 @@ func buildDataFlows(startID int64, group util.TTDINode, dfsize float64, dfstatsi
 		}
 		otherIds := []int64{}
 		children := []int64{}
-		var total int64
+		//var total int64
 
-		flow.ChildNodes, otherIds, children, curveCollection, flow, total = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
-		flow.MashupDetailedElement.Data = fmt.Sprintf("%f", float64(total)/float64(len(flow.ChildNodes)))
+		flow.ChildNodes, otherIds, children, curveCollection, flow = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
+		//flow.MashupDetailedElement.Data = fmt.Sprintf("%f", float64(total)/float64(len(flow.ChildNodes)))
 		for _, id := range otherIds {
 			collectionIDs = append(collectionIDs, id)
 		}
@@ -163,18 +177,19 @@ func buildDataFlows(startID int64, group util.TTDINode, dfsize float64, dfstatsi
 	return group.ChildNodes, collectionIDs, childIDs, curveCollection, group
 }
 
-func buildDataFlowStatistics(startID int64, flow util.TTDINode, dfstatsize float64, parentID int64) ([]util.TTDINode, []int64, []int64, []int64, util.TTDINode, int64) {
+func buildDataFlowStatistics(startID int64, flow util.TTDINode, dfstatsize float64, parentID int64) ([]util.TTDINode, []int64, []int64, []int64, util.TTDINode) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
 	curveCollection := []int64{}
-	total := int64(0)
+	//total := int64(0)
 	for i := 0; i < len(flow.ChildNodes); i++ {
 		argosyId = argosyId + 1
 		childIDs = append(childIDs, argosyId)
 		curveCollection = append(curveCollection, argosyId)
 		stat := flow.ChildNodes[i]
 		//name := stat.MashupDetailedElement.Name
+		data := stat.MashupDetailedElement.Data
 		var decodedstat interface{}
 		err := json.Unmarshal(stat.Data, &decodedstat)
 		if err != nil {
@@ -186,17 +201,17 @@ func buildDataFlowStatistics(startID int64, flow util.TTDINode, dfstatsize float
 			log.Println("Error in decoding data in buildDataFlowStatistics because data not initialized properly")
 			break
 		}
-		total = int64(total) + int64(decodedStatData["TimeSplit"].(float64))
-		if int64(decodedStatData["TimeSplit"].(float64)) > maxTime {
-			maxTime = int64(decodedStatData["TimeSplit"].(float64))
-		}
+		//total = int64(total) + int64(decodedStatData["TimeSplit"].(float64))
+		// if int64(decodedStatData["TimeSplit"].(float64)) > maxTime {
+		// 	maxTime = int64(decodedStatData["TimeSplit"].(float64))
+		// }
 		stat.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             argosyId,
 			State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
 			Name:           decodedStatData["StateName"].(string) + "-" + strconv.Itoa(int(argosyId)), //"DataFlowStatistic-" + strconv.Itoa(int(argosyId)), //data[pointer], //
 			Alias:          "It",
 			Description:    "",
-			Data:           strconv.FormatInt(int64(decodedStatData["TimeSplit"].(float64)), 10), //time in nanoseconds
+			Data:           data, //strconv.FormatInt(int64(decodedStatData["TimeSplit"].(float64)), 10), //time in nanoseconds
 			Custosrenderer: "",
 			Renderer:       "Curve",
 			Genre:          "DataFlowStatistic",
@@ -206,7 +221,7 @@ func buildDataFlowStatistics(startID int64, flow util.TTDINode, dfstatsize float
 		}
 		flow.ChildNodes[i] = stat
 	}
-	return flow.ChildNodes, collectionIDs, childIDs, curveCollection, flow, int64(total)
+	return flow.ChildNodes, collectionIDs, childIDs, curveCollection, flow //, int64(total)
 }
 
 func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
@@ -230,7 +245,6 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 				Parentids:      nil,
 				Childids:       nil,
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		},
 		{
@@ -248,7 +262,6 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 				Parentids:      []int64{-2},
 				Childids:       []int64{},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		},
 		{
@@ -267,7 +280,6 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 				Parentids:      []int64{},
 				Childids:       []int64{},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		},
 		{
@@ -285,7 +297,6 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 				Parentids:      nil,
 				Childids:       []int64{-1},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		},
 		{
@@ -303,7 +314,6 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 				Parentids:      nil,
 				Childids:       []int64{-4},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		},
 	}
@@ -330,7 +340,6 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 			Parentids:      []int64{},
 			Childids:       elementCollection,
 		},
-		[]byte{},
 		[]util.TTDINode{},
 	})
 	curveCollection = append(curveCollection, 1)
@@ -349,7 +358,6 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 			Parentids:      nil,
 			Childids:       curveCollection,
 		},
-		[]byte{},
 		[]util.TTDINode{},
 	})
 	for _, arg := range argosies {
