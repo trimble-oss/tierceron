@@ -539,10 +539,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	warn, err := verify(config, mod, verificationData)
 	eUtils.LogErrorObject(config, err, false)
 	eUtils.LogWarningsObject(config, warn, false)
-	if !isIndexData {
-		eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
-	}
-
+	eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
 	return nil
 }
 
