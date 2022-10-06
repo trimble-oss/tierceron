@@ -173,6 +173,23 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
 	dfs.Log()
 }
+	// decodedData := decoded.(map[string]interface{})
+	// if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
+	// 	stat := dfs.ChildNodes[len(dfs.ChildNodes)-1]
+	// 	var decodedstat interface{}
+	// 	err := json.Unmarshal(stat.Data, &decodedstat)
+	// 	if err != nil {
+	// 		log.Println("Error in decoding data in Log")
+	// 		return
+	// 	}
+	// 	decodedStatData := decodedstat.(map[string]interface{})
+	// 	if decodedStatData["StateName"] != nil && strings.Contains(decodedStatData["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
+	// 		logFunc := decodedData["LogFunc"].(func(string, error))
+	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
+	// 		//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
+	// 	} else if decodedData["LogFunc"] != nil {
+	// 		logFunc := decodedData["LogFunc"].(func(string, error))
+	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), nil)
 
 func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string, stateN string, stateC string, mode int, elapsedTime time.Duration) {
 	newData := make(map[string]interface{})
@@ -192,23 +209,6 @@ func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string,
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
 	dfs.Log()
 }
-	// decodedData := decoded.(map[string]interface{})
-	// if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
-	// 	stat := dfs.ChildNodes[len(dfs.ChildNodes)-1]
-	// 	var decodedstat interface{}
-	// 	err := json.Unmarshal(stat.Data, &decodedstat)
-	// 	if err != nil {
-	// 		log.Println("Error in decoding data in Log")
-	// 		return
-	// 	}
-	// 	decodedStatData := decodedstat.(map[string]interface{})
-	// 	if decodedStatData["StateName"] != nil && strings.Contains(decodedStatData["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
-	// 		logFunc := decodedData["LogFunc"].(func(string, error))
-	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
-	// 		//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
-	// 	} else if decodedData["LogFunc"] != nil {
-	// 		logFunc := decodedData["LogFunc"].(func(string, error))
-	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), nil)
 
 func (dfs *TTDINode) Log() {
 	var decoded interface{}
@@ -274,6 +274,7 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 		}
 		statMap["timeSplit"] = elapsedTime
 		statMap["mode"] = decodedStatData["Mode"]
+		statMap["lastTestedDate"] = decodedData["TimeStart"].(time.Time).Format(time.RFC3339)
 
 		mod.SectionPath = ""
 		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+decodedStatData["FlowGroup"].(string)+"/dataFlowName/"+decodedStatData["FlowName"].(string)+"/"+decodedStatData["StateCode"].(string), statMap, logger)
@@ -322,6 +323,10 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 				data["timeSplit"] = strings.ReplaceAll(data["timeSplit"].(string), " seconds", "s")
 			}
 			newData["TimeSplit"], _ = time.ParseDuration(data["timeSplit"].(string))
+
+			if testedDate, testedDateOk := data["lastTestedDate"].(string); testedDateOk {
+				newData["LastTestedDate"] = testedDate
+			}
 			newEncodedData, err := json.Marshal(newData)
 			if err != nil {
 				log.Println("Error encoding data in RetrieveStatistic")
@@ -395,7 +400,7 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 	statMap["mode"] = decodedStatData["Mode"]
 	statMap["lastTestedDate"] = ""
 
-	if enrichLastTested {
+	if enrichLastTested && decodedStatData["LastTestedDate"].(string) == "" {
 		var decoded interface{}
 		err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
 		if err != nil { 
