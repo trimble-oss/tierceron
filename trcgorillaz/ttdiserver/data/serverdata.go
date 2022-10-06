@@ -228,6 +228,6 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 		Parentids:      nil,
 		Childids:       []int64{},
 	})
-	sort.Float64s(testTimes)
+	sort.Float64s(testTimes) 
 	return DetailedElements
 }
