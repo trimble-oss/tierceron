@@ -51,7 +51,7 @@ import (
 
 type TTDINode struct {
 	mashupsdk.MashupDetailedElement
-	Data       []byte
+	//Data       []byte
 	ChildNodes []TTDINode
 }
 
@@ -142,14 +142,14 @@ func InitDataFlow(logF func(string, error), name string, logS bool) TTDINode {
 		log.Println("Error in encoding data in InitDataFlow")
 		return TTDINode{}
 	}
-	ttdiNode := TTDINode{mashupsdk.MashupDetailedElement{Name: name}, encodedData, stats}
+	ttdiNode := TTDINode{mashupsdk.MashupDetailedElement{Name: name, Data: string(encodedData)}, stats}
 	//var newDFStatistic = DataFlow{Name: name, TimeStart: time.Now(), Statistics: stats, LogStat: logS, LogFunc: logF}
 	return ttdiNode
 }
 
 func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN string, stateC string, mode int) {
 	var decoded interface{}
-	err := json.Unmarshal(dfs.Data, &decoded)
+	err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
 	if err != nil {
 		log.Println("Error in decoding data in UpdateDataFlowStatistic")
 		return
@@ -168,7 +168,7 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 		log.Println("Error in encoding data in UpdateDataFlowStatistics")
 		return
 	}
-	newNode := TTDINode{mashupsdk.MashupDetailedElement{}, newEncodedData, []TTDINode{}}
+	newNode := TTDINode{mashupsdk.MashupDetailedElement{Data: string(newEncodedData)}, []TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
 	dfs.Log()
@@ -187,15 +187,32 @@ func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string,
 		log.Println("Error in encoding data in UpdateDataFlowStatisticWithTime")
 		return
 	}
-	newNode := TTDINode{mashupsdk.MashupDetailedElement{}, newEncodedData, []TTDINode{}}
+	newNode := TTDINode{mashupsdk.MashupDetailedElement{Data: string(newEncodedData)}, []TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, elapsedTime, mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
 	dfs.Log()
 }
+	// decodedData := decoded.(map[string]interface{})
+	// if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
+	// 	stat := dfs.ChildNodes[len(dfs.ChildNodes)-1]
+	// 	var decodedstat interface{}
+	// 	err := json.Unmarshal(stat.Data, &decodedstat)
+	// 	if err != nil {
+	// 		log.Println("Error in decoding data in Log")
+	// 		return
+	// 	}
+	// 	decodedStatData := decodedstat.(map[string]interface{})
+	// 	if decodedStatData["StateName"] != nil && strings.Contains(decodedStatData["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
+	// 		logFunc := decodedData["LogFunc"].(func(string, error))
+	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
+	// 		//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
+	// 	} else if decodedData["LogFunc"] != nil {
+	// 		logFunc := decodedData["LogFunc"].(func(string, error))
+	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), nil)
 
 func (dfs *TTDINode) Log() {
 	var decoded interface{}
-	err := json.Unmarshal(dfs.Data, &decoded)
+	err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
 	if err != nil {
 		log.Println("Error in decoding data in Log")
 		return
@@ -204,7 +221,7 @@ func (dfs *TTDINode) Log() {
 	if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
 		stat := dfs.ChildNodes[len(dfs.ChildNodes)-1]
 		var decodedstat interface{}
-		err := json.Unmarshal(stat.Data, &decodedstat)
+		err := json.Unmarshal([]byte(stat.MashupDetailedElement.Data), &decodedstat)
 		if err != nil {
 			log.Println("Error in decoding data in Log")
 			return
@@ -226,7 +243,7 @@ func (dfs *TTDINode) Log() {
 func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath string, idName string, logger *log.Logger) {
 	//TODO : Write Statistic to vault
 	var decoded interface{}
-	err := json.Unmarshal(dfs.Data, &decoded)
+	err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
 	if err != nil {
 		log.Println("Error in decoding data in FinishStatistic")
 		return
@@ -238,7 +255,7 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 	mod.SectionPath = ""
 	for _, dataFlowStatistic := range dfs.ChildNodes {
 		var decodedstat interface{}
-		err := json.Unmarshal(dataFlowStatistic.Data, &decodedstat)
+		err := json.Unmarshal([]byte(dataFlowStatistic.MashupDetailedElement.Data), &decodedstat)
 		if err != nil {
 			log.Println("Error in decoding data in FinishStatistic")
 			return
@@ -310,7 +327,7 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 				log.Println("Error encoding data in RetrieveStatistic")
 				return nil
 			}
-			df.Data = newEncodedData
+			df.MashupDetailedElement.Data = string(newEncodedData)
 			dfs.ChildNodes = append(dfs.ChildNodes, df)
 		}
 	}
@@ -320,7 +337,7 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 //Set logFunc and logStat = false to use this otherwise it logs as states change with logStat = true
 func (dfs *TTDINode) FinishStatisticLog() {
 	var decoded interface{}
-	err := json.Unmarshal(dfs.Data, &decoded)
+	err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
 	if err != nil {
 		log.Println("Error in decoding data in FinishStatisticLog")
 		return
@@ -331,7 +348,7 @@ func (dfs *TTDINode) FinishStatisticLog() {
 	}
 	for _, stat := range dfs.ChildNodes {
 		var decodedstat interface{}
-		err := json.Unmarshal(stat.Data, &decodedstat)
+		err := json.Unmarshal([]byte(stat.MashupDetailedElement.Data), &decodedstat)
 		if err != nil {
 			log.Println("Error in decoding data in FinishStatisticLog")
 			return
@@ -358,7 +375,7 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 	var elapsedTime string
 	statMap := make(map[string]interface{})
 	var decodedstat interface{}
-	err := json.Unmarshal(dfst.Data, &decodedstat)
+	err := json.Unmarshal([]byte(dfst.MashupDetailedElement.Data), &decodedstat)
 	if err != nil {
 		log.Println("Error in decoding data in StatisticToMap")
 		return statMap
@@ -380,8 +397,8 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 
 	if enrichLastTested {
 		var decoded interface{}
-		err := json.Unmarshal(dfs.Data, &decoded)
-		if err != nil {
+		err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
+		if err != nil { 
 			log.Println("Error in decoding data in StatisticToMap")
 			return statMap
 		}
@@ -396,6 +413,9 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 		if _, ok := flowData["lastTestedDate"].(string); ok {
 			statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
 		}
+	} else {
+
+		statMap["lastTestedDate"] = decodedStatData["LastTestedDate"].(string)
 	}
 
 	return statMap
