@@ -14,10 +14,10 @@ func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
 	return nil, nil
 }
 
-func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.ArgosyFleet, error) {
-	return util.ArgosyFleet{}, nil
+func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
+	return util.TTDINode{}, nil
 }
 
-func GetDataFlowGroups(mod *kv.Modifier, argosy *util.Argosy) []util.DataFlowGroup {
+func GetDataFlowGroups(mod *kv.Modifier, argosy *util.TTDINode) []util.TTDINode {
 	return nil
 }

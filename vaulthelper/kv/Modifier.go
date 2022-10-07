@@ -485,7 +485,7 @@ retryQuery:
 }
 
 //AdjustValue adjusts the value at the given path/key by n
-func (m *Modifier) AdjustValue(path string, key string, n int, logger *log.Logger) ([]string, error) {
+func (m *Modifier) AdjustValue(path string, data map[string]interface{}, n int, logger *log.Logger) ([]string, error) {
 	// Get the existing data at the path
 	oldData, err := m.ReadData(path)
 	if err != nil {
@@ -494,17 +494,23 @@ func (m *Modifier) AdjustValue(path string, key string, n int, logger *log.Logge
 	if oldData == nil { // Path has not been used yet, create an empty map
 		oldData = make(map[string]interface{})
 	}
-	// Try to fetch the value with the given key, start empty values with 0
-	if oldData[key] == nil {
-		oldData[key] = "0"
+	for _, v := range data {
+		if templateKey, ok := v.([]interface{}); ok {
+			metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
+			// Try to fetch the value with the given key, start empty values with 0
+			if oldData[metricsKey] == nil {
+				oldData[metricsKey] = "0"
+			}
+			// Convert from stored string value to int
+			oldValue, err := strconv.Atoi(oldData[metricsKey].(string))
+			if err != nil {
+				logger.Printf("Could not convert value to int at: " + metricsKey)
+				continue
+			}
+			newValue := strconv.Itoa(oldValue + n)
+			oldData[metricsKey] = newValue
+		}
 	}
-	// Convert from stored string value to int
-	oldValue, err := strconv.Atoi(oldData[key].(string))
-	if err != nil {
-		return []string{"Could not convert value to int at: " + key}, err
-	}
-	newValue := strconv.Itoa(oldValue + n)
-	oldData[key] = newValue
 	return m.Write(path, oldData, logger)
 }
 
