@@ -50,6 +50,11 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
 	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
 
+	// indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
+	// indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // Table names
+	// indexNameFilterPtr := flag.String("indexFilter", "", "Specifies which index names to filter")                            // column index, table to filter.
+	// indexValueFilterPtr := flag.String("indexValueFilter", "", "Specifies which index values to filter")                     // column index value to filter on.
+
 	allowNonLocal := false
 
 	args := os.Args[1:]
