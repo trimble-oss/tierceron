@@ -221,6 +221,23 @@ func (dfs *TTDINode) EfficientLog(statMap map[string]interface{}) {
 		}
 	}
 }
+	// decodedData := decoded.(map[string]interface{})
+	// if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
+	// 	stat := dfs.ChildNodes[len(dfs.ChildNodes)-1]
+	// 	var decodedstat interface{}
+	// 	err := json.Unmarshal([]byte(stat.MashupDetailedElement.Data), &decodedstat)
+	// 	if err != nil {
+	// 		log.Println("Error in decoding data in Log")
+	// 		return
+	// 	}
+	// 	decodedStatData := decodedstat.(map[string]interface{})
+	// 	if decodedStatData["StateName"] != nil && strings.Contains(decodedStatData["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
+	// 		logFunc := decodedData["LogFunc"].(func(string, error))
+	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
+	// 		//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
+	// 	} else if decodedData["LogFunc"] != nil {
+	// 		logFunc := decodedData["LogFunc"].(func(string, error))
+	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), nil)
 
 func (dfs *TTDINode) Log() {
 	var decoded interface{}
