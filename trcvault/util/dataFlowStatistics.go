@@ -171,26 +171,9 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 	newNode := TTDINode{mashupsdk.MashupDetailedElement{Data: string(newEncodedData)}, []TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
-	dfs.Log()
+	newData["decodedData"] = decodedData
+	dfs.EfficientLog(newData)
 }
-
-// decodedData := decoded.(map[string]interface{})
-// if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
-// 	stat := dfs.ChildNodes[len(dfs.ChildNodes)-1]
-// 	var decodedstat interface{}
-// 	err := json.Unmarshal(stat.Data, &decodedstat)
-// 	if err != nil {
-// 		log.Println("Error in decoding data in Log")
-// 		return
-// 	}
-// 	decodedStatData := decodedstat.(map[string]interface{})
-// 	if decodedStatData["StateName"] != nil && strings.Contains(decodedStatData["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
-// 		logFunc := decodedData["LogFunc"].(func(string, error))
-// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
-// 		//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
-// 	} else if decodedData["LogFunc"] != nil {
-// 		logFunc := decodedData["LogFunc"].(func(string, error))
-// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), nil)
 
 func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string, stateN string, stateC string, mode int, elapsedTime time.Duration) {
 	newData := make(map[string]interface{})
@@ -208,7 +191,35 @@ func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string,
 	newNode := TTDINode{mashupsdk.MashupDetailedElement{Data: string(newEncodedData)}, []TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, elapsedTime, mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
-	dfs.Log()
+	dfs.EfficientLog(newData)
+}
+
+//Doesn't deserialize statistic data for updatedataflowstatistic
+func (dfs *TTDINode) EfficientLog(statMap map[string]interface{}) {
+	var decodedData map[string]interface{}
+	if statMap["decodedData"] == nil {
+		var decoded interface{}
+		err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
+		if err != nil {
+			log.Println("Error in decoding data in Log")
+			return
+		}
+		decodedData = decoded.(map[string]interface{})
+	} else {
+		decodedData = statMap["decodedData"].(map[string]interface{})
+	}
+	
+	if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
+		if statMap["StateName"] != nil && strings.Contains(statMap["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
+			logFunc := decodedData["LogFunc"].(func(string, error))
+			logFunc(statMap["FlowName"].(string)+"-"+statMap["StateName"].(string), errors.New(statMap["StateName"].(string)))
+			//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
+		} else if decodedData["LogFunc"] != nil {
+			logFunc := decodedData["LogFunc"].(func(string, error))
+			logFunc(statMap["FlowName"].(string)+"-"+statMap["StateName"].(string), nil)
+			//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, nil)
+		}
+	}
 }
 
 func (dfs *TTDINode) Log() {
@@ -235,7 +246,6 @@ func (dfs *TTDINode) Log() {
 		} else if decodedData["LogFunc"] != nil {
 			logFunc := decodedData["LogFunc"].(func(string, error))
 			logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), nil)
-
 			//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, nil)
 		}
 	}
