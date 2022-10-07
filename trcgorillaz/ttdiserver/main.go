@@ -56,7 +56,7 @@ func main() {
 	}
 
 	tenantDataRenderer := &trcRenderers.TenantDataRenderer{}
-	custosWorld := custosworld.NewCustosWorldApp(*headless, DetailedElements, tenantDataRenderer)
+	custosWorld := custosworld.NewCustosWorldApp(*headless, false, DetailedElements, tenantDataRenderer)
 	tenantDataRenderer.CustosWorldApp = custosWorld
 	custosWorld.CustomTabItemRenderer["TenantDataRenderer"] = tenantDataRenderer
 	custosWorld.CustomTabItemRenderer["SearchRenderer"] = &trcRenderers.SearchRenderer{CustosWorldApp: custosWorld}
