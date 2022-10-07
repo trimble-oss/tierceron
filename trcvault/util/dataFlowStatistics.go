@@ -55,7 +55,7 @@ type TTDINode struct {
 	ChildNodes []TTDINode
 }
 
-//New API -> Argosy, return dataFlowGroups populated
+// New API -> Argosy, return dataFlowGroups populated
 func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDINode, error) {
 	var aFleet TTDINode
 	aFleet.MashupDetailedElement.Name = project
@@ -194,7 +194,7 @@ func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string,
 	dfs.EfficientLog(newData)
 }
 
-//Doesn't deserialize statistic data for updatedataflowstatistic
+// Doesn't deserialize statistic data for updatedataflowstatistic
 func (dfs *TTDINode) EfficientLog(statMap map[string]interface{}) {
 	var decodedData map[string]interface{}
 	if statMap["decodedData"] == nil {
@@ -208,7 +208,7 @@ func (dfs *TTDINode) EfficientLog(statMap map[string]interface{}) {
 	} else {
 		decodedData = statMap["decodedData"].(map[string]interface{})
 	}
-	
+
 	if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
 		if statMap["StateName"] != nil && strings.Contains(statMap["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
 			logFunc := decodedData["LogFunc"].(func(string, error))
@@ -221,23 +221,24 @@ func (dfs *TTDINode) EfficientLog(statMap map[string]interface{}) {
 		}
 	}
 }
-	// decodedData := decoded.(map[string]interface{})
-	// if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
-	// 	stat := dfs.ChildNodes[len(dfs.ChildNodes)-1]
-	// 	var decodedstat interface{}
-	// 	err := json.Unmarshal([]byte(stat.MashupDetailedElement.Data), &decodedstat)
-	// 	if err != nil {
-	// 		log.Println("Error in decoding data in Log")
-	// 		return
-	// 	}
-	// 	decodedStatData := decodedstat.(map[string]interface{})
-	// 	if decodedStatData["StateName"] != nil && strings.Contains(decodedStatData["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
-	// 		logFunc := decodedData["LogFunc"].(func(string, error))
-	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
-	// 		//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
-	// 	} else if decodedData["LogFunc"] != nil {
-	// 		logFunc := decodedData["LogFunc"].(func(string, error))
-	// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), nil)
+
+// decodedData := decoded.(map[string]interface{})
+// if decodedData["LogStat"] != nil && decodedData["LogStat"].(bool) {
+// 	stat := dfs.ChildNodes[len(dfs.ChildNodes)-1]
+// 	var decodedstat interface{}
+// 	err := json.Unmarshal([]byte(stat.MashupDetailedElement.Data), &decodedstat)
+// 	if err != nil {
+// 		log.Println("Error in decoding data in Log")
+// 		return
+// 	}
+// 	decodedStatData := decodedstat.(map[string]interface{})
+// 	if decodedStatData["StateName"] != nil && strings.Contains(decodedStatData["StateName"].(string), "Failure") && decodedData["LogFunc"] != nil {
+// 		logFunc := decodedData["LogFunc"].(func(string, error))
+// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
+// 		//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
+// 	} else if decodedData["LogFunc"] != nil {
+// 		logFunc := decodedData["LogFunc"].(func(string, error))
+// 		logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), nil)
 
 func (dfs *TTDINode) Log() {
 	var decoded interface{}
@@ -295,14 +296,26 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 		statMap["flowName"] = decodedStatData["FlowName"]
 		statMap["stateName"] = decodedStatData["StateName"]
 		statMap["stateCode"] = decodedStatData["StateCode"]
-		if decodedStatData["TimeSplit"] != nil && decodedStatData["TimeSplit"].(time.Duration).Seconds() < 0 { //Covering corner case of 0 second time durations being slightly off (-.00004 seconds)
-			elapsedTime = "0s"
-		} else {
-			elapsedTime = decodedStatData["TimeSplit"].(time.Duration).Truncate(time.Millisecond * 10).String()
+		if _, ok := decodedStatData["TimeSplit"].(time.Duration); ok {
+			if decodedStatData["TimeSplit"] != nil && decodedStatData["TimeSplit"].(time.Duration).Seconds() < 0 { //Covering corner case of 0 second time durations being slightly off (-.00004 seconds)
+				elapsedTime = "0s"
+			} else {
+				elapsedTime = decodedStatData["TimeSplit"].(time.Duration).Truncate(time.Millisecond * 10).String()
+			}
+		} else if timeFloat, ok := decodedStatData["TimeSplit"].(float64); ok {
+			elapsedTime = fmt.Sprintf("%fs", timeFloat)
 		}
 		statMap["timeSplit"] = elapsedTime
 		statMap["mode"] = decodedStatData["Mode"]
-		statMap["lastTestedDate"] = decodedData["TimeStart"].(time.Time).Format(time.RFC3339)
+
+		lastTestedDate := ""
+		if _, ok := decodedData["TimeStart"].(time.Time); ok {
+			lastTestedDate = decodedData["TimeStart"].(time.Time).Format(time.RFC3339)
+		} else if _, ok := decodedStatData["TimeStart"].(string); ok {
+			lastTestedDate = decodedStatData["TimeStart"].(string)
+		}
+
+		statMap["lastTestedDate"] = lastTestedDate
 
 		mod.SectionPath = ""
 		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+decodedStatData["FlowGroup"].(string)+"/dataFlowName/"+decodedStatData["FlowName"].(string)+"/"+decodedStatData["StateCode"].(string), statMap, logger)
@@ -367,7 +380,7 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 	return nil
 }
 
-//Set logFunc and logStat = false to use this otherwise it logs as states change with logStat = true
+// Set logFunc and logStat = false to use this otherwise it logs as states change with logStat = true
 func (dfs *TTDINode) FinishStatisticLog() {
 	var decoded interface{}
 	err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
@@ -403,7 +416,7 @@ func (dfs *TTDINode) FinishStatisticLog() {
 	}
 }
 
-//Used for flow
+// Used for flow
 func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastTested bool) map[string]interface{} {
 	var elapsedTime string
 	statMap := make(map[string]interface{})
