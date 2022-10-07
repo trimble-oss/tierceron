@@ -90,10 +90,11 @@ export VAULT_TOKEN
 export VAULT_API_ADDR
 
 echo "Disable and unregister old plugin."
+export VAULT_CLIENT_TIMEOUT=300s
 vault secrets disable $TRC_PLUGIN_NAME/
 vault plugin deregister $TRC_PLUGIN_NAME
 
-sleep 1
+sleep 3
 
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
     # Just writing to vault will trigger the carrier plugin...

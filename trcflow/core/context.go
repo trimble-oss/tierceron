@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/howeyc/crc16"
+
 	"tierceron/buildopts/coreopts"
 	"tierceron/buildopts/flowcoreopts"
 	"tierceron/trcflow/core/flowcorehelper"
@@ -148,6 +150,11 @@ func (tfmContext *TrcFlowMachineContext) GetTableModifierLock() *sync.Mutex {
 	return &tableModifierLock
 }
 
+func TableCollationIdGen(tableName string) sqle.CollationID {
+	checksum := crc16.Checksum([]byte(tableName), crc16.MBusTable)
+	return sqle.CollationID(checksum)
+}
+
 func (tfmContext *TrcFlowMachineContext) Init(
 	sdbConnMap map[string]map[string]interface{},
 	tableNames []string,
@@ -169,10 +176,13 @@ func (tfmContext *TrcFlowMachineContext) Init(
 		changeTableName := tableName + "_Changes"
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
-			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
-				{Name: "id", Type: flowcoreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
-				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
-			}))
+			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName,
+				sqle.NewPrimaryKeySchema(sqle.Schema{
+					{Name: "id", Type: flowcoreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
+					{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
+				}),
+				TableCollationIdGen(tableName),
+			)
 			if err != nil {
 				tfmContext.GetTableModifierLock().Unlock()
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
@@ -206,7 +216,8 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 	tfmContext.GetTableModifierLock().Lock()
 	if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, tableName); !ok {
 		//	ii. Init database and tables in local mysql engine instance.
-		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema)
+		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema, TableCollationIdGen(tableName))
+		tfmContext.GetTableModifierLock().Unlock()
 
 		if err != nil {
 			tfContext.FlowState = flowcorehelper.CurrentFlowState{State: -1, SyncMode: "Could not create table.", SyncFilter: ""}
@@ -220,13 +231,15 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 					tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 					tfContext.FlowLock.Lock()
 					if tfContext.FlowState.State != 2 {
+						tfContext.FlowLock.Unlock()
 						tfmContext.FlowControllerUpdateLock.Lock()
 						if tfmContext.InitConfigWG != nil {
 							tfmContext.InitConfigWG.Done()
 						}
 						tfmContext.FlowControllerUpdateLock.Unlock()
+					} else {
+						tfContext.FlowLock.Unlock()
 					}
-					tfContext.FlowLock.Unlock()
 				case <-time.After(7 * time.Second):
 					{
 						tfmContext.FlowControllerUpdateLock.Lock()
@@ -241,9 +254,9 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 			}
 		}
 	} else {
+		tfmContext.GetTableModifierLock().Unlock()
 		tfmContext.Log("Unrecognized table: "+tfContext.Flow.TableName(), nil)
 	}
-	tfmContext.GetTableModifierLock().Unlock()
 }
 
 // Set up call back to enable a trigger to track
@@ -504,6 +517,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	<-seedInitComplete
 	tfContext.FlowLock.Lock()
 	if tfContext.FlowState.State == 2 {
+		tfContext.FlowLock.Unlock()
 		tfmContext.FlowControllerUpdateLock.Lock()
 		if tfmContext.InitConfigWG != nil {
 			tfmContext.InitConfigWG.Done()
@@ -511,9 +525,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		tfmContext.FlowControllerUpdateLock.Unlock()
 		tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 	} else {
+		tfContext.FlowLock.Unlock()
 		tfmContext.Log("Unexpected flow state: "+tfContext.Flow.TableName(), nil)
 	}
-	tfContext.FlowLock.Unlock()
 
 	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, sqlState)
 }

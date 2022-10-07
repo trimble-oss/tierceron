@@ -22,6 +22,41 @@ import (
 	"github.com/mrjrieke/nute/mashupsdk/client"
 )
 
+// Stub data
+var data []string = []string{"UpdateBudget", "AddChangeOrder", "UpdateChangeOrder", "AddChangeOrderItem", "UpdateChangeOrderItem",
+	"UpdateChangeOrderItemApprovalDate", "AddChangeOrderStatus", "UpdateChangeOrderStatus", "AddContract",
+	"UpdateContract", "AddCustomer", "UpdateCustomer", "AddItemAddon", "UpdateItemAddon", "AddItemCost",
+	"UpdateItemCost", "AddItemMarkup", "UpdateItemMarkup", "AddPhase", "UpdatePhase", "AddScheduleOfValuesFixedPrice",
+	"UpdateScheduleOfValuesFixedPrice", "AddScheduleOfValuesUnitPrice", "UpdateScheduleOfValuesUnitPrice"}
+
+//using tests from 8/24/22
+var TimeData = map[string][]float64{
+	data[0]:  {0.0, .650, .95, 5.13, 317.85, 317.85},
+	data[1]:  {0.0, 0.3, 0.56, 5.06, 78.4, 78.4},
+	data[2]:  {0.0, 0.2, 0.38, 5.33, 78.4, 78.4},
+	data[3]:  {0.0, 0.34, 0.36, 5.25, 141.93, 141.93},
+	data[4]:  {0.0, 0.24, 0.52, 4.87, 141.91, 141.91},
+	data[5]:  {0.0, 0.24, 0.6, 5.39, 148.01, 148.01},
+	data[6]:  {0.0, 0.11, 0.13, 4.89, 32.47, 32.47},
+	data[7]:  {0.0, 0.08, 0.1, 4.82, 32.49, 32.49},
+	data[8]:  {0.0, 0.33, 0.5, 5.21, 89.53, 89.53},
+	data[9]:  {0.0, 0.3, 0.62, 5, 599.99},
+	data[10]: {0.0, 0.19, 0.47, 4.87, 38.5, 38.5},
+	data[11]: {0.0, 0.26, 0.58, 5, 39.08, 39.08},
+	data[12]: {0.0, 0.36, 0.37, 5.32, 69.09, 69.06},
+	data[13]: {0.0, 0.09, 0.13, 4.73, 164.1, 164.1},
+	data[14]: {0.0, 0.61, 0.61, 0.92, 5.09, 108.35, 108.35},
+	data[15]: {0.0, 0.48, 0.66, 5.02, 108.46, 108.46},
+	data[16]: {0.0, 0.34, 0.36, 4.87, 53.42, 53.42},
+	data[17]: {0.0, 0.14, 0.23, 5.11, 53.29, 53.29},
+	data[18]: {0.0, 0.69, 0.88, 5.07, 102.38, 102.38},
+	data[19]: {0.0, 0.73, 1.03, 5.01, 104.31, 104.31},
+	data[20]: {0.0, 0.19, 0.22, 4.82, 218.8, 218.8},
+	data[21]: {0.0, 0.19, 0.36, 5.21, 218.66, 218.66},
+	data[22]: {0.0, 0.36, 0.41, 4.93, 273.66, 273.66},
+	data[23]: {0.0, 0.22, 0.39, 4.87, 273.24, 273.24},
+}
+
 var worldCompleteChan chan bool
 
 //go:embed tls/mashup.crt
@@ -62,6 +97,7 @@ func main() {
 
 	} else if *custos {
 		worldApp.MashupContext = client.BootstrapInit("ttdiserver", worldApp.MSdkApiHandler, []string{"HOME=" + os.Getenv("HOME")}, nil, insecure) //=true
+
 	}
 	if *custos {
 		libraryElementBundle, upsertErr := worldApp.MashupContext.Client.GetMashupElements(
@@ -79,23 +115,22 @@ func main() {
 			})
 
 	} else if *headless && !*custos {
-		data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
 		config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
 		ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil, logger)
 		eUtils.CheckError(&config, argosyErr, true)
 
 		dfstatData := map[string]float64{}
 		pointer := 0
-		for _, argosy := range ArgosyFleet.ChildNodes {
+		for _, argosy := range ArgosyFleet.Argosies {
 			argosyBasis := argosy.MashupDetailedElement
 			argosyBasis.Alias = "Argosy"
 			DetailedElements = append(DetailedElements, &argosyBasis)
-			for i := 0; i < len(argosy.ChildNodes); i++ {
-				detailedElement := argosy.ChildNodes[i].MashupDetailedElement
+			for i := 0; i < len(argosy.Groups); i++ {
+				detailedElement := argosy.Groups[i].MashupDetailedElement
 				detailedElement.Alias = "DataFlowGroup"
 				DetailedElements = append(DetailedElements, &detailedElement)
-				for j := 0; j < len(argosy.ChildNodes[i].ChildNodes); j++ {
-					element := argosy.ChildNodes[i].ChildNodes[j].MashupDetailedElement
+				for j := 0; j < len(argosy.Groups[i].Flows); j++ {
+					element := argosy.Groups[i].Flows[j].MashupDetailedElement
 					element.Alias = "DataFlow"
 					DetailedElements = append(DetailedElements, &element)
 					if pointer < len(data)-1 {
@@ -104,7 +139,7 @@ func main() {
 						pointer = 0
 					}
 					for k := 0; k < len(TimeData[data[pointer]]); k++ {
-						el := argosy.ChildNodes[i].ChildNodes[j].ChildNodes[k].MashupDetailedElement
+						el := argosy.Groups[i].Flows[j].Statistics[k].MashupDetailedElement
 						el.Alias = "DataFlowStatistic"
 						timeSeconds := TimeData[data[pointer]][k]
 						dfstatData[el.Name] = timeSeconds

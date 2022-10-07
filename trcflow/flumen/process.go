@@ -305,6 +305,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	}
 
+	flowMapLock := &sync.Mutex{}
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range configBasis.VersionFilter {
 			flowWG.Add(1)
@@ -318,7 +319,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfContext.Flow = tableFlow
 				tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 				tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+				flowMapLock.Lock()
 				tfmContext.FlowMap[tfContext.Flow] = &tfContext
+				flowMapLock.Unlock()
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 				if initErr != nil {
@@ -432,6 +435,17 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			eUtils.LogErrorMessage(config, "Failed to start up controller database interface:"+controllerInterfaceErr.Error(), false)
 			return controllerInterfaceErr
 		}
+	}
+	tfmFlumeContext.InitConfigWG.Wait()
+	tfmFlumeContext.FlowControllerUpdateLock.Lock()
+	tfmFlumeContext.InitConfigWG = nil
+	tfmFlumeContext.FlowControllerUpdateLock.Unlock()
+
+	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
+	//Set up controller config
+	controllerVaultDatabaseConfig = make(map[string]interface{})
+	for index, config := range vaultDatabaseConfig {
+		controllerVaultDatabaseConfig[index] = config
 	}
 
 	// Wait for all tables to be built before starting interface.
