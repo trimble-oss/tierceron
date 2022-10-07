@@ -5,7 +5,6 @@ package argosyopts
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"math"
 	"strconv"
@@ -191,7 +190,7 @@ func buildDataFlowStatistics(startID int64, flow util.TTDINode, dfstatsize float
 		//name := stat.MashupDetailedElement.Name
 		data := stat.MashupDetailedElement.Data
 		var decodedstat interface{}
-		err := json.Unmarshal(stat.Data, &decodedstat)
+		err := json.Unmarshal([]byte(data), &decodedstat)
 		if err != nil {
 			log.Println("Error in decoding data in buildDataFlowStatistics")
 			break

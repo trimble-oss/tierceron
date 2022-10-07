@@ -48,7 +48,6 @@ func buildStubArgosies(startID int64, argosysize int, dfgsize int, dfsize int, d
 				Parentids:   []int64{},
 				Childids:    []int64{-2},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		}
 		collection := []int64{}
@@ -90,7 +89,6 @@ func buildStubDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize 
 				Parentids:   []int64{parentID},
 				Childids:    []int64{-4},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		}
 		collection := []int64{}
@@ -131,7 +129,6 @@ func buildStubDataFlows(startID int64, dfsize int, dfstatsize int, parentID int6
 				Parentids:   []int64{parentID},
 				Childids:    []int64{-4},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		}
 		otherIds := []int64{}
@@ -172,7 +169,6 @@ func buildStubDataFlowStatistics(startID int64, dfstatsize int, parentID int64) 
 				Parentids:   []int64{parentID},
 				Childids:    []int64{-1},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		}
 		pointer = pointer + 1
@@ -199,7 +195,6 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error)
 				Parentids:   nil,
 				Childids:    nil,
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		},
 		{
@@ -215,7 +210,6 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error)
 				Parentids:   []int64{-2},
 				Childids:    []int64{},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		},
 		{
@@ -232,7 +226,6 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error)
 				Parentids:     []int64{},
 				Childids:      []int64{},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		},
 		{
@@ -248,7 +241,6 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error)
 				Parentids:     nil,
 				Childids:      []int64{-1},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		},
 		{
@@ -264,7 +256,6 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error)
 				Parentids:   nil,
 				Childids:    []int64{-4},
 			},
-			[]byte{},
 			[]util.TTDINode{},
 		},
 	}
@@ -284,7 +275,6 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error)
 			Parentids:   []int64{},
 			Childids:    collectionIDs,
 		},
-		[]byte{},
 		[]util.TTDINode{},
 	})
 	curveIDs = append(curveIDs, 1)
@@ -301,7 +291,6 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error)
 			Parentids:     nil,
 			Childids:      curveIDs,
 		},
-		[]byte{},
 		[]util.TTDINode{},
 	})
 
