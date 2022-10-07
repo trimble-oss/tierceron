@@ -303,7 +303,7 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 				elapsedTime = decodedStatData["TimeSplit"].(time.Duration).Truncate(time.Millisecond * 10).String()
 			}
 		} else if timeFloat, ok := decodedStatData["TimeSplit"].(float64); ok {
-			elapsedTime = fmt.Sprintf("%fs", timeFloat)
+			elapsedTime = time.Duration(timeFloat * float64(time.Nanosecond)).Truncate(time.Millisecond * 10).String()
 		}
 		statMap["timeSplit"] = elapsedTime
 		if modeFloat, ok := decodedStatData["Mode"].(float64); ok {
@@ -450,7 +450,7 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 			elapsedTime = decodedStatData["TimeSplit"].(time.Duration).Truncate(time.Millisecond * 10).String()
 		}
 	} else if timeFloat, ok := decodedStatData["TimeSplit"].(float64); ok {
-		elapsedTime = fmt.Sprintf("%fs", timeFloat)
+		elapsedTime = time.Duration(timeFloat * float64(time.Nanosecond)).Truncate(time.Millisecond * 10).String()
 	}
 	statMap["timeSplit"] = elapsedTime
 	if modeFloat, ok := decodedStatData["Mode"].(float64); ok {
