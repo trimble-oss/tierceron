@@ -306,8 +306,11 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 			elapsedTime = fmt.Sprintf("%fs", timeFloat)
 		}
 		statMap["timeSplit"] = elapsedTime
-		statMap["mode"] = decodedStatData["Mode"]
-
+		if modeFloat, ok := decodedStatData["Mode"].(float64); ok {
+			statMap["mode"] = int(modeFloat)
+		} else {
+			statMap["mode"] = decodedStatData["Mode"]
+		}
 		lastTestedDate := ""
 		if _, ok := decodedData["TimeStart"].(time.Time); ok {
 			lastTestedDate = decodedData["TimeStart"].(time.Time).Format(time.RFC3339)
@@ -404,7 +407,7 @@ func (dfs *TTDINode) FinishStatisticLog() {
 			logFunc := decodedData["LogFunc"].(func(string, error))
 			logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
 			//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
-			if decodedStatData["Mode"] != nil && decodedStatData["Mode"].(int) == 2 { //Update snapshot Mode on failure so it doesn't repeat
+			if decodedStatData["Mode"] != nil && decodedStatData["Mode"].(float64) == 2 { //Update snapshot Mode on failure so it doesn't repeat
 
 			}
 		} else {
@@ -442,7 +445,12 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 		elapsedTime = fmt.Sprintf("%fs", timeFloat)
 	}
 	statMap["timeSplit"] = elapsedTime
-	statMap["mode"] = decodedStatData["Mode"]
+	if modeFloat, ok := decodedStatData["Mode"].(float64); ok {
+		statMap["mode"] = int(modeFloat)
+	} else {
+		statMap["mode"] = decodedStatData["Mode"]
+	}
+
 	statMap["lastTestedDate"] = ""
 
 	if _, ok := decodedStatData["LastTestedDate"].(string); ok {
