@@ -303,11 +303,14 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 				elapsedTime = decodedStatData["TimeSplit"].(time.Duration).Truncate(time.Millisecond * 10).String()
 			}
 		} else if timeFloat, ok := decodedStatData["TimeSplit"].(float64); ok {
-			elapsedTime = fmt.Sprintf("%fs", timeFloat)
+			elapsedTime = time.Duration(timeFloat * float64(time.Nanosecond)).Truncate(time.Millisecond * 10).String()
 		}
 		statMap["timeSplit"] = elapsedTime
-		statMap["mode"] = decodedStatData["Mode"]
-
+		if modeFloat, ok := decodedStatData["Mode"].(float64); ok {
+			statMap["mode"] = int(modeFloat)
+		} else {
+			statMap["mode"] = decodedStatData["Mode"]
+		}
 		lastTestedDate := ""
 		if _, ok := decodedData["TimeStart"].(time.Time); ok {
 			lastTestedDate = decodedData["TimeStart"].(time.Time).Format(time.RFC3339)
@@ -404,8 +407,16 @@ func (dfs *TTDINode) FinishStatisticLog() {
 			logFunc := decodedData["LogFunc"].(func(string, error))
 			logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
 			//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
-			if decodedStatData["Mode"] != nil && decodedStatData["Mode"].(int) == 2 { //Update snapshot Mode on failure so it doesn't repeat
+			if decodedStatData["Mode"] != nil {
+				if modeFloat, ok := decodedStatData["Mode"].(float64); ok {
+					if modeFloat == 2 { //Update snapshot Mode on failure so it doesn't repeat
 
+					}
+				} else {
+					if decodedStatData["Mode"] == 2 { //Update snapshot Mode on failure so it doesn't repeat
+
+					}
+				}
 			}
 		} else {
 			logFunc := decodedData["LogFunc"].(func(string, error))
@@ -432,36 +443,48 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 	statMap["flowName"] = decodedStatData["FlowName"]
 	statMap["stateName"] = decodedStatData["StateName"]
 	statMap["stateCode"] = decodedStatData["StateCode"]
-	if decodedStatData["TimeSplit"] != nil && decodedStatData["TimeSplit"].(time.Duration).Seconds() < 0 { //Covering corner case of 0 second time durations being slightly off (-.00004 seconds)
-		elapsedTime = "0s"
-	} else {
-		elapsedTime = decodedStatData["TimeSplit"].(time.Duration).Truncate(time.Millisecond * 10).String()
+	if _, ok := decodedStatData["TimeSplit"].(time.Duration); ok {
+		if decodedStatData["TimeSplit"] != nil && decodedStatData["TimeSplit"].(time.Duration).Seconds() < 0 { //Covering corner case of 0 second time durations being slightly off (-.00004 seconds)
+			elapsedTime = "0s"
+		} else {
+			elapsedTime = decodedStatData["TimeSplit"].(time.Duration).Truncate(time.Millisecond * 10).String()
+		}
+	} else if timeFloat, ok := decodedStatData["TimeSplit"].(float64); ok {
+		elapsedTime = time.Duration(timeFloat * float64(time.Nanosecond)).Truncate(time.Millisecond * 10).String()
 	}
 	statMap["timeSplit"] = elapsedTime
-	statMap["mode"] = decodedStatData["Mode"]
+	if modeFloat, ok := decodedStatData["Mode"].(float64); ok {
+		statMap["mode"] = int(modeFloat)
+	} else {
+		statMap["mode"] = decodedStatData["Mode"]
+	}
+
 	statMap["lastTestedDate"] = ""
 
-	if enrichLastTested && decodedStatData["LastTestedDate"].(string) == "" {
-		var decoded interface{}
-		err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
-		if err != nil {
-			log.Println("Error in decoding data in StatisticToMap")
-			return statMap
-		}
-		decodedData := decoded.(map[string]interface{})
-		flowData, flowReadErr := mod.ReadData("super-secrets/" + decodedStatData["FlowGroup"].(string))
-		if flowReadErr != nil && decodedData["LogFunc"] != nil {
-			logFunc := decodedData["LogFunc"].(func(string, error))
-			logFunc("Error reading flow properties from vault", flowReadErr)
-			//dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
-		}
+	if _, ok := decodedStatData["LastTestedDate"].(string); ok {
+		if enrichLastTested && decodedStatData["LastTestedDate"].(string) == "" {
+			var decoded interface{}
+			err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
+			if err != nil {
+				log.Println("Error in decoding data in StatisticToMap")
+				return statMap
+			}
+			decodedData := decoded.(map[string]interface{})
+			flowData, flowReadErr := mod.ReadData("super-secrets/" + decodedStatData["FlowGroup"].(string))
+			if flowReadErr != nil && decodedData["LogFunc"] != nil {
+				logFunc := decodedData["LogFunc"].(func(string, error))
+				logFunc("Error reading flow properties from vault", flowReadErr)
+				//dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
+			}
 
-		if _, ok := flowData["lastTestedDate"].(string); ok {
-			statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
+			if _, ok := flowData["lastTestedDate"].(string); ok {
+				statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
+			} else {
+				statMap["lastTestedDate"] = ""
+			}
 		}
 	} else {
-
-		statMap["lastTestedDate"] = decodedStatData["LastTestedDate"].(string)
+		statMap["lastTestedDate"] = ""
 	}
 
 	return statMap
