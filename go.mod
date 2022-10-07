@@ -30,7 +30,8 @@ require (
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/howeyc/crc16 v0.0.0-20171223171357-2b2a61e366a6
-	github.com/mrjrieke/nute v0.0.0-20220921134623-cc15740032f6
+	github.com/mrjrieke/nute v0.0.0-20221007143039-1413b5d0db0a
+//github.com/mrjrieke/nute v0.0.0-20220921134623-cc15740032f6
 )
 
 //require github.com/mrjrieke/nute v0.0.0-20220917150643-a6d82baf07fa
@@ -147,7 +148,7 @@ replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-se
 
 replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d
 
-replace fyne.io/fyne/v2 v2.1.3 => github.com/mrjrieke/fyne/v2 v2.1.3-4
+replace fyne.io/fyne/v2 v2.1.3 => github.com/mrjrieke/fyne/v2 v2.1.3-6
 
 replace gioui.org v0.0.0-20220318070519-8833a6738a3b => github.com/mrjrieke/gio v0.0.0-20220406132257-ec1380c11ef0
 
