@@ -432,36 +432,43 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 	statMap["flowName"] = decodedStatData["FlowName"]
 	statMap["stateName"] = decodedStatData["StateName"]
 	statMap["stateCode"] = decodedStatData["StateCode"]
-	if decodedStatData["TimeSplit"] != nil && decodedStatData["TimeSplit"].(time.Duration).Seconds() < 0 { //Covering corner case of 0 second time durations being slightly off (-.00004 seconds)
-		elapsedTime = "0s"
-	} else {
-		elapsedTime = decodedStatData["TimeSplit"].(time.Duration).Truncate(time.Millisecond * 10).String()
+	if _, ok := decodedStatData["TimeSplit"].(time.Duration); ok {
+		if decodedStatData["TimeSplit"] != nil && decodedStatData["TimeSplit"].(time.Duration).Seconds() < 0 { //Covering corner case of 0 second time durations being slightly off (-.00004 seconds)
+			elapsedTime = "0s"
+		} else {
+			elapsedTime = decodedStatData["TimeSplit"].(time.Duration).Truncate(time.Millisecond * 10).String()
+		}
+	} else if timeFloat, ok := decodedStatData["TimeSplit"].(float64); ok {
+		elapsedTime = fmt.Sprintf("%fs", timeFloat)
 	}
 	statMap["timeSplit"] = elapsedTime
 	statMap["mode"] = decodedStatData["Mode"]
 	statMap["lastTestedDate"] = ""
 
-	if enrichLastTested && decodedStatData["LastTestedDate"].(string) == "" {
-		var decoded interface{}
-		err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
-		if err != nil {
-			log.Println("Error in decoding data in StatisticToMap")
-			return statMap
-		}
-		decodedData := decoded.(map[string]interface{})
-		flowData, flowReadErr := mod.ReadData("super-secrets/" + decodedStatData["FlowGroup"].(string))
-		if flowReadErr != nil && decodedData["LogFunc"] != nil {
-			logFunc := decodedData["LogFunc"].(func(string, error))
-			logFunc("Error reading flow properties from vault", flowReadErr)
-			//dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
-		}
+	if _, ok := decodedStatData["LastTestedDate"].(string); ok {
+		if enrichLastTested && decodedStatData["LastTestedDate"].(string) == "" {
+			var decoded interface{}
+			err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
+			if err != nil {
+				log.Println("Error in decoding data in StatisticToMap")
+				return statMap
+			}
+			decodedData := decoded.(map[string]interface{})
+			flowData, flowReadErr := mod.ReadData("super-secrets/" + decodedStatData["FlowGroup"].(string))
+			if flowReadErr != nil && decodedData["LogFunc"] != nil {
+				logFunc := decodedData["LogFunc"].(func(string, error))
+				logFunc("Error reading flow properties from vault", flowReadErr)
+				//dfs.LogFunc("Error reading flow properties from vault", flowReadErr)
+			}
 
-		if _, ok := flowData["lastTestedDate"].(string); ok {
-			statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
+			if _, ok := flowData["lastTestedDate"].(string); ok {
+				statMap["lastTestedDate"] = flowData["lastTestedDate"].(string)
+			} else {
+				statMap["lastTestedDate"] = ""
+			}
 		}
 	} else {
-
-		statMap["lastTestedDate"] = decodedStatData["LastTestedDate"].(string)
+		statMap["lastTestedDate"] = ""
 	}
 
 	return statMap
