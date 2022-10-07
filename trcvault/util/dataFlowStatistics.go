@@ -407,8 +407,16 @@ func (dfs *TTDINode) FinishStatisticLog() {
 			logFunc := decodedData["LogFunc"].(func(string, error))
 			logFunc(decodedStatData["FlowName"].(string)+"-"+decodedStatData["StateName"].(string), errors.New(decodedStatData["StateName"].(string)))
 			//dfs.LogFunc(stat.FlowName+"-"+stat.StateName, errors.New(stat.StateName))
-			if decodedStatData["Mode"] != nil && decodedStatData["Mode"].(float64) == 2 { //Update snapshot Mode on failure so it doesn't repeat
+			if decodedStatData["Mode"] != nil {
+				if modeFloat, ok := decodedStatData["Mode"].(float64); ok {
+					if modeFloat == 2 { //Update snapshot Mode on failure so it doesn't repeat
 
+					}
+				} else {
+					if decodedStatData["Mode"] == 2 { //Update snapshot Mode on failure so it doesn't repeat
+
+					}
+				}
 			}
 		} else {
 			logFunc := decodedData["LogFunc"].(func(string, error))
