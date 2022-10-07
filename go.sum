@@ -489,14 +489,14 @@ github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3Rllmb
 github.com/modocache/gover v0.0.0-20171022184752-b58185e213c5/go.mod h1:caMODM3PzxT8aQXRPkAt8xlV/e7d7w8GM5g0fa5F0D8=
 github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d h1:opXiNPHCwGtzGw9NivLg0CwXDRIgL7bc6Bqv6IrLzA8=
 github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d/go.mod h1:rnj8jiLdKEDI8VbveKhmdL4rovjjy+uxNP5YROg2x8g=
-github.com/mrjrieke/fyne/v2 v2.1.3-4 h1:L765ZJ/o3wincFauQA56Tb6m/NXA1nBzEMFexO1S7vw=
-github.com/mrjrieke/fyne/v2 v2.1.3-4/go.mod h1:MBoGuHzLLSXdQOWFAwWhIhYTEMp33zqtGCReSWhaQTA=
+github.com/mrjrieke/fyne/v2 v2.1.3-6 h1:SuH9zQhHT9sSm+9sCAD7iEoM0yeBi/OOOFCUlg4zwns=
+github.com/mrjrieke/fyne/v2 v2.1.3-6/go.mod h1:MBoGuHzLLSXdQOWFAwWhIhYTEMp33zqtGCReSWhaQTA=
 github.com/mrjrieke/gio v0.0.0-20220406132257-ec1380c11ef0 h1:VInZStydZkBifiZvcKVrATqNo4PDbS6sYCbDRP8Xpfs=
 github.com/mrjrieke/gio v0.0.0-20220406132257-ec1380c11ef0/go.mod h1:b8vBukexG6eYuXZa14asjLAWJ+JjbZ/ophEnS2FjYUg=
 github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb h1:tA/ri6AMAepfw+H05e6z1njpBCyMVIemvAWM/2wAQgU=
 github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb/go.mod h1:gLRWYfYnMA9TONeppRSikMdXlHQ97xVsPojddUv3b/E=
-github.com/mrjrieke/nute v0.0.0-20220921134623-cc15740032f6 h1:e6VsGH+T87EdUs+UqxxTcGTDQk7qLUi3aP9RvQIT8Ao=
-github.com/mrjrieke/nute v0.0.0-20220921134623-cc15740032f6/go.mod h1:Lxa9NZ59lH5F4z59StylgNfqQTcOyHu6mssitpSpkZI=
+github.com/mrjrieke/nute v0.0.0-20221007143039-1413b5d0db0a h1:PlAOsNc7GeXpudefgaSkJQ8FHXq5yAMnMOZXmPl0oJE=
+github.com/mrjrieke/nute v0.0.0-20221007143039-1413b5d0db0a/go.mod h1:IqTCYHrKoTQW/Nb/JQWGULNKSqwSca7iw2o49Rd964U=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/nats-io/jwt v0.3.0/go.mod h1:fRYCDE99xlTsqUzISS1Bi75UBJ6ljOJQOAAu5VglpSg=
 github.com/nats-io/jwt v0.3.2/go.mod h1:/euKqTS1ZD+zzjYrY7pseZrTtWQSjujC7xjPc8wL6eU=
@@ -702,6 +702,7 @@ golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586/go.mod h1:yigFU9vqHzYiE8U
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
+golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2/go.mod h1:T9bdIzuCu7OtxOm1hfPfRQxPLYneinmdGuTeoZ9dtd4=
 golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 h1:7I4JAnoQBe7ZtJcBaYHi5UtiO8tQHbUSXxL+pnGRANg=
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=
