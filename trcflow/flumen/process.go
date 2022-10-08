@@ -436,6 +436,17 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			return controllerInterfaceErr
 		}
 	}
+	tfmFlumeContext.InitConfigWG.Wait()
+	tfmFlumeContext.FlowControllerUpdateLock.Lock()
+	tfmFlumeContext.InitConfigWG = nil
+	tfmFlumeContext.FlowControllerUpdateLock.Unlock()
+
+	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
+	//Set up controller config
+	controllerVaultDatabaseConfig = make(map[string]interface{})
+	for index, config := range vaultDatabaseConfig {
+		controllerVaultDatabaseConfig[index] = config
+	}
 
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	//Set up controller config
