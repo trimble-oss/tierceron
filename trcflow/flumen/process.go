@@ -444,6 +444,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		controllerVaultDatabaseConfig[index] = config
 	}
 
+	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
+	//Set up controller config
+	controllerVaultDatabaseConfig = make(map[string]interface{})
+	for index, config := range vaultDatabaseConfig {
+		controllerVaultDatabaseConfig[index] = config
+	}
+
 	// Wait for all tables to be built before starting interface.
 	tfmContext.InitConfigWG.Wait()
 	tfmContext.FlowControllerUpdateLock.Lock()
