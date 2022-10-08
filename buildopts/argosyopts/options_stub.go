@@ -5,6 +5,7 @@ package argosyopts
 
 import (
 	"github.com/mrjrieke/nute/mashupsdk"
+	"log"
 	"math"
 	"strconv"
 	"tierceron/trcvault/util"
@@ -205,7 +206,7 @@ func buildDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]u
 	return stats, collectionIDs, childIDs, curveCollection
 }
 
-func BuildFleet(mod *kv.Modifier) (util.TTDINode, error) {
+func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 	Argosys := []util.TTDINode{
 		{
 			mashupsdk.MashupDetailedElement{
@@ -331,4 +332,9 @@ func BuildFleet(mod *kv.Modifier) (util.TTDINode, error) {
 
 func GetDataFlowGroups(mod *kv.Modifier, argosy *util.TTDINode) []util.TTDINode {
 	return nil
+}
+
+func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
+	//	return data, TimeData
+	return data, TimeData
 }
