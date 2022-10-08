@@ -48,7 +48,7 @@ var TimeData = map[string][]float64{
 
 var pointer int
 
-func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfstatsize int) ([]util.Argosy, []int64, []int64) {
+func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfstatsize int) ([]util.TTDINode, []int64, []int64) {
 	// for j := 0; j < len(data); j++ {
 	// 	for i := 0; i < len(TimeData[data[j]])-1; i++ {
 	// 		fmt.Println(TimeData[data[j]][i+1] - TimeData[data[j]][i])
@@ -56,13 +56,13 @@ func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfsta
 	// }
 	argosyId := startID - 1
 	pointer = 0
-	argosies := []util.Argosy{}
+	argosies := []util.TTDINode{}
 	collectionIDs := []int64{}
 	curveCollection := []int64{}
 	for i := 0; i < argosysize; i++ {
 		argosyId = startID + int64(i)*int64(1.0+float64(dfgsize)+math.Pow(float64(dfsize), 2.0)+math.Pow(float64(dfstatsize), 3.0))
 		collectionIDs = append(collectionIDs, argosyId)
-		argosy := util.Argosy{
+		argosy := util.TTDINode{
 			MashupDetailedElement: mashupsdk.MashupDetailedElement{
 				Id:          argosyId,
 				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Init)},
@@ -75,13 +75,12 @@ func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfsta
 				Parentids:   []int64{},
 				Childids:    []int64{-2},
 			},
-			ArgosyID: "Argosy-" + strconv.Itoa(int(argosyId)),
-			Groups:   []util.DataFlowGroup{},
+			ChildNodes: []util.TTDINode{},
 		}
 		collection := []int64{}
 		children := []int64{}
 
-		argosy.Groups, collection, children, curveCollection = buildDataFlowGroups(argosyId+1, dfgsize, dfsize, dfstatsize, argosyId)
+		argosy.ChildNodes, collection, children, curveCollection = buildDataFlowGroups(argosyId+1, dfgsize, dfsize, dfstatsize, argosyId)
 		for _, id := range collection {
 			collectionIDs = append(collectionIDs, id)
 		}
@@ -94,17 +93,17 @@ func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfsta
 	return argosies, collectionIDs, curveCollection
 }
 
-func buildDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int, parentID int64) ([]util.DataFlowGroup, []int64, []int64, []int64) {
+func buildDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int, parentID int64) ([]util.TTDINode, []int64, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
-	groups := []util.DataFlowGroup{}
+	groups := []util.TTDINode{}
 	curveCollection := []int64{}
 	for i := 0; i < dfgsize; i++ {
 		argosyId = startID + int64(i)*int64(1.0+float64(dfsize)+math.Pow(float64(dfstatsize), 2.0))
 		collectionIDs = append(collectionIDs, argosyId)
 		childIDs = append(childIDs, argosyId)
-		group := util.DataFlowGroup{
+		group := util.TTDINode{
 			MashupDetailedElement: mashupsdk.MashupDetailedElement{
 				Id:          argosyId,
 				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
@@ -117,13 +116,12 @@ func buildDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int,
 				Parentids:   []int64{parentID},
 				Childids:    []int64{-4},
 			},
-			Name:  "DataFlowGroup-" + strconv.Itoa(int(argosyId)),
-			Flows: []util.DataFlow{},
+			ChildNodes: []util.TTDINode{},
 		}
 		collection := []int64{}
 		children := []int64{}
 
-		group.Flows, collection, children, curveCollection = buildDataFlows(argosyId+1, dfsize, dfstatsize, argosyId)
+		group.ChildNodes, collection, children, curveCollection = buildDataFlows(argosyId+1, dfsize, dfstatsize, argosyId)
 		for _, id := range collection {
 			collectionIDs = append(collectionIDs, id)
 		}
@@ -135,17 +133,17 @@ func buildDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int,
 	return groups, collectionIDs, childIDs, curveCollection
 }
 
-func buildDataFlows(startID int64, dfsize int, dfstatsize int, parentID int64) ([]util.DataFlow, []int64, []int64, []int64) {
+func buildDataFlows(startID int64, dfsize int, dfstatsize int, parentID int64) ([]util.TTDINode, []int64, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
-	flows := []util.DataFlow{}
+	flows := []util.TTDINode{}
 	curveCollection := []int64{}
 	for i := 0; i < dfsize; i++ {
 		argosyId = startID + int64(i)*int64(1.0+float64(dfstatsize))
 		collectionIDs = append(collectionIDs, argosyId)
 		childIDs = append(childIDs, argosyId)
-		flow := util.DataFlow{
+		flow := util.TTDINode{
 			MashupDetailedElement: mashupsdk.MashupDetailedElement{
 				Id:          argosyId,
 				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
@@ -158,7 +156,6 @@ func buildDataFlows(startID int64, dfsize int, dfstatsize int, parentID int64) (
 				Parentids:   []int64{parentID},
 				Childids:    []int64{-4},
 			},
-			Name:       data[pointer] + strconv.Itoa(int(argosyId)), //"DataFlow-" + strconv.Itoa(int(argosyId)),
 			TimeStart:  time.Now(),
 			Statistics: []util.DataFlowStatistic{},
 		}
@@ -210,8 +207,8 @@ func buildDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]u
 	return stats, collectionIDs, childIDs, curveCollection
 }
 
-func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
-	Argosys := []util.Argosy{
+func BuildFleet(mod *kv.Modifier) (util.TTDINode, error) {
+	Argosys := []util.TTDINode{
 		{
 			mashupsdk.MashupDetailedElement{
 				Id:          3,
@@ -226,7 +223,7 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 				Childids:    nil,
 			},
 			"Outside",
-			[]util.DataFlowGroup{},
+			[]util.TTDINode{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
@@ -241,8 +238,7 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 				Parentids:   []int64{-2},
 				Childids:    []int64{},
 			},
-			"SubSpiral",
-			[]util.DataFlowGroup{},
+			[]util.TTDINode{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
@@ -258,8 +254,7 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 				Parentids:     []int64{},
 				Childids:      []int64{},
 			},
-			"Curve",
-			[]util.DataFlowGroup{},
+			[]util.TTDINode{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
@@ -274,8 +269,7 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 				Parentids:     nil,
 				Childids:      []int64{-1},
 			},
-			"CurvePathEntity-1",
-			[]util.DataFlowGroup{},
+			[]util.TTDINode{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
@@ -290,15 +284,14 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 				Parentids:   nil,
 				Childids:    []int64{-4},
 			},
-			"{0}-Path",
-			[]util.DataFlowGroup{},
+			[]util.TTDINode{},
 		},
 	}
 	tempArgosies, collectionIDs, curveIDs := buildArgosies(5, 20, 10, 5, 10)
 	for _, argosy := range tempArgosies {
 		Argosys = append(Argosys, argosy)
 	}
-	Argosys = append(Argosys, util.Argosy{
+	Argosys = append(Argosys, util.TTDINode{
 		mashupsdk.MashupDetailedElement{
 			Id:          4,
 			State:       &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
@@ -311,7 +304,7 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 			Childids:    collectionIDs,
 		},
 		"PathGroupOne",
-		[]util.DataFlowGroup{},
+		[]util.TTDINode{},
 	})
 	curveIDs = append(curveIDs, 1)
 	Argosys = append(Argosys, util.Argosy{
@@ -328,15 +321,12 @@ func BuildFleet(mod *kv.Modifier) (util.ArgosyFleet, error) {
 			Childids:      curveIDs,
 		},
 		"CurvesGroupOne",
-		[]util.DataFlowGroup{},
+		[]util.TTDINode{},
 	})
 
-	return util.ArgosyFleet{
-		ArgosyName: "Dev Environment",
-		Argosies:   []util.Argosy(Argosys),
-	}, nil
+	return Argosys, nil
 }
 
-func GetDataFlowGroups(mod *kv.Modifier, argosy *util.Argosy) []util.DataFlowGroup {
+func GetDataFlowGroups(mod *kv.Modifier, argosy *util.TTDINode) []util.TTDINode {
 	return nil
 }
