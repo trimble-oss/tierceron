@@ -436,10 +436,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			return controllerInterfaceErr
 		}
 	}
-	tfmFlumeContext.InitConfigWG.Wait()
-	tfmFlumeContext.FlowControllerUpdateLock.Lock()
-	tfmFlumeContext.InitConfigWG = nil
-	tfmFlumeContext.FlowControllerUpdateLock.Unlock()
 
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	//Set up controller config
