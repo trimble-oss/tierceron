@@ -72,11 +72,11 @@ func main() {
 		}
 
 		DetailedElements = libraryElementBundle.DetailedElements
-		worldApp.MSdkApiHandler.UpsertMashupElements(
-			&mashupsdk.MashupDetailedElementBundle{
-				AuthToken:        "",
-				DetailedElements: DetailedElements,
-			})
+		// worldApp.MSdkApiHandler.UpsertMashupElements(
+		// 	&mashupsdk.MashupDetailedElementBundle{
+		// 		AuthToken:        "",
+		// 		DetailedElements: DetailedElements,
+		// 	})
 
 	} else if *headless && !*custos {
 		data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
@@ -103,7 +103,8 @@ func main() {
 					} else {
 						pointer = 0
 					}
-					for k := 0; k < len(TimeData[data[pointer]]); k++ {
+					// TODO: This looks kinda like a hack.
+					for k := 0; k < len(TimeData[data[pointer]]) && k < len(argosy.ChildNodes[i].ChildNodes[j].ChildNodes); k++ {
 						el := argosy.ChildNodes[i].ChildNodes[j].ChildNodes[k].MashupDetailedElement
 						el.Alias = "DataFlowStatistic"
 						timeSeconds := TimeData[data[pointer]][k]
