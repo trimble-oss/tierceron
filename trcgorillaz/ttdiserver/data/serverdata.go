@@ -41,13 +41,12 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	for a := 0; a < len(ArgosyFleet.ChildNodes); a++ {
 		argosyElement := ArgosyFleet.ChildNodes[a].MashupDetailedElement
 		//argosyBasis.Alias = "Argosy"
-		
 
 		for i := 0; i < len(ArgosyFleet.ChildNodes[a].ChildNodes); i++ {
 			dfgElement := ArgosyFleet.ChildNodes[a].ChildNodes[i].MashupDetailedElement
 			//detailedElement.Alias = "DataFlowGroup"
 			DetailedElements = append(DetailedElements, &dfgElement)
-			
+
 			for j := 0; j < len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes); j++ {
 				dfelement := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].MashupDetailedElement
 				DetailedElements = append(DetailedElements, &dfelement)
@@ -67,14 +66,14 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 					}
 					timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
 					nextStat := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes[k+1].MashupDetailedElement
-					if j == len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes) - 2 {
+					if j == len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes)-2 {
 						DetailedElements = append(DetailedElements, &nextStat)
 					}
 					var nextdecodedstat interface{}
 					err = json.Unmarshal([]byte(nextStat.Data), &nextdecodedstat)
 					if err != nil {
 						log.Println("Error in decoding data in GetData")
-						break
+						continue
 					}
 					nextDecodedStatData := nextdecodedstat.(map[string]interface{})
 					nextTimeNanoSeconds := int64(nextDecodedStatData["TimeSplit"].(float64))
@@ -91,7 +90,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 					err := json.Unmarshal([]byte(DetailedElements[j].Data), &decoded)
 					if err != nil {
 						log.Println("Error in decoding data in GetData")
-						break
+						continue
 					}
 					decodedData := decoded.(map[string]interface{})
 					decodedData["Quartiles"] = quartiles
@@ -104,20 +103,20 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 				}
 			}
 			var decoded interface{}
-					err := json.Unmarshal([]byte(argosyElement.Data), &decoded)
-					if err != nil {
-						log.Println("Error in decoding data in GetData")
-						break
-					}
-					decodedData := decoded.(map[string]interface{})
-					decodedData["Quartiles"] = quartiles
-					encoded, err := json.Marshal(&decodedData)
-					if err != nil {
-						log.Println("Error in encoding data in GetData")
-					}
-					argosyElement.Data = string(encoded)
-					DetailedElements = append(DetailedElements, &argosyElement)
-					//DetailedElements[j].Data = string(encoded)
+			err := json.Unmarshal([]byte(argosyElement.Data), &decoded)
+			if err != nil {
+				log.Println("Error in decoding data in GetData")
+				continue
+			}
+			decodedData := decoded.(map[string]interface{})
+			decodedData["Quartiles"] = quartiles
+			encoded, err := json.Marshal(&decodedData)
+			if err != nil {
+				log.Println("Error in encoding data in GetData")
+			}
+			argosyElement.Data = string(encoded)
+			DetailedElements = append(DetailedElements, &argosyElement)
+			//DetailedElements[j].Data = string(encoded)
 			// for j := 0; j < len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes); j++ {
 			// 	element := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].MashupDetailedElement
 			// 	//element.Alias = "DataFlow"
@@ -148,11 +147,11 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 		// }
 		// decodedData := decoded.(map[string]interface{})
 		// decodedData["Quartiles"] = quartiles
-					//encoded, err := json.Marshal(&decodedData)
-					// if err != nil {
-					// 	log.Println("Error in encoding data in GetData")
-					// }
-					//DetailedElements[j].Data = string(encoded)
+		//encoded, err := json.Marshal(&decodedData)
+		// if err != nil {
+		// 	log.Println("Error in encoding data in GetData")
+		// }
+		//DetailedElements[j].Data = string(encoded)
 	}
 
 	DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
@@ -243,6 +242,6 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 		Parentids:      nil,
 		Childids:       []int64{},
 	})
-	sort.Float64s(testTimes) 
+	sort.Float64s(testTimes)
 	return DetailedElements
 }
