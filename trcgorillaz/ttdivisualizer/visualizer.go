@@ -62,7 +62,6 @@ func main() {
 
 	} else if *custos {
 		worldApp.MashupContext = client.BootstrapInit("ttdiserver", worldApp.MSdkApiHandler, []string{"HOME=" + os.Getenv("HOME")}, nil, insecure) //=true
-
 	}
 	if *custos {
 		libraryElementBundle, upsertErr := worldApp.MashupContext.Client.GetMashupElements(
@@ -73,11 +72,11 @@ func main() {
 		}
 
 		DetailedElements = libraryElementBundle.DetailedElements
-		worldApp.MSdkApiHandler.UpsertMashupElements(
-			&mashupsdk.MashupDetailedElementBundle{
-				AuthToken:        "",
-				DetailedElements: DetailedElements,
-			})
+		// worldApp.MSdkApiHandler.UpsertMashupElements(
+		// 	&mashupsdk.MashupDetailedElementBundle{
+		// 		AuthToken:        "",
+		// 		DetailedElements: DetailedElements,
+		// 	})
 
 	} else if *headless && !*custos {
 		data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
@@ -87,16 +86,16 @@ func main() {
 
 		dfstatData := map[string]float64{}
 		pointer := 0
-		for _, argosy := range ArgosyFleet.Argosies {
+		for _, argosy := range ArgosyFleet.ChildNodes {
 			argosyBasis := argosy.MashupDetailedElement
 			argosyBasis.Alias = "Argosy"
 			DetailedElements = append(DetailedElements, &argosyBasis)
-			for i := 0; i < len(argosy.Groups); i++ {
-				detailedElement := argosy.Groups[i].MashupDetailedElement
+			for i := 0; i < len(argosy.ChildNodes); i++ {
+				detailedElement := argosy.ChildNodes[i].MashupDetailedElement
 				detailedElement.Alias = "DataFlowGroup"
 				DetailedElements = append(DetailedElements, &detailedElement)
-				for j := 0; j < len(argosy.Groups[i].Flows); j++ {
-					element := argosy.Groups[i].Flows[j].MashupDetailedElement
+				for j := 0; j < len(argosy.ChildNodes[i].ChildNodes); j++ {
+					element := argosy.ChildNodes[i].ChildNodes[j].MashupDetailedElement
 					element.Alias = "DataFlow"
 					DetailedElements = append(DetailedElements, &element)
 					if pointer < len(data)-1 {
@@ -104,8 +103,9 @@ func main() {
 					} else {
 						pointer = 0
 					}
-					for k := 0; k < len(TimeData[data[pointer]]); k++ {
-						el := argosy.Groups[i].Flows[j].Statistics[k].MashupDetailedElement
+					// TODO: This looks kinda like a hack.
+					for k := 0; k < len(TimeData[data[pointer]]) && k < len(argosy.ChildNodes[i].ChildNodes[j].ChildNodes); k++ {
+						el := argosy.ChildNodes[i].ChildNodes[j].ChildNodes[k].MashupDetailedElement
 						el.Alias = "DataFlowStatistic"
 						timeSeconds := TimeData[data[pointer]][k]
 						dfstatData[el.Name] = timeSeconds
