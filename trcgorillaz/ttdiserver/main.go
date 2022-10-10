@@ -54,6 +54,11 @@ func main() {
 	} else {
 		DetailedElements = data.GetData(insecure, logger, envPtr)
 	}
+	if len(DetailedElements) > 0 {
+		logger.Printf("Successfully loaded %d elements.\n", len(DetailedElements))
+	} else {
+		logger.Printf("Failure to load any enterprises.\n")
+	}
 
 	tenantDataRenderer := &trcRenderers.TenantDataRenderer{}
 	custosWorld := custosworld.NewCustosWorldApp(*headless, false, DetailedElements, tenantDataRenderer)
