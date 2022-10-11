@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/howeyc/crc16"
+
 	"tierceron/buildopts/coreopts"
 	"tierceron/buildopts/flowcoreopts"
 	"tierceron/trcflow/core/flowcorehelper"
@@ -25,6 +27,8 @@ import (
 	helperkv "tierceron/vaulthelper/kv"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
+	sqlee "github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 type FlowType int64
@@ -62,11 +66,36 @@ func (fnt FlowNameType) ServiceName() string {
 	return string(fnt)
 }
 
-func TriggerAllChangeChannel() {
+func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 	for _, tfmContext := range tfmContextMap {
-		for _, changeChannel := range tfmContext.ChannelMap {
-			if len(changeChannel) < 3 {
-				changeChannel <- true
+
+		// If changIds identified, manually trigger a change.
+		if table != "" {
+			for changeIdKey, changeIdValue := range changeIds {
+				if tfContext, tfContextOk := tfmContext.FlowMap[FlowNameType(table)]; tfContextOk {
+					if tfContext.ChangeIdKey == changeIdKey {
+						changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
+						bindings := map[string]sqle.Expression{
+							"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+						}
+						_, _, _, _ = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+						break
+					}
+				}
+			}
+			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
+				go func(nfc chan bool) {
+					nfc <- true
+				}(notificationFlowChannel)
+				return
+			}
+		}
+
+		for _, notificationFlowChannel := range tfmContext.ChannelMap {
+			if len(notificationFlowChannel) < 3 {
+				go func(nfc chan bool) {
+					nfc <- true
+				}(notificationFlowChannel)
 			}
 		}
 	}
@@ -86,6 +115,7 @@ type TrcFlowMachineContext struct {
 	ExtensionAuthData         map[string]interface{}
 	GetAdditionalFlowsByState func(teststate string) []FlowNameType
 	ChannelMap                map[FlowNameType]chan bool
+	FlowMap                   map[FlowNameType]*TrcFlowContext // Map of all running flows for engine
 }
 
 type TrcFlowContext struct {
@@ -104,18 +134,25 @@ type TrcFlowContext struct {
 	FlowSource      string       // The name of the flow source identified by project.
 	FlowSourceAlias string       // May be a database name
 	Flow            FlowNameType // May be a table name.
+	ChangeIdKey     string
 	FlowPath        string
 	FlowData        interface{}
 	ChangeFlowName  string // Change flow table name.
 	FlowState       flowcorehelper.CurrentFlowState
 	FlowLock        *sync.Mutex //This is for sync concurrent changes to FlowState
 	Restart         bool
+	ReadOnly        bool
 }
 
 var tableModifierLock sync.Mutex
 
 func (tfmContext *TrcFlowMachineContext) GetTableModifierLock() *sync.Mutex {
 	return &tableModifierLock
+}
+
+func TableCollationIdGen(tableName string) sqle.CollationID {
+	checksum := crc16.Checksum([]byte(tableName), crc16.MBusTable)
+	return sqle.CollationID(checksum)
 }
 
 func (tfmContext *TrcFlowMachineContext) Init(
@@ -139,10 +176,13 @@ func (tfmContext *TrcFlowMachineContext) Init(
 		changeTableName := tableName + "_Changes"
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
 			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
-			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
-				{Name: "id", Type: flowcoreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
-				{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
-			}))
+			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName,
+				sqle.NewPrimaryKeySchema(sqle.Schema{
+					{Name: "id", Type: flowcoreopts.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
+					{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
+				}),
+				TableCollationIdGen(tableName),
+			)
 			if err != nil {
 				tfmContext.GetTableModifierLock().Unlock()
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
@@ -176,7 +216,8 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 	tfmContext.GetTableModifierLock().Lock()
 	if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, tableName); !ok {
 		//	ii. Init database and tables in local mysql engine instance.
-		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema)
+		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema, TableCollationIdGen(tableName))
+		tfmContext.GetTableModifierLock().Unlock()
 
 		if err != nil {
 			tfContext.FlowState = flowcorehelper.CurrentFlowState{State: -1, SyncMode: "Could not create table.", SyncFilter: ""}
@@ -190,13 +231,15 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 					tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 					tfContext.FlowLock.Lock()
 					if tfContext.FlowState.State != 2 {
+						tfContext.FlowLock.Unlock()
 						tfmContext.FlowControllerUpdateLock.Lock()
 						if tfmContext.InitConfigWG != nil {
 							tfmContext.InitConfigWG.Done()
 						}
 						tfmContext.FlowControllerUpdateLock.Unlock()
+					} else {
+						tfContext.FlowLock.Unlock()
 					}
-					tfContext.FlowLock.Unlock()
 				case <-time.After(7 * time.Second):
 					{
 						tfmContext.FlowControllerUpdateLock.Lock()
@@ -211,15 +254,19 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 			}
 		}
 	} else {
+		tfmContext.GetTableModifierLock().Unlock()
 		tfmContext.Log("Unrecognized table: "+tfContext.Flow.TableName(), nil)
 	}
-	tfmContext.GetTableModifierLock().Unlock()
 }
 
 // Set up call back to enable a trigger to track
 // whenever a row in a table changes...
 func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowContext, identityColumnName string) {
 	tfmContext.GetTableModifierLock().Lock()
+
+	// Workaround triggers not firing: 9/30/2022
+	trcfc.ChangeIdKey = identityColumnName
+
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
@@ -376,15 +423,20 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 			}
 		}
 		tfmContext.GetTableModifierLock().Unlock()
-		tfmContext.seedTrcDbFromChanges(
-			tfContext,
-			identityColumnName,
-			vaultIndexColumnName,
-			true,
-			getIndexedPathExt,
-			flowPushRemote,
-			tfmContext.GetTableModifierLock(),
-		)
+
+		/*
+			tfmContext.seedTrcDbFromChanges(			//Old implementation
+				tfContext,								//Templatized approach
+				identityColumnName,
+				vaultIndexColumnName,
+				true,
+				getIndexedPathExt,
+				flowPushRemote,
+				tfmContext.GetTableModifierLock(),
+			)
+		*/
+		tfmContext.seedTrcDbFromVault(tfContext) //New implementation - direct approach
+
 		tfmContext.GetTableModifierLock().Lock()
 		for _, trigger := range removedTriggers {
 			tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, trigger)
@@ -465,6 +517,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	<-seedInitComplete
 	tfContext.FlowLock.Lock()
 	if tfContext.FlowState.State == 2 {
+		tfContext.FlowLock.Unlock()
 		tfmContext.FlowControllerUpdateLock.Lock()
 		if tfmContext.InitConfigWG != nil {
 			tfmContext.InitConfigWG.Done()
@@ -472,9 +525,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		tfmContext.FlowControllerUpdateLock.Unlock()
 		tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 	} else {
+		tfContext.FlowLock.Unlock()
 		tfmContext.Log("Unexpected flow state: "+tfContext.Flow.TableName(), nil)
 	}
-	tfContext.FlowLock.Unlock()
 
 	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, sqlState)
 }
@@ -524,9 +577,12 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		if changed && len(matrix) > 0 {
 
 			// If triggers are ever fixed, this can be removed.
-			if changeId, changeIdOk := queryMap["TrcChangeId"]; changeIdOk {
-				changeQuery := `INSERT IGNORE INTO ` + tfContext.FlowSourceAlias + `.` + tfContext.ChangeFlowName + ` VALUES ("` + changeId + `", current_timestamp());`
-				_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, changeQuery, tfContext.FlowLock)
+			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"]; changeIdValueOk {
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
+				bindings := map[string]sqle.Expression{
+					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+				}
+				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
 			}
 
 			if len(flowNotifications) > 0 {
@@ -585,9 +641,12 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		}
 		if changed && (len(matrix) > 0 || tableName != "") {
 			// If triggers are ever fixed, this can be removed.
-			if changeId, changeIdOk := queryMap["TrcChangeId"]; changeIdOk {
-				changeQuery := `INSERT IGNORE INTO ` + tfContext.FlowSourceAlias + `.` + tfContext.ChangeFlowName + ` VALUES ("` + changeId + `", current_timestamp());`
-				_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, changeQuery, tfContext.FlowLock)
+			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"]; changeIdValueOk {
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
+				bindings := map[string]sqle.Expression{
+					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+				}
+				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
 			}
 
 			if len(flowNotifications) > 0 {

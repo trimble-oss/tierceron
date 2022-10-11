@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -21,6 +22,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	sqles "github.com/dolthub/go-mysql-server/sql"
 )
@@ -40,6 +42,109 @@ func stringClone(s string) string {
 	}
 }
 
+func writeToTableHelper(te *TierceronEngine, configTableName string, valueColumns map[string]string, secretColumns map[string]string, config *eUtils.DriverConfig) {
+
+	tableSql, tableOk, _ := te.Database.GetTableInsensitive(nil, configTableName)
+	var table *sqlememory.Table
+
+	// TODO: Do we want back lookup by enterpriseId on all rows?
+	// if enterpriseId, ok := secretColumns["EnterpriseId"]; ok {
+	// 	valueColumns["_EnterpriseId_"] = enterpriseId
+	// }
+	// valueColumns["_Version_"] = version
+
+	if !tableOk {
+		// This is cacheable...
+		tableSchema := sqles.NewPrimaryKeySchema([]*sqles.Column{})
+
+		columnKeys := []string{}
+
+		for valueKeyColumn, _ := range valueColumns {
+			columnKeys = append(columnKeys, valueKeyColumn)
+		}
+
+		for secretKeyColumn, _ := range secretColumns {
+			columnKeys = append(columnKeys, secretKeyColumn)
+		}
+
+		// Alpha sort -- yay...?
+		sort.Strings(columnKeys)
+
+		for _, columnKey := range columnKeys {
+			column := sqles.Column{Name: columnKey, Type: sqles.Text, Source: configTableName}
+			tableSchema.Schema = append(tableSchema.Schema, &column)
+		}
+
+		table = sqlememory.NewTable(configTableName, tableSchema, nil)
+		m.Lock()
+		te.Database.AddTable(configTableName, table)
+		m.Unlock()
+	} else {
+		table = tableSql.(*sqlememory.Table)
+	}
+
+	row := []interface{}{}
+
+	// TODO: Add Enterprise, Environment, and Version....
+	allDefaults := true
+	for _, column := range table.Schema() {
+		if value, ok := valueColumns[column.Name]; ok {
+			var iVar interface{}
+			var cErr error
+			if value == "<Enter Secret Here>" || value == "" || value == "0" {
+				iVar, cErr = column.Type.Convert("")
+				if cErr != nil {
+					iVar = nil
+				}
+			} else {
+				iVar, _ = column.Type.Convert(stringClone(value))
+				allDefaults = false
+			}
+			row = append(row, iVar)
+		} else if secretValue, svOk := secretColumns[column.Name]; svOk {
+			var iVar interface{}
+			var cErr error
+			if column.Name == "MysqlFileContent" && secretValue != "<Enter Secret Here>" && secretValue != "" {
+				var decodeErr error
+				var decodedValue []byte
+				if strings.HasPrefix(string(secretValue), "TierceronBase64") {
+					secretValue = secretValue[len("TierceronBase64"):]
+					decodedValue, decodeErr = base64.StdEncoding.DecodeString(string(secretValue))
+					if decodeErr != nil {
+						continue
+					}
+				} else {
+					if _, fpOk := secretColumns["MysqlFilePath"]; fpOk {
+						eUtils.LogErrorMessage(config, fmt.Sprintf("Found non encoded data for: %s", secretColumns["MysqlFilePath"]), false)
+						decodedValue = []byte(secretValue)
+					} else {
+						eUtils.LogErrorMessage(config, "Missing MysqlFilePath.", false)
+						continue
+					}
+				}
+				iVar = []uint8(decodedValue)
+			} else if secretValue == "<Enter Secret Here>" || secretValue == "" {
+				iVar, cErr = column.Type.Convert("")
+				if cErr != nil {
+					iVar = nil
+				}
+			} else {
+				iVar, _ = column.Type.Convert(stringClone(secretValue))
+				allDefaults = false
+			}
+			row = append(row, iVar)
+		}
+	}
+
+	if !allDefaults {
+		insertErr := table.Insert(te.Context, sqles.NewRow(row...))
+		if insertErr != nil {
+			eUtils.LogErrorObject(config, insertErr, false)
+		}
+	}
+
+}
+
 func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterprise string, version string, project string, projectAlias string, service string, templateResult *extract.TemplateResultData) {
 
 	//
@@ -53,112 +158,9 @@ func writeToTable(te *TierceronEngine, config *eUtils.DriverConfig, envEnterpris
 	// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
 	configTableMap := templateResult.InterfaceTemplateSection.(map[string]interface{})["templates"].(map[string]interface{})[project].(map[string]interface{})[service].(map[string]interface{})
 	for configTableName, _ := range configTableMap {
-		m.Lock()
-		tableSql, tableOk, _ := te.Database.GetTableInsensitive(te.Context, configTableName)
-		m.Unlock()
-		var table *sqlememory.Table
-
 		valueColumns := templateResult.ValueSection["values"][service]
 		secretColumns := templateResult.SecretSection["super-secrets"][service]
-
-		// TODO: Do we want back lookup by enterpriseId on all rows?
-		// if enterpriseId, ok := secretColumns["EnterpriseId"]; ok {
-		// 	valueColumns["_EnterpriseId_"] = enterpriseId
-		// }
-		// valueColumns["_Version_"] = version
-
-		if !tableOk {
-			// This is cacheable...
-			tableSchema := sqles.NewPrimaryKeySchema([]*sqles.Column{})
-
-			columnKeys := []string{}
-
-			for valueKeyColumn, _ := range valueColumns {
-				columnKeys = append(columnKeys, valueKeyColumn)
-			}
-
-			for secretKeyColumn, _ := range secretColumns {
-				columnKeys = append(columnKeys, secretKeyColumn)
-			}
-
-			// Alpha sort -- yay...?
-			sort.Strings(columnKeys)
-
-			for _, columnKey := range columnKeys {
-				column := sqles.Column{Name: columnKey, Type: sqles.Text, Source: configTableName}
-				tableSchema.Schema = append(tableSchema.Schema, &column)
-			}
-
-			table = sqlememory.NewTable(configTableName, tableSchema)
-			m.Lock()
-			te.Database.AddTable(configTableName, table)
-			m.Unlock()
-		} else {
-			table = tableSql.(*sqlememory.Table)
-		}
-
-		row := []interface{}{}
-
-		// TODO: Add Enterprise, Environment, and Version....
-		allDefaults := true
-		for _, column := range table.Schema() {
-			if value, ok := valueColumns[column.Name]; ok {
-				var iVar interface{}
-				var cErr error
-				if value == "<Enter Secret Here>" || value == "" || value == "0" {
-					iVar, cErr = column.Type.Convert("")
-					if cErr != nil {
-						iVar = nil
-					}
-				} else {
-					iVar, _ = column.Type.Convert(stringClone(value))
-					allDefaults = false
-				}
-				row = append(row, iVar)
-			} else if secretValue, svOk := secretColumns[column.Name]; svOk {
-				var iVar interface{}
-				var cErr error
-				if column.Name == "MysqlFileContent" && secretValue != "<Enter Secret Here>" && secretValue != "" {
-					var decodeErr error
-					var decodedValue []byte
-					if strings.HasPrefix(string(secretValue), "TierceronBase64") {
-						secretValue = secretValue[len("TierceronBase64"):]
-						decodedValue, decodeErr = base64.StdEncoding.DecodeString(string(secretValue))
-						if decodeErr != nil {
-							continue
-						}
-					} else {
-						if _, fpOk := secretColumns["MysqlFilePath"]; fpOk {
-							eUtils.LogErrorMessage(config, fmt.Sprintf("Found non encoded data for: %s", secretColumns["MysqlFilePath"]), false)
-							decodedValue = []byte(secretValue)
-						} else {
-							eUtils.LogErrorMessage(config, "Missing MysqlFilePath.", false)
-							continue
-						}
-					}
-					iVar = []uint8(decodedValue)
-				} else if secretValue == "<Enter Secret Here>" || secretValue == "" {
-					iVar, cErr = column.Type.Convert("")
-					if cErr != nil {
-						iVar = nil
-					}
-				} else {
-					iVar, _ = column.Type.Convert(stringClone(secretValue))
-					allDefaults = false
-				}
-				row = append(row, iVar)
-			}
-		}
-
-		if !allDefaults {
-			m.Lock()
-
-			insertErr := table.Insert(te.Context, sqles.NewRow(row...))
-			if insertErr != nil {
-				eUtils.LogErrorObject(config, insertErr, false)
-			}
-			m.Unlock()
-		}
+		writeToTableHelper(te, configTableName, valueColumns, secretColumns, config)
 	}
 }
 
@@ -210,6 +212,25 @@ func templateToTableRowHelper(goMod *helperkv.Modifier, te *TierceronEngine, env
 	return nil
 }
 
+func PathToTableRowHelper(te *TierceronEngine, goMod *helperkv.Modifier, config *eUtils.DriverConfig, tableName string) error {
+	dataMap, readErr := goMod.ReadData(goMod.SectionPath)
+	if readErr != nil {
+		return readErr
+	}
+
+	rowDataMap := make(map[string]string, 1)
+	for columnName, columnData := range dataMap {
+		if dataString, ok := columnData.(string); ok {
+			rowDataMap[columnName] = dataString
+		} else {
+			return errors.New("Found data that was not a string - unable to write columnName: " + columnName + " to " + tableName)
+		}
+	}
+	writeToTableHelper(te, tableName, nil, rowDataMap, config)
+
+	return nil
+}
+
 func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig, tableLock *sync.Mutex) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath, config.Log)
@@ -237,7 +258,8 @@ func TransformConfig(goMod *helperkv.Modifier, te *TierceronEngine, envEnterpris
 			goMod.Env = envEnterprise
 			goMod.Version = version
 
-			index, indexErr := coreopts.FindIndexForService(project, service)
+			// TODO: Replace _ with secondaryIndexSlice
+			index, _, indexErr := coreopts.FindIndexForService(project, service)
 			if indexErr == nil && index != "" {
 				goMod.SectionName = index
 			}
@@ -377,6 +399,8 @@ func CreateEngine(config *eUtils.DriverConfig,
 		}
 		*/
 		te.Engine = sqle.NewDefault(sqlememory.NewMemoryDBProvider(te.Database))
+		te.Engine.Analyzer.Debug = false
+		te.Engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
 	}
 	return te, nil
 }
@@ -389,12 +413,10 @@ func Query(te *TierceronEngine, query string, queryLock *sync.Mutex) (string, []
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sqles.NewContext(context.Background())
-
+	ctx.WithQuery(query)
 	queryLock.Lock()
-	m.Lock()
 	//	te.Context = ctx
 	schema, r, err := te.Engine.Query(ctx, query)
-	m.Unlock()
 	queryLock.Unlock()
 	if err != nil {
 		return "", nil, nil, err
@@ -417,9 +439,7 @@ func Query(te *TierceronEngine, query string, queryLock *sync.Mutex) (string, []
 		okResult := false
 		for {
 			queryLock.Lock()
-			m.Lock()
 			row, err := r.Next(ctx)
-			m.Unlock()
 			queryLock.Unlock()
 			if err == io.EOF {
 				break
@@ -451,24 +471,23 @@ func Query(te *TierceronEngine, query string, queryLock *sync.Mutex) (string, []
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sql.Expression, queryLock *sync.Mutex) (string, []string, [][]string, error) {
+func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sql.Expression, queryLock *sync.Mutex) (string, []string, [][]interface{}, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sql.NewContext(context.Background())
+	ctx.WithQuery(query)
 	queryLock.Lock()
-	m.Lock()
 	//	te.Context = ctx
-	schema, r, queryErr := te.Engine.QueryWithBindings(te.Context, query, bindings)
-	m.Unlock()
+	schema, r, queryErr := te.Engine.QueryWithBindings(ctx, query, bindings)
 	queryLock.Unlock()
 	if queryErr != nil {
 		return "", nil, nil, queryErr
 	}
 
 	columns := []string{}
-	matrix := [][]string{}
+	matrix := [][]interface{}{}
 	tableName := ""
 
 	for _, col := range schema {
@@ -484,14 +503,12 @@ func QueryWithBindings(te *TierceronEngine, query string, bindings map[string]sq
 		okResult := false
 		for {
 			queryLock.Lock()
-			m.Lock()
 			row, err := r.Next(ctx)
-			m.Unlock()
 			queryLock.Unlock()
 			if err == io.EOF {
 				break
 			}
-			rowData := []string{}
+			rowData := []interface{}{}
 			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
 				okResult = true
 				if len(row) > 0 {
