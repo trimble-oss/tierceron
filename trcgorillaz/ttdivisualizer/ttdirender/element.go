@@ -1,9 +1,10 @@
 package ttdirender
 
 import (
-	"fmt"
+	//"fmt"
 	"log"
-	"strconv"
+	//"strconv"
+	"encoding/json"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -31,6 +32,7 @@ type ElementRenderer struct {
 	totalElements   int
 	LocationCache   map[int64]*math32.Vector3
 	clickedElements []*ClickedG3nDetailElement
+	quartiles []float64
 }
 
 // Returns true if length of er.clickedElements stack is 0 and false otherwise
@@ -69,15 +71,28 @@ func (er *ElementRenderer) top() *ClickedG3nDetailElement {
 func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
 	color := g3ndpalette.DARK_BLUE
-	if g3n.GetDetailedElement().Alias == "Argosy" {
+	if g3n.GetDetailedElement().Genre == "Argosy" {
 		if g3n.GetDetailedElement().Data != "" {
-			fmt.Println(g3n.GetDetailedElement().Data)
-			maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
+			var decoded interface{}
+			err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decoded)
+			if err != nil {
+				log.Println("Error decoding data in element renderer NewSolidAtPosition")
+			} else {
+				decodedData := decoded.(map[string]interface{})
+				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil {
+					er.quartiles = decodedData["Quartiles"].([]float64)
+					maxTime = decodedData["MaxTime"].(int)
+				}
+			}
+			
+			// fmt.Println(g3n.GetDetailedElement().Data)
+			// maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
+
 		}
 		color.Set(0, 0.349, 0.643)
-	} else if g3n.GetDetailedElement().Alias == "DataFlowGroup" {
+	} else if g3n.GetDetailedElement().Genre == "DataFlowGroup" {
 		color.Set(1.0, 0.224, 0.0)
-	} else if g3n.GetDetailedElement().Alias == "DataFlow" {
+	} else if g3n.GetDetailedElement().Genre == "DataFlow" {
 		color = math32.NewColor("olive")
 	}
 	mat := material.NewStandard(color)
@@ -235,7 +250,7 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 
 		for _, childId := range g3n.GetChildElementIds() {
 			element := worldApp.ConcreteElements[childId]
-			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Alias != "DataFlowStatistic" {
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" {
 				if element.GetNamedMesh(element.GetDisplayName()) == nil {
 					_, nextPos := er.NextCoordinate(element, er.totalElements)
 					solidMesh := er.NewSolidAtPosition(element, nextPos)
@@ -252,11 +267,11 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 		return true
 	} else {
 		color := g3ndpalette.DARK_BLUE
-		if g3n.GetDetailedElement().Alias == "Argosy" {
+		if g3n.GetDetailedElement().Genre == "Argosy" {
 			color.Set(0, 0.349, 0.643)
-		} else if g3n.GetDetailedElement().Alias == "DataFlowGroup" {
+		} else if g3n.GetDetailedElement().Genre == "DataFlowGroup" {
 			color.Set(1.0, 0.224, 0.0)
-		} else if g3n.GetDetailedElement().Alias == "DataFlow" {
+		} else if g3n.GetDetailedElement().Genre == "DataFlow" {
 			color = math32.NewColor("olive")
 		}
 
@@ -345,4 +360,5 @@ func (er *ElementRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratin
 	curveRenderer := collaboratingRenderer.(*CurveRenderer)
 	curveRenderer.maxTime = maxTime
 	curveRenderer.er = er
+	curveRenderer.quartiles = er.quartiles
 }
