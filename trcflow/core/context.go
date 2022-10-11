@@ -12,8 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/howeyc/crc16"
-
 	"tierceron/buildopts/coreopts"
 	"tierceron/buildopts/flowcoreopts"
 	"tierceron/trcflow/core/flowcorehelper"
@@ -101,6 +99,33 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 	}
 }
 
+func SyncCheck(syncMode string) string {
+	switch syncMode {
+	case "nosync":
+		return " with no syncing"
+	case "push":
+		return " with push sync"
+	case "pull":
+		return " with pull sync"
+	case "pullonce":
+		return " to pull once"
+	case "pushonce":
+		return " to push once"
+	case "pullsynccomplete":
+		return " - Pull synccomplete..waiting for new syncMode value"
+	case "pullcomplete":
+		return " - Pull complete..waiting for new syncMode value"
+	case "pushcomplete":
+		return " - Push complete..waiting for new syncMode value"
+	case "pusherror":
+		return " - Push error..waiting for new syncMode value"
+	case "pullerror":
+		return " - Pull error..waiting for new syncMode value"
+	default:
+		return "...waiting for new syncMode value"
+	}
+}
+
 type TrcFlowMachineContext struct {
 	InitConfigWG *sync.WaitGroup
 
@@ -118,41 +143,10 @@ type TrcFlowMachineContext struct {
 	FlowMap                   map[FlowNameType]*TrcFlowContext // Map of all running flows for engine
 }
 
-type TrcFlowContext struct {
-	RemoteDataSource map[string]interface{}
-	GoMod            *helperkv.Modifier
-	Vault            *sys.Vault
-
-	// Recommended not to store contexts, but because we
-	// are working with flows, this is a different pattern.
-	// This just means some analytic tools won't be able to
-	// perform analysis which are based on the Context.
-	ContextNotifyChan chan bool
-	Context           context.Context
-	CancelContext     context.CancelFunc
-
-	FlowSource      string       // The name of the flow source identified by project.
-	FlowSourceAlias string       // May be a database name
-	Flow            FlowNameType // May be a table name.
-	ChangeIdKey     string
-	FlowPath        string
-	FlowData        interface{}
-	ChangeFlowName  string // Change flow table name.
-	FlowState       flowcorehelper.CurrentFlowState
-	FlowLock        *sync.Mutex //This is for sync concurrent changes to FlowState
-	Restart         bool
-	ReadOnly        bool
-}
-
 var tableModifierLock sync.Mutex
 
 func (tfmContext *TrcFlowMachineContext) GetTableModifierLock() *sync.Mutex {
 	return &tableModifierLock
-}
-
-func TableCollationIdGen(tableName string) sqle.CollationID {
-	checksum := crc16.Checksum([]byte(tableName), crc16.MBusTable)
-	return sqle.CollationID(checksum)
 }
 
 func (tfmContext *TrcFlowMachineContext) Init(
@@ -261,17 +255,14 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 
 // Set up call back to enable a trigger to track
 // whenever a row in a table changes...
-func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowContext, identityColumnName string) {
+func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(tfContext *TrcFlowContext) {
 	tfmContext.GetTableModifierLock().Lock()
-
-	// Workaround triggers not firing: 9/30/2022
-	trcfc.ChangeIdKey = identityColumnName
 
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
-	insTrigger.Name = "tcInsertTrigger_" + trcfc.Flow.TableName()
-	updTrigger.Name = "tcUpdateTrigger_" + trcfc.Flow.TableName()
+	insTrigger.Name = "tcInsertTrigger_" + tfContext.Flow.TableName()
+	updTrigger.Name = "tcUpdateTrigger_" + tfContext.Flow.TableName()
 	//Prevent duplicate triggers from existing
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
@@ -286,8 +277,8 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 		}
 	}
 	if !triggerExist {
-		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
-		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
+		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.Flow.TableName(), tfContext.ChangeIdKey)
+		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.Flow.TableName(), tfContext.ChangeIdKey)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
 	}
@@ -347,8 +338,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	identityColumnName string,
 	vaultIndexColumnName string,
 	vaultSecondIndexColumnName string,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
 	sqlState bool) {
 
 	mysqlPushEnabled := sqlState
@@ -368,9 +357,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				identityColumnName,
 				vaultIndexColumnName,
 				vaultSecondIndexColumnName,
-				mysqlPushEnabled,
-				getIndexedPathExt,
-				flowPushRemote)
+				mysqlPushEnabled)
 		case <-tfContext.Context.Done():
 			tfmContext.Log(fmt.Sprintf("Flow shutdown: %s", tfContext.Flow), nil)
 			tfmContext.vaultPersistPushRemoteChanges(
@@ -378,9 +365,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				identityColumnName,
 				vaultIndexColumnName,
 				vaultSecondIndexColumnName,
-				mysqlPushEnabled,
-				getIndexedPathExt,
-				flowPushRemote)
+				mysqlPushEnabled)
 			if tfContext.Restart {
 				tfmContext.Log(fmt.Sprintf("Restarting flow: %s", tfContext.Flow), nil)
 				// Reload table from vault...
@@ -388,8 +373,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 					identityColumnName,
 					vaultIndexColumnName,
 					vaultSecondIndexColumnName,
-					getIndexedPathExt,
-					flowPushRemote,
 					sqlState)
 				tfContext.Restart = false
 			}
@@ -403,8 +386,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
 	bootStrap bool,
 	seedInitCompleteChan chan bool) {
 
@@ -488,8 +469,6 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	identityColumnName string,
 	vaultIndexColumnName string,
 	vaultSecondIndexColumnName string,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
 	sqlState bool) {
 
 	tfContext.Context, tfContext.CancelContext = context.WithCancel(context.Background())
@@ -510,7 +489,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	tfContext.FlowLock.Unlock()
 
 	if vaultSecondIndexColumnName == "" && !tfContext.Restart {
-		go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
+		go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, true, seedInitComplete)
 	} else {
 		seedInitComplete <- true
 	}
@@ -529,7 +508,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		tfmContext.Log("Unexpected flow state: "+tfContext.Flow.TableName(), nil)
 	}
 
-	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, getIndexedPathExt, flowPushRemote, sqlState)
+	go tfmContext.seedVaultCycle(tfContext, identityColumnName, vaultIndexColumnName, vaultSecondIndexColumnName, sqlState)
 }
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan bool {

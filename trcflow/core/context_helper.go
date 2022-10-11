@@ -128,9 +128,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	identityColumnName string,
 	vaultIndexColumnName string,
 	vaultSecondIndexColumnName string,
-	mysqlPushEnabled bool,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error) error {
+	mysqlPushEnabled bool) error {
 
 	var matrixChangedEntries [][]interface{}
 	var removeErr error
@@ -178,7 +176,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			for _, column := range changedTableColumns {
 				rowDataMap[column] = ""
 			}
-			pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
+			pushError := tfContext.TableFlowPushRemote(rowDataMap)
 			if pushError != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
@@ -193,7 +191,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
-		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query map[string]string) (string, []string, [][]interface{}, error) {
+		indexPath, indexPathErr := tfContext.GetTableIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query map[string]string) (string, []string, [][]interface{}, error) {
 			return trcdb.Query(engine.(*trcdb.TierceronEngine), query["TrcQuery"], tfContext.FlowLock)
 		})
 		if indexPathErr != nil {
@@ -241,8 +239,8 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		// Push this change to the flow for delivery to remote data source.
-		if mysqlPushEnabled && flowPushRemote != nil {
-			pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
+		if mysqlPushEnabled && tfContext.TableFlowPushRemote != nil {
+			pushError := tfContext.TableFlowPushRemote(rowDataMap)
 			if pushError != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}
