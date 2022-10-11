@@ -3,15 +3,19 @@ package core
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"VaultConfig.TenantConfig/lib"
+	tclibc "VaultConfig.TenantConfig/lib/libsqlc"
 	"github.com/howeyc/crc16"
 
 	"tierceron/buildopts/coreopts"
@@ -20,6 +24,7 @@ import (
 
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
+	trcengine "tierceron/trcx/engine"
 	"tierceron/trcx/extract"
 	sys "tierceron/vaulthelper/system"
 
@@ -29,6 +34,10 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 	sqlee "github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/sqltypes"
+
+	sqlememory "github.com/dolthub/go-mysql-server/memory"
+
+	sqles "github.com/dolthub/go-mysql-server/sql"
 )
 
 type FlowType int64
@@ -111,8 +120,9 @@ type TrcFlowMachineContext struct {
 	FlowControllerUpdateAlert chan string
 	Config                    *eUtils.DriverConfig
 	Vault                     *sys.Vault
-	TierceronEngine           *trcdb.TierceronEngine
+	TierceronEngine           *trcengine.TierceronEngine
 	ExtensionAuthData         map[string]interface{}
+	ExtensionAuthDataReloader map[string]interface{}
 	GetAdditionalFlowsByState func(teststate string) []FlowNameType
 	ChannelMap                map[FlowNameType]chan bool
 	FlowMap                   map[FlowNameType]*TrcFlowContext // Map of all running flows for engine
@@ -342,7 +352,8 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 }
 
 // seedVaultCycle - looks for changes in TrcDb and seeds vault with changes and pushes them also to remote
-//                  data sources.
+//
+//	data sources.
 func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContext,
 	identityColumnName string,
 	vaultIndexColumnName string,
@@ -772,4 +783,163 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	}
 
 	return nil
+}
+
+func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tfContext *TrcFlowContext) error {
+	dataMap, readErr := tfContext.GoMod.ReadData(tfContext.GoMod.SectionPath)
+	if readErr != nil {
+		return readErr
+	}
+
+	rowDataMap := make(map[string]string, 1)
+	for columnName, columnData := range dataMap {
+		if dataString, ok := columnData.(string); ok {
+			rowDataMap[columnName] = dataString
+		} else {
+			return errors.New("Found data that was not a string - unable to write columnName: " + columnName + " to " + tfContext.Flow.TableName())
+		}
+	}
+	tfmContext.writeToTableHelper(tfContext, nil, rowDataMap)
+
+	return nil
+}
+
+func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowContext, valueColumns map[string]string, secretColumns map[string]string) {
+
+	tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.Flow.TableName())
+	var table *sqlememory.Table
+
+	// TODO: Do we want back lookup by enterpriseId on all rows?
+	// if enterpriseId, ok := secretColumns["EnterpriseId"]; ok {
+	// 	valueColumns["_EnterpriseId_"] = enterpriseId
+	// }
+	// valueColumns["_Version_"] = version
+
+	if !tableOk {
+		// This is cacheable...
+		tableSchema := sqles.NewPrimaryKeySchema([]*sqles.Column{})
+
+		columnKeys := []string{}
+
+		for valueKeyColumn := range valueColumns {
+			columnKeys = append(columnKeys, valueKeyColumn)
+		}
+
+		for secretKeyColumn := range secretColumns {
+			columnKeys = append(columnKeys, secretKeyColumn)
+		}
+
+		// Alpha sort -- yay...?
+		sort.Strings(columnKeys)
+
+		for _, columnKey := range columnKeys {
+			column := sqles.Column{Name: columnKey, Type: sqles.Text, Source: tfContext.Flow.TableName()}
+			tableSchema.Schema = append(tableSchema.Schema, &column)
+		}
+
+		table = sqlememory.NewTable(tfContext.Flow.TableName(), tableSchema, nil)
+		m.Lock()
+		tfmContext.TierceronEngine.Database.AddTable(tfContext.Flow.TableName(), table)
+		m.Unlock()
+	} else {
+		table = tableSql.(*sqlememory.Table)
+	}
+
+	row := []interface{}{}
+
+	// TODO: Add Enterprise, Environment, and Version....
+	allDefaults := true
+	for _, column := range table.Schema() {
+		if value, ok := valueColumns[column.Name]; ok {
+			var iVar interface{}
+			var cErr error
+			if value == "<Enter Secret Here>" || value == "" || value == "0" {
+				iVar, cErr = column.Type.Convert("")
+				if cErr != nil {
+					iVar = nil
+				}
+			} else {
+				iVar, _ = column.Type.Convert(stringClone(value))
+				allDefaults = false
+			}
+			row = append(row, iVar)
+		} else if secretValue, svOk := secretColumns[column.Name]; svOk {
+			var iVar interface{}
+			var cErr error
+			if tclibc.CheckIncomingColumnName(column.Name) && secretValue != "<Enter Secret Here>" && secretValue != "" {
+				decodedValue, secretValue, lmQuery, lm, incomingValErr := tclibc.CheckMysqlFileIncoming(secretColumns, secretValue, tfContext.FlowSourceAlias, tfContext.Flow.TableName())
+				if incomingValErr != nil {
+					eUtils.LogErrorObject(tfmContext.Config, incomingValErr, false)
+					continue
+				}
+				if lmQuery != "" {
+					rows := tfmContext.CallDBQuery(tfContext, map[string]string{"TrcQuery": lmQuery}, nil, true, "SELECT", nil, "") //Query to alert change channel
+					if len(rows) > 0 {
+						if WhichLastModified(rows[0][0], lm) { //True if table is more recent
+							continue
+						}
+					}
+				}
+				if secretValue == "" {
+					iVar = []uint8(decodedValue)
+				} else {
+					iVar, _ = column.Type.Convert(stringClone(secretValue))
+				}
+				allDefaults = false
+			} else if secretValue == "<Enter Secret Here>" || secretValue == "" {
+				iVar, cErr = column.Type.Convert("")
+				if cErr != nil {
+					iVar = nil
+				}
+			} else {
+				iVar, _ = column.Type.Convert(stringClone(secretValue))
+				allDefaults = false
+			}
+			row = append(row, iVar)
+		}
+	}
+
+	if !allDefaults {
+		insertErr := table.Insert(tfmContext.TierceronEngine.Context, sqles.NewRow(row...))
+		if insertErr != nil {
+			eUtils.LogErrorObject(tfmContext.Config, insertErr, false)
+		}
+	}
+
+}
+
+// True if a time was most recent, false if b time was most recent.
+func WhichLastModified(a interface{}, b interface{}) bool {
+	//Check if a & b are time.time
+	//Check if they match.
+	var lastModifiedA time.Time
+	var lastModifiedB time.Time
+	var timeErr error
+	if lastMA, ok := a.(time.Time); !ok {
+		if lmA, ok := a.(string); ok {
+			lastModifiedA, timeErr = time.Parse(lib.RFC_ISO_8601, lmA)
+			if timeErr != nil {
+				return false
+			}
+		}
+	} else {
+		lastModifiedA = lastMA
+	}
+
+	if lastMB, ok := b.(time.Time); !ok {
+		if lmB, ok := b.(string); ok {
+			lastModifiedB, timeErr = time.Parse(lib.RFC_ISO_8601, lmB)
+			if timeErr != nil {
+				return false
+			}
+		}
+	} else {
+		lastModifiedB = lastMB
+	}
+
+	if lastModifiedA != lastModifiedB {
+		return lastModifiedA.After(lastModifiedB)
+	} else {
+		return true
+	}
 }
