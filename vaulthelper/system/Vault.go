@@ -200,8 +200,13 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 				}
 				response, err := v.client.RawRequest(b)
 				if err != nil {
-					log.Fatal(err)
-					return err
+					if response.StatusCode == 403 {
+						// Some accessors we don't have access to, but we don't care about those.
+						continue
+					} else {
+						log.Fatal(err)
+						return err
+					}
 				}
 				defer response.Body.Close()
 				var accessorDataMap map[string]interface{}

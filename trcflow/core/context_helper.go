@@ -38,7 +38,7 @@ func getInsertChangeQuery(databaseName string, changeTable string, id interface{
 	if _, iOk := id.(int64); iOk {
 		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (%d, current_timestamp())", databaseName, changeTable, id)
 	} else {
-		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (%s, current_timestamp())", databaseName, changeTable, id)
+		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES ('%s', current_timestamp())", databaseName, changeTable, id)
 	}
 }
 
@@ -227,15 +227,17 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			}
 		}
 
-		seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.Config.VaultAddress, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
-		if seedError != nil {
-			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
-			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.FlowLock)
-			if err != nil {
-				eUtils.LogErrorObject(tfmContext.Config, err, false)
+		if !tfContext.ReadOnly {
+			seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.Config.VaultAddress, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
+			if seedError != nil {
+				eUtils.LogErrorObject(tfmContext.Config, seedError, false)
+				// Re-inject into changes because it might not be here yet...
+				_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.FlowLock)
+				if err != nil {
+					eUtils.LogErrorObject(tfmContext.Config, err, false)
+				}
+				continue
 			}
-			continue
 		}
 
 		// Push this change to the flow for delivery to remote data source.
@@ -269,6 +271,62 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 		string(tfContext.Flow),
 		tfmContext.Config,
 		tableLock)
+
+	return nil
+}
+
+// seedTrcDbFromVault - optimized implementation of seedTrcDbFromChanges
+func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
+	tfContext *TrcFlowContext) error {
+	var indexValues []string = []string{}
+	var secondaryIndexes []string
+	var err error
+	if tfContext.GoMod != nil {
+		tfContext.GoMod.Env = tfmContext.Env
+		tfContext.GoMod.Version = "0"
+
+		index, secondaryI, indexErr := coreopts.FindIndexForService(tfContext.FlowSource, tfContext.Flow.ServiceName())
+		if indexErr == nil && index != "" {
+			tfContext.GoMod.SectionName = index
+			secondaryIndexes = secondaryI
+		}
+		if tfContext.GoMod.SectionName != "" {
+			indexValues, err = tfContext.GoMod.ListSubsection("/Index/", tfContext.FlowSource, tfContext.GoMod.SectionName, tfmContext.Config.Log)
+			if err != nil {
+				eUtils.LogErrorObject(tfmContext.Config, err, false)
+				return err
+			}
+		}
+	}
+
+	tfmContext.GetTableModifierLock().Lock()
+	for _, indexValue := range indexValues {
+		if indexValue != "" {
+			tfContext.GoMod.SectionKey = "/Index/"
+			tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + tfContext.Flow.ServiceName()
+			if len(secondaryIndexes) > 0 {
+				for _, secondaryIndex := range secondaryIndexes {
+					tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + tfContext.Flow.ServiceName() + "/" + secondaryIndex
+					rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+					if rowErr != nil {
+						return rowErr
+					}
+				}
+			} else {
+				rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+				if rowErr != nil {
+					return rowErr
+				}
+			}
+		} else {
+			rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+			if rowErr != nil {
+				return rowErr
+			}
+		}
+	}
+
+	tfmContext.GetTableModifierLock().Unlock()
 
 	return nil
 }
