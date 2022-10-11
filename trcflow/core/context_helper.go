@@ -9,6 +9,7 @@ import (
 	"tierceron/trcx/extract"
 
 	trcdb "tierceron/trcx/db"
+	trcengine "tierceron/trcx/engine"
 	eUtils "tierceron/utils"
 )
 
@@ -194,7 +195,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 		//Use trigger to make another table
 		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query map[string]string) (string, []string, [][]interface{}, error) {
-			return trcdb.Query(engine.(*trcdb.TierceronEngine), query["TrcQuery"], tfContext.FlowLock)
+			return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"], tfContext.FlowLock)
 		})
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(tfmContext.Config, indexPathErr, false)
@@ -253,6 +254,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	return nil
 }
 
+/*
 // seedTrcDbFromChanges - seeds Trc DB with changes from vault
 func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	tfContext *TrcFlowContext,
@@ -262,7 +264,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
 	tableLock *sync.Mutex) error {
-	trcdb.TransformConfig(tfContext.GoMod,
+	trcseed.TransformConfig(tfContext.GoMod,
 		tfmContext.TierceronEngine,
 		tfmContext.Env,
 		"0",
@@ -274,7 +276,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 
 	return nil
 }
-
+*/
 // seedTrcDbFromVault - optimized implementation of seedTrcDbFromChanges
 func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 	tfContext *TrcFlowContext) error {
@@ -307,19 +309,19 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			if len(secondaryIndexes) > 0 {
 				for _, secondaryIndex := range secondaryIndexes {
 					tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + tfContext.Flow.ServiceName() + "/" + secondaryIndex
-					rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+					rowErr := tfmContext.PathToTableRowHelper(tfContext)
 					if rowErr != nil {
 						return rowErr
 					}
 				}
 			} else {
-				rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+				rowErr := tfmContext.PathToTableRowHelper(tfContext)
 				if rowErr != nil {
 					return rowErr
 				}
 			}
 		} else {
-			rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+			rowErr := tfmContext.PathToTableRowHelper(tfContext)
 			if rowErr != nil {
 				return rowErr
 			}
