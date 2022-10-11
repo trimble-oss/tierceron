@@ -79,9 +79,11 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 			if idListData == nil {
 				return aFleet, errors.New("No argosId were found for argosyFleet")
 			}
+			idName = strings.Trim(idName.(string), "/")
 
 			for _, idList := range idListData.Data {
 				for _, id := range idList.([]interface{}) {
+					id = strings.Trim(id.(string), "/")
 					serviceListData, serviceListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName.(string)+"/"+id.(string)+"/DataFlowStatistics/DataFlowGroup", logger)
 					if serviceListErr != nil {
 						return aFleet, serviceListErr
