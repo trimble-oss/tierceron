@@ -78,7 +78,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 					nextDecodedStatData := nextdecodedstat.(map[string]interface{})
 					nextTimeNanoSeconds := int64(nextDecodedStatData["TimeSplit"].(float64))
 					nextTimeSeconds := float64(nextTimeNanoSeconds) * math.Pow(10.0, -9.0)
-					if nextTimeSeconds-timeSeconds != 0 {
+					if nextTimeSeconds-timeSeconds > 0 {
 						quartiles = append(quartiles, nextTimeSeconds-timeSeconds)
 					}
 				}
@@ -86,6 +86,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 			sort.Float64s(quartiles)
 			for j := len(DetailedElements) - 1; j >= 0; j-- {
 				if DetailedElements[j].Genre == "DataFlow" {
+					var newQuartiles []float64
 					var decoded interface{}
 					err := json.Unmarshal([]byte(DetailedElements[j].Data), &decoded)
 					if err != nil {
@@ -93,7 +94,13 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 						continue
 					}
 					decodedData := decoded.(map[string]interface{})
-					decodedData["Quartiles"] = quartiles
+					newQuartiles = append(newQuartiles, quartiles[len(quartiles)/4])
+					//newQuartiles[0] = quartiles[len(quartiles)/4]
+					newQuartiles = append(newQuartiles, quartiles[len(quartiles)/2])
+					//newQuartiles[1] = quartiles[len(quartiles)/2]
+					newQuartiles = append(newQuartiles, quartiles[(3*len(quartiles))/4])
+					//newQuartiles[2] = quartiles[(3*len(quartiles))/4]
+					decodedData["Quartiles"] = newQuartiles
 					encoded, err := json.Marshal(&decodedData)
 					if err != nil {
 						log.Println("Error in encoding data in GetData")
@@ -110,6 +117,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 			}
 			decodedData := decoded.(map[string]interface{})
 			decodedData["Quartiles"] = quartiles
+			decodedData["MaxTime"] = maxTime
 			encoded, err := json.Marshal(&decodedData)
 			if err != nil {
 				log.Println("Error in encoding data in GetData")
@@ -237,11 +245,11 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 		Data:           "",
 		Custosrenderer: "SearchRenderer",
 		Renderer:       "",
-		Genre:          "",
+		Genre:          "SearchElement",
 		Subgenre:       "Ento",
 		Parentids:      nil,
 		Childids:       []int64{},
 	})
-	sort.Float64s(testTimes)
+	sort.Float64s(testTimes) 
 	return DetailedElements
 }

@@ -75,20 +75,6 @@ func buildArgosies(startID int64, args util.TTDINode) (util.TTDINode, []int64, [
 
 		args.ChildNodes[i] = argosy
 	}
-	// lastarg := args.ChildNodes[len(args.ChildNodes)-1]
-	// var decoded interface{}
-	// err := json.Unmarshal(lastarg.Data, &decoded)
-	// if err != nil {
-	// 	log.Println("Error in decoding data in buildArgosies")
-	// }
-	// decodedData := decoded.(map[string]interface{})
-	// decodedData["MaxTime"] = int(maxTime)
-	// encodeddata, err := json.Marshal(decodedData) //strconv.Itoa(int(maxTime))
-	// if err != nil {
-	// 	log.Println("Error in encoding data in buildArgosies")
-	// }
-	// lastarg.MashupDetailedElement.Data = string(encodeddata)
-	// args.ChildNodes[len(args.ChildNodes)-1] = lastarg
 	return args, collectionIDs, curveCollection
 }
 
@@ -161,10 +147,8 @@ func buildDataFlows(startID int64, group util.TTDINode, dfsize float64, dfstatsi
 		}
 		otherIds := []int64{}
 		children := []int64{}
-		//var total int64
 
 		flow.ChildNodes, otherIds, children, curveCollection, flow = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
-		//flow.MashupDetailedElement.Data = fmt.Sprintf("%f", float64(total)/float64(len(flow.ChildNodes)))
 		for _, id := range otherIds {
 			collectionIDs = append(collectionIDs, id)
 		}
