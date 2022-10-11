@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"tierceron/buildopts/coreopts"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 )
@@ -85,6 +86,15 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 			_, err = f.Read(fileBytes)
 			if err != nil {
 				return err, nil
+			}
+
+			dirSplit := strings.Split(subDir, "/")
+			if len(dirSplit) >= 2 {
+				project, _, _ := coreopts.FindIndexForService(dirSplit[0], dirSplit[1])
+				if project != "" && strings.Contains(string(fileBytes), "{or") {
+					fmt.Printf("Cannot have an indexed template with default values for or %s for %s \n", file.Name(), mod.Env)
+					return nil, nil
+				}
 			}
 
 			// Construct template path for vault
