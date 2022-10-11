@@ -306,7 +306,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 	}
 	elementCollection := []int64{}
 	curveCollection := []int64{}
-	args, elementCollection, curveCollection = buildArgosies(6, args)
+	args, elementCollection, curveCollection = buildArgosies(8, args)
 	//args.Argosies = append(args.Argosies, argosies)
 	//argosies = append(argosies, args)
 	argosies = append(argosies, util.TTDINode{
@@ -343,8 +343,22 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 		},
 		[]util.TTDINode{},
 	})
-	for _, arg := range argosies {
-		args.ChildNodes = append(args.ChildNodes, arg)
+	
+	
+	args.ChildNodes = append(args.ChildNodes, argosies...)
+	args.MashupDetailedElement = mashupsdk.MashupDetailedElement{
+		Id:             7,
+		State:          &mashupsdk.MashupElementState{Id: 7, State: int64(mashupsdk.Init)},
+		Name:           "TenantDatabase",
+		Description:    "",
+		Data:           "",
+		Custosrenderer: "",
+		Renderer:       "Element",
+		Colabrenderer:  "",
+		Genre:          "Collection",
+		Subgenre:       "Element",
+		Parentids:      nil,
+		Childids:       []int64{2, 4},
 	}
 	return args, nil
 }
