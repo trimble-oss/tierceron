@@ -153,12 +153,15 @@ func (er *ElementRenderer) deselectElements(worldApp *g3nworld.WorldApp, element
 func (er *ElementRenderer) calcLocnStarter(worldApp *g3nworld.WorldApp, ids []int64, counter float32) {
 	for _, id := range ids {
 		element := worldApp.ConcreteElements[id]
-		for _, parent := range element.GetParentElementIds() {
-			if parent > 0 && er.LocationCache[parent] != nil {
-				er.LocationCache[id] = er.calculateLocation(er.LocationCache[parent], counter)
-				counter = counter - 0.1
+		if element != nil {
+			for _, parent := range element.GetParentElementIds() {
+				if parent > 0 && er.LocationCache[parent] != nil {
+					er.LocationCache[id] = er.calculateLocation(er.LocationCache[parent], counter)
+					counter = counter - 0.1
+				}
 			}
 		}
+		
 	}
 }
 
@@ -171,12 +174,12 @@ func (er *ElementRenderer) calculateLocation(center *math32.Vector3, counter flo
 // Initializes location cache
 func (er *ElementRenderer) initLocnCache(worldApp *g3nworld.WorldApp, element *g3nmash.G3nDetailedElement) {
 	if len(element.GetChildElementIds()) != 0 {
-		if element.GetDetailedElement().Genre != "Solid" {
+		if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
 			er.calcLocnStarter(worldApp, element.GetChildElementIds(), -0.1)
 		}
 
 		for _, childID := range element.GetChildElementIds() {
-			if worldApp.ConcreteElements[childID].GetDetailedElement().Genre != "Solid" {
+			if worldApp.ConcreteElements[childID].GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
 				er.initLocnCache(worldApp, worldApp.ConcreteElements[childID])
 			}
 		}
@@ -194,7 +197,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		}
 		for key, _ := range copyCache {
 			element := worldApp.ConcreteElements[key]
-			if element.GetDetailedElement().Genre != "Solid" {
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
 				er.initLocnCache(worldApp, element)
 			}
 		}
@@ -214,7 +217,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		}
 	}
 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
-	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" {
+	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" && clickedElement.GetDetailedElement().Name != "TenantDataBase" {
 		name := clickedElement.GetDisplayName()
 		mesh := clickedElement.GetNamedMesh(name)
 		pos := mesh.Position()
@@ -250,7 +253,7 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 
 		for _, childId := range g3n.GetChildElementIds() {
 			element := worldApp.ConcreteElements[childId]
-			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" {
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
 				if element.GetNamedMesh(element.GetDisplayName()) == nil {
 					_, nextPos := er.NextCoordinate(element, er.totalElements)
 					solidMesh := er.NewSolidAtPosition(element, nextPos)
