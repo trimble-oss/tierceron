@@ -70,6 +70,7 @@ func main() {
 		if upsertErr != nil {
 			log.Printf("G3n Element initialization failure: %s\n", upsertErr.Error())
 		}
+		log.Printf("Elements retrieved: %d\n", len(libraryElementBundle.DetailedElements))
 
 		DetailedElements = libraryElementBundle.DetailedElements
 		// worldApp.MSdkApiHandler.UpsertMashupElements(
