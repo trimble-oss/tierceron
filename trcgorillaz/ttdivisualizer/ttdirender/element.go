@@ -1,7 +1,7 @@
 package ttdirender
 
 import (
-	//"fmt"
+	"fmt"
 	"log"
 	//"strconv"
 	"encoding/json"
@@ -199,6 +199,19 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
 	//Initialize location cache
 	if er.iOffset != 2 {
+		check := false
+		ids := []int64{}
+		for id := range worldApp.ConcreteElements {
+			el := worldApp.ConcreteElements[id].GetDetailedElement()
+			
+			for j := 0; j < len(ids); j++ {
+				if el.Genre == "Argosy" || el.Genre == "DataFlowGroup"  {
+					check = true
+				}
+			}
+			ids = append(ids, id)
+		}
+		fmt.Println(check)
 		copyCache := make(map[int64]*math32.Vector3)
 		for k, v := range er.LocationCache {
 			copyCache[k] = v

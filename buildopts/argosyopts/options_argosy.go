@@ -6,6 +6,7 @@ package argosyopts
 import (
 	"encoding/json"
 	"log"
+	"fmt"
 	"math"
 	"strconv"
 	"tierceron/trcvault/util"
@@ -40,6 +41,7 @@ func buildArgosies(startID int64, args util.TTDINode) (util.TTDINode, []int64, [
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	curveCollection := []int64{}
+	curveIds := []int64{}
 	for i := 0; i < len(args.ChildNodes); i++ {
 		dfgsize, dfsize, dfstatsize := getGroupSize(args.ChildNodes[i].ChildNodes)
 		argosyId = startID + int64(i)*int64(1.0+float64(dfgsize)+math.Pow(float64(dfsize), 2.0)+math.Pow(float64(dfstatsize), 3.0))
@@ -72,10 +74,11 @@ func buildArgosies(startID int64, args util.TTDINode) (util.TTDINode, []int64, [
 		for _, id := range children {
 			argosy.MashupDetailedElement.Childids = append(argosy.MashupDetailedElement.Childids, id)
 		}
+		curveIds = append(curveIds, curveCollection...)
 
 		args.ChildNodes[i] = argosy
 	}
-	return args, collectionIDs, curveCollection
+	return args, collectionIDs, curveIds
 }
 
 func buildDataFlowGroups(startID int64, argosy util.TTDINode, dfgsize float64, dfsize float64, dfstatsize float64, parentID int64) ([]util.TTDINode, []int64, []int64, []int64, util.TTDINode) {
@@ -102,7 +105,7 @@ func buildDataFlowGroups(startID int64, argosy util.TTDINode, dfgsize float64, d
 			Genre:          "DataFlowGroup",
 			Subgenre:       "",
 			Parentids:      []int64{parentID},
-			Childids:       []int64{-4},
+			Childids:       []int64{-2},
 		}
 		collection := []int64{}
 		children := []int64{}
@@ -143,7 +146,7 @@ func buildDataFlows(startID int64, group util.TTDINode, dfsize float64, dfstatsi
 			Genre:          "DataFlow",
 			Subgenre:       "",
 			Parentids:      []int64{parentID},
-			Childids:       []int64{-4},
+			Childids:       []int64{-2},
 		}
 		otherIds := []int64{}
 		children := []int64{}
@@ -230,23 +233,23 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 			},
 			[]util.TTDINode{},
 		},
-		{
-			mashupsdk.MashupDetailedElement{
-				Basisid:        -4,
-				State:          &mashupsdk.MashupElementState{Id: -4, State: int64(mashupsdk.Hidden)},
-				Name:           "{0}-SubSpiral",
-				Alias:          "It",
-				Description:    "",
-				Data:           "",
-				Custosrenderer: "",
-				Renderer:       "Element",
-				Genre:          "Solid",
-				Subgenre:       "Ento",
-				Parentids:      []int64{-2},
-				Childids:       []int64{},
-			},
-			[]util.TTDINode{},
-		},
+		// {
+		// 	mashupsdk.MashupDetailedElement{
+		// 		Basisid:        -4,
+		// 		State:          &mashupsdk.MashupElementState{Id: -4, State: int64(mashupsdk.Hidden)},
+		// 		Name:           "{0}-SubSpiral",
+		// 		Alias:          "It",
+		// 		Description:    "",
+		// 		Data:           "",
+		// 		Custosrenderer: "",
+		// 		Renderer:       "Element",
+		// 		Genre:          "Solid",
+		// 		Subgenre:       "Ento",
+		// 		Parentids:      []int64{-2},
+		// 		Childids:       []int64{},
+		// 	},
+		// 	[]util.TTDINode{},
+		// },
 		{
 			mashupsdk.MashupDetailedElement{
 				Basisid:        -1,
@@ -277,7 +280,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 				Colabrenderer:  "Path",
 				Genre:          "Solid",
 				Subgenre:       "Skeletal",
-				Parentids:      nil,
+				Parentids:      []int64{},
 				Childids:       []int64{-1},
 			},
 			[]util.TTDINode{},
@@ -294,8 +297,8 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 				Renderer:       "Element",
 				Genre:          "Solid",
 				Subgenre:       "Ento",
-				Parentids:      nil,
-				Childids:       []int64{-4},
+				Parentids:      []int64{},
+				Childids:       []int64{},
 			},
 			[]util.TTDINode{},
 		},
@@ -309,40 +312,40 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 	args, elementCollection, curveCollection = buildArgosies(8, args)
 	//args.Argosies = append(args.Argosies, argosies)
 	//argosies = append(argosies, args)
-	argosies = append(argosies, util.TTDINode{
-		mashupsdk.MashupDetailedElement{
-			Id:             4,
-			State:          &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
-			Name:           "PathGroupOne",
-			Description:    "Paths",
-			Data:           "",
-			Custosrenderer: "",
-			Renderer:       "Element",
-			Genre:          "Collection",
-			Subgenre:       "Element",
-			Parentids:      []int64{},
-			Childids:       elementCollection,
-		},
-		[]util.TTDINode{},
-	})
+	// argosies = append(argosies, util.TTDINode{
+	// 	mashupsdk.MashupDetailedElement{
+	// 		Id:             4,
+	// 		State:          &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
+	// 		Name:           "PathGroupOne",
+	// 		Description:    "Paths",
+	// 		Data:           "",
+	// 		Custosrenderer: "",
+	// 		Renderer:       "Element",
+	// 		Genre:          "Collection",
+	// 		Subgenre:       "Element",
+	// 		Parentids:      []int64{},
+	// 		Childids:       elementCollection,
+	// 	},
+	// 	[]util.TTDINode{},
+	// })
 	curveCollection = append(curveCollection, 1)
-	argosies = append(argosies, util.TTDINode{
-		mashupsdk.MashupDetailedElement{
-			Id:             2,
-			State:          &mashupsdk.MashupElementState{Id: 2, State: int64(mashupsdk.Init)},
-			Name:           "CurvesGroupOne",
-			Description:    "Curves",
-			Data:           "",
-			Custosrenderer: "",
-			Renderer:       "Curve",
-			Colabrenderer:  "Path",
-			Genre:          "Collection",
-			Subgenre:       "Skeletal",
-			Parentids:      nil,
-			Childids:       curveCollection,
-		},
-		[]util.TTDINode{},
-	})
+	// argosies = append(argosies, util.TTDINode{
+	// 	mashupsdk.MashupDetailedElement{
+	// 		Id:             2,
+	// 		State:          &mashupsdk.MashupElementState{Id: 2, State: int64(mashupsdk.Init)},
+	// 		Name:           "CurvesGroupOne",
+	// 		Description:    "Curves",
+	// 		Data:           "",
+	// 		Custosrenderer: "",
+	// 		Renderer:       "Curve",
+	// 		Colabrenderer:  "Path",
+	// 		Genre:          "Collection",
+	// 		Subgenre:       "Skeletal",
+	// 		Parentids:      nil,
+	// 		Childids:       curveCollection,
+	// 	},
+	// 	[]util.TTDINode{},
+	// })
 	
 	
 	args.ChildNodes = append(args.ChildNodes, argosies...)
@@ -353,13 +356,28 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 		Description:    "",
 		Data:           "",
 		Custosrenderer: "",
-		Renderer:       "Element",
+		Renderer:       "",
 		Colabrenderer:  "",
 		Genre:          "Collection",
 		Subgenre:       "Element",
 		Parentids:      nil,
-		Childids:       []int64{2, 4},
+		Childids:       []int64{},
 	}
+	args.MashupDetailedElement.Childids = append(args.MashupDetailedElement.Childids, curveCollection...)
+	args.MashupDetailedElement.Childids = append(args.MashupDetailedElement.Childids, elementCollection...)
+	check := false
+		ids := []int64{}
+		for id := range args.MashupDetailedElement.Childids {
+			for j := 0; j < len(ids); j++ {
+				if int64(id) == int64(ids[j])  {
+					check = true
+				}
+				
+			}
+			ids = append(ids, int64(id))
+		}
+		
+		fmt.Println(check)
 	return args, nil
 }
 
