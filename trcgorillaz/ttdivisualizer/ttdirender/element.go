@@ -32,7 +32,7 @@ type ElementRenderer struct {
 	totalElements   int
 	LocationCache   map[int64]*math32.Vector3
 	clickedElements []*ClickedG3nDetailElement
-	quartiles []float64
+	quartiles       []float64
 }
 
 // Returns true if length of er.clickedElements stack is 0 and false otherwise
@@ -84,7 +84,7 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 					maxTime = decodedData["MaxTime"].(int)
 				}
 			}
-			
+
 			// fmt.Println(g3n.GetDetailedElement().Data)
 			// maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
 
@@ -109,9 +109,9 @@ func (er *ElementRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedEle
 // Returns the element and location of the given element
 func (er *ElementRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
 	er.totalElements = totalElements
-	if er.iOffset >= 2 {
-		id := g3n.GetDisplayId()
-		return g3n, er.LocationCache[id]
+	cacheLocation := er.LocationCache[g3n.GetDisplayId()]
+	if er.iOffset >= 2 && cacheLocation != nil {
+		return g3n, cacheLocation
 	} else {
 		if er.iOffset == 0 {
 			er.iOffset = 1
@@ -145,7 +145,11 @@ func (er *ElementRenderer) deselectElements(worldApp *g3nworld.WorldApp, element
 	if len(element.GetParentElementIds()) == 0 || (len(worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetParentElementIds()) != 0 && element.GetParentElementIds()[0] == worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetParentElementIds()[0]) {
 		return element
 	} else {
-		return er.deselectElements(worldApp, worldApp.ConcreteElements[element.GetParentElementIds()[0]])
+		if parentElement, parenetElementOk := worldApp.ConcreteElements[element.GetParentElementIds()[0]]; parenetElementOk {
+			return er.deselectElements(worldApp, parentElement)
+		} else {
+			return element
+		}
 	}
 }
 
@@ -161,7 +165,7 @@ func (er *ElementRenderer) calcLocnStarter(worldApp *g3nworld.WorldApp, ids []in
 				}
 			}
 		}
-		
+
 	}
 }
 
@@ -179,8 +183,10 @@ func (er *ElementRenderer) initLocnCache(worldApp *g3nworld.WorldApp, element *g
 		}
 
 		for _, childID := range element.GetChildElementIds() {
-			if worldApp.ConcreteElements[childID].GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
-				er.initLocnCache(worldApp, worldApp.ConcreteElements[childID])
+			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+				if childElement.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
+					er.initLocnCache(worldApp, worldApp.ConcreteElements[childID])
+				}
 			}
 		}
 	}
@@ -209,8 +215,10 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 			er.pop()
 			for _, childID := range prevElement.clickedElement.GetChildElementIds() {
 				if !er.isChildElement(worldApp, prevElement.clickedElement) {
-					worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
-					er.RemoveAll(worldApp, childID)
+					if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+						childElement.ApplyState(mashupsdk.Hidden, true)
+						er.RemoveAll(worldApp, childID)
+					}
 				}
 			}
 			er.deselectElements(worldApp, prevElement.clickedElement)
@@ -224,10 +232,11 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		center := pos
 		er.push(clickedElement, &center)
 		for _, childID := range clickedElement.GetChildElementIds() {
-			childElement := worldApp.ConcreteElements[childID]
-			if childElement.GetDetailedElement().Genre != "Solid" {
-				childElement.ApplyState(mashupsdk.Hidden, false)
-				childElement.ApplyState(mashupsdk.Clicked, true)
+			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+				if childElement.GetDetailedElement().Genre != "Solid" {
+					childElement.ApplyState(mashupsdk.Hidden, false)
+					childElement.ApplyState(mashupsdk.Clicked, true)
+				}
 			}
 		}
 	}
@@ -252,18 +261,21 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 		g3n.SetColor(math32.NewColor("darkred"), 1.0)
 
 		for _, childId := range g3n.GetChildElementIds() {
-			element := worldApp.ConcreteElements[childId]
-			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
-				if element.GetNamedMesh(element.GetDisplayName()) == nil {
-					_, nextPos := er.NextCoordinate(element, er.totalElements)
-					solidMesh := er.NewSolidAtPosition(element, nextPos)
-					if solidMesh != nil {
-						log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
-						worldApp.UpsertToScene(solidMesh)
-						element.SetNamedMesh(element.GetDisplayName(), solidMesh)
+			if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
+				if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
+					if element.GetNamedMesh(element.GetDisplayName()) == nil {
+						_, nextPos := er.NextCoordinate(element, er.totalElements)
+						if nextPos != nil {
+							solidMesh := er.NewSolidAtPosition(element, nextPos)
+							if solidMesh != nil {
+								log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
+								worldApp.UpsertToScene(solidMesh)
+								element.SetNamedMesh(element.GetDisplayName(), solidMesh)
+							}
+						}
+					} else {
+						worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
 					}
-				} else {
-					worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
 				}
 			}
 		}
@@ -291,7 +303,7 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 	return true
 }
 
-//Removes all children nodes of provided id
+// Removes all children nodes of provided id
 func (er *ElementRenderer) RemoveAll(worldApp *g3nworld.WorldApp, childId int64) {
 	if child, childOk := worldApp.ConcreteElements[childId]; childOk {
 		if !child.IsAbstract() && child.GetDetailedElement().Genre != "Solid" {

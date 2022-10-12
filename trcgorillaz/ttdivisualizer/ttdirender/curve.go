@@ -1,10 +1,10 @@
 package ttdirender
 
 import (
-	"fmt"
-	"math"
 	"encoding/json"
+	"fmt"
 	"log"
+	"math"
 	"strconv"
 	"strings"
 
@@ -30,7 +30,7 @@ type CurveRenderer struct {
 	totalElements         int
 	clickedPaths          []*CurveMesh
 	maxTime               int
-	quartiles []float64
+	quartiles             []float64
 }
 
 type CurveMesh struct {
@@ -244,14 +244,18 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 						decodedData := decoded.(map[string]interface{})
 						var quartiles []float64
 						if decodedData["Quartiles"] != nil {
-							quartiles = decodedData["Quartiles"].([]float64)
+							if quartileInterfaces, quartileInterfacesOk := decodedData["Quartiles"].([]interface{}); quartileInterfacesOk {
+								for _, quartileInterface := range quartileInterfaces {
+									quartiles = append(quartiles, quartileInterface.(float64))
+								}
+							}
 						}
 						//stringQuartiles := strings.Split(clickedElement.GetDetailedElement().Data, "-")
 						var median float64
 						var upperQuartile float64
 						var lowerQuartile float64
 						if len(quartiles) == 3 {
-							median = quartiles[1] //strconv.ParseFloat(stringQuartiles[1], 64)
+							median = quartiles[1]        //strconv.ParseFloat(stringQuartiles[1], 64)
 							upperQuartile = quartiles[2] //strconv.ParseFloat(stringQuartiles[2], 64)
 							lowerQuartile = quartiles[0] //strconv.ParseFloat(stringQuartiles[0], 64)
 							if diff < lowerQuartile {
