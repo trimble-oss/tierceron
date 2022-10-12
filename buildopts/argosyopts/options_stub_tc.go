@@ -5,7 +5,6 @@ package argosyopts
 
 import (
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
-	"fmt"
 	"github.com/mrjrieke/nute/mashupsdk"
 	"log"
 	"math"
@@ -18,15 +17,29 @@ var pointer int
 var data []string
 var TimeData map[string][]float64
 
+func getStubGroupSize(groups []util.TTDINode) (float64, float64, float64) {
+	groupsize := 1.0
+	flowsize := float64(len(data))
+	statsize := 0.0
+	for i := 0; i < len(data); i++ {
+		statsize += float64(len(TimeData[data[i]]))
+	}
+	return groupsize, flowsize, statsize
+}
+
 func buildStubArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfstatsize int) ([]util.TTDINode, []int64, []int64) {
 	data, TimeData = tcbuildopts.GetStubbedDataFlowStatistics()
-	if TimeData != nil {
-		for j := 0; j < len(data); j++ {
-			for i := 0; i < len(TimeData[data[j]])-1; i++ {
-				fmt.Println(TimeData[data[j]][i+1] - TimeData[data[j]][i])
-			}
-		}
+	if data == nil || TimeData == nil {
+		log.Println("Error in obtaining stub data in buildStubArgosies")
+		return []util.TTDINode{}, []int64{}, []int64{}
 	}
+	// if TimeData != nil {
+	// 	for j := 0; j < len(data); j++ {
+	// 		for i := 0; i < len(TimeData[data[j]])-1; i++ {
+	// 			fmt.Println(TimeData[data[j]][i+1] - TimeData[data[j]][i])
+	// 		}
+	// 	}
+	// }
 	argosyId := startID - 1
 	pointer = 0
 	argosies := []util.TTDINode{}
