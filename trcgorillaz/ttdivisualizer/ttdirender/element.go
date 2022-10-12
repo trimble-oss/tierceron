@@ -138,7 +138,9 @@ func (er *ElementRenderer) Layout(worldApp *g3nworld.WorldApp,
 func (er *ElementRenderer) deselectElements(worldApp *g3nworld.WorldApp, element *g3nmash.G3nDetailedElement) *g3nmash.G3nDetailedElement {
 	for _, childID := range element.GetChildElementIds() {
 		if !er.isChildElement(worldApp, element) && element != worldApp.ClickedElements[len(worldApp.ClickedElements)-1] {
-			worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
+			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+				childElement.ApplyState(mashupsdk.Hidden, true)
+			}
 			er.RemoveAll(worldApp, childID)
 		}
 	}
