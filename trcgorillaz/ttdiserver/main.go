@@ -72,7 +72,7 @@ func main() {
 	custosWorld.Icon = fyne.NewStaticResource("Logo", logoIconBytes)
 
 	if !custosWorld.Headless {
-		custosWorld.InitServer(*callerCreds, *insecure)
+		custosWorld.InitServer(*callerCreds, *insecure, 500*1024*1024)
 	}
 
 	// Initialize the main window.
