@@ -5,9 +5,9 @@ package argosyopts
 
 import (
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
+	"encoding/json"
 	"github.com/mrjrieke/nute/mashupsdk"
 	"log"
-	"encoding/json"
 	"math"
 	"strconv"
 	"tierceron/trcvault/util"
@@ -287,7 +287,7 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error)
 			[]util.TTDINode{},
 		},
 	}
-	tempArgosies, collectionIDs, curveIDs := buildStubArgosies(5, 20, 10)
+	tempArgosies, collectionIDs, curveIDs := buildStubArgosies(5, 10, 10)
 	for _, argosy := range tempArgosies {
 		Argosys = append(Argosys, argosy)
 	}
