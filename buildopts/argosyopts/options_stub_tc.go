@@ -7,6 +7,7 @@ import (
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
 	"github.com/mrjrieke/nute/mashupsdk"
 	"log"
+	"encoding/json"
 	"math"
 	"strconv"
 	"tierceron/trcvault/util"
@@ -17,17 +18,21 @@ var pointer int
 var data []string
 var TimeData map[string][]float64
 
-func getStubGroupSize(groups []util.TTDINode) (float64, float64, float64) {
-	groupsize := 1.0
-	flowsize := float64(len(data))
+func getStubGroupSize(data []string) float64 {
 	statsize := 0.0
 	for i := 0; i < len(data); i++ {
 		statsize += float64(len(TimeData[data[i]]))
 	}
-	return groupsize, flowsize, statsize
+	// groupsize := 1.0
+	// flowsize := float64(len(data))
+	// statsize := 0.0
+	// for i := 0; i < len(data); i++ {
+	// 	statsize += float64(len(TimeData[data[i]]))
+	// }
+	return statsize
 }
 
-func buildStubArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfstatsize int) ([]util.TTDINode, []int64, []int64) {
+func buildStubArgosies(startID int64, argosysize int, dfgsize int) ([]util.TTDINode, []int64, []int64) {
 	data, TimeData = tcbuildopts.GetStubbedDataFlowStatistics()
 	if data == nil || TimeData == nil {
 		log.Println("Error in obtaining stub data in buildStubArgosies")
@@ -45,6 +50,8 @@ func buildStubArgosies(startID int64, argosysize int, dfgsize int, dfsize int, d
 	argosies := []util.TTDINode{}
 	collectionIDs := []int64{}
 	curveCollection := []int64{}
+	dfsize := len(data)
+	dfstatsize := int(getStubGroupSize(data))
 	for i := 0; i < argosysize; i++ {
 		argosyId = startID + int64(i)*int64(1.0+float64(dfgsize)+math.Pow(float64(dfsize), 2.0)+math.Pow(float64(dfstatsize), 3.0))
 		collectionIDs = append(collectionIDs, argosyId)
@@ -129,11 +136,12 @@ func buildStubDataFlows(startID int64, dfsize int, dfstatsize int, parentID int6
 		argosyId = startID + int64(i)*int64(1.0+float64(dfstatsize))
 		collectionIDs = append(collectionIDs, argosyId)
 		childIDs = append(childIDs, argosyId)
+		pointer = i
 		flow := util.TTDINode{
 			mashupsdk.MashupDetailedElement{
 				Id:          argosyId,
 				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
-				Name:        data[pointer] + "-" + strconv.Itoa(int(argosyId)), //"DataFlow-" + strconv.Itoa(int(argosyId)),
+				Name:        data[i] + "-" + strconv.Itoa(int(argosyId)), //"DataFlow-" + strconv.Itoa(int(argosyId)),
 				Alias:       "It",
 				Description: "",
 				Renderer:    "Element",
@@ -165,7 +173,7 @@ func buildStubDataFlowStatistics(startID int64, dfstatsize int, parentID int64) 
 	childIDs := []int64{}
 	curveCollection := []int64{}
 	stats := []util.TTDINode{}
-	for i := 0; i < dfstatsize; i++ {
+	for i := 0; i < len(TimeData[data[pointer]]); i++ {
 		argosyId = argosyId + 1
 		childIDs = append(childIDs, argosyId)
 		curveCollection = append(curveCollection, argosyId)
@@ -184,10 +192,17 @@ func buildStubDataFlowStatistics(startID int64, dfstatsize int, parentID int64) 
 			},
 			[]util.TTDINode{},
 		}
-		pointer = pointer + 1
-		if pointer == 24 {
-			pointer = 0
+		statdata := make(map[string]interface{})
+		statdata["TimeSplit"] = (TimeData[data[pointer]][i]) * math.Pow(10.0, 9.0)
+		encodedData, err := json.Marshal(&statdata)
+		if err != nil {
+			log.Println("Error in encoding data in buildStubDataFlowStatistics")
 		}
+		stat.MashupDetailedElement.Data = string(encodedData)
+		// pointer = pointer + 1
+		// if pointer == 24 {
+		// 	pointer = 0
+		// }
 		stats = append(stats, stat)
 	}
 	return stats, collectionIDs, childIDs, curveCollection
@@ -272,7 +287,7 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error)
 			[]util.TTDINode{},
 		},
 	}
-	tempArgosies, collectionIDs, curveIDs := buildStubArgosies(5, 20, 10, 5, 10)
+	tempArgosies, collectionIDs, curveIDs := buildStubArgosies(5, 20, 10)
 	for _, argosy := range tempArgosies {
 		Argosys = append(Argosys, argosy)
 	}
