@@ -58,10 +58,9 @@ func main() {
 	worldApp := g3nworld.NewWorldApp(*headless, true, mashupRenderer, nil)
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
 	if *custos && *headless {
-		worldApp.MashupContext = client.BootstrapInit("ttdiserver", worldApp.MSdkApiHandler, []string{"HOME=" + os.Getenv("HOME")}, []string{"-headless=true"}, insecure) //=true
-
+		worldApp.MashupContext = client.BootstrapInitWithMessageExt("ttdiserver", worldApp.MSdkApiHandler, []string{"HOME=" + os.Getenv("HOME")}, []string{"-headless=true"}, insecure, 10*10*1024) //=true
 	} else if *custos {
-		worldApp.MashupContext = client.BootstrapInit("ttdiserver", worldApp.MSdkApiHandler, []string{"HOME=" + os.Getenv("HOME")}, nil, insecure) //=true
+		worldApp.MashupContext = client.BootstrapInitWithMessageExt("ttdiserver", worldApp.MSdkApiHandler, []string{"HOME=" + os.Getenv("HOME")}, nil, insecure, 10*10*1024) //=true
 	}
 	if *custos {
 		libraryElementBundle, upsertErr := worldApp.MashupContext.Client.GetMashupElements(
