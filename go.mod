@@ -30,7 +30,7 @@ require (
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/howeyc/crc16 v0.0.0-20171223171357-2b2a61e366a6
-	github.com/mrjrieke/nute v0.0.0-20221012145018-738b233e876f
+	github.com/mrjrieke/nute v0.0.0-20221013135639-47ba357c3d41
 )
 
 require (
