@@ -18,6 +18,8 @@ import (
 
 //var maxTime int64
 
+var collectionIDs []int64
+
 func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
 	//	return data, TimeData
 	return tcbuildopts.GetStubbedDataFlowStatistics()
@@ -38,8 +40,8 @@ func getGroupSize(groups []util.TTDINode) (float64, float64, float64) {
 }
 
 func buildArgosies(startID int64, args util.TTDINode) (util.TTDINode, []int64, []int64) {
-	argosyId := startID - 1
-	collectionIDs := []int64{}
+	var argosyId int64
+	//collectionIDs := []int64{}
 	curveCollection := []int64{}
 	curveIds := []int64{}
 	for i := 0; i < len(args.ChildNodes); i++ {
@@ -63,17 +65,12 @@ func buildArgosies(startID int64, args util.TTDINode) (util.TTDINode, []int64, [
 			Parentids:      []int64{},
 			Childids:       []int64{-2},
 		}
-
-		collection := []int64{}
+		//collection := []int64{}
 		children := []int64{}
 
-		argosy.ChildNodes, collection, children, curveCollection, argosy = buildDataFlowGroups(argosyId+1, argosy, dfgsize, dfsize, dfstatsize, argosyId)
-		for _, id := range collection {
-			collectionIDs = append(collectionIDs, id)
-		}
-		for _, id := range children {
-			argosy.MashupDetailedElement.Childids = append(argosy.MashupDetailedElement.Childids, id)
-		}
+		argosy.ChildNodes, _, children, curveCollection, argosy = buildDataFlowGroups(argosyId+1, argosy, dfgsize, dfsize, dfstatsize, argosyId)
+		//collectionIDs = append(collectionIDs, collection...)
+		argosy.MashupDetailedElement.Childids = append(argosy.MashupDetailedElement.Childids, children...)
 		curveIds = append(curveIds, curveCollection...)
 
 		args.ChildNodes[i] = argosy
@@ -83,7 +80,7 @@ func buildArgosies(startID int64, args util.TTDINode) (util.TTDINode, []int64, [
 
 func buildDataFlowGroups(startID int64, argosy util.TTDINode, dfgsize float64, dfsize float64, dfstatsize float64, parentID int64) ([]util.TTDINode, []int64, []int64, []int64, util.TTDINode) {
 	argosyId := startID - 1
-	collectionIDs := []int64{}
+	//collectionIDs := []int64{}
 	childIDs := []int64{}
 	curveCollection := []int64{}
 	for i := 0; i < len(argosy.ChildNodes); i++ {
@@ -107,13 +104,13 @@ func buildDataFlowGroups(startID int64, argosy util.TTDINode, dfgsize float64, d
 			Parentids:      []int64{parentID},
 			Childids:       []int64{-2},
 		}
-		collection := []int64{}
+		//collection := []int64{}
 		children := []int64{}
 
-		group.ChildNodes, collection, children, curveCollection, group = buildDataFlows(argosyId+1, group, dfsize, dfstatsize, argosyId)
-		for _, id := range collection {
-			collectionIDs = append(collectionIDs, id)
-		}
+		group.ChildNodes, _, children, curveCollection, group = buildDataFlows(argosyId+1, group, dfsize, dfstatsize, argosyId)
+		// for _, id := range collection {
+		// 	collectionIDs = append(collectionIDs, id)
+		// }
 		for _, id := range children {
 			group.MashupDetailedElement.Childids = append(group.MashupDetailedElement.Childids, id)
 		}
@@ -124,7 +121,7 @@ func buildDataFlowGroups(startID int64, argosy util.TTDINode, dfgsize float64, d
 
 func buildDataFlows(startID int64, group util.TTDINode, dfsize float64, dfstatsize float64, parentID int64) ([]util.TTDINode, []int64, []int64, []int64, util.TTDINode) {
 	argosyId := startID - 1
-	collectionIDs := []int64{}
+	//collectionIDs := []int64{}
 	childIDs := []int64{}
 	curveCollection := []int64{}
 	for i := 0; i < len(group.ChildNodes); i++ {
@@ -148,13 +145,13 @@ func buildDataFlows(startID int64, group util.TTDINode, dfsize float64, dfstatsi
 			Parentids:      []int64{parentID},
 			Childids:       []int64{-2},
 		}
-		otherIds := []int64{}
+		//otherIds := []int64{}
 		children := []int64{}
 
-		flow.ChildNodes, otherIds, children, curveCollection, flow = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
-		for _, id := range otherIds {
-			collectionIDs = append(collectionIDs, id)
-		}
+		flow.ChildNodes, _, children, curveCollection, flow = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
+		// for _, id := range otherIds {
+		// 	collectionIDs = append(collectionIDs, id)
+		// }
 		for _, id := range children {
 			flow.MashupDetailedElement.Childids = append(flow.MashupDetailedElement.Childids, id)
 		}
@@ -165,12 +162,13 @@ func buildDataFlows(startID int64, group util.TTDINode, dfsize float64, dfstatsi
 
 func buildDataFlowStatistics(startID int64, flow util.TTDINode, dfstatsize float64, parentID int64) ([]util.TTDINode, []int64, []int64, []int64, util.TTDINode) {
 	argosyId := startID - 1
-	collectionIDs := []int64{}
+	//collectionIDs := []int64{}
 	childIDs := []int64{}
 	curveCollection := []int64{}
 	//total := int64(0)
 	for i := 0; i < len(flow.ChildNodes); i++ {
 		argosyId = argosyId + 1
+		collectionIDs = append(collectionIDs, argosyId)
 		childIDs = append(childIDs, argosyId)
 		curveCollection = append(curveCollection, argosyId)
 		stat := flow.ChildNodes[i]
@@ -304,12 +302,24 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 		},
 	}
 	args, err := util.InitArgosyFleet(mod, "TenantDatabase", logger)
+	var count int 
+	for _, arg := range args.ChildNodes {
+		count++
+		for _, dfg := range arg.ChildNodes {
+			count++
+			for _, df := range dfg.ChildNodes {
+				count++ 
+				count += len(df.ChildNodes)
+			}
+		}
+	}
 	if err != nil {
 		return util.TTDINode{}, err
 	}
 	elementCollection := []int64{}
 	curveCollection := []int64{}
 	args, elementCollection, curveCollection = buildArgosies(8, args)
+	elementCollection = collectionIDs
 	//args.Argosies = append(args.Argosies, argosies)
 	//argosies = append(argosies, args)
 	// argosies = append(argosies, util.TTDINode{
@@ -363,18 +373,21 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
 		Parentids:      nil,
 		Childids:       []int64{},
 	}
-	args.MashupDetailedElement.Childids = append(args.MashupDetailedElement.Childids, curveCollection...)
+	//args.MashupDetailedElement.Childids = append(args.MashupDetailedElement.Childids, curveCollection...)
 	args.MashupDetailedElement.Childids = append(args.MashupDetailedElement.Childids, elementCollection...)
 	check := false
-		ids := []int64{}
+		//ids := []int64{}
 		for id := range args.MashupDetailedElement.Childids {
-			for j := 0; j < len(ids); j++ {
-				if int64(id) == int64(ids[j])  {
-					check = true
-				}
-				
+			if id == 8 {
+				check = true
 			}
-			ids = append(ids, int64(id))
+			// for j := 0; j < len(ids); j++ {
+			// 	if int64(id) == int64(ids[j])  {
+			// 		check = true
+			// 	}
+				
+			// }
+			// ids = append(ids, int64(id))
 		}
 		
 		fmt.Println(check)
