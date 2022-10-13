@@ -109,6 +109,9 @@ func (er *ElementRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedEle
 // Returns the element and location of the given element
 func (er *ElementRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
 	er.totalElements = totalElements
+	if g3n.GetDetailedElement().Id == 6 {
+		fmt.Println("Hi")
+	}
 	cacheLocation := er.LocationCache[g3n.GetDisplayId()]
 	if er.iOffset >= 2 && cacheLocation != nil {
 		return g3n, cacheLocation
@@ -122,7 +125,13 @@ func (er *ElementRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, total
 		} else {
 			er.counter = er.counter - 0.1
 			complex := binetFormula(er.counter)
-			er.LocationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
+			if g3n != nil && len(g3n.GetDetailedElement().Parentids) > 0 {
+				parentLocn := er.LocationCache[g3n.GetDetailedElement().Parentids[0]]
+				er.LocationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(parentLocn.X + float32(-real(complex)), parentLocn.Y + float32(imag(complex)), parentLocn.Z + float32(-er.counter))
+			} else {
+				er.LocationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
+			}
+			//parentLocn := er.LocationCache[g3n.GetDetailedElement().Parentids[0]]
 			return g3n, math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
 		}
 	}
@@ -187,6 +196,9 @@ func (er *ElementRenderer) initLocnCache(worldApp *g3nworld.WorldApp, element *g
 		for _, childID := range element.GetChildElementIds() {
 			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
 				if childElement.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
+					if childID == 6 {
+						fmt.Println("hi")
+					}
 					er.initLocnCache(worldApp, worldApp.ConcreteElements[childID])
 				}
 			}
