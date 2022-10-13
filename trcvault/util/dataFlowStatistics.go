@@ -371,7 +371,20 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 			newData["TimeSplit"], _ = time.ParseDuration(data["timeSplit"].(string))
 
 			if testedDate, testedDateOk := data["lastTestedDate"].(string); testedDateOk {
-				newData["LastTestedDate"] = testedDate
+				if testedDate == "" {
+					flowData, flowReadErr := mod.ReadData("super-secrets/" + data["flowGroup"].(string))
+					if flowReadErr != nil {
+						return flowReadErr
+					}
+
+					if _, ok := flowData["lastTestedDate"].(string); ok {
+						newData["LastTestedDate"] = flowData["lastTestedDate"].(string)
+					} else {
+						newData["LastTestedDate"] = ""
+					}
+				} else {
+					newData["LastTestedDate"] = testedDate
+				}
 			}
 			newEncodedData, err := json.Marshal(newData)
 			if err != nil {
@@ -484,6 +497,8 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 			} else {
 				statMap["lastTestedDate"] = ""
 			}
+		} else {
+			statMap["lastTestedDate"] = decodedStatData["LastTestedDate"].(string)
 		}
 	} else {
 		statMap["lastTestedDate"] = ""
