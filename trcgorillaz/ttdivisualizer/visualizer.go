@@ -115,7 +115,7 @@ func main() {
 			}
 		}
 	} else {
-		worldApp.InitServer(*callerCreds, *insecure)
+		worldApp.InitServer(*callerCreds, *insecure, 500*1024*1024)
 	}
 
 	if *custos || *headless {
