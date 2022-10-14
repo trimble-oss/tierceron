@@ -111,12 +111,28 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 								continue
 							}
 
+							var innerDF TTDINode
+							innerDF.MashupDetailedElement.Name = "empty"
+							//Tenant -> System -> LOgin/Download -> USERS
 							for _, statisticName := range statisticNameList.Data {
 								for _, statisticName := range statisticName.([]interface{}) {
-									newDf := InitDataFlow(nil, strings.TrimSuffix(statisticName.(string), "/"), false)
-									newDf.RetrieveStatistic(mod, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
-									dfgroup.ChildNodes = append(dfgroup.ChildNodes, newDf)
+									if strings.Contains(statisticName.(string), "-") {
+										dashNameSplit := strings.Split(statisticName.(string), "-")
+										statisticType := dashNameSplit[0] //login
+										innerDF.MashupDetailedElement.Name = strings.TrimSuffix(statisticType, "/")
+										//statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
+										newDf := InitDataFlow(nil, strings.TrimSuffix(statisticName.(string), "/"), false)
+										newDf.RetrieveStatistic(mod, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
+										innerDF.ChildNodes = append(innerDF.ChildNodes, newDf)
+									} else {
+										newDf := InitDataFlow(nil, strings.TrimSuffix(statisticName.(string), "/"), false)
+										newDf.RetrieveStatistic(mod, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
+										dfgroup.ChildNodes = append(dfgroup.ChildNodes, newDf)
+									}
 								}
+							}
+							if innerDF.MashupDetailedElement.Name != "empty" {
+								dfgroup.ChildNodes = append(dfgroup.ChildNodes, innerDF)
 							}
 							new.ChildNodes = append(new.ChildNodes, dfgroup)
 						}
