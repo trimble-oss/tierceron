@@ -139,16 +139,17 @@ func buildStubDataFlows(startID int64, dfsize int, dfstatsize int, parentID int6
 		pointer = i
 		flow := util.TTDINode{
 			mashupsdk.MashupDetailedElement{
-				Id:          argosyId,
-				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
-				Name:        data[i] + "-" + strconv.Itoa(int(argosyId)), //"DataFlow-" + strconv.Itoa(int(argosyId)),
-				Alias:       "It",
-				Description: "",
-				Renderer:    "Element",
-				Genre:       "DataFlow",
-				Subgenre:    "",
-				Parentids:   []int64{parentID},
-				Childids:    []int64{-4},
+				Id:             argosyId,
+				State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
+				Name:           data[i] + "-" + strconv.Itoa(int(argosyId)), //"DataFlow-" + strconv.Itoa(int(argosyId)),
+				Alias:          "It",
+				Description:    "",
+				Renderer:       "Element",
+				Genre:          "DataFlow",
+				Custosrenderer: "TenantDataRenderer",
+				Subgenre:       "",
+				Parentids:      []int64{parentID},
+				Childids:       []int64{-4},
 			},
 			[]util.TTDINode{},
 		}
