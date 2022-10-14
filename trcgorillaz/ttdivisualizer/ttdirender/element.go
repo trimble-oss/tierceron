@@ -3,6 +3,7 @@ package ttdirender
 import (
 	"fmt"
 	"log"
+
 	//"strconv"
 	"encoding/json"
 
@@ -82,13 +83,13 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil {
 					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
 
-					// } else 
+					// } else
 					if decodedQuartiles, ok := decodedData["Quartiles"].([]float64); ok {
 						er.quartiles = decodedQuartiles
 					}
 					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
 
-					// } else 
+					// } else
 					if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
 						maxTime = int(decodedMaxTime)
 					}
@@ -134,12 +135,7 @@ func (er *ElementRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, total
 		} else {
 			er.counter = er.counter - 0.1
 			complex := binetFormula(er.counter)
-			if g3n != nil && len(g3n.GetDetailedElement().Parentids) > 0 {
-				parentLocn := er.LocationCache[g3n.GetDetailedElement().Parentids[0]]
-				er.LocationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(parentLocn.X + float32(-real(complex)), parentLocn.Y + float32(imag(complex)), parentLocn.Z + float32(-er.counter))
-			} else {
-				er.LocationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
-			}
+			er.LocationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
 			//parentLocn := er.LocationCache[g3n.GetDetailedElement().Parentids[0]]
 			return g3n, math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
 		}
@@ -224,9 +220,9 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		ids := []int64{}
 		for id := range worldApp.ConcreteElements {
 			el := worldApp.ConcreteElements[id].GetDetailedElement()
-			
+
 			for j := 0; j < len(ids); j++ {
-				if el.Genre == "Argosy" || el.Genre == "DataFlowGroup"  {
+				if el.Genre == "Argosy" || el.Genre == "DataFlowGroup" {
 					check = true
 				}
 			}
