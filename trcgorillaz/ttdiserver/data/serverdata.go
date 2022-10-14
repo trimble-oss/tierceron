@@ -92,7 +92,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
                }
                sort.Float64s(quartiles)
                for j := len(DetailedElements) - 1; j >= 0; j-- {
-                   if DetailedElements[j].Genre == "DataFlow" {
+                   if DetailedElements[j].Genre == "DataFlow" && quartiles != nil{
                       
                        var decoded interface{}
                        err := json.Unmarshal([]byte(DetailedElements[j].Data), &decoded)
