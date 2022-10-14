@@ -80,8 +80,20 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 			} else {
 				decodedData := decoded.(map[string]interface{})
 				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil {
-					er.quartiles = decodedData["Quartiles"].([]float64)
-					maxTime = decodedData["MaxTime"].(int)
+					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
+
+					// } else 
+					if decodedQuartiles, ok := decodedData["Quartiles"].([]float64); ok {
+						er.quartiles = decodedQuartiles
+					}
+					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
+
+					// } else 
+					if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
+						maxTime = int(decodedMaxTime)
+					}
+					//er.quartiles = decodedData["Quartiles"].([]float64)
+					//maxTime = int(decodedData["MaxTime"].(float64))
 				}
 			}
 
