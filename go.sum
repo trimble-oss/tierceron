@@ -495,12 +495,8 @@ github.com/mrjrieke/gio v0.0.0-20220406132257-ec1380c11ef0 h1:VInZStydZkBifiZvcK
 github.com/mrjrieke/gio v0.0.0-20220406132257-ec1380c11ef0/go.mod h1:b8vBukexG6eYuXZa14asjLAWJ+JjbZ/ophEnS2FjYUg=
 github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb h1:tA/ri6AMAepfw+H05e6z1njpBCyMVIemvAWM/2wAQgU=
 github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb/go.mod h1:gLRWYfYnMA9TONeppRSikMdXlHQ97xVsPojddUv3b/E=
-github.com/mrjrieke/nute v0.0.0-20221013135639-47ba357c3d41 h1:c/vOdOjMwOwJ6p6AST/YKIrfwVS488tBs80r8yEO9n0=
-github.com/mrjrieke/nute v0.0.0-20221013135639-47ba357c3d41/go.mod h1:IqTCYHrKoTQW/Nb/JQWGULNKSqwSca7iw2o49Rd964U=
-github.com/mrjrieke/nute v0.0.0-20221013194002-0a055a09042b h1:kYOhXv6oZWFbJXuoTBn4EOkSKGA6OvFBRyPqz8EOkVw=
-github.com/mrjrieke/nute v0.0.0-20221013194002-0a055a09042b/go.mod h1:IqTCYHrKoTQW/Nb/JQWGULNKSqwSca7iw2o49Rd964U=
-github.com/mrjrieke/nute v0.0.0-20221013201029-6af9dcda0524 h1:f7frUMrg9sDnWcJuUtR3FOpIbDFxoH3V8YUv1hymxRU=
-github.com/mrjrieke/nute v0.0.0-20221013201029-6af9dcda0524/go.mod h1:IqTCYHrKoTQW/Nb/JQWGULNKSqwSca7iw2o49Rd964U=
+github.com/mrjrieke/nute v0.0.0-20221014025851-0f5a2e5f2295 h1:7eD2ETusYiS8ypyyi8FLEMw6gfhgMO5oTdUowtOdsfc=
+github.com/mrjrieke/nute v0.0.0-20221014025851-0f5a2e5f2295/go.mod h1:IqTCYHrKoTQW/Nb/JQWGULNKSqwSca7iw2o49Rd964U=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/nats-io/jwt v0.3.0/go.mod h1:fRYCDE99xlTsqUzISS1Bi75UBJ6ljOJQOAAu5VglpSg=
 github.com/nats-io/jwt v0.3.2/go.mod h1:/euKqTS1ZD+zzjYrY7pseZrTtWQSjujC7xjPc8wL6eU=
