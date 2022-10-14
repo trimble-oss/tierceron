@@ -36,6 +36,7 @@ func main() {
 	callerCreds := flag.String("CREDS", "", "Credentials of caller")
 	insecure := flag.Bool("insecure", false, "Skip server validation")
 	headless := flag.Bool("headless", false, "Run headless")
+	serverheadless := flag.Bool("serverheadless", false, "Run server completely headless")
 	envPtr := flag.String("env", "QA", "Environment to configure")
 	flag.Parse()
 
@@ -61,7 +62,7 @@ func main() {
 	}
 
 	tenantDataRenderer := &trcRenderers.TenantDataRenderer{}
-	custosWorld := custosworld.NewCustosWorldApp(*headless, false, DetailedElements, tenantDataRenderer)
+	custosWorld := custosworld.NewCustosWorldApp(*serverheadless, false, DetailedElements, tenantDataRenderer)
 	tenantDataRenderer.CustosWorldApp = custosWorld
 	custosWorld.CustomTabItemRenderer["TenantDataRenderer"] = tenantDataRenderer
 	custosWorld.CustomTabItemRenderer["SearchRenderer"] = &trcRenderers.SearchRenderer{CustosWorldApp: custosWorld}
