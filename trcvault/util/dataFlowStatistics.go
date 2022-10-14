@@ -373,11 +373,11 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 			if testedDate, testedDateOk := data["lastTestedDate"].(string); testedDateOk {
 				if testedDate == "" {
 					flowData, flowReadErr := mod.ReadData("super-secrets/" + data["flowGroup"].(string))
-					if flowReadErr != nil {
-						return flowReadErr
-					}
+					// if flowReadErr != nil {
+					// 	return flowReadErr
+					// } ***
 
-					if _, ok := flowData["lastTestedDate"].(string); ok {
+					if _, ok := flowData["lastTestedDate"].(string); ok && flowReadErr != nil {
 						newData["LastTestedDate"] = flowData["lastTestedDate"].(string)
 					} else {
 						newData["LastTestedDate"] = ""
