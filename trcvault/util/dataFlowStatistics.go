@@ -5,11 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
+	eUtils "tierceron/utils"
 	"tierceron/vaulthelper/kv"
+
 	"time"
 
+	"VaultConfig.TenantConfig/util/buildopts"
 	"github.com/mrjrieke/nute/mashupsdk"
 )
 
@@ -80,6 +84,104 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 				return aFleet, errors.New("No argosId were found for argosyFleet")
 			}
 			idName = strings.Trim(idName.(string), "/")
+
+			if mod.Direct {
+				data, readErr := mod.ReadData("super-secrets/Protected/SpiralDatabase/config")
+				if readErr != nil {
+					return aFleet, readErr
+				} else {
+					config := &eUtils.DriverConfig{Insecure: mod.Insecure, Log: logger, ExitOnFailure: true}
+
+					sourceDatabaseConnectionMap := map[string]interface{}{
+						"dbsourceurl":      buildopts.GetTrcDbUrl(data),
+						"dbsourceuser":     data["dbuser"],
+						"dbsourcepassword": data["dbpassword"],
+					}
+					dbsourceConn, err := OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+
+					// use your own select statement
+					// this is just an example statement
+					statement, err := dbsourceConn.Prepare("select * from DataflowStatistics")
+
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
+					}
+
+					rows, err := statement.Query() // execute our select statement
+
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
+					}
+
+					argosyMap := map[string]*TTDINode{}
+
+					for _, idList := range idListData.Data {
+						for _, id := range idList.([]interface{}) {
+							argosId := strings.Trim(id.(string), "/")
+							argosNode := &TTDINode{}
+							argosNode.MashupDetailedElement.Name = argosId
+							argosNode.ChildNodes = make([]TTDINode, 0)
+							argosyMap[argosId] = argosNode
+						}
+					}
+
+					for rows.Next() {
+						var flowName, argosId, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate string
+						rows.Scan(&flowName, &argosId, &flowGroup, &mode, &stateCode, &stateName, &timeSplit, &lastTestedDate)
+
+						data := make(map[string]interface{})
+						data["flowGroup"] = flowGroup
+						data["flowName"] = flowName
+						data["stateName"] = stateName
+						data["stateCode"] = stateCode
+						data["mode"] = mode
+						data["timeSplit"] = timeSplit
+						data["lastTestedDate"] = lastTestedDate
+
+						argosNode := argosyMap[argosId]
+						if argosNode == nil {
+							argosNode = &TTDINode{}
+							argosNode.MashupDetailedElement.Name = argosId
+							argosNode.ChildNodes = make([]TTDINode, 0)
+							argosyMap[argosId] = argosNode
+						}
+
+						var argosDfGroup *TTDINode
+						for _, dfGroup := range argosNode.ChildNodes {
+							if dfGroup.Name == flowGroup {
+								argosDfGroup = &dfGroup
+								break
+							}
+						}
+						if argosDfGroup == nil {
+							argosDfGroup = &TTDINode{}
+							argosDfGroup.MashupDetailedElement.Name = flowGroup
+						}
+
+						var innerDF TTDINode
+						innerDF.MashupDetailedElement.Name = "empty"
+						if strings.Contains(flowName, "-") {
+							dashNameSplit := strings.Split(flowName, "-")
+							statisticType := dashNameSplit[0] //login
+							innerDF.MashupDetailedElement.Name = strings.TrimSuffix(statisticType, "/")
+							//statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
+							newDf := InitDataFlow(nil, statisticType, false)
+							newDf.MapStatistic(data, logger)
+							innerDF.ChildNodes = append(innerDF.ChildNodes, newDf)
+						} else {
+							newDf := InitDataFlow(nil, flowName, false)
+							newDf.MapStatistic(data, logger)
+							argosDfGroup.ChildNodes = append(argosDfGroup.ChildNodes, newDf)
+						}
+					}
+					for _, aArgosy := range argosyMap {
+						aFleet.ChildNodes = append(aFleet.ChildNodes, *aArgosy)
+					}
+					return aFleet, nil
+				}
+			}
 
 			for _, idList := range idListData.Data {
 				for _, id := range idList.([]interface{}) {
@@ -349,6 +451,36 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 	}
 }
 
+func (dfs *TTDINode) MapStatistic(data map[string]interface{}, logger *log.Logger) {
+	var df TTDINode
+	newData := make(map[string]interface{})
+	newData["FlowGroup"] = data["flowGroup"].(string)
+	newData["FlowName"] = data["flowName"].(string)
+	newData["StateName"] = data["stateName"].(string)
+	newData["StateCode"] = data["stateCode"].(string)
+	if mode, ok := data["mode"]; ok {
+		modeStr := fmt.Sprintf("%s", mode) //Treats it as a interface due to weird typing from vault (encoding/json.Number)
+		if modeInt, err := strconv.Atoi(modeStr); err == nil {
+			//df.Mode = modeInt
+			newData["Mode"] = modeInt
+		}
+	}
+	if strings.Contains(data["timeSplit"].(string), "seconds") {
+		data["timeSplit"] = strings.ReplaceAll(data["timeSplit"].(string), " seconds", "s")
+	}
+	newData["TimeSplit"], _ = time.ParseDuration(data["timeSplit"].(string))
+
+	newEncodedData, err := json.Marshal(newData)
+	if err != nil {
+		log.Println("Error encoding data in RetrieveStatistic")
+		return
+	}
+	df.MashupDetailedElement.Data = string(newEncodedData)
+	dfs.ChildNodes = append(dfs.ChildNodes, df)
+
+	return
+}
+
 func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
 	listData, listErr := mod.List("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+flowG+"/dataFlowName/"+flowN, logger)
 	if listErr != nil {
@@ -368,24 +500,6 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 					return nil
 				}
 			}
-			var df TTDINode
-			newData := make(map[string]interface{})
-			newData["FlowGroup"] = data["flowGroup"].(string)
-			newData["FlowName"] = data["flowName"].(string)
-			newData["StateName"] = data["stateName"].(string)
-			newData["StateCode"] = data["stateCode"].(string)
-			if mode, ok := data["mode"]; ok {
-				modeStr := fmt.Sprintf("%s", mode) //Treats it as a interface due to weird typing from vault (encoding/json.Number)
-				if modeInt, err := strconv.Atoi(modeStr); err == nil {
-					//df.Mode = modeInt
-					newData["Mode"] = modeInt
-				}
-			}
-			if strings.Contains(data["timeSplit"].(string), "seconds") {
-				data["timeSplit"] = strings.ReplaceAll(data["timeSplit"].(string), " seconds", "s")
-			}
-			newData["TimeSplit"], _ = time.ParseDuration(data["timeSplit"].(string))
-
 			if testedDate, testedDateOk := data["lastTestedDate"].(string); testedDateOk {
 				if testedDate == "" {
 					flowData, flowReadErr := mod.ReadData("super-secrets/" + data["flowGroup"].(string))
@@ -394,21 +508,15 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 					// } ***
 
 					if _, ok := flowData["lastTestedDate"].(string); ok && flowReadErr != nil {
-						newData["LastTestedDate"] = flowData["lastTestedDate"].(string)
+						data["lastTestedDate"] = flowData["lastTestedDate"].(string)
 					} else {
-						newData["LastTestedDate"] = ""
+						data["lastTestedDate"] = ""
 					}
 				} else {
-					newData["LastTestedDate"] = testedDate
+					data["lastTestedDate"] = testedDate
 				}
 			}
-			newEncodedData, err := json.Marshal(newData)
-			if err != nil {
-				log.Println("Error encoding data in RetrieveStatistic")
-				return nil
-			}
-			df.MashupDetailedElement.Data = string(newEncodedData)
-			dfs.ChildNodes = append(dfs.ChildNodes, df)
+			dfs.MapStatistic(data, logger)
 		}
 	}
 	return nil
