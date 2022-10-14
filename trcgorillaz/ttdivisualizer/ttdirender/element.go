@@ -121,9 +121,6 @@ func (er *ElementRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedEle
 // Returns the element and location of the given element
 func (er *ElementRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
 	er.totalElements = totalElements
-	if g3n.GetDetailedElement().Id == 6 {
-		fmt.Println("Hi")
-	}
 	cacheLocation := er.LocationCache[g3n.GetDisplayId()]
 	if er.iOffset >= 2 && cacheLocation != nil {
 		return g3n, cacheLocation
@@ -380,6 +377,9 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 
 	for _, g3nRenderableElement := range g3nRenderableElements {
 		concreteG3nRenderableElement := g3nRenderableElement
+		if concreteG3nRenderableElement.GetDetailedElement().Id == 6 {
+			concreteG3nRenderableElement.GetDetailedElement().ApplyState(mashupsdk.Hidden, true)
+		}
 		if !g3nRenderableElement.IsStateSet(mashupsdk.Hidden) {
 			prevSolidPos = nextPos
 			_, nextPos = g3Renderer.NextCoordinate(concreteG3nRenderableElement, totalElements)

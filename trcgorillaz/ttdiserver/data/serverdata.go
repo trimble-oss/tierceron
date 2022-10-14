@@ -4,6 +4,7 @@ import (
    "encoding/json"
    "log"
    "math"
+   "fmt"
    "sort"
    "strconv"
    "tierceron/buildopts/argosyopts"
@@ -219,6 +220,9 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 		for i := 0; i < len(argosy.ChildNodes); i++ {
 			detailedElement := argosy.ChildNodes[i].MashupDetailedElement
 			detailedElement.Alias = "DataFlowGroup"
+			if detailedElement.Id == 6 {
+				fmt.Println("Hi")
+			}
 			DetailedElements = append(DetailedElements, &detailedElement)
 			for j := 0; j < len(argosy.ChildNodes[i].ChildNodes); j++ {
 				element := argosy.ChildNodes[i].ChildNodes[j].MashupDetailedElement
@@ -229,7 +233,7 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 				} else {
 					pointer = 0
 				}
-				for k := 0; k < len(TimeData[data[pointer]]); k++ {
+				for k := 0; k < len(TimeData[data[pointer]]) && k < len(argosy.ChildNodes[i].ChildNodes[j].ChildNodes); k++ {
 					el := argosy.ChildNodes[i].ChildNodes[j].ChildNodes[k].MashupDetailedElement
 					el.Alias = "DataFlowStatistic"
 					timeSeconds := TimeData[data[pointer]][k]
