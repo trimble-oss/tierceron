@@ -101,7 +101,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 
 					// use your own select statement
 					// this is just an example statement
-					statement, err := dbsourceConn.Prepare("select * from DataflowStatistics")
+					statement, err := dbsourceConn.Prepare("select * from DataflowStatistics order by argosid,flowGroup,flowName,stateName asc")
 
 					if err != nil {
 						fmt.Println(err)
@@ -114,6 +114,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 						fmt.Println(err)
 						os.Exit(1)
 					}
+					defer rows.Close()
 
 					argosyMap := map[string]*TTDINode{}
 
@@ -126,8 +127,11 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 							argosyMap[argosId] = argosNode
 						}
 					}
+					i := 1
 
 					for rows.Next() {
+						fmt.Printf("%d\n", i)
+						i = i + 1
 						var flowName, argosId, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate string
 						rows.Scan(&flowName, &argosId, &flowGroup, &mode, &stateCode, &stateName, &timeSplit, &lastTestedDate)
 
@@ -142,38 +146,82 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 
 						argosNode := argosyMap[argosId]
 						if argosNode == nil {
-							argosNode = &TTDINode{}
-							argosNode.MashupDetailedElement.Name = argosId
-							argosNode.ChildNodes = make([]TTDINode, 0)
+							newArgosNode := TTDINode{}
+							argosNode = &newArgosNode
+							newArgosNode.MashupDetailedElement.Name = argosId
 							argosyMap[argosId] = argosNode
 						}
 
 						var argosDfGroup *TTDINode
-						for _, dfGroup := range argosNode.ChildNodes {
-							if dfGroup.Name == flowGroup {
-								argosDfGroup = &dfGroup
+						for i := 0; i < len(argosNode.ChildNodes); i++ {
+							if argosNode.ChildNodes[i].Name == flowGroup {
+								argosDfGroup = &(argosNode.ChildNodes[i])
 								break
 							}
 						}
 						if argosDfGroup == nil {
-							argosDfGroup = &TTDINode{}
-							argosDfGroup.MashupDetailedElement.Name = flowGroup
+							newArgosDfGroup := TTDINode{}
+							newArgosDfGroup.MashupDetailedElement.Name = flowGroup
+							argosNode.ChildNodes = append(argosNode.ChildNodes, newArgosDfGroup)
+							argosDfGroup = &argosNode.ChildNodes[len(argosNode.ChildNodes)-1]
 						}
 
-						var innerDF TTDINode
-						innerDF.MashupDetailedElement.Name = "empty"
 						if strings.Contains(flowName, "-") {
 							dashNameSplit := strings.Split(flowName, "-")
 							statisticType := dashNameSplit[0] //login
-							innerDF.MashupDetailedElement.Name = strings.TrimSuffix(statisticType, "/")
 							//statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
-							newDf := InitDataFlow(nil, statisticType, false)
-							newDf.MapStatistic(data, logger)
-							innerDF.ChildNodes = append(innerDF.ChildNodes, newDf)
+							var dfStatTypeNode *TTDINode
+							for i := 0; i < len(argosDfGroup.ChildNodes); i++ {
+								if argosDfGroup.ChildNodes[i].Name == statisticType {
+									dfStatTypeNode = &(argosDfGroup.ChildNodes[i])
+									break
+								}
+							}
+							if dfStatTypeNode == nil {
+								newDfStatTypeNode := TTDINode{}
+								newDfStatTypeNode.MashupDetailedElement.Name = statisticType
+								argosDfGroup.ChildNodes = append(argosDfGroup.ChildNodes, newDfStatTypeNode)
+								dfStatTypeNode = &argosDfGroup.ChildNodes[len(argosDfGroup.ChildNodes)-1]
+							}
+
+							var dfStatNameTypeNode *TTDINode
+							for i := 0; i < len(dfStatTypeNode.ChildNodes); i++ {
+								if dfStatTypeNode.ChildNodes[i].Name == flowName {
+									dfStatNameTypeNode = &(dfStatTypeNode.ChildNodes[i])
+									break
+								}
+							}
+							if dfStatNameTypeNode == nil {
+								newDfStatNameTypeNode := TTDINode{}
+								newDfStatNameTypeNode.MashupDetailedElement.Name = flowName
+								dfStatTypeNode.ChildNodes = append(dfStatTypeNode.ChildNodes, newDfStatNameTypeNode)
+								dfStatNameTypeNode = &dfStatTypeNode.ChildNodes[len(dfStatTypeNode.ChildNodes)-1]
+							}
+
+							// Always append this remaining flow...
+							dfStatisticNode := InitDataFlow(nil, flowName, false)
+							dfStatisticNode.MapStatistic(data, logger)
+
+							dfStatNameTypeNode.ChildNodes = append(dfStatNameTypeNode.ChildNodes, dfStatisticNode)
+
 						} else {
-							newDf := InitDataFlow(nil, flowName, false)
-							newDf.MapStatistic(data, logger)
-							argosDfGroup.ChildNodes = append(argosDfGroup.ChildNodes, newDf)
+							var dfStatTypeNode *TTDINode
+							for i := 0; i < len(argosDfGroup.ChildNodes); i++ {
+								if argosDfGroup.ChildNodes[i].Name == flowName {
+									dfStatTypeNode = &(argosDfGroup.ChildNodes[i])
+									break
+								}
+							}
+							if dfStatTypeNode == nil {
+								newDfStatTypeNode := TTDINode{}
+								newDfStatTypeNode.MashupDetailedElement.Name = flowName
+								argosDfGroup.ChildNodes = append(argosDfGroup.ChildNodes, newDfStatTypeNode)
+								dfStatTypeNode = &argosDfGroup.ChildNodes[len(argosDfGroup.ChildNodes)-1]
+							}
+
+							dfStatisticNode := InitDataFlow(nil, flowName, false)
+							dfStatisticNode.MapStatistic(data, logger)
+							dfStatTypeNode.ChildNodes = append(dfStatTypeNode.ChildNodes, dfStatisticNode)
 						}
 					}
 					for _, aArgosy := range argosyMap {
@@ -262,7 +310,7 @@ func InitDataFlow(logF func(string, error), name string, logS bool) TTDINode {
 		log.Println("Error in encoding data in InitDataFlow")
 		return TTDINode{}
 	}
-	ttdiNode := TTDINode{mashupsdk.MashupDetailedElement{Name: name, Data: string(encodedData)}, stats}
+	ttdiNode := TTDINode{mashupsdk.MashupDetailedElement{Name: name, State: &mashupsdk.MashupElementState{State: int64(mashupsdk.Init)}, Data: string(encodedData)}, stats}
 	//var newDFStatistic = DataFlow{Name: name, TimeStart: time.Now(), Statistics: stats, LogStat: logS, LogFunc: logF}
 	return ttdiNode
 }
@@ -288,7 +336,7 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 		log.Println("Error in encoding data in UpdateDataFlowStatistics")
 		return
 	}
-	newNode := TTDINode{mashupsdk.MashupDetailedElement{Data: string(newEncodedData)}, []TTDINode{}}
+	newNode := TTDINode{mashupsdk.MashupDetailedElement{State: &mashupsdk.MashupElementState{State: int64(mashupsdk.Init)}, Data: string(newEncodedData)}, []TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
 	newData["decodedData"] = decodedData
@@ -308,7 +356,7 @@ func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string,
 		log.Println("Error in encoding data in UpdateDataFlowStatisticWithTime")
 		return
 	}
-	newNode := TTDINode{mashupsdk.MashupDetailedElement{Data: string(newEncodedData)}, []TTDINode{}}
+	newNode := TTDINode{mashupsdk.MashupDetailedElement{State: &mashupsdk.MashupElementState{State: int64(mashupsdk.Init)}, Data: string(newEncodedData)}, []TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, elapsedTime, mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
 	dfs.EfficientLog(newData)
@@ -452,12 +500,12 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 }
 
 func (dfs *TTDINode) MapStatistic(data map[string]interface{}, logger *log.Logger) {
-	var df TTDINode
 	newData := make(map[string]interface{})
 	newData["FlowGroup"] = data["flowGroup"].(string)
 	newData["FlowName"] = data["flowName"].(string)
 	newData["StateName"] = data["stateName"].(string)
 	newData["StateCode"] = data["stateCode"].(string)
+	newData["LastTestedDate"] = data["lastTestedDate"].(string)
 	if mode, ok := data["mode"]; ok {
 		modeStr := fmt.Sprintf("%s", mode) //Treats it as a interface due to weird typing from vault (encoding/json.Number)
 		if modeInt, err := strconv.Atoi(modeStr); err == nil {
@@ -475,8 +523,7 @@ func (dfs *TTDINode) MapStatistic(data map[string]interface{}, logger *log.Logge
 		log.Println("Error encoding data in RetrieveStatistic")
 		return
 	}
-	df.MashupDetailedElement.Data = string(newEncodedData)
-	dfs.ChildNodes = append(dfs.ChildNodes, df)
+	dfs.MashupDetailedElement.Data = string(newEncodedData)
 
 	return
 }
