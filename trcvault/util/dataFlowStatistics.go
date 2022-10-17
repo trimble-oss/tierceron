@@ -13,6 +13,7 @@ import (
 
 	"time"
 
+	"VaultConfig.TenantConfig/lib"
 	"VaultConfig.TenantConfig/util/buildopts"
 	"github.com/mrjrieke/nute/mashupsdk"
 )
@@ -317,13 +318,43 @@ func InitDataFlow(logF func(string, error), name string, logS bool) TTDINode {
 
 func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN string, stateC string, mode int) {
 	var decoded interface{}
-	err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
-	if err != nil {
-		log.Println("Error in decoding data in UpdateDataFlowStatistic")
-		return
+	var decodedData map[string]interface{}
+	var timeStart time.Time
+	if len(dfs.MashupDetailedElement.Data) > 0 {
+		err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
+		if err != nil {
+			log.Println("Error in decoding data in UpdateDataFlowStatistic")
+			return
+		}
+		decodedData = decoded.(map[string]interface{})
+
+		//string to time.time
+		if decodedData["TimeStart"] != nil {
+			if _, ok := decoded.(time.Time); ok {
+				timeStart = decodedData["TimeStart"].(time.Time)
+			} else {
+				var timeParseErr error
+				timeStartStr := decodedData["TimeStart"].(string)
+				timeStart, timeParseErr = time.Parse(lib.RFC_ISO_8601, timeStartStr)
+				if timeParseErr != nil {
+					log.Println("Error in parsing start time in UpdateDataFlowStatistics")
+					return
+				}
+			}
+		}
+	} else {
+		decodedData = make(map[string]interface{})
+		timeStart = time.Now()
+		decodedData["TimeStart"] = timeStart.Format(lib.RFC_ISO_8601)
+
+		newEncodedData, err := json.Marshal(decodedData)
+		if err != nil {
+			log.Println("Error in encoding data in UpdateDataFlowStatistics")
+			return
+		}
+		dfs.MashupDetailedElement.Data = string(newEncodedData)
 	}
-	decodedData := decoded.(map[string]interface{})
-	timeStart := decodedData["TimeStart"].(time.Time)
+
 	newData := make(map[string]interface{})
 	newData["FlowGroup"] = flowG
 	newData["FlowName"] = flowN
@@ -336,7 +367,7 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 		log.Println("Error in encoding data in UpdateDataFlowStatistics")
 		return
 	}
-	newNode := TTDINode{mashupsdk.MashupDetailedElement{State: &mashupsdk.MashupElementState{State: int64(mashupsdk.Init)}, Data: string(newEncodedData)}, []TTDINode{}}
+	newNode := TTDINode{mashupsdk.MashupDetailedElement{Data: string(newEncodedData)}, []TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
 	newData["decodedData"] = decodedData
