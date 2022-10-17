@@ -10,14 +10,14 @@ import (
 	eUtils "tierceron/utils"
 )
 
-//OpenDirectConnection opens connection to a database using various sql urls used by Spectrum.
+// OpenDirectConnection opens connection to a database using various sql urls used by Spectrum.
 func OpenDirectConnection(config *eUtils.DriverConfig, url string, username string, password string) (*sql.DB, error) {
 	driver, server, port, dbname := validator.ParseURL(config, url)
 
 	var conn *sql.DB
 	var err error
 
-	if driver == "mysql" {
+	if driver == "mysql" || driver == "mariadb" {
 		if len(port) == 0 {
 			// protocol+transport://user:pass@host/dbname?option1=a&option2=b
 			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + "/" + dbname + "?tls=skip-verify&parseTime=true")
