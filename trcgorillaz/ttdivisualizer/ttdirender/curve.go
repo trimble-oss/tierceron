@@ -1,7 +1,9 @@
 package ttdirender
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -28,6 +30,7 @@ type CurveRenderer struct {
 	totalElements         int
 	clickedPaths          []*CurveMesh
 	maxTime               int
+	quartiles             []float64
 }
 
 type CurveMesh struct {
@@ -76,7 +79,7 @@ func binetFormula(n float64) complex128 {
 
 // Returns and attaches a mesh to provided g3n element at given vector position
 func (cr *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
-	if g3n.GetDetailedElement().Alias == "DataFlowStatistic" {
+	if g3n.GetDetailedElement().Genre == "DataFlowStatistic" {
 		return nil
 	}
 	var path []math32.Vector3
@@ -151,7 +154,7 @@ func (cr *CurveRenderer) removeRelated(worldApp *g3nworld.WorldApp, clickedEleme
 // Properly sets the elements before rendering new clicked elements
 func (cr *CurveRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
-	if !cr.isEmpty() && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Alias != "DataFlowStatistic" && !cr.er.isChildElement(worldApp, cr.top().g3nElement) && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
+	if !cr.isEmpty() && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "DataFlowStatistic" && !cr.er.isChildElement(worldApp, cr.top().g3nElement) && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
 		cr.removeRelated(worldApp, worldApp.ClickedElements[len(worldApp.ClickedElements)-1], cr.top().g3nElement)
 	}
 	return true
@@ -167,12 +170,24 @@ func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3n
 			if strings.Contains(child.GetDetailedElement().Name, "Successful") {
 				succeeded = true
 			}
-			timeNanoSeconds, err := strconv.ParseInt(child.GetDetailedElement().Data, 10, 64)
+			var decoded interface{}
+			err := json.Unmarshal([]byte(child.GetDetailedElement().Data), &decoded)
 			if err != nil {
-				return timesplit, succeeded
+				log.Println("Error decoding data in curve renderer getTimeSplits")
+				break
 			}
-			timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
-			timesplit = append(timesplit, timeSeconds)
+			decodedData := decoded.(map[string]interface{})
+			if decodedData["TimeSplit"] != nil {
+				timeNanoSeconds := decodedData["TimeSplit"].(float64)
+				timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
+				timesplit = append(timesplit, timeSeconds)
+			}
+			// timeNanoSeconds, err := strconv.ParseInt(child.GetDetailedElement().Data, 10, 64)
+			// if err != nil {
+			// 	return timesplit, succeeded
+			// }
+			// timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
+			// timesplit = append(timesplit, timeSeconds)
 		}
 	}
 	return timesplit, succeeded
@@ -184,21 +199,14 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
 	var path []math32.Vector3
 	if g3nDetailedElement.GetDetailedElement().Id == 2 {
-		if clickedElement != nil && clickedElement.GetDetailedElement().Alias == "DataFlow" && clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil {
+		if clickedElement != nil && clickedElement.GetDetailedElement().Genre == "DataFlow" && clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil {
 			timeSplits, successful := cr.getTimeSplits(worldApp, clickedElement)
 			fmt.Println(successful)
-			if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Alias != "DataFlowStatistic" {
+			if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "DataFlowStatistic" {
 				section := (-0.1 * 20.0) / float64(len(clickedElement.GetChildElementIds()))
 				lastLocation := 0.0
 				color := math32.NewColor("white")
 				diff := 0.0
-				// total := 0.0
-				// for l := len(timeSplits) - 1; l >= 0; l-- {
-				// 	if timeSplits[l] != 0 {
-				// 		total = timeSplits[l]
-				// 		break
-				// 	}
-				// }
 				maxTotalTime := float64(cr.maxTime) * math.Pow(10.0, -9.0)
 				for j := 0.0; j < float64(len(timeSplits)); j = j + 1.0 {
 					if len(timeSplits) > int(j+1) {
@@ -227,14 +235,29 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 					complex := binetFormula(lastLocation)
 					path = append(path, *math32.NewVector3(float32(-real(complex)), float32(imag(complex)), -float32(lastLocation)))
 					if len(path) > 1 {
-						stringQuartiles := strings.Split(clickedElement.GetDetailedElement().Data, "-")
+						var decoded interface{}
+						err := json.Unmarshal([]byte(clickedElement.GetDetailedElement().Data), &decoded)
+						if err != nil {
+							log.Println("Error decoding data in RenderElement for curve")
+							break
+						}
+						decodedData := decoded.(map[string]interface{})
+						var quartiles []float64
+						if decodedData["Quartiles"] != nil {
+							if quartileInterfaces, quartileInterfacesOk := decodedData["Quartiles"].([]interface{}); quartileInterfacesOk {
+								for _, quartileInterface := range quartileInterfaces {
+									quartiles = append(quartiles, quartileInterface.(float64))
+								}
+							}
+						}
+						//stringQuartiles := strings.Split(clickedElement.GetDetailedElement().Data, "-")
 						var median float64
 						var upperQuartile float64
 						var lowerQuartile float64
-						if len(stringQuartiles) == 3 {
-							median, _ = strconv.ParseFloat(stringQuartiles[1], 64)
-							upperQuartile, _ = strconv.ParseFloat(stringQuartiles[2], 64)
-							lowerQuartile, _ = strconv.ParseFloat(stringQuartiles[0], 64)
+						if len(quartiles) == 3 {
+							median = quartiles[1]        //strconv.ParseFloat(stringQuartiles[1], 64)
+							upperQuartile = quartiles[2] //strconv.ParseFloat(stringQuartiles[2], 64)
+							lowerQuartile = quartiles[0] //strconv.ParseFloat(stringQuartiles[0], 64)
 							if diff < lowerQuartile {
 								color.Set(0.953, 0.569, 0.125)
 							} else if diff < median {
@@ -282,7 +305,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 				locn := clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
 				position = &locn
 			}
-			if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Alias != "DataFlowStatistic" {
+			if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "DataFlowStatistic" {
 				if len(clickedElement.GetChildElementIds()) > 20 {
 					for i := -0.1 * float64(len(clickedElement.GetChildElementIds())-1); i < -0.1; i = i + 0.1 {
 						c := binetFormula(i)
@@ -303,9 +326,9 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 				path = append(path, *math32.NewVector3(float32(0.0), float32(0.0), float32(0.0)))
 				tubeGeometry := geometry.NewTube(path, .007, 32, true)
 				color := math32.NewColor("darkmagenta")
-				if clickedElement.GetDetailedElement().Alias == "Argosy" {
+				if clickedElement.GetDetailedElement().Genre == "Argosy" {
 					color.Set(0.435, 0.541, 0.420)
-				} else if clickedElement.GetDetailedElement().Alias == "DataFlowGroup" {
+				} else if clickedElement.GetDetailedElement().Genre == "DataFlowGroup" {
 					color.Set(0.675, 0.624, 0.773)
 				}
 				mat := material.NewStandard(color)

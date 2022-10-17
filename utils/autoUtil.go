@@ -316,5 +316,6 @@ func AutoAuth(config *DriverConfig,
 			}
 		}
 	}
+	LogInfo(config, "Auth credentials obtained.")
 	return nil
 }

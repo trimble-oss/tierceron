@@ -14,7 +14,7 @@ import (
 
 //need mssql for spectrum
 
-//Heartbeat validates the database connection
+// Heartbeat validates the database connection
 func Heartbeat(config *eUtils.DriverConfig, url string, username string, password string) (bool, error) {
 	//extract driver, server, port and dbname with regex
 	driver, server, port, dbname := ParseURL(config, url)
@@ -46,7 +46,7 @@ func Heartbeat(config *eUtils.DriverConfig, url string, username string, passwor
 }
 func ParseURL(config *eUtils.DriverConfig, url string) (string, string, string, string) {
 	//only works with jdbc:mysql or jdbc:sqlserver.
-	regex := regexp.MustCompile(`(?i)(?:jdbc:(mysql|sqlserver))://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+).*`)
+	regex := regexp.MustCompile(`(?i)(?:jdbc:(mysql|sqlserver|mariadb))://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+).*`)
 	m := regex.FindStringSubmatch(url)
 	if m == nil {
 		eUtils.LogErrorObject(config, errors.New("incorrect URL format"), false)
