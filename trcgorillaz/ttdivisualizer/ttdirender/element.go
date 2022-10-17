@@ -3,7 +3,9 @@ package ttdirender
 import (
 	"fmt"
 	"log"
-	"strconv"
+
+	//"strconv"
+	"encoding/json"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -31,6 +33,7 @@ type ElementRenderer struct {
 	totalElements   int
 	LocationCache   map[int64]*math32.Vector3
 	clickedElements []*ClickedG3nDetailElement
+	quartiles       []float64
 }
 
 // Returns true if length of er.clickedElements stack is 0 and false otherwise
@@ -69,15 +72,40 @@ func (er *ElementRenderer) top() *ClickedG3nDetailElement {
 func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
 	color := g3ndpalette.DARK_BLUE
-	if g3n.GetDetailedElement().Alias == "Argosy" {
+	if g3n.GetDetailedElement().Genre == "Argosy" {
 		if g3n.GetDetailedElement().Data != "" {
-			fmt.Println(g3n.GetDetailedElement().Data)
-			maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
+			var decoded interface{}
+			err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decoded)
+			if err != nil {
+				log.Println("Error decoding data in element renderer NewSolidAtPosition")
+			} else {
+				decodedData := decoded.(map[string]interface{})
+				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil {
+					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
+
+					// } else
+					if decodedQuartiles, ok := decodedData["Quartiles"].([]float64); ok {
+						er.quartiles = decodedQuartiles
+					}
+					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
+
+					// } else
+					if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
+						maxTime = int(decodedMaxTime)
+					}
+					//er.quartiles = decodedData["Quartiles"].([]float64)
+					//maxTime = int(decodedData["MaxTime"].(float64))
+				}
+			}
+
+			// fmt.Println(g3n.GetDetailedElement().Data)
+			// maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
+
 		}
 		color.Set(0, 0.349, 0.643)
-	} else if g3n.GetDetailedElement().Alias == "DataFlowGroup" {
+	} else if g3n.GetDetailedElement().Genre == "DataFlowGroup" {
 		color.Set(1.0, 0.224, 0.0)
-	} else if g3n.GetDetailedElement().Alias == "DataFlow" {
+	} else if g3n.GetDetailedElement().Genre == "DataFlow" {
 		color = math32.NewColor("olive")
 	}
 	mat := material.NewStandard(color)
@@ -94,9 +122,9 @@ func (er *ElementRenderer) NewInternalMeshAtPosition(g3n *g3nmash.G3nDetailedEle
 // Returns the element and location of the given element
 func (er *ElementRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalElements int) (*g3nmash.G3nDetailedElement, *math32.Vector3) {
 	er.totalElements = totalElements
-	if er.iOffset >= 2 {
-		id := g3n.GetDisplayId()
-		return g3n, er.LocationCache[id]
+	cacheLocation := er.LocationCache[g3n.GetDisplayId()]
+	if er.iOffset >= 2 && cacheLocation != nil {
+		return g3n, cacheLocation
 	} else {
 		if er.iOffset == 0 {
 			er.iOffset = 1
@@ -108,6 +136,7 @@ func (er *ElementRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, total
 			er.counter = er.counter - 0.1
 			complex := binetFormula(er.counter)
 			er.LocationCache[g3n.GetDetailedElement().Id] = math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
+			//parentLocn := er.LocationCache[g3n.GetDetailedElement().Parentids[0]]
 			return g3n, math32.NewVector3(float32(-real(complex)), float32(imag(complex)), float32(-er.counter))
 		}
 	}
@@ -123,14 +152,20 @@ func (er *ElementRenderer) Layout(worldApp *g3nworld.WorldApp,
 func (er *ElementRenderer) deselectElements(worldApp *g3nworld.WorldApp, element *g3nmash.G3nDetailedElement) *g3nmash.G3nDetailedElement {
 	for _, childID := range element.GetChildElementIds() {
 		if !er.isChildElement(worldApp, element) && element != worldApp.ClickedElements[len(worldApp.ClickedElements)-1] {
-			worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
+			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+				childElement.ApplyState(mashupsdk.Hidden, true)
+			}
 			er.RemoveAll(worldApp, childID)
 		}
 	}
 	if len(element.GetParentElementIds()) == 0 || (len(worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetParentElementIds()) != 0 && element.GetParentElementIds()[0] == worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetParentElementIds()[0]) {
 		return element
 	} else {
-		return er.deselectElements(worldApp, worldApp.ConcreteElements[element.GetParentElementIds()[0]])
+		if parentElement, parenetElementOk := worldApp.ConcreteElements[element.GetParentElementIds()[0]]; parenetElementOk {
+			return er.deselectElements(worldApp, parentElement)
+		} else {
+			return element
+		}
 	}
 }
 
@@ -138,12 +173,15 @@ func (er *ElementRenderer) deselectElements(worldApp *g3nworld.WorldApp, element
 func (er *ElementRenderer) calcLocnStarter(worldApp *g3nworld.WorldApp, ids []int64, counter float32) {
 	for _, id := range ids {
 		element := worldApp.ConcreteElements[id]
-		for _, parent := range element.GetParentElementIds() {
-			if parent > 0 && er.LocationCache[parent] != nil {
-				er.LocationCache[id] = er.calculateLocation(er.LocationCache[parent], counter)
-				counter = counter - 0.1
+		if element != nil {
+			for _, parent := range element.GetParentElementIds() {
+				if parent > 0 && er.LocationCache[parent] != nil {
+					er.LocationCache[id] = er.calculateLocation(er.LocationCache[parent], counter)
+					counter = counter - 0.1
+				}
 			}
 		}
+
 	}
 }
 
@@ -156,13 +194,18 @@ func (er *ElementRenderer) calculateLocation(center *math32.Vector3, counter flo
 // Initializes location cache
 func (er *ElementRenderer) initLocnCache(worldApp *g3nworld.WorldApp, element *g3nmash.G3nDetailedElement) {
 	if len(element.GetChildElementIds()) != 0 {
-		if element.GetDetailedElement().Genre != "Solid" {
+		if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
 			er.calcLocnStarter(worldApp, element.GetChildElementIds(), -0.1)
 		}
 
 		for _, childID := range element.GetChildElementIds() {
-			if worldApp.ConcreteElements[childID].GetDetailedElement().Genre != "Solid" {
-				er.initLocnCache(worldApp, worldApp.ConcreteElements[childID])
+			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+				if childElement.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
+					if childID == 6 {
+						fmt.Println("hi")
+					}
+					er.initLocnCache(worldApp, worldApp.ConcreteElements[childID])
+				}
 			}
 		}
 	}
@@ -173,13 +216,26 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
 	//Initialize location cache
 	if er.iOffset != 2 {
+		check := false
+		ids := []int64{}
+		for id := range worldApp.ConcreteElements {
+			el := worldApp.ConcreteElements[id].GetDetailedElement()
+
+			for j := 0; j < len(ids); j++ {
+				if el.Genre == "Argosy" || el.Genre == "DataFlowGroup" {
+					check = true
+				}
+			}
+			ids = append(ids, id)
+		}
+		fmt.Println(check)
 		copyCache := make(map[int64]*math32.Vector3)
 		for k, v := range er.LocationCache {
 			copyCache[k] = v
 		}
 		for key, _ := range copyCache {
 			element := worldApp.ConcreteElements[key]
-			if element.GetDetailedElement().Genre != "Solid" {
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
 				er.initLocnCache(worldApp, element)
 			}
 		}
@@ -191,25 +247,28 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 			er.pop()
 			for _, childID := range prevElement.clickedElement.GetChildElementIds() {
 				if !er.isChildElement(worldApp, prevElement.clickedElement) {
-					worldApp.ConcreteElements[childID].ApplyState(mashupsdk.Hidden, true)
-					er.RemoveAll(worldApp, childID)
+					if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+						childElement.ApplyState(mashupsdk.Hidden, true)
+						er.RemoveAll(worldApp, childID)
+					}
 				}
 			}
 			er.deselectElements(worldApp, prevElement.clickedElement)
 		}
 	}
 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
-	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" {
+	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" && clickedElement.GetDetailedElement().Name != "TenantDataBase" {
 		name := clickedElement.GetDisplayName()
 		mesh := clickedElement.GetNamedMesh(name)
 		pos := mesh.Position()
 		center := pos
 		er.push(clickedElement, &center)
 		for _, childID := range clickedElement.GetChildElementIds() {
-			childElement := worldApp.ConcreteElements[childID]
-			if childElement.GetDetailedElement().Genre != "Solid" {
-				childElement.ApplyState(mashupsdk.Hidden, false)
-				childElement.ApplyState(mashupsdk.Clicked, true)
+			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+				if childElement.GetDetailedElement().Genre != "Solid" {
+					childElement.ApplyState(mashupsdk.Hidden, false)
+					childElement.ApplyState(mashupsdk.Clicked, true)
+				}
 			}
 		}
 	}
@@ -234,29 +293,32 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 		g3n.SetColor(math32.NewColor("darkred"), 1.0)
 
 		for _, childId := range g3n.GetChildElementIds() {
-			element := worldApp.ConcreteElements[childId]
-			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Alias != "DataFlowStatistic" {
-				if element.GetNamedMesh(element.GetDisplayName()) == nil {
-					_, nextPos := er.NextCoordinate(element, er.totalElements)
-					solidMesh := er.NewSolidAtPosition(element, nextPos)
-					if solidMesh != nil {
-						log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
-						worldApp.UpsertToScene(solidMesh)
-						element.SetNamedMesh(element.GetDisplayName(), solidMesh)
+			if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
+				if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
+					if element.GetNamedMesh(element.GetDisplayName()) == nil {
+						_, nextPos := er.NextCoordinate(element, er.totalElements)
+						if nextPos != nil {
+							solidMesh := er.NewSolidAtPosition(element, nextPos)
+							if solidMesh != nil {
+								log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
+								worldApp.UpsertToScene(solidMesh)
+								element.SetNamedMesh(element.GetDisplayName(), solidMesh)
+							}
+						}
+					} else {
+						worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
 					}
-				} else {
-					worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
 				}
 			}
 		}
 		return true
 	} else {
 		color := g3ndpalette.DARK_BLUE
-		if g3n.GetDetailedElement().Alias == "Argosy" {
+		if g3n.GetDetailedElement().Genre == "Argosy" {
 			color.Set(0, 0.349, 0.643)
-		} else if g3n.GetDetailedElement().Alias == "DataFlowGroup" {
+		} else if g3n.GetDetailedElement().Genre == "DataFlowGroup" {
 			color.Set(1.0, 0.224, 0.0)
-		} else if g3n.GetDetailedElement().Alias == "DataFlow" {
+		} else if g3n.GetDetailedElement().Genre == "DataFlow" {
 			color = math32.NewColor("olive")
 		}
 
@@ -273,7 +335,7 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 	return true
 }
 
-//Removes all children nodes of provided id
+// Removes all children nodes of provided id
 func (er *ElementRenderer) RemoveAll(worldApp *g3nworld.WorldApp, childId int64) {
 	if child, childOk := worldApp.ConcreteElements[childId]; childOk {
 		if !child.IsAbstract() && child.GetDetailedElement().Genre != "Solid" {
@@ -311,6 +373,9 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 
 	for _, g3nRenderableElement := range g3nRenderableElements {
 		concreteG3nRenderableElement := g3nRenderableElement
+		if concreteG3nRenderableElement.GetDetailedElement().Id == 6 {
+			concreteG3nRenderableElement.GetDetailedElement().ApplyState(mashupsdk.Hidden, true)
+		}
 		if !g3nRenderableElement.IsStateSet(mashupsdk.Hidden) {
 			prevSolidPos = nextPos
 			_, nextPos = g3Renderer.NextCoordinate(concreteG3nRenderableElement, totalElements)
@@ -345,4 +410,5 @@ func (er *ElementRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratin
 	curveRenderer := collaboratingRenderer.(*CurveRenderer)
 	curveRenderer.maxTime = maxTime
 	curveRenderer.er = er
+	curveRenderer.quartiles = er.quartiles
 }
