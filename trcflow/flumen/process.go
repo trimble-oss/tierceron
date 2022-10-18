@@ -351,11 +351,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(enhancementFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning additional flow: "+enhancementFlow.ServiceName())
 				defer flowWG.Done()
-				tfmContext.FlowControllerUpdateLock.Lock()
-				if tfmContext.InitConfigWG != nil {
-					tfmContext.InitConfigWG.Done()
-				}
-				tfmContext.FlowControllerUpdateLock.Unlock()
+				tfmContext.InitConfigWG.Done()
 
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
 				tfContext.Flow = enhancementFlow
@@ -386,11 +382,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
-				tfmContext.FlowControllerUpdateLock.Lock()
-				if tfmContext.InitConfigWG != nil {
-					tfmContext.InitConfigWG.Done()
-				}
-				tfmContext.FlowControllerUpdateLock.Unlock()
+				tfmContext.InitConfigWG.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
 				tfContext.Flow = testFlow
 				var initErr error
@@ -462,7 +454,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 
 	// Wait for all tables to be built before starting interface.
-	tfmContext.InitConfigWG.Wait()
+	tfmFlumeContext.FlowControllerUpdateLock.Lock()
+	tfmFlumeContext.InitConfigWG = nil
+	tfmFlumeContext.FlowControllerUpdateLock.Unlock()
+
 	// TODO: Start up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
 	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.
 	// The engine is in tfmContext...  that's the one we need to make available for connecting via dbvis...
