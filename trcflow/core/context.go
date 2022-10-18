@@ -140,6 +140,10 @@ type TrcFlowContext struct {
 	ContextNotifyChan chan bool
 	Context           context.Context
 	CancelContext     context.CancelFunc
+	// I flow is complex enough, it can define
+	// it's own method for loading TrcDb
+	// from vault.
+	CustomSeedTrcDb func(*TrcFlowMachineContext, *TrcFlowContext) error
 
 	FlowSource      string       // The name of the flow source identified by project.
 	FlowSourceAlias string       // May be a database name
@@ -520,7 +524,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	}
 	tfContext.FlowLock.Unlock()
 
-	if vaultSecondIndexColumnName == "" && !tfContext.Restart {
+	if !tfContext.Restart {
 		go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, vaultIndexColumnName, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
 	} else {
 		seedInitComplete <- true
