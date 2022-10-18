@@ -351,7 +351,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(enhancementFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning additional flow: "+enhancementFlow.ServiceName())
 				defer flowWG.Done()
-				tfmContext.InitConfigWG.Done()
+				tfmContext.FlowControllerUpdateLock.Lock()
+				if tfmContext.InitConfigWG != nil {
+					tfmContext.InitConfigWG.Done()
+				}
+				tfmContext.FlowControllerUpdateLock.Unlock()
+
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
 				tfContext.Flow = enhancementFlow
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
@@ -381,7 +386,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
-				tfmContext.InitConfigWG.Done()
+				tfmContext.FlowControllerUpdateLock.Lock()
+				if tfmContext.InitConfigWG != nil {
+					tfmContext.InitConfigWG.Done()
+				}
+				tfmContext.FlowControllerUpdateLock.Unlock()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
 				tfContext.Flow = testFlow
 				var initErr error
@@ -404,6 +413,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 	}
 	tfmFlumeContext.InitConfigWG.Wait()
+	tfmFlumeContext.FlowControllerUpdateLock.Lock()
+	tfmFlumeContext.InitConfigWG = nil
+	tfmFlumeContext.FlowControllerUpdateLock.Unlock()
 
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	//Set up controller config
