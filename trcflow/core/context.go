@@ -246,21 +246,11 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 					tfContext.FlowLock.Lock()
 					if tfContext.FlowState.State != 2 {
 						tfContext.FlowLock.Unlock()
-						tfmContext.FlowControllerUpdateLock.Lock()
-						if tfmContext.InitConfigWG != nil {
-							tfmContext.InitConfigWG.Done()
-						}
-						tfmContext.FlowControllerUpdateLock.Unlock()
 					} else {
 						tfContext.FlowLock.Unlock()
 					}
 				case <-time.After(7 * time.Second):
 					{
-						tfmContext.FlowControllerUpdateLock.Lock()
-						if tfmContext.InitConfigWG != nil {
-							tfmContext.InitConfigWG.Done()
-						}
-						tfmContext.FlowControllerUpdateLock.Unlock()
 						tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 0, SyncMode: "nosync", SyncFilter: ""}
 						tfmContext.Log("Flow ready for use (but inactive due to invalid setup): "+tfContext.Flow.TableName(), nil)
 					}
@@ -530,14 +520,13 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
+	if !tfContext.Restart {
+		tfmContext.InitConfigWG.Done()
+	}
+
 	tfContext.FlowLock.Lock()
 	if tfContext.FlowState.State == 2 {
 		tfContext.FlowLock.Unlock()
-		tfmContext.FlowControllerUpdateLock.Lock()
-		if tfmContext.InitConfigWG != nil {
-			tfmContext.InitConfigWG.Done()
-		}
-		tfmContext.FlowControllerUpdateLock.Unlock()
 		tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 	} else {
 		tfContext.FlowLock.Unlock()
