@@ -283,6 +283,11 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 	var indexValues []string = []string{}
 	var secondaryIndexes []string
 	var err error
+
+	if tfContext.CustomSeedTrcDb != nil {
+		customSeedErr := tfContext.CustomSeedTrcDb(tfmContext, tfContext)
+		return customSeedErr
+	}
 	if tfContext.GoMod != nil {
 		tfContext.GoMod.Env = tfmContext.Env
 		tfContext.GoMod.Version = "0"
@@ -301,7 +306,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		}
 	}
 
-	tfmContext.GetTableModifierLock().Lock()
 	for _, indexValue := range indexValues {
 		if indexValue != "" {
 			tfContext.GoMod.SectionKey = "/Index/"
@@ -327,8 +331,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			}
 		}
 	}
-
-	tfmContext.GetTableModifierLock().Unlock()
 
 	return nil
 }

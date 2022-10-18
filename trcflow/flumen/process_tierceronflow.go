@@ -82,9 +82,10 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 			if stateMsg, ok := tfFlow["state"].(int64); ok {
 				if syncModeMsg, ok := tfFlow["syncMode"].(string); ok {
 					if syncFilterMsg, ok := tfFlow["syncFilter"].(string); ok {
-						go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string) {
+						go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fId string) {
+							tfmContext.Log("Queuing state change: "+fId, nil)
 							sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage}
-						}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg)
+						}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg, flowId)
 					}
 				}
 			}
@@ -155,8 +156,8 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 	return nil, nil
 }
 
-//Only pull from vault on init
-//Listen to a change channel ->
+// Only pull from vault on init
+// Listen to a change channel ->
 func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) error {
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext)
 	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
