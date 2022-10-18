@@ -594,7 +594,9 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 					data["lastTestedDate"] = testedDate
 				}
 			}
-			dfs.MapStatistic(data, logger)
+			var df TTDINode
+			df.MapStatistic(data, logger)
+			dfs.ChildNodes = append(dfs.ChildNodes, df)
 		}
 	}
 	return nil
