@@ -454,7 +454,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 
 	// Wait for all tables to be built before starting interface.
-	tfmContext.InitConfigWG.Done()
+	tfmContext.InitConfigWG.Wait()
 	tfmContext.FlowControllerUpdateLock.Lock()
 	tfmContext.InitConfigWG = nil
 	tfmContext.FlowControllerUpdateLock.Unlock()
