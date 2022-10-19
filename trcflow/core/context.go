@@ -16,7 +16,6 @@ import (
 
 	"VaultConfig.TenantConfig/lib"
 	tclibc "VaultConfig.TenantConfig/lib/libsqlc"
-	"github.com/howeyc/crc16"
 
 	"tierceron/buildopts/coreopts"
 	"tierceron/buildopts/flowcoreopts"
@@ -165,8 +164,7 @@ func (tfmContext *TrcFlowMachineContext) GetTableModifierLock() *sync.Mutex {
 }
 
 func TableCollationIdGen(tableName string) sqle.CollationID {
-	checksum := crc16.Checksum([]byte(tableName), crc16.MBusTable)
-	return sqle.CollationID(checksum)
+	return sqle.CollationID(sqle.Collation_utf8mb4_unicode_ci)
 }
 
 func (tfmContext *TrcFlowMachineContext) Init(
