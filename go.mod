@@ -29,7 +29,6 @@ require (
 	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/howeyc/crc16 v0.0.0-20171223171357-2b2a61e366a6
 	github.com/mrjrieke/nute v0.0.0-20221014152452-c19f03a5e8cb
 
 )
