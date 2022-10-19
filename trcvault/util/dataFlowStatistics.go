@@ -301,7 +301,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 func InitDataFlow(logF func(string, error), name string, logS bool) TTDINode {
 	var stats []TTDINode
 	data := make(map[string]interface{})
-	data["TimeStart"] = time.Now()
+	data["TimeStart"] = time.Now().Format(lib.RFC_ISO_8601)
 	data["LogStat"] = logS
 	if logF != nil {
 		data["LogFunc"] = logF
