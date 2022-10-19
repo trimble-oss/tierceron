@@ -4,13 +4,13 @@
 package flowopts
 
 import (
-	tcutil "VaultConfig.TenantConfig/util"
+	tccutil "VaultConfig.TenantConfig/util/controller"
 	flowcore "tierceron/trcflow/core"
 	trcf "tierceron/trcflow/core/flowcorehelper"
 )
 
 func GetAdditionalFlows() []flowcore.FlowNameType {
-	return tcutil.GetAdditionalFlows()
+	return tccutil.GetAdditionalFlows()
 }
 
 func GetAdditionalTestFlows() []flowcore.FlowNameType {
@@ -22,11 +22,11 @@ func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
 }
 
 func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return tcutil.ProcessFlowController(tfmContext, trcFlowContext)
+	return tccutil.ProcessFlowController(tfmContext, trcFlowContext)
 }
 
 func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return tcutil.ProcessFlowController(tfmContext, trcFlowContext)
+	return tccutil.ProcessFlowController(tfmContext, trcFlowContext)
 }
 
 func GetFlowDatabaseName() string {
