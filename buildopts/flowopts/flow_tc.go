@@ -4,7 +4,7 @@
 package flowopts
 
 import (
-	tccutil "VaultConfig.TenantConfig/util/controller"
+	tccutil "VaultConfig.TenantConfig/controller"
 	flowcore "tierceron/trcflow/core"
 	trcf "tierceron/trcflow/core/flowcorehelper"
 )

@@ -230,7 +230,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				tfContext.FlowLock.Unlock()
 
 				tfContext.FlowLock.Lock()
-				tfmContext.Log("DataFlowStatistics is running and checking for changes"+core.SyncCheck(tfContext.FlowState.SyncMode)+".", nil)
+				tfmContext.Log("DataFlowStatistics is running and checking for changes"+flowcorehelper.SyncCheck(tfContext.FlowState.SyncMode)+".", nil)
 				tfContext.FlowLock.Unlock()
 			}
 		}
