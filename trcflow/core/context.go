@@ -711,7 +711,7 @@ func (tfmContext *TrcFlowMachineContext) CallAPI(apiAuthHeaders map[string]strin
 
 func (tfmContext *TrcFlowMachineContext) Log(msg string, err error) {
 	if err != nil {
-		eUtils.LogErrorObject(tfmContext.Config, err, false)
+		eUtils.LogMessageErrorObject(tfmContext.Config, msg, err, false)
 	} else {
 		eUtils.LogInfo(tfmContext.Config, msg)
 	}
