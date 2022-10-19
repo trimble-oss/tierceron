@@ -455,9 +455,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	// Wait for all tables to be built before starting interface.
 	tfmContext.InitConfigWG.Wait()
-	tfmContext.FlowControllerUpdateLock.Lock()
-	tfmContext.InitConfigWG = nil
-	tfmContext.FlowControllerUpdateLock.Unlock()
 
 	// TODO: Start up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
 	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.
