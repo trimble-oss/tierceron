@@ -301,7 +301,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 func InitDataFlow(logF func(string, error), name string, logS bool) TTDINode {
 	var stats []TTDINode
 	data := make(map[string]interface{})
-	data["TimeStart"] = time.Now()
+	data["TimeStart"] = time.Now().Format(lib.RFC_ISO_8601)
 	data["LogStat"] = logS
 	if logF != nil {
 		data["LogFunc"] = logF
@@ -316,14 +316,14 @@ func InitDataFlow(logF func(string, error), name string, logS bool) TTDINode {
 	return ttdiNode
 }
 
-func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN string, stateC string, mode int) {
+func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN string, stateC string, mode int, logF func(string, error)) {
 	var decoded interface{}
 	var decodedData map[string]interface{}
 	var timeStart time.Time
 	if len(dfs.MashupDetailedElement.Data) > 0 {
 		err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
 		if err != nil {
-			log.Println("Error in decoding data in UpdateDataFlowStatistic")
+			logF("Error in decoding data in UpdateDataFlowStatistic", err)
 			return
 		}
 		decodedData = decoded.(map[string]interface{})
@@ -337,7 +337,7 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 				timeStartStr := decodedData["TimeStart"].(string)
 				timeStart, timeParseErr = time.Parse(lib.RFC_ISO_8601, timeStartStr)
 				if timeParseErr != nil {
-					log.Println("Error in parsing start time in UpdateDataFlowStatistics")
+					logF("Error in parsing start time in UpdateDataFlowStatistics", timeParseErr)
 					return
 				}
 			}
@@ -349,7 +349,7 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 
 		newEncodedData, err := json.Marshal(decodedData)
 		if err != nil {
-			log.Println("Error in encoding data in UpdateDataFlowStatistics")
+			logF("Error in encoding data in UpdateDataFlowStatistics", err)
 			return
 		}
 		dfs.MashupDetailedElement.Data = string(newEncodedData)
@@ -364,14 +364,14 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 	newData["TimeSplit"] = time.Since(timeStart)
 	newEncodedData, err := json.Marshal(newData)
 	if err != nil {
-		log.Println("Error in encoding data in UpdateDataFlowStatistics")
+		logF("Error in encoding data in UpdateDataFlowStatistics", err)
 		return
 	}
 	newNode := TTDINode{mashupsdk.MashupDetailedElement{Data: string(newEncodedData)}, []TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
 	newData["decodedData"] = decodedData
-	dfs.EfficientLog(newData)
+	dfs.EfficientLog(newData, logF)
 }
 
 func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string, stateN string, stateC string, mode int, elapsedTime time.Duration) {
@@ -390,20 +390,27 @@ func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string,
 	newNode := TTDINode{mashupsdk.MashupDetailedElement{State: &mashupsdk.MashupElementState{State: int64(mashupsdk.Init)}, Data: string(newEncodedData)}, []TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, elapsedTime, mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, newNode)
-	dfs.EfficientLog(newData)
+	dfs.EfficientLog(newData, nil)
 }
 
 // Doesn't deserialize statistic data for updatedataflowstatistic
-func (dfs *TTDINode) EfficientLog(statMap map[string]interface{}) {
+func (dfs *TTDINode) EfficientLog(statMap map[string]interface{}, logF func(string, error)) {
 	var decodedData map[string]interface{}
 	if statMap["decodedData"] == nil {
 		var decoded interface{}
 		err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
 		if err != nil {
-			log.Println("Error in decoding data in Log")
+			if logF != nil {
+				logF("Error in decoding data in Log", err)
+			}
 			return
 		}
 		decodedData = decoded.(map[string]interface{})
+	} else if logF != nil {
+		decodedData = map[string]interface{}{
+			"LogFunc": logF,
+			"LogStat": true,
+		}
 	} else {
 		decodedData = statMap["decodedData"].(map[string]interface{})
 	}
