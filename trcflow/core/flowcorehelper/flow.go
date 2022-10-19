@@ -28,3 +28,30 @@ func UpdateTierceronFlowState(flowName string, newState string, syncFilter strin
 		"TrcChangeId": flowName,
 	}
 }
+
+func SyncCheck(syncMode string) string {
+	switch syncMode {
+	case "nosync":
+		return " with no syncing"
+	case "push":
+		return " with push sync"
+	case "pull":
+		return " with pull sync"
+	case "pullonce":
+		return " to pull once"
+	case "pushonce":
+		return " to push once"
+	case "pullsynccomplete":
+		return " - Pull synccomplete..waiting for new syncMode value"
+	case "pullcomplete":
+		return " - Pull complete..waiting for new syncMode value"
+	case "pushcomplete":
+		return " - Push complete..waiting for new syncMode value"
+	case "pusherror":
+		return " - Push error..waiting for new syncMode value"
+	case "pullerror":
+		return " - Pull error..waiting for new syncMode value"
+	default:
+		return "...waiting for new syncMode value"
+	}
+}
