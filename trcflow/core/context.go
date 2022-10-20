@@ -110,7 +110,8 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 }
 
 type TrcFlowMachineContext struct {
-	InitConfigWG *sync.WaitGroup
+	InitConfigWG       *sync.WaitGroup
+	FlowControllerLock sync.Mutex
 
 	Region                    string
 	Env                       string
@@ -518,9 +519,11 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	if !tfContext.Restart {
+	tfmContext.FlowControllerLock.Lock()
+	if tfmContext.InitConfigWG != nil {
 		tfmContext.InitConfigWG.Done()
 	}
+	tfmContext.FlowControllerLock.Unlock()
 
 	tfContext.FlowLock.Lock()
 	if tfContext.FlowState.State == 2 {

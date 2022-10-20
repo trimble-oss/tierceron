@@ -405,9 +405,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 	}
 	tfmFlumeContext.InitConfigWG.Wait()
-	tfmFlumeContext.FlowControllerUpdateLock.Lock()
+	tfmFlumeContext.FlowControllerLock.Lock()
 	tfmFlumeContext.InitConfigWG = nil
-	tfmFlumeContext.FlowControllerUpdateLock.Unlock()
+	tfmFlumeContext.FlowControllerLock.Unlock()
 
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	//Set up controller config
@@ -455,6 +455,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	// Wait for all tables to be built before starting interface.
 	tfmContext.InitConfigWG.Wait()
+	tfmContext.FlowControllerLock.Lock()
+	tfmContext.InitConfigWG = nil
+	tfmContext.FlowControllerLock.Unlock()
 
 	// TODO: Start up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
 	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.
