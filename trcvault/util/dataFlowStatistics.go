@@ -362,6 +362,7 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 	newData["StateCode"] = stateC
 	newData["Mode"] = mode
 	newData["TimeSplit"] = time.Since(timeStart)
+	newData["TimeStart"] = timeStart
 	newEncodedData, err := json.Marshal(newData)
 	if err != nil {
 		logF("Error in encoding data in UpdateDataFlowStatistics", err)
