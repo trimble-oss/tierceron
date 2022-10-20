@@ -154,6 +154,8 @@ func Query(te *engine.TierceronEngine, query string, queryLock *sync.Mutex) (str
 			queryLock.Unlock()
 			if err == io.EOF {
 				break
+			} else if err != nil {
+				return "", nil, nil, err
 			}
 			rowData := []interface{}{}
 			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
