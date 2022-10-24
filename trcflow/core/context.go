@@ -367,6 +367,16 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)
 		case <-flowChangedChannel:
+			if len(flowChangedChannel) == 5 {
+			emptied:
+				for i := 0; i < 3; i++ {
+					select {
+					case <-flowChangedChannel:
+					default:
+						break emptied
+					}
+				}
+			}
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
