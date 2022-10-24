@@ -1,4 +1,4 @@
-package statistics
+package flows
 
 import (
 	"errors"
@@ -6,7 +6,9 @@ import (
 	"strings"
 	"sync"
 	flowcore "tierceron/trcflow/core"
+
 	flowcorehelper "tierceron/trcflow/core/flowcorehelper"
+	flowutil "tierceron/trcvault/flowutil"
 	trcvutils "tierceron/trcvault/util"
 	"tierceron/trcx/extract"
 	"time"
@@ -56,7 +58,7 @@ func getDataFlowStatisticsSchema(tableName string) sqle.PrimaryKeySchema {
 	})
 }
 
-func getDataFlowStatisticInsert(tenantId string, ninjaStatistic map[string]interface{}, dbName string, tableName string) map[string]string {
+func GetDataFlowStatisticInsert(tenantId string, ninjaStatistic map[string]interface{}, dbName string, tableName string) map[string]string {
 	tenantId = strings.ReplaceAll(tenantId, "/", "")
 	sqlstr := map[string]string{
 		"TrcQuery": `INSERT IGNORE INTO ` + dbName + `.` + tableName + `(` + dataflowTestNameColumn + `, ` + dataflowTestIdColumn + `, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate) VALUES ('` +
@@ -102,7 +104,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 					for _, testNameList := range listData.Data {
 						for _, testName := range testNameList.([]interface{}) {
 							testName = strings.ReplaceAll(testName.(string), "/", "")
-							dfGroup := trcvutils.InitDataFlow(nil, flowGroup.(string), false)
+							dfGroup := flowutil.InitDataFlow(nil, flowGroup.(string), false)
 							if listData != nil {
 								err := dfGroup.RetrieveStatistic(tfContext.GoMod, tenantId.(string), tenantIndexPath, tenantDFSIdPath, flowGroup.(string), testName.(string), tfmContext.Config.Log)
 								if err != nil {
@@ -115,14 +117,14 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 								for _, dfstat := range dfGroup.ChildNodes {
 									//dfgroup to table
 									if strings.Contains(flowGroup.(string), flowGroupName) {
-										tfmContext.CallDBQuery(tfContext, getDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, true), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "") //true gets ninja tested time inside statisticToMap
+										tfmContext.CallDBQuery(tfContext, GetDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, true), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "") //true gets ninja tested time inside statisticToMap
 									} else {
-										tfmContext.CallDBQuery(tfContext, getDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
+										tfmContext.CallDBQuery(tfContext, GetDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
 									}
 								}
 							} else {
 								if len(dfGroup.MashupDetailedElement.Data) > 0 {
-									tfmContext.CallDBQuery(tfContext, getDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfGroup, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
+									tfmContext.CallDBQuery(tfContext, GetDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfGroup, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
 								}
 							}
 						}
@@ -157,7 +159,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 	tfmContext.AddTableSchema(getDataFlowStatisticsSchema(tfContext.Flow.TableName()), tfContext)
 	prepareDataFlowChangeTable(tfmContext, tfContext) //Change table needs to be set again due to composite key - different from other tables
 	tfContext.FlowLock.Lock()
-	tfContext.ReadOnly = true //Change this to writeback***
+	tfContext.ReadOnly = false //Change this to false for writeback***
 	tfContext.FlowState = <-tfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState)
 	tfContext.FlowState.SyncFilter = "N/A"
 	tfContext.CustomSeedTrcDb = dataFlowStatPullRemote
