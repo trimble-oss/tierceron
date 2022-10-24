@@ -251,6 +251,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	return nil
 }
 
+/*
 // seedTrcDbFromChanges - seeds Trc DB with changes from vault
 func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	tfContext *TrcFlowContext,
@@ -260,7 +261,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
 	tableLock *sync.Mutex) error {
-	trcdb.TransformConfig(tfContext.GoMod,
+	trcseed.TransformConfig(tfContext.GoMod,
 		tfmContext.TierceronEngine,
 		tfmContext.Env,
 		"0",
@@ -272,13 +273,18 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 
 	return nil
 }
-
+*/
 // seedTrcDbFromVault - optimized implementation of seedTrcDbFromChanges
 func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 	tfContext *TrcFlowContext) error {
 	var indexValues []string = []string{}
 	var secondaryIndexes []string
 	var err error
+
+	if tfContext.CustomSeedTrcDb != nil {
+		customSeedErr := tfContext.CustomSeedTrcDb(tfmContext, tfContext)
+		return customSeedErr
+	}
 	if tfContext.GoMod != nil {
 		tfContext.GoMod.Env = tfmContext.Env
 		tfContext.GoMod.Version = "0"
@@ -297,7 +303,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		}
 	}
 
-	tfmContext.GetTableModifierLock().Lock()
 	for _, indexValue := range indexValues {
 		if indexValue != "" {
 			tfContext.GoMod.SectionKey = "/Index/"
@@ -305,26 +310,24 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			if len(secondaryIndexes) > 0 {
 				for _, secondaryIndex := range secondaryIndexes {
 					tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + tfContext.Flow.ServiceName() + "/" + secondaryIndex
-					rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+					rowErr := tfmContext.PathToTableRowHelper(tfContext)
 					if rowErr != nil {
 						return rowErr
 					}
 				}
 			} else {
-				rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+				rowErr := tfmContext.PathToTableRowHelper(tfContext)
 				if rowErr != nil {
 					return rowErr
 				}
 			}
 		} else {
-			rowErr := trcdb.PathToTableRowHelper(tfmContext.TierceronEngine, tfContext.GoMod, tfmContext.Config, tfContext.Flow.TableName())
+			rowErr := tfmContext.PathToTableRowHelper(tfContext)
 			if rowErr != nil {
 				return rowErr
 			}
 		}
 	}
-
-	tfmContext.GetTableModifierLock().Unlock()
 
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"sync"
 	trcvutils "tierceron/trcvault/util"
 	trcdb "tierceron/trcx/db"
+	trcengine "tierceron/trcx/engine"
 	"tierceron/trcx/extract"
 
 	flowcore "tierceron/trcflow/core"
@@ -94,7 +95,7 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 		//Use trigger to make another table
 
 		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query string) (string, []string, [][]interface{}, error) {
-			return trcdb.Query(engine.(*trcdb.TierceronEngine), query, tfContext.FlowLock)
+			return trcdb.Query(engine.(*trcengine.TierceronEngine), query, tfContext.FlowLock)
 		})
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(tfmContext.Config, indexPathErr, false)

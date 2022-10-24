@@ -64,7 +64,7 @@ func CheckWarnings(config *DriverConfig, warnings []string, exit bool) {
 	}
 }
 
-//LogError Writes error to the log file and terminates if an error occurs
+// LogError Writes error to the log file and terminates if an error occurs
 func LogError(config *DriverConfig, err error, f *os.File, exit bool) {
 	if err != nil {
 		_prefix := log.Prefix()
@@ -86,7 +86,7 @@ func LogError(config *DriverConfig, err error, f *os.File, exit bool) {
 	}
 }
 
-//LogWarnings Writes array of warnings to the log file and terminates
+// LogWarnings Writes array of warnings to the log file and terminates
 func LogWarnings(config *DriverConfig, warnings []string, f *os.File, exit bool) {
 	if len(warnings) > 0 {
 		_prefix := log.Prefix()
@@ -108,7 +108,7 @@ func LogWarnings(config *DriverConfig, warnings []string, f *os.File, exit bool)
 	}
 }
 
-//LogErrorObject writes errors to the passed logger object and exits
+// LogErrorObject writes errors to the passed logger object and exits
 func LogWarningMessage(config *DriverConfig, errorMessage string, exit bool) {
 	_prefix := config.Log.Prefix()
 	config.Log.SetPrefix("[WARN]")
@@ -123,7 +123,27 @@ func LogWarningMessage(config *DriverConfig, errorMessage string, exit bool) {
 	}
 }
 
-//LogErrorObject writes errors to the passed logger object and exits
+// LogErrorObject writes errors to the passed logger object and exits
+func LogMessageErrorObject(config *DriverConfig, errorMessage string, err error, exit bool) {
+	if err != nil {
+		_prefix := config.Log.Prefix()
+		config.Log.SetPrefix("[ERROR]")
+		if exit && config.ExitOnFailure {
+			if !headlessService {
+				fmt.Printf("Errors encountered, exiting and writing to log file: %v\n", err)
+			}
+			config.Log.Fatal(err)
+		} else {
+			if errorMessage != "" {
+				config.Log.Println(errorMessage)
+			}
+			config.Log.Println(err)
+			config.Log.SetPrefix(_prefix)
+		}
+	}
+}
+
+// LogErrorObject writes errors to the passed logger object and exits
 func LogErrorMessage(config *DriverConfig, errorMessage string, exit bool) {
 	_prefix := config.Log.Prefix()
 	config.Log.SetPrefix("[ERROR]")
@@ -138,7 +158,7 @@ func LogErrorMessage(config *DriverConfig, errorMessage string, exit bool) {
 	}
 }
 
-//LogErrorObject writes errors to the passed logger object and exits
+// LogErrorObject writes errors to the passed logger object and exits
 func LogErrorObject(config *DriverConfig, err error, exit bool) {
 	if err != nil {
 		_prefix := config.Log.Prefix()
@@ -155,7 +175,7 @@ func LogErrorObject(config *DriverConfig, err error, exit bool) {
 	}
 }
 
-//LogErrorObject writes errors to the passed logger object and exits
+// LogErrorObject writes errors to the passed logger object and exits
 func LogInfo(config *DriverConfig, msg string) {
 	if !headlessService {
 		fmt.Println(msg)
@@ -168,7 +188,7 @@ func LogInfo(config *DriverConfig, msg string) {
 	}
 }
 
-//LogWarningsObject writes warnings to the passed logger object and exits
+// LogWarningsObject writes warnings to the passed logger object and exits
 func LogWarningsObject(config *DriverConfig, warnings []string, exit bool) {
 	if len(warnings) > 0 {
 		_prefix := config.Log.Prefix()

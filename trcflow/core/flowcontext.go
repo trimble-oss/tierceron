@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"VaultConfig.TenantConfig/lib"
-	"github.com/howeyc/crc16"
 
 	"tierceron/trcflow/core/flowcorehelper"
 	trcvutils "tierceron/trcvault/util"
@@ -55,14 +54,14 @@ type TrcFlowContext struct {
 	FlowLock        *sync.Mutex //This is for sync concurrent changes to FlowState
 	Restart         bool
 	ReadOnly        bool
+	TrcDbReady      bool // Flow has been loaded into a table in TrcDb.
 }
 
 func TableCollationIdGen(tableName string) sqle.CollationID {
-	checksum := crc16.Checksum([]byte(tableName), crc16.MBusTable)
-	return sqle.CollationID(checksum)
+	return sqle.CollationID(sqle.Collation_utf8mb4_unicode_ci)
 }
 
-//True == equal, false = not equal
+// True == equal, false = not equal
 func CompareLastModified(a map[string]interface{}, b map[string]interface{}) bool {
 	//Check if a & b are time.time
 	//Check if they match.

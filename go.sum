@@ -384,8 +384,6 @@ github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb/go.mod h1:+NfK9FKe
 github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d/go.mod h1:+NfK9FKeTrX5uv1uIXGdwYDTeHna2qgaIlx54MXqjAM=
 github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d h1:W+SIwDdl3+jXWeidYySAgzytE3piq6GumXeBjFBG67c=
 github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d/go.mod h1:+NfK9FKeTrX5uv1uIXGdwYDTeHna2qgaIlx54MXqjAM=
-github.com/howeyc/crc16 v0.0.0-20171223171357-2b2a61e366a6 h1:IIVxLyDUYErC950b8kecjoqDet8P5S4lcVRUOM6rdkU=
-github.com/howeyc/crc16 v0.0.0-20171223171357-2b2a61e366a6/go.mod h1:JslaLRrzGsOKJgFEPBP65Whn+rdwDQSk0I0MCRFe2Zw=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/hudl/fargo v1.3.0/go.mod h1:y3CKSmjA+wD2gak7sUSXTAoopbhU08POFhmITJgmKTg=
 github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
@@ -495,8 +493,8 @@ github.com/mrjrieke/gio v0.0.0-20220406132257-ec1380c11ef0 h1:VInZStydZkBifiZvcK
 github.com/mrjrieke/gio v0.0.0-20220406132257-ec1380c11ef0/go.mod h1:b8vBukexG6eYuXZa14asjLAWJ+JjbZ/ophEnS2FjYUg=
 github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb h1:tA/ri6AMAepfw+H05e6z1njpBCyMVIemvAWM/2wAQgU=
 github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb/go.mod h1:gLRWYfYnMA9TONeppRSikMdXlHQ97xVsPojddUv3b/E=
-github.com/mrjrieke/nute v0.0.0-20221007143039-1413b5d0db0a h1:PlAOsNc7GeXpudefgaSkJQ8FHXq5yAMnMOZXmPl0oJE=
-github.com/mrjrieke/nute v0.0.0-20221007143039-1413b5d0db0a/go.mod h1:IqTCYHrKoTQW/Nb/JQWGULNKSqwSca7iw2o49Rd964U=
+github.com/mrjrieke/nute v0.0.0-20221014152452-c19f03a5e8cb h1:3r7WIvaqOUrqWV2a+oFyOj1mQkjN2sbtFuxgi2vyq0M=
+github.com/mrjrieke/nute v0.0.0-20221014152452-c19f03a5e8cb/go.mod h1:IqTCYHrKoTQW/Nb/JQWGULNKSqwSca7iw2o49Rd964U=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/nats-io/jwt v0.3.0/go.mod h1:fRYCDE99xlTsqUzISS1Bi75UBJ6ljOJQOAAu5VglpSg=
 github.com/nats-io/jwt v0.3.2/go.mod h1:/euKqTS1ZD+zzjYrY7pseZrTtWQSjujC7xjPc8wL6eU=
