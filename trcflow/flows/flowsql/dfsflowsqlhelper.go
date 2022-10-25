@@ -27,7 +27,7 @@ func GetDataFlowStatisticInsert(tenantId string, statisticData map[string]interf
 func GetDataFlowStatisticLM(tenantId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
 	tenantId = strings.ReplaceAll(tenantId, "/", "")
 	sqlstr := map[string]interface{}{
-		"TrcQuery": `select lastModified from ` + dbName + `.` + tableName + `where ` + DataflowTestNameColumn + `=` + statisticData["flowName"].(string) + ` and ` +
+		"TrcQuery": `select lastTestedDate from ` + dbName + `.` + tableName + `where ` + DataflowTestNameColumn + `=` + statisticData["flowName"].(string) + ` and ` +
 			DataflowTestIdColumn + "=" + tenantId + ` and ` + DataflowTestStateCodeColumn + ` = ` + statisticData["stateCode"].(string),
 	}
 	return sqlstr
