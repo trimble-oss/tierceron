@@ -19,6 +19,7 @@ func GetDataFlowStatisticInsert(tenantId string, statisticData map[string]interf
 			`','` + statisticData["timeSplit"].(string) + `','` + statisticData["lastTestedDate"].(string) + `')` +
 			` ON DUPLICATE KEY UPDATE ` +
 			DataflowTestNameColumn + `= VALUES(` + DataflowTestNameColumn + `),` + DataflowTestIdColumn + `= VALUES(` + DataflowTestIdColumn + `),flowGroup = VALUES(flowGroup),mode = VALUES(mode),stateCode = VALUES(stateCode),stateName = VALUES(stateName),timeSplit = VALUES(timeSplit), lastTestedDate = VALUES(lastTestedDate)`,
-	} //Add trcChangedID
+		"TrcChangeId": []string{statisticData["flowName"].(string), tenantId, statisticData["stateCode"].(string)},
+	}
 	return sqlstr
 }
