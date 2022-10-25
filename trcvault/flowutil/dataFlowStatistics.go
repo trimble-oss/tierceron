@@ -1,4 +1,4 @@
-package util
+package flowutil
 
 import (
 	"encoding/json"
@@ -12,6 +12,13 @@ import (
 	"tierceron/vaulthelper/kv"
 
 	"time"
+
+	flowcore "tierceron/trcflow/core"
+	trcvutils "tierceron/trcvault/util"
+
+	dfssql "tierceron/trcflow/flows/flowsql"
+
+	utilcore "VaultConfig.TenantConfig/util/core"
 
 	"VaultConfig.TenantConfig/lib"
 	"VaultConfig.TenantConfig/util/buildopts"
@@ -98,7 +105,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 						"dbsourceuser":     data["dbuser"],
 						"dbsourcepassword": data["dbpassword"],
 					}
-					dbsourceConn, err := OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+					dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
 					// use your own select statement
 					// this is just an example statement
@@ -476,7 +483,7 @@ func (dfs *TTDINode) Log() {
 	}
 }
 
-func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath string, idName string, logger *log.Logger) {
+func (dfs *TTDINode) FinishStatistic(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext, mod *kv.Modifier, id string, indexPath string, idName string, logger *log.Logger, vaultWriteBack bool) {
 	//TODO : Write Statistic to vault
 	var decoded interface{}
 	err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
@@ -528,12 +535,18 @@ func (dfs *TTDINode) FinishStatistic(mod *kv.Modifier, id string, indexPath stri
 		statMap["lastTestedDate"] = lastTestedDate
 
 		mod.SectionPath = ""
-		_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+decodedStatData["FlowGroup"].(string)+"/dataFlowName/"+decodedStatData["FlowName"].(string)+"/"+decodedStatData["StateCode"].(string), statMap, logger)
-		if writeErr != nil && decodedData["LogFunc"] != nil {
-			logFunc := decodedData["LogFunc"].(func(string, error))
-			logFunc("Error writing out DataFlowStatistics to vault", writeErr)
+		if vaultWriteBack {
+			_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+decodedStatData["FlowGroup"].(string)+"/dataFlowName/"+decodedStatData["FlowName"].(string)+"/"+decodedStatData["StateCode"].(string), statMap, logger)
+			if writeErr != nil && decodedData["LogFunc"] != nil {
+				logFunc := decodedData["LogFunc"].(func(string, error))
+				logFunc("Error writing out DataFlowStatistics to vault", writeErr)
 
-			//dfs.LogFunc("Error writing out DataFlowStatistics to vault", writeErr)
+				//dfs.LogFunc("Error writing out DataFlowStatistics to vault", writeErr)
+			}
+		} else {
+			if tfmContext != nil && tfContext != nil {
+				tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(id, statMap, utilcore.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType("DataFlowStatistics")}, "")
+			}
 		}
 	}
 }
