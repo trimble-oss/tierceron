@@ -22,8 +22,8 @@ func GetFlowDBName() string {
 	return TierceronFlowDB
 }
 
-func UpdateTierceronFlowState(flowName string, newState string, syncFilter string, syncMode string) map[string]string {
-	return map[string]string{
+func UpdateTierceronFlowState(flowName string, newState string, syncFilter string, syncMode string) map[string]interface{} {
+	return map[string]interface{}{
 		"TrcQuery":    "update " + TierceronFlowDB + "." + TierceronFlowConfigurationTableName + " set lastModified=current_timestamp(), syncMode='" + syncMode + "', state=" + newState + ", SyncFilter='" + syncFilter + "' where flowName='" + flowName + "'",
 		"TrcChangeId": flowName,
 	}
