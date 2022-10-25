@@ -1,4 +1,4 @@
-package statistics
+package flows
 
 import (
 	"errors"
