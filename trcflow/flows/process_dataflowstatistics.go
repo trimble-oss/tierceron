@@ -12,6 +12,8 @@ import (
 	"tierceron/trcx/extract"
 	"time"
 
+	utilcore "VaultConfig.TenantConfig/util/core"
+
 	dfssql "tierceron/trcflow/flows/flowsql"
 
 	"VaultConfig.TenantConfig/util/core"
@@ -99,11 +101,23 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 							//Push to table using this object
 							if len(dfGroup.ChildNodes) > 0 {
 								for _, dfstat := range dfGroup.ChildNodes {
+									dfStatMap := dfGroup.StatisticToMap(tfContext.GoMod, dfstat, true)
+									rows := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticLM(tenantId.(string), dfStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "SELECT", nil, "")
 									//dfgroup to table
-									if strings.Contains(flowGroup.(string), flowGroupName) {
-										tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, true), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "") //true gets ninja tested time inside statisticToMap
+									if len(rows) == 0 {
+										if strings.Contains(flowGroup.(string), flowGroupName) {
+											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, true), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "") //true gets ninja tested time inside statisticToMap
+										} else {
+											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
+										}
 									} else {
-										tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
+										for _, value := range rows {
+											if utilcore.CompareLastModified(dfStatMap, dfssql.DataFlowStatisticsArrayToMap(value)) { //If equal-> do nothing
+												continue
+											} else { //If not equal -> update
+												tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticUpdate(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfGroup, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
+											}
+										}
 									}
 								}
 							} else {
