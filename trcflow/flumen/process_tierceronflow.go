@@ -18,7 +18,7 @@ func GetTierceronFlowIdColName() string {
 	return tierceronFlowIdColumnName
 }
 
-func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]string) (string, []string, [][]interface{}, error)) (string, error) {
+func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
 	indexName, idValue := "", ""
 	if tierceronFlowName, ok := rowDataMap[vaultIndexColumnName].(string); ok {
 		indexName = vaultIndexColumnName
@@ -65,9 +65,9 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext, flowControllerMap map[string]chan flowcorehelper.CurrentFlowState, tierceronFlowName string) {
 	var rows [][]interface{}
 	if tierceronFlowName != "" {
-		rows = tfmContext.CallDBQuery(tfContext, map[string]string{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
+		rows = tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
 	} else {
-		rows = tfmContext.CallDBQuery(tfContext, map[string]string{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow)}, nil, false, "SELECT", nil, "")
+		rows = tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow)}, nil, false, "SELECT", nil, "")
 	}
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)

@@ -16,6 +16,8 @@ import (
 	flowcore "tierceron/trcflow/core"
 	trcvutils "tierceron/trcvault/util"
 
+	dfssql "tierceron/trcflow/flows/flowsql"
+
 	utilcore "VaultConfig.TenantConfig/util/core"
 
 	"VaultConfig.TenantConfig/lib"
@@ -543,23 +545,10 @@ func (dfs *TTDINode) FinishStatistic(tfmContext *flowcore.TrcFlowMachineContext,
 			}
 		} else {
 			if tfmContext != nil && tfContext != nil {
-				tfmContext.CallDBQuery(tfContext, getDataFlowStatisticInsert(id, statMap, utilcore.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType("DataFlowStatistics")}, "")
+				tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(id, statMap, utilcore.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType("DataFlowStatistics")}, "")
 			}
 		}
 	}
-}
-
-func getDataFlowStatisticInsert(tenantId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]string {
-	tenantId = strings.ReplaceAll(tenantId, "/", "")
-	sqlstr := map[string]string{
-		"TrcQuery": `INSERT IGNORE INTO ` + dbName + `.` + tableName + `(flowName, argosId, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate) VALUES ('` +
-			statisticData["flowName"].(string) + `','` + tenantId + `','` +
-			statisticData["flowGroup"].(string) + `','` + strconv.Itoa(statisticData["mode"].(int)) +
-			`','` + statisticData["stateCode"].(string) + `','` + statisticData["stateName"].(string) +
-			`','` + statisticData["timeSplit"].(string) + `','` + statisticData["lastTestedDate"].(string) + `')` +
-			` ON DUPLICATE KEY UPDATE flowName= VALUES(flowName), argosId = VALUES(argosId),flowGroup = VALUES(flowGroup),mode = VALUES(mode),stateCode = VALUES(stateCode),stateName = VALUES(stateName),timeSplit = VALUES(timeSplit), lastTestedDate = VALUES(lastTestedDate)`,
-	}
-	return sqlstr
 }
 
 func (dfs *TTDINode) MapStatistic(data map[string]interface{}, logger *log.Logger) {
