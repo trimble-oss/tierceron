@@ -27,8 +27,11 @@ import (
 	"tierceron/trcx/extract"
 	sys "tierceron/vaulthelper/system"
 
+	dfssql "tierceron/trcflow/flows/flowsql"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
+
+	utilcore "VaultConfig.TenantConfig/util/core"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
 	sqlee "github.com/dolthub/go-mysql-server/sql/expression"
@@ -598,8 +601,20 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 				}
 				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
-			} else if _, changeIdValueOk := queryMap["TrcChangeId"].([]string); changeIdValueOk {
-				//TODO: Add logic to handle 3 ID's
+				if err != nil {
+					tfmContext.Log("Failed to insert changes for INSERT.", nil)
+				}
+			} else if changeIdValues, changeIdValueOk := queryMap["TrcChangeId"].([]string); changeIdValueOk && len(changeIdValues) == 3 {
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+dfssql.DataflowTestNameColumn+", "+dfssql.DataflowTestIdColumn+", "+dfssql.DataflowTestStateCodeColumn+", current_timestamp())", utilcore.GetDatabaseName(), "DataFlowStatistics")
+				bindings := map[string]sqle.Expression{
+					dfssql.DataflowTestNameColumn:      sqlee.NewLiteral(changeIdValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+					dfssql.DataflowTestIdColumn:        sqlee.NewLiteral(changeIdValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+					dfssql.DataflowTestStateCodeColumn: sqlee.NewLiteral(changeIdValues[2], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+				}
+				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+				if err != nil {
+					tfmContext.Log("Failed to insert dfs changes for INSERT.", nil)
+				}
 			}
 
 			if len(flowNotifications) > 0 {
@@ -664,8 +679,20 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 				}
 				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
-			} else if _, changeIdValueOk := queryMap["TrcChangeId"].([]string); changeIdValueOk {
-				//TODO: Add logic to handle 3 ID's
+				if err != nil {
+					tfmContext.Log("Failed to insert changes for UPDATE.", nil)
+				}
+			} else if changeIdValues, changeIdValueOk := queryMap["TrcChangeId"].([]string); changeIdValueOk && len(changeIdValues) == 3 {
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+dfssql.DataflowTestNameColumn+", "+dfssql.DataflowTestIdColumn+", "+dfssql.DataflowTestStateCodeColumn+", current_timestamp())", utilcore.GetDatabaseName(), "DataFlowStatistics")
+				bindings := map[string]sqle.Expression{
+					dfssql.DataflowTestNameColumn:      sqlee.NewLiteral(changeIdValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+					dfssql.DataflowTestIdColumn:        sqlee.NewLiteral(changeIdValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+					dfssql.DataflowTestStateCodeColumn: sqlee.NewLiteral(changeIdValues[2], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+				}
+				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+				if err != nil {
+					tfmContext.Log("Failed to insert dfs changes for UPDATE.", nil)
+				}
 			}
 
 			if len(flowNotifications) > 0 {
