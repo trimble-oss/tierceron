@@ -107,7 +107,7 @@ func (cr *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpo
 	mat.SetOpacity(0.25)
 	tubeMesh := graphic.NewMesh(tubeGeometry, mat)
 	fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
-	tubeMesh.SetLoaderID(strconv.Itoa(int(g3n.GetDetailedElement().Id)))
+	tubeMesh.SetLoaderID(g3n.GetDisplayName())
 	tubeMesh.SetPositionVec(vpos)
 	return tubeMesh
 }
@@ -213,7 +213,7 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 	clickedElement := g3nDetailedElement
 	var path []math32.Vector3
 	//if g3nDetailedElement.GetDetailedElement().Id == 2 {
-		if clickedElement != nil && clickedElement.GetDetailedElement().Genre == "DataFlow" && clickedElement.GetNamedMesh(strconv.Itoa(int(clickedElement.GetDetailedElement().Id))) != nil {
+		if clickedElement != nil && clickedElement.GetDetailedElement().Genre == "DataFlow" && clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil {
 			timeSplits, successful := cr.getTimeSplits(worldApp, clickedElement)
 			fmt.Println(successful)
 			if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "DataFlowStatistic" {
@@ -300,8 +300,8 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 							mat.SetOpacity(0.1)
 						}
 						tubeMesh := graphic.NewMesh(tubeGeometry, mat)
-						tubeMesh.SetLoaderID(strconv.Itoa(int(clickedElement.GetDetailedElement().Id)) + "-Curve" + strconv.Itoa(int(j)))
-						locn := clickedElement.GetNamedMesh(strconv.Itoa(int(clickedElement.GetDetailedElement().Id))).Position()
+						tubeMesh.SetLoaderID(clickedElement.GetDisplayName() + "-Curve" + strconv.Itoa(int(j)))
+						locn := clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
 						locn.X = locn.X - 0.005
 						locn.Y = locn.Y + 0.0999
 						locn.Z = locn.Z - 0.001 //Need to find correct z-component so centered properly
@@ -318,8 +318,8 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 		} else if clickedElement != nil {
 			position := math32.NewVector3(1.0, 2.0, 3.0)
 
-			if clickedElement.GetNamedMesh(strconv.Itoa(int(clickedElement.GetDetailedElement().Id))) != nil && clickedElement.GetDetailedElement().Genre != "Solid" {
-				locn := clickedElement.GetNamedMesh(strconv.Itoa(int(clickedElement.GetDetailedElement().Id))).Position()
+			if clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil && clickedElement.GetDetailedElement().Genre != "Solid" {
+				locn := clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
 				position = &locn
 			}
 			if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "DataFlowStatistic" {
@@ -351,7 +351,7 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 				mat := material.NewStandard(color)
 				mat.SetOpacity(0.1)
 				tubeMesh := graphic.NewMesh(tubeGeometry, mat)
-				tubeMesh.SetLoaderID(strconv.Itoa(int(clickedElement.GetDetailedElement().Id)) + "-Curve")
+				tubeMesh.SetLoaderID(clickedElement.GetDisplayName() + "-Curve")
 				tubeMesh.SetPositionVec(position)
 				cr.push(tubeMesh, clickedElement)
 				worldApp.UpsertToScene(tubeMesh)
@@ -373,7 +373,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 		if clickedElement.IsStateSet(mashupsdk.ControlClicked) {
 			cr.iterateToDF(worldApp, clickedElement)		
 		}
-		if clickedElement != nil && clickedElement.GetDetailedElement().Genre == "DataFlow" && clickedElement.GetNamedMesh(strconv.Itoa(int(clickedElement.GetDetailedElement().Id))) != nil {
+		if clickedElement != nil && clickedElement.GetDetailedElement().Genre == "DataFlow" && clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil {
 			timeSplits, successful := cr.getTimeSplits(worldApp, clickedElement)
 			fmt.Println(successful)
 			if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "DataFlowStatistic" {
@@ -460,8 +460,8 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 							mat.SetOpacity(0.1)
 						}
 						tubeMesh := graphic.NewMesh(tubeGeometry, mat)
-						tubeMesh.SetLoaderID(strconv.Itoa(int(clickedElement.GetDetailedElement().Id)) + "-Curve" + strconv.Itoa(int(j)))
-						locn := clickedElement.GetNamedMesh(strconv.Itoa(int(clickedElement.GetDetailedElement().Id))).Position()
+						tubeMesh.SetLoaderID(clickedElement.GetDisplayName() + "-Curve" + strconv.Itoa(int(j)))
+						locn := clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
 						locn.X = locn.X - 0.005
 						locn.Y = locn.Y + 0.0999
 						locn.Z = locn.Z - 0.001 //Need to find correct z-component so centered properly
@@ -478,8 +478,8 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 		} else if clickedElement != nil {
 			position := math32.NewVector3(1.0, 2.0, 3.0)
 
-			if clickedElement.GetNamedMesh(strconv.Itoa(int(clickedElement.GetDetailedElement().Id))) != nil && clickedElement.GetDetailedElement().Genre != "Solid" {
-				locn := clickedElement.GetNamedMesh(strconv.Itoa(int(clickedElement.GetDetailedElement().Id))).Position()
+			if clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil && clickedElement.GetDetailedElement().Genre != "Solid" {
+				locn := clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
 				position = &locn
 			}
 			if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "DataFlowStatistic" {
@@ -511,7 +511,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 				mat := material.NewStandard(color)
 				mat.SetOpacity(0.1)
 				tubeMesh := graphic.NewMesh(tubeGeometry, mat)
-				tubeMesh.SetLoaderID(strconv.Itoa(int(clickedElement.GetDetailedElement().Id)) + "-Curve")
+				tubeMesh.SetLoaderID(clickedElement.GetDisplayName() + "-Curve")
 				tubeMesh.SetPositionVec(position)
 				cr.push(tubeMesh, clickedElement)
 				worldApp.UpsertToScene(tubeMesh)
