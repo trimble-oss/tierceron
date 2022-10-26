@@ -181,7 +181,9 @@ func (v *Vault) AppRoleLogin(roleID string, secretID string) (string, error) {
 	}
 
 	resp, err := v.client.RawRequest(r)
-	defer resp.Body.Close()
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
 	if err != nil {
 		return "", err
