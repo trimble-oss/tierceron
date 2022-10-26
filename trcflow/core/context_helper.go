@@ -130,7 +130,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	vaultIndexColumnName string,
 	vaultSecondIndexColumnName string,
 	mysqlPushEnabled bool,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]string) (string, []string, [][]interface{}, error)) (string, error),
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error) error {
 
 	var matrixChangedEntries [][]interface{}
@@ -194,8 +194,8 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
-		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query map[string]string) (string, []string, [][]interface{}, error) {
-			return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"], tfContext.FlowLock)
+		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query map[string]interface{}) (string, []string, [][]interface{}, error) {
+			return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"].(string), tfContext.FlowLock)
 		})
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(tfmContext.Config, indexPathErr, false)
@@ -283,6 +283,11 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 	var indexValues []string = []string{}
 	var secondaryIndexes []string
 	var err error
+
+	if tfContext.CustomSeedTrcDb != nil {
+		customSeedErr := tfContext.CustomSeedTrcDb(tfmContext, tfContext)
+		return customSeedErr
+	}
 	if tfContext.GoMod != nil {
 		tfContext.GoMod.Env = tfmContext.Env
 		tfContext.GoMod.Version = "0"
@@ -301,7 +306,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		}
 	}
 
-	tfmContext.GetTableModifierLock().Lock()
 	for _, indexValue := range indexValues {
 		if indexValue != "" {
 			tfContext.GoMod.SectionKey = "/Index/"
@@ -327,8 +331,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			}
 		}
 	}
-
-	tfmContext.GetTableModifierLock().Unlock()
 
 	return nil
 }
