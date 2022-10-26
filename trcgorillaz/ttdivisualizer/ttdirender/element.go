@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"strconv"
+	//"strconv"
 	"encoding/json"
 
 	"github.com/g3n/engine/core"
@@ -258,9 +258,9 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	}
 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
 	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" && clickedElement.GetDetailedElement().Name != "TenantDataBase" {
-		//name := clickedElement.GetDisplayName()
-		id := strconv.Itoa(int(clickedElement.GetDetailedElement().Id))
-		mesh := clickedElement.GetNamedMesh(id)
+		name := clickedElement.GetDisplayName()
+		//id := strconv.Itoa(int(clickedElement.GetDetailedElement().Id))
+		mesh := clickedElement.GetNamedMesh(name)
 		if mesh != nil {
 			pos := mesh.Position()
 			center := pos
@@ -293,24 +293,24 @@ func (er *ElementRenderer) isChildElement(worldApp *g3nworld.WorldApp, prevEleme
 // Renders provided element if it was clicked
 // Returns true if given element is the last clicked element and false otherwise
 func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) bool {
-	if g3n == worldApp.ClickedElements[len(worldApp.ClickedElements)-1] && g3n.GetNamedMesh(strconv.Itoa(int(g3n.GetDetailedElement().Id))) != nil {
+	if g3n == worldApp.ClickedElements[len(worldApp.ClickedElements)-1] && g3n.GetNamedMesh(g3n.GetDisplayName()) != nil {
 		g3n.SetColor(math32.NewColor("darkred"), 1.0) //Need to change name to have id attached to it instead of changing mesh name only
 
 		for _, childId := range g3n.GetChildElementIds() {
 			if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
 				if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
-					if element.GetNamedMesh(strconv.Itoa(int(element.GetDetailedElement().Id))) == nil {
+					if element.GetNamedMesh(element.GetDisplayName()) == nil {
 						_, nextPos := er.NextCoordinate(element, er.totalElements)
 						if nextPos != nil {
 							solidMesh := er.NewSolidAtPosition(element, nextPos)
 							if solidMesh != nil {
 								log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
 								worldApp.UpsertToScene(solidMesh)
-								element.SetNamedMesh(strconv.Itoa(int(element.GetDetailedElement().Id)), solidMesh)
+								element.SetNamedMesh(element.GetDisplayName(), solidMesh)
 							}
 						}
 					} else {
-						worldApp.UpsertToScene(element.GetNamedMesh(strconv.Itoa(int(element.GetDetailedElement().Id))))
+						worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
 					}
 				}
 			}
@@ -343,7 +343,7 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 func (er *ElementRenderer) RemoveAll(worldApp *g3nworld.WorldApp, childId int64) {
 	if child, childOk := worldApp.ConcreteElements[childId]; childOk {
 		if !child.IsAbstract() && child.GetDetailedElement().Genre != "Solid" {
-			if childMesh := child.GetNamedMesh(strconv.Itoa(int(child.GetDetailedElement().Id))); childMesh != nil {
+			if childMesh := child.GetNamedMesh(child.GetDisplayName()); childMesh != nil {
 				log.Printf("Child Item removed %s: %v", child.GetDisplayName(), worldApp.RemoveFromScene(childMesh))
 			}
 		}
@@ -387,14 +387,14 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 			if solidMesh != nil {
 				log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
 				worldApp.UpsertToScene(solidMesh)
-				concreteG3nRenderableElement.SetNamedMesh(strconv.Itoa(int(concreteG3nRenderableElement.GetDetailedElement().Id)), solidMesh)
+				concreteG3nRenderableElement.SetNamedMesh(concreteG3nRenderableElement.GetDisplayName(), solidMesh)
 			}
 
 			for _, relatedG3n := range worldApp.GetG3nDetailedChildElementsByGenre(concreteG3nRenderableElement, "Related") {
 				relatedMesh := g3Renderer.NewRelatedMeshAtPosition(concreteG3nRenderableElement, nextPos, prevSolidPos)
 				if relatedMesh != nil {
 					worldApp.UpsertToScene(relatedMesh)
-					concreteG3nRenderableElement.SetNamedMesh(strconv.Itoa(int(relatedG3n.GetDetailedElement().Id)), relatedMesh)
+					concreteG3nRenderableElement.SetNamedMesh(relatedG3n.GetDisplayName(), relatedMesh)
 				}
 			}
 
@@ -402,7 +402,7 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 				negativeMesh := g3Renderer.NewInternalMeshAtPosition(innerG3n, nextPos)
 				if negativeMesh != nil {
 					worldApp.UpsertToScene(negativeMesh)
-					innerG3n.SetNamedMesh(strconv.Itoa(int(innerG3n.GetDetailedElement().Id)), negativeMesh)
+					innerG3n.SetNamedMesh(innerG3n.GetDisplayName(), negativeMesh)
 				}
 			}
 		}
