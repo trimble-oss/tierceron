@@ -490,14 +490,14 @@ skipDiff:
 
 	go reciever() //Channel reciever
 	for _, env := range envSlice {
+		envVersion := eUtils.SplitEnv(env)
+		*envPtr = envVersion[0]
+		if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
+			*tokenPtr = ""
+		}
 		for _, section := range sectionSlice {
-			envVersion := eUtils.SplitEnv(env)
-			*envPtr = envVersion[0]
 			var servicesWanted []string
-			if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
-				*tokenPtr = ""
-			}
-			if !*noVaultPtr {
+			if !*noVaultPtr && *tokenPtr == "" {
 				authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 				if authErr != nil {
 					// Retry once.
@@ -506,10 +506,9 @@ skipDiff:
 						eUtils.LogAndSafeExit(config, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 					}
 				}
-			} else {
+			} else if *tokenPtr != "" {
 				*tokenPtr = "novault"
 			}
-
 			if len(envVersion) >= 2 { //Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]
 			} else {
