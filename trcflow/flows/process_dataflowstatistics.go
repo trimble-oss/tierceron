@@ -162,6 +162,10 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 	tfContext.FlowState.SyncFilter = "N/A"
 	tfContext.CustomSeedTrcDb = dataFlowStatPullRemote
 
+	if tfContext.FlowState.State != 1 && tfContext.FlowState.State != 2 {
+		tfmContext.InitConfigWG.Done()
+	}
+
 	tfContext.FlowLock.Unlock()
 	go func(tfs flowcorehelper.CurrentFlowState, sL *sync.Mutex) {
 		for {
