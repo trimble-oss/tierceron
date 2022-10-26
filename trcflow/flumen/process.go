@@ -352,6 +352,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogInfo(dc, "Beginning additional flow: "+enhancementFlow.ServiceName())
 				defer flowWG.Done()
 				tfmContext.InitConfigWG.Done()
+
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
 				tfContext.Flow = enhancementFlow
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
@@ -404,9 +405,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 	}
 	tfmFlumeContext.InitConfigWG.Wait()
-	tfmFlumeContext.FlowControllerUpdateLock.Lock()
+	tfmFlumeContext.FlowControllerLock.Lock()
 	tfmFlumeContext.InitConfigWG = nil
-	tfmFlumeContext.FlowControllerUpdateLock.Unlock()
+	tfmFlumeContext.FlowControllerLock.Unlock()
 
 	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	//Set up controller config
@@ -431,9 +432,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	if controllerCheck == 3 {
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
-		tfmContext.GetTableModifierLock().Lock()
 		controllerInterfaceErr := harbingeropts.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
-		tfmContext.GetTableModifierLock().Unlock()
 		if controllerInterfaceErr != nil {
 			eUtils.LogErrorMessage(config, "Failed to start up controller database interface:"+controllerInterfaceErr.Error(), false)
 			return controllerInterfaceErr
@@ -456,9 +455,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	// Wait for all tables to be built before starting interface.
 	tfmContext.InitConfigWG.Wait()
-	tfmContext.FlowControllerUpdateLock.Lock()
+	tfmContext.FlowControllerLock.Lock()
 	tfmContext.InitConfigWG = nil
-	tfmContext.FlowControllerUpdateLock.Unlock()
+	tfmContext.FlowControllerLock.Unlock()
+
 	// TODO: Start up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
 	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.
 	// The engine is in tfmContext...  that's the one we need to make available for connecting via dbvis...
@@ -472,9 +472,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		vaultDatabaseConfig["dfsPass"] = dfsPass
 	}
 
-	tfmContext.GetTableModifierLock().Lock()
 	interfaceErr := harbingeropts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
-	tfmContext.GetTableModifierLock().Unlock()
 	if interfaceErr != nil {
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
 		return interfaceErr
