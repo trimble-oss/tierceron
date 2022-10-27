@@ -129,6 +129,7 @@ type TrcFlowMachineContext struct {
 	GetAdditionalFlowsByState func(teststate string) []FlowNameType
 	ChannelMap                map[FlowNameType]chan bool
 	FlowMap                   map[FlowNameType]*TrcFlowContext // Map of all running flows for engine
+	PermissionChan            chan string
 }
 
 type TrcFlowContext struct {
@@ -158,6 +159,7 @@ type TrcFlowContext struct {
 	FlowState       flowcorehelper.CurrentFlowState
 	FlowLock        *sync.Mutex //This is for sync concurrent changes to FlowState
 	Restart         bool
+	Init            bool
 	ReadOnly        bool
 }
 
@@ -222,6 +224,8 @@ func (tfmContext *TrcFlowMachineContext) Init(
 	for _, f := range testFlowNames {
 		tfmContext.ChannelMap[f] = make(chan bool, 5)
 	}
+
+	tfmContext.PermissionChan = make(chan string, 10)
 	tfmContextMap[tfmContext.TierceronEngine.Database.Name()+"_"+tfmContext.Env] = tfmContext
 	return nil
 }
@@ -537,9 +541,12 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		tfmContext.InitConfigWG.Done()
 	}
 	tfmContext.FlowControllerLock.Unlock()
-
 	tfContext.FlowLock.Lock()
-	if tfContext.FlowState.State == 2 {
+	if tfContext.Init { //Alert interface that the table is ready for permissions
+		tfContext.FlowLock.Unlock()
+		tfmContext.PermissionChan <- tfContext.Flow.TableName()
+		tfContext.Init = false
+	} else if tfContext.FlowState.State == 2 {
 		tfContext.FlowLock.Unlock()
 		tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 	} else {
