@@ -59,7 +59,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmContext = &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
-		InitConfigWG:              &sync.WaitGroup{},
 		FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
 	}
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
@@ -251,7 +250,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var flowWG sync.WaitGroup
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range GetTierceronTableNames() {
-			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false}
+			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false, Init: true}
 			tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 			tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
 			tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
@@ -312,11 +311,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range configBasis.VersionFilter {
 			flowWG.Add(1)
-			tfmContext.InitConfigWG.Add(1)
 			go func(tableFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning data source flow: "+tableFlow.ServiceName())
 				defer flowWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true}
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
 				tfContext.Flow = tableFlow
@@ -346,14 +344,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 		for _, enhancement := range flowopts.GetAdditionalFlows() {
 			flowWG.Add(1)
-			tfmContext.InitConfigWG.Add(1)
 
 			go func(enhancementFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning additional flow: "+enhancementFlow.ServiceName())
 				defer flowWG.Done()
-				tfmContext.InitConfigWG.Done()
 
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true}
 				tfContext.Flow = enhancementFlow
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
@@ -378,12 +374,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 		for _, test := range testopts.GetAdditionalTestFlows() {
 			flowWG.Add(1)
-			tfmContext.InitConfigWG.Add(1)
 			go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
-				tfmContext.InitConfigWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true}
 				tfContext.Flow = testFlow
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
@@ -452,12 +446,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	for index, config := range vaultDatabaseConfig {
 		controllerVaultDatabaseConfig[index] = config
 	}
-
-	// Wait for all tables to be built before starting interface.
-	tfmContext.InitConfigWG.Wait()
-	tfmContext.FlowControllerLock.Lock()
-	tfmContext.InitConfigWG = nil
-	tfmContext.FlowControllerLock.Unlock()
 
 	// TODO: Start up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
 	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.
