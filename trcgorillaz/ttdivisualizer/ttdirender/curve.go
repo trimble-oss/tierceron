@@ -32,7 +32,7 @@ type CurveRenderer struct {
 	totalElements         int
 	clickedPaths          []*CurveMesh
 	maxTime               int
-	//quartiles             []float64
+	quartiles             []float64
 }
 
 type CurveMesh struct {
@@ -268,18 +268,18 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 						// 	}
 						// }
 						//stringQuartiles := strings.Split(clickedElement.GetDetailedElement().Data, "-")
-						// var median float64
-						// var upperQuartile float64
-						// var lowerQuartile float64
-						//if len(quartiles) == 3 {
-							// median = quartiles[1]        //strconv.ParseFloat(stringQuartiles[1], 64)
-							// upperQuartile = quartiles[2] //strconv.ParseFloat(stringQuartiles[2], 64)
-							// lowerQuartile = quartiles[0] //strconv.ParseFloat(stringQuartiles[0], 64)
-							if diff < 0.350 {
+						var median float64
+						var upperQuartile float64
+						var lowerQuartile float64
+						if len(cr.quartiles) == 3 {
+							median = cr.quartiles[1]        //strconv.ParseFloat(stringQuartiles[1], 64)
+							upperQuartile = cr.quartiles[2] //strconv.ParseFloat(stringQuartiles[2], 64)
+							lowerQuartile = cr.quartiles[0] //strconv.ParseFloat(stringQuartiles[0], 64)
+							if diff < lowerQuartile {
 								color.Set(0.953, 0.569, 0.125)
-							} else if diff < 1.02 {
+							} else if diff < median {
 								color.Set(1, 0.682, 0.114)
-							} else if diff < 592.65 {
+							} else if diff < upperQuartile {
 								color.Set(0, 0.455, 0.737)
 							} else {
 								color.Set(0.031, 0.227, 0.427)
@@ -292,7 +292,7 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 									color = math32.NewColor("black")
 								}
 							}
-						//}
+						}
 						lastLocation = section
 						tubeGeometry := geometry.NewTube(path, .007, 32, true)
 						mat := material.NewStandard(color)
@@ -431,15 +431,15 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 						// var median float64
 						// var upperQuartile float64
 						// var lowerQuartile float64
-						//if len(quartiles) == 3 {
-							// median = quartiles[1]        //strconv.ParseFloat(stringQuartiles[1], 64)
-							// upperQuartile = quartiles[2] //strconv.ParseFloat(stringQuartiles[2], 64)
-							// lowerQuartile = quartiles[0] //strconv.ParseFloat(stringQuartiles[0], 64)
-							if diff < 0.350 {
+						if len(cr.quartiles) == 3 {
+							median := cr.quartiles[1]        //strconv.ParseFloat(stringQuartiles[1], 64)
+							upperQuartile := cr.quartiles[2] //strconv.ParseFloat(stringQuartiles[2], 64)
+							lowerQuartile := cr.quartiles[0] //strconv.ParseFloat(stringQuartiles[0], 64)
+							if diff < lowerQuartile {
 								color.Set(0.953, 0.569, 0.125)
-							} else if diff < 1.02 {
+							} else if diff < median {
 								color.Set(1, 0.682, 0.114)
-							} else if diff < 592.65 {
+							} else if diff < upperQuartile {
 								color.Set(0, 0.455, 0.737)
 							} else {
 								color.Set(0.031, 0.227, 0.427)
@@ -452,7 +452,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 									color = math32.NewColor("black")
 								}
 							}
-						//}
+						}
 						lastLocation = section
 						tubeGeometry := geometry.NewTube(path, .007, 32, true)
 						mat := material.NewStandard(color)
