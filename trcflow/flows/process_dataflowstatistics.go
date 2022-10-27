@@ -132,11 +132,12 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 		}
 	}
 
+	tfContext.FlowLock.Lock()
 	if tfContext.Init { //Alert interface that the table is ready for permissions
-		tfContext.FlowLock.Unlock()
 		tfmContext.PermissionChan <- tfContext.Flow.TableName()
 		tfContext.Init = false
 	}
+	tfContext.FlowLock.Unlock()
 
 	return nil
 }
