@@ -129,7 +129,7 @@ type TrcFlowMachineContext struct {
 	GetAdditionalFlowsByState func(teststate string) []FlowNameType
 	ChannelMap                map[FlowNameType]chan bool
 	FlowMap                   map[FlowNameType]*TrcFlowContext // Map of all running flows for engine
-	PermissionChan            chan string
+	PermissionChan            chan string                      // This channel is used to alert for dynamic permissions when tables are loaded
 }
 
 type TrcFlowContext struct {
