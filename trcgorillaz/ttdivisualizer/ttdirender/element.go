@@ -33,7 +33,7 @@ type ElementRenderer struct {
 	totalElements   int
 	LocationCache   map[int64]*math32.Vector3
 	clickedElements []*ClickedG3nDetailElement
-	//quartiles       []float64
+	quartiles       []float64
 }
 
 // Returns true if length of er.clickedElements stack is 0 and false otherwise
@@ -80,13 +80,13 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 				log.Println("Error decoding data in element renderer NewSolidAtPosition")
 			} else {
 				decodedData := decoded.(map[string]interface{})
-				if decodedData["MaxTime"] != nil { //decodedData["Quartiles"] != nil && 
+				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil { //decodedData["Quartiles"] != nil && 
 					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
 
 					// } else
-					// if decodedQuartiles, ok := decodedData["Quartiles"].([]float64); ok {
-					// 	er.quartiles = decodedQuartiles
-					// }
+					if decodedQuartiles, ok := decodedData["Quartiles"].([]float64); ok {
+						er.quartiles = decodedQuartiles
+					}
 					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
 
 					// } else
@@ -414,5 +414,5 @@ func (er *ElementRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratin
 	curveRenderer := collaboratingRenderer.(*CurveRenderer)
 	curveRenderer.maxTime = maxTime
 	curveRenderer.er = er
-	//curveRenderer.quartiles = er.quartiles
+	curveRenderer.quartiles = er.quartiles
 }
