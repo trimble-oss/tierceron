@@ -131,6 +131,13 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 			}
 		}
 	}
+
+	if tfContext.Init { //Alert interface that the table is ready for permissions
+		tfContext.FlowLock.Unlock()
+		tfmContext.PermissionChan <- tfContext.Flow.TableName()
+		tfContext.Init = false
+	}
+
 	return nil
 }
 
@@ -163,7 +170,8 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 	tfContext.CustomSeedTrcDb = dataFlowStatPullRemote
 
 	if tfContext.FlowState.State != 1 && tfContext.FlowState.State != 2 {
-		tfmContext.InitConfigWG.Done()
+		tfmContext.PermissionChan <- tfContext.Flow.TableName()
+		tfContext.Init = false
 	}
 
 	tfContext.FlowLock.Unlock()
