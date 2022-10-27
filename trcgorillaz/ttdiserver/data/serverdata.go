@@ -42,15 +42,22 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	//DetailedElements = append(DetailedElements, &ArgosyFleet.MashupDetailedElement)
 	//var quartiles []float64
 	maxTime := 0
+	testTimes := []float64{}
+	quartiles := []float64{}
+	idForData := 0
 	for a := 0; a < len(ArgosyFleet.ChildNodes); a++ {
 		//check genre
-
 		argosyElement := ArgosyFleet.ChildNodes[a].MashupDetailedElement
-		argosyElement.Alias = "Argosy"
-		if argosyElement.Genre != "Argosy" {
-			DetailedElements = append(DetailedElements, &argosyElement)
-		} else {
+		DetailedElements = append(DetailedElements, &argosyElement)
+		
+		if argosyElement.Genre == "Argosy" {
 			//newQuartiles := []float64{}
+			//argosyElement.Alias = "Argosy"
+
+			DetailedElements = append(DetailedElements, &argosyElement)
+			if idForData == 0 {
+				idForData = len(DetailedElements) - 1
+			}			
 			for i := 0; i < len(ArgosyFleet.ChildNodes[a].ChildNodes); i++ {
 				dfgElement := ArgosyFleet.ChildNodes[a].ChildNodes[i].MashupDetailedElement
 				dfgElement.Alias = "DataFlowGroup"
@@ -78,26 +85,26 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 						if timeNanoSeconds > int64(maxTime) {
 							maxTime = int(timeNanoSeconds)
 						}
-						//timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
+						timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
 						nextStat := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes[k+1].MashupDetailedElement
 						if k == len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes)-2 {
 							DetailedElements = append(DetailedElements, &nextStat)
 						}
-						// var nextdecodedstat interface{}
-						// err = json.Unmarshal([]byte(nextStat.Data), &nextdecodedstat)
-						// if err != nil {
-						// 	log.Println("Error in decoding data in GetData")
-						// 	continue
-						// }
-						//nextDecodedStatData := nextdecodedstat.(map[string]interface{})
-						//nextTimeNanoSeconds := int64(nextDecodedStatData["TimeSplit"].(float64))
-						//nextTimeSeconds := float64(nextTimeNanoSeconds) * math.Pow(10.0, -9.0)
-						// if nextTimeSeconds-timeSeconds > 0 {
-						// 	quartiles = append(quartiles, nextTimeSeconds-timeSeconds)
-						// }
+						var nextdecodedstat interface{}
+						err = json.Unmarshal([]byte(nextStat.Data), &nextdecodedstat)
+						if err != nil {
+							log.Println("Error in decoding data in GetData")
+							continue
+						}
+						nextDecodedStatData := nextdecodedstat.(map[string]interface{})
+						nextTimeNanoSeconds := int64(nextDecodedStatData["TimeSplit"].(float64))
+						nextTimeSeconds := float64(nextTimeNanoSeconds) * math.Pow(10.0, -9.0)
+						if nextTimeSeconds-timeSeconds > 0 {
+							testTimes = append(testTimes, nextTimeSeconds-timeSeconds)
+						}
 					}
 				}
-				//sort.Float64s(quartiles)
+				
 				// for j := len(DetailedElements) - 1; j >= 0; j-- {
 				// 	if DetailedElements[j].Genre == "DataFlow" && quartiles != nil {
 
@@ -108,13 +115,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 				// 			continue
 				// 		}
 				// 		decodedData := decoded.(map[string]interface{})
-				// if len(newQuartiles) == 0 {
-				// 	newQuartiles = append(newQuartiles, quartiles[len(quartiles)/4])
-				// 		//newQuartiles[0] = quartiles[len(quartiles)/4]
-				// 		newQuartiles = append(newQuartiles, quartiles[len(quartiles)/2])
-				// 		//newQuartiles[1] = quartiles[len(quartiles)/2]
-				// 		newQuartiles = append(newQuartiles, quartiles[(3*len(quartiles))/4])
-				// }
+				
 
 				//newQuartiles[2] = quartiles[(3*len(quartiles))/4]
 				// 		decodedData["Quartiles"] = newQuartiles
@@ -128,28 +129,12 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 				// }
 
 			}
+			
 			//if len(newQuartiles) > 0 {
-			decodedData := make(map[string]interface{})
-			if argosyElement.Data != "" {
-				var decoded interface{}
-				err := json.Unmarshal([]byte(argosyElement.Data), &decoded)
-				if err != nil {
-					log.Println("Error in decoding data in GetData")
-					continue
-				}
-				decodedData = decoded.(map[string]interface{})
-			}
-
-			//decodedData["Quartiles"] = newQuartiles
-			decodedData["MaxTime"] = maxTime
-			encoded, err := json.Marshal(&decodedData)
-			if err != nil {
-				log.Println("Error in encoding data in GetData")
-			}
-			argosyElement.Data = string(encoded)
+			
 			//}
 
-			DetailedElements = append(DetailedElements, &argosyElement)
+			
 			//DetailedElements[j].Data = string(encoded)
 			// for j := 0; j < len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes); j++ {
 			//  element := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].MashupDetailedElement
@@ -187,7 +172,38 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 			// }
 			//DetailedElements[j].Data = string(encoded)
 		}
+
 	}
+
+	//Quartile and max time analysis here:
+	sort.Float64s(testTimes)
+	quartiles = append(quartiles, testTimes[len(testTimes)/4])
+	quartiles = append(quartiles, testTimes[len(testTimes)/2])
+	quartiles = append(quartiles, testTimes[(3*len(testTimes))/4])
+
+	if len(DetailedElements) >= idForData && DetailedElements[idForData].Genre == "Argosy" {
+		argosyElement := DetailedElements[idForData]
+		decodedData := make(map[string]interface{})
+		if argosyElement.Data != "" {
+			var decoded interface{}
+			err := json.Unmarshal([]byte(argosyElement.Data), &decoded)
+			if err != nil {
+				log.Println("Error in decoding data in GetData")
+			}
+			decodedData = decoded.(map[string]interface{})
+		}
+
+		decodedData["Quartiles"] = quartiles
+		decodedData["MaxTime"] = maxTime
+		encoded, err := json.Marshal(&decodedData)
+		if err != nil {
+			log.Println("Error in encoding data in GetData")
+		}
+		argosyElement.Data = string(encoded)
+
+	}
+
+	
 
 	DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
 		Basisid:        5,
