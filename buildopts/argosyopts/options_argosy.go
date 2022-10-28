@@ -290,7 +290,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
            Description:    "Paths",
            Data:           "",
            Custosrenderer: "",
-           Renderer: .      "Element",
+           Renderer:       "Element",
            Genre:          "Collection",
            Subgenre:       "Element",
            Parentids:      []int64{},
