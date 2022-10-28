@@ -198,15 +198,23 @@ func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3n
 func (cr *CurveRenderer) iterateToDF(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) {
 	for _, childID := range g3n.GetChildElementIds() {
 		element := worldApp.ConcreteElements[childID]
-		if element.GetDetailedElement().Genre == "DataFlowGroup" {
-			for _, child := range element.GetChildElementIds() {
-				child := worldApp.ConcreteElements[child]
-				if child.GetDetailedElement().Genre == "DataFlow" {
-					cr.ctrlRenderElement(worldApp, child)
-				}
-			}
+		if element.GetDetailedElement().Genre == "DataFlow" {
+			cr.ctrlRenderElement(worldApp, element)
+		} else {
+			cr.iterateToDF(worldApp, element)
 		}
 	}
+	// for _, childID := range g3n.GetChildElementIds() {
+	// 	element := worldApp.ConcreteElements[childID]
+	// 	if element.GetDetailedElement().Genre == "DataFlowGroup" {
+	// 		for _, child := range element.GetChildElementIds() {
+	// 			child := worldApp.ConcreteElements[child]
+	// 			if child.GetDetailedElement().Genre == "DataFlow" {
+	// 				cr.ctrlRenderElement(worldApp, child)
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetailedElement *g3nmash.G3nDetailedElement) {
