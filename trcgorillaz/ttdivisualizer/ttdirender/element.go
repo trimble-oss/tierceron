@@ -80,16 +80,19 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 				log.Println("Error decoding data in element renderer NewSolidAtPosition")
 			} else {
 				decodedData := decoded.(map[string]interface{})
-				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil { //decodedData["Quartiles"] != nil && 
-					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
-
-					// } else
-					if decodedQuartiles, ok := decodedData["Quartiles"].([]float64); ok {
-						er.quartiles = decodedQuartiles
+				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil { 
+					if interfaceQuartiles, ok := decodedData["Quartiles"].([]interface{}); ok {
+						for _, quart := range interfaceQuartiles {
+							if floatQuart, ok := quart.(float64); ok {
+								er.quartiles = append(er.quartiles, floatQuart)
+							}
+						}
 					}
-					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
+					// interfaceQuartiles := decodedData["Quartiles"].([]interface{}) 
+					// for _, quart :=  range interfaceQuartiles {
+					// 	er.quartiles = append(er.quartiles, quart.(float64))
+					// }
 
-					// } else
 					if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
 						maxTime = int(decodedMaxTime)
 					}
