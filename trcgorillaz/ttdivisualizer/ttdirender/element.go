@@ -214,6 +214,66 @@ func (er *ElementRenderer) initLocnCache(worldApp *g3nworld.WorldApp, element *g
 	}
 }
 
+func (er *ElementRenderer) RecursiveClick(worldApp *g3nworld.WorldApp, clickedElement *g3nmash.G3nDetailedElement) bool {
+	for _, childId := range clickedElement.GetChildElementIds() {
+		if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
+			if element.GetDetailedElement().Genre == "DataFlowStatistic" {
+				element.ApplyState(mashupsdk.Clicked, true)
+			}
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
+				element.ApplyState(mashupsdk.Hidden, false)
+				element.ApplyState(mashupsdk.Clicked, true)
+				//Add to clickedelement stack for removal here
+				if element.GetNamedMesh(element.GetDisplayName()) == nil {
+					_, nextPos := er.NextCoordinate(element, er.totalElements)
+					if nextPos != nil {
+						solidMesh := er.NewSolidAtPosition(element, nextPos)
+						if solidMesh != nil {
+							log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
+							worldApp.UpsertToScene(solidMesh)
+							element.SetNamedMesh(element.GetDisplayName(), solidMesh)
+						}
+						er.RecursiveClick(worldApp, element)
+					}
+				} else {
+					worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
+					er.RecursiveClick(worldApp, element)
+				}
+			}
+		}
+	}
+	// for _, childID := range clickedElement.GetChildElementIds() {
+	// 	if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+	// 		if childElement.GetDetailedElement().Genre != "Solid" {
+	// 			childElement.ApplyState(mashupsdk.Hidden, false)
+	// 			childElement.ApplyState(mashupsdk.Clicked, true)
+	// 			er.RecursiveClick(worldApp, childElement)
+	// 			for _, childId := range g3n.GetChildElementIds() {
+	// 				if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
+	// 					if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
+	// 						if element.GetNamedMesh(element.GetDisplayName()) == nil {
+	// 							_, nextPos := er.NextCoordinate(element, er.totalElements)
+	// 							if nextPos != nil {
+	// 								solidMesh := er.NewSolidAtPosition(element, nextPos)
+	// 								if solidMesh != nil {
+	// 									log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
+	// 									worldApp.UpsertToScene(solidMesh)
+	// 									element.SetNamedMesh(element.GetDisplayName(), solidMesh)
+	// 								}
+	// 							}
+	// 						} else {
+	// 							worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
+	// 						}
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	return true
+}
+
+
 // Properly sets the elements before rendering new clicked elements
 func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
@@ -262,12 +322,17 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
 	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" && clickedElement.GetDetailedElement().Name != "TenantDataBase" {
 		name := clickedElement.GetDisplayName()
-		//id := strconv.Itoa(int(clickedElement.GetDetailedElement().Id))
 		mesh := clickedElement.GetNamedMesh(name)
-		if mesh != nil {
-			pos := mesh.Position()
-			center := pos
-			er.push(clickedElement, &center)
+		pos := mesh.Position()
+		center := pos
+		er.push(clickedElement, &center)
+
+		if clickedElement.IsStateSet(mashupsdk.ControlClicked) {
+			er.RecursiveClick(worldApp, clickedElement)
+			//Need to add to clicked element stack to remove correct elements 
+			//clickedElement.ApplyState(mashupsdk.ControlClicked, false)
+
+		} else {
 			for _, childID := range clickedElement.GetChildElementIds() {
 				if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
 					if childElement.GetDetailedElement().Genre != "Solid" {
@@ -277,7 +342,6 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 				}
 			}
 		}
-		
 	}
 	return true
 }
