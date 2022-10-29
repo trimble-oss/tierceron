@@ -18,14 +18,14 @@ func GetTierceronFlowIdColName() string {
 	return tierceronFlowIdColumnName
 }
 
-func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
+func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnName interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
 	indexName, idValue := "", ""
-	if tierceronFlowName, ok := rowDataMap[vaultIndexColumnName].(string); ok {
-		indexName = vaultIndexColumnName
+	if tierceronFlowName, ok := rowDataMap[indexColumnName.(string)].(string); ok {
+		indexName = indexColumnName.(string)
 		idValue = tierceronFlowName
 
 	} else {
-		return "", errors.New("flowName not found for TierceronFlow: " + vaultIndexColumnName)
+		return "", errors.New("flowName not found for TierceronFlow: " + indexColumnName.(string))
 	}
 	return "/" + indexName + "/" + idValue, nil
 }
@@ -162,7 +162,7 @@ func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext)
 	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
 
-	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, tierceronFlowIdColumnName, "", GetTierceronFlowConfigurationIndexedPathExt, nil, false)
+	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, []string{tierceronFlowIdColumnName}, GetTierceronFlowConfigurationIndexedPathExt, nil, false)
 	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
 	if sqlIngestInterval > 0 {
 		// Implement pull from remote data source.
