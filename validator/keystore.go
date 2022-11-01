@@ -4,9 +4,14 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	eUtils "tierceron/utils"
+	"time"
+
+	"github.com/lwithers/minijks/jks"
 
 	pkcs "golang.org/x/crypto/pkcs12"
 )
@@ -18,7 +23,63 @@ const (
 	privateKeyType  = "PRIVATE KEY"
 )
 
-//ValidateKeyStore validates the sendgrid API key.
+func PackKeystore(config *eUtils.DriverConfig) ([]byte, error) {
+	return config.KeyStore.Pack(&jks.Options{
+		Password:     "",
+		KeyPasswords: make(map[string]string),
+	})
+}
+
+func AddToKeystore(config *eUtils.DriverConfig, alias string, certRaw []byte) error {
+	var pemPackerr error
+
+	// For now, only supporting passwordless.
+	block, _ := pem.Decode(certRaw)
+	if block == nil {
+		return errors.New("Not a pem.")
+	}
+	var kp *jks.Keypair
+	var kc *jks.Cert
+
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		kp = &jks.Keypair{
+			Alias: alias,
+		}
+		kp.Timestamp = time.Now()
+		kp.PrivateKey, pemPackerr = x509.ParsePKCS1PrivateKey(block.Bytes)
+
+	case "EC PRIVATE KEY":
+		kp = &jks.Keypair{
+			Alias: alias,
+		}
+		kp.Timestamp = time.Now()
+		kp.PrivateKey, pemPackerr = x509.ParseECPrivateKey(block.Bytes)
+
+	case "CERTIFICATE":
+		kc = &jks.Cert{
+			Alias:     alias,
+			Timestamp: time.Now(),
+		}
+		kc.Cert, pemPackerr = x509.ParseCertificate(block.Bytes)
+	default:
+		pemPackerr = fmt.Errorf("%s: unknown private key type %s",
+			alias, block.Type)
+	}
+	if pemPackerr != nil {
+		return pemPackerr
+	}
+
+	if kc != nil {
+		config.KeyStore.Certs = append(config.KeyStore.Certs, kc)
+	} else if kp != nil {
+		config.KeyStore.Keypairs = append(config.KeyStore.Keypairs, kp)
+	}
+
+	return nil
+}
+
+// ValidateKeyStore validates the sendgrid API key.
 func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string) (bool, error) {
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {

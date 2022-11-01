@@ -9,12 +9,13 @@ import (
 	"sync"
 
 	eUtils "tierceron/utils"
+	"tierceron/validator"
 	helperkv "tierceron/vaulthelper/kv"
 )
 
 var mutex = &sync.Mutex{}
 
-//GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
+// GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
 func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig) (interface{}, error) {
 	/*Cyan := "\033[36m"
 	Reset := "\033[0m"
@@ -282,7 +283,12 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 						eUtils.LogInfo(config, "Could not load cert "+endPaths[i])
 						goto wait
 					}
-					certDestination := config.EndDir + "/" + certData[0]
+					destFile := certData[0]
+					if config.WantKeystore != "" {
+						// Keystore is serialized at end.
+						goto wait
+					}
+					certDestination := config.EndDir + "/" + destFile
 					writeToFile(config, certData[1], certDestination)
 					eUtils.LogInfo(config, "certificate written to "+certDestination)
 					goto wait
@@ -330,6 +336,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 					}
 				}
 				if config.WantCerts && certLoaded {
+					if config.WantKeystore != "" {
+						// Keystore is serialized at end.
+						goto wait
+					}
 					certDestination := config.EndDir + "/" + certData[0]
 					writeToFile(config, certData[1], certDestination)
 					eUtils.LogInfo(config, "certificate written to "+certDestination)
@@ -366,6 +376,17 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	if templateInfo {
 		config.VersionInfo(versionData, true, "", false)
 	}
+	if config.WantKeystore != "" {
+		// Keystore is serialized at end.
+		ks, ksErr := validator.PackKeystore(config)
+		if ksErr != nil {
+			eUtils.LogErrorObject(config, ksErr, false)
+		}
+		certDestination := config.EndDir + "/" + config.WantKeystore
+		eUtils.LogInfo(config, "certificates written to "+certDestination)
+		writeToFile(config, string(ks), certDestination)
+	}
+
 	return nil, nil
 }
 
