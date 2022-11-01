@@ -11,10 +11,11 @@ import (
 
 	"tierceron/buildopts/coreopts"
 	eUtils "tierceron/utils"
+	"tierceron/validator"
 	helperkv "tierceron/vaulthelper/kv"
 )
 
-//GetProjectService - returns project, service, and path to template on filesystem.
+// GetProjectService - returns project, service, and path to template on filesystem.
 // templateFile - full path to template file
 // returns project, service, templatePath
 func GetProjectService(templateFile string) (string, string, string) {
@@ -86,7 +87,7 @@ func GetTemplate(modifier *helperkv.Modifier, templatePath string) (string, erro
 	return data["data"].(string), nil
 }
 
-//ConfigTemplateRaw - gets a raw unpopulated template.
+// ConfigTemplateRaw - gets a raw unpopulated template.
 func ConfigTemplateRaw(config *eUtils.DriverConfig, mod *helperkv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, project string, service string, cert bool, zc bool, exitOnFailure bool) ([]byte, error) {
 	var err error
 
@@ -99,8 +100,8 @@ func ConfigTemplateRaw(config *eUtils.DriverConfig, mod *helperkv.Modifier, empt
 	return templateBytes, decodeErr
 }
 
-//ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.
-//It configures the template and writes it to the specified file path.
+// ConfigTemplate takes a modifier object, a file path where the template is located, the target path, and two maps of data to populate the template with.
+// It configures the template and writes it to the specified file path.
 func ConfigTemplate(config *eUtils.DriverConfig,
 	modifier *helperkv.Modifier,
 	emptyFilePath string,
@@ -184,8 +185,8 @@ func getTemplateVersionData(config *eUtils.DriverConfig, modifier *helperkv.Modi
 	return cds.InitTemplateVersionData(config, modifier, true, project, file, service)
 }
 
-//PopulateTemplate takes an empty template and a modifier.
-//It populates the template and returns it in a string.
+// PopulateTemplate takes an empty template and a modifier.
+// It populates the template and returns it in a string.
 func PopulateTemplate(config *eUtils.DriverConfig,
 	emptyTemplate string,
 	modifier *helperkv.Modifier,
@@ -266,7 +267,19 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 					if err != nil {
 						eUtils.LogErrorObject(config, err, false)
 					}
-					certData[1] = fmt.Sprintf("%s", decoded)
+
+					// Add support for jks encoding...
+					if config.WantKeystore != "" {
+						// This needs to be wrapped in a jks first.
+						ksErr := validator.AddToKeystore(config, certSourcePath.(string), decoded)
+						if ksErr != nil {
+							eUtils.LogErrorObject(config, err, false)
+							return "", nil, ksErr
+						}
+					} else {
+						certData[1] = fmt.Sprintf("%s", decoded)
+					}
+
 					certData[2] = certSourcePath.(string)
 					return "", certData, nil
 				}
