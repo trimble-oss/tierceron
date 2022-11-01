@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"tierceron/buildopts/coreopts"
+
+	"github.com/lwithers/minijks/jks"
 )
 
 // {{or .<key> "<value>"}}
@@ -28,6 +30,8 @@ type DriverConfig struct {
 	ServicesWanted  []string
 	StartDir        []string // Starting directory... possibly multiple
 	EndDir          string
+	KeyStore        jks.Keystore
+	WantKeystore    string // If provided and non nil, pem files will be put into a java compatible keystore.
 	WantCerts       bool
 	ZeroConfig      bool
 	GenAuth         bool
