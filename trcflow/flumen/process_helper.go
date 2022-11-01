@@ -44,10 +44,9 @@ func FlumenProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trc
 func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 	tfContext *flowcore.TrcFlowContext,
 	vaultAddress string,
-	identityColumnName string,
-	vaultIndexColumnName string,
+	indexColumnNames interface{},
 	isInit bool,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
+	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, string) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(map[string]interface{}, map[string]interface{}) error) error {
 
 	var matrixChangedEntries [][]interface{}
@@ -94,7 +93,7 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 
 		//Use trigger to make another table
 
-		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query string) (string, []string, [][]interface{}, error) {
+		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query string) (string, []string, [][]interface{}, error) {
 			return trcdb.Query(engine.(*trcengine.TierceronEngine), query, tfContext.FlowLock)
 		})
 		if indexPathErr != nil {

@@ -355,7 +355,6 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 //
 //	data sources.
 func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContext,
-	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
@@ -385,7 +384,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 			}
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
-				identityColumnName,
 				indexColumnNames,
 				mysqlPushEnabled,
 				getIndexedPathExt,
@@ -394,7 +392,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 			tfmContext.Log(fmt.Sprintf("Flow shutdown: %s", tfContext.Flow), nil)
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
-				identityColumnName,
 				indexColumnNames,
 				mysqlPushEnabled,
 				getIndexedPathExt,
@@ -403,7 +400,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				tfmContext.Log(fmt.Sprintf("Restarting flow: %s", tfContext.Flow), nil)
 				// Reload table from vault...
 				go tfmContext.SyncTableCycle(tfContext,
-					identityColumnName,
 					indexColumnNames,
 					getIndexedPathExt,
 					flowPushRemote,
@@ -418,7 +414,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 
 // Seeds TrcDb from vault...  useful during init.
 func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContext,
-	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
@@ -444,7 +439,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 		/*
 			tfmContext.seedTrcDbFromChanges(			//Old implementation
 				tfContext,								//Templatized approach
-				identityColumnName,
 				vaultIndexColumnName,
 				true,
 				getIndexedPathExt,
@@ -481,7 +475,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 			case <-flowChangedChannel:
 				tfmContext.seedTrcDbFromChanges(
 					tfContext,
-					identityColumnName,
 					vaultIndexColumnName,
 					false,
 					getIndexedPathExt,
@@ -491,7 +484,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 				eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes for sync with remote and vault.")
 				tfmContext.seedTrcDbFromChanges(
 					tfContext,
-					identityColumnName,
 					vaultIndexColumnName,
 					false,
 					getIndexedPathExt,
@@ -502,7 +494,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 }
 
 func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContext,
-	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
@@ -526,7 +517,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	tfContext.FlowLock.Unlock()
 
 	if !tfContext.Restart {
-		go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, indexColumnNames, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
+		go tfmContext.seedTrcDbCycle(tfContext, indexColumnNames, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
 	} else {
 		seedInitComplete <- true
 	}
@@ -549,7 +540,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		tfmContext.Log("Unexpected flow state: "+tfContext.Flow.TableName(), nil)
 	}
 
-	go tfmContext.seedVaultCycle(tfContext, identityColumnName, indexColumnNames, getIndexedPathExt, flowPushRemote, sqlState)
+	go tfmContext.seedVaultCycle(tfContext, indexColumnNames, getIndexedPathExt, flowPushRemote, sqlState)
 }
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan bool {
