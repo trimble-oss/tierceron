@@ -148,18 +148,21 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 	var matrixChangedEntries [][]interface{}
 	var removeErr error
-	if indexColumnNames != "" { // TODO: Coercion???
-		matrixChangedEntries, removeErr = tfmContext.removeStatisticChangedTableEntries(tfContext, identityColumnName, indexColumnNames)
-		if removeErr != nil {
-			tfmContext.Log("Failure to scrub table entries.", removeErr)
-			return removeErr
-		}
-	} else {
-		var removeErr error
-		matrixChangedEntries, removeErr = tfmContext.removeChangedTableEntries(tfContext)
-		if removeErr != nil {
-			tfmContext.Log("Failure to scrub table entries.", removeErr)
-			return removeErr
+
+	if indexColumnNamesSlice, colOK := indexColumnNames.([]interface{}); colOK {
+		if len(indexColumnNamesSlice) == 3 { // TODO: Coercion???
+			matrixChangedEntries, removeErr = tfmContext.removeStatisticChangedTableEntries(tfContext, identityColumnName, indexColumnNames)
+			if removeErr != nil {
+				tfmContext.Log("Failure to scrub table entries.", removeErr)
+				return removeErr
+			}
+		} else { //TODO Add query for 2 IDs
+			var removeErr error
+			matrixChangedEntries, removeErr = tfmContext.removeChangedTableEntries(tfContext)
+			if removeErr != nil {
+				tfmContext.Log("Failure to scrub table entries.", removeErr)
+				return removeErr
+			}
 		}
 	}
 
