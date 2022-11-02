@@ -1,6 +1,8 @@
 package validator
 
 import (
+	"bufio"
+	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
@@ -11,8 +13,10 @@ import (
 	eUtils "tierceron/utils"
 	"time"
 
-	"github.com/lwithers/minijks/jks"
+	"github.com/pavlo-v-chernykh/keystore-go/v4"
 
+	"github.com/youmark/pkcs8"
+	"golang.org/x/crypto/pkcs12"
 	pkcs "golang.org/x/crypto/pkcs12"
 )
 
@@ -23,57 +27,55 @@ const (
 	privateKeyType  = "PRIVATE KEY"
 )
 
-func PackKeystore(config *eUtils.DriverConfig) ([]byte, error) {
-	return config.KeyStore.Pack(&jks.Options{
-		Password:     "",
-		KeyPasswords: make(map[string]string),
-	})
+func StoreKeystore(config *eUtils.DriverConfig, trustStorePassword string) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	keystoreWriter := bufio.NewWriter(buffer)
+
+	config.KeyStore.Store(keystoreWriter, []byte(trustStorePassword))
+	keystoreWriter.Flush()
+
+	return buffer.Bytes(), nil
 }
 
-func AddToKeystore(config *eUtils.DriverConfig, alias string, certRaw []byte) error {
-	var pemPackerr error
+func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, data []byte) error {
+	// TODO: Add support for this format?  golang.org/x/crypto/pkcs12
 
-	// For now, only supporting passwordless.
-	block, _ := pem.Decode(certRaw)
+	if config.KeyStore == nil {
+		fmt.Println("Making new keystore.")
+		ks := keystore.New()
+		config.KeyStore = &ks
+	}
+
+	block, _ := pem.Decode(data)
 	if block == nil {
-		return errors.New("Not a pem.")
-	}
-	var kp *jks.Keypair
-	var kc *jks.Cert
-
-	switch block.Type {
-	case "RSA PRIVATE KEY":
-		kp = &jks.Keypair{
-			Alias: alias,
+		key, cert, err := pkcs12.Decode(data, string(password)) // Note the order of the return values.
+		if err != nil {
+			return err
 		}
-		kp.Timestamp = time.Now()
-		kp.PrivateKey, pemPackerr = x509.ParsePKCS1PrivateKey(block.Bytes)
-
-	case "EC PRIVATE KEY":
-		kp = &jks.Keypair{
-			Alias: alias,
+		pkcs8Key, err := pkcs8.ConvertPrivateKeyToPKCS8(key, password)
+		if err != nil {
+			return err
 		}
-		kp.Timestamp = time.Now()
-		kp.PrivateKey, pemPackerr = x509.ParseECPrivateKey(block.Bytes)
 
-	case "CERTIFICATE":
-		kc = &jks.Cert{
-			Alias:     alias,
-			Timestamp: time.Now(),
-		}
-		kc.Cert, pemPackerr = x509.ParseCertificate(block.Bytes)
-	default:
-		pemPackerr = fmt.Errorf("%s: unknown private key type %s",
-			alias, block.Type)
-	}
-	if pemPackerr != nil {
-		return pemPackerr
-	}
+		config.KeyStore.SetPrivateKeyEntry(alias, keystore.PrivateKeyEntry{
+			CreationTime: time.Now(),
+			PrivateKey:   pkcs8Key,
+			CertificateChain: []keystore.Certificate{
+				{
+					Type:    "X509",
+					Content: cert.Raw,
+				},
+			},
+		}, password)
 
-	if kc != nil {
-		config.KeyStore.Certs = append(config.KeyStore.Certs, kc)
-	} else if kp != nil {
-		config.KeyStore.Keypairs = append(config.KeyStore.Keypairs, kp)
+	} else {
+		config.KeyStore.SetTrustedCertificateEntry(alias, keystore.TrustedCertificateEntry{
+			CreationTime: time.Now(),
+			Certificate: keystore.Certificate{
+				Type:    "X509",
+				Content: block.Bytes,
+			},
+		})
 	}
 
 	return nil

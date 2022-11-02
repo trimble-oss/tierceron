@@ -248,6 +248,9 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 				valueData := serviceValues.(map[string]interface{})
 				certDestPath, hasCertDefinition := valueData["certDestPath"].(interface{})
 				certSourcePath, hasCertSourcePath := valueData["certSourcePath"].(interface{})
+				certPasswordVaultPath, hasCertPasswordVaultPath := valueData["certPasswordVaultPath"].(interface{})
+				_, hasCertBundleJks := valueData["certBundleJks"].(interface{})
+
 				if hasCertDefinition && hasCertSourcePath {
 					if !ok {
 						vaultCertErr := errors.New("No certDestPath in config template section of seed for this service. Unable to generate cert.pfx")
@@ -269,12 +272,22 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 					}
 
 					// Add support for jks encoding...
-					if config.WantKeystore != "" {
+					if hasCertBundleJks && config.WantKeystore != "" {
+						certPassword := ""
+						if hasCertPasswordVaultPath {
+							if certPasswordVaultPath != "" {
+								// TODO: Take path defined here and look up in vault the password to use to decrypt a cert.
+								// certPassword = from vault...
+								certPasswordVaultPath = ""
+							}
+						}
 						// This needs to be wrapped in a jks first.
-						ksErr := validator.AddToKeystore(config, certSourcePath.(string), decoded)
+						ksErr := validator.AddToKeystore(config, certSourcePath.(string), []byte(certPassword), decoded)
 						if ksErr != nil {
 							eUtils.LogErrorObject(config, err, false)
 							return "", nil, ksErr
+						} else {
+							return "", nil, nil
 						}
 					} else {
 						certData[1] = fmt.Sprintf("%s", decoded)
