@@ -279,15 +279,15 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				}
 				//generate template or certificate
 				if config.WantCerts && certLoaded {
+					if config.WantKeystore != "" && len(certData) == 0 {
+						// Keystore is serialized at end.
+						goto wait
+					}
 					if len(certData) == 0 {
 						eUtils.LogInfo(config, "Could not load cert "+endPaths[i])
 						goto wait
 					}
 					destFile := certData[0]
-					if config.WantKeystore != "" {
-						// Keystore is serialized at end.
-						goto wait
-					}
 					certDestination := config.EndDir + "/" + destFile
 					writeToFile(config, certData[1], certDestination)
 					eUtils.LogInfo(config, "certificate written to "+certDestination)
@@ -378,7 +378,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	}
 	if config.WantKeystore != "" {
 		// Keystore is serialized at end.
-		ks, ksErr := validator.PackKeystore(config)
+		ks, ksErr := validator.StoreKeystore(config, "TODO")
 		if ksErr != nil {
 			eUtils.LogErrorObject(config, ksErr, false)
 		}
