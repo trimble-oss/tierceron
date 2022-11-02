@@ -255,7 +255,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 	return nil
 }
 
-//SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
+// SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
 func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
@@ -268,7 +268,7 @@ func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string) {
 	SeedVaultFromData(config, strings.SplitAfterN(filepath, "/", 3)[2], rawFile)
 }
 
-//seedVaultWithCertsFromEntry takes entry from writestack and if it contains a cert, writes it to vault.
+// seedVaultWithCertsFromEntry takes entry from writestack and if it contains a cert, writes it to vault.
 func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modifier, writeStack *[]writeCollection, entry *writeCollection) {
 	certPathData, certPathOk := entry.data["certSourcePath"]
 	if !certPathOk {
@@ -404,7 +404,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 	return
 }
 
-//SeedVaultFromData takes file bytes and seeds the vault with contained data
+// SeedVaultFromData takes file bytes and seeds the vault with contained data
 func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byte) error {
 	config.Log.SetPrefix("[SEED]")
 	config.Log.Println("=========New File==========")
@@ -508,7 +508,11 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		// Output data being written
 		// Write data and ouput any errors
 		_, isCertData := entry.data["certData"]
+
 		seedData := !config.WantCerts && !isCertData
+		if isCertData && strings.HasPrefix(entry.path, "templates/") {
+			seedData = true
+		}
 
 		if strings.HasPrefix(entry.path, "values/") {
 			_, isCertPath := entry.data["certSourcePath"]
@@ -543,7 +547,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	return nil
 }
 
-//WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
+// WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
 func WriteData(config *eUtils.DriverConfig, path string, data map[string]interface{}, mod *helperkv.Modifier) {
 	root := strings.Split(path, "/")[0]
 	if templateWritten == nil {
