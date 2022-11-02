@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -9,12 +10,13 @@ import (
 	"sync"
 
 	eUtils "tierceron/utils"
+	"tierceron/validator"
 	helperkv "tierceron/vaulthelper/kv"
 )
 
 var mutex = &sync.Mutex{}
 
-//GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
+// GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
 func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig) (interface{}, error) {
 	/*Cyan := "\033[36m"
 	Reset := "\033[0m"
@@ -274,15 +276,29 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
 							eUtils.CheckError(config, ctErr, true)
 						}
+					} else if config.WantKeystore != "" && len(certData) == 0 {
+						if config.KeystorePassword == "" {
+							projectSecrets, err := mod.ReadData(fmt.Sprintf("super-secrets/%s", config.VersionFilter[0]))
+							if err == nil {
+								if trustStorePassword, tspOk := projectSecrets["trustStorePassword"].(string); tspOk {
+									config.KeystorePassword = trustStorePassword
+								}
+							}
+						}
 					}
 				}
 				//generate template or certificate
 				if config.WantCerts && certLoaded {
+					if config.WantKeystore != "" && len(certData) == 0 {
+						// Keystore is serialized at end.
+						goto wait
+					}
 					if len(certData) == 0 {
 						eUtils.LogInfo(config, "Could not load cert "+endPaths[i])
 						goto wait
 					}
-					certDestination := config.EndDir + "/" + certData[0]
+					destFile := certData[0]
+					certDestination := config.EndDir + "/" + destFile
 					writeToFile(config, certData[1], certDestination)
 					eUtils.LogInfo(config, "certificate written to "+certDestination)
 					goto wait
@@ -330,6 +346,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 					}
 				}
 				if config.WantCerts && certLoaded {
+					if config.WantKeystore != "" {
+						// Keystore is serialized at end.
+						goto wait
+					}
 					certDestination := config.EndDir + "/" + certData[0]
 					writeToFile(config, certData[1], certDestination)
 					eUtils.LogInfo(config, "certificate written to "+certDestination)
@@ -366,6 +386,17 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	if templateInfo {
 		config.VersionInfo(versionData, true, "", false)
 	}
+	if config.WantKeystore != "" {
+		// Keystore is serialized at end.
+		ks, ksErr := validator.StoreKeystore(config, config.KeystorePassword)
+		if ksErr != nil {
+			eUtils.LogErrorObject(config, ksErr, false)
+		}
+		certDestination := config.EndDir + "/" + config.WantKeystore
+		eUtils.LogInfo(config, "certificates written to "+certDestination)
+		writeToFile(config, string(ks), certDestination)
+	}
+
 	return nil, nil
 }
 

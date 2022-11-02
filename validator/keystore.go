@@ -1,13 +1,22 @@
 package validator
 
 import (
+	"bufio"
+	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	eUtils "tierceron/utils"
+	"time"
 
+	"github.com/pavlo-v-chernykh/keystore-go/v4"
+
+	"github.com/youmark/pkcs8"
+	"golang.org/x/crypto/pkcs12"
 	pkcs "golang.org/x/crypto/pkcs12"
 )
 
@@ -18,7 +27,61 @@ const (
 	privateKeyType  = "PRIVATE KEY"
 )
 
-//ValidateKeyStore validates the sendgrid API key.
+func StoreKeystore(config *eUtils.DriverConfig, trustStorePassword string) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	keystoreWriter := bufio.NewWriter(buffer)
+
+	config.KeyStore.Store(keystoreWriter, []byte(trustStorePassword))
+	keystoreWriter.Flush()
+
+	return buffer.Bytes(), nil
+}
+
+func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, data []byte) error {
+	// TODO: Add support for this format?  golang.org/x/crypto/pkcs12
+
+	if config.KeyStore == nil {
+		fmt.Println("Making new keystore.")
+		ks := keystore.New()
+		config.KeyStore = &ks
+	}
+
+	block, _ := pem.Decode(data)
+	if block == nil {
+		key, cert, err := pkcs12.Decode(data, string(password)) // Note the order of the return values.
+		if err != nil {
+			return err
+		}
+		pkcs8Key, err := pkcs8.ConvertPrivateKeyToPKCS8(key, password)
+		if err != nil {
+			return err
+		}
+
+		config.KeyStore.SetPrivateKeyEntry(alias, keystore.PrivateKeyEntry{
+			CreationTime: time.Now(),
+			PrivateKey:   pkcs8Key,
+			CertificateChain: []keystore.Certificate{
+				{
+					Type:    "X509",
+					Content: cert.Raw,
+				},
+			},
+		}, password)
+
+	} else {
+		config.KeyStore.SetTrustedCertificateEntry(alias, keystore.TrustedCertificateEntry{
+			CreationTime: time.Now(),
+			Certificate: keystore.Certificate{
+				Type:    "X509",
+				Content: block.Bytes,
+			},
+		})
+	}
+
+	return nil
+}
+
+// ValidateKeyStore validates the sendgrid API key.
 func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string) (bool, error) {
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {

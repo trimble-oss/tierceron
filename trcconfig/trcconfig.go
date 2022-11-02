@@ -92,6 +92,7 @@ func main() {
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this"+coreopts.GetFolderPrefix()+"config to access the vault")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
+	keyStorePtr := flag.String("keystore", "", "Put certificates into this keystore file.")
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"config.log", "Output path for log file")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	zcPtr := flag.Bool("zc", false, "Zero config (no configuration option).")
@@ -300,6 +301,7 @@ func main() {
 				StartDir:       append([]string{}, *startDirPtr),
 				EndDir:         *endDirPtr,
 				WantCerts:      *wantCertsPtr,
+				WantKeystore:   *keyStorePtr,
 				ZeroConfig:     *zcPtr,
 				GenAuth:        false,
 				Log:            logger,
@@ -342,6 +344,7 @@ func main() {
 			StartDir:       append([]string{}, *startDirPtr),
 			EndDir:         *endDirPtr,
 			WantCerts:      *wantCertsPtr,
+			WantKeystore:   *keyStorePtr,
 			ZeroConfig:     *zcPtr,
 			GenAuth:        false,
 			Log:            logger,
