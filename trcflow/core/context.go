@@ -749,10 +749,10 @@ func (tfmContext *TrcFlowMachineContext) GetDbConn(tfContext *TrcFlowContext, db
 // Utilizing provided api auth headers, endpoint, and body data
 // this CB makes a call on behalf of the caller and returns a map
 // representation of json data provided by the endpoint.
-func (tfmContext *TrcFlowMachineContext) CallAPI(apiAuthHeaders map[string]string, host string, apiEndpoint string, bodyData io.Reader, getOrPost bool) (map[string]interface{}, error) {
+func (tfmContext *TrcFlowMachineContext) CallAPI(apiAuthHeaders map[string]string, host string, apiEndpoint string, bodyData io.Reader, getOrPost bool) (map[string]interface{}, int, error) {
 	httpClient, err := helperkv.CreateHTTPClient(false, host, tfmContext.Env, false)
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
 	if getOrPost {
 		return trcvutils.GetJSONFromClientByGet(tfmContext.Config, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
