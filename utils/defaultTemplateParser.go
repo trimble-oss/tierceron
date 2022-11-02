@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"tierceron/buildopts/coreopts"
+
+	"github.com/pavlo-v-chernykh/keystore-go/v4"
 )
 
 // {{or .<key> "<value>"}}
@@ -17,36 +19,39 @@ type ProcessContext interface{}
 type ConfigDriver func(ctx ProcessContext, config *DriverConfig) (interface{}, error)
 
 type DriverConfig struct {
-	Context         ProcessContext
-	Insecure        bool
-	Token           string
-	VaultAddress    string
-	EnvRaw          string
-	Env             string
-	Regions         []string
-	SecretMode      bool
-	ServicesWanted  []string
-	StartDir        []string // Starting directory... possibly multiple
-	EndDir          string
-	WantCerts       bool
-	ZeroConfig      bool
-	GenAuth         bool
-	Clean           bool
-	Log             *log.Logger
-	Diff            bool
-	Update          func(*string, string)
-	FileFilter      []string
-	VersionInfo     func(map[string]interface{}, bool, string, bool)
-	VersionFilter   []string
-	ExitOnFailure   bool // Exit on a failure or try to continue
-	ProjectSections []string
-	SectionKey      string // Restricted or Index
-	SectionName     string // extension provided name
-	SubSectionValue string
-	SubSectionName  string // extension provided subsection name
-	IndexFilter     []string
-	Trcxe           []string //Used for TRCXE
-	Trcxr           bool     //Used for TRCXR
+	Context          ProcessContext
+	Insecure         bool
+	Token            string
+	VaultAddress     string
+	EnvRaw           string
+	Env              string
+	Regions          []string
+	SecretMode       bool
+	ServicesWanted   []string
+	StartDir         []string // Starting directory... possibly multiple
+	EndDir           string
+	KeyStore         *keystore.KeyStore
+	KeystorePassword string
+	WantKeystore     string // If provided and non nil, pem files will be put into a java compatible keystore.
+	WantCerts        bool
+	ZeroConfig       bool
+	GenAuth          bool
+	Clean            bool
+	Log              *log.Logger
+	Diff             bool
+	Update           func(*string, string)
+	FileFilter       []string
+	VersionInfo      func(map[string]interface{}, bool, string, bool)
+	VersionFilter    []string
+	ExitOnFailure    bool // Exit on a failure or try to continue
+	ProjectSections  []string
+	SectionKey       string // Restricted or Index
+	SectionName      string // extension provided name
+	SubSectionValue  string
+	SubSectionName   string // extension provided subsection name
+	IndexFilter      []string
+	Trcxe            []string //Used for TRCXE
+	Trcxr            bool     //Used for TRCXR
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
