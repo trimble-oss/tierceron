@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -275,6 +276,15 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
 							eUtils.CheckError(config, ctErr, true)
 						}
+					} else if config.WantKeystore != "" && len(certData) == 0 {
+						if config.KeystorePassword == "" {
+							projectSecrets, err := mod.ReadData(fmt.Sprintf("super-secrets/%s", config.VersionFilter[0]))
+							if err == nil {
+								if trustStorePassword, tspOk := projectSecrets["trustStorePassword"].(string); tspOk {
+									config.KeystorePassword = trustStorePassword
+								}
+							}
+						}
 					}
 				}
 				//generate template or certificate
@@ -378,7 +388,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	}
 	if config.WantKeystore != "" {
 		// Keystore is serialized at end.
-		ks, ksErr := validator.StoreKeystore(config, "TODO")
+		ks, ksErr := validator.StoreKeystore(config, config.KeystorePassword)
 		if ksErr != nil {
 			eUtils.LogErrorObject(config, ksErr, false)
 		}
