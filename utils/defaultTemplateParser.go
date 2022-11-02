@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"tierceron/buildopts/coreopts"
+
+	"github.com/pavlo-v-chernykh/keystore-go/v4"
 )
 
 // {{or .<key> "<value>"}}
@@ -28,6 +30,8 @@ type DriverConfig struct {
 	ServicesWanted  []string
 	StartDir        []string // Starting directory... possibly multiple
 	EndDir          string
+	KeyStore        *keystore.KeyStore
+	WantKeystore    string // If provided and non nil, pem files will be put into a java compatible keystore.
 	WantCerts       bool
 	ZeroConfig      bool
 	GenAuth         bool
