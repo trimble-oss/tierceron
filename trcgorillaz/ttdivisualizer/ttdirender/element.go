@@ -5,7 +5,7 @@ import (
 	"log"
 
 	//"strconv"
-	"encoding/json"
+	//"encoding/json"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -73,38 +73,38 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
 	color := g3ndpalette.DARK_BLUE
 	if g3n.GetDetailedElement().Genre == "Argosy" {
-		if g3n.GetDetailedElement().Data != "" {
-			var decoded interface{}
-			err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decoded)
-			if err != nil {
-				log.Println("Error decoding data in element renderer NewSolidAtPosition")
-			} else {
-				decodedData := decoded.(map[string]interface{})
-				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil { 
-					if interfaceQuartiles, ok := decodedData["Quartiles"].([]interface{}); ok {
-						for _, quart := range interfaceQuartiles {
-							if floatQuart, ok := quart.(float64); ok {
-								er.quartiles = append(er.quartiles, floatQuart)
-							}
-						}
-					}
-					// interfaceQuartiles := decodedData["Quartiles"].([]interface{}) 
-					// for _, quart :=  range interfaceQuartiles {
-					// 	er.quartiles = append(er.quartiles, quart.(float64))
-					// }
+		// if g3n.GetDetailedElement().Data != "" { // Can't add this here --> Put in curve renderer and add data to curve element
+		// 	var decoded interface{}
+		// 	err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decoded)
+		// 	if err != nil {
+		// 		log.Println("Error decoding data in element renderer NewSolidAtPosition")
+		// 	} else {
+		// 		decodedData := decoded.(map[string]interface{})
+		// 		if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil { 
+		// 			if interfaceQuartiles, ok := decodedData["Quartiles"].([]interface{}); ok {
+		// 				for _, quart := range interfaceQuartiles {
+		// 					if floatQuart, ok := quart.(float64); ok {
+		// 						er.quartiles = append(er.quartiles, floatQuart)
+		// 					}
+		// 				}
+		// 			}
+		// 			// interfaceQuartiles := decodedData["Quartiles"].([]interface{}) 
+		// 			// for _, quart :=  range interfaceQuartiles {
+		// 			// 	er.quartiles = append(er.quartiles, quart.(float64))
+		// 			// }
 
-					if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
-						maxTime = int(decodedMaxTime)
-					}
-					//er.quartiles = decodedData["Quartiles"].([]float64)
-					//maxTime = int(decodedData["MaxTime"].(float64))
-				}
-			}
+		// 			if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
+		// 				maxTime = int(decodedMaxTime)
+		// 			}
+		// 			//er.quartiles = decodedData["Quartiles"].([]float64)
+		// 			//maxTime = int(decodedData["MaxTime"].(float64))
+		// 		}
+		// 	}
 
-			// fmt.Println(g3n.GetDetailedElement().Data)
-			// maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
+		// 	// fmt.Println(g3n.GetDetailedElement().Data)
+		// 	// maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
 
-		}
+		// }
 		color.Set(0, 0.349, 0.643)
 	} else if g3n.GetDetailedElement().Genre == "DataFlowGroup" {
 		color.Set(1.0, 0.224, 0.0)
@@ -223,6 +223,17 @@ func (er *ElementRenderer) RecursiveClick(worldApp *g3nworld.WorldApp, clickedEl
 			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
 				element.ApplyState(mashupsdk.Hidden, false)
 				element.ApplyState(mashupsdk.Clicked, true)
+				mesh := element.GetNamedMesh(element.GetDisplayName())
+				// get pos from location cache
+				if mesh == nil {
+					loc := er.LocationCache[element.GetDetailedElement().Id]
+					er.push(element, loc)
+				} else {
+					loc := mesh.Position()
+					er.push(element, &loc)
+				}
+				
+				//er.push(element, element.Ge)
 				//Add to clickedelement stack for removal here
 				if element.GetNamedMesh(element.GetDisplayName()) == nil {
 					_, nextPos := er.NextCoordinate(element, er.totalElements)
