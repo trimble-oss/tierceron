@@ -225,10 +225,10 @@ func (er *ElementRenderer) RecursiveClick(worldApp *g3nworld.WorldApp, clickedEl
 				element.ApplyState(mashupsdk.Clicked, true)
 				mesh := element.GetNamedMesh(element.GetDisplayName())
 				// get pos from location cache
-				if mesh == nil {
+				if mesh == nil { //  && element.GetDetailedElement().Genre != "DataFlow"
 					loc := er.LocationCache[element.GetDetailedElement().Id]
 					er.push(element, loc)
-				} else {
+				} else  { //if element.GetDetailedElement().Genre != "DataFlow"
 					loc := mesh.Position()
 					er.push(element, &loc)
 				}
@@ -290,19 +290,19 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
 	//Initialize location cache
 	if er.iOffset != 2 {
-		check := false
+		//check := false
 		ids := []int64{}
 		for id := range worldApp.ConcreteElements {
-			el := worldApp.ConcreteElements[id].GetDetailedElement()
+			// el := worldApp.ConcreteElements[id].GetDetailedElement()
 
-			for j := 0; j < len(ids); j++ {
-				if el.Genre == "Argosy" || el.Genre == "DataFlowGroup" {
-					check = true
-				}
-			}
+			// for j := 0; j < len(ids); j++ {
+			// 	if el.Genre == "Argosy" || el.Genre == "DataFlowGroup" {
+			// 		check = true
+			// 	}
+			// }
 			ids = append(ids, id)
 		}
-		fmt.Println(check)
+		//fmt.Println(check)
 		copyCache := make(map[int64]*math32.Vector3)
 		for k, v := range er.LocationCache {
 			copyCache[k] = v
@@ -315,8 +315,12 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		}
 		er.iOffset = 2
 	}
+	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+	//Need to do: Make unique ctrl click deselect func that loops thru clickedElements stack and just compares to 
+	// currently clicked el --> don't forget to add currently clicked el to stack!
 	if !er.isEmpty() {
-		prevElement := er.top()
+		for i := 0; i < len(er.clickedElements); i++ {
+			prevElement := er.top()
 		if !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
 			er.pop()
 			for _, childID := range prevElement.clickedElement.GetChildElementIds() {
@@ -329,8 +333,24 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 			}
 			er.deselectElements(worldApp, prevElement.clickedElement)
 		}
+		}
+
+
+		// prevElement := er.top()
+		// if prevElement.clickedElement != clickedElement && !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
+		// 	er.pop()
+		// 	for _, childID := range prevElement.clickedElement.GetChildElementIds() {
+		// 		if !er.isChildElement(worldApp, prevElement.clickedElement) {
+		// 			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+		// 				childElement.ApplyState(mashupsdk.Hidden, true)
+		// 				er.RemoveAll(worldApp, childID)
+		// 			}
+		// 		}
+		// 	}
+		// 	er.deselectElements(worldApp, prevElement.clickedElement)
+		// }
 	}
-	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+	
 	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" && clickedElement.GetDetailedElement().Name != "TenantDataBase" {
 		name := clickedElement.GetDisplayName()
 		mesh := clickedElement.GetNamedMesh(name)
