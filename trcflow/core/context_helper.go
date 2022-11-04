@@ -44,6 +44,43 @@ func getInsertChangeQuery(databaseName string, changeTable string, id interface{
 	}
 }
 
+func getCompositeChangeIdQuery(databaseName string, changeTable string, idCol string, indexColumnNames interface{}) string {
+	return fmt.Sprintf("SELECT %s, %s FROM %s.%s", idCol, indexColumnNames.([]string)[0], databaseName, changeTable)
+}
+
+func getCompositeDeleteChangeQuery(databaseName string, changeTable string, idCol string, idColVal interface{}, indexColumnNames interface{}, indexColumnValues interface{}) string {
+	if first, second, third := idColVal.(string), indexColumnValues.([]string)[0], indexColumnValues.([]string)[1]; first != "" && second != "" && third != "" {
+		return fmt.Sprintf("DELETE FROM %s.%s WHERE %s='%s' AND %s='%s'", databaseName, changeTable, idCol, idColVal, indexColumnNames.([]string)[0], indexColumnValues.([]string)[0])
+	}
+	return ""
+}
+
+// removeChangedTableEntries -- gets and removes any changed table entries.
+func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(tfContext *TrcFlowContext, idCol string, indexColumnNames interface{}) ([][]interface{}, error) {
+	var changedEntriesQuery string
+
+	changesLock.Lock()
+	changedEntriesQuery = getCompositeChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCol, indexColumnNames)
+
+	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.FlowLock)
+	if err != nil {
+		eUtils.LogErrorObject(tfmContext.Config, err, false)
+		return nil, err
+	}
+	for _, changedEntry := range matrixChangedEntries {
+		idColVal := changedEntry[0]
+		indexColumnValues := []string{}
+		indexColumnValues = append(indexColumnValues, changedEntry[1].(string))
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getCompositeDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCol, idColVal, indexColumnNames, indexColumnValues), tfContext.FlowLock)
+		if err != nil {
+			eUtils.LogErrorObject(tfmContext.Config, err, false)
+			return nil, err
+		}
+	}
+	changesLock.Unlock()
+	return matrixChangedEntries, nil
+}
+
 // removeChangedTableEntries -- gets and removes any changed table entries.
 func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *TrcFlowContext) ([][]interface{}, error) {
 	var changedEntriesQuery string
@@ -86,10 +123,10 @@ func getStatisticDeleteChangeQuery(databaseName string, changeTable string, idCo
 
 func getStatisticChangedByIdQuery(databaseName string, changeTable string, idColumn string, indexColumnNames interface{}, indexColumnValues interface{}) (string, error) {
 	if indexColumnNamesSlice, iOk := indexColumnNames.([]string); iOk {
-		if indexColumnValuesSlice, iOk := indexColumnValues.([]string); iOk {
+		if indexColumnValuesSlice, iOk := indexColumnValues.([]interface{}); iOk {
 			query := fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, idColumn, indexColumnValuesSlice[0])
 
-			if len(indexColumnValuesSlice) > 0 {
+			if len(indexColumnValuesSlice) > 1 {
 				for i := 0; i < len(indexColumnValuesSlice); i++ {
 					query = fmt.Sprintf("%s AND %s='%s'", query, indexColumnNamesSlice[i], indexColumnValuesSlice[i])
 				}
@@ -149,14 +186,20 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	var matrixChangedEntries [][]interface{}
 	var removeErr error
 
-	if indexColumnNamesSlice, colOK := indexColumnNames.([]interface{}); colOK {
+	if indexColumnNamesSlice, colOK := indexColumnNames.([]string); colOK {
 		if len(indexColumnNamesSlice) == 3 { // TODO: Coercion???
 			matrixChangedEntries, removeErr = tfmContext.removeStatisticChangedTableEntries(tfContext, identityColumnName, indexColumnNames)
 			if removeErr != nil {
 				tfmContext.Log("Failure to scrub table entries.", removeErr)
 				return removeErr
 			}
-		} else { //TODO Add query for 2 IDs
+		} else if len(indexColumnNamesSlice) == 2 { // TODO: Coercion???
+			matrixChangedEntries, removeErr = tfmContext.removeCompositeKeyChangedTableEntries(tfContext, identityColumnName, indexColumnNames)
+			if removeErr != nil {
+				tfmContext.Log("Failure to scrub table entries.", removeErr)
+				return removeErr
+			}
+		} else {
 			var removeErr error
 			matrixChangedEntries, removeErr = tfmContext.removeChangedTableEntries(tfContext)
 			if removeErr != nil {
