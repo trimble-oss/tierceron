@@ -18,16 +18,19 @@ func GetTierceronFlowIdColName() string {
 	return tierceronFlowIdColumnName
 }
 
-func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnName interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
+func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNameInterface interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
 	indexName, idValue := "", ""
-	if tierceronFlowName, ok := rowDataMap[indexColumnName.(string)].(string); ok {
-		indexName = indexColumnName.(string)
-		idValue = tierceronFlowName
+	if indexColumnNameSlice, iOk := indexColumnNameInterface.([]string); iOk && len(indexColumnNameSlice) == 1 { // 1 ID
+		if tierceronFlowName, ok := rowDataMap[indexColumnNameSlice[0]].(string); ok {
+			indexName = indexColumnNameSlice[0]
+			idValue = tierceronFlowName
 
-	} else {
-		return "", errors.New("flowName not found for TierceronFlow: " + indexColumnName.(string))
+		} else {
+			return "", errors.New("flowName not found for TierceronFlow: " + indexColumnNameSlice[0])
+		}
+		return "/" + indexName + "/" + idValue, nil
 	}
-	return "/" + indexName + "/" + idValue, nil
+	return "", errors.New("Too many columnIDs for incoming TierceronFlow change")
 }
 
 func GetTierceronTableNames() []string {
