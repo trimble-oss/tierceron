@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/signal"
 	"sort"
@@ -161,6 +162,8 @@ type TrcFlowContext struct {
 	Restart         bool
 	Init            bool
 	ReadOnly        bool
+
+	Log *log.Logger
 }
 
 var tableModifierLock sync.Mutex
