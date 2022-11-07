@@ -352,10 +352,11 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		tfContext.GoMod.Env = tfmContext.Env
 		tfContext.GoMod.Version = "0"
 
-		index, secondaryI, indexErr := coreopts.FindIndexForService(tfContext.FlowSource, tfContext.Flow.ServiceName())
+		index, secondaryI, indexExt, indexErr := coreopts.FindIndexForService(tfContext.FlowSource, tfContext.Flow.ServiceName())
 		if indexErr == nil && index != "" {
 			tfContext.GoMod.SectionName = index
 			secondaryIndexes = secondaryI
+			tfContext.GoMod.SubSectionName = indexExt
 		}
 		if tfContext.GoMod.SectionName != "" {
 			indexValues, err = tfContext.GoMod.ListSubsection("/Index/", tfContext.FlowSource, tfContext.GoMod.SectionName, tfmContext.Config.Log)
@@ -369,13 +370,33 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 	for _, indexValue := range indexValues {
 		if indexValue != "" {
 			tfContext.GoMod.SectionKey = "/Index/"
-			tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + tfContext.Flow.ServiceName()
+			var subSection string
+			if tfContext.GoMod.SubSectionName != "" {
+				subSection = tfContext.GoMod.SubSectionName
+			} else {
+				subSection = tfContext.Flow.ServiceName()
+			}
+			tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection
 			if len(secondaryIndexes) > 0 {
 				for _, secondaryIndex := range secondaryIndexes {
-					tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + tfContext.Flow.ServiceName() + "/" + secondaryIndex
-					rowErr := tfmContext.PathToTableRowHelper(tfContext)
-					if rowErr != nil {
-						return rowErr
+					tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection + "/" + secondaryIndex
+					if subSection != "" {
+						subIndexValues, subIndexErr := tfContext.GoMod.ListSubsection("/Index/"+tfContext.FlowSource+"/"+tfContext.GoMod.SectionName+"/"+indexValue+"/", subSection, secondaryIndex, tfmContext.Config.Log)
+						if subIndexErr != nil {
+							continue
+						}
+						for _, subIndexValue := range subIndexValues {
+							tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection + "/" + secondaryIndex + "/" + subIndexValue + "/" + tfContext.Flow.ServiceName()
+							rowErr := tfmContext.PathToTableRowHelper(tfContext)
+							if rowErr != nil {
+								return rowErr
+							}
+						}
+					} else {
+						rowErr := tfmContext.PathToTableRowHelper(tfContext)
+						if rowErr != nil {
+							return rowErr
+						}
 					}
 				}
 			} else {
