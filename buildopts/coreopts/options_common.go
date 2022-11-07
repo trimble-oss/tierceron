@@ -44,8 +44,8 @@ func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
 
 // End old Active Sessions interface
 
-func FindIndexForService(project string, service string) (string, []string, error) {
-	return "", nil, errors.New("Not implemented")
+func FindIndexForService(project string, service string) (string, []string, string, error) {
+	return "", nil, "", errors.New("Not implemented")
 }
 
 // Which tables synced..

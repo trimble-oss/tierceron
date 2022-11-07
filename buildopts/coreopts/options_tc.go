@@ -12,7 +12,6 @@ import (
 	"database/sql"
 )
 
-//
 func GetFolderPrefix() string {
 	return trcprefix.GetFolderPrefix()
 }
@@ -48,7 +47,7 @@ func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
 
 // End old Active Sessions interface
 
-func FindIndexForService(project string, service string) (string, []string, error) {
+func FindIndexForService(project string, service string) (string, []string, string, error) {
 	return tcbuildopts.FindIndexForService(project, service)
 }
 
