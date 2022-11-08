@@ -453,6 +453,7 @@ retryQuery:
 	}
 	if err != nil {
 		logger.Printf("Modifier failing after %d retries.\n", retries)
+		logger.Printf(err.Error())
 	}
 	return result, err
 }
