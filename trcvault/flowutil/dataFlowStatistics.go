@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
+	//"os"
 	"strconv"
 	"strings"
 	eUtils "tierceron/utils"
@@ -107,20 +107,25 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 					}
 					dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
+					if err != nil {
+						log.Println(err)
+						return aFleet, err
+					}
 					// use your own select statement
 					// this is just an example statement
+					
 					statement, err := dbsourceConn.Prepare("select * from DataflowStatistics order by argosid,flowGroup,flowName,stateName asc")
 
 					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
+						log.Println(err)
+						return aFleet, err
 					}
 
 					rows, err := statement.Query() // execute our select statement
 
 					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
+						log.Println(err)
+						return aFleet, err
 					}
 					defer rows.Close()
 
