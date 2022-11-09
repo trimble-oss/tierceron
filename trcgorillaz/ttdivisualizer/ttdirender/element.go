@@ -5,7 +5,7 @@ import (
 	"log"
 
 	//"strconv"
-	"encoding/json"
+	//"encoding/json"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -34,6 +34,8 @@ type ElementRenderer struct {
 	LocationCache   map[int64]*math32.Vector3
 	clickedElements []*ClickedG3nDetailElement
 	quartiles       []float64
+	ctrlElements    []*g3nmash.G3nDetailedElement
+	isCtrl 			bool
 }
 
 // Returns true if length of er.clickedElements stack is 0 and false otherwise
@@ -73,35 +75,38 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
 	color := g3ndpalette.DARK_BLUE
 	if g3n.GetDetailedElement().Genre == "Argosy" {
-		if g3n.GetDetailedElement().Data != "" {
-			var decoded interface{}
-			err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decoded)
-			if err != nil {
-				log.Println("Error decoding data in element renderer NewSolidAtPosition")
-			} else {
-				decodedData := decoded.(map[string]interface{})
-				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil {
-					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
+		// if g3n.GetDetailedElement().Data != "" { // Can't add this here --> Put in curve renderer and add data to curve element
+		// 	var decoded interface{}
+		// 	err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decoded)
+		// 	if err != nil {
+		// 		log.Println("Error decoding data in element renderer NewSolidAtPosition")
+		// 	} else {
+		// 		decodedData := decoded.(map[string]interface{})
+		// 		if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil { 
+		// 			if interfaceQuartiles, ok := decodedData["Quartiles"].([]interface{}); ok {
+		// 				for _, quart := range interfaceQuartiles {
+		// 					if floatQuart, ok := quart.(float64); ok {
+		// 						er.quartiles = append(er.quartiles, floatQuart)
+		// 					}
+		// 				}
+		// 			}
+		// 			// interfaceQuartiles := decodedData["Quartiles"].([]interface{}) 
+		// 			// for _, quart :=  range interfaceQuartiles {
+		// 			// 	er.quartiles = append(er.quartiles, quart.(float64))
+		// 			// }
 
-					// } else
-					if decodedQuartiles, ok := decodedData["Quartiles"].([]float64); ok {
-						er.quartiles = decodedQuartiles
-					}
-					// if link, ok := decodedData["Quartiles"].([]interface{}); ok {
+		// 			if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
+		// 				maxTime = int(decodedMaxTime)
+		// 			}
+		// 			//er.quartiles = decodedData["Quartiles"].([]float64)
+		// 			//maxTime = int(decodedData["MaxTime"].(float64))
+		// 		}
+		// 	}
 
-					// } else
-					if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
-						maxTime = int(decodedMaxTime)
-					}
-					//er.quartiles = decodedData["Quartiles"].([]float64)
-					//maxTime = int(decodedData["MaxTime"].(float64))
-				}
-			}
+		// 	// fmt.Println(g3n.GetDetailedElement().Data)
+		// 	// maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
 
-			// fmt.Println(g3n.GetDetailedElement().Data)
-			// maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
-
-		}
+		// }
 		color.Set(0, 0.349, 0.643)
 	} else if g3n.GetDetailedElement().Genre == "DataFlowGroup" {
 		color.Set(1.0, 0.224, 0.0)
@@ -110,7 +115,7 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 	}
 	mat := material.NewStandard(color)
 	sphereMesh := graphic.NewMesh(sphereGeom, mat)
-	sphereMesh.SetLoaderID(g3n.GetDisplayName())
+	sphereMesh.SetLoaderID(g3n.GetDisplayName())    //strconv.Itoa(int(g3n.GetDetailedElement().Id)))
 	sphereMesh.SetPositionVec(vpos)
 	return sphereMesh
 }
@@ -211,24 +216,98 @@ func (er *ElementRenderer) initLocnCache(worldApp *g3nworld.WorldApp, element *g
 	}
 }
 
+func (er *ElementRenderer) RecursiveClick(worldApp *g3nworld.WorldApp, clickedElement *g3nmash.G3nDetailedElement) bool {
+	for _, childId := range clickedElement.GetChildElementIds() {
+		if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
+			if element.GetDetailedElement().Genre == "DataFlowStatistic" {
+				element.ApplyState(mashupsdk.Clicked, true)
+			}
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
+				element.ApplyState(mashupsdk.Hidden, false)
+				element.ApplyState(mashupsdk.Clicked, true)
+				//mesh := element.GetNamedMesh(element.GetDisplayName())
+				// get pos from location cache
+				er.ctrlElements = append(er.ctrlElements, element)
+				// if mesh == nil { //  && element.GetDetailedElement().Genre != "DataFlow"
+				// 	// loc := er.LocationCache[element.GetDetailedElement().Id]
+				// 	// er.push(element, loc)
+				// 	er.ctrlElements = append(er.ctrlElements, element)
+				// } else  { //if element.GetDetailedElement().Genre != "DataFlow"
+				// 	// loc := mesh.Position()
+				// 	// er.push(element, &loc)
+				// 	er.ctrlElements = append(er.ctrlElements, element)
+				// }
+				
+				//er.push(element, element.Ge)
+				//Add to clickedelement stack for removal here
+				if element.GetNamedMesh(element.GetDisplayName()) == nil {
+					_, nextPos := er.NextCoordinate(element, er.totalElements)
+					if nextPos != nil {
+						solidMesh := er.NewSolidAtPosition(element, nextPos)
+						if solidMesh != nil {
+							log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
+							worldApp.UpsertToScene(solidMesh)
+							element.SetNamedMesh(element.GetDisplayName(), solidMesh)
+						}
+						er.RecursiveClick(worldApp, element)
+					}
+				} else {
+					worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
+					er.RecursiveClick(worldApp, element)
+				}
+			}
+		}
+	}
+	// for _, childID := range clickedElement.GetChildElementIds() {
+	// 	if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+	// 		if childElement.GetDetailedElement().Genre != "Solid" {
+	// 			childElement.ApplyState(mashupsdk.Hidden, false)
+	// 			childElement.ApplyState(mashupsdk.Clicked, true)
+	// 			er.RecursiveClick(worldApp, childElement)
+	// 			for _, childId := range g3n.GetChildElementIds() {
+	// 				if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
+	// 					if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
+	// 						if element.GetNamedMesh(element.GetDisplayName()) == nil {
+	// 							_, nextPos := er.NextCoordinate(element, er.totalElements)
+	// 							if nextPos != nil {
+	// 								solidMesh := er.NewSolidAtPosition(element, nextPos)
+	// 								if solidMesh != nil {
+	// 									log.Printf("Adding %s\n", solidMesh.GetNode().LoaderID())
+	// 									worldApp.UpsertToScene(solidMesh)
+	// 									element.SetNamedMesh(element.GetDisplayName(), solidMesh)
+	// 								}
+	// 							}
+	// 						} else {
+	// 							worldApp.UpsertToScene(element.GetNamedMesh(element.GetDisplayName()))
+	// 						}
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	return true
+}
+
+
 // Properly sets the elements before rendering new clicked elements
 func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
 	//Initialize location cache
 	if er.iOffset != 2 {
-		check := false
+		//check := false
 		ids := []int64{}
 		for id := range worldApp.ConcreteElements {
-			el := worldApp.ConcreteElements[id].GetDetailedElement()
+			// el := worldApp.ConcreteElements[id].GetDetailedElement()
 
-			for j := 0; j < len(ids); j++ {
-				if el.Genre == "Argosy" || el.Genre == "DataFlowGroup" {
-					check = true
-				}
-			}
+			// for j := 0; j < len(ids); j++ {
+			// 	if el.Genre == "Argosy" || el.Genre == "DataFlowGroup" {
+			// 		check = true
+			// 	}
+			// }
 			ids = append(ids, id)
 		}
-		fmt.Println(check)
+		//fmt.Println(check)
 		copyCache := make(map[int64]*math32.Vector3)
 		for k, v := range er.LocationCache {
 			copyCache[k] = v
@@ -241,39 +320,132 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		}
 		er.iOffset = 2
 	}
-	if !er.isEmpty() {
-		prevElement := er.top()
-		if !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
-			er.pop()
-			for _, childID := range prevElement.clickedElement.GetChildElementIds() {
-				if !er.isChildElement(worldApp, prevElement.clickedElement) {
-					if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
-						childElement.ApplyState(mashupsdk.Hidden, true)
-						er.RemoveAll(worldApp, childID)
-					}
-				}
-			}
-			er.deselectElements(worldApp, prevElement.clickedElement)
-		}
-	}
 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+	//Need to do: Make unique ctrl click deselect func that loops thru clickedElements stack and just compares to 
+	// currently clicked el --> don't forget to add currently clicked el to stack!
+	if !er.isEmpty() {
+		if !er.isCtrl{
+			//for i := 0; i < len(er.clickedElements); i++ {
+				prevElement := er.top()
+				if !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
+					er.pop()
+					for _, childID := range prevElement.clickedElement.GetChildElementIds() {
+						if !er.isChildElement(worldApp, prevElement.clickedElement) {
+							if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+								childElement.ApplyState(mashupsdk.Hidden, true)
+								er.RemoveAll(worldApp, childID)
+							}
+						}
+					}
+					er.deselectElements(worldApp, prevElement.clickedElement)
+				}
+			//}
+		} else if er.isCtrl {
+			er.ctrlRemove(worldApp)
+		}
+		
+
+		// prevElement := er.top()
+		// if prevElement.clickedElement != clickedElement && !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
+		// 	er.pop()
+		// 	for _, childID := range prevElement.clickedElement.GetChildElementIds() {
+		// 		if !er.isChildElement(worldApp, prevElement.clickedElement) {
+		// 			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+		// 				childElement.ApplyState(mashupsdk.Hidden, true)
+		// 				er.RemoveAll(worldApp, childID)
+		// 			}
+		// 		}
+		// 	}
+		// 	er.deselectElements(worldApp, prevElement.clickedElement)
+		// }
+	}
+	
 	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" && clickedElement.GetDetailedElement().Name != "TenantDataBase" {
 		name := clickedElement.GetDisplayName()
 		mesh := clickedElement.GetNamedMesh(name)
 		pos := mesh.Position()
 		center := pos
 		er.push(clickedElement, &center)
-		for _, childID := range clickedElement.GetChildElementIds() {
-			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
-				if childElement.GetDetailedElement().Genre != "Solid" {
-					childElement.ApplyState(mashupsdk.Hidden, false)
-					childElement.ApplyState(mashupsdk.Clicked, true)
+
+		if clickedElement.IsStateSet(mashupsdk.ControlClicked) {
+			er.isCtrl = true
+			er.RecursiveClick(worldApp, clickedElement)
+			//Need to add to clicked element stack to remove correct elements 
+			//clickedElement.ApplyState(mashupsdk.ControlClicked, false)
+
+		} else {
+			for _, childID := range clickedElement.GetChildElementIds() {
+				if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+					if childElement.GetDetailedElement().Genre != "Solid" {
+						childElement.ApplyState(mashupsdk.Hidden, false)
+						childElement.ApplyState(mashupsdk.Clicked, true)
+					}
 				}
 			}
 		}
 	}
 	return true
 }
+
+func (er *ElementRenderer) ctrlRemove(worldApp *g3nworld.WorldApp) {
+	//Add parent ids to clickedelements stack
+	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+	if clickedElement.GetParentElementIds() != nil && clickedElement.GetDetailedElement().Genre != "Space" {
+		amount := 0
+		for amount <= (len(er.ctrlElements) - 1) {           //for i := 0; i < len(er.ctrlElements); i++ {
+			el := er.ctrlElements[amount] //Add check that amount is within array length
+			a := !er.isChildElement(worldApp, el)
+			b := el.GetParentElementIds() != nil 
+			d := len(clickedElement.GetParentElementIds()) != 0
+			c := false
+			if d {
+				c = el.GetParentElementIds()[0] != clickedElement.GetParentElementIds()[0]
+			}	
+			if len(er.ctrlElements) <= 14 {
+				fmt.Println("Check")
+			}		
+			if a && b && ((d && c) || (!d && b)){
+				mesh := el.GetNamedMesh(el.GetDisplayName())
+				worldApp.RemoveFromScene(mesh)
+				er.ctrlElements = append(er.ctrlElements[:amount], er.ctrlElements[amount + 1:]...)
+				// er.pop()
+				// 	for _, childID := range prevElement.clickedElement.GetChildElementIds() {
+				// 		if !er.isChildElement(worldApp, prevElement.clickedElement) {
+				// 			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+				// 				childElement.ApplyState(mashupsdk.Hidden, true)
+				// 				er.RemoveAll(worldApp, childID)
+				// 			}
+				// 		}
+				// 	}
+				// er.deselectElements(worldApp, prevElement.clickedElement)
+			} else {
+				amount += 1
+			} 
+		}//}
+		er.isCtrl = false
+		er.ctrlElements = nil
+	}
+	
+	fmt.Print("checking stack")
+}
+
+// func (er *ElementRenderer) ctrlRemove(worldApp *g3nworld.WorldApp) {
+// 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+// 	for _, el := range er.clickedElements {
+// 		if er.isChildElement(worldApp, el) && el.Genre != "Solid" {
+// 			//keep in stack and showing 
+
+// 		} else {
+// 			er.clickedElements.remove(el)
+// 			if 
+// 			worldApp.RemoveFromScene()
+// 		}
+// 		if !er.isChildElement(worldApp, el) && el.Genre != "Solid"{
+// 			er.RemoveFromScene()
+// 		} 
+
+// 	}
+// }
 
 // Checks if the currently clicked element is a child of the provided element
 func (er *ElementRenderer) isChildElement(worldApp *g3nworld.WorldApp, prevElement *g3nmash.G3nDetailedElement) bool {
@@ -290,7 +462,7 @@ func (er *ElementRenderer) isChildElement(worldApp *g3nworld.WorldApp, prevEleme
 // Returns true if given element is the last clicked element and false otherwise
 func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) bool {
 	if g3n == worldApp.ClickedElements[len(worldApp.ClickedElements)-1] && g3n.GetNamedMesh(g3n.GetDisplayName()) != nil {
-		g3n.SetColor(math32.NewColor("darkred"), 1.0)
+		g3n.SetColor(math32.NewColor("darkred"), 1.0) //Need to change name to have id attached to it instead of changing mesh name only
 
 		for _, childId := range g3n.GetChildElementIds() {
 			if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
@@ -373,9 +545,9 @@ func (er *ElementRenderer) LayoutBase(worldApp *g3nworld.WorldApp,
 
 	for _, g3nRenderableElement := range g3nRenderableElements {
 		concreteG3nRenderableElement := g3nRenderableElement
-		if concreteG3nRenderableElement.GetDetailedElement().Id == 6 {
-			concreteG3nRenderableElement.GetDetailedElement().ApplyState(mashupsdk.Hidden, true)
-		}
+		// if concreteG3nRenderableElement.GetDetailedElement().Id == 6 {
+		// 	concreteG3nRenderableElement.GetDetailedElement().ApplyState(mashupsdk.Hidden, true)
+		// }
 		if !g3nRenderableElement.IsStateSet(mashupsdk.Hidden) {
 			prevSolidPos = nextPos
 			_, nextPos = g3Renderer.NextCoordinate(concreteG3nRenderableElement, totalElements)
