@@ -249,7 +249,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 				certDestPath, hasCertDefinition := valueData["certDestPath"].(interface{})
 				certSourcePath, hasCertSourcePath := valueData["certSourcePath"].(interface{})
 				certPasswordVaultPath, hasCertPasswordVaultPath := valueData["certPasswordVaultPath"].(interface{})
-				_, hasCertBundleJks := valueData["certBundleJks"].(interface{})
+				certBundleJks, hasCertBundleJks := valueData["certBundleJks"].(interface{})
 
 				if hasCertDefinition && hasCertSourcePath {
 					if !ok {
@@ -282,7 +282,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 							}
 						}
 						// This needs to be wrapped in a jks first.
-						ksErr := validator.AddToKeystore(config, certSourcePath.(string), []byte(certPassword), decoded)
+						ksErr := validator.AddToKeystore(config, certSourcePath.(string), []byte(certPassword), certBundleJks.(string), decoded)
 						if ksErr != nil {
 							eUtils.LogErrorObject(config, err, false)
 							return "", nil, ksErr
