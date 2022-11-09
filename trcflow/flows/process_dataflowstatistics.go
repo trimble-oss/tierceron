@@ -22,7 +22,7 @@ import (
 
 const flowGroupName = "Ninja"
 
-func GetDataflowStatIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
+func GetDataflowStatIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
 	tenantIndexPath, _ := core.GetDFSPathName()
 
 	if first, second, third, fourth := rowDataMap[dfssql.DataflowTestIdColumn].(string), rowDataMap[dfssql.DataflowTestNameColumn].(string), rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), rowDataMap["flowGroup"].(string); first != "" && second != "" && third != "" && fourth != "" {
@@ -227,7 +227,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				} else if tfContext.FlowState.State == 2 {
 					tfContext.FlowLock.Unlock()
 					if syncInit {
-						go tfmContext.SyncTableCycle(tfContext, dfssql.DataflowTestNameColumn, dfssql.DataflowTestIdColumn, dfssql.DataflowTestStateCodeColumn, GetDataflowStatIndexedPathExt, nil, false)
+						go tfmContext.SyncTableCycle(tfContext, dfssql.DataflowTestNameColumn, []string{dfssql.DataflowTestIdColumn, dfssql.DataflowTestStateCodeColumn}, GetDataflowStatIndexedPathExt, nil, false)
 						syncInit = false
 					}
 				} else {

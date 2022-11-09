@@ -90,7 +90,7 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 
 			dirSplit := strings.Split(subDir, "/")
 			if len(dirSplit) >= 2 {
-				project, _, _ := coreopts.FindIndexForService(dirSplit[0], dirSplit[1])
+				project, _, _, _ := coreopts.FindIndexForService(dirSplit[0], dirSplit[1])
 				if project != "" && strings.Contains(string(fileBytes), "{or") {
 					fmt.Printf("Cannot have an indexed template with default values for or %s for %s \n", file.Name(), mod.Env)
 					return nil, nil
