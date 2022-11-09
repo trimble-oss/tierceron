@@ -30,6 +30,8 @@ require (
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/mrjrieke/nute v0.0.0-20221014152452-c19f03a5e8cb
+	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.0
+	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 
 )
 
