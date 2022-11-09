@@ -96,6 +96,16 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 				}
 			}
 			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
+				if len(notificationFlowChannel) == 5 {
+				emptied:
+					for i := 0; i < 3; i++ {
+						select {
+						case <-notificationFlowChannel:
+						default:
+							break emptied
+						}
+					}
+				}
 				go func(nfc chan bool) {
 					nfc <- true
 				}(notificationFlowChannel)
@@ -104,6 +114,16 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 		}
 
 		for _, notificationFlowChannel := range tfmContext.ChannelMap {
+			if len(notificationFlowChannel) == 5 {
+			emptied1:
+				for i := 0; i < 3; i++ {
+					select {
+					case <-notificationFlowChannel:
+					default:
+						break emptied1
+					}
+				}
+			}
 			if len(notificationFlowChannel) < 3 {
 				go func(nfc chan bool) {
 					nfc <- true
