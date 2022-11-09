@@ -65,7 +65,7 @@ hostfound:
 	}
 }
 
-func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
+func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, int, error) {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("GET", address, body)
 	if err != nil {
@@ -79,7 +79,7 @@ func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client
 	response, err := httpClient.Do(request)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
-		return nil, err
+		return nil, response.StatusCode, err
 	}
 	defer response.Body.Close()
 
@@ -87,7 +87,7 @@ func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
-			return nil, err
+			return nil, response.StatusCode, err
 		}
 
 		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
@@ -96,15 +96,15 @@ func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client
 			eUtils.LogErrorObject(config, err, false)
 		}
 
-		return jsonData, nil
+		return jsonData, response.StatusCode, nil
 	} else if response.StatusCode == http.StatusNoContent {
-		return jsonData, nil
+		return jsonData, response.StatusCode, nil
 	}
 
-	return nil, errors.New("http status failure")
+	return nil, response.StatusCode, errors.New("http status failure")
 }
 
-func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
+func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, int, error) {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {
@@ -117,11 +117,13 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 	// request.Header.Set("Content-Type", "application/json")
 	response, err := httpClient.Do(request)
 	if err != nil {
-		return nil, err
+		return nil, response.StatusCode, err
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode == http.StatusOK {
+	if response.StatusCode == http.StatusUnauthorized {
+		return nil, response.StatusCode, errors.New(fmt.Sprintf("http auth failure: %d", response.StatusCode))
+	} else if response.StatusCode == http.StatusOK {
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
@@ -134,9 +136,9 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 			eUtils.LogErrorObject(config, err, false)
 		}
 
-		return jsonData, nil
+		return jsonData, response.StatusCode, nil
 	}
-	return nil, errors.New(fmt.Sprintf("http status failure: %d", response.StatusCode))
+	return nil, response.StatusCode, errors.New(fmt.Sprintf("http status failure: %d", response.StatusCode))
 }
 
 func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {

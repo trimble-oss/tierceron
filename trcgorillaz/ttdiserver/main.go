@@ -67,7 +67,7 @@ func main() {
 	custosWorld.CustomTabItemRenderer["TenantDataRenderer"] = tenantDataRenderer
 	custosWorld.CustomTabItemRenderer["SearchRenderer"] = &trcRenderers.SearchRenderer{CustosWorldApp: custosWorld}
 
-	custosWorld.Title = "Hello Custos"
+	custosWorld.Title = "Tierceron Topology Discovery Interface"
 	custosWorld.MainWindowSize = fyne.NewSize(800, 100)
 	logoIconBytes, _ := logoIcon.ReadFile("logo.png")
 	custosWorld.Icon = fyne.NewStaticResource("Logo", logoIconBytes)
