@@ -34,6 +34,8 @@ type ElementRenderer struct {
 	LocationCache   map[int64]*math32.Vector3
 	clickedElements []*ClickedG3nDetailElement
 	quartiles       []float64
+	ctrlElements    []*g3nmash.G3nDetailedElement
+	isCtrl 			bool
 }
 
 // Returns true if length of er.clickedElements stack is 0 and false otherwise
@@ -223,15 +225,18 @@ func (er *ElementRenderer) RecursiveClick(worldApp *g3nworld.WorldApp, clickedEl
 			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
 				element.ApplyState(mashupsdk.Hidden, false)
 				element.ApplyState(mashupsdk.Clicked, true)
-				mesh := element.GetNamedMesh(element.GetDisplayName())
+				//mesh := element.GetNamedMesh(element.GetDisplayName())
 				// get pos from location cache
-				if mesh == nil { //  && element.GetDetailedElement().Genre != "DataFlow"
-					loc := er.LocationCache[element.GetDetailedElement().Id]
-					er.push(element, loc)
-				} else  { //if element.GetDetailedElement().Genre != "DataFlow"
-					loc := mesh.Position()
-					er.push(element, &loc)
-				}
+				er.ctrlElements = append(er.ctrlElements, element)
+				// if mesh == nil { //  && element.GetDetailedElement().Genre != "DataFlow"
+				// 	// loc := er.LocationCache[element.GetDetailedElement().Id]
+				// 	// er.push(element, loc)
+				// 	er.ctrlElements = append(er.ctrlElements, element)
+				// } else  { //if element.GetDetailedElement().Genre != "DataFlow"
+				// 	// loc := mesh.Position()
+				// 	// er.push(element, &loc)
+				// 	er.ctrlElements = append(er.ctrlElements, element)
+				// }
 				
 				//er.push(element, element.Ge)
 				//Add to clickedelement stack for removal here
@@ -319,22 +324,26 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	//Need to do: Make unique ctrl click deselect func that loops thru clickedElements stack and just compares to 
 	// currently clicked el --> don't forget to add currently clicked el to stack!
 	if !er.isEmpty() {
-		for i := 0; i < len(er.clickedElements); i++ {
-			prevElement := er.top()
-		if !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
-			er.pop()
-			for _, childID := range prevElement.clickedElement.GetChildElementIds() {
-				if !er.isChildElement(worldApp, prevElement.clickedElement) {
-					if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
-						childElement.ApplyState(mashupsdk.Hidden, true)
-						er.RemoveAll(worldApp, childID)
+		if !er.isCtrl{
+			//for i := 0; i < len(er.clickedElements); i++ {
+				prevElement := er.top()
+				if !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
+					er.pop()
+					for _, childID := range prevElement.clickedElement.GetChildElementIds() {
+						if !er.isChildElement(worldApp, prevElement.clickedElement) {
+							if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+								childElement.ApplyState(mashupsdk.Hidden, true)
+								er.RemoveAll(worldApp, childID)
+							}
+						}
 					}
+					er.deselectElements(worldApp, prevElement.clickedElement)
 				}
-			}
-			er.deselectElements(worldApp, prevElement.clickedElement)
+			//}
+		} else if er.isCtrl {
+			er.ctrlRemove(worldApp)
 		}
-		}
-
+		
 
 		// prevElement := er.top()
 		// if prevElement.clickedElement != clickedElement && !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
@@ -359,6 +368,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		er.push(clickedElement, &center)
 
 		if clickedElement.IsStateSet(mashupsdk.ControlClicked) {
+			er.isCtrl = true
 			er.RecursiveClick(worldApp, clickedElement)
 			//Need to add to clicked element stack to remove correct elements 
 			//clickedElement.ApplyState(mashupsdk.ControlClicked, false)
@@ -376,6 +386,66 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	}
 	return true
 }
+
+func (er *ElementRenderer) ctrlRemove(worldApp *g3nworld.WorldApp) {
+	//Add parent ids to clickedelements stack
+	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+	if clickedElement.GetParentElementIds() != nil && clickedElement.GetDetailedElement().Genre != "Space" {
+		amount := 0
+		for amount <= (len(er.ctrlElements) - 1) {           //for i := 0; i < len(er.ctrlElements); i++ {
+			el := er.ctrlElements[amount] //Add check that amount is within array length
+			a := !er.isChildElement(worldApp, el)
+			b := el.GetParentElementIds() != nil 
+			d := len(clickedElement.GetParentElementIds()) != 0
+			c := false
+			if d {
+				c = el.GetParentElementIds()[0] != clickedElement.GetParentElementIds()[0]
+			}	
+			if len(er.ctrlElements) <= 14 {
+				fmt.Println("Check")
+			}		
+			if a && b && ((d && c) || (!d && b)){
+				mesh := el.GetNamedMesh(el.GetDisplayName())
+				worldApp.RemoveFromScene(mesh)
+				er.ctrlElements = append(er.ctrlElements[:amount], er.ctrlElements[amount + 1:]...)
+				// er.pop()
+				// 	for _, childID := range prevElement.clickedElement.GetChildElementIds() {
+				// 		if !er.isChildElement(worldApp, prevElement.clickedElement) {
+				// 			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+				// 				childElement.ApplyState(mashupsdk.Hidden, true)
+				// 				er.RemoveAll(worldApp, childID)
+				// 			}
+				// 		}
+				// 	}
+				// er.deselectElements(worldApp, prevElement.clickedElement)
+			} else {
+				amount += 1
+			} 
+		}//}
+		er.isCtrl = false
+		er.ctrlElements = nil
+	}
+	
+	fmt.Print("checking stack")
+}
+
+// func (er *ElementRenderer) ctrlRemove(worldApp *g3nworld.WorldApp) {
+// 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+// 	for _, el := range er.clickedElements {
+// 		if er.isChildElement(worldApp, el) && el.Genre != "Solid" {
+// 			//keep in stack and showing 
+
+// 		} else {
+// 			er.clickedElements.remove(el)
+// 			if 
+// 			worldApp.RemoveFromScene()
+// 		}
+// 		if !er.isChildElement(worldApp, el) && el.Genre != "Solid"{
+// 			er.RemoveFromScene()
+// 		} 
+
+// 	}
+// }
 
 // Checks if the currently clicked element is a child of the provided element
 func (er *ElementRenderer) isChildElement(worldApp *g3nworld.WorldApp, prevElement *g3nmash.G3nDetailedElement) bool {
