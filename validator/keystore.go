@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	eUtils "tierceron/utils"
 	"time"
 
@@ -37,8 +38,12 @@ func StoreKeystore(config *eUtils.DriverConfig, trustStorePassword string) ([]by
 	return buffer.Bytes(), nil
 }
 
-func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, data []byte) error {
+func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, certBundleJks string, data []byte) error {
 	// TODO: Add support for this format?  golang.org/x/crypto/pkcs12
+
+	if !strings.HasSuffix(config.WantKeystore, ".jks") && strings.HasSuffix(certBundleJks, ".jks") {
+		config.WantKeystore = certBundleJks
+	}
 
 	if config.KeyStore == nil {
 		fmt.Println("Making new keystore.")
