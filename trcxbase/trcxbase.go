@@ -506,7 +506,7 @@ skipDiff:
 						eUtils.LogAndSafeExit(config, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 					}
 				}
-			} else if *tokenPtr != "" {
+			} else if *tokenPtr == "" {
 				*tokenPtr = "novault"
 			}
 			if len(envVersion) >= 2 { //Put back env+version together
