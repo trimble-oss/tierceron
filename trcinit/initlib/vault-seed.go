@@ -88,6 +88,30 @@ func SeedVault(config *eUtils.DriverConfig) error {
 	for _, envDir := range files {
 		if strings.HasPrefix(config.Env, envDir.Name()) || (strings.HasPrefix(config.Env, "local") && envDir.Name() == "local") {
 			config.Log.Println("\tStepping into: " + envDir.Name())
+
+			if config.DirectPathFilter != "" {
+				sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + config.DirectPathFilter)
+				if err != nil {
+					config.Log.Printf("Couldn't read into: %s \n", config.DirectPathFilter)
+				}
+				seedFileCount := 0
+				var seedFileName string
+				for _, sectionConfigFile := range sectionConfigFiles {
+					if strings.HasSuffix(sectionConfigFile.Name(), ".yml") {
+						seedFileName = sectionConfigFile.Name()
+						seedFileCount++
+					}
+				}
+
+				if seedFileCount > 1 {
+					eUtils.CheckWarning(config, fmt.Sprintf("Multiple potentially conflicting configuration files found for environment: %s", envDir.Name()), true)
+				}
+
+				SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+config.DirectPathFilter+"/"+seedFileName)
+				seeded = true
+				continue
+			}
+
 			var filesSteppedInto []fs.FileInfo
 			if indexedEnvNot {
 				filesSteppedInto, err = ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + suffix)
