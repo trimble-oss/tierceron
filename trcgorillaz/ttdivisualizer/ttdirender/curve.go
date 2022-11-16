@@ -34,6 +34,7 @@ type CurveRenderer struct {
 	maxTime               int
 	quartiles             []float64
 	avg 				  float64
+	isCtrl 				  bool
 }
 
 type CurveMesh struct {
@@ -139,19 +140,76 @@ func (cr *CurveRenderer) GetRenderer(rendererName string) g3nrender.IG3nRenderer
 
 // Removes elements if they share the same parent id
 func (cr *CurveRenderer) removeRelated(worldApp *g3nworld.WorldApp, clickedElement *g3nmash.G3nDetailedElement, element *g3nmash.G3nDetailedElement) {
-	if !cr.isEmpty() && len(element.GetParentElementIds()) != 0 && len(clickedElement.GetParentElementIds()) != 0 && element.GetParentElementIds()[0] == clickedElement.GetParentElementIds()[0] {
-		toRemove := cr.pop()
-		worldApp.RemoveFromScene(toRemove.path)
-		if !cr.isEmpty() && len(cr.top().g3nElement.GetParentElementIds()) != 0 && len(clickedElement.GetParentElementIds()) != 0 && cr.top().g3nElement.GetParentElementIds()[0] == clickedElement.GetParentElementIds()[0] {
-			cr.removeRelated(worldApp, clickedElement, cr.top().g3nElement)
+	if cr.isCtrl {
+		cr.ctrlRemoveRelated(worldApp, clickedElement, element)
+		cr.isCtrl = false
+	} else {
+		if !cr.isEmpty() && len(element.GetParentElementIds()) != 0 && len(clickedElement.GetParentElementIds()) != 0 && element.GetParentElementIds()[0] == clickedElement.GetParentElementIds()[0] {
+			toRemove := cr.pop()
+			worldApp.RemoveFromScene(toRemove.path)
+			if !cr.isEmpty() && len(cr.top().g3nElement.GetParentElementIds()) != 0 && len(clickedElement.GetParentElementIds()) != 0 && cr.top().g3nElement.GetParentElementIds()[0] == clickedElement.GetParentElementIds()[0] {
+				cr.removeRelated(worldApp, clickedElement, cr.top().g3nElement)
+			}
+		} else if !cr.isEmpty() {
+			toRemove := cr.pop()
+			worldApp.RemoveFromScene(toRemove.path)
+			if !cr.isEmpty() && !(len(element.GetParentElementIds()) != 0 && len(clickedElement.GetParentElementIds()) != 0 && element.GetParentElementIds()[0] == clickedElement.GetParentElementIds()[0]) {
+				cr.removeRelated(worldApp, clickedElement, cr.top().g3nElement)
+			}
 		}
-	} else if !cr.isEmpty() {
-		toRemove := cr.pop()
-		worldApp.RemoveFromScene(toRemove.path)
-		if !cr.isEmpty() && !(len(element.GetParentElementIds()) != 0 && len(clickedElement.GetParentElementIds()) != 0 && element.GetParentElementIds()[0] == clickedElement.GetParentElementIds()[0]) {
-			cr.removeRelated(worldApp, clickedElement, cr.top().g3nElement)
-		}
+	}	
+}
+
+func (cr *CurveRenderer) ctrlRemoveRelated(worldApp *g3nworld.WorldApp, clickedElement *g3nmash.G3nDetailedElement, element *g3nmash.G3nDetailedElement) {
+	//clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+	// if len(clickedElement.GetParentElementIds()) != 0 {
+	// 	parent := clickedElement.GetParentElementIds()[0]
+	// 	for _, child 
+	// }
+	if clickedElement.GetParentElementIds() != nil && clickedElement.GetDetailedElement().Genre != "Space" {
+		amount := 0
+		for amount <= (len(cr.clickedPaths) - 1) {           //for i := 0; i < len(er.ctrlElements); i++ {
+			el := cr.clickedPaths[amount] //Add check that amount is within array length
+			if el.g3nElement.GetDetailedElement().Id == 512187 {
+				fmt.Println("Check")
+			}
+			a := !cr.er.isChildElement(worldApp, el.g3nElement)
+			b := len(el.g3nElement.GetParentElementIds()) != 0 
+			d := len(clickedElement.GetParentElementIds()) != 0
+			c := false
+			if d && len(el.g3nElement.GetParentElementIds()) != 0 {
+				c = el.g3nElement.GetParentElementIds()[0] == clickedElement.GetParentElementIds()[0]
+			}	
+			if len(cr.clickedPaths) <= 14 {
+				fmt.Println("Check")
+			}		
+			if a && b && ((d && c) || (!d && b)) {
+				//mesh := el.GetNamedMesh(el.GetDisplayName())
+				worldApp.RemoveFromScene(el.path)
+				cr.clickedPaths = append(cr.clickedPaths[:amount], cr.clickedPaths[amount + 1:]...)
+				// er.pop()
+				// 	for _, childID := range prevElement.clickedElement.GetChildElementIds() {
+				// 		if !er.isChildElement(worldApp, prevElement.clickedElement) {
+				// 			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+				// 				childElement.ApplyState(mashupsdk.Hidden, true)
+				// 				er.RemoveAll(worldApp, childID)
+				// 			}
+				// 		}
+				// 	}
+				// er.deselectElements(worldApp, prevElement.clickedElement)
+				//el.g3nElement.GetDetailedElement().Genre == clickedElement.GetDetailedElement().Genre &&
+			} else if  b && d && el.g3nElement.GetParentElementIds()[0] != clickedElement.GetParentElementIds()[0]{
+				worldApp.RemoveFromScene(el.path)
+				cr.clickedPaths = append(cr.clickedPaths[:amount], cr.clickedPaths[amount + 1:]...)
+			} else {
+				amount += 1
+			} 
+		}//}
+		cr.isCtrl = false
+		//cr.ctrlElements = nil
 	}
+	
+	fmt.Print("checking stack")
 }
 
 // Properly sets the elements before rendering new clicked elements
@@ -221,6 +279,7 @@ func (cr *CurveRenderer) iterateToDF(worldApp *g3nworld.WorldApp, g3n *g3nmash.G
 func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetailedElement *g3nmash.G3nDetailedElement) {
 	clickedElement := g3nDetailedElement
 	var path []math32.Vector3
+	cr.isCtrl = true
 	if clickedElement != nil && clickedElement.GetDetailedElement().Genre == "DataFlow" && clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil {
 		timeSplits, successful := cr.getTimeSplits(worldApp, clickedElement)
 		fmt.Println(successful)
@@ -383,7 +442,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 		if clickedElement.IsStateSet(mashupsdk.ControlClicked) {
 			cr.iterateToDF(worldApp, clickedElement)		
 		}
-		if clickedElement != nil && clickedElement.GetDetailedElement().Genre == "DataFlow" && clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil {
+		if !cr.isCtrl && (clickedElement != nil && clickedElement.GetDetailedElement().Genre == "DataFlow" && clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil) {
 			timeSplits, successful := cr.getTimeSplits(worldApp, clickedElement)
 			fmt.Println(successful)
 			if len(clickedElement.GetChildElementIds()) > 0 && clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "DataFlowStatistic" {

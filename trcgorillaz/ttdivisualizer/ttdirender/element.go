@@ -222,7 +222,7 @@ func (er *ElementRenderer) RecursiveClick(worldApp *g3nworld.WorldApp, clickedEl
 			if element.GetDetailedElement().Genre == "DataFlowStatistic" {
 				element.ApplyState(mashupsdk.Clicked, true)
 			}
-			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" { //
 				element.ApplyState(mashupsdk.Hidden, false)
 				element.ApplyState(mashupsdk.Clicked, true)
 				//mesh := element.GetNamedMesh(element.GetDisplayName())
@@ -390,6 +390,10 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 func (er *ElementRenderer) ctrlRemove(worldApp *g3nworld.WorldApp) {
 	//Add parent ids to clickedelements stack
 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+	// if len(clickedElement.GetParentElementIds()) != 0 {
+	// 	parent := clickedElement.GetParentElementIds()[0]
+	// 	for _, child 
+	// }
 	if clickedElement.GetParentElementIds() != nil && clickedElement.GetDetailedElement().Genre != "Space" {
 		amount := 0
 		for amount <= (len(er.ctrlElements) - 1) {           //for i := 0; i < len(er.ctrlElements); i++ {
