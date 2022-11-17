@@ -61,3 +61,9 @@ func DataFlowStatisticsArrayToMap(dfs []interface{}) map[string]interface{} {
 	m["lastModified"] = m["lastTestedDate"] //This is for lastModified comparison -> not used in table or queries
 	return m
 }
+
+func DataFlowStatisticsSparseArrayToMap(dfs []interface{}) map[string]interface{} {
+	m := make(map[string]interface{})
+	m["lastModified"] = dfs[0] //This is for lastModified comparison -> not used in table or queries
+	return m
+}
