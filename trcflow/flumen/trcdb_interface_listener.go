@@ -26,6 +26,7 @@ func (tl *TrcDBServerEventListener) QueryStarted() {}
 
 func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, duration time.Duration) {
 	if success && (strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update")) {
+		//tl.Log.Printf("Query completed: %s %v\n", query, success)
 		// TODO: one could implement exactly which flows to notify based on the query.
 		//
 		// Workaround: Vitess to the rescue.
