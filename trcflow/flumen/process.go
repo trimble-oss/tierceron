@@ -250,7 +250,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var flowWG sync.WaitGroup
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range GetTierceronTableNames() {
-			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false, Init: true, Log: tfmContext.Config.Log}
+			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
 			tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 			tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
 			tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
@@ -314,7 +314,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(tableFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning data source flow: "+tableFlow.ServiceName())
 				defer flowWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
 				tfContext.Flow = tableFlow
@@ -349,10 +349,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogInfo(dc, "Beginning additional flow: "+enhancementFlow.ServiceName())
 				defer flowWG.Done()
 
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
 				tfContext.Flow = enhancementFlow
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
+				tfmContext.FlowMap[tfContext.Flow] = &tfContext
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 				if initErr != nil {
@@ -377,7 +378,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
 				tfContext.Flow = testFlow
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
