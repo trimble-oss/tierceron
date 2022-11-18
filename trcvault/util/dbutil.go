@@ -40,7 +40,9 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 	// Open doesn't open a connection. Validate DSN data:
 	err = conn.Ping()
 	if err != nil {
-		defer conn.Close()
+		if conn != nil {
+			defer conn.Close()
+		}
 		return nil, err
 	}
 	return conn, nil

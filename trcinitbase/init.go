@@ -159,6 +159,9 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	// Initialize logging
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if f != nil {
+		defer f.Close()
+	}
 	logger := log.New(f, "[INIT]", log.LstdFlags)
 	logger.Println("==========Beginning Vault Initialization==========")
 	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
@@ -276,7 +279,6 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			} else {
 				logger.Println(*namespaceVariable + " tokens failed to create.")
 			}
-			f.Close()
 			os.Exit(0)
 		} else {
 			fmt.Println("initns or rotateTokens required with the namespace paramater.")
@@ -660,5 +662,4 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	// Uncomment this when deployed to avoid a hanging root token
 	// v.RevokeSelf()
-	f.Close()
 }
