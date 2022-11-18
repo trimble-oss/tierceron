@@ -35,7 +35,9 @@ func Heartbeat(config *eUtils.DriverConfig, url string, username string, passwor
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
+	if conn != nil {
+		defer conn.Close()
+	}
 
 	// Open doesn't open a connection. Validate DSN data:
 	err = conn.Ping()

@@ -124,7 +124,16 @@ func getStatisticDeleteChangeQuery(databaseName string, changeTable string, idCo
 func getStatisticChangedByIdQuery(databaseName string, changeTable string, idColumn string, indexColumnNames interface{}, indexColumnValues interface{}) (string, error) {
 	if indexColumnNamesSlice, iOk := indexColumnNames.([]string); iOk {
 		if indexColumnValuesSlice, iOk := indexColumnValues.([]interface{}); iOk {
-			query := fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, idColumn, indexColumnValuesSlice[0])
+			var query string
+			if valueStr, sOk := indexColumnValuesSlice[0].(string); sOk {
+				query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, idColumn, valueStr)
+			} else if valueInt, viOK := indexColumnValuesSlice[0].(int64); viOK {
+				query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, idColumn, valueInt)
+			} else if valueInt, vIntOK := indexColumnValuesSlice[0].(int); vIntOK {
+				query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, idColumn, valueInt)
+			} else {
+				panic("Error - Unsupported type for index column - add support for new type.")
+			}
 
 			if len(indexColumnValuesSlice) > 1 {
 				for i := 0; i < len(indexColumnValuesSlice); i++ {
@@ -239,9 +248,11 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			for _, column := range changedTableColumns {
 				rowDataMap[column] = ""
 			}
-			pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
-			if pushError != nil {
-				eUtils.LogErrorObject(tfmContext.Config, err, false)
+			if flowPushRemote != nil {
+				pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
+				if pushError != nil {
+					eUtils.LogErrorObject(tfmContext.Config, err, false)
+				}
 			}
 			continue
 		}

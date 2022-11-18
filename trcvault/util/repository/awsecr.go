@@ -153,13 +153,15 @@ func untarData(data []byte) ([]byte, error) {
 }
 
 func getImage(downloadUrl string) ([]byte, error) {
-	resp, err := http.Get(downloadUrl)
+	response, err := http.Get(downloadUrl)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	if response.Body != nil {
+		defer response.Body.Close()
+	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
