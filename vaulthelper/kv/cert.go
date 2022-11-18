@@ -20,19 +20,18 @@ import (
 
 func bindataRead(data []byte, name string) ([]byte, error) {
 	gz, err := gzip.NewReader(bytes.NewBuffer(data))
+	if gz != nil {
+		defer gz.Close()
+	}
 	if err != nil {
 		return nil, fmt.Errorf("Read %q: %v", name, err)
 	}
 
 	var buf bytes.Buffer
 	_, err = io.Copy(&buf, gz)
-	clErr := gz.Close()
 
 	if err != nil {
 		return nil, fmt.Errorf("Read %q: %v", name, err)
-	}
-	if clErr != nil {
-		return nil, err
 	}
 
 	return buf.Bytes(), nil

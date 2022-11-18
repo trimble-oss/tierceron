@@ -81,7 +81,9 @@ func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client
 		eUtils.LogErrorObject(config, err, false)
 		return nil, response.StatusCode, err
 	}
-	defer response.Body.Close()
+	if response.Body != nil {
+		defer response.Body.Close()
+	}
 
 	if response.StatusCode == http.StatusOK {
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
@@ -119,7 +121,9 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 	if err != nil {
 		return nil, response.StatusCode, err
 	}
-	defer response.Body.Close()
+	if response.Body != nil {
+		defer response.Body.Close()
+	}
 
 	if response.StatusCode == http.StatusUnauthorized {
 		return nil, response.StatusCode, errors.New(fmt.Sprintf("http auth failure: %d", response.StatusCode))
