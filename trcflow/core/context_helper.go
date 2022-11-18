@@ -248,9 +248,11 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			for _, column := range changedTableColumns {
 				rowDataMap[column] = ""
 			}
-			pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
-			if pushError != nil {
-				eUtils.LogErrorObject(tfmContext.Config, err, false)
+			if flowPushRemote != nil {
+				pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
+				if pushError != nil {
+					eUtils.LogErrorObject(tfmContext.Config, err, false)
+				}
 			}
 			continue
 		}
