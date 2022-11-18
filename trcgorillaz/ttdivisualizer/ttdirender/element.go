@@ -324,7 +324,21 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	//Need to do: Make unique ctrl click deselect func that loops thru clickedElements stack and just compares to 
 	// currently clicked el --> don't forget to add currently clicked el to stack!
 	if !er.isEmpty() {
-		if !er.isCtrl{
+		if er.isCtrl {
+			er.ctrlRemove(worldApp)
+			for _, element := range er.clickedElements {
+				if element.clickedElement.GetDetailedElement().Genre == "DataFlowGroup" {
+					fmt.Println("Check")
+				}
+				if clickedElement.GetDetailedElement().Genre != "Space" && len(clickedElement.GetParentElementIds()) == 0 && len(element.clickedElement.GetParentElementIds()) > 0{
+					element.clickedElement.ApplyState(mashupsdk.Hidden, true)
+					er.deselectElements(worldApp, element.clickedElement)
+				}
+				// if element != nil len(clickedElement.GetParentElementIds()) > 0 && len(element.GetParentElementIds()) > 0 && element.GetParentElementIds()[0] != clickedElement.GetParentElementIds()[0] {
+
+				// }
+			}
+		} else if !er.isEmpty(){
 			//for i := 0; i < len(er.clickedElements); i++ {
 				prevElement := er.top()
 				if !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
@@ -340,9 +354,10 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 					er.deselectElements(worldApp, prevElement.clickedElement)
 				}
 			//}
-		} else if er.isCtrl {
-			er.ctrlRemove(worldApp)
-		}
+		} 
+		// else if er.isCtrl {
+		// 	er.ctrlRemove(worldApp)
+		// }
 		
 
 		// prevElement := er.top()
@@ -466,7 +481,7 @@ func (er *ElementRenderer) isChildElement(worldApp *g3nworld.WorldApp, prevEleme
 // Returns true if given element is the last clicked element and false otherwise
 func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) bool {
 	if g3n == worldApp.ClickedElements[len(worldApp.ClickedElements)-1] && g3n.GetNamedMesh(g3n.GetDisplayName()) != nil {
-		g3n.SetColor(math32.NewColor("darkred"), 1.0) //Need to change name to have id attached to it instead of changing mesh name only
+		g3n.SetColor(math32.NewColor("olive"), 1.0) //Need to change name to have id attached to it instead of changing mesh name only
 
 		for _, childId := range g3n.GetChildElementIds() {
 			if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
@@ -496,6 +511,7 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 			color.Set(1.0, 0.224, 0.0)
 		} else if g3n.GetDetailedElement().Genre == "DataFlow" {
 			color = math32.NewColor("olive")
+			// Change color based on mode here
 		}
 
 		clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
