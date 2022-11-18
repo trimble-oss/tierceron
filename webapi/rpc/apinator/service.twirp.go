@@ -2908,27 +2908,30 @@ func doProtobufRequest(ctx context.Context, client HTTPClient, url string, in, o
 	if err != nil {
 		return wrapInternal(err, "could not build request")
 	}
-	resp, err := client.Do(req)
+	response, err := client.Do(req)
+	
 	if err != nil {
 		return wrapInternal(err, "failed to do request")
 	}
 
-	defer func() {
-		cerr := resp.Body.Close()
-		if err == nil && cerr != nil {
-			err = wrapInternal(cerr, "failed to close response body")
+	defer func(resp *http.Response) {
+		if resp.Body != nil {
+			cerr := resp.Body.Close()
+			if err == nil && cerr != nil {
+				err = wrapInternal(cerr, "failed to close response body")
+			}
 		}
-	}()
+	}(response)
 
 	if err = ctx.Err(); err != nil {
 		return wrapInternal(err, "aborted because context was done")
 	}
 
-	if resp.StatusCode != 200 {
-		return errorFromResponse(resp)
+	if response.StatusCode != 200 {
+		return errorFromResponse(response)
 	}
 
-	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	respBodyBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return wrapInternal(err, "failed to read response body")
 	}
@@ -2957,28 +2960,30 @@ func doJSONRequest(ctx context.Context, client HTTPClient, url string, in, out p
 	if err != nil {
 		return wrapInternal(err, "could not build request")
 	}
-	resp, err := client.Do(req)
+	response, err := client.Do(req)
 	if err != nil {
 		return wrapInternal(err, "failed to do request")
 	}
 
-	defer func() {
-		cerr := resp.Body.Close()
-		if err == nil && cerr != nil {
-			err = wrapInternal(cerr, "failed to close response body")
+	defer func(resp *http.Response) {
+		if resp.Body != nil {
+			cerr := resp.Body.Close()
+			if err == nil && cerr != nil {
+				err = wrapInternal(cerr, "failed to close response body")
+			}
 		}
-	}()
+	}(response)
 
 	if err = ctx.Err(); err != nil {
 		return wrapInternal(err, "aborted because context was done")
 	}
 
-	if resp.StatusCode != 200 {
-		return errorFromResponse(resp)
+	if response.StatusCode != 200 {
+		return errorFromResponse(response)
 	}
 
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
-	if err = unmarshaler.Unmarshal(resp.Body, out); err != nil {
+	if err = unmarshaler.Unmarshal(response.Body, out); err != nil {
 		return wrapInternal(err, "failed to unmarshal json response")
 	}
 	if err = ctx.Err(); err != nil {
