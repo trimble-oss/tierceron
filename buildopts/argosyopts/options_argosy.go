@@ -136,9 +136,22 @@ func buildDataFlows(startID int64, group flowutil.TTDINode, dfsize float64, dfst
            Childids:       []int64{-2},
        }
        children := []int64{}
- 
-       flow.ChildNodes, _, children, curveCollection, flow = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
-
+       //fail := false
+       flow.ChildNodes, _, children, curveCollection, flow, _ = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
+    //    var decodedFlow interface{}
+    //    err := json.Unmarshal([]byte(data), &decodedFlow)
+    //    if err != nil {
+    //        log.Println("Error in decoding data in buildDataFlowStatistics")
+    //        continue
+    //    }
+    //    decodedFlowData := decodedFlow.(map[string]interface{})
+    //    decodedFlowData["Fail"] = fail
+    //    //encode data again and set = 
+    //    encodedFlowData, err := json.Marshal(&decodedFlowData)
+	//     if err != nil {
+	// 	    log.Println("Error in encoding data in InitDataFlow")
+	//     }
+    //     flow.MashupDetailedElement.Data = string(encodedFlowData)
        for _, id := range children {
            flow.MashupDetailedElement.Childids = append(flow.MashupDetailedElement.Childids, id)
        }
@@ -147,10 +160,11 @@ func buildDataFlows(startID int64, group flowutil.TTDINode, dfsize float64, dfst
    return group.ChildNodes, elementcollectionIDs, childIDs, curveCollection, group
 }
  
-func buildDataFlowStatistics(startID int64, flow flowutil.TTDINode, dfstatsize float64, parentID int64) ([]flowutil.TTDINode, []int64, []int64, []int64, flowutil.TTDINode) {
+func buildDataFlowStatistics(startID int64, flow flowutil.TTDINode, dfstatsize float64, parentID int64) ([]flowutil.TTDINode, []int64, []int64, []int64, flowutil.TTDINode, bool) {
    argosyId := startID - 1
    childIDs := []int64{}
    curveCollection := []int64{}
+   fail := false
    for i := 0; i < len(flow.ChildNodes); i++ {
        argosyId = argosyId + 1
        curvecollectionIDs = append(curvecollectionIDs, argosyId)
@@ -169,6 +183,12 @@ func buildDataFlowStatistics(startID int64, flow flowutil.TTDINode, dfstatsize f
            log.Println("Error in decoding data in buildDataFlowStatistics because data not initialized properly")
            break
        }
+       if decodedStatData["Mode"] != nil {
+            mode := decodedStatData["Mode"].(float64) 
+            if mode == 2 {
+                fail = true
+            }
+       }
        stat.MashupDetailedElement = mashupsdk.MashupDetailedElement{
            Id:             argosyId,
            State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
@@ -185,7 +205,7 @@ func buildDataFlowStatistics(startID int64, flow flowutil.TTDINode, dfstatsize f
        }
        flow.ChildNodes[i] = stat
    }
-   return flow.ChildNodes, elementcollectionIDs, childIDs, curveCollection, flow 
+   return flow.ChildNodes, elementcollectionIDs, childIDs, curveCollection, flow, fail 
 }
  
 func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error) {
