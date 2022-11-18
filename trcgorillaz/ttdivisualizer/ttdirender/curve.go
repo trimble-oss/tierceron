@@ -166,11 +166,12 @@ func (cr *CurveRenderer) ctrlRemoveRelated(worldApp *g3nworld.WorldApp, clickedE
 	// 	parent := clickedElement.GetParentElementIds()[0]
 	// 	for _, child 
 	// }
-	if clickedElement.GetParentElementIds() != nil && clickedElement.GetDetailedElement().Genre != "Space" {
+	//clickedElement.GetParentElementIds() != nil && 
+	if clickedElement.GetDetailedElement().Genre != "Space" {
 		amount := 0
 		for amount <= (len(cr.clickedPaths) - 1) {           //for i := 0; i < len(er.ctrlElements); i++ {
 			el := cr.clickedPaths[amount] //Add check that amount is within array length
-			if el.g3nElement.GetDetailedElement().Id == 512187 {
+			if el.g3nElement.GetDetailedElement().Genre == "DataFlowGroup" {
 				fmt.Println("Check")
 			}
 			a := !cr.er.isChildElement(worldApp, el.g3nElement)
@@ -180,10 +181,11 @@ func (cr *CurveRenderer) ctrlRemoveRelated(worldApp *g3nworld.WorldApp, clickedE
 			if d && len(el.g3nElement.GetParentElementIds()) != 0 {
 				c = el.g3nElement.GetParentElementIds()[0] == clickedElement.GetParentElementIds()[0]
 			}	
-			if len(cr.clickedPaths) <= 14 {
-				fmt.Println("Check")
-			}		
-			if a && b && ((d && c) || (!d && b)) {
+			e := false	
+			if d {
+				e = el.g3nElement.GetDetailedElement().Id != clickedElement.GetDetailedElement().Parentids[0]
+			}
+			if a && b && ((d && c) || (!d && b)) || (e && ((d && c) || (!d && b))) {
 				//mesh := el.GetNamedMesh(el.GetDisplayName())
 				worldApp.RemoveFromScene(el.path)
 				cr.clickedPaths = append(cr.clickedPaths[:amount], cr.clickedPaths[amount + 1:]...)
@@ -198,7 +200,7 @@ func (cr *CurveRenderer) ctrlRemoveRelated(worldApp *g3nworld.WorldApp, clickedE
 				// 	}
 				// er.deselectElements(worldApp, prevElement.clickedElement)
 				//el.g3nElement.GetDetailedElement().Genre == clickedElement.GetDetailedElement().Genre &&
-			} else if  b && d && el.g3nElement.GetParentElementIds()[0] != clickedElement.GetParentElementIds()[0]{
+			} else if  b && d && el.g3nElement.GetParentElementIds()[0] != clickedElement.GetParentElementIds()[0] && e {
 				worldApp.RemoveFromScene(el.path)
 				cr.clickedPaths = append(cr.clickedPaths[:amount], cr.clickedPaths[amount + 1:]...)
 			} else {
@@ -252,6 +254,18 @@ func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3n
 		}
 	}
 	return timesplit, succeeded
+}
+
+func (cr *CurveRenderer) getMainSpirals(worldApp *g3nworld.WorldApp, currElement *g3nmash.G3nDetailedElement) {
+	if len(currElement.GetChildElementIds()) > 0 {
+		for _, childID := range currElement.GetChildElementIds() {
+			if worldApp.ConcreteElements[childID] != nil {
+				childEl := worldApp.ConcreteElements[childID]
+				cr.ctrlRenderElement(worldApp, childEl)
+				cr.getMainSpirals(worldApp, childEl)
+			}
+		}
+	}
 }
 
 func (cr *CurveRenderer) iterateToDF(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) {
@@ -440,6 +454,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 
 		}
 		if clickedElement.IsStateSet(mashupsdk.ControlClicked) {
+			cr.getMainSpirals(worldApp, clickedElement)
 			cr.iterateToDF(worldApp, clickedElement)		
 		}
 		if !cr.isCtrl && (clickedElement != nil && clickedElement.GetDetailedElement().Genre == "DataFlow" && clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil) {
