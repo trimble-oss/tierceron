@@ -31,7 +31,9 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 		conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify")
 	}
 	if err != nil {
-		defer conn.Close()
+		if conn != nil {
+			defer conn.Close()
+		}
 		return nil, err
 	}
 
