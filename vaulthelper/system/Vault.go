@@ -15,7 +15,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-//Vault Represents a vault connection for managing the vault's properties
+// Vault Represents a vault connection for managing the vault's properties
 type Vault struct {
 	httpClient *http.Client // Handle to http client.
 	client     *api.Client  // Client connected to vault
@@ -158,11 +158,13 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 			continue
 		}
 		var file, err = os.OpenFile(tokenPath+string(os.PathSeparator)+f.Name(), os.O_RDWR, 0644)
+		if file != nil {
+			defer file.Close()
+		}
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		defer file.Close()
 		byteValue, _ := ioutil.ReadAll(file)
 		token := api.TokenCreateRequest{}
 		yaml.Unmarshal(byteValue, &token)
@@ -172,17 +174,19 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 		}
 	}
 	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
-	resp, err := v.client.RawRequest(r)
+	response, err := v.client.RawRequest(r)
+
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer resp.Body.Close()
-
 	var jsonData map[string]interface{}
 
-	if err = resp.DecodeJSON(&jsonData); err != nil {
+	if err = response.DecodeJSON(&jsonData); err != nil {
 		return err
 	}
 
@@ -199,6 +203,10 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 					return err
 				}
 				response, err := v.client.RawRequest(b)
+				if response != nil && response.Body != nil {
+					defer response.Body.Close()
+				}
+
 				if err != nil {
 					if response.StatusCode == 403 {
 						// Some accessors we don't have access to, but we don't care about those.
@@ -208,7 +216,6 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 						return err
 					}
 				}
-				defer response.Body.Close()
 				var accessorDataMap map[string]interface{}
 				if err = response.DecodeJSON(&accessorDataMap); err != nil {
 					return err
@@ -249,10 +256,13 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 							return err
 						}
 						response, err := v.client.RawRequest(b)
+						if response != nil && response.Body != nil {
+							defer response.Body.Close()
+						}
+
 						if err != nil {
 							log.Fatal(err)
 						}
-						defer response.Body.Close()
 
 						if response.StatusCode == 204 {
 							fmt.Println("Revoked token with policy: " + matchedPolicy)
@@ -268,10 +278,12 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 			if !tokenExpiration {
 				b := v.client.NewRequest("POST", "/v1/auth/token/tidy")
 				response, err := v.client.RawRequest(b)
+				if response != nil && response.Body != nil {
+					defer response.Body.Close()
+				}
 				if err != nil {
 					log.Fatal(err)
 				}
-				defer response.Body.Close()
 
 				fmt.Println(fmt.Sprintf("Tidy success status: %s", response.Status))
 
@@ -351,16 +363,17 @@ func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
 	fmt.Printf("Role: %s\n", tokenRole.RoleName)
 
 	r := v.client.NewRequest("GET", fmt.Sprintf("/v1/auth/token/roles/%s", tokenRole.RoleName))
-	resp, err := v.client.RawRequest(r)
-
-	defer resp.Body.Close()
+	response, err := v.client.RawRequest(r)
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
 
 	if err != nil {
 		return false, err
 	}
 
 	var jsonData map[string]interface{}
-	if err = resp.DecodeJSON(&jsonData); err != nil {
+	if err = response.DecodeJSON(&jsonData); err != nil {
 		return false, err
 	}
 
@@ -532,7 +545,7 @@ func (v *Vault) CreateTokenFromMap(data map[string]interface{}) (string, error) 
 	return response.Auth.ClientToken, err
 }
 
-//GetStatus checks the health of the vault and retrieves version and status of init/seal
+// GetStatus checks the health of the vault and retrieves version and status of init/seal
 func (v *Vault) GetStatus() (map[string]interface{}, error) {
 	health, err := v.client.Sys().Health()
 	if err != nil {
