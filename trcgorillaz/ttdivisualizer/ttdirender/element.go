@@ -5,7 +5,7 @@ import (
 	"log"
 
 	//"strconv"
-	//"encoding/json"
+	"encoding/json"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -112,6 +112,24 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 		color.Set(1.0, 0.224, 0.0)
 	} else if g3n.GetDetailedElement().Genre == "DataFlow" {
 		color = math32.NewColor("olive")
+		// Change color based on mode here
+		if g3n.GetDetailedElement().Data != "" {
+			var decodedFlow interface{}
+			   if g3n.GetDetailedElement().Data != "" {
+				err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
+				if err != nil {
+					log.Println("Error in decoding data in buildDataFlowStatistics")
+				}
+				decodedFlowData := decodedFlow.(map[string]interface{})
+				if decodedFlowData["Fail"] != nil {
+					if decodedFlowData["Fail"].(bool) == true {
+						color = math32.NewColor("darkred") 
+					} else {
+						color = math32.NewColor("darkgreen")
+					}
+				}
+			}    
+		}
 	}
 	mat := material.NewStandard(color)
 	sphereMesh := graphic.NewMesh(sphereGeom, mat)
@@ -482,7 +500,24 @@ func (er *ElementRenderer) isChildElement(worldApp *g3nworld.WorldApp, prevEleme
 func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) bool {
 	if g3n == worldApp.ClickedElements[len(worldApp.ClickedElements)-1] && g3n.GetNamedMesh(g3n.GetDisplayName()) != nil {
 		g3n.SetColor(math32.NewColor("olive"), 1.0) //Need to change name to have id attached to it instead of changing mesh name only
-
+		// Change color based on mode here
+		if g3n.GetDetailedElement().Data != "" {
+			var decodedFlow interface{}
+			   if g3n.GetDetailedElement().Data != "" {
+				err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
+				if err != nil {
+					log.Println("Error in decoding data in buildDataFlowStatistics")
+				}
+				decodedFlowData := decodedFlow.(map[string]interface{})
+				if decodedFlowData["Fail"] != nil {
+					if decodedFlowData["Fail"].(bool) == true {
+						g3n.SetColor(math32.NewColor("darkred"), 1.0) 
+					} else {
+						g3n.SetColor(math32.NewColor("darkgreen"), 1.0)
+					}
+				}
+			}    
+		}
 		for _, childId := range g3n.GetChildElementIds() {
 			if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
 				if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
@@ -512,6 +547,23 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 		} else if g3n.GetDetailedElement().Genre == "DataFlow" {
 			color = math32.NewColor("olive")
 			// Change color based on mode here
+			if g3n.GetDetailedElement().Data != "" {
+				var decodedFlow interface{}
+       			if g3n.GetDetailedElement().Data != "" {
+            		err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
+            		if err != nil {
+                		log.Println("Error in decoding data in buildDataFlowStatistics")
+            		}
+            		decodedFlowData := decodedFlow.(map[string]interface{})
+					if decodedFlowData["Fail"] != nil {
+						if decodedFlowData["Fail"].(bool) == true {
+							color = math32.NewColor("darkred") 
+						} else {
+							color = math32.NewColor("darkgreen")
+						}
+					}
+        		}    
+			}
 		}
 
 		clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
