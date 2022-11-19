@@ -6,7 +6,7 @@ package argosyopts
 import (
    "encoding/json"
    "log"
-   "math"
+   //"math"
    "strconv"
    "tierceron/trcvault/flowutil"
    "tierceron/vaulthelper/kv"
@@ -17,6 +17,12 @@ import (
  
 var elementcollectionIDs []int64
 var curvecollectionIDs []int64
+var currentID int64
+
+func updateID() int64 {
+    currentID += 1
+    return currentID
+}
  
 func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
    return tcbuildopts.GetStubbedDataFlowStatistics()
@@ -42,7 +48,7 @@ func buildArgosies(startID int64, args flowutil.TTDINode) (flowutil.TTDINode, []
    curveIds := []int64{}
    for i := 0; i < len(args.ChildNodes); i++ {
        dfgsize, dfsize, dfstatsize := getGroupSize(args.ChildNodes[i].ChildNodes)
-       argosyId = startID + int64(i)*int64(1.0+float64(dfgsize)+math.Pow(float64(dfsize), 2.0)+math.Pow(float64(dfstatsize), 3.0))
+       argosyId = updateID() //startID + int64(i)*int64(1.0+float64(dfgsize)+math.Pow(float64(dfsize), 2.0)+math.Pow(float64(dfstatsize), 3.0))
        elementcollectionIDs = append(elementcollectionIDs, argosyId)
        argosy := args.ChildNodes[i]
        name := argosy.MashupDetailedElement.Name
@@ -78,7 +84,7 @@ func buildDataFlowGroups(startID int64, argosy flowutil.TTDINode, dfgsize float6
    childIDs := []int64{}
    curveCollection := []int64{}
    for i := 0; i < len(argosy.ChildNodes); i++ {
-       argosyId = startID + int64(i)*int64(1.0+float64(dfsize)+math.Pow(float64(dfstatsize), 2.0))
+       argosyId = updateID() //startID + int64(i)*int64(1.0+float64(dfsize)+math.Pow(float64(dfstatsize), 2.0))
        elementcollectionIDs = append(elementcollectionIDs, argosyId)
        childIDs = append(childIDs, argosyId)
        group := argosy.ChildNodes[i]
@@ -115,7 +121,7 @@ func buildDataFlows(startID int64, group flowutil.TTDINode, dfsize float64, dfst
    childIDs := []int64{}
    curveCollection := []int64{}
    for i := 0; i < len(group.ChildNodes); i++ {
-       argosyId = startID + int64(i)*int64(1.0+float64(dfstatsize))
+       argosyId = updateID()//startID + int64(i)*int64(1.0+float64(dfstatsize))
        elementcollectionIDs = append(elementcollectionIDs, argosyId)
        childIDs = append(childIDs, argosyId)
        flow := group.ChildNodes[i]
@@ -136,22 +142,25 @@ func buildDataFlows(startID int64, group flowutil.TTDINode, dfsize float64, dfst
            Childids:       []int64{-2},
        }
        children := []int64{}
-       //fail := false
-       flow.ChildNodes, _, children, curveCollection, flow, _ = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
-    //    var decodedFlow interface{}
-    //    err := json.Unmarshal([]byte(data), &decodedFlow)
-    //    if err != nil {
-    //        log.Println("Error in decoding data in buildDataFlowStatistics")
-    //        continue
-    //    }
-    //    decodedFlowData := decodedFlow.(map[string]interface{})
-    //    decodedFlowData["Fail"] = fail
-    //    //encode data again and set = 
-    //    encodedFlowData, err := json.Marshal(&decodedFlowData)
-	//     if err != nil {
-	// 	    log.Println("Error in encoding data in InitDataFlow")
-	//     }
-    //     flow.MashupDetailedElement.Data = string(encodedFlowData)
+       fail := false
+       flow.ChildNodes, _, children, curveCollection, flow, fail = buildDataFlowStatistics(argosyId+1, flow, dfstatsize, argosyId)
+       var decodedFlow interface{}
+       decodedFlowData := make(map[string]interface{})
+       if flow.MashupDetailedElement.Data != "" {
+            err := json.Unmarshal([]byte(data), &decodedFlow)
+            if err != nil {
+                log.Println("Error in decoding data in buildDataFlowStatistics")
+                continue
+            }
+            decodedFlowData = decodedFlow.(map[string]interface{})
+        }    
+       decodedFlowData["Fail"] = fail
+       //encode data again and set = 
+       encodedFlowData, err := json.Marshal(&decodedFlowData)
+	    if err != nil {
+		    log.Println("Error in encoding data in InitDataFlow")
+	    }
+        flow.MashupDetailedElement.Data = string(encodedFlowData)
        for _, id := range children {
            flow.MashupDetailedElement.Childids = append(flow.MashupDetailedElement.Childids, id)
        }
@@ -166,7 +175,7 @@ func buildDataFlowStatistics(startID int64, flow flowutil.TTDINode, dfstatsize f
    curveCollection := []int64{}
    fail := false
    for i := 0; i < len(flow.ChildNodes); i++ {
-       argosyId = argosyId + 1
+       argosyId = updateID() //argosyId + 1
        curvecollectionIDs = append(curvecollectionIDs, argosyId)
        childIDs = append(childIDs, argosyId)
        curveCollection = append(curveCollection, argosyId)
@@ -300,6 +309,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
        return flowutil.TTDINode{}, err
    }
    elementCollection := []int64{}
+   currentID = 8
    args, elementCollection, _ = buildArgosies(8, args)
    elementCollection = elementcollectionIDs
    argosies = append(argosies, flowutil.TTDINode{
