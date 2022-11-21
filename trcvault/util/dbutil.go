@@ -31,14 +31,18 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 		conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify")
 	}
 	if err != nil {
-		defer conn.Close()
+		if conn != nil {
+			defer conn.Close()
+		}
 		return nil, err
 	}
 
 	// Open doesn't open a connection. Validate DSN data:
 	err = conn.Ping()
 	if err != nil {
-		defer conn.Close()
+		if conn != nil {
+			defer conn.Close()
+		}
 		return nil, err
 	}
 	return conn, nil
