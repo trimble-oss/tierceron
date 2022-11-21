@@ -45,7 +45,9 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 		port = "1433"
 	}
 	db, err := sql.Open(driver, ("server=" + server + ";user id=" + username + ";password=" + password + ";port=" + port + ";database=" + dbname + ";encrypt=true;TrustServerCertificate=true"))
-	defer db.Close()
+	if db != nil {
+		defer db.Close()
+	}
 	if err != nil {
 		return false, "", err
 	}
@@ -83,7 +85,9 @@ func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]m
 		port = "1433"
 	}
 	db, err := sql.Open(driver, ("server=" + server + ";user id=" + username + ";password=" + password + ";port=" + port + ";database=" + dbname + ";encrypt=true;TrustServerCertificate=true"))
-	defer db.Close()
+	if db != nil {
+		defer db.Close()
+	}
 	if err != nil {
 		return nil, err
 	}

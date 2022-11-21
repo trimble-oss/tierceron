@@ -50,6 +50,7 @@ type DriverConfig struct {
 	SubSectionValue  string
 	SubSectionName   string // extension provided subsection name
 	IndexFilter      []string
+	DirectPathFilter string   // Seeds from a specific path.
 	Trcxe            []string //Used for TRCXE
 	Trcxr            bool     //Used for TRCXR
 }
