@@ -1,6 +1,7 @@
 package xutil
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -282,7 +283,14 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 			}
 
 			if !anyServiceFound { //Exit for irrelevant enterprises
-				return nil, false, eUtils.LogAndSafeExit(config, "No relevant services were found for this environment: "+mod.Env, 1), nil, nil, nil
+				var errmsg error
+				if config.SubSectionValue != "" {
+					errmsg = errors.New("No relevant services were found for this environment: " + mod.Env + " for this value: " + config.SubSectionValue)
+				} else {
+					errmsg = errors.New("No relevant services were found for this environment: " + mod.Env)
+				}
+				eUtils.LogErrorObject(config, errmsg, false)
+				return nil, false, errmsg, nil, nil, nil
 			} else {
 				if len(acceptedTemplatePaths) > 0 {
 					// template paths further trimmed by vault.
@@ -824,9 +832,9 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 
 // Combines the values in a slice, creating a singular map from multiple
 // Input:
-//	- slice to combine
-//	- template slice to combine
-//	- depth of map (-1 for value/secret sections)
+//   - slice to combine
+//   - template slice to combine
+//   - depth of map (-1 for value/secret sections)
 func CombineSection(config *eUtils.DriverConfig, sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
 	_, okMap := sliceSectionInterface.([]map[string]map[string]map[string]string)
 
