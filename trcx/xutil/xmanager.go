@@ -205,7 +205,8 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 	if config.Token != "" && commonPathFound {
 		var commonMod *helperkv.Modifier
 		var err error
-		commonMod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, false, config.Log)
+		commonMod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, false, config.Log)
+		commonMod.Env = config.Env
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 		}
