@@ -387,7 +387,7 @@ skipDiff:
 				if authErr != nil {
 					eUtils.LogErrorMessage(config, "Auth failure: "+authErr.Error(), true)
 				}
-				testMod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, false, logger)
+				testMod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, true, logger)
 				testMod.Env = baseEnv
 				if err != nil {
 					logger.Printf(err.Error())

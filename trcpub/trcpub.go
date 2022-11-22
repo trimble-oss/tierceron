@@ -60,7 +60,7 @@ func main() {
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		eUtils.CheckError(config, err, true)
 
-		mod, err := helperkv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, false, logger)
+		mod, err := helperkv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, true, logger)
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -86,7 +86,7 @@ func main() {
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, false, logger)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, logger)
 	if mod != nil {
 		defer mod.Release()
 	}

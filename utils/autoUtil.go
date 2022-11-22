@@ -297,7 +297,7 @@ func AutoAuth(config *DriverConfig,
 			return err
 		}
 
-		mod, err := helperkv.NewModifier(config.Insecure, master, *addrPtr, *envPtr, nil, true, config.Log)
+		mod, err := helperkv.NewModifier(config.Insecure, master, *addrPtr, *envPtr, nil, false, config.Log)
 		if mod != nil {
 			defer mod.Release()
 		}
