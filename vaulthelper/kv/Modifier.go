@@ -98,10 +98,6 @@ func NewModifier(insecure bool, token string, address string, env string, region
 			modifierCachLock.Unlock()
 		}
 
-		if env == "bamboo" {
-			fmt.Println("Here")
-		}
-
 		for {
 			select {
 			case checkoutModifier := <-modifierCache[env].modifierChan:
