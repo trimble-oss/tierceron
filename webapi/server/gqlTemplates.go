@@ -16,7 +16,7 @@ import (
 // Secret values will only be populated for environments with values for that secret group
 // All template keys that reference public values will be populated with those values
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 
 	if err != nil {
