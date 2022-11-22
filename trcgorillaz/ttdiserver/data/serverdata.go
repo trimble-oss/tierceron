@@ -29,7 +29,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	autoErr := eUtils.AutoAuth(&config, &secretID, &appRoleID, &token, &empty, envPtr, &address, false)
 	eUtils.CheckError(&config, autoErr, true)
 
-	mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, logger)
+	mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, true, logger)
 	mod.Direct = true
 	mod.Env = *envPtr
 	eUtils.CheckError(&config, modErr, true)
@@ -60,7 +60,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 			//newQuartiles := []float64{}
 			//argosyElement.Alias = "Argosy"
 
-			DetailedElements = append(DetailedElements, &argosyElement)						
+			DetailedElements = append(DetailedElements, &argosyElement)
 			for i := 0; i < len(ArgosyFleet.ChildNodes[a].ChildNodes); i++ {
 				dfgElement := ArgosyFleet.ChildNodes[a].ChildNodes[i].MashupDetailedElement
 				dfgElement.Alias = "DataFlowGroup"
@@ -117,11 +117,11 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	quartiles = append(quartiles, testTimes[len(testTimes)/4])
 	quartiles = append(quartiles, testTimes[len(testTimes)/2])
 	quartiles = append(quartiles, testTimes[(3*len(testTimes))/4])
-	
+
 	// for _, time := range testTimes {
 	// 	avg += time
-	// } 
-	avg = avg/(float64(count))
+	// }
+	avg = avg / (float64(count))
 	if len(DetailedElements) >= idForData {
 		argosyElement := DetailedElements[idForData]
 		decodedData := make(map[string]interface{})
@@ -145,8 +145,6 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 
 	}
 
-	
-
 	DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
 		Basisid:        5,
 		State:          &mashupsdk.MashupElementState{Id: 5, State: int64(mashupsdk.Mutable)},
@@ -164,7 +162,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	logger.Printf("Elements built.\n")
 
 	return DetailedElements
-	
+
 	// config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
 	// secretID := ""
 	// appRoleID := ""
@@ -175,7 +173,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	// autoErr := eUtils.AutoAuth(&config, &secretID, &appRoleID, &token, &empty, envPtr, &address, false)
 	// eUtils.CheckError(&config, autoErr, true)
 
-	// mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, logger)
+	// mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, true, logger)
 	// mod.Env = *envPtr
 	// eUtils.CheckError(&config, modErr, true)
 	// ArgosyFleet, argosyErr := argosyopts.BuildFleet(mod, logger)
