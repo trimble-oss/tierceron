@@ -12,6 +12,8 @@ import (
 	trcdb "tierceron/trcx/db"
 	trcengine "tierceron/trcx/engine"
 	eUtils "tierceron/utils"
+
+	sqlememory "github.com/dolthub/go-mysql-server/memory"
 )
 
 var changesLock sync.Mutex
@@ -378,6 +380,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		}
 	}
 
+	rows := make([][]interface{}, 0)
 	for _, indexValue := range indexValues {
 		if indexValue != "" {
 			tfContext.GoMod.SectionKey = "/Index/"
@@ -396,37 +399,65 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 						if subIndexValues != nil {
 							for _, subIndexValue := range subIndexValues {
 								tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection + "/" + secondaryIndex + "/" + subIndexValue + "/" + tfContext.Flow.ServiceName()
-								rowErr := tfmContext.PathToTableRowHelper(tfContext)
+								row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 								if rowErr != nil {
 									return rowErr
 								}
+								rows = append(rows, row)
 							}
 						} else {
-							rowErr := tfmContext.PathToTableRowHelper(tfContext)
+							row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 							if rowErr != nil {
 								return rowErr
 							}
+							rows = append(rows, row)
 						}
 					} else {
-						rowErr := tfmContext.PathToTableRowHelper(tfContext)
+						row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 						if rowErr != nil {
 							return rowErr
 						}
+						rows = append(rows, row)
 					}
 				}
 			} else {
-				rowErr := tfmContext.PathToTableRowHelper(tfContext)
+				row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 				if rowErr != nil {
 					return rowErr
 				}
+				rows = append(rows, row)
 			}
 		} else {
-			rowErr := tfmContext.PathToTableRowHelper(tfContext)
+			row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 			if rowErr != nil {
 				return rowErr
 			}
+			rows = append(rows, row)
 		}
 	}
+
+	//Writes accumlated rows to the table.
+	if tfContext.Inserter == nil {
+		tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.Flow.TableName())
+		if tableOk {
+			tfContext.Inserter = tableSql.(*sqlememory.Table).Inserter(tfmContext.TierceronEngine.Context)
+		} else {
+			insertErr := errors.New("Unable to insert rows into:" + tfContext.Flow.TableName())
+			eUtils.LogErrorObject(tfmContext.Config, insertErr, false)
+			return insertErr
+		}
+	}
+	for _, row := range rows {
+		if row == nil {
+			continue
+		}
+		if err := tfContext.Inserter.Insert(tfmContext.TierceronEngine.Context, row); err != nil {
+			eUtils.LogErrorObject(tfmContext.Config, err, false)
+			continue
+		}
+	}
+	tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
+	tfContext.Inserter = nil
 
 	return nil
 }

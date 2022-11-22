@@ -297,10 +297,14 @@ func AutoAuth(config *DriverConfig,
 			return err
 		}
 
-		mod, err := helperkv.NewModifier(config.Insecure, master, *addrPtr, *envPtr, nil, config.Log)
+		mod, err := helperkv.NewModifier(config.Insecure, master, *addrPtr, *envPtr, nil, false, config.Log)
+		if mod != nil {
+			defer mod.Release()
+		}
 		if err != nil {
 			return err
 		}
+		mod.RawEnv = "bamboo"
 		mod.Env = "bamboo"
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {

@@ -18,7 +18,7 @@ const tokenPath string = "token_files"
 const policyPath string = "policy_files"
 const templatePath string = "template_files"
 
-//InitVault Takes init request and inits/seeds vault with contained file data
+// InitVault Takes init request and inits/seeds vault with contained file data
 func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, error) {
 	logBuffer := new(bytes.Buffer)
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
@@ -87,9 +87,10 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		tokenMap[token.Name] = token.Value
 	}
 
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	eUtils.LogErrorObject(config, err, false)
 
+	mod.RawEnv = "bamboo"
 	mod.Env = "bamboo"
 	warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 	eUtils.LogErrorObject(config, err, false)
@@ -170,7 +171,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	}, nil
 }
 
-//APILogin Verifies the user's login with the cubbyhole
+// APILogin Verifies the user's login with the cubbyhole
 func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp, error) {
 	result := pb.LoginResp{
 		Success:   false,
@@ -178,7 +179,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 	}
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return &result, err
@@ -202,7 +203,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 	return &result, nil
 }
 
-//GetStatus requests version info and whether the vault has been initailized
+// GetStatus requests version info and whether the vault has been initailized
 func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStatus, error) {
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
@@ -223,7 +224,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 	}, nil
 }
 
-//Unseal passes the unseal key to the vault and tries to unseal the vault
+// Unseal passes the unseal key to the vault and tries to unseal the vault
 func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp, error) {
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
