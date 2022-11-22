@@ -77,6 +77,10 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 		}
+		if mod != nil {
+			defer mod.Release()
+		}
+
 		mod.Env = env
 		mod.Version = version
 		if len(config.ProjectSections) > 0 {
@@ -348,6 +352,11 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					wg.Done()
 					return
 				}
+
+				if goMod != nil {
+					defer goMod.Release()
+				}
+
 				goMod.Env = env
 				goMod.Version = version
 				goMod.ProjectIndex = config.ProjectSections
@@ -421,6 +430,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 				wg.Done()
 				return
 			}
+
 			templateResult.Env = env + "_" + version
 			templateResult.SubSectionValue = config.SubSectionValue
 			templateResultChan <- &templateResult

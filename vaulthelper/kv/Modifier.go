@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"tierceron/buildopts"
 	"tierceron/trcvault/opts/memonly"
 	"tierceron/utils/mlock"
@@ -49,6 +50,9 @@ type Modifier struct {
 	SectionPath      string   // The path to the Index (both seed and vault)
 }
 
+var modifierCache map[string][]*Modifier = map[string][]*Modifier{}
+var cacheLock sync.Mutex
+
 // PreCheckEnvironment
 // Returns: env, parts, true if parts is path, false if part of file name, error
 func PreCheckEnvironment(environment string) (string, string, bool, error) {
@@ -78,6 +82,20 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 //
 //	Any errors generated in creating the client
 func NewModifier(insecure bool, token string, address string, env string, regions []string, logger *log.Logger) (*Modifier, error) {
+	cacheLock.Lock()
+	if modifierSlice, ok := modifierCache[env]; ok {
+		if len(modifierSlice) > 0 {
+			checkOutModifier := modifierSlice[0]
+			modifierCache[env] = modifierCache[env][1:]
+			cacheLock.Unlock()
+			return checkOutModifier, nil
+		} else {
+			cacheLock.Unlock()
+		}
+	} else {
+		cacheLock.Unlock()
+	}
+
 	if len(address) == 0 {
 		address = "http://127.0.0.1:8020" // Default address
 	}
@@ -99,7 +117,17 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	modClient.SetToken(token)
 
 	// Return the modifier
-	return &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions, Version: "", Insecure: insecure}, nil
+	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions, Version: "", Insecure: insecure}
+	return newModifier, nil
+}
+
+func (m *Modifier) Release() {
+	cacheLock.Lock()
+	if _, ok := modifierCache[m.Env]; !ok {
+		modifierCache[m.Env] = []*Modifier{}
+	}
+	modifierCache[m.Env] = append(modifierCache[m.Env], m)
+	cacheLock.Unlock()
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
