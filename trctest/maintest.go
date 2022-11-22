@@ -2,10 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"tierceron/buildopts/testopts"
 	trcflow "tierceron/trcflow/flumen"
@@ -23,20 +20,12 @@ func main() {
 	logFilePtr := flag.String("log", "./trcdbplugin.log", "Output path for log file")
 	tokenPtr := flag.String("token", "", "Vault access Token")
 	flag.Parse()
-	go func() {
-		fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
-	// pluginConfig["vaddress"] = "https://vault.dexchadev.com:8020"
-	// pluginConfig["address"] = pluginConfig["vaddress"]
-	// pluginConfig["token"] = "{TOKEN}"
-	// pluginConfig["env"] = "QA"
-	// pluginConfig["insecure"] = false
 	if memonly.IsMemonly() {
 		mlock.MunlockAll(nil)
 		for _, value := range pluginConfig {
