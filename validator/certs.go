@@ -55,7 +55,7 @@ func IsPfxRfc7292(byteCert []byte) (bool, error) {
 	return true, nil
 }
 
-//ValidateCertificate validates certificate pointed to by the path
+// ValidateCertificate validates certificate pointed to by the path
 func ValidateCertificate(certPath string, host string) (bool, error) {
 	byteCert, err := ioutil.ReadFile(certPath)
 	if err != nil {
@@ -64,7 +64,7 @@ func ValidateCertificate(certPath string, host string) (bool, error) {
 	return ValidateCertificateBytes(byteCert, host)
 }
 
-//ValidateCertificateBytes validates certificate bytes
+// ValidateCertificateBytes validates certificate bytes
 func ValidateCertificateBytes(byteCert []byte, host string) (bool, error) {
 	block, _ := pem.Decode(byteCert)
 	if block == nil {
@@ -83,7 +83,7 @@ func ValidateCertificateBytes(byteCert []byte, host string) (bool, error) {
 // MIT License
 func getCert(url string) (*x509.Certificate, error) {
 	resp, err := http.Get(url)
-	if resp != nil {
+	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
 	}
 	if err != nil {
