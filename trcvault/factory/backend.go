@@ -100,7 +100,7 @@ func PushEnv(envMap map[string]interface{}) {
 	tokenEnvChan <- envMap
 }
 
-//This is to flush pluginSettingsChan on an interval to prevent deadlocks.
+// This is to flush pluginSettingsChan on an interval to prevent deadlocks.
 func StartPluginSettingEater() {
 	go func() {
 		for { //Infinite loop
@@ -474,7 +474,10 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			}
 
 			// Plugins
-			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, logger)
+			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, false, logger)
+			if mod != nil {
+				defer mod.Release()
+			}
 			if err != nil {
 				logger.Println("Failed to init mod for deploy update")
 				//ctx.Done()

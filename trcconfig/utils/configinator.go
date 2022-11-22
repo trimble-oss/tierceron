@@ -24,7 +24,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		Reset = ""
 		Cyan = ""
 	}*/
-	modCheck, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
+	modCheck, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
 	modCheck.Env = config.Env
 	version := ""
 	if err != nil {
@@ -217,7 +217,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
-			mod, _ := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
+			mod, _ := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, false, config.Log)
 			mod.Env = config.Env
 			mod.Version = version
 			//check for template_files directory here
