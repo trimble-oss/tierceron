@@ -22,7 +22,7 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	}
 	vault.SetToken(config.Token)
 
-	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, true, config.Log)
+	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, false, config.Log)
 	if err != nil {
 		LogErrorObject(config, err, false)
 		return config, nil, nil, err

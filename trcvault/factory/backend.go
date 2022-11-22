@@ -474,7 +474,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			}
 
 			// Plugins
-			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, false, logger)
+			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, true, logger)
 			if mod != nil {
 				defer mod.Release()
 			}

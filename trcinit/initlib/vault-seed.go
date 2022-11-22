@@ -508,7 +508,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		}
 	}
 
-	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, false, config.Log) // Connect to vault
+	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, true, config.Log) // Connect to vault
 	if mod != nil {
 		defer mod.Release()
 	}

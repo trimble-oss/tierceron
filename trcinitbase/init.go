@@ -345,7 +345,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				tokenMap := map[string]interface{}{}
 				protectedTokenMap := map[string]interface{}{}
 
-				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, false, logger) // Connect to vault
+				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
 				if mod != nil {
 					defer mod.Release()
 				}
@@ -478,7 +478,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
-		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, false, logger) // Connect to vault
+		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -575,7 +575,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	// because you first need tokens to do so.  Only seed if !new.
 	if !*newPtr {
 		// Seed the vault with given seed directory
-		mod, _ := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, false, logger) // Connect to vault
+		mod, _ := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, logger) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
