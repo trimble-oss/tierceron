@@ -401,21 +401,24 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 								tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection + "/" + secondaryIndex + "/" + subIndexValue + "/" + tfContext.Flow.ServiceName()
 								row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 								if rowErr != nil {
-									return rowErr
+									eUtils.LogErrorObject(tfmContext.Config, rowErr, false)
+									continue
 								}
 								rows = append(rows, row)
 							}
 						} else {
 							row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 							if rowErr != nil {
-								return rowErr
+								eUtils.LogErrorObject(tfmContext.Config, rowErr, false)
+								continue
 							}
 							rows = append(rows, row)
 						}
 					} else {
 						row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 						if rowErr != nil {
-							return rowErr
+							eUtils.LogErrorObject(tfmContext.Config, rowErr, false)
+							continue
 						}
 						rows = append(rows, row)
 					}
@@ -423,14 +426,16 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			} else {
 				row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 				if rowErr != nil {
-					return rowErr
+					eUtils.LogErrorObject(tfmContext.Config, rowErr, false)
+					continue
 				}
 				rows = append(rows, row)
 			}
 		} else {
 			row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 			if rowErr != nil {
-				return rowErr
+				eUtils.LogErrorObject(tfmContext.Config, rowErr, false)
+				continue
 			}
 			rows = append(rows, row)
 		}
