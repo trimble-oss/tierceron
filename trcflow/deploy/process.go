@@ -35,14 +35,13 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	//Grabbing configs
 	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	if vault != nil {
+		defer vault.Close()
+	}
 	if err != nil {
-		if vault != nil {
-			defer vault.Close()
-		}
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
 	}
-	defer vault.Close()
 
 	logger.Println("PluginDeployFlow begin processing plugins.")
 	for _, pluginName := range pluginConfig["pluginNameList"].([]string) {
@@ -181,7 +180,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	return nil
 }
 
-//Updated deployed to true for any plugin
+// Updated deployed to true for any plugin
 func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logger *log.Logger) error {
 	logger.Println("PluginDeployedUpdate start.")
 

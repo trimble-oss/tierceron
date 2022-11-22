@@ -345,9 +345,13 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				tokenMap := map[string]interface{}{}
 				protectedTokenMap := map[string]interface{}{}
 
-				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
+				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
+				if mod != nil {
+					defer mod.Release()
+				}
 				eUtils.LogErrorObject(config, err, false)
 
+				mod.RawEnv = "bamboo"
 				mod.Env = "bamboo"
 
 				//Checks if vault is initialized already
@@ -474,7 +478,10 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
-		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, logger) // Connect to vault
+		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
+		if mod != nil {
+			defer mod.Release()
+		}
 		eUtils.LogErrorObject(config, err, true)
 
 		mod.Env = "bamboo"
@@ -568,7 +575,10 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	// because you first need tokens to do so.  Only seed if !new.
 	if !*newPtr {
 		// Seed the vault with given seed directory
-		mod, _ := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger) // Connect to vault
+		mod, _ := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, logger) // Connect to vault
+		if mod != nil {
+			defer mod.Release()
+		}
 		mod.Env = *envPtr
 		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
 			if unrestrictedValid, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
