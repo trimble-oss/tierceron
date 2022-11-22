@@ -42,13 +42,20 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 		config.EnvRaw = strings.Split(config.EnvRaw, "_")[0]
 	}
 	var wantedTemplatePaths []string
-	pathFilterBase := coreopts.GetFolderPrefix() + "_templates"
+	pathFilterBase := ""
+	if config.SectionKey != "/Restricted/" {
+		pathFilterBase = "/" + coreopts.GetFolderPrefix() + "_templates"
+	}
 
 	for _, projectSection := range config.ProjectSections {
-		pathFilter := "/" + pathFilterBase + "/" + projectSection + "/"
+		pathFilter := pathFilterBase + "/" + projectSection + "/"
 		if len(config.IndexFilter) > 0 {
 			for _, indexFilter := range config.IndexFilter {
-				wantedTemplatePaths = append(wantedTemplatePaths, pathFilter+indexFilter+"/")
+				endPathFilter := indexFilter
+				if config.SectionKey != "/Restricted/" {
+					endPathFilter = endPathFilter + "/"
+				}
+				wantedTemplatePaths = append(wantedTemplatePaths, pathFilter+endPathFilter)
 			}
 		} else {
 			wantedTemplatePaths = append(wantedTemplatePaths, pathFilter)
