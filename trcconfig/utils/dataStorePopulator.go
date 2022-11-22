@@ -10,7 +10,7 @@ import (
 	helperkv "tierceron/vaulthelper/kv"
 )
 
-//ConfigDataStore stores the data needed to configure the specified template files
+// ConfigDataStore stores the data needed to configure the specified template files
 type ConfigDataStore struct {
 	dataMap map[string]interface{}
 	Regions []string
@@ -364,7 +364,7 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 
 }
 
-//GetConfigValues gets a set of configuration values for a service from the data store.
+// GetConfigValues gets a set of configuration values for a service from the data store.
 func (cds *ConfigDataStore) GetConfigValues(service string, config string) (map[string]interface{}, bool) {
 	if serviceValues, okServiceValues := cds.dataMap[service].(map[string]interface{}); okServiceValues {
 		if values, okServiceConfig := serviceValues[config].(map[string]interface{}); okServiceConfig {
@@ -374,7 +374,7 @@ func (cds *ConfigDataStore) GetConfigValues(service string, config string) (map[
 	return nil, false
 }
 
-//GetConfigValue gets an invididual configuration value for a service from the data store.
+// GetConfigValue gets an invididual configuration value for a service from the data store.
 func (cds *ConfigDataStore) GetConfigValue(service string, config string, key string) (string, bool) {
 	if strings.Index(key, ".") >= 0 {
 		key = strings.Replace(key, ".", "_", -1)
@@ -510,7 +510,7 @@ func verifyTemplatePath(mod *helperkv.Modifier, logger *log.Logger) error {
 			return nil
 		}
 	}
-	return errors.New("Template not found in vault.")
+	return errors.New(fmt.Sprintf("Template not found in vault: %s", mod.TemplatePath))
 }
 
 func getPaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {

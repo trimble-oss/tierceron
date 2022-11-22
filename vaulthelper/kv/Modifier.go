@@ -11,9 +11,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"tierceron/buildopts"
 	"tierceron/trcvault/opts/memonly"
 	"tierceron/utils/mlock"
+	"time"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -49,6 +52,14 @@ type Modifier struct {
 	SectionPath      string   // The path to the Index (both seed and vault)
 }
 
+type modCache struct {
+	modCount     uint64
+	modifierChan chan *Modifier
+}
+
+var modifierCache map[string]*modCache = map[string]*modCache{}
+var modifierCachLock sync.Mutex
+
 // PreCheckEnvironment
 // Returns: env, parts, true if parts is path, false if part of file name, error
 func PreCheckEnvironment(environment string) (string, string, bool, error) {
@@ -74,10 +85,33 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 // @param token 	The access token needed to connect to the vault
 // @param address	The address of the API endpoint for the server
 // @param env   	The environment currently connecting to.
+// @param regions   Regions we want
+// @param useCache Whether to use the modcache or not.
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 //
 //	Any errors generated in creating the client
-func NewModifier(insecure bool, token string, address string, env string, regions []string, logger *log.Logger) (*Modifier, error) {
+func NewModifier(insecure bool, token string, address string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
+	if useCache {
+		if _, ok := modifierCache[env]; !ok {
+			modifierCachLock.Lock()
+			modifierCache[env] = &modCache{modCount: 0, modifierChan: make(chan *Modifier, 20)}
+			modifierCachLock.Unlock()
+		}
+
+		for {
+			select {
+			case checkoutModifier := <-modifierCache[env].modifierChan:
+				return checkoutModifier, nil
+			case <-time.After(time.Millisecond * 200):
+				if atomic.LoadUint64(&modifierCache[env].modCount) < 20 {
+					goto modbuild
+				}
+			}
+		}
+	modbuild:
+		atomic.AddUint64(&modifierCache[env].modCount, 1)
+	}
+
 	if len(address) == 0 {
 		address = "http://127.0.0.1:8020" // Default address
 	}
@@ -99,7 +133,18 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	modClient.SetToken(token)
 
 	// Return the modifier
-	return &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions, Version: "", Insecure: insecure}, nil
+	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", RawEnv: env, Regions: regions, Version: "", Insecure: insecure}
+	return newModifier, nil
+}
+
+func (m *Modifier) Release() {
+	if _, ok := modifierCache[m.RawEnv]; !ok {
+		modifierCachLock.Lock()
+		modifierCache[m.RawEnv] = &modCache{modCount: 0, modifierChan: make(chan *Modifier, 20)}
+		modifierCachLock.Unlock()
+	}
+
+	modifierCache[m.RawEnv].modifierChan <- m
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
