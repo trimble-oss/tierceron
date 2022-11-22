@@ -387,7 +387,7 @@ skipDiff:
 				if authErr != nil {
 					eUtils.LogErrorMessage(config, "Auth failure: "+authErr.Error(), true)
 				}
-				testMod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, logger)
+				testMod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, false, logger)
 				testMod.Env = baseEnv
 				if err != nil {
 					logger.Printf(err.Error())
@@ -451,6 +451,9 @@ skipDiff:
 				}
 				if len(newSectionSlice) > 0 {
 					sectionSlice = newSectionSlice
+				}
+				if testMod != nil {
+					testMod.Release()
 				}
 			} else { //novault takes this path
 				if len(*eUtils.IndexedPtr) > 0 {

@@ -22,7 +22,7 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	}
 	vault.SetToken(config.Token)
 
-	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
+	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, true, config.Log)
 	if err != nil {
 		LogErrorObject(config, err, false)
 		return config, nil, nil, err
@@ -37,79 +37,29 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 
 func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
 	var acceptedTemplatePaths []string
-	serviceMap := make(map[string]bool)
 
 	if strings.Contains(config.EnvRaw, "_") {
 		config.EnvRaw = strings.Split(config.EnvRaw, "_")[0]
 	}
+	var wantedTemplatePaths []string
+	pathFilterBase := coreopts.GetFolderPrefix() + "_templates"
 
-	if modCheck != nil {
-		envVersion := SplitEnv(config.Env)
-		serviceInterface, err := modCheck.ListEnv("super-secrets/"+envVersion[0], config.Log)
-		modCheck.Env = config.Env
-		if err != nil {
-			return nil, err
-		}
-		if serviceInterface == nil || serviceInterface.Data["keys"] == nil {
-			return templatePaths, nil
-		}
-
-		serviceList := serviceInterface.Data["keys"]
-		for _, data := range serviceList.([]interface{}) {
-			if config.SectionName != "" {
-				if strings.Contains(data.(string), config.SectionName) {
-					serviceMap[data.(string)] = true
-				}
-			} else {
-				serviceMap[data.(string)] = true
-			}
-		}
-
-		for _, templatePath := range templatePaths {
-			if len(config.ProjectSections) > 0 { //Filter by project
-				for _, projectSection := range config.ProjectSections {
-					if strings.Contains(templatePath, "/"+projectSection+"/") {
-						listValues, err := modCheck.ListEnv("super-secrets/"+strings.Split(config.EnvRaw, ".")[0]+config.SectionKey+config.ProjectSections[0]+"/"+config.SectionName, config.Log)
-						if err != nil || listValues == nil {
-							listValues, err = modCheck.ListEnv("super-secrets/"+strings.Split(config.EnvRaw, ".")[0]+config.SectionKey+config.ProjectSections[0], config.Log)
-							if listValues == nil {
-								LogErrorObject(config, err, false)
-								LogInfo(config, "Couldn't list services for project path")
-								continue
-							}
-						}
-						for _, valuesPath := range listValues.Data {
-							for _, service := range valuesPath.([]interface{}) {
-								serviceMap[service.(string)] = true
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	for _, templatePath := range templatePaths {
-		templatePathRelativeParts := strings.Split(templatePath, coreopts.GetFolderPrefix()+"_templates/")
-		templatePathParts := strings.Split(templatePathRelativeParts[1], "/")
-		service := templatePathParts[1]
-
-		if _, ok := serviceMap[service]; ok || templatePathParts[0] == "Common" {
-			if config.SectionKey == "" || config.SectionKey == "/" {
-				acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
-			} else {
-				for _, sectionProject := range config.ProjectSections {
-					if strings.Contains(templatePath, sectionProject) {
-						acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
-					}
-				}
+	for _, projectSection := range config.ProjectSections {
+		pathFilter := "/" + pathFilterBase + "/" + projectSection + "/"
+		if len(config.IndexFilter) > 0 {
+			for _, indexFilter := range config.IndexFilter {
+				wantedTemplatePaths = append(wantedTemplatePaths, pathFilter+indexFilter+"/")
 			}
 		} else {
-			if config.SectionKey != "" && config.SectionKey != "/" {
-				for _, sectionProject := range config.ProjectSections {
-					if strings.Contains(templatePath, "/"+sectionProject+"/") {
-						acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
-					}
-				}
+			wantedTemplatePaths = append(wantedTemplatePaths, pathFilter)
+		}
+	}
+
+	// Now filter and grab the templates we want...
+	for _, templateCandidate := range templatePaths {
+		for _, wantedPath := range wantedTemplatePaths {
+			if strings.Contains(templateCandidate, wantedPath) {
+				acceptedTemplatePaths = append(acceptedTemplatePaths, templateCandidate)
 			}
 		}
 	}

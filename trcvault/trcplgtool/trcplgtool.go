@@ -66,6 +66,9 @@ func PluginMain() {
 
 	//Grabbing configs
 	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
+	if mod != nil {
+		defer mod.Release()
+	}
 	if err != nil {
 		eUtils.CheckError(config, err, true)
 	}

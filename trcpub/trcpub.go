@@ -60,8 +60,12 @@ func main() {
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		eUtils.CheckError(config, err, true)
 
-		mod, err := helperkv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, logger)
+		mod, err := helperkv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, false, logger)
+		if mod != nil {
+			defer mod.Release()
+		}
 		eUtils.CheckError(config, err, true)
+		mod.RawEnv = "bamboo"
 		mod.Env = "bamboo"
 
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
@@ -82,7 +86,10 @@ func main() {
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, logger)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, false, logger)
+	if mod != nil {
+		defer mod.Release()
+	}
 	eUtils.CheckError(config, err, true)
 	mod.Env = *envPtr
 

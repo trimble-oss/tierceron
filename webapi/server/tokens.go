@@ -68,11 +68,12 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	}
 
 	// Modifier to access token values granted to bamboo
-	mod, err := helperkv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
+	mod.RawEnv = "bamboo"
 	mod.Env = "bamboo"
 
 	data, err := mod.ReadData("super-secrets/tokens")
