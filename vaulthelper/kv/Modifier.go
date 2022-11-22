@@ -86,12 +86,12 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 // @param address	The address of the API endpoint for the server
 // @param env   	The environment currently connecting to.
 // @param regions   Regions we want
-// @param ignoreCache Whether to use the modcache or not.
+// @param useCache Whether to use the modcache or not.
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 //
 //	Any errors generated in creating the client
-func NewModifier(insecure bool, token string, address string, env string, regions []string, ignoreCache bool, logger *log.Logger) (*Modifier, error) {
-	if !ignoreCache {
+func NewModifier(insecure bool, token string, address string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
+	if useCache {
 		if _, ok := modifierCache[env]; !ok {
 			modifierCachLock.Lock()
 			modifierCache[env] = &modCache{modCount: 0, modifierChan: make(chan *Modifier, 20)}

@@ -73,7 +73,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 
 	if config.Token != "" && config.Token != "novault" {
 		var err error
-		mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions, false, config.Log)
+		mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions, true, config.Log)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 		}
@@ -205,7 +205,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 	if config.Token != "" && commonPathFound {
 		var commonMod *helperkv.Modifier
 		var err error
-		commonMod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, false, config.Log)
+		commonMod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
 		commonMod.Env = config.Env
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
@@ -347,7 +347,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 
 			if c.Token != "" && c.Token != "novault" {
 				var err error
-				goMod, err = helperkv.NewModifier(c.Insecure, c.Token, c.VaultAddress, env, c.Regions, false, config.Log)
+				goMod, err = helperkv.NewModifier(c.Insecure, c.Token, c.VaultAddress, env, c.Regions, true, config.Log)
 				goMod.Env = c.Env
 				if err != nil {
 					if goMod != nil {
@@ -444,7 +444,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 	// Add special auth section.
 	if config.GenAuth {
 		if mod != nil {
-			authMod, authErr := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions, false, config.Log)
+			authMod, authErr := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions, true, config.Log)
 			eUtils.LogAndSafeExit(config, authErr.Error(), -1)
 
 			connInfo, err := authMod.ReadData("apiLogins/meta")
@@ -684,7 +684,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 
 			envVersion := eUtils.SplitEnv(config.Env)
 
-			certMod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, false, config.Log)
+			certMod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, true, config.Log)
 
 			if err != nil {
 				eUtils.LogErrorObject(config, err, false)

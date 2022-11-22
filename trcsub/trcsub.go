@@ -75,7 +75,7 @@ func main() {
 		mlock.Mlock2(nil, tokenPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, false, logger)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, logger)
 	if mod != nil {
 		defer mod.Release()
 	}
