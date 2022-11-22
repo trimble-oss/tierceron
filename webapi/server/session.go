@@ -56,7 +56,7 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 }
 
 func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]map[string]interface{}, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, 
 }
 
 func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
 	}

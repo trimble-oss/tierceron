@@ -39,7 +39,6 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
-
 	sqles "github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -182,6 +181,7 @@ type TrcFlowContext struct {
 	Restart         bool
 	Init            bool
 	ReadOnly        bool
+	Inserter        sqle.RowInserter
 
 	Log *log.Logger
 }
@@ -902,10 +902,10 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	return nil
 }
 
-func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tfContext *TrcFlowContext) error {
+func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tfContext *TrcFlowContext) ([]interface{}, error) {
 	dataMap, readErr := tfContext.GoMod.ReadData(tfContext.GoMod.SectionPath)
 	if readErr != nil {
-		return readErr
+		return nil, readErr
 	}
 
 	rowDataMap := make(map[string]string, 1)
@@ -913,15 +913,18 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tfContext *TrcFlow
 		if dataString, ok := columnData.(string); ok {
 			rowDataMap[columnName] = dataString
 		} else {
-			return errors.New("Found data that was not a string - unable to write columnName: " + columnName + " to " + tfContext.Flow.TableName())
+			return nil, errors.New("Found data that was not a string - unable to write columnName: " + columnName + " to " + tfContext.Flow.TableName())
 		}
 	}
-	tfmContext.writeToTableHelper(tfContext, nil, rowDataMap)
+	row := tfmContext.writeToTableHelper(tfContext, nil, rowDataMap)
 
-	return nil
+	if row != nil {
+		return row, nil
+	}
+	return nil, nil
 }
 
-func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowContext, valueColumns map[string]string, secretColumns map[string]string) {
+func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowContext, valueColumns map[string]string, secretColumns map[string]string) []interface{} {
 
 	tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.Flow.TableName())
 	var table *sqlememory.Table
@@ -1017,12 +1020,9 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 	}
 
 	if !allDefaults {
-		insertErr := table.Insert(tfmContext.TierceronEngine.Context, sqles.NewRow(row...))
-		if insertErr != nil {
-			eUtils.LogErrorObject(tfmContext.Config, insertErr, false)
-		}
+		return row
 	}
-
+	return nil
 }
 
 // True if a time was most recent, false if b time was most recent.

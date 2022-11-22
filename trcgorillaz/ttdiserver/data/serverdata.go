@@ -41,7 +41,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	autoErr := eUtils.AutoAuth(&config, &secretID, &appRoleID, &token, &empty, envPtr, &address, false)
 	eUtils.CheckError(&config, autoErr, true)
 
-	mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, logger)
+	mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, true, logger)
 	mod.Direct = true
 	mod.Env = *envPtr
 	eUtils.CheckError(&config, modErr, true)
@@ -187,7 +187,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	// autoErr := eUtils.AutoAuth(&config, &secretID, &appRoleID, &token, &empty, envPtr, &address, false)
 	// eUtils.CheckError(&config, autoErr, true)
 
-	// mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, logger)
+	// mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, true, logger)
 	// mod.Env = *envPtr
 	// eUtils.CheckError(&config, modErr, true)
 	// ArgosyFleet, argosyErr := argosyopts.BuildFleet(mod, logger)
