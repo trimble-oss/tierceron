@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"tierceron/buildopts/argosyopts"
+	"tierceron/trcvault/flowutil"
 
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
@@ -16,6 +17,17 @@ import (
 )
 
 var maxTime int64
+
+func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement, node flowutil.TTDINode) []*mashupsdk.MashupDetailedElement {
+	if len(node.ChildNodes) == 0 && node.MashupDetailedElement.Genre == "DataFlowStatistic" {
+		//Finish dataflowstats and get proper quartiles working
+	}
+	detailedElements = append(detailedElements, &node.MashupDetailedElement)
+	for i := 0; i < len(node.ChildNodes); i++ {
+		createDetailedElements(detailedElements, node.ChildNodes[i])
+	}
+	return detailedElements
+}
 
 // Returns an array of mashup detailed elements populated with Argosy data
 func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.MashupDetailedElement {
@@ -47,6 +59,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	idForData := 0
 	avg := 0.0
 	count := 0
+
 	for a := 0; a < len(ArgosyFleet.ChildNodes); a++ {
 		//check genre
 		argosyElement := ArgosyFleet.ChildNodes[a].MashupDetailedElement
@@ -60,7 +73,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 			//newQuartiles := []float64{}
 			//argosyElement.Alias = "Argosy"
 
-			DetailedElements = append(DetailedElements, &argosyElement)						
+			DetailedElements = append(DetailedElements, &argosyElement)
 			for i := 0; i < len(ArgosyFleet.ChildNodes[a].ChildNodes); i++ {
 				dfgElement := ArgosyFleet.ChildNodes[a].ChildNodes[i].MashupDetailedElement
 				dfgElement.Alias = "DataFlowGroup"
@@ -69,6 +82,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 					dfelement := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].MashupDetailedElement
 					dfelement.Alias = "DataFlow"
 					DetailedElements = append(DetailedElements, &dfelement)
+					//Only part that matters for recursive loop
 					for k := 0; k < len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes)-1; k++ {
 						stat := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes[k].MashupDetailedElement
 						stat.Alias = "DataFlowStatistic"
@@ -117,11 +131,11 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	quartiles = append(quartiles, testTimes[len(testTimes)/4])
 	quartiles = append(quartiles, testTimes[len(testTimes)/2])
 	quartiles = append(quartiles, testTimes[(3*len(testTimes))/4])
-	
+
 	// for _, time := range testTimes {
 	// 	avg += time
-	// } 
-	avg = avg/(float64(count))
+	// }
+	avg = avg / (float64(count))
 	if len(DetailedElements) >= idForData {
 		argosyElement := DetailedElements[idForData]
 		decodedData := make(map[string]interface{})
@@ -145,8 +159,6 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 
 	}
 
-	
-
 	DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
 		Basisid:        5,
 		State:          &mashupsdk.MashupElementState{Id: 5, State: int64(mashupsdk.Mutable)},
@@ -164,7 +176,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	logger.Printf("Elements built.\n")
 
 	return DetailedElements
-	
+
 	// config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
 	// secretID := ""
 	// appRoleID := ""
