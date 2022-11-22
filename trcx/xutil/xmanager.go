@@ -1,6 +1,7 @@
 package xutil
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -72,10 +73,11 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 
 	if config.Token != "" && config.Token != "novault" {
 		var err error
-		mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions, config.Log)
+		mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions, true, config.Log)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 		}
+
 		mod.Env = env
 		mod.Version = version
 		if len(config.ProjectSections) > 0 {
@@ -162,8 +164,10 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 			}
 			return nil, false, eUtils.LogAndSafeExit(config, "Version info provided.", 1), nil, nil, nil
 		} else { //Version bound check
-			versionNumbers := eUtils.GetProjectVersions(config, versionMetadataMap)
-			eUtils.BoundCheck(config, versionNumbers, version)
+			if version != "0" {
+				versionNumbers := eUtils.GetProjectVersions(config, versionMetadataMap)
+				eUtils.BoundCheck(config, versionNumbers, version)
+			}
 		}
 	}
 
@@ -201,7 +205,8 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 	if config.Token != "" && commonPathFound {
 		var commonMod *helperkv.Modifier
 		var err error
-		commonMod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
+		commonMod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
+		commonMod.Env = config.Env
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 		}
@@ -217,7 +222,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 		if len(commonPaths) > 0 && strings.Contains(commonPaths[len(commonPaths)-1], "!=!") {
 			commonPaths = commonPaths[:len(commonPaths)-1]
 		}
-		commonMod.Close()
+		commonMod.Release()
 	}
 
 	// Configure each template in directory
@@ -282,7 +287,14 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 			}
 
 			if !anyServiceFound { //Exit for irrelevant enterprises
-				return nil, false, eUtils.LogAndSafeExit(config, "No relevant services were found for this environment: "+mod.Env, 1), nil, nil, nil
+				var errmsg error
+				if config.SubSectionValue != "" {
+					errmsg = errors.New("No relevant services were found for this environment: " + mod.Env + " for this value: " + config.SubSectionValue)
+				} else {
+					errmsg = errors.New("No relevant services were found for this environment: " + mod.Env)
+				}
+				eUtils.LogErrorObject(config, errmsg, false)
+				return nil, false, errmsg, nil, nil, nil
 			} else {
 				if len(acceptedTemplatePaths) > 0 {
 					// template paths further trimmed by vault.
@@ -303,6 +315,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 		}
 		templatePaths = iFilterTemplatePaths
 	}
+	mod.Release()
 
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
@@ -334,12 +347,17 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 
 			if c.Token != "" && c.Token != "novault" {
 				var err error
-				goMod, err = helperkv.NewModifier(c.Insecure, c.Token, c.VaultAddress, c.Env, c.Regions, config.Log)
+				goMod, err = helperkv.NewModifier(c.Insecure, c.Token, c.VaultAddress, env, c.Regions, true, config.Log)
+				goMod.Env = c.Env
 				if err != nil {
+					if goMod != nil {
+						goMod.Release()
+					}
 					eUtils.LogErrorObject(config, err, false)
 					wg.Done()
 					return
 				}
+
 				goMod.Env = env
 				goMod.Version = version
 				goMod.ProjectIndex = config.ProjectSections
@@ -353,15 +371,6 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 				relativeTemplatePathParts := strings.Split(tp, coreopts.GetFolderPrefix()+"_templates")
 				templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
 				goMod.TemplatePath = "templates" + templatePathParts[0]
-
-				if c.GenAuth {
-					_, err := mod.ReadData("apiLogins/meta")
-					if err != nil {
-						eUtils.LogAndSafeExit(config, "Cannot genAuth with provided token.", -1)
-						wg.Done()
-						return
-					}
-				}
 
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
@@ -408,11 +417,15 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 				&(templateResult.ValueSection),
 				&(templateResult.SecretSection),
 			)
+			if goMod != nil {
+				goMod.Release()
+			}
 			if errSeed != nil {
 				eUtils.LogAndSafeExit(config, errSeed.Error(), -1)
 				wg.Done()
 				return
 			}
+
 			templateResult.Env = env + "_" + version
 			templateResult.SubSectionValue = config.SubSectionValue
 			templateResultChan <- &templateResult
@@ -431,7 +444,11 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 	// Add special auth section.
 	if config.GenAuth {
 		if mod != nil {
-			connInfo, err := mod.ReadData("apiLogins/meta")
+			authMod, authErr := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, env, config.Regions, true, config.Log)
+			eUtils.LogAndSafeExit(config, authErr.Error(), -1)
+
+			connInfo, err := authMod.ReadData("apiLogins/meta")
+			authMod.Release()
 			if err == nil {
 				authSection := map[string]interface{}{}
 				authSection["apiLogins"] = map[string]interface{}{}
@@ -579,20 +596,12 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 			templatePaths = append(templatePaths, path)
 		}
 	}
-	var mod *helperkv.Modifier
 
 	if config.Token != "novault" { //Filter unneeded templates
 		var err error
 		// TODO: Redo/deleted the indexedEnv work...
 		// Get filtered using mod and templates.
-		mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
-		if err != nil {
-			eUtils.LogErrorObject(config, err, false)
-			return nil, eUtils.LogAndSafeExit(config, "", 1)
-		}
-		mod.Env = config.Env
-
-		templatePathsAccepted, err := eUtils.GetAcceptedTemplatePaths(config, mod, templatePaths)
+		templatePathsAccepted, err := eUtils.GetAcceptedTemplatePaths(config, nil, templatePaths)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 			eUtils.LogAndSafeExit(config, "", 1)
@@ -675,15 +684,16 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 
 			envVersion := eUtils.SplitEnv(config.Env)
 
-			mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, config.Log)
+			certMod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, true, config.Log)
+
 			if err != nil {
 				eUtils.LogErrorObject(config, err, false)
 			}
-			mod.Env = envVersion[0]
-			mod.Version = envVersion[1]
+			certMod.Env = envVersion[0]
+			certMod.Version = envVersion[1]
 
 			var ctErr error
-			_, certData, certLoaded, ctErr = vcutils.ConfigTemplate(config, mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+			_, certData, certLoaded, ctErr = vcutils.ConfigTemplate(config, certMod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
 			if ctErr != nil {
 				if !strings.Contains(ctErr.Error(), "Missing .certData") {
 					eUtils.CheckError(config, ctErr, true)
@@ -717,12 +727,15 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 			eUtils.LogInfo(config, "Writing certificate: "+certPath+".")
 
 			if strings.Contains(certPath, "ENV") {
-				if len(mod.Env) >= 5 && (mod.Env)[:5] == "local" {
-					envParts := strings.SplitN(mod.Env, "/", 3)
+				if len(certMod.Env) >= 5 && (certMod.Env)[:5] == "local" {
+					envParts := strings.SplitN(certMod.Env, "/", 3)
 					certPath = strings.Replace(certPath, "ENV", envParts[1], 1)
 				} else {
-					certPath = strings.Replace(certPath, "ENV", mod.Env, 1)
+					certPath = strings.Replace(certPath, "ENV", certMod.Env, 1)
 				}
+			}
+			if certMod != nil {
+				certMod.Release()
 			}
 
 			certDestination := config.EndDir + "/" + certPath
@@ -824,9 +837,9 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 
 // Combines the values in a slice, creating a singular map from multiple
 // Input:
-//	- slice to combine
-//	- template slice to combine
-//	- depth of map (-1 for value/secret sections)
+//   - slice to combine
+//   - template slice to combine
+//   - depth of map (-1 for value/secret sections)
 func CombineSection(config *eUtils.DriverConfig, sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
 	_, okMap := sliceSectionInterface.([]map[string]map[string]map[string]string)
 
