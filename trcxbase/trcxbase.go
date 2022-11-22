@@ -107,6 +107,10 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 
 	// Initialize logging
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if f != nil {
+		// Terminate logging
+		defer f.Close()
+	}
 	eUtils.CheckError(config, err, true)
 	logger := log.New(f, "["+coreopts.GetFolderPrefix()+"x]", log.LstdFlags)
 	config.Log = logger
@@ -506,7 +510,7 @@ skipDiff:
 						eUtils.LogAndSafeExit(config, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 					}
 				}
-			} else if *tokenPtr != "" {
+			} else if *tokenPtr == "" {
 				*tokenPtr = "novault"
 			}
 			if len(envVersion) >= 2 { //Put back env+version together
@@ -588,7 +592,4 @@ skipDiff:
 	logger.Println("=============== Terminating Seed Generator ===============")
 	logger.SetPrefix("[END]")
 	logger.Println()
-
-	// Terminate logging
-	f.Close()
 }
