@@ -44,8 +44,16 @@ func getGroupSize(groups []flowutil.TTDINode) (float64, float64, float64) {
 }
 
 func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst bool) flowutil.TTDINode {
+	//PROBLEM: ADDING CHILD NODES OF CHILD NODES TO CURRENT NODE
 	var nodeID int64
+	state := mashupsdk.Hidden
 	//if node.MashupDetailedElement != nil {
+	var parentIDs []int64
+	if parentID != 0 {
+		parentIDs = []int64{parentID}
+	} else {
+		state = mashupsdk.Init
+	}
 	if node.MashupDetailedElement.Data != "" {
 		var decodednode interface{}
 		err := json.Unmarshal([]byte(node.MashupDetailedElement.Data), &decodednode)
@@ -66,7 +74,7 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 			}
 			node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 				Id:             nodeID,
-				State:          &mashupsdk.MashupElementState{Id: nodeID, State: int64(mashupsdk.Hidden)},
+				State:          &mashupsdk.MashupElementState{Id: nodeID, State: int64(state)},
 				Name:           decodedNodeData["StateName"].(string) + "-" + strconv.Itoa(int(nodeID)), //"DataFlowStatistic-" + strconv.Itoa(int(argosyId)), //data[pointer], //
 				Alias:          "It",
 				Description:    "",
@@ -75,7 +83,7 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 				Renderer:       "Curve",
 				Genre:          "DataFlowStatistic",
 				Subgenre:       "",
-				Parentids:      []int64{parentID},
+				Parentids:      parentIDs, //[]int64{parentID},
 				Childids:       []int64{-1},
 			}
 			//flow.ChildNodes[i] = stat
@@ -92,7 +100,7 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 			data := node.MashupDetailedElement.Data
 			node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 				Id:             nodeID,
-				State:          &mashupsdk.MashupElementState{Id: nodeID, State: int64(mashupsdk.Hidden)},
+				State:          &mashupsdk.MashupElementState{Id: nodeID, State: int64(state)},
 				Name:           name + "-" + strconv.Itoa(int(nodeID)),
 				Alias:          "It",
 				Description:    "",
@@ -101,7 +109,7 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 				Renderer:       "Element",
 				Genre:          "",
 				Subgenre:       "",
-				Parentids:      []int64{parentID},
+				Parentids:      parentIDs, //[]int64{parentID},
 				Childids:       []int64{-2},
 			}
 			//children := []int64{}
@@ -130,7 +138,7 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 		data := node.MashupDetailedElement.Data
 		node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             nodeID,
-			State:          &mashupsdk.MashupElementState{Id: nodeID, State: int64(mashupsdk.Hidden)},
+			State:          &mashupsdk.MashupElementState{Id: nodeID, State: int64(state)},
 			Name:           name + "-" + strconv.Itoa(int(nodeID)),
 			Alias:          "It",
 			Description:    "",
@@ -139,7 +147,7 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 			Renderer:       "Element",
 			Genre:          "",
 			Subgenre:       "",
-			Parentids:      []int64{parentID},
+			Parentids:      parentIDs, //[]int64{parentID},
 			Childids:       childIDs,
 		}
 	}
@@ -453,6 +461,23 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 			Subgenre:       "Skeletal",
 			Parentids:      nil,
 			Childids:       curvecollectionIDs,
+		},
+		[]flowutil.TTDINode{},
+	})
+	argosies = append(argosies, flowutil.TTDINode{
+		mashupsdk.MashupDetailedElement{
+			Id:             updateID(),
+			State:          &mashupsdk.MashupElementState{Id: 9, State: int64(mashupsdk.Init)},
+			Name:           "NodeLabel",
+			Description:    "Labels colors",
+			Data:           "",
+			Custosrenderer: "",
+			Renderer:       "GuiRenderer",
+			Colabrenderer:  "",
+			Genre:          "",
+			Subgenre:       "",
+			Parentids:      nil,
+			Childids:       nil,
 		},
 		[]flowutil.TTDINode{},
 	})

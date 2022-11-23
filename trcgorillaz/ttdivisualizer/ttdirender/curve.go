@@ -271,7 +271,7 @@ func (cr *CurveRenderer) getMainSpirals(worldApp *g3nworld.WorldApp, currElement
 func (cr *CurveRenderer) iterateToDF(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) {
 	for _, childID := range g3n.GetChildElementIds() {
 		element := worldApp.ConcreteElements[childID]
-		if element.GetDetailedElement().Genre == "DataFlow" {
+		if element != nil && element.GetDetailedElement().Genre == "DataFlow" {
 			cr.ctrlRenderElement(worldApp, element)
 		} else {
 			cr.iterateToDF(worldApp, element)
