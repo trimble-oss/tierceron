@@ -17,16 +17,70 @@ import (
 )
 
 var maxTime int64
+var avg float64
+var idForData int
+var count int
 
-func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement, node flowutil.TTDINode) []*mashupsdk.MashupDetailedElement {
-	if len(node.ChildNodes) == 0 && node.MashupDetailedElement.Genre == "DataFlowStatistic" {
-		//Finish dataflowstats and get proper quartiles working
+func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement, node flowutil.TTDINode, testTimes []float64, depth int) ([]*mashupsdk.MashupDetailedElement, []float64) {
+	//testTimes := []float64{}
+	//quartiles := []float64{}
+	//idForData := 0
+	//avg := 0.0
+	//count := 0
+	if node.MashupDetailedElement.Id == 2 {
+		idForData = len(detailedElements) - 1
 	}
-	detailedElements = append(detailedElements, &node.MashupDetailedElement)
+	for _, child_node := range node.ChildNodes {
+		if child_node.MashupDetailedElement.Genre == "DataFlowStatistic" {
+			node.MashupDetailedElement.Genre = "DataFlow"
+			for i := 0; i < len(node.ChildNodes)-1; i++ {
+				stat := node.ChildNodes[i].MashupDetailedElement
+				if stat.State == nil {
+					stat.State = &mashupsdk.MashupElementState{Id: stat.Id, State: int64(mashupsdk.Init)}
+				}
+				detailedElements = append(detailedElements, &stat)
+				var decodedstat interface{}
+				err := json.Unmarshal([]byte(stat.Data), &decodedstat)
+				if err != nil {
+					log.Println("Error in decoding data in buildDataFlowStatistics")
+				}
+				decodedStatData := decodedstat.(map[string]interface{})
+				timeNanoSeconds := int64(decodedStatData["TimeSplit"].(float64))
+				if timeNanoSeconds > int64(maxTime) {
+					maxTime = timeNanoSeconds
+				}
+				timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
+				nextStat := node.ChildNodes[i+1].MashupDetailedElement
+				if i == len(node.ChildNodes)-2 {
+					detailedElements = append(detailedElements, &nextStat)
+				}
+				var nextdecodedstat interface{}
+				err = json.Unmarshal([]byte(nextStat.Data), &nextdecodedstat)
+				if err != nil {
+					log.Println("Error in decoding data in GetData")
+				}
+				nextDecodedStatData := nextdecodedstat.(map[string]interface{})
+				nextTimeNanoSeconds := int64(nextDecodedStatData["TimeSplit"].(float64))
+				nextTimeSeconds := float64(nextTimeNanoSeconds) * math.Pow(10.0, -9.0)
+				if nextTimeSeconds-timeSeconds >= 0 {
+					testTimes = append(testTimes, nextTimeSeconds-timeSeconds)
+				} else {
+					avg += timeSeconds
+					count++
+				}
+			}
+			break
+		}
+	}
+	node.MashupDetailedElement.Alias = strconv.Itoa(depth)
+	if node.MashupDetailedElement.Id != 0 {
+		detailedElements = append(detailedElements, &node.MashupDetailedElement)
+	}
+
 	for i := 0; i < len(node.ChildNodes); i++ {
-		createDetailedElements(detailedElements, node.ChildNodes[i])
+		detailedElements, testTimes = createDetailedElements(detailedElements, node.ChildNodes[i], testTimes, depth+1)
 	}
-	return detailedElements
+	return detailedElements, testTimes
 }
 
 // Returns an array of mashup detailed elements populated with Argosy data
@@ -53,79 +107,80 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
 	//DetailedElements = append(DetailedElements, &ArgosyFleet.MashupDetailedElement)
 	//var quartiles []float64
-	maxTime := 0
+	maxTime = 0
 	testTimes := []float64{}
 	quartiles := []float64{}
-	idForData := 0
-	avg := 0.0
-	count := 0
+	idForData = 0
+	avg = 0.0
+	count = 0
+	DetailedElements, testTimes = createDetailedElements(DetailedElements, ArgosyFleet, testTimes, 0)
 
-	for a := 0; a < len(ArgosyFleet.ChildNodes); a++ {
-		//check genre
-		argosyElement := ArgosyFleet.ChildNodes[a].MashupDetailedElement
-		DetailedElements = append(DetailedElements, &argosyElement)
-		if argosyElement.Id == 2 {
-			if idForData == 0 {
-				idForData = len(DetailedElements) - 1
-			}
-		}
-		if argosyElement.Genre == "Argosy" {
-			//newQuartiles := []float64{}
-			//argosyElement.Alias = "Argosy"
+	// for a := 0; a < len(ArgosyFleet.ChildNodes); a++ {
+	// 	//check genre
+	// 	argosyElement := ArgosyFleet.ChildNodes[a].MashupDetailedElement
+	// 	DetailedElements = append(DetailedElements, &argosyElement)
+	// 	if argosyElement.Id == 2 {
+	// 		if idForData == 0 {
+	// 			idForData = len(DetailedElements) - 1
+	// 		}
+	// 	}
+	// 	if argosyElement.Genre == "Argosy" {
+	// 		//newQuartiles := []float64{}
+	// 		//argosyElement.Alias = "Argosy"
 
-			DetailedElements = append(DetailedElements, &argosyElement)
-			for i := 0; i < len(ArgosyFleet.ChildNodes[a].ChildNodes); i++ {
-				dfgElement := ArgosyFleet.ChildNodes[a].ChildNodes[i].MashupDetailedElement
-				dfgElement.Alias = "DataFlowGroup"
-				DetailedElements = append(DetailedElements, &dfgElement)
-				for j := 0; j < len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes); j++ {
-					dfelement := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].MashupDetailedElement
-					dfelement.Alias = "DataFlow"
-					DetailedElements = append(DetailedElements, &dfelement)
-					//Only part that matters for recursive loop
-					for k := 0; k < len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes)-1; k++ {
-						stat := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes[k].MashupDetailedElement
-						stat.Alias = "DataFlowStatistic"
-						if stat.State == nil {
-							stat.State = &mashupsdk.MashupElementState{Id: stat.Id, State: int64(mashupsdk.Init)}
-						}
-						DetailedElements = append(DetailedElements, &stat)
-						var decodedstat interface{}
-						err := json.Unmarshal([]byte(stat.Data), &decodedstat)
-						if err != nil {
-							log.Println("Error in decoding data in buildDataFlowStatistics")
-							break
-						}
-						decodedStatData := decodedstat.(map[string]interface{})
-						timeNanoSeconds := int64(decodedStatData["TimeSplit"].(float64))
-						if timeNanoSeconds > int64(maxTime) {
-							maxTime = int(timeNanoSeconds)
-						}
-						timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
-						nextStat := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes[k+1].MashupDetailedElement
-						if k == len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes)-2 {
-							DetailedElements = append(DetailedElements, &nextStat)
-						}
-						var nextdecodedstat interface{}
-						err = json.Unmarshal([]byte(nextStat.Data), &nextdecodedstat)
-						if err != nil {
-							log.Println("Error in decoding data in GetData")
-							continue
-						}
-						nextDecodedStatData := nextdecodedstat.(map[string]interface{})
-						nextTimeNanoSeconds := int64(nextDecodedStatData["TimeSplit"].(float64))
-						nextTimeSeconds := float64(nextTimeNanoSeconds) * math.Pow(10.0, -9.0)
-						if nextTimeSeconds-timeSeconds >= 0 {
-							testTimes = append(testTimes, nextTimeSeconds-timeSeconds)
-						} else {
-							avg += timeSeconds
-							count++
-						}
-					}
-				}
-			}
-		}
-	}
+	// 		DetailedElements = append(DetailedElements, &argosyElement)
+	// 		for i := 0; i < len(ArgosyFleet.ChildNodes[a].ChildNodes); i++ {
+	// 			dfgElement := ArgosyFleet.ChildNodes[a].ChildNodes[i].MashupDetailedElement
+	// 			dfgElement.Alias = "DataFlowGroup"
+	// 			DetailedElements = append(DetailedElements, &dfgElement)
+	// 			for j := 0; j < len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes); j++ {
+	// 				dfelement := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].MashupDetailedElement
+	// 				dfelement.Alias = "DataFlow"
+	// 				DetailedElements = append(DetailedElements, &dfelement)
+	// 				//Only part that matters for recursive loop
+	// 				for k := 0; k < len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes)-1; k++ {
+	// 					stat := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes[k].MashupDetailedElement
+	// 					stat.Alias = "DataFlowStatistic"
+	// 					if stat.State == nil {
+	// 						stat.State = &mashupsdk.MashupElementState{Id: stat.Id, State: int64(mashupsdk.Init)}
+	// 					}
+	// 					DetailedElements = append(DetailedElements, &stat)
+	// 					var decodedstat interface{}
+	// 					err := json.Unmarshal([]byte(stat.Data), &decodedstat)
+	// 					if err != nil {
+	// 						log.Println("Error in decoding data in buildDataFlowStatistics")
+	// 						break
+	// 					}
+	// 					decodedStatData := decodedstat.(map[string]interface{})
+	// 					timeNanoSeconds := int64(decodedStatData["TimeSplit"].(float64))
+	// 					if timeNanoSeconds > int64(maxTime) {
+	// 						maxTime = int(timeNanoSeconds)
+	// 					}
+	// 					timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
+	// 					nextStat := ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes[k+1].MashupDetailedElement
+	// 					if k == len(ArgosyFleet.ChildNodes[a].ChildNodes[i].ChildNodes[j].ChildNodes)-2 {
+	// 						DetailedElements = append(DetailedElements, &nextStat)
+	// 					}
+	// 					var nextdecodedstat interface{}
+	// 					err = json.Unmarshal([]byte(nextStat.Data), &nextdecodedstat)
+	// 					if err != nil {
+	// 						log.Println("Error in decoding data in GetData")
+	// 						continue
+	// 					}
+	// 					nextDecodedStatData := nextdecodedstat.(map[string]interface{})
+	// 					nextTimeNanoSeconds := int64(nextDecodedStatData["TimeSplit"].(float64))
+	// 					nextTimeSeconds := float64(nextTimeNanoSeconds) * math.Pow(10.0, -9.0)
+	// 					if nextTimeSeconds-timeSeconds >= 0 {
+	// 						testTimes = append(testTimes, nextTimeSeconds-timeSeconds)
+	// 					} else {
+	// 						avg += timeSeconds
+	// 						count++
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
 	//Quartile and max time analysis here:
 	sort.Float64s(testTimes)
 	quartiles = append(quartiles, testTimes[len(testTimes)/4])
