@@ -47,8 +47,8 @@ type DriverConfig struct {
 	ProjectSections  []string
 	SectionKey       string // Restricted or Index
 	SectionName      string // extension provided name
+	SubSectionName   string // extension provided subsection name
 	SubSectionValue  string
-	SubSectionName   string   // extension provided subsection name
 	ServiceFilter    []string // Which tables to use.
 	DirectPathFilter string   // Seeds from a specific path.
 	Trcxe            []string //Used for TRCXE
