@@ -38,7 +38,6 @@ type ElementRenderer struct {
 	quartiles       []float64
 	ctrlElements    []*g3nmash.G3nDetailedElement
 	isCtrl          bool
-	colors          []*math32.Color
 }
 
 // Returns true if length of er.clickedElements stack is 0 and false otherwise
@@ -77,14 +76,15 @@ func (er *ElementRenderer) top() *ClickedG3nDetailElement {
 func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
 	color := math32.NewColor("silver")
-	if er.colors == nil {
-		er.colors = []*math32.Color{color.Set(0, 0.349, 0.643), color.Set(1.0, 0.224, 0.0)} //Can add more colors to rotation here
-	}
 	if g3n.GetDetailedElement().Alias != "It" {
 		depth, err := strconv.Atoi(g3n.GetDetailedElement().Alias)
 		if err == nil {
-			index := int(math.Mod(float64(depth), float64(len(er.colors)-1)))
-			color = er.colors[index]
+			color1 := math32.NewColor("black")
+			color1 = color1.Set(0, 0.349, 0.643)
+			color2 := color.Set(1.0, 0.224, 0.0)
+			colors := []*math32.Color{color1, color2}
+			index := int(math.Mod(float64(depth), float64(len(colors)-1)))
+			color = colors[index]
 		}
 	}
 	if g3n.GetDetailedElement().Data != "" {
@@ -443,6 +443,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 					}
 				}
 			}
+			return true
 		}
 	}
 	return true
@@ -571,11 +572,12 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 		if g3n.GetDetailedElement().Alias != "It" {
 			depth, err := strconv.Atoi(g3n.GetDetailedElement().Alias)
 			if err == nil {
-				if er.colors == nil {
-					er.colors = []*math32.Color{color.Set(0, 0.349, 0.643), color.Set(1.0, 0.224, 0.0)} //Can add more colors to rotation here
-				}
-				index := int(math.Mod(float64(depth), float64(len(er.colors)-1)))
-				color = er.colors[index]
+				color1 := math32.NewColor("black")
+				color1 = color1.Set(0, 0.349, 0.643)
+				color2 := color.Set(1.0, 0.224, 0.0)
+				colors := []*math32.Color{color1, color2}
+				index := int(math.Mod(float64(depth), float64(len(colors)-1)))
+				color = colors[index]
 			}
 		}
 		if g3n.GetDetailedElement().Data != "" {
