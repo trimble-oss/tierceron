@@ -23,7 +23,7 @@ import (
 
 var sqrtfive float64 = float64(math.Sqrt(float64(5.0)))
 var goldenRatio float64 = (float64(1.0) + sqrtfive) / (float64(2.0))
-var ctrlel *g3nmash.G3nDetailedElement 
+var ctrlel *g3nmash.G3nDetailedElement
 
 type CurveRenderer struct {
 	g3nrender.GenericRenderer
@@ -33,8 +33,8 @@ type CurveRenderer struct {
 	clickedPaths          []*CurveMesh
 	maxTime               int
 	quartiles             []float64
-	avg 				  float64
-	isCtrl 				  bool
+	avg                   float64
+	isCtrl                bool
 }
 
 type CurveMesh struct {
@@ -157,38 +157,38 @@ func (cr *CurveRenderer) removeRelated(worldApp *g3nworld.WorldApp, clickedEleme
 				cr.removeRelated(worldApp, clickedElement, cr.top().g3nElement)
 			}
 		}
-	}	
+	}
 }
 
 func (cr *CurveRenderer) ctrlRemoveRelated(worldApp *g3nworld.WorldApp, clickedElement *g3nmash.G3nDetailedElement, element *g3nmash.G3nDetailedElement) {
 	//clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
 	// if len(clickedElement.GetParentElementIds()) != 0 {
 	// 	parent := clickedElement.GetParentElementIds()[0]
-	// 	for _, child 
+	// 	for _, child
 	// }
-	//clickedElement.GetParentElementIds() != nil && 
+	//clickedElement.GetParentElementIds() != nil &&
 	if clickedElement.GetDetailedElement().Genre != "Space" {
 		amount := 0
-		for amount <= (len(cr.clickedPaths) - 1) {           //for i := 0; i < len(er.ctrlElements); i++ {
+		for amount <= (len(cr.clickedPaths) - 1) { //for i := 0; i < len(er.ctrlElements); i++ {
 			el := cr.clickedPaths[amount] //Add check that amount is within array length
-			if el.g3nElement.GetDetailedElement().Genre == "DataFlowGroup" {
-				fmt.Println("Check")
-			}
+			// if el.g3nElement.GetDetailedElement().Genre == "DataFlowGroup" {
+			// 	fmt.Println("Check")
+			// }
 			a := !cr.er.isChildElement(worldApp, el.g3nElement)
-			b := len(el.g3nElement.GetParentElementIds()) != 0 
+			b := len(el.g3nElement.GetParentElementIds()) != 0
 			d := len(clickedElement.GetParentElementIds()) != 0
 			c := false
 			if d && len(el.g3nElement.GetParentElementIds()) != 0 {
 				c = el.g3nElement.GetParentElementIds()[0] == clickedElement.GetParentElementIds()[0]
-			}	
-			e := false	
+			}
+			e := false
 			if d {
 				e = el.g3nElement.GetDetailedElement().Id != clickedElement.GetDetailedElement().Parentids[0]
 			}
 			if a && b && ((d && c) || (!d && b)) || (e && ((d && c) || (!d && b))) {
 				//mesh := el.GetNamedMesh(el.GetDisplayName())
 				worldApp.RemoveFromScene(el.path)
-				cr.clickedPaths = append(cr.clickedPaths[:amount], cr.clickedPaths[amount + 1:]...)
+				cr.clickedPaths = append(cr.clickedPaths[:amount], cr.clickedPaths[amount+1:]...)
 				// er.pop()
 				// 	for _, childID := range prevElement.clickedElement.GetChildElementIds() {
 				// 		if !er.isChildElement(worldApp, prevElement.clickedElement) {
@@ -200,17 +200,17 @@ func (cr *CurveRenderer) ctrlRemoveRelated(worldApp *g3nworld.WorldApp, clickedE
 				// 	}
 				// er.deselectElements(worldApp, prevElement.clickedElement)
 				//el.g3nElement.GetDetailedElement().Genre == clickedElement.GetDetailedElement().Genre &&
-			} else if  b && d && el.g3nElement.GetParentElementIds()[0] != clickedElement.GetParentElementIds()[0] && e {
+			} else if b && d && el.g3nElement.GetParentElementIds()[0] != clickedElement.GetParentElementIds()[0] && e {
 				worldApp.RemoveFromScene(el.path)
-				cr.clickedPaths = append(cr.clickedPaths[:amount], cr.clickedPaths[amount + 1:]...)
+				cr.clickedPaths = append(cr.clickedPaths[:amount], cr.clickedPaths[amount+1:]...)
 			} else {
 				amount += 1
-			} 
-		}//}
+			}
+		} //}
 		cr.isCtrl = false
 		//cr.ctrlElements = nil
 	}
-	
+
 	fmt.Print("checking stack")
 }
 
@@ -335,9 +335,9 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 					var upperQuartile float64
 					var lowerQuartile float64
 					if len(cr.quartiles) == 3 {
-						median = cr.quartiles[1]        
-						upperQuartile = cr.quartiles[2] 
-						lowerQuartile = cr.quartiles[0] 
+						median = cr.quartiles[1]
+						upperQuartile = cr.quartiles[2]
+						lowerQuartile = cr.quartiles[0]
 						if diff < lowerQuartile {
 							color.Set(0.953, 0.569, 0.125)
 						} else if diff < median {
@@ -403,11 +403,12 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 			path = append(path, *math32.NewVector3(float32(0.0), float32(0.0), float32(0.0)))
 			tubeGeometry := geometry.NewTube(path, .007, 32, true)
 			color := math32.NewColor("darkmagenta")
-			if clickedElement.GetDetailedElement().Genre == "Argosy" {
-				color.Set(0.435, 0.541, 0.420)
-			} else if clickedElement.GetDetailedElement().Genre == "DataFlowGroup" {
-				color.Set(0.675, 0.624, 0.773)
-			}
+			color.Set(0.435, 0.541, 0.420)
+			// if clickedElement.GetDetailedElement().Genre == "Argosy" {
+			// 	color.Set(0.435, 0.541, 0.420)
+			// } else if clickedElement.GetDetailedElement().Genre == "DataFlowGroup" {
+			// 	color.Set(0.675, 0.624, 0.773)
+			// }
 			mat := material.NewStandard(color)
 			mat.SetOpacity(0.1)
 			tubeMesh := graphic.NewMesh(tubeGeometry, mat)
@@ -418,7 +419,6 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 		}
 	}
 }
-
 
 // Renders elements based on last clicked element
 // Returns true if given element is the last clicked element and false otherwise
@@ -433,7 +433,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 				log.Println("Error decoding data in curve renderer RenderElement")
 			} else {
 				decodedData := decoded.(map[string]interface{})
-				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil && decodedData["Average"] != nil { 
+				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil && decodedData["Average"] != nil {
 					if interfaceQuartiles, ok := decodedData["Quartiles"].([]interface{}); ok {
 						for _, quart := range interfaceQuartiles {
 							if floatQuart, ok := quart.(float64); ok {
@@ -455,7 +455,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 		}
 		if clickedElement.IsStateSet(mashupsdk.ControlClicked) {
 			cr.getMainSpirals(worldApp, clickedElement)
-			cr.iterateToDF(worldApp, clickedElement)		
+			cr.iterateToDF(worldApp, clickedElement)
 		}
 		if !cr.isCtrl && (clickedElement != nil && clickedElement.GetDetailedElement().Genre == "DataFlow" && clickedElement.GetNamedMesh(clickedElement.GetDisplayName()) != nil) {
 			timeSplits, successful := cr.getTimeSplits(worldApp, clickedElement)
@@ -494,9 +494,9 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 					path = append(path, *math32.NewVector3(float32(-real(complex)), float32(imag(complex)), -float32(lastLocation)))
 					if len(path) > 1 {
 						if len(cr.quartiles) == 3 {
-							median := cr.quartiles[1]        
-							upperQuartile := cr.quartiles[2] 
-							lowerQuartile := cr.quartiles[0] 
+							median := cr.quartiles[1]
+							upperQuartile := cr.quartiles[2]
+							lowerQuartile := cr.quartiles[0]
 							if diff < lowerQuartile {
 								color.Set(0.953, 0.569, 0.125)
 							} else if diff < median {
@@ -564,11 +564,12 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 				path = append(path, *math32.NewVector3(float32(0.0), float32(0.0), float32(0.0)))
 				tubeGeometry := geometry.NewTube(path, .007, 32, true)
 				color := math32.NewColor("darkmagenta")
-				if clickedElement.GetDetailedElement().Genre == "Argosy" {
-					color.Set(0.435, 0.541, 0.420)
-				} else if clickedElement.GetDetailedElement().Genre == "DataFlowGroup" {
-					color.Set(0.675, 0.624, 0.773)
-				}
+				color.Set(0.435, 0.541, 0.420)
+				// if clickedElement.GetDetailedElement().Genre == "Argosy" {
+				// 	color.Set(0.435, 0.541, 0.420)
+				// } else if clickedElement.GetDetailedElement().Genre == "DataFlowGroup" {
+				// 	color.Set(0.675, 0.624, 0.773)
+				// }
 				mat := material.NewStandard(color)
 				mat.SetOpacity(0.1)
 				tubeMesh := graphic.NewMesh(tubeGeometry, mat)
@@ -586,7 +587,6 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 func (cr *CurveRenderer) Collaborate(worldApp *g3nworld.WorldApp, collaboratingRenderer g3nrender.IG3nRenderer) {
 	cr.CollaboratingRenderer.Collaborate(worldApp, cr)
 }
-
 
 // package ttdirender
 
