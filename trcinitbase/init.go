@@ -651,7 +651,6 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			SubSectionValue: *eUtils.IndexValueFilterPtr,
 			SubSectionName:  *eUtils.ServiceNameFilterPtr,
 
-<<<<<<< HEAD
 			SecretMode:        true, //  "Only override secret values in templates?"
 			ProjectSections:   subSectionSlice,
 			ServiceFilter:     serviceFilterSlice,
@@ -662,18 +661,6 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			WantCerts:         *uploadCertPtr, // TODO: this was false...
 			GenAuth:           false,
 			Log:               logger,
-=======
-			SecretMode:       true, //  "Only override secret values in templates?"
-			ProjectSections:  subSectionSlice,
-			ServiceFilter:    serviceFilterSlice,
-			DirectPathFilter: *directPathPtr,
-			ServicesWanted:   []string{*servicePtr},
-			StartDir:         append([]string{}, *seedPtr),
-			EndDir:           "",
-			WantCerts:        *uploadCertPtr, // TODO: this was false...
-			GenAuth:          false,
-			Log:              logger,
->>>>>>> main
 		}
 
 		il.SeedVault(config)
