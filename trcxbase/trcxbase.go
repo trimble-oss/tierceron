@@ -78,6 +78,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	fieldsPtr := flag.String("fields", "", "Fields to enter")
 	encryptedPtr := flag.String("encrypted", "", "Fields to encrypt")
 	readOnlyPtr := flag.Bool("readonly", false, "Fields to encrypt")
+	dynamicPathPtr := flag.String("dynamicPath", "", "Generate seeds for a dynamic path in vault.")
 
 	var insecurePtr *bool
 	if insecurePtrIn == nil {
