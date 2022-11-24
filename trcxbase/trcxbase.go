@@ -147,16 +147,16 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if *diffPtr && *versionPtr {
 		fmt.Println("-version flag cannot be used with -diff flag")
 		os.Exit(1)
-	} else if (len(*eUtils.IndexServiceFilterPtr) == 0 || len(*eUtils.IndexNameFilterPtr) == 0) && len(*eUtils.IndexedPtr) != 0 {
+	} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexNameFilterPtr) == 0) && len(*eUtils.IndexedPtr) != 0 {
 		fmt.Println("-serviceFilter and -indexFilter must be specified to use -indexed flag")
 		os.Exit(1)
-	} else if len(*eUtils.IndexServiceFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
+	} else if len(*eUtils.ServiceFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
 		fmt.Println("-serviceFilter must be specified to use -restricted flag")
 		os.Exit(1)
-	} else if (len(*eUtils.IndexServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *diffPtr && len(*eUtils.IndexedPtr) != 0 {
+	} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *diffPtr && len(*eUtils.IndexedPtr) != 0 {
 		fmt.Println("-indexFilter and -indexValueFilter must be specified to use -indexed & -diff flag")
 		os.Exit(1)
-	} else if (len(*eUtils.IndexServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *versionPtr && len(*eUtils.IndexedPtr) != 0 {
+	} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *versionPtr && len(*eUtils.IndexedPtr) != 0 {
 		fmt.Println("-indexFilter and -indexValueFilter must be specified to use -indexed & -versions flag")
 		os.Exit(1)
 	} else if *versionPtr && len(*eUtils.RestrictedPtr) > 0 {
@@ -208,8 +208,8 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		}
 	}
 
-	if len(*eUtils.IndexServiceFilterPtr) != 0 && len(*eUtils.IndexNameFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
-		eUtils.IndexNameFilterPtr = eUtils.IndexServiceFilterPtr
+	if len(*eUtils.ServiceFilterPtr) != 0 && len(*eUtils.IndexNameFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
+		eUtils.IndexNameFilterPtr = eUtils.ServiceFilterPtr
 	}
 
 	keysCheck := make(map[string]bool)
@@ -472,7 +472,7 @@ skipDiff:
 	}
 
 	var filteredSectionSlice []string
-	var indexFilterSlice []string
+	var serviceFilterSlice []string
 
 	if len(*eUtils.IndexValueFilterPtr) > 0 {
 		filterSlice := strings.Split(*eUtils.IndexValueFilterPtr, ",")
@@ -485,13 +485,13 @@ skipDiff:
 		}
 		sectionSlice = filteredSectionSlice
 	}
-	if len(*eUtils.IndexServiceFilterPtr) > 0 {
+	if len(*eUtils.ServiceFilterPtr) > 0 {
 		if len(sectionSlice) == 0 {
 			eUtils.LogAndSafeExit(config, "No available indexes found for "+*eUtils.IndexValueFilterPtr, 1)
 		}
-		indexFilterSlice = strings.Split(*eUtils.IndexServiceFilterPtr, ",")
-		if len(*eUtils.IndexServiceExtFilterPtr) > 0 {
-			*eUtils.IndexServiceExtFilterPtr = "/" + *eUtils.IndexServiceExtFilterPtr //added "/" - used path later
+		serviceFilterSlice = strings.Split(*eUtils.ServiceFilterPtr, ",")
+		if len(*eUtils.ServiceNameFilterPtr) > 0 {
+			*eUtils.ServiceNameFilterPtr = "/" + *eUtils.ServiceNameFilterPtr //added "/" - used path later
 		}
 	}
 
@@ -542,7 +542,7 @@ skipDiff:
 				SectionKey:      sectionKey,
 				SectionName:     subSectionName,
 				SubSectionValue: section,
-				SubSectionName:  *eUtils.IndexServiceExtFilterPtr,
+				SubSectionName:  *eUtils.ServiceNameFilterPtr,
 				Regions:         regions,
 				SecretMode:      *secretMode,
 				ServicesWanted:  servicesWanted,
@@ -557,7 +557,7 @@ skipDiff:
 				VersionInfo:     eUtils.VersionHelper,
 				FileFilter:      fileFilter,
 				ProjectSections: projectSectionsSlice,
-				IndexFilter:     indexFilterSlice,
+				ServiceFilter:   serviceFilterSlice,
 				ExitOnFailure:   true,
 				Trcxe:           trcxeList,
 				Trcxr:           *readOnlyPtr,

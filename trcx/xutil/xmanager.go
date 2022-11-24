@@ -39,8 +39,8 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 	sliceSecretSection := []map[string]map[string]map[string]string{}
 	maxDepth := -1
 	service := ""
-	if len(config.IndexFilter) > 0 {
-		service = config.IndexFilter[0]
+	if len(config.ServiceFilter) > 0 {
+		service = config.ServiceFilter[0]
 	}
 	multiService := false
 	var mod *helperkv.Modifier
@@ -305,8 +305,8 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 	}
 
 	var iFilterTemplatePaths []string
-	if len(config.IndexFilter) > 0 {
-		for _, iFilter := range config.IndexFilter {
+	if len(config.ServiceFilter) > 0 {
+		for _, iFilter := range config.ServiceFilter {
 			for _, tPath := range templatePaths {
 				if strings.Contains(tPath, "/"+iFilter+"/") || strings.HasSuffix(tPath, "/"+iFilter+".yml.tmpl") {
 					iFilterTemplatePaths = append(iFilterTemplatePaths, tPath)

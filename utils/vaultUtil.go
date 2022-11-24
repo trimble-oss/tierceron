@@ -49,9 +49,9 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 
 	for _, projectSection := range config.ProjectSections {
 		pathFilter := pathFilterBase + "/" + projectSection + "/"
-		if len(config.IndexFilter) > 0 {
-			for _, indexFilter := range config.IndexFilter {
-				endPathFilter := indexFilter
+		if len(config.ServiceFilter) > 0 {
+			for _, serviceFilter := range config.ServiceFilter {
+				endPathFilter := serviceFilter
 				if config.SectionKey != "/Restricted/" {
 					endPathFilter = endPathFilter + "/"
 				}
