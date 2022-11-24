@@ -89,10 +89,10 @@ func SeedVault(config *eUtils.DriverConfig) error {
 		if strings.HasPrefix(config.Env, envDir.Name()) || (strings.HasPrefix(config.Env, "local") && envDir.Name() == "local") {
 			config.Log.Println("\tStepping into: " + envDir.Name())
 
-			if config.DirectPathFilter != "" {
-				sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + config.DirectPathFilter)
+			if config.DynamicPathFilter != "" {
+				sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + config.DynamicPathFilter)
 				if err != nil {
-					config.Log.Printf("Couldn't read into: %s \n", config.DirectPathFilter)
+					config.Log.Printf("Couldn't read into: %s \n", config.DynamicPathFilter)
 				}
 				seedFileCount := 0
 				var seedFileName string
@@ -107,7 +107,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 					eUtils.CheckWarning(config, fmt.Sprintf("Multiple potentially conflicting configuration files found for environment: %s", envDir.Name()), true)
 				}
 
-				SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+config.DirectPathFilter+"/"+seedFileName)
+				SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+config.DynamicPathFilter+"/"+seedFileName)
 				seeded = true
 				continue
 			}
