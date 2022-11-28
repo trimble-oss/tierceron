@@ -89,10 +89,10 @@ func SeedVault(config *eUtils.DriverConfig) error {
 		if strings.HasPrefix(config.Env, envDir.Name()) || (strings.HasPrefix(config.Env, "local") && envDir.Name() == "local") {
 			config.Log.Println("\tStepping into: " + envDir.Name())
 
-			if config.DirectPathFilter != "" {
-				sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + config.DirectPathFilter)
+			if config.DynamicPathFilter != "" {
+				sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + config.DynamicPathFilter)
 				if err != nil {
-					config.Log.Printf("Couldn't read into: %s \n", config.DirectPathFilter)
+					config.Log.Printf("Couldn't read into: %s \n", config.DynamicPathFilter)
 				}
 				seedFileCount := 0
 				var seedFileName string
@@ -107,7 +107,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 					eUtils.CheckWarning(config, fmt.Sprintf("Multiple potentially conflicting configuration files found for environment: %s", envDir.Name()), true)
 				}
 
-				SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+config.DirectPathFilter+"/"+seedFileName)
+				SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+config.DynamicPathFilter+"/"+seedFileName)
 				seeded = true
 				continue
 			}
@@ -207,8 +207,8 @@ func SeedVault(config *eUtils.DriverConfig) error {
 										seeded = true
 									}
 								} else {
-									if len(config.IndexFilter) > 0 {
-										for _, filter := range config.IndexFilter {
+									if len(config.ServiceFilter) > 0 {
+										for _, filter := range config.ServiceFilter {
 											if strings.HasSuffix(path, filter+"_seed.yml") {
 												SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+fileSteppedInto.Name()+"/"+projectDirectory.Name()+"/"+sectionName.Name()+"/"+sectionConfigFile.Name())
 												seeded = true
@@ -285,9 +285,9 @@ func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string) {
 	// Open file
 	eUtils.LogErrorAndSafeExit(config, err, 1)
 	eUtils.LogInfo(config, "Seed written to vault from "+filepath)
-	if len(config.IndexFilter) > 0 && !strings.Contains(filepath, config.IndexFilter[0]) {
+	if len(config.ServiceFilter) > 0 && !strings.Contains(filepath, config.ServiceFilter[0]) {
 		lastSlashIndex := strings.LastIndex(filepath, "/")
-		filepath = filepath[:lastSlashIndex] + "/" + config.IndexFilter[0] + "/" + filepath[lastSlashIndex+1:]
+		filepath = filepath[:lastSlashIndex] + "/" + config.ServiceFilter[0] + "/" + filepath[lastSlashIndex+1:]
 	}
 	SeedVaultFromData(config, strings.SplitAfterN(filepath, "/", 3)[2], rawFile)
 }
@@ -520,8 +520,8 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		config.Log.Println("Seeding configuration data for the following templates: DataStatistics")
 	} else if isIndexData || strings.HasPrefix(filepath, "Restricted/") || strings.HasPrefix(filepath, "Protected/") { //Sets restricted to indexpath due to forward logic using indexpath
 		mod.SectionPath = strings.TrimSuffix(filepath, "_seed.yml")
-		if len(config.IndexFilter) > 0 && isIndexData && !strings.Contains(mod.SectionPath, config.IndexFilter[0]) {
-			mod.SectionPath = mod.SectionPath[:strings.LastIndex(mod.SectionPath, "/")+1] + config.IndexFilter[0] + mod.SectionPath[strings.LastIndex(mod.SectionPath, "/"):]
+		if len(config.ServiceFilter) > 0 && isIndexData && !strings.Contains(mod.SectionPath, config.ServiceFilter[0]) {
+			mod.SectionPath = mod.SectionPath[:strings.LastIndex(mod.SectionPath, "/")+1] + config.ServiceFilter[0] + mod.SectionPath[strings.LastIndex(mod.SectionPath, "/"):]
 		}
 		config.Log.Println("Seeding configuration data for the following templates:" + mod.SectionPath)
 	} else {
