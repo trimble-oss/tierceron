@@ -189,7 +189,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				stateUpdate.SyncFilter = "N/A"
 				if previousState.State == stateUpdate.State && previousState.SyncMode == stateUpdate.SyncMode && previousState.SyncFilter == stateUpdate.SyncFilter {
 					continue
-				} else if int(previousState.State) != PreviousStateCheck(int(stateUpdate.State)) {
+				} else if int(previousState.State) != core.PreviousStateCheck(int(stateUpdate.State)) {
 					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(previousState.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: stateUpdate.SyncMode}
 					continue
 				}
