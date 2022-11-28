@@ -5,7 +5,9 @@ package argosyopts
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"strings"
 	//"math"
 	"strconv"
 	"tierceron/trcvault/flowutil"
@@ -43,8 +45,8 @@ func getGroupSize(groups []flowutil.TTDINode) (float64, float64, float64) {
 	return groupsize, flowsize, statsize
 }
 
-func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst bool) flowutil.TTDINode {
-	//PROBLEM: ADDING CHILD NODES OF CHILD NODES TO CURRENT NODE
+func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst bool) (flowutil.TTDINode, int64) {
+	//PROBLEM: Overriding child ids with other ids --> id not updating properly --> potentially concurrency issue?
 	var nodeID int64
 	state := mashupsdk.Hidden
 	//if node.MashupDetailedElement != nil {
@@ -87,15 +89,15 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 				Childids:       []int64{-1},
 			}
 			//flow.ChildNodes[i] = stat
-			return node
+			return node, node.MashupDetailedElement.Id
 		} else if decodedNodeData != nil {
 			//DataFlow here deal with fail or no fail
 			nodeID = updateID() //startID + int64(i)*int64(1.0+float64(dfstatsize))
 			elementcollectionIDs = append(elementcollectionIDs, nodeID)
-			var childIDs []int64
-			for i := nodeID + 1; i <= nodeID+int64(len(node.ChildNodes)); i++ {
-				childIDs = append(childIDs, i)
-			}
+			// var childIDs []int64
+			// for i := nodeID + 1; i <= nodeID+int64(len(node.ChildNodes)); i++ {
+			// 	childIDs = append(childIDs, i)
+			// }
 			name := node.MashupDetailedElement.Name
 			data := node.MashupDetailedElement.Data
 			node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
@@ -129,12 +131,15 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 	} else if notFirst {
 		nodeID = updateID() //startID + int64(i)*int64(1.0+float64(dfsize)+math.Pow(float64(dfstatsize), 2.0))
 		elementcollectionIDs = append(elementcollectionIDs, nodeID)
-		var childIDs []int64
-		for i := nodeID + 1; i <= nodeID+int64(len(node.ChildNodes)); i++ {
-			childIDs = append(childIDs, i)
-		}
+		// var childIDs []int64
+		// for i := nodeID + 1; i <= nodeID+int64(len(node.ChildNodes)); i++ {
+		// 	childIDs = append(childIDs, i)
+		// }
 		//group := argosy.ChildNodes[i]
 		name := node.MashupDetailedElement.Name
+		if strings.HasPrefix(name, "qa14p8") {
+			fmt.Println("Checking for childids")
+		}
 		data := node.MashupDetailedElement.Data
 		node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             nodeID,
@@ -148,14 +153,18 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 			Genre:          "",
 			Subgenre:       "",
 			Parentids:      parentIDs, //[]int64{parentID},
-			Childids:       childIDs,
+			Childids:       []int64{},
 		}
 	}
 	//}
+	var childids []int64
+	var childid int64
 	for i := 0; i < len(node.ChildNodes); i++ {
-		node.ChildNodes[i] = recursiveBuildArgosies(node.ChildNodes[i], nodeID, true)
+		node.ChildNodes[i], childid = recursiveBuildArgosies(node.ChildNodes[i], nodeID, true)
+		childids = append(childids, childid)
 	}
-	return node
+	node.MashupDetailedElement.Childids = append(node.MashupDetailedElement.Childids, childids...)
+	return node, node.MashupDetailedElement.Id
 }
 
 // func buildArgosies(startID int64, args flowutil.TTDINode) (flowutil.TTDINode, []int64, []int64) {
@@ -428,7 +437,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 	//fail = false
 	currentID = 8
 	//args, elementCollection, _ = buildArgosies(8, args)
-	args = recursiveBuildArgosies(args, currentID, false)
+	args, _ = recursiveBuildArgosies(args, currentID, false)
 	//elementCollection = elementcollectionIDs
 	argosies = append(argosies, flowutil.TTDINode{
 		mashupsdk.MashupDetailedElement{
