@@ -49,7 +49,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
 	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
-	directPathPtr := flag.String("directPath", "", "Seed a specific directory in vault.")
+	dynamicPathPtr := flag.String("dynamicPath", "", "Seed a specific directory in vault.")
 
 	// indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
 	// indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // Table names
@@ -651,16 +651,16 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			SubSectionValue: *eUtils.IndexValueFilterPtr,
 			SubSectionName:  *eUtils.ServiceNameFilterPtr,
 
-			SecretMode:       true, //  "Only override secret values in templates?"
-			ProjectSections:  subSectionSlice,
-			ServiceFilter:    serviceFilterSlice,
-			DirectPathFilter: *directPathPtr,
-			ServicesWanted:   []string{*servicePtr},
-			StartDir:         append([]string{}, *seedPtr),
-			EndDir:           "",
-			WantCerts:        *uploadCertPtr, // TODO: this was false...
-			GenAuth:          false,
-			Log:              logger,
+			SecretMode:        true, //  "Only override secret values in templates?"
+			ProjectSections:   subSectionSlice,
+			ServiceFilter:     serviceFilterSlice,
+			DynamicPathFilter: *dynamicPathPtr,
+			ServicesWanted:    []string{*servicePtr},
+			StartDir:          append([]string{}, *seedPtr),
+			EndDir:            "",
+			WantCerts:         *uploadCertPtr, // TODO: this was false...
+			GenAuth:           false,
+			Log:               logger,
 		}
 
 		il.SeedVault(config)
