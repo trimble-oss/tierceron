@@ -75,9 +75,9 @@ func GetProjectVersionInfo(config *DriverConfig, mod *helperkv.Modifier) map[str
 func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
 	var versionNumbers []int
 	for valuePath, data := range versionMetadataMap {
-		if len(config.IndexFilter) > 0 {
+		if len(config.ServiceFilter) > 0 {
 			found := false
-			for _, index := range config.IndexFilter {
+			for _, index := range config.ServiceFilter {
 				if strings.Contains(valuePath, index) {
 					found = true
 				}
