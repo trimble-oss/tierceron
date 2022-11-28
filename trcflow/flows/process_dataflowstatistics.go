@@ -2,6 +2,7 @@ package flows
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 	"sync"
 	flowcore "tierceron/trcflow/core"
@@ -176,20 +177,30 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 	}
 
 	tfContext.FlowLock.Unlock()
-	go func(tfs flowcorehelper.CurrentFlowState, sL *sync.Mutex) {
+	stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
+
+	go func(tfs flowcorehelper.CurrentFlowState, sL *sync.Mutex, sPC chan flowcorehelper.FlowStateUpdate) {
+		sL.Lock()
+		previousState := tfs
+		sL.Unlock()
 		for {
 			select {
 			case stateUpdate := <-tfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState):
+				stateUpdate.SyncFilter = "N/A"
+				if previousState.State == stateUpdate.State && previousState.SyncMode == stateUpdate.SyncMode && previousState.SyncFilter == stateUpdate.SyncFilter {
+					continue
+				} else if int(previousState.State) != core.PreviousStateCheck(int(stateUpdate.State)) {
+					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(previousState.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: stateUpdate.SyncMode}
+					continue
+				}
+				previousState = stateUpdate
 				sL.Lock()
 				tfContext.FlowState = stateUpdate
-				tfContext.FlowState.SyncFilter = "N/A" //Overwrites any changes to syncFilter as this flow doesn't support it
-				tfContext.FlowState.SyncMode = "N/A"
 				sL.Unlock()
 			}
 		}
-	}(tfContext.FlowState, tfContext.FlowLock)
+	}(tfContext.FlowState, tfContext.FlowLock, stateUpdateChannel)
 
-	stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
 	syncInit := true
 
 	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
