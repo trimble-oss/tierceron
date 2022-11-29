@@ -27,9 +27,9 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 	//idForData := 0
 	//avg := 0.0
 	//count := 0
-	if node.MashupDetailedElement.Id == 2 {
-		idForData = len(detailedElements) - 1
-	}
+	// if node.MashupDetailedElement.Id == 2 {
+	// 	idForData = len(detailedElements) - 1
+	// }
 	for _, child_node := range node.ChildNodes {
 		if child_node.MashupDetailedElement.Genre == "DataFlowStatistic" {
 			node.MashupDetailedElement.Genre = "DataFlow"
@@ -75,6 +75,9 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 	node.MashupDetailedElement.Alias = strconv.Itoa(depth)
 	if node.MashupDetailedElement.Id != 0 {
 		detailedElements = append(detailedElements, &node.MashupDetailedElement)
+		if node.MashupDetailedElement.Id == 2 {
+			idForData = len(detailedElements) - 1
+		}
 	}
 
 	for i := 0; i < len(node.ChildNodes); i++ {
@@ -211,7 +214,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 			log.Println("Error in encoding data in GetData")
 		}
 		argosyElement.Data = string(encoded)
-
+		DetailedElements[idForData] = argosyElement
 	}
 
 	DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{
