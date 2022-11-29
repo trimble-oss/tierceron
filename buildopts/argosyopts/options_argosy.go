@@ -141,6 +141,8 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 			fmt.Println("Checking for childids")
 		}
 		data := node.MashupDetailedElement.Data
+		//var decodednode interface{}
+		//Somehow check for dataflow object --> maybe check in for loop looping thru child ids --> add fail there
 		node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             nodeID,
 			State:          &mashupsdk.MashupElementState{Id: nodeID, State: int64(state)},
@@ -153,7 +155,7 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 			Genre:          "",
 			Subgenre:       "",
 			Parentids:      parentIDs, //[]int64{parentID},
-			Childids:       []int64{},
+			Childids:       []int64{-2},
 		}
 	}
 	//}
