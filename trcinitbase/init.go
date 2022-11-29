@@ -49,7 +49,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
 	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
-	directPathPtr := flag.String("directPath", "", "Seed a specific directory in vault.")
+	dynamicPathPtr := flag.String("dynamicPath", "", "Seed a specific directory in vault.")
 
 	// indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
 	// indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // Table names
@@ -105,8 +105,8 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 	}
 
-	if len(*eUtils.IndexServiceFilterPtr) != 0 && len(*eUtils.IndexNameFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
-		eUtils.IndexNameFilterPtr = eUtils.IndexServiceFilterPtr
+	if len(*eUtils.ServiceFilterPtr) != 0 && len(*eUtils.IndexNameFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
+		eUtils.IndexNameFilterPtr = eUtils.ServiceFilterPtr
 	}
 
 	var indexSlice = make([]string, 0) //Checks for indexed projects
@@ -595,7 +595,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		}
 
 		var filteredSectionSlice []string
-		var indexFilterSlice []string
+		var serviceFilterSlice []string
 		sectionSlice := []string{*eUtils.IndexValueFilterPtr}
 
 		// Chewbacca: redo this next if section
@@ -610,17 +610,17 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			}
 			sectionSlice = filteredSectionSlice
 		}
-		if len(*eUtils.IndexServiceFilterPtr) > 0 {
+		if len(*eUtils.ServiceFilterPtr) > 0 {
 			if len(sectionSlice) == 0 {
 				eUtils.LogAndSafeExit(config, "No available indexes found for "+*eUtils.IndexValueFilterPtr, 1)
 			}
-			indexFilterSlice = strings.Split(*eUtils.IndexServiceFilterPtr, ",")
-			if len(*eUtils.IndexServiceExtFilterPtr) > 0 {
-				*eUtils.IndexServiceExtFilterPtr = "/" + *eUtils.IndexServiceExtFilterPtr //added "/" - used path later
+			serviceFilterSlice = strings.Split(*eUtils.ServiceFilterPtr, ",")
+			if len(*eUtils.ServiceNameFilterPtr) > 0 {
+				*eUtils.ServiceNameFilterPtr = "/" + *eUtils.ServiceNameFilterPtr //added "/" - used path later
 			}
 		}
-		if len(indexFilterSlice) > 0 {
-			indexFilterSlice = strings.Split(*eUtils.IndexServiceFilterPtr, ",")
+		if len(serviceFilterSlice) > 0 {
+			serviceFilterSlice = strings.Split(*eUtils.ServiceFilterPtr, ",")
 		}
 		sectionKey := "/"
 		if len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0 { //*******
@@ -649,18 +649,18 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			SectionKey:      sectionKey,
 			SectionName:     subSectionName,
 			SubSectionValue: *eUtils.IndexValueFilterPtr,
-			SubSectionName:  *eUtils.IndexServiceExtFilterPtr,
+			SubSectionName:  *eUtils.ServiceNameFilterPtr,
 
-			SecretMode:       true, //  "Only override secret values in templates?"
-			ProjectSections:  subSectionSlice,
-			IndexFilter:      indexFilterSlice,
-			DirectPathFilter: *directPathPtr,
-			ServicesWanted:   []string{*servicePtr},
-			StartDir:         append([]string{}, *seedPtr),
-			EndDir:           "",
-			WantCerts:        *uploadCertPtr, // TODO: this was false...
-			GenAuth:          false,
-			Log:              logger,
+			SecretMode:        true, //  "Only override secret values in templates?"
+			ProjectSections:   subSectionSlice,
+			ServiceFilter:     serviceFilterSlice,
+			DynamicPathFilter: *dynamicPathPtr,
+			ServicesWanted:    []string{*servicePtr},
+			StartDir:          append([]string{}, *seedPtr),
+			EndDir:            "",
+			WantCerts:         *uploadCertPtr, // TODO: this was false...
+			GenAuth:           false,
+			Log:               logger,
 		}
 
 		il.SeedVault(config)
