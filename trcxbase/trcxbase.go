@@ -486,7 +486,7 @@ skipDiff:
 
 						if len(dynamicPathParts) > i {
 							for level, _ := range levelPart {
-								recursivePathBuilder(testMod, pGen+"/"+strings.Trim(level, "/"), dynamicPathParts[i+1:])
+								recursivePathBuilder(testMod, pGen+"/"+level, dynamicPathParts[i+1:])
 							}
 							return
 						}
@@ -498,10 +498,14 @@ skipDiff:
 						}
 					}
 				}
+				recursivePathBuilder(testMod, pGen, []string{})
 			}
 
 			recursivePathBuilder(testMod, pathGen, dynamicPathParts)
 
+			if testMod != nil {
+				testMod.Release()
+			}
 		}
 
 	} else {
