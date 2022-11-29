@@ -35,6 +35,8 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	return config, mod, vault, nil
 }
 
+var templateName string = coreopts.GetFolderPrefix() + "_templates"
+
 func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
 	var acceptedTemplatePaths []string
 
@@ -42,33 +44,56 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 		config.EnvRaw = strings.Split(config.EnvRaw, "_")[0]
 	}
 	var wantedTemplatePaths []string
-	pathFilterBase := ""
-	if config.SectionKey != "/Restricted/" {
-		pathFilterBase = "/" + coreopts.GetFolderPrefix() + "_templates"
-	}
 
-	for _, projectSection := range config.ProjectSections {
-		pathFilter := pathFilterBase + "/" + projectSection + "/"
-		if len(config.ServiceFilter) > 0 {
-			for _, serviceFilter := range config.ServiceFilter {
-				endPathFilter := serviceFilter
-				if config.SectionKey != "/Restricted/" {
-					endPathFilter = endPathFilter + "/"
+	if len(config.DynamicPathFilter) > 0 {
+		dynamicPathParts := strings.Split(config.DynamicPathFilter, "/")
+
+		if len(dynamicPathParts) > 4 && dynamicPathParts[0] == "Restricted" || dynamicPathParts[0] == "Index" {
+			projectFilter := "/" + dynamicPathParts[1] + "/"
+			serviceFilter := "/" + dynamicPathParts[4] + "/"
+
+			// Now filter and grab the templates we want...
+			for _, templateCandidate := range templatePaths {
+				templateIndex := strings.Index(templateCandidate, templateName)
+				projectIndex := strings.Index(templateCandidate, projectFilter)
+
+				if projectIndex > templateIndex && strings.Index(templateCandidate, serviceFilter) > projectIndex {
+					acceptedTemplatePaths = append(acceptedTemplatePaths, templateCandidate)
 				}
-				wantedTemplatePaths = append(wantedTemplatePaths, pathFilter+endPathFilter)
 			}
-		} else {
-			wantedTemplatePaths = append(wantedTemplatePaths, pathFilter)
 		}
-	}
+	} else {
+		// TODO: Deprecated...
+		// 1-800-ROIT
+		pathFilterBase := ""
+		if config.SectionKey != "/Restricted/" {
+			pathFilterBase = "/" + coreopts.GetFolderPrefix() + "_templates"
+		}
 
-	// Now filter and grab the templates we want...
-	for _, templateCandidate := range templatePaths {
-		for _, wantedPath := range wantedTemplatePaths {
-			if strings.Contains(templateCandidate, wantedPath) {
-				acceptedTemplatePaths = append(acceptedTemplatePaths, templateCandidate)
+		for _, projectSection := range config.ProjectSections {
+			pathFilter := pathFilterBase + "/" + projectSection + "/"
+			if len(config.ServiceFilter) > 0 {
+				for _, serviceFilter := range config.ServiceFilter {
+					endPathFilter := serviceFilter
+					if config.SectionKey != "/Restricted/" {
+						endPathFilter = endPathFilter + "/"
+					}
+					wantedTemplatePaths = append(wantedTemplatePaths, pathFilter+endPathFilter)
+				}
+			} else {
+				wantedTemplatePaths = append(wantedTemplatePaths, pathFilter)
 			}
 		}
+
+		// Now filter and grab the templates we want...
+		for _, templateCandidate := range templatePaths {
+			for _, wantedPath := range wantedTemplatePaths {
+				if strings.Contains(templateCandidate, wantedPath) {
+					acceptedTemplatePaths = append(acceptedTemplatePaths, templateCandidate)
+				}
+			}
+		}
+
 	}
 
 	if len(acceptedTemplatePaths) > 0 {

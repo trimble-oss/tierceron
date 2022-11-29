@@ -374,21 +374,27 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				if goMod.SectionName != "" && (goMod.SubSectionValue != "" || goMod.SectionKey == "/Restricted/" || goMod.SectionKey == "/Protected/") {
-					if goMod.SectionKey == "/Index/" {
-						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + config.SubSectionName
-					} else if goMod.SectionKey == "/Restricted/" {
-						if service != config.SectionName { //TODO: Revisit why we need this comparison
-							goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
+				if len(config.DynamicPathFilter) > 0 {
+					goMod.SectionPath = "super-secrets" + config.DynamicPathFilter
+				} else {
+					// TODO: Deprecated...
+					// 1-800-ROIT???  Not sure how certs play into this.
+					if goMod.SectionName != "" && (goMod.SubSectionValue != "" || goMod.SectionKey == "/Restricted/" || goMod.SectionKey == "/Protected/") {
+						if goMod.SectionKey == "/Index/" {
+							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + config.SubSectionName
+						} else if goMod.SectionKey == "/Restricted/" {
+							if service != config.SectionName { //TODO: Revisit why we need this comparison
+								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
+							} else {
+								goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + config.SectionName
+							}
+						} else if goMod.SectionKey == "/Protected/" {
+							if service != config.SectionName {
+								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
+							}
 						} else {
-							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + config.SectionName
+							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
 						}
-					} else if goMod.SectionKey == "/Protected/" {
-						if service != config.SectionName {
-							goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
-						}
-					} else {
-						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
 					}
 				}
 				if config.Token != "novault" {
