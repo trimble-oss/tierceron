@@ -15,6 +15,7 @@ import (
 	"tierceron/trcvault/opts/memonly"
 	eUtils "tierceron/utils"
 	"tierceron/utils/mlock"
+	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 
 	"github.com/hashicorp/vault/api"
@@ -78,6 +79,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	fieldsPtr := flag.String("fields", "", "Fields to enter")
 	encryptedPtr := flag.String("encrypted", "", "Fields to encrypt")
 	readOnlyPtr := flag.Bool("readonly", false, "Fields to encrypt")
+	dynamicPathPtr := flag.String("dynamicPath", "", "Generate seeds for a dynamic path in vault.")
 
 	var insecurePtr *bool
 	if insecurePtrIn == nil {
@@ -147,18 +149,6 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if *diffPtr && *versionPtr {
 		fmt.Println("-version flag cannot be used with -diff flag")
 		os.Exit(1)
-	} else if (len(*eUtils.IndexServiceFilterPtr) == 0 || len(*eUtils.IndexNameFilterPtr) == 0) && len(*eUtils.IndexedPtr) != 0 {
-		fmt.Println("-serviceFilter and -indexFilter must be specified to use -indexed flag")
-		os.Exit(1)
-	} else if len(*eUtils.IndexServiceFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
-		fmt.Println("-serviceFilter must be specified to use -restricted flag")
-		os.Exit(1)
-	} else if (len(*eUtils.IndexServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *diffPtr && len(*eUtils.IndexedPtr) != 0 {
-		fmt.Println("-indexFilter and -indexValueFilter must be specified to use -indexed & -diff flag")
-		os.Exit(1)
-	} else if (len(*eUtils.IndexServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *versionPtr && len(*eUtils.IndexedPtr) != 0 {
-		fmt.Println("-indexFilter and -indexValueFilter must be specified to use -indexed & -versions flag")
-		os.Exit(1)
 	} else if *versionPtr && len(*eUtils.RestrictedPtr) > 0 {
 		fmt.Println("-restricted flags cannot be used with -versions flag")
 		os.Exit(1)
@@ -171,6 +161,22 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	} else if *readOnlyPtr && (len(*encryptedPtr) == 0 || len(*fileAddrPtr) == 0) {
 		fmt.Println("The -encrypted flag must be used with -seedPath flag if -readonly is used")
 		os.Exit(1)
+	} else {
+		if len(*dynamicPathPtr) == 0 {
+			if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexNameFilterPtr) == 0) && len(*eUtils.IndexedPtr) != 0 {
+				fmt.Println("-serviceFilter and -indexFilter must be specified to use -indexed flag")
+				os.Exit(1)
+			} else if len(*eUtils.ServiceFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
+				fmt.Println("-serviceFilter must be specified to use -restricted flag")
+				os.Exit(1)
+			} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *diffPtr && len(*eUtils.IndexedPtr) != 0 {
+				fmt.Println("-indexFilter and -indexValueFilter must be specified to use -indexed & -diff flag")
+				os.Exit(1)
+			} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *versionPtr && len(*eUtils.IndexedPtr) != 0 {
+				fmt.Println("-indexFilter and -indexValueFilter must be specified to use -indexed & -versions flag")
+				os.Exit(1)
+			}
+		}
 	}
 
 	trcxe := false
@@ -208,8 +214,8 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		}
 	}
 
-	if len(*eUtils.IndexServiceFilterPtr) != 0 && len(*eUtils.IndexNameFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
-		eUtils.IndexNameFilterPtr = eUtils.IndexServiceFilterPtr
+	if len(*eUtils.ServiceFilterPtr) != 0 && len(*eUtils.IndexNameFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
+		eUtils.IndexNameFilterPtr = eUtils.ServiceFilterPtr
 	}
 
 	keysCheck := make(map[string]bool)
@@ -363,212 +369,359 @@ skipDiff:
 		subSectionName = ""
 	}
 	var waitg sync.WaitGroup
-	sectionKey := "/"
-	if len(envSlice) == 1 || (len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0) {
-		if strings.Contains(envSlice[0], "*") || len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 || len(*eUtils.ProtectedPtr) > 0 {
-			if len(*eUtils.IndexedPtr) > 0 {
-				sectionKey = "/Index/"
-			} else if len(*eUtils.RestrictedPtr) > 0 {
-				sectionKey = "/Restricted/"
-			} else if len(*eUtils.ProtectedPtr) > 0 {
-				sectionKey = "/Protected/"
-			}
+	sectionKey := ""
+	var serviceFilterSlice []string
 
-			newSectionSlice := make([]string, 0)
-			if !*noVaultPtr && !trcxe {
-				var baseEnv string
+	if len(*dynamicPathPtr) > 0 {
+		go reciever() //Channel reciever
+
+		dynamicPathParts := strings.Split(*dynamicPathPtr, "/")
+
+		for _, env := range envSlice {
+			envVersion := eUtils.SplitEnv(env)
+			*envPtr = envVersion[0]
+			if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
+				*tokenPtr = ""
+			}
+			var testMod *kv.Modifier = nil
+			var baseEnv string
+
+			if strings.Contains(*dynamicPathPtr, "%s") {
 				if strings.Contains(envSlice[0], "_") {
 					baseEnv = strings.Split(envSlice[0], "_")[0]
 				} else {
 					baseEnv = envSlice[0]
 				}
-				//Ask vault for list of dev.<id>.* environments, add to envSlice
-				authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, *pingPtr)
-				if authErr != nil {
-					eUtils.LogErrorMessage(config, "Auth failure: "+authErr.Error(), true)
+				if !*noVaultPtr && *tokenPtr == "" {
+					//Ask vault for list of dev.<id>.* environments, add to envSlice
+					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, *pingPtr)
+					if authErr != nil {
+						eUtils.LogErrorMessage(config, "Auth failure: "+authErr.Error(), true)
+					}
 				}
-				testMod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, true, logger)
-				testMod.Env = baseEnv
-				if err != nil {
-					logger.Printf(err.Error())
-				}
-				// Only look at index values....
-				//Checks for indexed projects
-				if len(*eUtils.IndexedPtr) > 0 {
-					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+			}
+
+			// Look up and flush out any dynamic components.
+			pathGen := ""
+			var recursivePathBuilder func(testMod *kv.Modifier, pGen string, dynamicPathParts []string)
+
+			recursivePathBuilder = func(testMod *kv.Modifier, pGen string, dynamicPathParts []string) {
+				if len(dynamicPathParts) == 0 {
+					if !*noVaultPtr && *tokenPtr == "" {
+						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+						if authErr != nil {
+							// Retry once.
+							authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+							if authErr != nil {
+								eUtils.LogAndSafeExit(config, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
+							}
+						}
+					} else if *tokenPtr == "" {
+						*tokenPtr = "novault"
+					}
+					if len(envVersion) >= 2 { //Put back env+version together
+						*envPtr = envVersion[0] + "_" + envVersion[1]
+					} else {
+						*envPtr = envVersion[0] + "_0"
+					}
+
+					config := eUtils.DriverConfig{
+						Context:           ctx,
+						Insecure:          *insecurePtr,
+						Token:             *tokenPtr,
+						VaultAddress:      *addrPtr,
+						EnvRaw:            envRaw,
+						Env:               *envPtr,
+						Regions:           regions,
+						SecretMode:        *secretMode,
+						StartDir:          append([]string{}, *startDirPtr),
+						EndDir:            *endDirPtr,
+						WantCerts:         *wantCertsPtr,
+						GenAuth:           *genAuth,
+						Log:               logger,
+						Clean:             *cleanPtr,
+						Diff:              *diffPtr,
+						Update:            messenger,
+						VersionInfo:       eUtils.VersionHelper,
+						DynamicPathFilter: pGen,
+						FileFilter:        fileFilter,
+						ExitOnFailure:     true,
+						Trcxr:             *readOnlyPtr,
+					}
+					waitg.Add(1)
+					go func() {
+						defer waitg.Done()
+						eUtils.ConfigControl(ctx, &config, configDriver)
+					}()
+					return
 				}
 
-				if len(*eUtils.RestrictedPtr) > 0 {
-					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
-				}
+				for i, dynamicPart := range dynamicPathParts {
+					if dynamicPart == "%s" {
+						if testMod == nil {
+							testMod, err = helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, true, logger)
+							testMod.Env = baseEnv
+							if err != nil {
+								eUtils.LogErrorMessage(config, "Access to vault failure.", true)
+							}
+						}
 
-				if len(*eUtils.ProtectedPtr) > 0 {
-					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
-				}
+						listValues, err := testMod.ListEnv("super-secrets/"+testMod.Env+"/"+pGen, config.Log)
+						if err != nil {
+							if strings.Contains(err.Error(), "permission denied") {
+								eUtils.LogErrorMessage(config, fmt.Sprintf("Insufficient privileges accessing: %s", pGen), true)
+							}
+						}
 
-				var listValues *api.Secret
-				if len(projectSectionsSlice) > 0 { //If eid -> look inside Index and grab all environments
-					subSectionPath := projectSectionsSlice[0] + "/"
-					listValues, err = testMod.ListEnv("super-secrets/"+testMod.Env+sectionKey+subSectionPath, config.Log)
-					if err != nil {
-						if strings.Contains(err.Error(), "permission denied") {
-							eUtils.LogErrorMessage(config, "Attempt to access restricted section of the vault denied.", true)
+						if listValues == nil {
+							//							eUtils.LogInfo(config, fmt.Sprintf("Partial data with path: %s", "super-secrets/"+testMod.Env+"/"+pGen))
+							return
+						}
+						levelPart := map[string]string{}
+						for _, valuesPath := range listValues.Data {
+							for _, indexNameInterface := range valuesPath.([]interface{}) {
+								levelPart[strings.Trim(indexNameInterface.(string), "/")] = ""
+							}
+						}
+
+						if len(dynamicPathParts) > i {
+							for level, _ := range levelPart {
+								recursivePathBuilder(testMod, pGen+"/"+level, dynamicPathParts[i+1:])
+							}
+							return
+						}
+					} else {
+						if len(pGen) > 0 {
+							pGen = pGen + "/" + dynamicPart
+						} else {
+							pGen = pGen + dynamicPart
 						}
 					}
+				}
+				recursivePathBuilder(testMod, pGen, []string{})
+			}
 
-					// Further path modifications needed.
-					if listValues == nil {
-						eUtils.LogAndSafeExit(config, "No available indexes found for "+subSectionPath, 1)
+			recursivePathBuilder(testMod, pathGen, dynamicPathParts)
+
+			if testMod != nil {
+				testMod.Release()
+			}
+		}
+
+	} else {
+		sectionKey = "/"
+
+		// TODO: Deprecated...
+		// 1-800-ROIT
+		if len(envSlice) == 1 || (len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0) {
+			if strings.Contains(envSlice[0], "*") || len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 || len(*eUtils.ProtectedPtr) > 0 {
+				if len(*eUtils.IndexedPtr) > 0 {
+					sectionKey = "/Index/"
+				} else if len(*eUtils.RestrictedPtr) > 0 {
+					sectionKey = "/Restricted/"
+				} else if len(*eUtils.ProtectedPtr) > 0 {
+					sectionKey = "/Protected/"
+				}
+
+				newSectionSlice := make([]string, 0)
+				if !*noVaultPtr && !trcxe {
+					var baseEnv string
+					if strings.Contains(envSlice[0], "_") {
+						baseEnv = strings.Split(envSlice[0], "_")[0]
+					} else {
+						baseEnv = envSlice[0]
 					}
-					for k, valuesPath := range listValues.Data {
-						for _, indexNameInterface := range valuesPath.([]interface{}) {
-							if indexNameInterface != (subSectionName + "/") {
-								continue
-							}
-							indexList, err := testMod.ListEnv("super-secrets/"+testMod.Env+sectionKey+subSectionPath+"/"+indexNameInterface.(string), config.Log)
-							if err != nil {
-								logger.Printf(err.Error())
-							}
+					//Ask vault for list of dev.<id>.* environments, add to envSlice
+					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, *pingPtr)
+					if authErr != nil {
+						eUtils.LogErrorMessage(config, "Auth failure: "+authErr.Error(), true)
+					}
+					testMod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, true, logger)
+					testMod.Env = baseEnv
+					if err != nil {
+						logger.Printf(err.Error())
+					}
+					// Only look at index values....
+					//Checks for indexed projects
+					if len(*eUtils.IndexedPtr) > 0 {
+						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+					}
 
-							for _, indexPath := range indexList.Data {
-								for _, indexInterface := range indexPath.([]interface{}) {
-									if len(*eUtils.IndexValueFilterPtr) > 0 {
-										if indexInterface != (*eUtils.IndexValueFilterPtr + "/") {
-											continue
+					if len(*eUtils.RestrictedPtr) > 0 {
+						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
+					}
+
+					if len(*eUtils.ProtectedPtr) > 0 {
+						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
+					}
+
+					var listValues *api.Secret
+					if len(projectSectionsSlice) > 0 { //If eid -> look inside Index and grab all environments
+						subSectionPath := projectSectionsSlice[0] + "/"
+						listValues, err = testMod.ListEnv("super-secrets/"+testMod.Env+sectionKey+subSectionPath, config.Log)
+						if err != nil {
+							if strings.Contains(err.Error(), "permission denied") {
+								eUtils.LogErrorMessage(config, "Attempt to access restricted section of the vault denied.", true)
+							}
+						}
+
+						// Further path modifications needed.
+						if listValues == nil {
+							eUtils.LogAndSafeExit(config, "No available indexes found for "+subSectionPath, 1)
+						}
+						for k, valuesPath := range listValues.Data {
+							for _, indexNameInterface := range valuesPath.([]interface{}) {
+								if indexNameInterface != (subSectionName + "/") {
+									continue
+								}
+								indexList, err := testMod.ListEnv("super-secrets/"+testMod.Env+sectionKey+subSectionPath+"/"+indexNameInterface.(string), config.Log)
+								if err != nil {
+									logger.Printf(err.Error())
+								}
+
+								for _, indexPath := range indexList.Data {
+									for _, indexInterface := range indexPath.([]interface{}) {
+										if len(*eUtils.IndexValueFilterPtr) > 0 {
+											if indexInterface != (*eUtils.IndexValueFilterPtr + "/") {
+												continue
+											}
 										}
+										newSectionSlice = append(newSectionSlice, strings.ReplaceAll(indexInterface.(string), "/", ""))
 									}
-									newSectionSlice = append(newSectionSlice, strings.ReplaceAll(indexInterface.(string), "/", ""))
 								}
 							}
+							delete(listValues.Data, k) //delete it so it doesn't repeat below
 						}
-						delete(listValues.Data, k) //delete it so it doesn't repeat below
+					} else {
+						listValues, err = testMod.ListEnv("values/", config.Log)
 					}
-				} else {
-					listValues, err = testMod.ListEnv("values/", config.Log)
-				}
-				if err != nil {
-					logger.Printf(err.Error())
-				}
-				if len(newSectionSlice) > 0 {
-					sectionSlice = newSectionSlice
-				}
-				if testMod != nil {
-					testMod.Release()
-				}
-			} else { //novault takes this path
-				if len(*eUtils.IndexedPtr) > 0 {
-					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
-				}
+					if err != nil {
+						logger.Printf(err.Error())
+					}
+					if len(newSectionSlice) > 0 {
+						sectionSlice = newSectionSlice
+					}
+					if testMod != nil {
+						testMod.Release()
+					}
+				} else { //novault takes this path
+					if len(*eUtils.IndexedPtr) > 0 {
+						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+					}
 
-				if len(*eUtils.RestrictedPtr) > 0 {
-					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
-				}
+					if len(*eUtils.RestrictedPtr) > 0 {
+						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
+					}
 
-				if len(*eUtils.ProtectedPtr) > 0 {
-					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
+					if len(*eUtils.ProtectedPtr) > 0 {
+						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
+					}
 				}
 			}
 		}
-	}
 
-	var filteredSectionSlice []string
-	var indexFilterSlice []string
+		var filteredSectionSlice []string
 
-	if len(*eUtils.IndexValueFilterPtr) > 0 {
-		filterSlice := strings.Split(*eUtils.IndexValueFilterPtr, ",")
-		for _, filter := range filterSlice {
-			for _, section := range sectionSlice {
-				if filter == section {
-					filteredSectionSlice = append(filteredSectionSlice, section)
+		if len(*eUtils.IndexValueFilterPtr) > 0 {
+			filterSlice := strings.Split(*eUtils.IndexValueFilterPtr, ",")
+			for _, filter := range filterSlice {
+				for _, section := range sectionSlice {
+					if filter == section {
+						filteredSectionSlice = append(filteredSectionSlice, section)
+					}
 				}
 			}
+			sectionSlice = filteredSectionSlice
 		}
-		sectionSlice = filteredSectionSlice
-	}
-	if len(*eUtils.IndexServiceFilterPtr) > 0 {
-		if len(sectionSlice) == 0 {
-			eUtils.LogAndSafeExit(config, "No available indexes found for "+*eUtils.IndexValueFilterPtr, 1)
-		}
-		indexFilterSlice = strings.Split(*eUtils.IndexServiceFilterPtr, ",")
-		if len(*eUtils.IndexServiceExtFilterPtr) > 0 {
-			*eUtils.IndexServiceExtFilterPtr = "/" + *eUtils.IndexServiceExtFilterPtr //added "/" - used path later
+		if len(*eUtils.ServiceFilterPtr) > 0 {
+			if len(sectionSlice) == 0 {
+				eUtils.LogAndSafeExit(config, "No available indexes found for "+*eUtils.IndexValueFilterPtr, 1)
+			}
+			serviceFilterSlice = strings.Split(*eUtils.ServiceFilterPtr, ",")
+			if len(*eUtils.ServiceNameFilterPtr) > 0 {
+				*eUtils.ServiceNameFilterPtr = "/" + *eUtils.ServiceNameFilterPtr //added "/" - used path later
+			}
 		}
 	}
 
 	go reciever() //Channel reciever
-	for _, env := range envSlice {
-		envVersion := eUtils.SplitEnv(env)
-		*envPtr = envVersion[0]
-		if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
-			*tokenPtr = ""
-		}
-		for _, section := range sectionSlice {
-			var servicesWanted []string
-			if !*noVaultPtr && *tokenPtr == "" {
-				authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
-				if authErr != nil {
-					// Retry once.
+	if len(*dynamicPathPtr) == 0 {
+		for _, env := range envSlice {
+			envVersion := eUtils.SplitEnv(env)
+			*envPtr = envVersion[0]
+			if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
+				*tokenPtr = ""
+			}
+			for _, section := range sectionSlice {
+				var servicesWanted []string
+				if !*noVaultPtr && *tokenPtr == "" {
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 					if authErr != nil {
-						eUtils.LogAndSafeExit(config, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
+						// Retry once.
+						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+						if authErr != nil {
+							eUtils.LogAndSafeExit(config, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
+						}
+					}
+				} else if *tokenPtr == "" {
+					*tokenPtr = "novault"
+				}
+				if len(envVersion) >= 2 { //Put back env+version together
+					*envPtr = envVersion[0] + "_" + envVersion[1]
+				} else {
+					*envPtr = envVersion[0] + "_0"
+				}
+
+				var trcxeList []string
+				if trcxe {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+
+					trcxeList = append(trcxeList, *fieldsPtr)
+					trcxeList = append(trcxeList, *encryptedPtr)
+					if *noVaultPtr {
+						trcxeList = append(trcxeList, "new")
 					}
 				}
-			} else if *tokenPtr == "" {
-				*tokenPtr = "novault"
-			}
-			if len(envVersion) >= 2 { //Put back env+version together
-				*envPtr = envVersion[0] + "_" + envVersion[1]
-			} else {
-				*envPtr = envVersion[0] + "_0"
-			}
-
-			var trcxeList []string
-			if trcxe {
-				projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
-
-				trcxeList = append(trcxeList, *fieldsPtr)
-				trcxeList = append(trcxeList, *encryptedPtr)
-				if *noVaultPtr {
-					trcxeList = append(trcxeList, "new")
+				config := eUtils.DriverConfig{
+					Context:           ctx,
+					Insecure:          *insecurePtr,
+					Token:             *tokenPtr,
+					VaultAddress:      *addrPtr,
+					EnvRaw:            envRaw,
+					Env:               *envPtr,
+					SectionKey:        sectionKey,
+					SectionName:       subSectionName,
+					SubSectionValue:   section,
+					SubSectionName:    *eUtils.ServiceNameFilterPtr,
+					Regions:           regions,
+					SecretMode:        *secretMode,
+					ServicesWanted:    servicesWanted,
+					StartDir:          append([]string{}, *startDirPtr),
+					EndDir:            *endDirPtr,
+					WantCerts:         *wantCertsPtr,
+					GenAuth:           *genAuth,
+					Log:               logger,
+					Clean:             *cleanPtr,
+					Diff:              *diffPtr,
+					Update:            messenger,
+					VersionInfo:       eUtils.VersionHelper,
+					DynamicPathFilter: *dynamicPathPtr,
+					FileFilter:        fileFilter,
+					ProjectSections:   projectSectionsSlice,
+					ServiceFilter:     serviceFilterSlice,
+					ExitOnFailure:     true,
+					Trcxe:             trcxeList,
+					Trcxr:             *readOnlyPtr,
 				}
+				waitg.Add(1)
+				go func() {
+					defer waitg.Done()
+					eUtils.ConfigControl(ctx, &config, configDriver)
+				}()
 			}
-			config := eUtils.DriverConfig{
-				Context:         ctx,
-				Insecure:        *insecurePtr,
-				Token:           *tokenPtr,
-				VaultAddress:    *addrPtr,
-				EnvRaw:          envRaw,
-				Env:             *envPtr,
-				SectionKey:      sectionKey,
-				SectionName:     subSectionName,
-				SubSectionValue: section,
-				SubSectionName:  *eUtils.IndexServiceExtFilterPtr,
-				Regions:         regions,
-				SecretMode:      *secretMode,
-				ServicesWanted:  servicesWanted,
-				StartDir:        append([]string{}, *startDirPtr),
-				EndDir:          *endDirPtr,
-				WantCerts:       *wantCertsPtr,
-				GenAuth:         *genAuth,
-				Log:             logger,
-				Clean:           *cleanPtr,
-				Diff:            *diffPtr,
-				Update:          messenger,
-				VersionInfo:     eUtils.VersionHelper,
-				FileFilter:      fileFilter,
-				ProjectSections: projectSectionsSlice,
-				IndexFilter:     indexFilterSlice,
-				ExitOnFailure:   true,
-				Trcxe:           trcxeList,
-				Trcxr:           *readOnlyPtr,
-			}
-			waitg.Add(1)
-			go func() {
-				defer waitg.Done()
-				eUtils.ConfigControl(ctx, &config, configDriver)
-			}()
 		}
 	}
+
 	waitg.Wait()
 	close(resultChannel)
 	if *diffPtr { //Diff if needed
