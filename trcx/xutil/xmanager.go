@@ -375,7 +375,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
 				if len(config.DynamicPathFilter) > 0 {
-					goMod.SectionPath = "super-secrets" + config.DynamicPathFilter
+					goMod.SectionPath = "super-secrets/" + config.DynamicPathFilter
 				} else {
 					// TODO: Deprecated...
 					// 1-800-ROIT???  Not sure how certs play into this.
