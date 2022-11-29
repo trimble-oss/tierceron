@@ -473,15 +473,19 @@ skipDiff:
 							}
 						}
 
-						var levelPart []string
+						if listValues == nil {
+							//							eUtils.LogInfo(config, fmt.Sprintf("Partial data with path: %s", "super-secrets/"+testMod.Env+"/"+pGen))
+							return
+						}
+						levelPart := map[string]string{}
 						for _, valuesPath := range listValues.Data {
 							for _, indexNameInterface := range valuesPath.([]interface{}) {
-								levelPart = append(levelPart, indexNameInterface.(string))
+								levelPart[strings.Trim(indexNameInterface.(string), "/")] = ""
 							}
 						}
 
 						if len(dynamicPathParts) > i {
-							for _, level := range levelPart {
+							for level, _ := range levelPart {
 								recursivePathBuilder(testMod, pGen+"/"+strings.Trim(level, "/"), dynamicPathParts[i+1:])
 							}
 							return
