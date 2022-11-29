@@ -23,7 +23,7 @@ import (
 
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
-func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, error, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string) {
+func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, error, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string, string) {
 	var wg sync.WaitGroup
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -37,10 +37,12 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 	sliceTemplateSection := []interface{}{}
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
+	var sectionPath string
+
 	maxDepth := -1
 	service := ""
-	if len(config.IndexFilter) > 0 {
-		service = config.IndexFilter[0]
+	if len(config.ServiceFilter) > 0 {
+		service = config.ServiceFilter[0]
 	}
 	multiService := false
 	var mod *helperkv.Modifier
@@ -97,7 +99,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 		_, err := mod.ReadData("apiLogins/meta")
 		if err != nil {
 			eUtils.LogInfo(config, "Cannot genAuth with provided token.")
-			return nil, false, eUtils.LogAndSafeExit(config, "", 1), nil, nil, nil
+			return nil, false, eUtils.LogAndSafeExit(config, "", 1), nil, nil, nil, ""
 		}
 	}
 
@@ -137,7 +139,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 		versionMetadataMap := eUtils.GetProjectVersionInfo(config, mod)
 
 		if versionMetadataMap == nil {
-			return nil, false, eUtils.LogAndSafeExit(config, fmt.Sprintf("No version data found - this filter was applied during search: %v\n", config.VersionFilter), 1), nil, nil, nil
+			return nil, false, eUtils.LogAndSafeExit(config, fmt.Sprintf("No version data found - this filter was applied during search: %v\n", config.VersionFilter), 1), nil, nil, nil, ""
 		} else if version == "versionInfo" { //Version flag
 			var masterKey string
 			first := true
@@ -158,11 +160,11 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					if len(key) > 0 && len(masterKey) < 1 {
 						masterKey = key
 						config.VersionInfo(versionMetadataMap[masterKey], false, "", false)
-						return nil, false, eUtils.LogAndSafeExit(config, "Version info provided.", 1), nil, nil, nil
+						return nil, false, eUtils.LogAndSafeExit(config, "Version info provided.", 1), nil, nil, nil, ""
 					}
 				}
 			}
-			return nil, false, eUtils.LogAndSafeExit(config, "Version info provided.", 1), nil, nil, nil
+			return nil, false, eUtils.LogAndSafeExit(config, "Version info provided.", 1), nil, nil, nil, ""
 		} else { //Version bound check
 			if version != "0" {
 				versionNumbers := eUtils.GetProjectVersions(config, versionMetadataMap)
@@ -180,6 +182,8 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
 					sliceValueSection = append(sliceValueSection, tResult.ValueSection)
 					sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
+					sectionPath = tResult.SectionPath
+
 					if tResult.TemplateDepth > maxDepth {
 						maxDepth = tResult.TemplateDepth
 						//templateCombinedSection = interfaceTemplateSection
@@ -294,7 +298,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					errmsg = errors.New("No relevant services were found for this environment: " + mod.Env)
 				}
 				eUtils.LogErrorObject(config, errmsg, false)
-				return nil, false, errmsg, nil, nil, nil
+				return nil, false, errmsg, nil, nil, nil, ""
 			} else {
 				if len(acceptedTemplatePaths) > 0 {
 					// template paths further trimmed by vault.
@@ -305,8 +309,8 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 	}
 
 	var iFilterTemplatePaths []string
-	if len(config.IndexFilter) > 0 {
-		for _, iFilter := range config.IndexFilter {
+	if len(config.ServiceFilter) > 0 {
+		for _, iFilter := range config.ServiceFilter {
 			for _, tPath := range templatePaths {
 				if strings.Contains(tPath, "/"+iFilter+"/") || strings.HasSuffix(tPath, "/"+iFilter+".yml.tmpl") {
 					iFilterTemplatePaths = append(iFilterTemplatePaths, tPath)
@@ -374,21 +378,27 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				if goMod.SectionName != "" && (goMod.SubSectionValue != "" || goMod.SectionKey == "/Restricted/" || goMod.SectionKey == "/Protected/") {
-					if goMod.SectionKey == "/Index/" {
-						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + config.SubSectionName
-					} else if goMod.SectionKey == "/Restricted/" {
-						if service != config.SectionName { //TODO: Revisit why we need this comparison
-							goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
+				if len(config.DynamicPathFilter) > 0 {
+					goMod.SectionPath = "super-secrets/" + config.DynamicPathFilter
+				} else {
+					// TODO: Deprecated...
+					// 1-800-ROIT???  Not sure how certs play into this.
+					if goMod.SectionName != "" && (goMod.SubSectionValue != "" || goMod.SectionKey == "/Restricted/" || goMod.SectionKey == "/Protected/") {
+						if goMod.SectionKey == "/Index/" {
+							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + config.SubSectionName
+						} else if goMod.SectionKey == "/Restricted/" {
+							if service != config.SectionName { //TODO: Revisit why we need this comparison
+								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
+							} else {
+								goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + config.SectionName
+							}
+						} else if goMod.SectionKey == "/Protected/" {
+							if service != config.SectionName {
+								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
+							}
 						} else {
-							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + config.SectionName
+							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
 						}
-					} else if goMod.SectionKey == "/Protected/" {
-						if service != config.SectionName {
-							goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
-						}
-					} else {
-						goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
 					}
 				}
 				if config.Token != "novault" {
@@ -417,6 +427,11 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 				&(templateResult.ValueSection),
 				&(templateResult.SecretSection),
 			)
+			if len(config.DynamicPathFilter) > 0 {
+				// Pass explicit desitination indiciated in gomod.
+				templateResult.SectionPath = goMod.SectionPath
+			}
+
 			if goMod != nil {
 				goMod.Release()
 			}
@@ -458,7 +473,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					eUtils.LogErrorObject(config, errA, false)
 				}
 			} else {
-				return nil, false, eUtils.LogAndSafeExit(config, "Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", 1), nil, nil, nil
+				return nil, false, eUtils.LogAndSafeExit(config, "Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", 1), nil, nil, nil, ""
 			}
 		} else {
 			authConfigurations := map[string]interface{}{}
@@ -477,18 +492,17 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 			}
 		}
 	}
-	return authYaml, multiService, nil, templateCombinedSection, valueCombinedSection, secretCombinedSection
+	return authYaml, multiService, nil, templateCombinedSection, valueCombinedSection, secretCombinedSection, sectionPath
 }
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string, error) {
-	endPath := ""
 	var projectSectionTemp []string //Used for seed file pathing; errors for -novault generation if not empty
 	if len(config.Trcxe) > 2 {
 		projectSectionTemp = config.ProjectSections
 		config.ProjectSections = []string{}
 	}
-	authYaml, multiService, generateErr, templateCombinedSection, valueCombinedSection, secretCombinedSection := GenerateSeedSectionFromVaultRaw(config, fromVault, templatePaths)
+	authYaml, multiService, generateErr, templateCombinedSection, valueCombinedSection, secretCombinedSection, endPath := GenerateSeedSectionFromVaultRaw(config, fromVault, templatePaths)
 	if generateErr != nil {
 		eUtils.LogErrorObject(config, generateErr, false)
 		return "", false, "", nil
@@ -669,6 +683,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 			}
 
 			endPath = config.EndDir + envBasePath + config.SectionKey + config.ProjectSections[0] + sectionNamePath + subSectionValuePath + config.SubSectionName + "_seed.yml"
+		} else if len(config.DynamicPathFilter) > 0 {
+			destPath := strings.Replace(endPath, config.SectionName, "/", 1)
+			destPath = strings.Replace(destPath, "super-secrets/", "", 1)
+			endPath = config.EndDir + envBasePath + "/" + destPath + "_seed.yml"
 		} else {
 			endPath = config.EndDir + envBasePath + "/" + config.Env + "_seed.yml"
 		}
