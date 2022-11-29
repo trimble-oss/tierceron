@@ -51,6 +51,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 		if len(dynamicPathParts) > 4 && dynamicPathParts[0] == "Restricted" || dynamicPathParts[0] == "Index" {
 			projectFilter := "/" + dynamicPathParts[1] + "/"
 			serviceFilter := "/" + dynamicPathParts[4] + "/"
+			config.SectionName = serviceFilter
 
 			// Now filter and grab the templates we want...
 			for _, templateCandidate := range templatePaths {

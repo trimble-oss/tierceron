@@ -424,7 +424,6 @@ skipDiff:
 					} else {
 						*envPtr = envVersion[0] + "_0"
 					}
-					fmt.Println("Seeding for path: " + pGen)
 
 					config := eUtils.DriverConfig{
 						Context:           ctx,
@@ -467,7 +466,6 @@ skipDiff:
 							}
 						}
 
-						fmt.Println("Examining path: " + pGen)
 						listValues, err := testMod.ListEnv("super-secrets/"+testMod.Env+"/"+pGen, config.Log)
 						if err != nil {
 							if strings.Contains(err.Error(), "permission denied") {
@@ -484,9 +482,6 @@ skipDiff:
 
 						if len(dynamicPathParts) > i {
 							for _, level := range levelPart {
-								if level == "/" {
-									fmt.Println("Something broke.")
-								}
 								recursivePathBuilder(testMod, pGen+"/"+strings.Trim(level, "/"), dynamicPathParts[i+1:])
 							}
 							return
@@ -642,80 +637,83 @@ skipDiff:
 	}
 
 	go reciever() //Channel reciever
-	for _, env := range envSlice {
-		envVersion := eUtils.SplitEnv(env)
-		*envPtr = envVersion[0]
-		if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
-			*tokenPtr = ""
-		}
-		for _, section := range sectionSlice {
-			var servicesWanted []string
-			if !*noVaultPtr && *tokenPtr == "" {
-				authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
-				if authErr != nil {
-					// Retry once.
+	if len(*dynamicPathPtr) == 0 {
+		for _, env := range envSlice {
+			envVersion := eUtils.SplitEnv(env)
+			*envPtr = envVersion[0]
+			if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
+				*tokenPtr = ""
+			}
+			for _, section := range sectionSlice {
+				var servicesWanted []string
+				if !*noVaultPtr && *tokenPtr == "" {
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
 					if authErr != nil {
-						eUtils.LogAndSafeExit(config, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
+						// Retry once.
+						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+						if authErr != nil {
+							eUtils.LogAndSafeExit(config, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
+						}
+					}
+				} else if *tokenPtr == "" {
+					*tokenPtr = "novault"
+				}
+				if len(envVersion) >= 2 { //Put back env+version together
+					*envPtr = envVersion[0] + "_" + envVersion[1]
+				} else {
+					*envPtr = envVersion[0] + "_0"
+				}
+
+				var trcxeList []string
+				if trcxe {
+					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+
+					trcxeList = append(trcxeList, *fieldsPtr)
+					trcxeList = append(trcxeList, *encryptedPtr)
+					if *noVaultPtr {
+						trcxeList = append(trcxeList, "new")
 					}
 				}
-			} else if *tokenPtr == "" {
-				*tokenPtr = "novault"
-			}
-			if len(envVersion) >= 2 { //Put back env+version together
-				*envPtr = envVersion[0] + "_" + envVersion[1]
-			} else {
-				*envPtr = envVersion[0] + "_0"
-			}
-
-			var trcxeList []string
-			if trcxe {
-				projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
-
-				trcxeList = append(trcxeList, *fieldsPtr)
-				trcxeList = append(trcxeList, *encryptedPtr)
-				if *noVaultPtr {
-					trcxeList = append(trcxeList, "new")
+				config := eUtils.DriverConfig{
+					Context:           ctx,
+					Insecure:          *insecurePtr,
+					Token:             *tokenPtr,
+					VaultAddress:      *addrPtr,
+					EnvRaw:            envRaw,
+					Env:               *envPtr,
+					SectionKey:        sectionKey,
+					SectionName:       subSectionName,
+					SubSectionValue:   section,
+					SubSectionName:    *eUtils.ServiceNameFilterPtr,
+					Regions:           regions,
+					SecretMode:        *secretMode,
+					ServicesWanted:    servicesWanted,
+					StartDir:          append([]string{}, *startDirPtr),
+					EndDir:            *endDirPtr,
+					WantCerts:         *wantCertsPtr,
+					GenAuth:           *genAuth,
+					Log:               logger,
+					Clean:             *cleanPtr,
+					Diff:              *diffPtr,
+					Update:            messenger,
+					VersionInfo:       eUtils.VersionHelper,
+					DynamicPathFilter: *dynamicPathPtr,
+					FileFilter:        fileFilter,
+					ProjectSections:   projectSectionsSlice,
+					ServiceFilter:     serviceFilterSlice,
+					ExitOnFailure:     true,
+					Trcxe:             trcxeList,
+					Trcxr:             *readOnlyPtr,
 				}
+				waitg.Add(1)
+				go func() {
+					defer waitg.Done()
+					eUtils.ConfigControl(ctx, &config, configDriver)
+				}()
 			}
-			config := eUtils.DriverConfig{
-				Context:           ctx,
-				Insecure:          *insecurePtr,
-				Token:             *tokenPtr,
-				VaultAddress:      *addrPtr,
-				EnvRaw:            envRaw,
-				Env:               *envPtr,
-				SectionKey:        sectionKey,
-				SectionName:       subSectionName,
-				SubSectionValue:   section,
-				SubSectionName:    *eUtils.ServiceNameFilterPtr,
-				Regions:           regions,
-				SecretMode:        *secretMode,
-				ServicesWanted:    servicesWanted,
-				StartDir:          append([]string{}, *startDirPtr),
-				EndDir:            *endDirPtr,
-				WantCerts:         *wantCertsPtr,
-				GenAuth:           *genAuth,
-				Log:               logger,
-				Clean:             *cleanPtr,
-				Diff:              *diffPtr,
-				Update:            messenger,
-				VersionInfo:       eUtils.VersionHelper,
-				DynamicPathFilter: *dynamicPathPtr,
-				FileFilter:        fileFilter,
-				ProjectSections:   projectSectionsSlice,
-				ServiceFilter:     serviceFilterSlice,
-				ExitOnFailure:     true,
-				Trcxe:             trcxeList,
-				Trcxr:             *readOnlyPtr,
-			}
-			waitg.Add(1)
-			go func() {
-				defer waitg.Done()
-				eUtils.ConfigControl(ctx, &config, configDriver)
-			}()
 		}
 	}
+
 	waitg.Wait()
 	close(resultChannel)
 	if *diffPtr { //Diff if needed
