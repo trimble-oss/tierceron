@@ -82,8 +82,8 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 			color1 := math32.NewColor("black")
 			color1 = color1.Set(0, 0.349, 0.643)
 			color2 := color.Set(1.0, 0.224, 0.0)
-			colors := []*math32.Color{color1, color2}
-			index := int(math.Mod(float64(depth), float64(len(colors)-1)))
+			colors := []*math32.Color{color2, color1}
+			index := int(math.Mod(float64(depth), float64(len(colors)))) //(float64(depth), float64(len(colors)-1)))
 			color = colors[index]
 		}
 	}
@@ -576,7 +576,7 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 				color1 = color1.Set(0, 0.349, 0.643)
 				color2 := color.Set(1.0, 0.224, 0.0)
 				colors := []*math32.Color{color1, color2}
-				index := int(math.Mod(float64(depth), float64(len(colors)-1)))
+				index := int(math.Mod(float64(len(colors)-1), float64(depth))) //float64(depth), float64(len(colors)-1)))
 				color = colors[index]
 			}
 		}
