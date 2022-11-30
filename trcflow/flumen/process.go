@@ -354,7 +354,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfContext.Flow = enhancementFlow
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
+				flowMapLock.Lock()
 				tfmContext.FlowMap[tfContext.Flow] = &tfContext
+				flowMapLock.Unlock()
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 				if initErr != nil {
