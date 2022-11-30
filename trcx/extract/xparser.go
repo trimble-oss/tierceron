@@ -25,14 +25,16 @@ type TemplateResultData struct {
 	TemplateDepth            int
 	Env                      string
 	SubSectionValue          string
+	SectionPath              string // Where the data came from in vault
 }
 
 // ToSeed parses a <foo>.yml.tmpl file into a <foo>.yml file which then can be used for seeding vault
 // Input:
-//	- Directory location of .tmpl file
-//	- Log file for logging support information
+//   - Directory location of .tmpl file
+//   - Log file for logging support information
+//
 // Output:
-//	- Parsed string containing the .yml file
+//   - Parsed string containing the .yml file
 func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 	cds *vcutils.ConfigDataStore,
 	templatePath string,
@@ -117,9 +119,10 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 
 // GetInitialTemplateStructure Initializes the structure of the template section using the template directory path
 // Input:
-//	- A slice of the template file path delimited by "/"
+//   - A slice of the template file path delimited by "/"
+//
 // Output:
-//	- String(s) containing the structure of the template section
+//   - String(s) containing the structure of the template section
 func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int) {
 
 	var templateDir int
@@ -193,10 +196,11 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 
 // Parse Parses a .tmpl file line into .yml file line(s)
 // Input:
-//	- .tmlp file line
-//  - The current template directory
+//   - .tmlp file line
+//   - The current template directory
+//
 // Output:
-//	- String(s) containing the .yml file subsections
+//   - String(s) containing the .yml file subsections
 func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
 	args []string,
 	currentDir string,

@@ -393,8 +393,17 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 
 func GetPathsFromProject(config *eUtils.DriverConfig, mod *helperkv.Modifier, projects []string, services []string) ([]string, error) {
 	//setup for getPaths
+	if len(config.DynamicPathFilter) > 0 && !config.WantCerts && mod.TemplatePath != "" {
+		pathErr := verifyTemplatePath(mod, config.Log)
+		if pathErr != nil {
+			return nil, pathErr
+		}
+		return []string{mod.TemplatePath}, nil
+	}
+
 	paths := []string{}
 	var err error
+
 	if mod.SecretDictionary == nil {
 		mod.SecretDictionary, err = mod.List("templates", config.Log)
 	}

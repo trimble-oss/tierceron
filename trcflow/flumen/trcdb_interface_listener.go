@@ -37,11 +37,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 		if err == nil {
 			if sqlInsert, sqlInsertOk := stmt.(*sqlparser.Insert); sqlInsertOk {
 				tableName = sqlInsert.Table.Name.String()
-				if tableName == "MysqlFile" {
-					tl.Log.Printf("Insert Mysqlfile")
-				} else {
-					tl.Log.Printf("Query completed: %s %v\n", query, success)
-				}
+				tl.Log.Printf("Query completed: %s %v\n", query, success)
 				// Query with bindings may not be deadlock safe.
 				// Disable this for now and hope the triggers work.
 				// if sqlValues, sqlValuesOk := sqlInsert.Rows.(sqlparser.Values); sqlValuesOk {
@@ -61,11 +57,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 					if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
 						if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
 							tableName = tableNameType.Name.String()
-							if tableName == "MysqlFile" {
-								tl.Log.Printf("Update Mysqlfile")
-							} else {
-								tl.Log.Printf("Query completed: %s %v\n", query, success)
-							}
+							tl.Log.Printf("Query completed: %s %v\n", query, success)
 							break
 						}
 					}
