@@ -30,9 +30,26 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 	// if node.MashupDetailedElement.Id == 2 {
 	// 	idForData = len(detailedElements) - 1
 	// }
+	fail := false
 	for _, child_node := range node.ChildNodes {
 		if child_node.MashupDetailedElement.Genre == "DataFlowStatistic" {
 			node.MashupDetailedElement.Genre = "DataFlow"
+			var decoded_child_node interface{}
+			var decodedChildNodeData map[string]interface{}
+			if child_node.MashupDetailedElement.Data != "" {
+				err := json.Unmarshal([]byte(child_node.MashupDetailedElement.Data), &decoded_child_node)
+				if err != nil {
+					log.Println("Error in decoding data in recursiveBuildArgosies")
+					//return nil
+				}
+				decodedChildNodeData = decoded_child_node.(map[string]interface{})
+			}
+			if decodedChildNodeData["Mode"] != nil {
+				mode := decodedChildNodeData["Mode"].(float64)
+				if mode == 2 {
+					fail = true
+				}
+			}
 			for i := 0; i < len(node.ChildNodes)-1; i++ {
 				stat := node.ChildNodes[i].MashupDetailedElement
 				if stat.State == nil {
@@ -71,6 +88,23 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 			}
 			break
 		}
+	}
+	if node.MashupDetailedElement.Genre == "DataFlow" {
+		var dfdecoded interface{}
+		dfdecodedData := make(map[string]interface{})
+		if node.MashupDetailedElement.Data != "" {
+			err := json.Unmarshal([]byte(node.MashupDetailedElement.Data), &dfdecoded)
+			if err != nil {
+				log.Println("Error in decoding data in GetData")
+			}
+			dfdecodedData = dfdecoded.(map[string]interface{})
+		}
+		dfdecodedData["Fail"] = fail
+		encoded, err := json.Marshal(&dfdecodedData)
+		if err != nil {
+			log.Println("Error in encoding data in GetData")
+		}
+		node.MashupDetailedElement.Data = string(encoded)
 	}
 	node.MashupDetailedElement.Alias = strconv.Itoa(depth)
 	if node.MashupDetailedElement.Id != 0 {
