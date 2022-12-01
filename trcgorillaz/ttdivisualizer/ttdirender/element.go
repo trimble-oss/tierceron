@@ -3,9 +3,11 @@ package ttdirender
 import (
 	"fmt"
 	"log"
+	"math"
+	"strconv"
 
 	//"strconv"
-	//"encoding/json"
+	"encoding/json"
 
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/geometry"
@@ -35,7 +37,7 @@ type ElementRenderer struct {
 	clickedElements []*ClickedG3nDetailElement
 	quartiles       []float64
 	ctrlElements    []*g3nmash.G3nDetailedElement
-	isCtrl 			bool
+	isCtrl          bool
 }
 
 // Returns true if length of er.clickedElements stack is 0 and false otherwise
@@ -73,49 +75,95 @@ func (er *ElementRenderer) top() *ClickedG3nDetailElement {
 // Returns and attaches a mesh to provided g3n element at given vector position
 func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {
 	sphereGeom := geometry.NewSphere(.1, 100, 100)
-	color := g3ndpalette.DARK_BLUE
-	if g3n.GetDetailedElement().Genre == "Argosy" {
-		// if g3n.GetDetailedElement().Data != "" { // Can't add this here --> Put in curve renderer and add data to curve element
-		// 	var decoded interface{}
-		// 	err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decoded)
-		// 	if err != nil {
-		// 		log.Println("Error decoding data in element renderer NewSolidAtPosition")
-		// 	} else {
-		// 		decodedData := decoded.(map[string]interface{})
-		// 		if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil { 
-		// 			if interfaceQuartiles, ok := decodedData["Quartiles"].([]interface{}); ok {
-		// 				for _, quart := range interfaceQuartiles {
-		// 					if floatQuart, ok := quart.(float64); ok {
-		// 						er.quartiles = append(er.quartiles, floatQuart)
-		// 					}
-		// 				}
-		// 			}
-		// 			// interfaceQuartiles := decodedData["Quartiles"].([]interface{}) 
-		// 			// for _, quart :=  range interfaceQuartiles {
-		// 			// 	er.quartiles = append(er.quartiles, quart.(float64))
-		// 			// }
-
-		// 			if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
-		// 				maxTime = int(decodedMaxTime)
-		// 			}
-		// 			//er.quartiles = decodedData["Quartiles"].([]float64)
-		// 			//maxTime = int(decodedData["MaxTime"].(float64))
-		// 		}
-		// 	}
-
-		// 	// fmt.Println(g3n.GetDetailedElement().Data)
-		// 	// maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
-
-		// }
-		color.Set(0, 0.349, 0.643)
-	} else if g3n.GetDetailedElement().Genre == "DataFlowGroup" {
-		color.Set(1.0, 0.224, 0.0)
-	} else if g3n.GetDetailedElement().Genre == "DataFlow" {
-		color = math32.NewColor("olive")
+	color := math32.NewColor("silver")
+	if g3n.GetDetailedElement().Alias != "It" {
+		depth, err := strconv.Atoi(g3n.GetDetailedElement().Alias)
+		if err == nil {
+			color1 := math32.NewColor("black")
+			color1 = color1.Set(0, 0.349, 0.643)
+			color2 := color.Set(1.0, 0.224, 0.0)
+			colors := []*math32.Color{color2, color1}
+			index := int(math.Mod(float64(depth), float64(len(colors)))) //(float64(depth), float64(len(colors)-1)))
+			color = colors[index]
+		}
 	}
+	if g3n.GetDetailedElement().Data != "" {
+		var decodedFlow interface{}
+		if g3n.GetDetailedElement().Data != "" {
+			err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
+			if err != nil {
+				log.Println("Error in decoding data in buildDataFlowStatistics")
+			}
+			decodedFlowData := decodedFlow.(map[string]interface{})
+			if decodedFlowData["Fail"] != nil {
+				if decodedFlowData["Fail"].(bool) == true {
+					color = math32.NewColor("darkred")
+				} else {
+					color = math32.NewColor("darkgreen")
+				}
+			}
+		}
+	}
+	// if g3n.GetDetailedElement().Genre == "Argosy" {
+	// 	// if g3n.GetDetailedElement().Data != "" { // Can't add this here --> Put in curve renderer and add data to curve element
+	// 	// 	var decoded interface{}
+	// 	// 	err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decoded)
+	// 	// 	if err != nil {
+	// 	// 		log.Println("Error decoding data in element renderer NewSolidAtPosition")
+	// 	// 	} else {
+	// 	// 		decodedData := decoded.(map[string]interface{})
+	// 	// 		if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil {
+	// 	// 			if interfaceQuartiles, ok := decodedData["Quartiles"].([]interface{}); ok {
+	// 	// 				for _, quart := range interfaceQuartiles {
+	// 	// 					if floatQuart, ok := quart.(float64); ok {
+	// 	// 						er.quartiles = append(er.quartiles, floatQuart)
+	// 	// 					}
+	// 	// 				}
+	// 	// 			}
+	// 	// 			// interfaceQuartiles := decodedData["Quartiles"].([]interface{})
+	// 	// 			// for _, quart :=  range interfaceQuartiles {
+	// 	// 			// 	er.quartiles = append(er.quartiles, quart.(float64))
+	// 	// 			// }
+
+	// 	// 			if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
+	// 	// 				maxTime = int(decodedMaxTime)
+	// 	// 			}
+	// 	// 			//er.quartiles = decodedData["Quartiles"].([]float64)
+	// 	// 			//maxTime = int(decodedData["MaxTime"].(float64))
+	// 	// 		}
+	// 	// 	}
+
+	// 	// 	// fmt.Println(g3n.GetDetailedElement().Data)
+	// 	// 	// maxTime, _ = strconv.Atoi(g3n.GetDetailedElement().Data)
+
+	// 	// }
+	// 	color.Set(0, 0.349, 0.643)
+	// } else if g3n.GetDetailedElement().Genre == "DataFlowGroup" {
+	// 	color.Set(1.0, 0.224, 0.0)
+	// } else if g3n.GetDetailedElement().Genre == "DataFlow" {
+	// 	color = math32.NewColor("olive")
+	// 	// Change color based on mode here
+	// 	if g3n.GetDetailedElement().Data != "" {
+	// 		var decodedFlow interface{}
+	// 		if g3n.GetDetailedElement().Data != "" {
+	// 			err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
+	// 			if err != nil {
+	// 				log.Println("Error in decoding data in buildDataFlowStatistics")
+	// 			}
+	// 			decodedFlowData := decodedFlow.(map[string]interface{})
+	// 			if decodedFlowData["Fail"] != nil {
+	// 				if decodedFlowData["Fail"].(bool) == true {
+	// 					color = math32.NewColor("darkred")
+	// 				} else {
+	// 					color = math32.NewColor("darkgreen")
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
 	mat := material.NewStandard(color)
 	sphereMesh := graphic.NewMesh(sphereGeom, mat)
-	sphereMesh.SetLoaderID(g3n.GetDisplayName())    //strconv.Itoa(int(g3n.GetDetailedElement().Id)))
+	sphereMesh.SetLoaderID(g3n.GetDisplayName()) //strconv.Itoa(int(g3n.GetDetailedElement().Id)))
 	sphereMesh.SetPositionVec(vpos)
 	return sphereMesh
 }
@@ -222,7 +270,7 @@ func (er *ElementRenderer) RecursiveClick(worldApp *g3nworld.WorldApp, clickedEl
 			if element.GetDetailedElement().Genre == "DataFlowStatistic" {
 				element.ApplyState(mashupsdk.Clicked, true)
 			}
-			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" { //
 				element.ApplyState(mashupsdk.Hidden, false)
 				element.ApplyState(mashupsdk.Clicked, true)
 				//mesh := element.GetNamedMesh(element.GetDisplayName())
@@ -237,7 +285,7 @@ func (er *ElementRenderer) RecursiveClick(worldApp *g3nworld.WorldApp, clickedEl
 				// 	// er.push(element, &loc)
 				// 	er.ctrlElements = append(er.ctrlElements, element)
 				// }
-				
+
 				//er.push(element, element.Ge)
 				//Add to clickedelement stack for removal here
 				if element.GetNamedMesh(element.GetDisplayName()) == nil {
@@ -289,7 +337,6 @@ func (er *ElementRenderer) RecursiveClick(worldApp *g3nworld.WorldApp, clickedEl
 	return true
 }
 
-
 // Properly sets the elements before rendering new clicked elements
 func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 	// TODO: noop
@@ -321,29 +368,43 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		er.iOffset = 2
 	}
 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
-	//Need to do: Make unique ctrl click deselect func that loops thru clickedElements stack and just compares to 
+	//Need to do: Make unique ctrl click deselect func that loops thru clickedElements stack and just compares to
 	// currently clicked el --> don't forget to add currently clicked el to stack!
 	if !er.isEmpty() {
-		if !er.isCtrl{
+		if er.isCtrl {
+			er.ctrlRemove(worldApp)
+			for _, element := range er.clickedElements {
+				// if element.clickedElement.GetDetailedElement().Genre == "DataFlowGroup" {
+				// 	fmt.Println("Check")
+				// }
+				if clickedElement.GetDetailedElement().Genre != "Space" && len(clickedElement.GetParentElementIds()) == 0 && len(element.clickedElement.GetParentElementIds()) > 0 {
+					element.clickedElement.ApplyState(mashupsdk.Hidden, true)
+					er.deselectElements(worldApp, element.clickedElement)
+				}
+				// if element != nil len(clickedElement.GetParentElementIds()) > 0 && len(element.GetParentElementIds()) > 0 && element.GetParentElementIds()[0] != clickedElement.GetParentElementIds()[0] {
+
+				// }
+			}
+		} else if !er.isEmpty() {
 			//for i := 0; i < len(er.clickedElements); i++ {
-				prevElement := er.top()
-				if !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
-					er.pop()
-					for _, childID := range prevElement.clickedElement.GetChildElementIds() {
-						if !er.isChildElement(worldApp, prevElement.clickedElement) {
-							if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
-								childElement.ApplyState(mashupsdk.Hidden, true)
-								er.RemoveAll(worldApp, childID)
-							}
+			prevElement := er.top()
+			if !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
+				er.pop()
+				for _, childID := range prevElement.clickedElement.GetChildElementIds() {
+					if !er.isChildElement(worldApp, prevElement.clickedElement) {
+						if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
+							childElement.ApplyState(mashupsdk.Hidden, true)
+							er.RemoveAll(worldApp, childID)
 						}
 					}
-					er.deselectElements(worldApp, prevElement.clickedElement)
 				}
+				er.deselectElements(worldApp, prevElement.clickedElement)
+			}
 			//}
-		} else if er.isCtrl {
-			er.ctrlRemove(worldApp)
 		}
-		
+		// else if er.isCtrl {
+		// 	er.ctrlRemove(worldApp)
+		// }
 
 		// prevElement := er.top()
 		// if prevElement.clickedElement != clickedElement && !er.isChildElement(worldApp, prevElement.clickedElement) && prevElement != nil && prevElement.clickedElement.GetDetailedElement().Genre != "Solid" && worldApp.ClickedElements[len(worldApp.ClickedElements)-1].GetDetailedElement().Genre != "Space" {
@@ -359,7 +420,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		// 	er.deselectElements(worldApp, prevElement.clickedElement)
 		// }
 	}
-	
+
 	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" && clickedElement.GetDetailedElement().Name != "TenantDataBase" {
 		name := clickedElement.GetDisplayName()
 		mesh := clickedElement.GetNamedMesh(name)
@@ -370,7 +431,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		if clickedElement.IsStateSet(mashupsdk.ControlClicked) {
 			er.isCtrl = true
 			er.RecursiveClick(worldApp, clickedElement)
-			//Need to add to clicked element stack to remove correct elements 
+			//Need to add to clicked element stack to remove correct elements
 			//clickedElement.ApplyState(mashupsdk.ControlClicked, false)
 
 		} else {
@@ -382,6 +443,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 					}
 				}
 			}
+			return true
 		}
 	}
 	return true
@@ -390,24 +452,28 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 func (er *ElementRenderer) ctrlRemove(worldApp *g3nworld.WorldApp) {
 	//Add parent ids to clickedelements stack
 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
+	// if len(clickedElement.GetParentElementIds()) != 0 {
+	// 	parent := clickedElement.GetParentElementIds()[0]
+	// 	for _, child
+	// }
 	if clickedElement.GetParentElementIds() != nil && clickedElement.GetDetailedElement().Genre != "Space" {
 		amount := 0
-		for amount <= (len(er.ctrlElements) - 1) {           //for i := 0; i < len(er.ctrlElements); i++ {
+		for amount <= (len(er.ctrlElements) - 1) { //for i := 0; i < len(er.ctrlElements); i++ {
 			el := er.ctrlElements[amount] //Add check that amount is within array length
 			a := !er.isChildElement(worldApp, el)
-			b := el.GetParentElementIds() != nil 
+			b := el.GetParentElementIds() != nil
 			d := len(clickedElement.GetParentElementIds()) != 0
 			c := false
 			if d {
 				c = el.GetParentElementIds()[0] != clickedElement.GetParentElementIds()[0]
-			}	
+			}
 			if len(er.ctrlElements) <= 14 {
 				fmt.Println("Check")
-			}		
-			if a && b && ((d && c) || (!d && b)){
+			}
+			if a && b && ((d && c) || (!d && b)) {
 				mesh := el.GetNamedMesh(el.GetDisplayName())
 				worldApp.RemoveFromScene(mesh)
-				er.ctrlElements = append(er.ctrlElements[:amount], er.ctrlElements[amount + 1:]...)
+				er.ctrlElements = append(er.ctrlElements[:amount], er.ctrlElements[amount+1:]...)
 				// er.pop()
 				// 	for _, childID := range prevElement.clickedElement.GetChildElementIds() {
 				// 		if !er.isChildElement(worldApp, prevElement.clickedElement) {
@@ -420,12 +486,12 @@ func (er *ElementRenderer) ctrlRemove(worldApp *g3nworld.WorldApp) {
 				// er.deselectElements(worldApp, prevElement.clickedElement)
 			} else {
 				amount += 1
-			} 
-		}//}
+			}
+		} //}
 		er.isCtrl = false
 		er.ctrlElements = nil
 	}
-	
+
 	fmt.Print("checking stack")
 }
 
@@ -433,16 +499,16 @@ func (er *ElementRenderer) ctrlRemove(worldApp *g3nworld.WorldApp) {
 // 	clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
 // 	for _, el := range er.clickedElements {
 // 		if er.isChildElement(worldApp, el) && el.Genre != "Solid" {
-// 			//keep in stack and showing 
+// 			//keep in stack and showing
 
 // 		} else {
 // 			er.clickedElements.remove(el)
-// 			if 
+// 			if
 // 			worldApp.RemoveFromScene()
 // 		}
 // 		if !er.isChildElement(worldApp, el) && el.Genre != "Solid"{
 // 			er.RemoveFromScene()
-// 		} 
+// 		}
 
 // 	}
 // }
@@ -462,8 +528,25 @@ func (er *ElementRenderer) isChildElement(worldApp *g3nworld.WorldApp, prevEleme
 // Returns true if given element is the last clicked element and false otherwise
 func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) bool {
 	if g3n == worldApp.ClickedElements[len(worldApp.ClickedElements)-1] && g3n.GetNamedMesh(g3n.GetDisplayName()) != nil {
-		g3n.SetColor(math32.NewColor("darkred"), 1.0) //Need to change name to have id attached to it instead of changing mesh name only
-
+		g3n.SetColor(math32.NewColor("olive"), 1.0) //Need to change name to have id attached to it instead of changing mesh name only
+		// Change color based on mode here
+		if g3n.GetDetailedElement().Data != "" {
+			var decodedFlow interface{}
+			if g3n.GetDetailedElement().Data != "" {
+				err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
+				if err != nil {
+					log.Println("Error in decoding data in buildDataFlowStatistics")
+				}
+				decodedFlowData := decodedFlow.(map[string]interface{})
+				if decodedFlowData["Fail"] != nil {
+					if decodedFlowData["Fail"].(bool) == true {
+						g3n.SetColor(math32.NewColor("darkred"), 1.0)
+					} else {
+						g3n.SetColor(math32.NewColor("darkgreen"), 1.0)
+					}
+				}
+			}
+		}
 		for _, childId := range g3n.GetChildElementIds() {
 			if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
 				if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
@@ -486,13 +569,59 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 		return true
 	} else {
 		color := g3ndpalette.DARK_BLUE
-		if g3n.GetDetailedElement().Genre == "Argosy" {
-			color.Set(0, 0.349, 0.643)
-		} else if g3n.GetDetailedElement().Genre == "DataFlowGroup" {
-			color.Set(1.0, 0.224, 0.0)
-		} else if g3n.GetDetailedElement().Genre == "DataFlow" {
-			color = math32.NewColor("olive")
+		if g3n.GetDetailedElement().Alias != "It" {
+			depth, err := strconv.Atoi(g3n.GetDetailedElement().Alias)
+			if err == nil {
+				color1 := math32.NewColor("black")
+				color1 = color1.Set(0, 0.349, 0.643)
+				color2 := color.Set(1.0, 0.224, 0.0)
+				colors := []*math32.Color{color1, color2}
+				index := int(math.Mod(float64(len(colors)-1), float64(depth))) //float64(depth), float64(len(colors)-1)))
+				color = colors[index]
+			}
 		}
+		if g3n.GetDetailedElement().Data != "" {
+			var decodedFlow interface{}
+			if g3n.GetDetailedElement().Data != "" {
+				err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
+				if err != nil {
+					log.Println("Error in decoding data in buildDataFlowStatistics")
+				}
+				decodedFlowData := decodedFlow.(map[string]interface{})
+				if decodedFlowData["Fail"] != nil {
+					if decodedFlowData["Fail"].(bool) == true {
+						color = math32.NewColor("darkred")
+					} else {
+						color = math32.NewColor("darkgreen")
+					}
+				}
+			}
+		}
+		// if g3n.GetDetailedElement().Alias == "1" {
+		// 	color.Set(0, 0.349, 0.643)
+		// } else if g3n.GetDetailedElement().Alias == "2" {
+		// 	color.Set(1.0, 0.224, 0.0)
+		// } else if g3n.GetDetailedElement().Alias == "3" {
+		// 	color = math32.NewColor("olive")
+		// 	// Change color based on mode here
+		// 	if g3n.GetDetailedElement().Data != "" {
+		// 		var decodedFlow interface{}
+		// 		if g3n.GetDetailedElement().Data != "" {
+		// 			err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
+		// 			if err != nil {
+		// 				log.Println("Error in decoding data in buildDataFlowStatistics")
+		// 			}
+		// 			decodedFlowData := decodedFlow.(map[string]interface{})
+		// 			if decodedFlowData["Fail"] != nil {
+		// 				if decodedFlowData["Fail"].(bool) == true {
+		// 					color = math32.NewColor("darkred")
+		// 				} else {
+		// 					color = math32.NewColor("darkgreen")
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
 		for _, childID := range clickedElement.GetChildElementIds() {
