@@ -560,6 +560,15 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
 	sqlState bool) {
 
+	// 2 rows (on startup always):
+	//    1. Flow state... 0,1,2,3   0 - flow stopped, 1 starting up, 2 running, 3 shutting down.
+	// 1st row:
+	// flowName : tfContext.Flow.TableName()
+	// argosid: system
+	// flowGroup: System (hardcoded)
+	// mode: 2 if flow is stopped, 1 if flow is running.
+	//
+	// Rows 3-4 is reserved for push or pull external activity.
 	tfContext.Context, tfContext.CancelContext = context.WithCancel(context.Background())
 	go func() {
 		tfContext.ContextNotifyChan <- true
@@ -583,6 +592,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
+
 	tfmContext.FlowControllerLock.Lock()
 	if tfmContext.InitConfigWG != nil {
 		tfmContext.InitConfigWG.Done()
