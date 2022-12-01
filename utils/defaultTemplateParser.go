@@ -86,6 +86,12 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 		if len(projectFiles) == 2 && (projectFiles[0].Name() == "Common" || projectFiles[1].Name() == "Common") {
 			for _, projectFile := range projectFiles {
 				projectStartDir := config.StartDir[0]
+
+				if projectFile.Name() != "Common" && config.WantCerts {
+					// Ignore non-common if wantCerts
+					continue
+				}
+
 				if projectFile.Name() == "Common" {
 					projectStartDir = projectStartDir + string(os.PathSeparator) + projectFile.Name()
 				} else if projectFile.IsDir() {
