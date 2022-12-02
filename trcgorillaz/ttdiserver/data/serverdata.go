@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"tierceron/buildopts/argosyopts"
-	"tierceron/trcvault/flowutil"
+	flowcore "tierceron/trcflow/core"
 
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
@@ -21,7 +21,7 @@ var avg float64
 var idForData int
 var count int
 
-func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement, node flowutil.TTDINode, testTimes []float64, depth int) ([]*mashupsdk.MashupDetailedElement, []float64) {
+func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement, node flowcore.TTDINode, testTimes []float64, depth int) ([]*mashupsdk.MashupDetailedElement, []float64) {
 	//testTimes := []float64{}
 	//quartiles := []float64{}
 	//idForData := 0
