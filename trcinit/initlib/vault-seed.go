@@ -203,8 +203,39 @@ func SeedVault(config *eUtils.DriverConfig) error {
 											(config.SectionName != "" && (!strings.HasPrefix("/"+sectionName.Name()+"/", "/"+config.SectionName+"/"))) {
 											continue
 										}
-										SeedVaultFromFile(config, subSectionPath)
-										seeded = true
+
+										if subSectionConfigFile.IsDir() {
+											deepNestedFiles, err := ioutil.ReadDir(subSectionPath)
+											if err != nil {
+												config.Log.Printf("Couldn't read into: %s \n", config.SubSectionName)
+												continue
+											}
+
+											for _, deepNestedFile := range deepNestedFiles {
+												if deepNestedFile.IsDir() {
+													subSectionPath = subSectionPath + "/" + deepNestedFile.Name()
+													deeplyNestedFiles, err := ioutil.ReadDir(subSectionPath)
+													if err != nil {
+														config.Log.Printf("Couldn't read into: %s \n", config.SubSectionName)
+														continue
+													}
+													for _, deeplyNestedFile := range deeplyNestedFiles {
+														if !deeplyNestedFile.IsDir() {
+															subSectionPath = subSectionPath + deeplyNestedFile.Name()
+															SeedVaultFromFile(config, subSectionPath)
+															seeded = true
+														}
+													}
+												} else {
+													subSectionPath = subSectionPath + "/" + deepNestedFile.Name()
+													SeedVaultFromFile(config, subSectionPath)
+													seeded = true
+												}
+											}
+										} else {
+											SeedVaultFromFile(config, subSectionPath)
+											seeded = true
+										}
 									}
 								} else {
 									if len(config.ServiceFilter) > 0 {
