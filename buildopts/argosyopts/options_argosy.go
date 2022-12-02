@@ -9,7 +9,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"tierceron/trcvault/flowutil"
+	flowcore "tierceron/trcflow/core"
 	"tierceron/vaulthelper/kv"
 
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
@@ -30,7 +30,7 @@ func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
 	return tcbuildopts.GetStubbedDataFlowStatistics()
 }
 
-func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst bool) (flowutil.TTDINode, int64) {
+func recursiveBuildArgosies(node flowcore.TTDINode, parentID int64, notFirst bool) (flowcore.TTDINode, int64) {
 	var nodeID int64
 	state := mashupsdk.Hidden
 	var parentIDs []int64
@@ -130,12 +130,12 @@ func recursiveBuildArgosies(node flowutil.TTDINode, parentID int64, notFirst boo
 	return node, node.MashupDetailedElement.Id
 }
 
-func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error) {
+func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error) {
 	if mod == nil {
 		return BuildStubFleet(mod, logger)
 	}
 
-	argosies := []flowutil.TTDINode{
+	argosies := []flowcore.TTDINode{
 		{
 			mashupsdk.MashupDetailedElement{
 				Id:             3,
@@ -151,7 +151,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 				Parentids:      nil,
 				Childids:       nil,
 			},
-			[]flowutil.TTDINode{},
+			[]flowcore.TTDINode{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
@@ -169,7 +169,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 				Parentids:      []int64{},
 				Childids:       []int64{},
 			},
-			[]flowutil.TTDINode{},
+			[]flowcore.TTDINode{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
@@ -186,7 +186,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 				Parentids:      []int64{},
 				Childids:       []int64{-1},
 			},
-			[]flowutil.TTDINode{},
+			[]flowcore.TTDINode{},
 		},
 		{
 			mashupsdk.MashupDetailedElement{
@@ -203,10 +203,10 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 				Parentids:      []int64{},
 				Childids:       []int64{},
 			},
-			[]flowutil.TTDINode{},
+			[]flowcore.TTDINode{},
 		},
 	}
-	args, err := flowutil.InitArgosyFleet(mod, "TenantDatabase", logger)
+	args, err := flowcore.InitArgosyFleet(mod, "TenantDatabase", logger)
 	var count int
 	for _, arg := range args.ChildNodes {
 		count++
@@ -219,7 +219,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 		}
 	}
 	if err != nil {
-		return flowutil.TTDINode{}, err
+		return flowcore.TTDINode{}, err
 	}
 	// elementCollection := []int64{}
 	//fail = false
@@ -227,7 +227,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 	//args, elementCollection, _ = buildArgosies(8, args)
 	args, _ = recursiveBuildArgosies(args, currentID, false)
 	//elementCollection = elementcollectionIDs
-	argosies = append(argosies, flowutil.TTDINode{
+	argosies = append(argosies, flowcore.TTDINode{
 		mashupsdk.MashupDetailedElement{
 			Id:             4,
 			State:          &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
@@ -241,10 +241,10 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 			Parentids:      []int64{},
 			Childids:       elementcollectionIDs,
 		},
-		[]flowutil.TTDINode{},
+		[]flowcore.TTDINode{},
 	})
 	curvecollectionIDs = append(curvecollectionIDs, 1)
-	argosies = append(argosies, flowutil.TTDINode{
+	argosies = append(argosies, flowcore.TTDINode{
 		mashupsdk.MashupDetailedElement{
 			Id:             2,
 			State:          &mashupsdk.MashupElementState{Id: 2, State: int64(mashupsdk.Init)},
@@ -259,9 +259,9 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 			Parentids:      nil,
 			Childids:       curvecollectionIDs,
 		},
-		[]flowutil.TTDINode{},
+		[]flowcore.TTDINode{},
 	})
-	argosies = append(argosies, flowutil.TTDINode{
+	argosies = append(argosies, flowcore.TTDINode{
 		mashupsdk.MashupDetailedElement{
 			Id:             updateID(),
 			State:          &mashupsdk.MashupElementState{Id: 9, State: int64(mashupsdk.Init)},
@@ -276,13 +276,13 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowutil.TTDINode, error)
 			Parentids:      nil,
 			Childids:       nil,
 		},
-		[]flowutil.TTDINode{},
+		[]flowcore.TTDINode{},
 	})
 
 	args.ChildNodes = append(args.ChildNodes, argosies...)
 	return args, nil
 }
 
-func GetDataFlowGroups(mod *kv.Modifier, argosy *flowutil.TTDINode) []flowutil.TTDINode {
+func GetDataFlowGroups(mod *kv.Modifier, argosy *flowcore.TTDINode) []flowcore.TTDINode {
 	return nil
 }
