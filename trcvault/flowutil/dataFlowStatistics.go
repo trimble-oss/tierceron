@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+
 	//"os"
 	"strconv"
 	"strings"
@@ -113,7 +114,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 					}
 					// use your own select statement
 					// this is just an example statement
-					
+
 					statement, err := dbsourceConn.Prepare("select * from DataflowStatistics order by argosid,flowGroup,flowName,stateName asc")
 
 					if err != nil {
@@ -149,7 +150,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 						rows.Scan(&flowName, &argosId, &flowGroup, &mode, &stateCode, &stateName, &timeSplit, &lastTestedDate)
 
 						data := make(map[string]interface{})
-						data["flowGroup"] = flowGroup
+						data["Flows"] = flowGroup
 						data["flowName"] = flowName
 						data["stateName"] = stateName
 						data["stateCode"] = stateCode
@@ -511,7 +512,8 @@ func (dfs *TTDINode) FinishStatistic(tfmContext *flowcore.TrcFlowMachineContext,
 		decodedStatData := decodedstat.(map[string]interface{})
 		var elapsedTime string
 		statMap := make(map[string]interface{})
-		statMap["flowGroup"] = decodedStatData["FlowGroup"]
+		//Change names here
+		statMap["Flows"] = decodedStatData["FlowGroup"]
 		statMap["flowName"] = decodedStatData["FlowName"]
 		statMap["stateName"] = decodedStatData["StateName"]
 		statMap["stateCode"] = decodedStatData["StateCode"]
@@ -558,7 +560,7 @@ func (dfs *TTDINode) FinishStatistic(tfmContext *flowcore.TrcFlowMachineContext,
 
 func (dfs *TTDINode) MapStatistic(data map[string]interface{}, logger *log.Logger) {
 	newData := make(map[string]interface{})
-	newData["FlowGroup"] = data["flowGroup"].(string)
+	newData["FlowGroup"] = data["Flows"].(string)
 	newData["FlowName"] = data["flowName"].(string)
 	newData["StateName"] = data["stateName"].(string)
 	newData["StateCode"] = data["stateCode"].(string)
@@ -606,7 +608,7 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 			}
 			if testedDate, testedDateOk := data["lastTestedDate"].(string); testedDateOk {
 				if testedDate == "" {
-					flowData, flowReadErr := mod.ReadData("super-secrets/" + data["flowGroup"].(string))
+					flowData, flowReadErr := mod.ReadData("super-secrets/" + data["Flows"].(string))
 					// if flowReadErr != nil {
 					// 	return flowReadErr
 					// } ***
@@ -684,7 +686,7 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 	}
 	decodedStatData := decodedstat.(map[string]interface{})
 
-	statMap["flowGroup"] = decodedStatData["FlowGroup"]
+	statMap["Flows"] = decodedStatData["FlowGroup"]
 	statMap["flowName"] = decodedStatData["FlowName"]
 	statMap["stateName"] = decodedStatData["StateName"]
 	statMap["stateCode"] = decodedStatData["StateCode"]
