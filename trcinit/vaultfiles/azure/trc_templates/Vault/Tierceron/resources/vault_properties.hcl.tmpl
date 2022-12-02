@@ -9,6 +9,8 @@ Storage "mysql" {
     password="{{.dbPassword}}"
     database="{{.dbname}}"
     address="{{.dbAddress}}" #This should match the private dns for the database.
+    max_parallel="{{or .maxParallel "512"}}"
+    max_entry_size="{{or .maxEntrySize "16777216"}}"
     tls_ca_file= "/etc/opt/vault/certs/{{.dbcert_name}}"
 }
 
