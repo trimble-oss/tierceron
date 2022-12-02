@@ -162,7 +162,24 @@ resource "azurerm_network_interface_security_group_association" "example" {
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
+resource "azurerm_private_dns_zone" "tierceron-vnet" {
+  name                = "tierceron-vnet"
+  resource_group_name = azurerm_resource_group.rg.name
+}
 
+resource "azurerm_mysql_flexible_server" "tiercercon-db" {
+  name                   = "tiercercon-db"
+  resource_group_name    = azurerm_resource_group.rg.name
+  location               = azurerm_resource_group.rg.location
+  administrator_login    = "${var.mysql_admin}"
+  administrator_password = "${var.mysql_admin_password}"
+  backup_retention_days  = ${var.mysql_backup_retention_days}
+  delegated_subnet_id    = azurerm_subnet.rg.id
+  private_dns_zone_id    = azurerm_private_dns_zone.tierceron-vnet.id
+  sku_name               = "Standard_B2s"
+
+  depends_on = [azurerm_private_dns_zone_virtual_network_link.example]
+}
 
 resource "tls_private_key" "private_key" {
   algorithm = "RSA"
