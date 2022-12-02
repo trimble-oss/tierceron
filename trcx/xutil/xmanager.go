@@ -319,7 +319,9 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 		}
 		templatePaths = iFilterTemplatePaths
 	}
-	mod.Release()
+	if config.Token != "novault" {
+		mod.Release()
+	}
 
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
