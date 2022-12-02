@@ -559,7 +559,7 @@ func (dfs *TTDINode) FinishStatistic(tfmContext *TrcFlowMachineContext, tfContex
 
 func (dfs *TTDINode) MapStatistic(data map[string]interface{}, logger *log.Logger) {
 	newData := make(map[string]interface{})
-	newData["FlowGroup"] = data["Flows"].(string)
+	newData["FlowGroup"] = data["flowGroup"].(string)
 	newData["FlowName"] = data["flowName"].(string)
 	newData["StateName"] = data["stateName"].(string)
 	newData["StateCode"] = data["stateCode"].(string)
