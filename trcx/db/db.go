@@ -27,7 +27,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 	te := &engine.TierceronEngine{Database: sqlememory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*engine.TierceronTable{}, Context: sqles.NewEmptyContext(), Config: *config}
 
 	var goMod *helperkv.Modifier
-	goMod, errModInit := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions, true, config.Log)
+	goMod, errModInit := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, false, config.Log)
 	if errModInit != nil {
 		return nil, errModInit
 	}
