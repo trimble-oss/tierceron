@@ -54,6 +54,7 @@ func main() {
 	mashupRenderer.AddRenderer("Curve", curveRenderer)
 	mashupRenderer.AddRenderer("Background", &ttdirender.BackgroundRenderer{})
 	mashupRenderer.AddRenderer("Element", curveRenderer.CollaboratingRenderer)
+	mashupRenderer.AddRenderer("GuiRenderer", &ttdirender.GuiRenderer{GuiNodeMap: map[string]interface{}{}})
 
 	worldApp := g3nworld.NewWorldApp(*headless, true, mashupRenderer, nil)
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
