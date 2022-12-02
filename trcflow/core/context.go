@@ -37,6 +37,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 	sqlee "github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/mrjrieke/nute/mashupsdk"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
 	sqles "github.com/dolthub/go-mysql-server/sql"
@@ -169,21 +170,26 @@ type TrcFlowContext struct {
 	// from vault.
 	CustomSeedTrcDb func(*TrcFlowMachineContext, *TrcFlowContext) error
 
-	FlowSource      string       // The name of the flow source identified by project.
-	FlowSourceAlias string       // May be a database name
-	Flow            FlowNameType // May be a table name.
-	ChangeIdKey     string
-	FlowPath        string
-	FlowData        interface{}
-	ChangeFlowName  string // Change flow table name.
-	FlowState       flowcorehelper.CurrentFlowState
-	FlowLock        *sync.Mutex //This is for sync concurrent changes to FlowState
-	Restart         bool
-	Init            bool
-	ReadOnly        bool
-	Inserter        sqle.RowInserter
+	FlowSource        string       // The name of the flow source identified by project.
+	FlowSourceAlias   string       // May be a database name
+	Flow              FlowNameType // May be a table name.
+	ChangeIdKey       string
+	FlowPath          string
+	FlowData          interface{}
+	ChangeFlowName    string // Change flow table name.
+	FlowState         flowcorehelper.CurrentFlowState
+	FlowLock          *sync.Mutex //This is for sync concurrent changes to FlowState
+	Restart           bool
+	Init              bool
+	ReadOnly          bool
+	Inserter          sqle.RowInserter
+	DataFlowStatistic FakeDFStat
+	Log               *log.Logger
+}
 
-	Log *log.Logger
+type FakeDFStat struct {
+	mashupsdk.MashupDetailedElement
+	ChildNodes []FakeDFStat
 }
 
 var tableModifierLock sync.Mutex
@@ -569,11 +575,22 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	// mode: 2 if flow is stopped, 1 if flow is running.
 	//
 	// Rows 3-4 is reserved for push or pull external activity.
+	// Calls: Init, Update, Finish
 	tfContext.Context, tfContext.CancelContext = context.WithCancel(context.Background())
 	go func() {
 		tfContext.ContextNotifyChan <- true
 	}()
+	//First row here:
 
+	// tfContext.DataFlowStatistic["FlowState"] = ""
+	// tfContext.DataFlowStatistic["flowName"] = ""
+	// tfContext.DataFlowStatistic["flume"] = "" //Used to be argosid
+	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
+	// tfContext.DataFlowStatistic["mode"] = ""
+	df := InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
+	df.UpdateDataFlowStatistic("System", tfContext.Flow.TableName(), "StateName", "StartingUp? Code --> 1", "mode", tfmContext.Log)
+	//Copy ReportStatistics from process_registerenterprise.go if !buildopts.IsTenantAutoRegReady(tenant)
+	// Do we need to account for that here?
 	var seedInitComplete chan bool = make(chan bool, 1)
 	tfContext.FlowLock.Lock()
 	// if it's in sync complete on startup, reset the mode to pullcomplete.
@@ -592,7 +609,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-
+	// Second row here
+	// Not sure if necessary to copy entire ReportStatistics method
+	df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, ...)
 	tfmContext.FlowControllerLock.Lock()
 	if tfmContext.InitConfigWG != nil {
 		tfmContext.InitConfigWG.Done()
