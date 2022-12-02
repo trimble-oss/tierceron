@@ -512,7 +512,7 @@ func (dfs *TTDINode) FinishStatistic(tfmContext *TrcFlowMachineContext, tfContex
 		var elapsedTime string
 		statMap := make(map[string]interface{})
 		//Change names here
-		statMap["Flows"] = decodedStatData["FlowGroup"]
+		statMap["flowGroup"] = decodedStatData["FlowGroup"]
 		statMap["flowName"] = decodedStatData["FlowName"]
 		statMap["stateName"] = decodedStatData["StateName"]
 		statMap["stateCode"] = decodedStatData["StateCode"]
