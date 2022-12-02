@@ -149,7 +149,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 						rows.Scan(&flowName, &argosId, &flowGroup, &mode, &stateCode, &stateName, &timeSplit, &lastTestedDate)
 
 						data := make(map[string]interface{})
-						data["Flows"] = flowGroup
+						data["flowGroup"] = flowGroup
 						data["flowName"] = flowName
 						data["stateName"] = stateName
 						data["stateCode"] = stateCode
@@ -607,7 +607,7 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 			}
 			if testedDate, testedDateOk := data["lastTestedDate"].(string); testedDateOk {
 				if testedDate == "" {
-					flowData, flowReadErr := mod.ReadData("super-secrets/" + data["Flows"].(string))
+					flowData, flowReadErr := mod.ReadData("super-secrets/" + data["flowGroup"].(string))
 					// if flowReadErr != nil {
 					// 	return flowReadErr
 					// } ***
@@ -685,7 +685,7 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 	}
 	decodedStatData := decodedstat.(map[string]interface{})
 
-	statMap["Flows"] = decodedStatData["FlowGroup"]
+	statMap["flowGroup"] = decodedStatData["FlowGroup"]
 	statMap["flowName"] = decodedStatData["FlowName"]
 	statMap["stateName"] = decodedStatData["StateName"]
 	statMap["stateCode"] = decodedStatData["StateCode"]
