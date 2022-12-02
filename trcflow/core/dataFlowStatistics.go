@@ -1,4 +1,4 @@
-package flowutil
+package core
 
 import (
 	"encoding/json"
@@ -14,7 +14,6 @@ import (
 
 	"time"
 
-	flowcore "tierceron/trcflow/core"
 	trcvutils "tierceron/trcvault/util"
 
 	dfssql "tierceron/trcflow/flows/flowsql"
@@ -489,7 +488,7 @@ func (dfs *TTDINode) Log() {
 	}
 }
 
-func (dfs *TTDINode) FinishStatistic(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext, mod *kv.Modifier, id string, indexPath string, idName string, logger *log.Logger, vaultWriteBack bool) {
+func (dfs *TTDINode) FinishStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext, mod *kv.Modifier, id string, indexPath string, idName string, logger *log.Logger, vaultWriteBack bool) {
 	//TODO : Write Statistic to vault
 	var decoded interface{}
 	err := json.Unmarshal([]byte(dfs.MashupDetailedElement.Data), &decoded)
@@ -552,7 +551,7 @@ func (dfs *TTDINode) FinishStatistic(tfmContext *flowcore.TrcFlowMachineContext,
 			}
 		} else {
 			if tfmContext != nil && tfContext != nil {
-				tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(id, statMap, utilcore.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType("DataFlowStatistics")}, "")
+				tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(id, statMap, utilcore.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []FlowNameType{FlowNameType("DataFlowStatistics")}, "")
 			}
 		}
 	}
