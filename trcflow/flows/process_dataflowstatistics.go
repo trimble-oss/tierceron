@@ -186,10 +186,10 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 			select {
 			case stateUpdate := <-tfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState):
 				stateUpdate.SyncFilter = "N/A"
-				if previousState.State == stateUpdate.State && previousState.SyncMode == stateUpdate.SyncMode && previousState.SyncFilter == stateUpdate.SyncFilter {
+				if previousState.State == stateUpdate.State && previousState.SyncMode == stateUpdate.SyncMode && previousState.SyncFilter == stateUpdate.SyncFilter && previousState.FlowAlias == stateUpdate.FlowAlias {
 					continue
 				} else if int(previousState.State) != core.PreviousStateCheck(int(stateUpdate.State)) && stateUpdate.State != previousState.State {
-					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(previousState.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: stateUpdate.SyncMode}
+					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(previousState.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: stateUpdate.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
 					continue
 				}
 				previousState = stateUpdate
@@ -221,7 +221,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 						tfContext.FlowData = &baseTableTemplate
 					}
 					tfmContext.Log("DataFlowStatistics flow is being stopped...", nil)
-					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "0", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: tfContext.FlowState.SyncMode}
+					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "0", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: tfContext.FlowState.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
 					continue
 				} else if tfContext.FlowState.State == 0 {
 					tfContext.FlowLock.Unlock()
@@ -232,7 +232,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 					tfmContext.Log("DataFlowStatistics flow is restarting...", nil)
 					syncInit = true
 					tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "truncate " + tfContext.FlowSourceAlias + "." + tfContext.Flow.TableName()}, nil, false, "DELETE", nil, "")
-					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: tfContext.FlowState.SyncMode}
+					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: tfContext.FlowState.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
 					continue
 				} else if tfContext.FlowState.State == 2 {
 					tfContext.FlowLock.Unlock()
@@ -248,7 +248,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				tfContext.FlowLock.Lock()
 				if tfContext.FlowState.SyncMode == "pullonce" {
 					tfContext.FlowState.SyncMode = "pullsynccomplete"
-					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "pullsynccomplete"}
+					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "pullsynccomplete", FlowAlias: tfContext.FlowState.FlowAlias}
 				}
 				tfContext.FlowLock.Unlock()
 
