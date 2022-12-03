@@ -589,7 +589,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
 	df := InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
-	df.UpdateDataFlowStatistic("Flows", tfContext.Flow.TableName(), "Loading", "1", 1, tfmContext.Log)
+	df.UpdateDataFlowStatistic(tfContext.FlowState.FlowAlias, tfContext.Flow.TableName(), "Loading", "1", 1, tfmContext.Log)
 	//Copy ReportStatistics from process_registerenterprise.go if !buildopts.IsTenantAutoRegReady(tenant)
 	// Do we need to account for that here?
 	var seedInitComplete chan bool = make(chan bool, 1)
@@ -610,7 +610,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	df.UpdateDataFlowStatistic("Flows", tfContext.Flow.TableName(), "Load complete", "2", 1, tfmContext.Log)
+	df.UpdateDataFlowStatistic(tfContext.FlowState.FlowAlias, tfContext.Flow.TableName(), "Load complete", "2", 1, tfmContext.Log)
 
 	// Second row here
 	// Not sure if necessary to copy entire ReportStatistics method
