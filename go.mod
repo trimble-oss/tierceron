@@ -29,6 +29,7 @@ require (
 	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/mrjrieke/nute v0.0.0-20221201143701-ec70d97b5ab1
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.0
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 
@@ -39,7 +40,6 @@ require (
 	github.com/gocraft/dbr/v2 v2.7.2 // indirect
 	github.com/google/flatbuffers v2.0.6+incompatible // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
-	github.com/mrjrieke/nute v0.0.0-20221201143701-ec70d97b5ab1 // indirect
 	github.com/tevino/abool v1.2.0 // indirect
 	go.opentelemetry.io/otel v1.7.0 // indirect
 	go.opentelemetry.io/otel/trace v1.7.0 // indirect
