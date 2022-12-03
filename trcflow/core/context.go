@@ -1051,6 +1051,15 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 				allDefaults = false
 			}
 			row = append(row, iVar)
+		} else if _, svOk := secretColumns[column.Name]; !svOk {
+			var iVar interface{}
+			if tclibc.CheckIncomingAliasColumnName(column.Name) { //Specific case for controller
+				iVar, _ = column.Type.Convert(row[0].(string))
+			} else {
+				iVar, _ = column.Type.Convert(column.Default.String())
+			}
+			row = append(row, iVar)
+			//
 		}
 	}
 
