@@ -95,8 +95,8 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 				log.Println("Error in decoding data in buildDataFlowStatistics")
 			}
 			decodedFlowData := decodedFlow.(map[string]interface{})
-			if decodedFlowData["Fail"] != nil {
-				if decodedFlowData["Fail"].(bool) == true {
+			if decodedFlowData["Mode"] != nil {
+				if decodedFlowData["Mode"].(float64) == 2 {
 					color = math32.NewColor("darkred")
 				} else {
 					color = math32.NewColor("darkgreen")
@@ -538,8 +538,8 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 					log.Println("Error in decoding data in buildDataFlowStatistics")
 				}
 				decodedFlowData := decodedFlow.(map[string]interface{})
-				if decodedFlowData["Fail"] != nil {
-					if decodedFlowData["Fail"].(bool) == true {
+				if decodedFlowData["Mode"] != nil {
+					if decodedFlowData["Mode"].(float64) == 2 {
 						g3n.SetColor(math32.NewColor("darkred"), 1.0)
 					} else {
 						g3n.SetColor(math32.NewColor("darkgreen"), 1.0)
@@ -588,8 +588,8 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 					log.Println("Error in decoding data in buildDataFlowStatistics")
 				}
 				decodedFlowData := decodedFlow.(map[string]interface{})
-				if decodedFlowData["Fail"] != nil {
-					if decodedFlowData["Fail"].(bool) == true {
+				if decodedFlowData["Mode"] != nil {
+					if decodedFlowData["Mode"].(float64) == 2 {
 						color = math32.NewColor("darkred")
 					} else {
 						color = math32.NewColor("darkgreen")
