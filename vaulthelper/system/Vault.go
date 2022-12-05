@@ -55,7 +55,7 @@ func NewVaultWithNonlocal(insecure bool, address string, env string, newVault bo
 		logger.Println("Connection to vault couldn't be made - vaultHost: " + address)
 		return nil, err
 	}
-	client, err := api.NewClient(&api.Config{Address: address, HttpClient: httpClient, Timeout: 30 * time.Second})
+	client, err := api.NewClient(&api.Config{Address: address, HttpClient: httpClient})
 	if err != nil {
 		logger.Println("vaultHost: " + address)
 		return nil, err
@@ -91,7 +91,7 @@ func (v *Vault) RefreshClient() error {
 				v.httpClient.CloseIdleConnections()
 			}
 
-			client, err := api.NewClient(&api.Config{Address: v.client.Address(), HttpClient: v.client.CloneConfig().HttpClient, Timeout: 30 * time.Second})
+			client, err := api.NewClient(&api.Config{Address: v.client.Address(), HttpClient: v.client.CloneConfig().HttpClient})
 			if err != nil {
 				refreshErr = err
 			} else {
