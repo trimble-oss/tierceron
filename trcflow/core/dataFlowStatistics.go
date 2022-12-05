@@ -153,6 +153,9 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (TTDI
 						data["flowName"] = flowName
 						data["stateName"] = stateName
 						data["stateCode"] = stateCode
+						if mode == "2" {
+							fmt.Println("hi")
+						}
 						data["mode"] = mode
 						data["timeSplit"] = timeSplit
 						data["lastTestedDate"] = lastTestedDate
