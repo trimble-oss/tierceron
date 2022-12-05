@@ -123,6 +123,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	modClient, err := api.NewClient(&api.Config{
 		Address:    address,
 		HttpClient: httpClient,
+		Timeout:    30 * time.Second,
 	})
 	if err != nil {
 		logger.Println("vaultHost: "+modClient.Address(), logger)
