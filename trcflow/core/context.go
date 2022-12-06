@@ -869,6 +869,10 @@ func (tfmContext *TrcFlowMachineContext) GetDbConn(tfContext *TrcFlowContext, db
 // representation of json data provided by the endpoint.
 func (tfmContext *TrcFlowMachineContext) CallAPI(apiAuthHeaders map[string]string, host string, apiEndpoint string, bodyData io.Reader, getOrPost bool) (map[string]interface{}, int, error) {
 	httpClient, err := helperkv.CreateHTTPClient(false, host, tfmContext.Env, false)
+	if httpClient != nil {
+		defer httpClient.CloseIdleConnections()
+	}
+
 	if err != nil {
 		return nil, -1, err
 	}

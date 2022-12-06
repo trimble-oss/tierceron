@@ -30,14 +30,23 @@ func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
 	return tcbuildopts.GetStubbedDataFlowStatistics()
 }
 
-func recursiveBuildArgosies(node flowcore.TTDINode, parentID int64, notFirst bool) (flowcore.TTDINode, int64) {
+func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, notFirst bool) (flowcore.TTDINode, int64, string) {
 	var nodeID int64
 	state := mashupsdk.Hidden
 	var parentIDs []int64
-	if parentID != 0 {
-		parentIDs = []int64{parentID}
+	if parent.MashupDetailedElement.Id != 0 {
+		parentIDs = []int64{parent.MashupDetailedElement.Id}
 	} else {
 		state = mashupsdk.Init
+	}
+	var decodedparent interface{}
+	decodedparentNode := make(map[string]interface{})
+	if parent.MashupDetailedElement.Data != "" {
+		err := json.Unmarshal([]byte(parent.MashupDetailedElement.Data), &decodedparent)
+		if err != nil {
+			log.Println("Error in decoding data in recursiveBuildArgosies")
+		}
+		decodedparentNode = decodedparent.(map[string]interface{})
 	}
 	if node.MashupDetailedElement.Data != "" {
 		var decodednode interface{}
@@ -51,9 +60,23 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parentID int64, notFirst boo
 			curvecollectionIDs = append(curvecollectionIDs, nodeID)
 			if decodedNodeData["Mode"] != nil {
 				mode := decodedNodeData["Mode"].(float64)
+				//if mode == 2 {
 				if mode == 2 {
-					fail = true
+					fmt.Println("hi")
+
 				}
+				if decodedparentNode["Mode"] == nil || decodedparentNode["Mode"] != nil && decodedparentNode["Mode"].(float64) != 2 {
+					decodedparentNode["Mode"] = mode
+					encodedParentNodeData, err := json.Marshal(&decodedparentNode)
+					if err != nil {
+						log.Println("Error in encoding data in InitDataFlow")
+					}
+					parent.MashupDetailedElement.Data = string(encodedParentNodeData)
+				}
+
+				//fail = true
+				//}
+
 			}
 			node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 				Id:             nodeID,
@@ -69,7 +92,11 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parentID int64, notFirst boo
 				Parentids:      parentIDs,
 				Childids:       []int64{-1},
 			}
-			return node, node.MashupDetailedElement.Id
+			encodedParentNodeData, err := json.Marshal(&decodedparentNode)
+			if err != nil {
+				log.Println("Error in encoding data in InitDataFlow")
+			}
+			return node, node.MashupDetailedElement.Id, string(encodedParentNodeData)
 		} else if decodedNodeData != nil {
 			nodeID = updateID()
 			elementcollectionIDs = append(elementcollectionIDs, nodeID)
@@ -123,11 +150,15 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parentID int64, notFirst boo
 	var childids []int64
 	var childid int64
 	for i := 0; i < len(node.ChildNodes); i++ {
-		node.ChildNodes[i], childid = recursiveBuildArgosies(node.ChildNodes[i], nodeID, true)
+		node.ChildNodes[i], childid, node.MashupDetailedElement.Data = recursiveBuildArgosies(node.ChildNodes[i], &node, true)
 		childids = append(childids, childid)
 	}
 	node.MashupDetailedElement.Childids = append(node.MashupDetailedElement.Childids, childids...)
-	return node, node.MashupDetailedElement.Id
+	encodedParentNodeData, err := json.Marshal(&decodedparentNode)
+	if err != nil {
+		log.Println("Error in encoding data in InitDataFlow")
+	}
+	return node, node.MashupDetailedElement.Id, string(encodedParentNodeData)
 }
 
 func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error) {
@@ -225,7 +256,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error)
 	//fail = false
 	currentID = 8
 	//args, elementCollection, _ = buildArgosies(8, args)
-	args, _ = recursiveBuildArgosies(args, currentID, false)
+	args, _, _ = recursiveBuildArgosies(args, &flowcore.TTDINode{}, false)
 	//elementCollection = elementcollectionIDs
 	argosies = append(argosies, flowcore.TTDINode{
 		mashupsdk.MashupDetailedElement{
