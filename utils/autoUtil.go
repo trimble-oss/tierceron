@@ -178,6 +178,9 @@ func AutoAuth(config *DriverConfig,
 			}
 		}
 		v, err = sys.NewVault(config.Insecure, *addrPtr, *envPtr, false, ping, false, config.Log)
+		if v != nil {
+			defer v.Close()
+		}
 		if err != nil {
 			return err
 		}
