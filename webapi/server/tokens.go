@@ -50,6 +50,10 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	// Create 2 vault connections, one for checking/rolling tokens, the other for accessing the AWS user cubbyhole
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	if v != nil {
+		defer v.Close()
+	}
+
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
