@@ -214,7 +214,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// 2. Get json by Api call.
 	extensionAuthComponents := buildopts.GetExtensionAuthComponents(trcIdentityConfig)
 	httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
-	defer httpClient.CloseIdleConnections()
+	if httpClient != nil {
+		defer httpClient.CloseIdleConnections()
+	}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return err
