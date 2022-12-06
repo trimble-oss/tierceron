@@ -309,8 +309,8 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 			// Can't just average tests have to average overall test time --> what whole spiral would represent
 			for j := 0.0; j < float64(len(timeSplits)); j = j + 1.0 {
 				if len(timeSplits) > int(j+1) {
-					diff = timeSplits[int(j+1)] - timeSplits[int(j)]
-					section = (((timeSplits[int(j+1)] - timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation //total --> maxTotalTime
+					diff = math.Abs(timeSplits[int(j+1)] - timeSplits[int(j)])
+					section = ((math.Abs(timeSplits[int(j+1)]-timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation //total --> maxTotalTime
 				}
 				if section != 0 && section-lastLocation != 0 {
 					for i := section; i < lastLocation; i = i + math.Abs((section-lastLocation)/((section-lastLocation)*100)) {
