@@ -253,6 +253,9 @@ func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3n
 			// timesplit = append(timesplit, timeSeconds)
 		}
 	}
+	if len(timesplit) > 2 {
+		timesplit = timesplit[1:]
+	}
 	return timesplit, succeeded
 }
 
