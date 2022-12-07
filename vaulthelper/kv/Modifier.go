@@ -144,6 +144,11 @@ func (m *Modifier) Release() {
 		modifierCachLock.Unlock()
 	}
 
+	// TODO: Perform some maintenance???
+	// Since modifiers are re-used now, this may not be necessary or even desired for that
+	// matter.
+	//	m.httpClient.CloseIdleConnections()
+
 	modifierCache[m.RawEnv].modifierChan <- m
 }
 
