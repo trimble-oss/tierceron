@@ -13,6 +13,8 @@ import (
 	eUtils "tierceron/utils"
 	"tierceron/validator"
 	helperkv "tierceron/vaulthelper/kv"
+
+	"gopkg.in/yaml.v2"
 )
 
 // GetProjectService - returns project, service, and path to template on filesystem.
@@ -195,10 +197,45 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 	service string,
 	filename string,
 	cert bool) (string, map[int]string, error) {
+	values := make(map[string]interface{}, 0)
+	ok := false
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
 	if config.Token != "novault" {
 		cds.Init(config, modifier, secretMode, true, project, nil, service)
+	} else {
+		rawFile, err := ioutil.ReadFile(strings.Split(config.StartDir[0], coreopts.GetFolderPrefix()+"_")[0] + coreopts.GetFolderPrefix() + "_seeds/" + config.EnvRaw + "/" + config.Env + "_seed.yml")
+		if err != nil {
+			eUtils.LogErrorObject(config, errors.New("Unable to open seed file for -novault"), false)
+		}
+
+		var rawYaml interface{}
+		err = yaml.Unmarshal(rawFile, &rawYaml)
+		if err != nil {
+			eUtils.LogErrorAndSafeExit(config, err, 1)
+		}
+
+		seed, seedOk := rawYaml.(map[interface{}]interface{})
+		if seedOk == false {
+			eUtils.LogAndSafeExit(config, "Invalid yaml file.  Refusing to continue.", 1)
+		}
+		tempMap := make(map[string]interface{}, 0)
+		for seedSectionKey, seedSection := range seed {
+			if seedSectionKey.(string) == "templates" {
+				continue
+			}
+			for _, seedSubSection := range seedSection.(map[interface{}]interface{}) {
+				for k, v := range seedSubSection.(map[interface{}]interface{}) {
+					values[k.(string)] = v
+				}
+			}
+		}
+		if len(values) == 0 {
+			eUtils.LogAndSafeExit(config, "Invalid yaml file.  Refusing to continue.", 1)
+		}
+		tempMap[filename] = values
+		values = tempMap
+		ok = true
 	}
 	certData := make(map[int]string)
 	serviceLookup := service
@@ -206,10 +243,12 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 	if i > 0 {
 		serviceLookup = service[:i]
 	}
-	values, ok := cds.dataMap[serviceLookup].(map[string]interface{})
+
+	if len(values) == 0 {
+		values, ok = cds.dataMap[serviceLookup].(map[string]interface{})
+	}
 
 	if ok {
-
 		//create new template from template string
 		t := template.New("template")
 		t, err := t.Parse(emptyTemplate)
