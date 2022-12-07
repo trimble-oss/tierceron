@@ -24,7 +24,7 @@ resource "azurerm_virtual_network" "rg-virtual-network" {
 
 resource "azurerm_virtual_network" "rg-db-virtual-network" {
   name                = "${var.resource_group_name}-db-Vnet"
-  address_space       = ["10.0.0.0/16"]
+  address_space       = ["10.1.0.0/16"]
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
@@ -34,20 +34,26 @@ resource "azurerm_virtual_network" "rg-db-virtual-network" {
   }
 }
 
+resource "azurerm_private_dns_zone_virtual_network_link" "rg-db-virtual-network-link" {
+  name                  = "${var.resource_group_name}-db-virtual-network-link"
+  resource_group_name   = azurerm_resource_group.rg.name
+  private_dns_zone_name = azurerm_private_dns_zone.tierceron-vnet.name
+  virtual_network_id    = azurerm_virtual_network.rg-db-virtual-network.id
+}
 
 
 resource "azurerm_subnet" "rg-subnet" {
   name                 = "${var.resource_group_name}-subnet"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.rg-virtual-network.name
-  address_prefixes     = ["10.0.1.0/24"]
+  address_prefixes     = ["10.0.0.0/24"]
 }
 
 resource "azurerm_subnet" "rg-db-subnet" {
   name                 = "${var.resource_group_name}-db-subnet"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.rg-db-virtual-network.name
-  address_prefixes     = ["10.0.2.0/24"]
+  address_prefixes     = ["10.1.0.0/24"]
   service_endpoints    = ["Microsoft.Storage"]
 
   delegation {
@@ -192,7 +198,7 @@ resource "azurerm_network_interface_security_group_association" "example" {
 }
 
 resource "azurerm_private_dns_zone" "tierceron-vnet" {
-  name                = "tierceron-vnet.mysql.database.azure.com"
+  name                = "tierceron-db.mysql.database.azure.com"
   resource_group_name = azurerm_resource_group.rg.name
   tags = {
     "Application" = var.resource_group_name
@@ -211,6 +217,9 @@ resource "azurerm_mysql_flexible_server" "tiercercon-db" {
   private_dns_zone_id    = azurerm_private_dns_zone.tierceron-vnet.id
   sku_name               = "B_Standard_B2s"
 
+  storage {
+    auto_grow_enabled = true
+  }
   depends_on = [azurerm_private_dns_zone.tierceron-vnet]
 }
 
