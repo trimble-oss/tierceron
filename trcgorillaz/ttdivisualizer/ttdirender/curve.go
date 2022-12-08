@@ -227,6 +227,7 @@ func (cr *CurveRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3nmash.G3nDetailedElement) ([]float64, bool) {
 	timesplit := []float64{}
 	succeeded := false
+	firstTime := 0
 	for i := 0; i < len(element.GetChildElementIds()); i++ {
 		child := worldApp.ConcreteElements[element.GetChildElementIds()[i]]
 		if child.GetDetailedElement().Genre != "Solid" {
@@ -242,6 +243,11 @@ func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3n
 			decodedData := decoded.(map[string]interface{})
 			if decodedData["TimeSplit"] != nil {
 				timeNanoSeconds := decodedData["TimeSplit"].(float64)
+				if timeNanoSeconds == 0 && firstTime == 0 {
+					firstTime = 1
+				} else {
+					firstTime = 2
+				}
 				timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
 				timesplit = append(timesplit, timeSeconds)
 			}
@@ -252,6 +258,9 @@ func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3n
 			// timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
 			// timesplit = append(timesplit, timeSeconds)
 		}
+	}
+	if len(timesplit) > 2 && firstTime == 2 {
+		timesplit = timesplit[1:]
 	}
 	return timesplit, succeeded
 }
@@ -309,8 +318,8 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 			// Can't just average tests have to average overall test time --> what whole spiral would represent
 			for j := 0.0; j < float64(len(timeSplits)); j = j + 1.0 {
 				if len(timeSplits) > int(j+1) {
-					diff = timeSplits[int(j+1)] - timeSplits[int(j)]
-					section = (((timeSplits[int(j+1)] - timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation //total --> maxTotalTime
+					diff = math.Abs(timeSplits[int(j+1)] - timeSplits[int(j)])
+					section = ((math.Abs(timeSplits[int(j+1)]-timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation //total --> maxTotalTime
 				}
 				if section != 0 && section-lastLocation != 0 {
 					for i := section; i < lastLocation; i = i + math.Abs((section-lastLocation)/((section-lastLocation)*100)) {
@@ -323,7 +332,7 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 					}
 				}
 				if j == float64(len(timeSplits)-1) {
-					for i := -2.0; i < lastLocation; i = i + 0.01 {
+					for i := -1.5; i < lastLocation; i = i + 0.01 {
 						c := binetFormula(i)
 						x := real(c)
 						y := imag(c)
@@ -471,8 +480,8 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 				maxTotalTime := cr.avg //float64(cr.maxTime) * math.Pow(10.0, -9.0)
 				for j := 0.0; j < float64(len(timeSplits)); j = j + 1.0 {
 					if len(timeSplits) > int(j+1) {
-						diff = timeSplits[int(j+1)] - timeSplits[int(j)]
-						section = (((timeSplits[int(j+1)] - timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation //total --> maxTotalTime
+						diff = math.Abs(timeSplits[int(j+1)] - timeSplits[int(j)])
+						section = ((math.Abs(timeSplits[int(j+1)]-timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation //total --> maxTotalTime
 					}
 					if section != 0 && section-lastLocation != 0 {
 						for i := section; i < lastLocation; i = i + math.Abs((section-lastLocation)/((section-lastLocation)*100)) {
@@ -485,7 +494,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 						}
 					}
 					if j == float64(len(timeSplits)-1) {
-						for i := -2.0; i < lastLocation; i = i + 0.01 {
+						for i := -1.5; i < lastLocation; i = i + 0.01 {
 							c := binetFormula(i)
 							x := real(c)
 							y := imag(c)

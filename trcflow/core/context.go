@@ -589,7 +589,11 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
 	df := InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
-	df.UpdateDataFlowStatistic("Flows", tfContext.Flow.TableName(), "Loading", "1", 1, tfmContext.Log)
+	if tfContext.FlowState.FlowAlias != "" {
+		df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Loading", "1", 1, tfmContext.Log)
+	} else {
+		df.UpdateDataFlowStatistic("Flows", tfContext.Flow.TableName(), "Loading", "1", 1, tfmContext.Log)
+	}
 	//Copy ReportStatistics from process_registerenterprise.go if !buildopts.IsTenantAutoRegReady(tenant)
 	// Do we need to account for that here?
 	var seedInitComplete chan bool = make(chan bool, 1)
@@ -610,7 +614,11 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	df.UpdateDataFlowStatistic("Flows", tfContext.Flow.TableName(), "Load complete", "2", 1, tfmContext.Log)
+	if tfContext.FlowState.FlowAlias != "" {
+		df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Load complete", "2", 1, tfmContext.Log)
+	} else {
+		df.UpdateDataFlowStatistic("Flows", tfContext.Flow.TableName(), "Load complete", "2", 1, tfmContext.Log)
+	}
 
 	// Second row here
 	// Not sure if necessary to copy entire ReportStatistics method
@@ -861,6 +869,10 @@ func (tfmContext *TrcFlowMachineContext) GetDbConn(tfContext *TrcFlowContext, db
 // representation of json data provided by the endpoint.
 func (tfmContext *TrcFlowMachineContext) CallAPI(apiAuthHeaders map[string]string, host string, apiEndpoint string, bodyData io.Reader, getOrPost bool) (map[string]interface{}, int, error) {
 	httpClient, err := helperkv.CreateHTTPClient(false, host, tfmContext.Env, false)
+	if httpClient != nil {
+		defer httpClient.CloseIdleConnections()
+	}
+
 	if err != nil {
 		return nil, -1, err
 	}
@@ -1051,6 +1063,15 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 				allDefaults = false
 			}
 			row = append(row, iVar)
+		} else if _, svOk := secretColumns[column.Name]; !svOk {
+			var iVar interface{}
+			if tclibc.CheckIncomingAliasColumnName(column.Name) { //Specific case for controller
+				iVar, _ = column.Type.Convert(row[0].(string))
+			} else {
+				iVar, _ = column.Type.Convert(column.Default.String())
+			}
+			row = append(row, iVar)
+			//
 		}
 	}
 

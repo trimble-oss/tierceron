@@ -206,6 +206,9 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 // GetStatus requests version info and whether the vault has been initailized
 func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStatus, error) {
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, s.Log)
+	if v != nil {
+		defer v.Close()
+	}
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
