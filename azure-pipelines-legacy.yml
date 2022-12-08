@@ -21,7 +21,7 @@ pr:
     - develop
 
 pool:
-#  vmImage: 'ubuntu-20.04' TODO: try to upgrade to this asap.
+#  vmImage: 'ubuntu-22.04' TODO: asap update
   vmImage: 'ubuntu-18.04'
 resources:
   repositories:
