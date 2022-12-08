@@ -580,7 +580,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			defer mod.Release()
 		}
 		mod.Env = *envPtr
-		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
+		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.Env, *uploadCertPtr, "", config.Log); errValidateEnvironment != nil || !valid {
 			if unrestrictedValid, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
 				eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+mod.Env, 1)
 				return
