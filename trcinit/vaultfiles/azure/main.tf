@@ -43,14 +43,14 @@ resource "azurerm_private_dns_zone_virtual_network_link" "db-virtual-network-lin
 
 
 resource "azurerm_virtual_network_peering" "peer-db-vm" {
-  name                      = "peerVMToDb"
+  name                      = "${var.resource_group_name}-peerVMToDb"
   resource_group_name       = azurerm_resource_group.rg.name
   virtual_network_name      = azurerm_virtual_network.db-virtual-network.name
   remote_virtual_network_id = azurerm_virtual_network.vm-virtual-network.id
 }
 
 resource "azurerm_virtual_network_peering" "peer-vm-db" {
-  name                      = "peerDbToVm"
+  name                      = "${var.resource_group_name}-peerDbToVm"
   resource_group_name       = azurerm_resource_group.rg.name
   virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
   remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
