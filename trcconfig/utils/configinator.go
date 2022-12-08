@@ -47,9 +47,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 		}
 	}
 	versionData := make(map[string]interface{})
-	if valid, errValidateEnvironment := modCheck.ValidateEnvironment(config.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
-		if unrestrictedValid, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(config.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-			return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
+	if config.Token != "novault" {
+		if valid, errValidateEnvironment := modCheck.ValidateEnvironment(config.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
+			if unrestrictedValid, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(config.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+				return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
+			}
 		}
 	}
 
