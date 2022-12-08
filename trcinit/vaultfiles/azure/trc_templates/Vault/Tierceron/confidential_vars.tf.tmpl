@@ -40,10 +40,16 @@ variable "ssh_port" {
 
 variable "mysql_admin" {
   type    = string
-  default = {{.mysql_admin}}
+  default = "{{.mysql_admin}}"
 }
 
 variable "mysql_admin_password" {
   type    = string
-  default = {{.mysql_admin_password}}
+  default = "{{.mysql_admin_password}}"
 }
+
+variable "dbaddress" {
+  type    = string
+  default = "{{.dbAddress}}"
+}
+
