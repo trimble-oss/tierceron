@@ -1,7 +1,9 @@
 package util
 
 import (
+	"context"
 	"database/sql"
+	"time"
 
 	"tierceron/validator"
 
@@ -38,12 +40,14 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 	}
 
 	// Open doesn't open a connection. Validate DSN data:
-	err = conn.Ping()
-	if err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err = conn.PingContext(ctx); err != nil {
 		if conn != nil {
 			defer conn.Close()
 		}
 		return nil, err
 	}
+
 	return conn, nil
 }
