@@ -218,7 +218,7 @@ resource "azurerm_network_interface_security_group_association" "example" {
 }
 
 resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
-  name                = "tierceron-db.mysql.database.azure.com"
+  name                = "${var.dbaddress}"
   resource_group_name = azurerm_resource_group.rg.name
   tags = {
     "Application" = var.resource_group_name
