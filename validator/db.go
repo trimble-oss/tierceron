@@ -1,9 +1,11 @@
 package validator
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"regexp"
+	"time"
 
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
@@ -40,8 +42,12 @@ func Heartbeat(config *eUtils.DriverConfig, url string, username string, passwor
 	}
 
 	// Open doesn't open a connection. Validate DSN data:
-	err = conn.Ping()
-	if err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err = conn.PingContext(ctx); err != nil {
+		if conn != nil {
+			defer conn.Close()
+		}
 		return false, err
 	}
 	return true, nil

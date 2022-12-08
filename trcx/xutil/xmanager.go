@@ -215,6 +215,9 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 			eUtils.LogErrorObject(config, err, false)
 		}
 		envVersion := strings.Split(config.Env, "_")
+		if len(envVersion) == 1 {
+			envVersion = append(envVersion, "0")
+		}
 		commonMod.Env = envVersion[0]
 		commonMod.Version = envVersion[1]
 		commonMod.Version = commonMod.Version + "***X-Mode"
