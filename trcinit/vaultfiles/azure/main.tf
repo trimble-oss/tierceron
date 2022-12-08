@@ -10,8 +10,8 @@ resource "azurerm_resource_group" "rg" {
 
 
 
-resource "azurerm_virtual_network" "rg-virtual-network" {
-  name                = "${var.resource_group_name}-Vnet"
+resource "azurerm_virtual_network" "vm-virtual-network" {
+  name                = "${var.resource_group_name}-vm-Vnet"
   address_space       = ["10.0.0.0/16"]
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
@@ -22,7 +22,7 @@ resource "azurerm_virtual_network" "rg-virtual-network" {
   }
 }
 
-resource "azurerm_virtual_network" "rg-db-virtual-network" {
+resource "azurerm_virtual_network" "db-virtual-network" {
   name                = "${var.resource_group_name}-db-Vnet"
   address_space       = ["10.1.0.0/16"]
   location            = azurerm_resource_group.rg.location
@@ -34,25 +34,39 @@ resource "azurerm_virtual_network" "rg-db-virtual-network" {
   }
 }
 
-resource "azurerm_private_dns_zone_virtual_network_link" "rg-db-virtual-network-link" {
+resource "azurerm_private_dns_zone_virtual_network_link" "db-virtual-network-link" {
   name                  = "${var.resource_group_name}-db-virtual-network-link"
   resource_group_name   = azurerm_resource_group.rg.name
-  private_dns_zone_name = azurerm_private_dns_zone.tierceron-vnet.name
-  virtual_network_id    = azurerm_virtual_network.rg-db-virtual-network.id
+  private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
+  virtual_network_id    = azurerm_virtual_network.db-virtual-network.id
 }
 
 
-resource "azurerm_subnet" "rg-subnet" {
+resource "azurerm_virtual_network_peering" "peer-db-vm" {
+  name                      = "peerVMToDb"
+  resource_group_name       = azurerm_resource_group.rg.name
+  virtual_network_name      = azurerm_virtual_network.db-virtual-network.name
+  remote_virtual_network_id = azurerm_virtual_network.vm-virtual-network.id
+}
+
+resource "azurerm_virtual_network_peering" "peer-vm-db" {
+  name                      = "peerDbToVm"
+  resource_group_name       = azurerm_resource_group.rg.name
+  virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
+  remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
+}
+
+resource "azurerm_subnet" "vm-subnet" {
   name                 = "${var.resource_group_name}-subnet"
   resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.rg-virtual-network.name
+  virtual_network_name = azurerm_virtual_network.vm-virtual-network.name
   address_prefixes     = ["10.0.0.0/24"]
 }
 
-resource "azurerm_subnet" "rg-db-subnet" {
+resource "azurerm_subnet" "db-subnet" {
   name                 = "${var.resource_group_name}-db-subnet"
   resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.rg-db-virtual-network.name
+  virtual_network_name = azurerm_virtual_network.db-virtual-network.name
   address_prefixes     = ["10.1.0.0/24"]
   service_endpoints    = ["Microsoft.Storage"]
 
@@ -162,14 +176,14 @@ resource "azurerm_network_security_group" "nsg" {
 
 
 
-resource "azurerm_network_interface" "rg-network-interface" {
+resource "azurerm_network_interface" "vm-network-interface" {
   name                = "${var.resource_group_name}-NIC"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
   ip_configuration {
     name                          = "${var.resource_group_name}-NicConfiguration"
-    subnet_id                     = azurerm_subnet.rg-subnet.id
+    subnet_id                     = azurerm_subnet.vm-subnet.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.public-ip.id
   }
@@ -193,11 +207,11 @@ resource "azurerm_network_interface" "rg-network-interface" {
 
 # Connect the security group to the network interface
 resource "azurerm_network_interface_security_group_association" "example" {
-  network_interface_id      = azurerm_network_interface.rg-network-interface.id
+  network_interface_id      = azurerm_network_interface.vm-network-interface.id
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
-resource "azurerm_private_dns_zone" "tierceron-vnet" {
+resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
   name                = "tierceron-db.mysql.database.azure.com"
   resource_group_name = azurerm_resource_group.rg.name
   tags = {
@@ -213,14 +227,14 @@ resource "azurerm_mysql_flexible_server" "tiercercon-db" {
   administrator_login    = "${var.mysql_admin}"
   administrator_password = "${var.mysql_admin_password}"
   backup_retention_days  = "${var.mysql_backup_retention_days}"
-  delegated_subnet_id    = azurerm_subnet.rg-db-subnet.id
-  private_dns_zone_id    = azurerm_private_dns_zone.tierceron-vnet.id
+  delegated_subnet_id    = azurerm_subnet.db-subnet.id
+  private_dns_zone_id    = azurerm_private_dns_zone.tierceron-dns-zone.id
   sku_name               = "B_Standard_B2s"
 
   storage {
     auto_grow_enabled = true
   }
-  depends_on = [azurerm_private_dns_zone.tierceron-vnet]
+  depends_on = [azurerm_private_dns_zone_virtual_network_link.db-virtual-network-link]
 }
 
 resource "tls_private_key" "private_key" {
@@ -249,7 +263,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   name                  = "${var.resource_group_name}-vm"
   location              = azurerm_resource_group.rg.location
   resource_group_name   = azurerm_resource_group.rg.name
-  network_interface_ids = [azurerm_network_interface.rg-network-interface.id]
+  network_interface_ids = [azurerm_network_interface.vm-network-interface.id]
   size                  = "Standard_B1ls"
 
   os_disk {
