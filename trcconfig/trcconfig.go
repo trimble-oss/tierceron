@@ -101,6 +101,7 @@ func main() {
 	templateInfoPtr := flag.Bool("templateInfo", false, "Version information about templates")
 	versionInfoPtr := flag.Bool("versions", false, "Version information about values")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 
 	args := os.Args[1:]
 
@@ -181,10 +182,15 @@ func main() {
 		}
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
-		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
-		if autoErr != nil {
-			fmt.Println("Missing auth components.")
-			os.Exit(1)
+
+		if !*noVaultPtr {
+			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+			if autoErr != nil {
+				fmt.Println("Missing auth components.")
+				os.Exit(1)
+			}
+		} else {
+			*tokenPtr = "novault"
 		}
 
 		if len(envVersion) >= 2 { //Put back env+version together
@@ -271,10 +277,14 @@ func main() {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
-			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
-			if autoErr != nil {
-				fmt.Println("Missing auth components.")
-				os.Exit(1)
+			if !*noVaultPtr {
+				autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, *pingPtr)
+				if autoErr != nil {
+					fmt.Println("Missing auth components.")
+					os.Exit(1)
+				}
+			} else {
+				*tokenPtr = "novault"
 			}
 			if len(envVersion) >= 2 { //Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]
