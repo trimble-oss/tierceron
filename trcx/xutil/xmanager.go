@@ -220,6 +220,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 		}
 		commonMod.Env = envVersion[0]
 		commonMod.Version = envVersion[1]
+		config.Env = envVersion[0] + "_" + envVersion[1]
 		commonMod.Version = commonMod.Version + "***X-Mode"
 
 		commonPaths, err = vcutils.GetPathsFromProject(config, commonMod, []string{"Common"}, []string{})
@@ -407,7 +408,27 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					}
 				}
 				if config.Token != "novault" {
-					// TODO: Chebacca Monday!
+					if config.WantCerts {
+						var formattedTPath string
+						tempList := make([]string, 0)
+						// TODO: Chebacca Monday!
+						tPath := strings.Split(tp, coreopts.GetFolderPrefix()+"_")[1]
+						tPathSplit := strings.Split(tPath, ".")
+						if len(tPathSplit) > 2 {
+							formattedTPath = tPathSplit[0] + "." + tPathSplit[1]
+						} else {
+							wg.Done()
+							return
+						}
+						if len(cPaths) > 0 {
+							for _, cPath := range cPaths {
+								if cPath == formattedTPath {
+									tempList = append(tempList, cPath)
+								}
+							}
+						}
+						cPaths = tempList
+					}
 					cds.Init(config, goMod, c.SecretMode, true, project, cPaths, service)
 				}
 				if len(goMod.VersionFilter) >= 1 && strings.Contains(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!") {
