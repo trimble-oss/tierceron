@@ -109,9 +109,9 @@ func SeedVault(config *eUtils.DriverConfig) error {
 		}
 		config.Regions = regions
 
-		var tempPaths []string
-		for _, templatePath := range templatePaths {
-			if config.WantCerts {
+		if config.WantCerts {
+			var tempPaths []string
+			for _, templatePath := range templatePaths {
 				var err error
 				mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
 				if err != nil {
@@ -151,9 +151,8 @@ func SeedVault(config *eUtils.DriverConfig) error {
 					tempPaths = append(tempPaths, templatePath)
 				}
 			}
+			templatePaths = tempPaths
 		}
-
-		templatePaths = tempPaths
 
 		_, _, seedData, errGenerateSeeds := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
 		if errGenerateSeeds != nil {
