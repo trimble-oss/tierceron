@@ -128,17 +128,9 @@ func (tr *TenantDataRenderer) renderTabItemHelper(concreteElement *mashupsdk.Mas
 			if fyneWidgetElement.GuiComponent == nil {
 				fyneWidgetElement.GuiComponent = tr.CustosWorldApp.CustomTabItems[concreteElement.Name](tr.CustosWorldApp, concreteElement.Name)
 			}
-
-			// tr.CurrentListElements = tr.InitialListElements //Shouldn't need this...
-			// tr.Elementlist.Refresh()
-			// tr.DataMenu.Refresh()
 			tr.CustosWorldApp.TabItemMenu.Append(fyneWidgetElement.GuiComponent.(*container.TabItem))
 		}
 	} else {
-
-		// Remove it if torus.
-		// CUWorldApp.fyneWidgetElements["Inside"].GuiComponent.(*container.TabItem),
-		// Remove the formerly clicked elements..
 		//log.Printf("TorusRender Widget lookingup for remove: %s\n", concreteElement.Alias)
 		if fyneWidgetElement, fyneOk := tr.CustosWorldApp.FyneWidgetElements[concreteElement.Name]; fyneOk {
 			//log.Printf("TorusRender Widget lookup found for remove: %s %v\n", concreteElement.Alias, fyneWidgetElement)
@@ -167,8 +159,6 @@ func (tr *TenantDataRenderer) Refresh() { //5
 }
 
 func (tr *TenantDataRenderer) OnSelected(tabItem *container.TabItem) {
-	// Too bad fyne doesn't have the ability for user to assign an id to TabItem...
-	// Lookup by name instead and try to keep track of any name changes instead...
 	//log.Printf("OnSelected called - TenantDataRenderer")
 	//log.Printf("Selected: %s\n", tabItem.Text)
 	if mashupItemIndex, miOk := tr.CustosWorldApp.ElementLoaderIndex[tabItem.Text]; miOk {
@@ -206,7 +196,6 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 			tr.CurrentListElements = append(tr.CurrentListElements, CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]])
 		}
 	}
-	//tr.InitialListElements = tr.CurrentListElements
 	tr.Elementlist = tr.RefreshList(CustosWorldApp, nil)
 	tr.Elementlist.Refresh()
 	tr.DataTabs = []*container.TabItem{}
