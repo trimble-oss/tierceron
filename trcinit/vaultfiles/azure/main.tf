@@ -39,8 +39,8 @@ resource "azurerm_private_dns_zone_virtual_network_link" "db-virtual-network-lin
   resource_group_name   = azurerm_resource_group.rg.name
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
   virtual_network_id    = azurerm_virtual_network.db-virtual-network.id
+  registration_enabled  = true
 }
-
 
 resource "azurerm_virtual_network_peering" "peer-db-vm" {
   name                      = "${var.resource_group_name}-peerVMToDb"
@@ -178,6 +178,35 @@ resource "azurerm_network_security_group" "nsg" {
     source_address_prefix      = "*"
     destination_address_prefix = var.allowed_ips
   }
+
+  #UDP OUTBOUND DNS
+  security_rule {
+    name                       = "Allow${var.org_name}DnsUdpOutbound"
+    priority                   = 112
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Udp"
+    source_port_range          = "*"
+#    destination_port_range     = "*"
+    destination_port_ranges    = ["22", "53"]
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  #UDP INBOUND DNS
+  security_rule {
+    name                       = "Allow${var.org_name}DnsUdpInbound"
+    priority                   = 112
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Udp"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+#    destination_port_ranges    = ["22", "53"]
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
 }
 
 
@@ -226,8 +255,8 @@ resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
   }
 }
 
-resource "azurerm_mysql_flexible_server" "tiercercon-db" {
-  name                   = "tiercercon-db"
+resource "azurerm_mysql_flexible_server" "tierceron-db" {
+  name                   = "tierceron-db"
   resource_group_name    = azurerm_resource_group.rg.name
   location               = azurerm_resource_group.rg.location
   administrator_login    = "${var.mysql_admin}"
@@ -300,6 +329,15 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
     public_key = tls_private_key.private_key.public_key_openssh
   }
 
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command = <<EOT
+      echo ${azurerm_mysql_flexible_server.tierceron-db.fqdn}
+      rm resources/vault_properties.sub
+      sed 's/tierceron-db.mysql.database.azure.com/${azurerm_mysql_flexible_server.tierceron-db.fqdn}/g' resources/vault_properties.hcl > resources/vault_properties.sub
+    EOT
+  }
+
   # Connections and provisioners must be inside of the vm block
   # in order to have multiple connections. The connection for each
   # must be nested inside of the associated provisioner.
@@ -311,7 +349,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       private_key = tls_private_key.private_key.private_key_pem
       timeout     = "30s"
     }
-    source      = "resources/vault_properties.hcl"
+    source      = "resources/vault_properties.sub"
     destination = "/tmp/vault_properties.hcl"
   }
 
