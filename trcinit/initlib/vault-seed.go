@@ -79,7 +79,7 @@ func GetTemplateParam(mod *kv.Modifier, filePath string, paramWanted string) (st
 		}
 	}
 
-	return "", nil
+	return "", errors.New("Could not find the param " + paramWanted + " in this template " + filePath + ".")
 }
 
 // SeedVault seeds the vault with seed files in the given directory -> only init uses this
@@ -129,7 +129,9 @@ func SeedVault(config *eUtils.DriverConfig) error {
 				templateParam, tParamErr := GetTemplateParam(mod, templatePath, ".certSourcePath")
 				if tParamErr != nil {
 					eUtils.LogErrorObject(config, tParamErr, false)
+					continue
 				}
+
 				if config.EnvRaw == "" {
 					config.EnvRaw = strings.Split(config.Env, "_")[0]
 				}
@@ -636,7 +638,8 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	if err != nil {
 		return eUtils.LogErrorAndSafeExit(config, err, 1)
 	}
-	mod.Env = config.Env
+
+	mod.Env = strings.Split(config.Env, "_")[0]
 	if strings.Contains(filepath, "/PublicIndex/") {
 		config.Log.Println("Seeding configuration data for the following templates: DataStatistics")
 	} else if isIndexData || strings.HasPrefix(filepath, "Restricted/") || strings.HasPrefix(filepath, "Protected/") { //Sets restricted to indexpath due to forward logic using indexpath
