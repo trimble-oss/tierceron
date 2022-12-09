@@ -109,51 +109,52 @@ func SeedVault(config *eUtils.DriverConfig) error {
 		}
 		config.Regions = regions
 
-		if config.WantCerts {
-			var tempPaths []string
-			for _, templatePath := range templatePaths {
-				var err error
-				mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
-				if err != nil {
-					eUtils.LogErrorObject(config, err, false)
-				}
-
-				mod.Env = config.Env
-				if len(config.ProjectSections) > 0 {
-					mod.ProjectIndex = config.ProjectSections
-					mod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
-					mod.SectionName = config.SectionName
-					mod.SubSectionValue = config.SubSectionValue
-				}
-				templateParam, tParamErr := GetTemplateParam(mod, templatePath, ".certSourcePath")
-				if tParamErr != nil {
-					eUtils.LogErrorObject(config, tParamErr, false)
-					continue
-				}
-
-				if config.EnvRaw == "" {
-					config.EnvRaw = strings.Split(config.Env, "_")[0]
-				}
-				templateParam = strings.Replace(templateParam, "ENV", config.EnvRaw, -1)
-				wd, err := os.Getwd()
-				if err != nil {
-					eUtils.LogErrorObject(config, errors.New("Could not get working directory for cert existence verification."), false)
-					continue
-				}
-
-				_, fileError := os.Stat(wd + "/" + coreopts.GetFolderPrefix() + "_seeds/" + templateParam)
-				if fileError != nil {
-					if os.IsNotExist(fileError) {
-						eUtils.LogErrorObject(config, errors.New("File does not exist\n"+templateParam), false)
-						continue
-					}
-				} else {
-					tempPaths = append(tempPaths, templatePath)
-				}
+		var tempPaths []string
+		for _, templatePath := range templatePaths {
+			var err error
+			mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
+			if err != nil {
+				eUtils.LogErrorObject(config, err, false)
 			}
-			templatePaths = tempPaths
-		}
 
+			mod.Env = config.Env
+			if len(config.ProjectSections) > 0 {
+				mod.ProjectIndex = config.ProjectSections
+				mod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
+				mod.SectionName = config.SectionName
+				mod.SubSectionValue = config.SubSectionValue
+			}
+			templateParam, tParamErr := GetTemplateParam(mod, templatePath, ".certSourcePath")
+			if tParamErr != nil {
+				eUtils.LogErrorObject(config, tParamErr, false)
+				continue
+			}
+
+			if config.EnvRaw == "" {
+				config.EnvRaw = strings.Split(config.Env, "_")[0]
+			}
+			templateParam = strings.Replace(templateParam, "ENV", config.EnvRaw, -1)
+			wd, err := os.Getwd()
+			if err != nil {
+				eUtils.LogErrorObject(config, errors.New("Could not get working directory for cert existence verification."), false)
+				continue
+			}
+
+			_, fileError := os.Stat(wd + "/" + coreopts.GetFolderPrefix() + "_seeds/" + templateParam)
+			if fileError != nil {
+				if os.IsNotExist(fileError) {
+					eUtils.LogErrorObject(config, errors.New("File does not exist\n"+templateParam), false)
+					continue
+				}
+			} else {
+				tempPaths = append(tempPaths, templatePath)
+			}
+		}
+		if len(tempPaths) > 0 {
+			templatePaths = tempPaths
+		} else {
+			return eUtils.LogErrorAndSafeExit(config, errors.New("No valid cert files were located."), -1)
+		}
 		_, _, seedData, errGenerateSeeds := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
 		if errGenerateSeeds != nil {
 			return eUtils.LogErrorAndSafeExit(config, errGenerateSeeds, -1)
