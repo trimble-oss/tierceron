@@ -566,7 +566,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		}
 	}
 
-	if config.WantCerts {
+	if config.WantCerts && !fromVault {
 		return "", false, "", nil
 	}
 
