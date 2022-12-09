@@ -5,16 +5,22 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"text/template/parse"
 
 	"tierceron/buildopts/coreopts"
+	vcutils "tierceron/trcconfig/utils"
 	"tierceron/trcx/xutil"
 	"tierceron/validator"
+	"tierceron/vaulthelper/kv"
 	helperkv "tierceron/vaulthelper/kv"
 
 	eUtils "tierceron/utils"
@@ -35,6 +41,45 @@ type writeCollection struct {
 }
 
 var templateWritten map[string]bool
+
+func GetTemplateParam(mod *kv.Modifier, filePath string, paramWanted string) (string, error) {
+
+	templateEncoded, err := vcutils.GetTemplate(mod, filePath)
+	if err != nil {
+		return "", err
+	}
+	templateBytes, dcErr := base64.StdEncoding.DecodeString(templateEncoded)
+	if dcErr != nil {
+		return "", dcErr
+	}
+
+	templateStr := string(templateBytes)
+
+	t := template.New("template")
+	t, err = t.Parse(templateStr)
+	if err != nil {
+		return "", err
+	}
+	commandList := t.Tree.Root
+
+	for _, node := range commandList.Nodes {
+		if node.Type() == parse.NodeAction {
+			var args []string
+			fields := node.(*parse.ActionNode).Pipe
+			for _, arg := range fields.Cmds[0].Args {
+				templateParameter := strings.ReplaceAll(arg.String(), "\"", "")
+
+				if len(args) > 0 && args[len(args)-1] == paramWanted {
+					return templateParameter, nil
+				}
+
+				args = append(args, templateParameter)
+			}
+		}
+	}
+
+	return "", errors.New("Could not find the param " + paramWanted + " in this template " + filePath + ".")
+}
 
 // SeedVault seeds the vault with seed files in the given directory -> only init uses this
 func SeedVault(config *eUtils.DriverConfig) error {
@@ -64,6 +109,52 @@ func SeedVault(config *eUtils.DriverConfig) error {
 		}
 		config.Regions = regions
 
+		var tempPaths []string
+		for _, templatePath := range templatePaths {
+			var err error
+			mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
+			if err != nil {
+				eUtils.LogErrorObject(config, err, false)
+			}
+
+			mod.Env = config.Env
+			if len(config.ProjectSections) > 0 {
+				mod.ProjectIndex = config.ProjectSections
+				mod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
+				mod.SectionName = config.SectionName
+				mod.SubSectionValue = config.SubSectionValue
+			}
+			templateParam, tParamErr := GetTemplateParam(mod, templatePath, ".certSourcePath")
+			if tParamErr != nil {
+				eUtils.LogErrorObject(config, tParamErr, false)
+				continue
+			}
+
+			if config.EnvRaw == "" {
+				config.EnvRaw = strings.Split(config.Env, "_")[0]
+			}
+			templateParam = strings.Replace(templateParam, "ENV", config.EnvRaw, -1)
+			wd, err := os.Getwd()
+			if err != nil {
+				eUtils.LogErrorObject(config, errors.New("Could not get working directory for cert existence verification."), false)
+				continue
+			}
+
+			_, fileError := os.Stat(wd + "/" + coreopts.GetFolderPrefix() + "_seeds/" + templateParam)
+			if fileError != nil {
+				if os.IsNotExist(fileError) {
+					eUtils.LogErrorObject(config, errors.New("File does not exist\n"+templateParam), false)
+					continue
+				}
+			} else {
+				tempPaths = append(tempPaths, templatePath)
+			}
+		}
+		if len(tempPaths) > 0 {
+			templatePaths = tempPaths
+		} else {
+			return eUtils.LogErrorAndSafeExit(config, errors.New("No valid cert files were located."), -1)
+		}
 		_, _, seedData, errGenerateSeeds := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
 		if errGenerateSeeds != nil {
 			return eUtils.LogErrorAndSafeExit(config, errGenerateSeeds, -1)
@@ -546,7 +637,8 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	if err != nil {
 		return eUtils.LogErrorAndSafeExit(config, err, 1)
 	}
-	mod.Env = config.Env
+
+	mod.Env = strings.Split(config.Env, "_")[0]
 	if strings.Contains(filepath, "/PublicIndex/") {
 		config.Log.Println("Seeding configuration data for the following templates: DataStatistics")
 	} else if isIndexData || strings.HasPrefix(filepath, "Restricted/") || strings.HasPrefix(filepath, "Protected/") { //Sets restricted to indexpath due to forward logic using indexpath
