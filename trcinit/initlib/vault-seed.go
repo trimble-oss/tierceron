@@ -60,7 +60,6 @@ func GetTemplateParam(mod *kv.Modifier, filePath string, paramWanted string) (st
 	if err != nil {
 		return "", err
 	}
-	//t.Tree.Root.Nodes[2].(*parse.ActionNode).Pipe.Cmds[0].Args[2]
 	commandList := t.Tree.Root
 
 	for _, node := range commandList.Nodes {
