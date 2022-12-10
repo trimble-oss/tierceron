@@ -50,6 +50,10 @@ variable "mysql_admin_password" {
 
 variable "dbaddress" {
   type    = string
-  default = "{{.dbAddress}}"
+  default = "{{.dbaddress}}"
 }
 
+variable "dbzone" {
+  type    = string
+  default = "{{.dbzone}}"
+}
