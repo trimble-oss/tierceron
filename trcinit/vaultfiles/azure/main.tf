@@ -189,13 +189,12 @@ resource "azurerm_network_security_group" "nsg" {
 
   #UDP OUTBOUND DNS
   security_rule {
-    name                       = "Allow${var.org_name}DnsUdpOutbound"
+    name                       = "Allow${var.org_name}UdpOutbound"
     priority                   = 112
     direction                  = "Outbound"
     access                     = "Allow"
     protocol                   = "Udp"
     source_port_range          = "*"
-#    destination_port_range     = "*"
     destination_port_ranges    = ["22", "53"]
     source_address_prefix      = "*"
     destination_address_prefix = "*"
@@ -203,7 +202,7 @@ resource "azurerm_network_security_group" "nsg" {
 
   #UDP INBOUND DNS
   security_rule {
-    name                       = "Allow${var.org_name}DnsUdpInbound"
+    name                       = "Allow${var.org_name}UdpInbound"
     priority                   = 112
     direction                  = "Inbound"
     access                     = "Allow"
@@ -255,7 +254,7 @@ resource "azurerm_network_interface_security_group_association" "example" {
 }
 
 resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
-  name                = "${var.dbaddress}"
+  name                = "${var.dbzone}"
   resource_group_name = azurerm_resource_group.rg.name
   tags = {
     "Application" = var.resource_group_name
@@ -264,7 +263,7 @@ resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
 }
 
 resource "azurerm_mysql_flexible_server" "tierceron-db" {
-  name                   = "tierceron-db"
+  name                   = "${var.dbaddress}"
   resource_group_name    = azurerm_resource_group.rg.name
   location               = azurerm_resource_group.rg.location
   administrator_login    = "${var.mysql_admin}"
@@ -342,7 +341,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
     command = <<EOT
       echo ${azurerm_mysql_flexible_server.tierceron-db.fqdn}
       rm resources/vault_properties.sub
-      sed 's/tierceron-db.mysql.database.azure.com/${azurerm_mysql_flexible_server.tierceron-db.fqdn}/g' resources/vault_properties.hcl > resources/vault_properties.sub
+      sed 's/TRCDBNAME/${azurerm_mysql_flexible_server.tierceron-db.fqdn}/g' resources/vault_properties.hcl > resources/vault_properties.sub
     EOT
   }
 
