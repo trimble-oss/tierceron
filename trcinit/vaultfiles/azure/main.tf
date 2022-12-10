@@ -42,6 +42,14 @@ resource "azurerm_private_dns_zone_virtual_network_link" "db-virtual-network-lin
   registration_enabled  = true
 }
 
+resource "azurerm_private_dns_zone_virtual_network_link" "vm-virtual-network-link" {
+  name                  = "${var.resource_group_name}-vm-virtual-network-link"
+  resource_group_name   = azurerm_resource_group.rg.name
+  private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
+  virtual_network_id    = azurerm_virtual_network.vm-virtual-network.id
+  registration_enabled  = true
+}
+
 resource "azurerm_virtual_network_peering" "peer-db-vm" {
   name                      = "${var.resource_group_name}-peerVMToDb"
   resource_group_name       = azurerm_resource_group.rg.name
