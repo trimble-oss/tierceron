@@ -248,10 +248,25 @@ resource "azurerm_network_interface" "vm-network-interface" {
 
 
 # Connect the security group to the network interface
-resource "azurerm_network_interface_security_group_association" "example" {
+resource "azurerm_network_interface_security_group_association" "tierceron-security-group" {
   network_interface_id      = azurerm_network_interface.vm-network-interface.id
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
+
+# TODO: this creates the wrong kind of record...
+# I want name.domain1 --> name.domain2
+# This creates name.domain1->name.name.domain1 -- or some such.
+
+# resource "azurerm_private_dns_cname_record" "tierceron-cname" {
+#  name                = "${var.tierceronname}.${var.tierceronzone}"
+#  zone_name           = azurerm_private_dns_zone.tierceron-dns-zone.name
+#  resource_group_name = azurerm_resource_group.rg.name
+#  ttl                 = 300
+#  record              = "${var.tierceronname}"
+#  depends_on = [
+#    azurerm_private_dns_zone.tierceron-dns-zone
+#  ]
+#}
 
 resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
   name                = "${var.dbzone}"
@@ -321,7 +336,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
     version   = "latest"
   }
 
-  computer_name                   = "${var.resource_group_name}-vm"
+  computer_name         = "${var.tierceronname}"
   admin_username                  = "ubuntu"
   disable_password_authentication = true
 
