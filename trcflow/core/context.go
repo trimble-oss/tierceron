@@ -151,7 +151,12 @@ type TrcFlowMachineContext struct {
 	GetAdditionalFlowsByState func(teststate string) []FlowNameType
 	ChannelMap                map[FlowNameType]chan bool
 	FlowMap                   map[FlowNameType]*TrcFlowContext // Map of all running flows for engine
-	PermissionChan            chan string                      // This channel is used to alert for dynamic permissions when tables are loaded
+	PermissionChan            chan PermissionUpdate            // This channel is used to alert for dynamic permissions when tables are loaded
+}
+
+type PermissionUpdate struct {
+	TableName    string
+	CurrentState int64
 }
 
 type TrcFlowContext struct {
@@ -255,7 +260,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 		tfmContext.ChannelMap[f] = make(chan bool, 5)
 	}
 
-	tfmContext.PermissionChan = make(chan string, 10)
+	tfmContext.PermissionChan = make(chan PermissionUpdate, 10)
 	tfmContextMap[tfmContext.TierceronEngine.Database.Name()+"_"+tfmContext.Env] = tfmContext
 	return nil
 }
@@ -634,7 +639,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	tfContext.FlowLock.Lock()
 	if tfContext.Init { //Alert interface that the table is ready for permissions
 		tfContext.FlowLock.Unlock()
-		tfmContext.PermissionChan <- tfContext.Flow.TableName()
+		tfmContext.PermissionChan <- PermissionUpdate{tfContext.Flow.TableName(), tfContext.FlowState.State}
 		tfContext.Init = false
 	} else if tfContext.FlowState.State == 2 {
 		tfContext.FlowLock.Unlock()
