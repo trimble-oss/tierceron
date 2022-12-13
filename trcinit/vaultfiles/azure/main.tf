@@ -37,7 +37,7 @@ resource "azurerm_virtual_network" "db-virtual-network" {
 resource "azurerm_private_dns_zone_virtual_network_link" "db-virtual-network-link" {
   name                  = "${var.resource_group_name}-db-virtual-network-link"
   resource_group_name   = azurerm_resource_group.rg.name
-  private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
+  private_dns_zone_name = azurerm_private_dns_zone.tierceron-db-dns-zone.name
   virtual_network_id    = azurerm_virtual_network.db-virtual-network.id
   registration_enabled  = true
 }
@@ -268,8 +268,17 @@ resource "azurerm_network_interface_security_group_association" "tierceron-secur
 #  ]
 #}
 
-resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
+resource "azurerm_private_dns_zone" "tierceron-db-dns-zone" {
   name                = "${var.dbzone}"
+  resource_group_name = azurerm_resource_group.rg.name
+  tags = {
+    "Application" = var.resource_group_name
+    "Billing"     = var.environment
+  }
+}
+
+resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
+  name                = "${var.tierceronzone}"
   resource_group_name = azurerm_resource_group.rg.name
   tags = {
     "Application" = var.resource_group_name
@@ -285,7 +294,7 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   administrator_password = "${var.mysql_admin_password}"
   backup_retention_days  = "${var.mysql_backup_retention_days}"
   delegated_subnet_id    = azurerm_subnet.db-subnet.id
-  private_dns_zone_id    = azurerm_private_dns_zone.tierceron-dns-zone.id
+  private_dns_zone_id    = azurerm_private_dns_zone.tierceron-db-dns-zone.id
   sku_name               = "B_Standard_B2s"
 
   storage {
