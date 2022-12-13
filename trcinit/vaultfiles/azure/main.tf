@@ -42,12 +42,25 @@ resource "azurerm_private_dns_zone_virtual_network_link" "db-virtual-network-lin
   registration_enabled  = true
 }
 
+// If you are not using custom DNS, you will need to link every zone you 
+// want to use, to every VNET in your environment where you want the private
+// endpoint resolution to work.
+
+// azurerm_virtual_network_dns_servers
+
 resource "azurerm_private_dns_zone_virtual_network_link" "vm-virtual-network-link" {
   name                  = "${var.resource_group_name}-vm-virtual-network-link"
   resource_group_name   = azurerm_resource_group.rg.name
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
   virtual_network_id    = azurerm_virtual_network.vm-virtual-network.id
   registration_enabled  = true
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "vm-db-virtual-network-link" {
+  name                  = "${var.resource_group_name}-vm-virtual-network-link"
+  resource_group_name   = azurerm_resource_group.rg.name
+  private_dns_zone_name = azurerm_private_dns_zone.tierceron-db-dns-zone.name
+  virtual_network_id    = azurerm_virtual_network.vm-virtual-network.id
 }
 
 resource "azurerm_virtual_network_peering" "peer-db-vm" {
