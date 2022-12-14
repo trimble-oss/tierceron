@@ -160,6 +160,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 			return eUtils.LogErrorAndSafeExit(config, errGenerateSeeds, -1)
 		}
 
+		config.ServiceFilter = templatePaths
 		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
 
 		seedErr := SeedVaultFromData(config, "", []byte(seedData))
@@ -510,7 +511,18 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 			if _, ok := entry.data["certData"]; ok {
 				// insecure value entry.
 				entry.data["certData"] = certBase64
+
 				WriteData(config, entry.path, entry.data, mod)
+
+				certPathSplit := strings.Split(certPath, "/")
+				for _, path := range config.ServiceFilter {
+					if strings.Contains(path, certPathSplit[len(certPathSplit)-1]) {
+						commonPath := strings.Replace(strings.TrimSuffix(path, ".mf.tmpl"), coreopts.GetFolderPrefix()+"_templates", "values", -1)
+						entry.data["certData"] = "data"
+						WriteData(config, commonPath, entry.data, mod)
+					}
+				}
+
 				eUtils.LogInfo(config, "Public cert updated: "+certPath+".")
 			} else {
 				entryPathParts := strings.Split(entry.path, "/")
