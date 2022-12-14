@@ -134,7 +134,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 
 	tfContext.FlowLock.Lock()
 	if tfContext.Init { //Alert interface that the table is ready for permissions
-		tfmContext.PermissionChan <- tfContext.Flow.TableName()
+		tfmContext.PermissionChan <- flowcore.PermissionUpdate{tfContext.Flow.TableName(), tfContext.FlowState.State}
 		tfContext.Init = false
 	}
 	tfContext.FlowLock.Unlock()
@@ -170,10 +170,10 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 	tfContext.FlowState.SyncFilter = "N/A"
 	tfContext.CustomSeedTrcDb = dataFlowStatPullRemote
 
-	if tfContext.FlowState.State != 1 && tfContext.FlowState.State != 2 {
+	/*if tfContext.FlowState.State != 1 && tfContext.FlowState.State != 2 {
 		tfmContext.PermissionChan <- tfContext.Flow.TableName()
 		tfContext.Init = false
-	}
+	}*/
 
 	tfContext.FlowLock.Unlock()
 	stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
@@ -200,7 +200,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 		}
 	}(tfContext.FlowState, tfContext.FlowLock, stateUpdateChannel)
 
-	syncInit := true
+	tfContext.Init = true
 
 	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
 	if sqlIngestInterval > 0 {
@@ -214,6 +214,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				tfContext.FlowLock.Lock()
 				if tfContext.FlowState.State == 3 {
 					tfContext.FlowLock.Unlock()
+					tfmContext.PermissionChan <- flowcore.PermissionUpdate{tfContext.Flow.TableName(), tfContext.FlowState.State}
 					if tfContext.CancelContext != nil {
 						tfContext.CancelContext() //This cancel also pushes any final changes to vault before closing sync cycle.
 						var baseTableTemplate extract.TemplateResultData
@@ -230,15 +231,14 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				} else if tfContext.FlowState.State == 1 {
 					tfContext.FlowLock.Unlock()
 					tfmContext.Log("DataFlowStatistics flow is restarting...", nil)
-					syncInit = true
+					tfContext.Init = true
 					tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "truncate " + tfContext.FlowSourceAlias + "." + tfContext.Flow.TableName()}, nil, false, "DELETE", nil, "")
 					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: tfContext.FlowState.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
 					continue
 				} else if tfContext.FlowState.State == 2 {
 					tfContext.FlowLock.Unlock()
-					if syncInit {
+					if tfContext.Init {
 						go tfmContext.SyncTableCycle(tfContext, dfssql.DataflowTestNameColumn, []string{dfssql.DataflowTestIdColumn, dfssql.DataflowTestStateCodeColumn}, GetDataflowStatIndexedPathExt, nil, false)
-						syncInit = false
 					}
 				} else {
 					tfContext.FlowLock.Unlock()
