@@ -646,6 +646,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			Token:           v.GetToken(),
 			VaultAddress:    *addrPtr,
 			Env:             *envPtr,
+			EnvRaw:          strings.Split(*envPtr, "_")[0],
 			SectionKey:      sectionKey,
 			SectionName:     subSectionName,
 			SubSectionValue: *eUtils.IndexValueFilterPtr,
