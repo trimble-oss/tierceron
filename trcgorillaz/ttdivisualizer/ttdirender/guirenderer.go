@@ -54,6 +54,8 @@ type ColorDialog struct {
 // //go:embed legend.png
 // var legend embed.FS
 
+// Renders GUI elements for Legend and NodeLabel
+// Legend and Logo are commented out because still need to finalize UX color choices for Visualizer
 func (br *GuiRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nmash.G3nDetailedElement) bool {
 
 	//clickedElement := worldApp.ClickedElements[len(worldApp.ClickedElements)-1]
