@@ -19,5 +19,5 @@ func main() {
 	fmt.Println("Version: " + "1.6")
 	env := "local"
 	addr := coreopts.GetVaultHostPort()
-	trcinitbase.CommonMain(&env, &addr)
+	trcinitbase.CommonMain(&env, &addr, nil)
 }
