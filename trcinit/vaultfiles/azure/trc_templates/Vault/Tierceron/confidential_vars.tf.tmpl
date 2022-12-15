@@ -57,3 +57,34 @@ variable "ssh_port" {
   type    = string
   default = {{.ssh_port}}
 }
+
+variable "mysql_admin" {
+  type    = string
+  default = "{{.mysql_admin}}"
+}
+
+variable "mysql_admin_password" {
+  type    = string
+  default = "{{.mysql_admin_password}}"
+}
+
+variable "dbaddress" {
+  type    = string
+  default = "{{.dbaddress}}"
+}
+
+variable "dbzone" {
+  type    = string
+  default = "{{.dbzone}}"
+}
+
+variable "tierceronzone" {
+  type    = string
+  default = "{{.tierceronzone}}"
+}
+
+variable "tierceronname" {
+  type    = string
+  default = "{{.tierceronname}}"
+}
+
