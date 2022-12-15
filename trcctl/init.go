@@ -3,15 +3,22 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 
 	"tierceron/trcconfigbase"
 	trcinitbase "tierceron/trcinitbase"
+	"tierceron/trcpubbase"
+	"tierceron/trcsubbase"
 	"tierceron/trcvault/opts/memonly"
 	"tierceron/trcx/xutil"
 	"tierceron/trcxbase"
 	"tierceron/utils/mlock"
 )
+
+const configDir = "/.tierceron/config.yml"
+const envContextPrefix = "envContext:"
 
 // This is a controller program that can act as any command line utility.
 // The swiss army knife of tierceron if you will.
@@ -20,15 +27,74 @@ func main() {
 		mlock.Mlock(nil)
 	}
 	fmt.Println("Version: " + "1.34")
-	envPtr := flag.String("env", "dev", "Environment to be seeded")
-	envCtxPtr := flag.String("context", "dev", "Context to define.")
+	envPtr := flag.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
+	envCtxPtr := flag.String("context", "", "Context to define.")
+
+	args := os.Args[1:]
+
+	for i := 0; i < len(args); i++ {
+		s := args[i]
+		if s[0] != '-' {
+			fmt.Println("Wrong flag syntax: ", s)
+			os.Exit(1)
+		}
+	}
+
+	flag.Parse()
+
+	dirname, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	//This will use env by default, if blank it will use context. If context is defined, it will replace context.
+	if *envPtr == "" {
+		file, err := ioutil.ReadFile(dirname + configDir)
+		if err != nil {
+			fmt.Printf("Could not read the context file due to this %s error \n", err)
+			return
+		}
+		fileContent := string(file)
+
+		if !strings.Contains(fileContent, envContextPrefix) && *envCtxPtr != "" {
+			var output string
+			if !strings.HasSuffix(fileContent, "\n") {
+				output = fileContent + "\n" + envContextPrefix + *envCtxPtr
+			} else {
+				output = fileContent + envContextPrefix + *envCtxPtr
+			}
+
+			if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+			*envPtr = *envCtxPtr
+		} else {
+			envContext := strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
+			if *envCtxPtr != "" {
+				output := strings.Replace(fileContent, envContextPrefix+envContext, envContextPrefix+*envCtxPtr, -1)
+				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
+					fmt.Println(err.Error())
+					return
+				}
+				*envPtr = *envCtxPtr
+			} else if *envPtr == "" {
+				*envPtr = envContext
+				*envCtxPtr = envContext
+			}
+		}
+	} else {
+		*envCtxPtr = *envPtr
+		fmt.Println("Context flag will be ignored as env is defined.")
+	}
 
 	if ctl := os.Args[1]; ctl != "" {
 		switch ctl {
 		case "pub":
-			// TODO
+			trcpubbase.CommonMain(envPtr, nil, envCtxPtr)
 		case "sub":
-			// TODO
+			trcsubbase.CommonMain(envPtr, nil, envCtxPtr)
 		case "init":
 			trcinitbase.CommonMain(envPtr, nil, envCtxPtr)
 		case "config":
@@ -37,5 +103,4 @@ func main() {
 			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil, nil, nil)
 		}
 	}
-
 }
