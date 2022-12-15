@@ -17,7 +17,7 @@ import (
 	"text/template/parse"
 
 	"tierceron/buildopts/coreopts"
-	vcutils "tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfigbase/utils"
 	"tierceron/trcx/xutil"
 	"tierceron/validator"
 	"tierceron/vaulthelper/kv"

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"tierceron/trcconfigbase"
 	trcinitbase "tierceron/trcinitbase"
 	"tierceron/trcvault/opts/memonly"
 	"tierceron/trcx/xutil"
@@ -25,13 +26,15 @@ func main() {
 	if ctl := os.Args[1]; ctl != "" {
 		switch ctl {
 		case "pub":
-
+			// TODO
+		case "sub":
+			// TODO
 		case "init":
-			trcinitbase.CommonMain(envPtr, nil)
+			trcinitbase.CommonMain(envPtr, nil, envCtxPtr)
 		case "config":
-
+			trcconfigbase.CommonMain(envPtr, nil, envCtxPtr)
 		case "x":
-			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil, nil)
+			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil, nil, nil)
 		}
 	}
 
