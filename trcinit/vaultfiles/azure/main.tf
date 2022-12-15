@@ -93,7 +93,7 @@ resource "azurerm_network_security_group" "nsg" {
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = var.dest_port_range
+    destination_port_ranges    = var.dest_port_ranges
     source_address_prefix      = var.allowed_ips
     destination_address_prefix = "*"
   }
@@ -287,10 +287,14 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       #inject variables into the install script via template file
       "${path.module}/scripts/install.sh.tpl",
       {
-        "HOSTPORT"      = var.hostport
-        "HOST"          = var.host
-        "write_service" = var.write_service
-        "SSH_PORT"      = var.ssh_port
+        "HOSTPORT"        = var.hostport
+        "CONTROLLERA_PORT" = var.controllera_port
+        "CONTROLLERB_PORT" = var.controllerb_port
+        "TRCDBA_PORT"     = var.trcdba_port
+        "TRCDBB_PORT"     = var.trcdbb_port
+        "HOST"            = var.host
+        "write_service"   = var.write_service
+        "SSH_PORT"        = var.ssh_port
         "SCRIPT_CIDR_BLOCK" = var.script_cidr_block
       }
     )
