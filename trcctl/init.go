@@ -30,16 +30,13 @@ func main() {
 	envPtr := flag.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 	envCtxPtr := flag.String("context", "", "Context to define.")
 
-	args := os.Args[1:]
-
-	for i := 0; i < len(args); i++ {
-		s := args[i]
-		if s[0] != '-' {
-			fmt.Println("Wrong flag syntax: ", s)
-			os.Exit(1)
+	var ctl string
+	if !strings.HasPrefix(os.Args[1], "-") { //This pre checks arguments for ctl switch to allow parse to work with non "-" flags.
+		ctl = os.Args[1]
+		if len(os.Args) > 2 {
+			os.Args = os.Args[1:]
 		}
 	}
-
 	flag.Parse()
 
 	dirname, err := os.UserHomeDir()
@@ -89,7 +86,7 @@ func main() {
 		fmt.Println("Context flag will be ignored as env is defined.")
 	}
 
-	if ctl := os.Args[1]; ctl != "" {
+	if ctl != "" {
 		switch ctl {
 		case "pub":
 			trcpubbase.CommonMain(envPtr, nil, envCtxPtr)
