@@ -17,7 +17,7 @@ import (
 	"text/template/parse"
 
 	"tierceron/buildopts/coreopts"
-	vcutils "tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfigbase/utils"
 	"tierceron/trcx/xutil"
 	"tierceron/validator"
 	"tierceron/vaulthelper/kv"
@@ -160,9 +160,14 @@ func SeedVault(config *eUtils.DriverConfig) error {
 			return eUtils.LogErrorAndSafeExit(config, errGenerateSeeds, -1)
 		}
 
+		config.ServiceFilter = templatePaths
 		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
 
-		SeedVaultFromData(config, "", []byte(seedData))
+		seedErr := SeedVaultFromData(config, "", []byte(seedData))
+		eUtils.LogErrorObject(config, seedErr, true)
+		if seedErr != nil {
+			return seedErr
+		}
 		return nil
 	}
 
@@ -426,11 +431,11 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 	eUtils.LogInfo(config, fmt.Sprintf("Inspecting certificate: "+certPath+"."))
 
 	if strings.Contains(certPath, "ENV") {
-		if len(config.Env) >= 5 && (config.Env)[:5] == "local" {
+		if len(config.EnvRaw) >= 5 && (config.EnvRaw)[:5] == "local" {
 			envParts := strings.SplitN(config.Env, "/", 3)
 			certPath = strings.Replace(certPath, "ENV", envParts[1], 1)
 		} else {
-			certPath = strings.Replace(certPath, "ENV", config.Env, 1)
+			certPath = strings.Replace(certPath, "ENV", config.EnvRaw, 1)
 		}
 	}
 	certPath = coreopts.GetFolderPrefix() + "_seeds/" + certPath
@@ -467,7 +472,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 				eUtils.LogInfo(config, "Missing certHost, cannot validate cert.  Not written to vault")
 				return
 			}
-			switch config.Env {
+			switch config.EnvRaw {
 			case "dev":
 				certHost = strings.Replace(certHost, "*", "develop", 1)
 				break
@@ -506,6 +511,18 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 			if _, ok := entry.data["certData"]; ok {
 				// insecure value entry.
 				entry.data["certData"] = certBase64
+
+				WriteData(config, entry.path, entry.data, mod)
+
+				certPathSplit := strings.Split(certPath, "/")
+				for _, path := range config.ServiceFilter {
+					if strings.Contains(path, certPathSplit[len(certPathSplit)-1]) {
+						commonPath := strings.Replace(strings.TrimSuffix(path, ".mf.tmpl"), coreopts.GetFolderPrefix()+"_templates", "values", -1)
+						entry.data["certData"] = "data"
+						WriteData(config, commonPath, entry.data, mod)
+					}
+				}
+
 				eUtils.LogInfo(config, "Public cert updated: "+certPath+".")
 			} else {
 				entryPathParts := strings.Split(entry.path, "/")
