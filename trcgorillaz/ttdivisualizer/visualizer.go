@@ -73,12 +73,6 @@ func main() {
 		log.Printf("Elements retrieved: %d\n", len(libraryElementBundle.DetailedElements))
 
 		DetailedElements = libraryElementBundle.DetailedElements
-		// worldApp.MSdkApiHandler.UpsertMashupElements(
-		// 	&mashupsdk.MashupDetailedElementBundle{
-		// 		AuthToken:        "",
-		// 		DetailedElements: DetailedElements,
-		// 	})
-
 	} else if *headless && !*custos {
 		data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
 		config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
