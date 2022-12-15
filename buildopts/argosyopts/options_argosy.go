@@ -5,10 +5,8 @@ package argosyopts
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"strconv"
-	"strings"
 	flowcore "tierceron/trcflow/core"
 	"tierceron/vaulthelper/kv"
 
@@ -21,15 +19,20 @@ var curvecollectionIDs []int64
 var currentID int64
 var fail bool
 
+// Updates the ID --> May need to change if parallelizing the process
 func updateID() int64 {
 	currentID += 1
 	return currentID
 }
 
+// Returns stubbed data
 func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
 	return tcbuildopts.GetStubbedDataFlowStatistics()
 }
 
+// Populates tenant tree with ID and other data and maintains Childnode ordering
+// Returns a parent node that points to the first layer of tenants, the current node's ID, and encoded string
+// of updated parent node's data
 func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, notFirst bool) (flowcore.TTDINode, int64, string) {
 	var nodeID int64
 	state := mashupsdk.Hidden
@@ -59,24 +62,14 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, n
 			nodeID = updateID()
 			curvecollectionIDs = append(curvecollectionIDs, nodeID)
 			if decodedNodeData["Mode"] != nil {
-				mode := decodedNodeData["Mode"].(float64)
-				//if mode == 2 {
-				if mode == 2 {
-					fmt.Println("hi")
-
-				}
 				if decodedparentNode["Mode"] == nil || decodedparentNode["Mode"] != nil && decodedparentNode["Mode"].(float64) != 2 {
-					decodedparentNode["Mode"] = mode
+					decodedparentNode["Mode"] = decodedNodeData["Mode"].(float64)
 					encodedParentNodeData, err := json.Marshal(&decodedparentNode)
 					if err != nil {
 						log.Println("Error in encoding data in InitDataFlow")
 					}
 					parent.MashupDetailedElement.Data = string(encodedParentNodeData)
 				}
-
-				//fail = true
-				//}
-
 			}
 			node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 				Id:             nodeID,
@@ -128,9 +121,6 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, n
 		nodeID = updateID()
 		elementcollectionIDs = append(elementcollectionIDs, nodeID)
 		name := node.MashupDetailedElement.Name
-		if strings.HasPrefix(name, "qa14p8") {
-			fmt.Println("Checking for childids")
-		}
 		data := node.MashupDetailedElement.Data
 		node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
 			Id:             nodeID,
@@ -161,6 +151,8 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, n
 	return node, node.MashupDetailedElement.Id, string(encodedParentNodeData)
 }
 
+// Builds a tree of Tenants and their respective Childnodes populated with
+// corresponding data and an error message
 func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error) {
 	if mod == nil {
 		return BuildStubFleet(mod, logger)
@@ -238,26 +230,11 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error)
 		},
 	}
 	args, err := flowcore.InitArgosyFleet(mod, "TenantDatabase", logger)
-	var count int
-	for _, arg := range args.ChildNodes {
-		count++
-		for _, dfg := range arg.ChildNodes {
-			count++
-			for _, df := range dfg.ChildNodes {
-				count++
-				count += len(df.ChildNodes)
-			}
-		}
-	}
 	if err != nil {
 		return flowcore.TTDINode{}, err
 	}
-	// elementCollection := []int64{}
-	//fail = false
 	currentID = 8
-	//args, elementCollection, _ = buildArgosies(8, args)
 	args, _, _ = recursiveBuildArgosies(args, &flowcore.TTDINode{}, false)
-	//elementCollection = elementcollectionIDs
 	argosies = append(argosies, flowcore.TTDINode{
 		mashupsdk.MashupDetailedElement{
 			Id:             4,

@@ -22,7 +22,7 @@ import (
 // This assumes that the vault is completely new, and should only be run for the purpose
 // of automating setup and initial seeding
 
-func CommonMain(envPtr *string, addrPtrIn *string) {
+func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	devPtr := flag.Bool("dev", false, "Vault server running in dev mode (does not need to be unsealed)")
 	newPtr := flag.Bool("new", false, "New vault being initialized. Creates engines and requests first-time initialization")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
@@ -176,7 +176,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Address must be specified using -addr flag")
 			os.Exit(1)
 		}
-		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger}, nil, nil, tokenPtr, nil, envPtr, addrPtr, *pingPtr)
+		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger}, nil, nil, tokenPtr, nil, envPtr, addrPtr, envCtxPtr, *pingPtr)
 		if autoErr != nil {
 			fmt.Println("Auth failure: " + autoErr.Error())
 			os.Exit(1)
@@ -646,6 +646,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			Token:           v.GetToken(),
 			VaultAddress:    *addrPtr,
 			Env:             *envPtr,
+			EnvRaw:          strings.Split(*envPtr, "_")[0],
 			SectionKey:      sectionKey,
 			SectionName:     subSectionName,
 			SubSectionValue: *eUtils.IndexValueFilterPtr,

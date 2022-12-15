@@ -8,14 +8,34 @@ variable "hostport" {
   default= {{.hostport}}
 }
 
+variable "controllera_port" {
+  type = string
+  default= {{.controllera_port}}
+}
+
+variable "controllerb_port" {
+  type = string
+  default= {{.controllerb_port}}
+}
+
+variable "trcdba_port" {
+  type = string
+  default= {{.trcdba_port}}
+}
+
+variable "trcdbb_port" {
+  type = string
+  default= {{.trcdbb_port}}
+}
+
 variable "allowed_ips" {
   type    = string
   default = {{.allowed_ips}}
 }
 
-variable "dest_port_range" {
-  type    = string
-  default = {{.dest_port_range}}
+variable "dest_port_ranges" {
+  type    = list(string)
+  default = [ {{.controllera_port}}, {{.controllerb_port}}, {{.trcdba_port}}, {{.trcdbb_port}} ]
 }
 
 variable "security_software_script_path"{

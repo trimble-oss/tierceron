@@ -18,5 +18,5 @@ func main() {
 	}
 	fmt.Println("Version: " + "1.34")
 	envPtr := flag.String("env", "dev", "Environment to be seeded")
-	trcinitbase.CommonMain(envPtr, nil)
+	trcinitbase.CommonMain(envPtr, nil, nil)
 }

@@ -431,6 +431,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		controllerCheck++
 	}
 
+	controllerVaultDatabaseConfig["controller"] = true
+
 	if controllerCheck == 3 {
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
 		controllerInterfaceErr := harbingeropts.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
