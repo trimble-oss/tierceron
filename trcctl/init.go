@@ -34,12 +34,14 @@ func main() {
 	var ctl string
 	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") { //This pre checks arguments for ctl switch to allow parse to work with non "-" flags.
 		ctl = os.Args[1]
+		ctlSplit := strings.Split(ctl, " ")
+		if len(ctlSplit) >= 2 {
+			fmt.Println("Invalid arguments - only 1 non flag argument available at a time.")
+			return
+		}
+
 		if len(os.Args) > 2 {
 			os.Args = os.Args[1:]
-			if strings.HasPrefix(os.Args[0], "-") {
-				fmt.Println("Invalid arguments - only 1 non flag argument available at a time.")
-				return
-			}
 		}
 	}
 	flag.Parse()
