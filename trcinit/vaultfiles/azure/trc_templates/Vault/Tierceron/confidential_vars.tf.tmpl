@@ -3,6 +3,11 @@ variable "host" {
   default = {{.host}}
 }
 
+variable "vaultip" {
+  type = string
+  default = {{.vault_ip}}
+}
+
 variable "hostport" {
   type = string
   default= {{.hostport}}
@@ -28,14 +33,17 @@ variable "trcdbb_port" {
   default= {{.trcdbb_port}}
 }
 
-variable "allowed_ips" {
-  type    = string
-  default = {{.allowed_ips}}
+variable "allowed_ip_ranges" {
+  type    = list(string)
+  default = [ 
+    {{.script_cidr_block}}, 
+    {{.onsite_cidr_block}},
+  ]
 }
 
 variable "dest_port_ranges" {
   type    = list(string)
-  default = [ {{.controllera_port}}, {{.controllerb_port}}, {{.trcdba_port}}, {{.trcdbb_port}} ]
+  default = [ {{.hostport}}, {{.controllera_port}}, {{.controllerb_port}}, {{.trcdba_port}}, {{.trcdbb_port}} ]
 }
 
 variable "security_software_script_path"{
@@ -51,6 +59,11 @@ variable "security_software_name"{
 variable "script_cidr_block" {
   type    = string
   default = {{.script_cidr_block}}
+}
+
+variable "onsite_cidr_block" {
+  type    = string
+  default = {{.onsite_cidr_block}}
 }
 
 variable "ssh_port" {
