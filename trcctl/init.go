@@ -19,7 +19,7 @@ import (
 )
 
 const configDir = "/.tierceron/config.yml"
-const envContextPrefix = "envContext:"
+const envContextPrefix = "envContext: "
 
 // This is a controller program that can act as any command line utility.
 // The swiss army knife of tierceron if you will.
