@@ -15,7 +15,7 @@ storage "mysql" {
 }
 
 listener "tcp" {
-    address     = {{.vault_ip}}:{{.hostport}}
+    address     = "{{.vault_ip}}:{{.hostport}}"
     tls_disable = "false"
     tls_cert_file = "/etc/opt/vault/certs/serv_cert.pem"
     tls_key_file = "/etc/opt/vault/certs/serv_key.pem"
