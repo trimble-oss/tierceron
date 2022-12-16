@@ -47,8 +47,8 @@ func main() {
 	flag.Parse()
 
 	if ctl != "" {
+		var err error
 		if strings.Contains(ctl, "context") {
-			var err error
 			contextSplit := strings.Split(ctl, "=")
 			if len(contextSplit) == 1 {
 				*envPtr, envContext, err = GetSetEnvContext(*envPtr, envContext)
@@ -65,6 +65,16 @@ func main() {
 					return
 				}
 			}
+		}
+
+		*envPtr, envContext, err = GetSetEnvContext(*envPtr, envContext)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+
+		if len(os.Args) == 2 && ctl != "" {
+			os.Args = os.Args[0:1]
 		}
 		switch ctl {
 		case "pub":
