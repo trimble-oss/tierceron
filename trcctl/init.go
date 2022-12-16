@@ -76,17 +76,18 @@ func main() {
 		if len(os.Args) == 2 && ctl != "" {
 			os.Args = os.Args[0:1]
 		}
+		var addrPtr string
 		switch ctl {
 		case "pub":
-			trcpubbase.CommonMain(envPtr, nil, &envContext)
+			trcpubbase.CommonMain(envPtr, &addrPtr, &envContext)
 		case "sub":
-			trcsubbase.CommonMain(envPtr, nil, &envContext)
+			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext)
 		case "init":
-			trcinitbase.CommonMain(envPtr, nil, &envContext)
+			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext)
 		case "config":
-			trcconfigbase.CommonMain(envPtr, nil, &envContext)
+			trcconfigbase.CommonMain(envPtr, &addrPtr, &envContext)
 		case "x":
-			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil, nil, nil)
+			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil)
 		}
 	}
 }
