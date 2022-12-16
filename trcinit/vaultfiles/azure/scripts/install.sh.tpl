@@ -34,13 +34,16 @@ sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${SSH_PORT} -j DROP
 
 # Add a rule to allow service connections
 sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
+# TODO: Uncomment when on azure fully?
+#sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s ${ONSITE_CIDR_BLOCK} -j ACCEPT
 sudo iptables -A INPUT -p tcp --dport ${CONTROLLERA_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
 sudo iptables -A INPUT -p tcp --dport ${CONTROLLERB_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
 sudo iptables -A INPUT -p tcp --dport ${TRCDBA_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
 sudo iptables -A INPUT -p tcp --dport ${TRCDBB_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s 127.0.0.1 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s ${VAULTIP} -j ACCEPT
 
 # Block all other ip addresses
-sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s 127.0.0.1 -j ACCEPT
 sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${HOSTPORT} -j DROP
 sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${CONTROLLERA_PORT} -j DROP
 sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${CONTROLLERB_PORT} -j DROP
