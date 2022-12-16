@@ -6,6 +6,9 @@ resource "azurerm_resource_group" "rg" {
     "Application" = var.resource_group_name
     "Billing"     = var.environment
   }
+  timeouts {
+    delete = "1m" #Shared resource usually, so time out quickly if it is...
+  }
 }
 
 
@@ -157,72 +160,95 @@ resource "azurerm_network_security_group" "nsg" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
-    source_address_prefix      = var.allowed_ips
+    source_address_prefixes    = var.allowed_ip_ranges
     destination_address_prefix = "*"
   }
 
   #TCP INBOUND VAULT - Restrict to allowed IPs and Port(s)
   security_rule {
     name                       = "Allow${var.org_name}IpsInbound"
-    priority                   = 111
+    priority                   = 120
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_ranges    = var.dest_port_ranges
-    source_address_prefix      = var.allowed_ips
-    destination_address_prefix = "*"
-  }
-
-  #SSH OUTBOUND - Restrict to allowed IPs on Port 22
-  security_rule {
-    name                       = "Allow${var.org_name}SshOutbound"
-    priority                   = 110
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
-    destination_address_prefix = var.allowed_ips
-  }
-
-  #TCP OUTBOUND VAULT - Restrict to allowed IPs on all ports - Narrow this down if needed.
-  security_rule {
-    name                       = "Allow${var.org_name}TcpOutbound"
-    priority                   = 111
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "*"
-    destination_address_prefix = var.allowed_ips
-  }
-
-  #UDP OUTBOUND DNS
-  security_rule {
-    name                       = "Allow${var.org_name}UdpOutbound"
-    priority                   = 112
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Udp"
-    source_port_range          = "*"
-    destination_port_ranges    = ["22", "53"]
-    source_address_prefix      = "*"
+    source_address_prefixes    = var.allowed_ip_ranges
     destination_address_prefix = "*"
   }
 
   #UDP INBOUND DNS
   security_rule {
     name                       = "Allow${var.org_name}UdpInbound"
-    priority                   = 112
+    priority                   = 130
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Udp"
     source_port_range          = "*"
-    destination_port_range     = "*"
-#    destination_port_ranges    = ["22", "53"]
+    destination_port_ranges    = ["53"]
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  #SSH OUTBOUND - Restrict to allowed IPs on Port 22
+  security_rule {
+    name                         = "Allow${var.org_name}-VPN-SshOutbound"
+    priority                     = 110
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_range       = "22"
+    source_address_prefix        = "*"
+    destination_address_prefix   = var.allowed_ip_ranges[0]
+  }
+
+    security_rule {
+      name                         = "Allow${var.org_name}-Corp-SshOutbound"
+      priority                     = 120
+      direction                    = "Outbound"
+      access                       = "Allow"
+      protocol                     = "Tcp"
+      source_port_range            = "*"
+      destination_port_range       = "22"
+      source_address_prefix        = "*"
+      destination_address_prefix   = var.allowed_ip_ranges[1]
+    }
+
+  #TCP OUTBOUND VAULT - Restrict to allowed IPs on all ports - Narrow this down if needed.
+  security_rule {
+    name                         = "Allow${var.org_name}-VPN-TcpOutbound"
+    priority                     = 130
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_range       = "*"
+    source_address_prefix        = "*"
+    destination_address_prefix   = var.allowed_ip_ranges[0]
+  }
+
+  security_rule {
+    name                         = "Allow${var.org_name}-Corp-TcpOutbound"
+    priority                     = 140
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_range       = "*"
+    source_address_prefix        = "*"
+    destination_address_prefix   = var.allowed_ip_ranges[1]
+  }
+
+  #UDP OUTBOUND DNS
+  security_rule {
+    name                       = "Allow${var.org_name}UdpOutbound"
+    priority                   = 150
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Udp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["22", "53"]
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
@@ -449,6 +475,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       "${path.module}/scripts/install.sh.tpl",
       {
         "HOSTPORT"        = var.hostport
+        "VAULTIP"         = var.vaultip
         "CONTROLLERA_PORT" = var.controllera_port
         "CONTROLLERB_PORT" = var.controllerb_port
         "TRCDBA_PORT"     = var.trcdba_port
@@ -457,6 +484,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
         "write_service"   = var.write_service
         "SSH_PORT"        = var.ssh_port
         "SCRIPT_CIDR_BLOCK" = var.script_cidr_block
+        "ONSITE_CIDR_BLOCK" = var.onsite_cidr_block
       }
     )
   }
