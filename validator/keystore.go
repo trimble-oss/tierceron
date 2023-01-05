@@ -32,6 +32,9 @@ func StoreKeystore(config *eUtils.DriverConfig, trustStorePassword string) ([]by
 	buffer := &bytes.Buffer{}
 	keystoreWriter := bufio.NewWriter(buffer)
 
+	if config.KeyStore == nil {
+		return nil, errors.New("Cert bundle not properly named")
+	}
 	config.KeyStore.Store(keystoreWriter, []byte(trustStorePassword))
 	keystoreWriter.Flush()
 
