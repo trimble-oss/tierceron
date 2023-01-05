@@ -71,6 +71,8 @@ func ResolveTokenName(env string) string {
 		tokenNamePtr = "config_token_QA"
 	case "RQA":
 		tokenNamePtr = "config_token_RQA"
+	case "auto":
+		tokenNamePtr = "config_token_auto"
 	case "staging":
 		tokenNamePtr = "config_token_staging"
 	default:

@@ -281,6 +281,8 @@ func AutoAuth(config *DriverConfig,
 			*tokenNamePtr = "config_token_performance"
 		case "servicepack":
 			*tokenNamePtr = "config_token_servicepack"
+		case "auto":
+			*tokenNamePtr = "config_token_auto"
 		case "local":
 			*tokenNamePtr = "config_token_local"
 		default:
