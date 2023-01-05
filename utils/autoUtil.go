@@ -20,6 +20,7 @@ type cert struct {
 	VaultHost string `yaml:"vaultHost"`
 	ApproleID string `yaml:"approleID"`
 	SecretID  string `yaml:"secretID"`
+	EnvCtx    string `yaml:"envCtx"`
 }
 
 var prodRegions = []string{"west", "east", "ca"}
@@ -64,6 +65,7 @@ func AutoAuth(config *DriverConfig,
 	tokenNamePtr *string, // Required if approle and secret provided.
 	envPtr *string,
 	addrPtr *string,
+	envCtxPtr *string,
 	ping bool) error {
 	// Declare local variables
 	var override bool
@@ -119,6 +121,15 @@ func AutoAuth(config *DriverConfig,
 			}
 		} else {
 			config.Log.Printf("Invalid home directory %v ", err)
+		}
+	}
+
+	// If no token provided but context is provided, prefer the context over env.
+	if tokenPtr == nil && envCtxPtr != nil {
+		envPtr = envCtxPtr
+	} else {
+		if envPtr == nil && c.EnvCtx != "" {
+			envPtr = &c.EnvCtx
 		}
 	}
 
@@ -202,6 +213,9 @@ func AutoAuth(config *DriverConfig,
 				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
 			}
 
+			if envCtxPtr != nil {
+				certConfigData = certConfigData + "\nenvCtx: " + *envCtxPtr
+			}
 			dump = []byte(certConfigData)
 		}
 
@@ -267,6 +281,8 @@ func AutoAuth(config *DriverConfig,
 			*tokenNamePtr = "config_token_performance"
 		case "servicepack":
 			*tokenNamePtr = "config_token_servicepack"
+		case "auto":
+			*tokenNamePtr = "config_token_auto"
 		case "local":
 			*tokenNamePtr = "config_token_local"
 		default:

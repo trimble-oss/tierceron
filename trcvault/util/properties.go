@@ -1,7 +1,7 @@
 package util
 
 import (
-	vcutils "tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfigbase/utils"
 	eUtils "tierceron/utils"
 
 	helperkv "tierceron/vaulthelper/kv"
@@ -9,7 +9,7 @@ import (
 	sys "tierceron/vaulthelper/system"
 )
 
-//Properties stores all configuration properties for a project.
+// Properties stores all configuration properties for a project.
 type Properties struct {
 	mod          *helperkv.Modifier
 	authMod      *helperkv.Modifier
@@ -45,17 +45,17 @@ func NewProperties(config *eUtils.DriverConfig, v *sys.Vault, mod *helperkv.Modi
 	return &properties, nil
 }
 
-//GetValue gets an invididual configuration value for a service from the data store.
+// GetValue gets an invididual configuration value for a service from the data store.
 func (p *Properties) GetValue(service string, keyPath []string, key string) (string, error) {
 	return p.cds.GetValue(service, keyPath, key)
 }
 
-//GetConfigValue gets an invididual configuration value for a service from the data store.
+// GetConfigValue gets an invididual configuration value for a service from the data store.
 func (p *Properties) GetConfigValue(service string, config string, key string) (string, bool) {
 	return p.cds.GetConfigValue(service, config, key)
 }
 
-//GetConfigValues gets an invididual configuration value for a service from the data store.
+// GetConfigValues gets an invididual configuration value for a service from the data store.
 func (p *Properties) GetConfigValues(service string, config string) (map[string]interface{}, bool) {
 	return p.cds.GetConfigValues(service, config)
 }
@@ -71,6 +71,8 @@ func ResolveTokenName(env string) string {
 		tokenNamePtr = "config_token_QA"
 	case "RQA":
 		tokenNamePtr = "config_token_RQA"
+	case "auto":
+		tokenNamePtr = "config_token_auto"
 	case "staging":
 		tokenNamePtr = "config_token_staging"
 	default:

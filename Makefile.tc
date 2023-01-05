@@ -14,6 +14,10 @@ config:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcconfig
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcconfig
 
+ctl:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly tc" tierceron/trcctl
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcctl
+
 devplugincarrierbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "tc insecure awsecr memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
 devplugincarriersha:
