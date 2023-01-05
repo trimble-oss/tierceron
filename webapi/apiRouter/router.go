@@ -170,8 +170,8 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 // declare global variale for local hosting
 var localHost bool
 
-//environments
-var environments = []string{"dev", "QA", "RQA", "performance", "servicepack", "itdev"}
+// environments
+var environments = []string{"dev", "QA", "RQA", "auto", "performance", "servicepack", "itdev"}
 var prodEnvironments = []string{"staging", "prod"}
 var webAPIProdEnvironments = []string{"staging"}
 

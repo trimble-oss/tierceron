@@ -3,23 +3,23 @@
 //    max_entry_size = 16777216
 //}
 
-Storage "mysql" {
+storage "mysql" {
     // Set this path to wherever the test/deploy environment is
     username ="{{.adminUser}}"
     password="{{.dbPassword}}"
     database="{{.dbname}}"
-    address="{{.dbAddress}}" #This should match the private dns for the database.
+    address="TRCDBNAME" #This should match the private dns for the database.
     max_parallel="{{or .maxParallel "512"}}"
     max_entry_size="{{or .maxEntrySize "16777216"}}"
     tls_ca_file= "/etc/opt/vault/certs/{{.dbcert_name}}"
 }
 
 listener "tcp" {
-    address     = {{.vault_ip}}
+    address     = "{{.vault_ip}}:{{.hostport}}"
     tls_disable = "false"
     tls_cert_file = "/etc/opt/vault/certs/serv_cert.pem"
     tls_key_file = "/etc/opt/vault/certs/serv_key.pem"
 }
-disable_mlock = true
+disable_mlock = false
 ui = true
 max_lease_ttl = "8760h"
