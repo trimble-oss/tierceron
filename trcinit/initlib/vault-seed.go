@@ -479,6 +479,9 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 			case "QA":
 				certHost = strings.Replace(certHost, "*", "qa", 1)
 				break
+			case "auto":
+				certHost = strings.Replace(certHost, "*", "auto", 1)
+				break
 			case "performance":
 				certHost = strings.Replace(certHost, "*", "performance", 1)
 				break
