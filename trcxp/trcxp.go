@@ -19,5 +19,5 @@ func main() {
 	fmt.Println("Version: " + "1.5")
 	env := "local"
 	addr := coreopts.GetVaultHostPort()
-	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, &env, &addr, nil)
+	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, &env, &addr, nil, nil)
 }
