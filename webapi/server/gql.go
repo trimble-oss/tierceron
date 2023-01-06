@@ -15,13 +15,13 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
-//VaultVals Holds environments, used for GraphQL
+// VaultVals Holds environments, used for GraphQL
 type VaultVals struct {
 	ID   string `json:"id"`
 	Envs []Env  `json:"envs"`
 }
 
-//Env represents an environment containing multiple services
+// Env represents an environment containing multiple services
 type Env struct {
 	ID        int        `json:"id"`
 	Name      string     `json:"name"`
@@ -29,7 +29,7 @@ type Env struct {
 	Providers []Provider `json:"providers"`
 }
 
-//Project represents a project that contains multiple files
+// Project represents a project that contains multiple files
 type Project struct {
 	EnvID    int       `json:"envID"`
 	ID       int       `json:"id"`
@@ -37,7 +37,7 @@ type Project struct {
 	Services []Service `json:"files"`
 }
 
-//Service represents an service that contains multiple files
+// Service represents an service that contains multiple files
 type Service struct {
 	EnvID  int    `json:"envID"`
 	ProjID int    `json:"projID"`
@@ -46,7 +46,7 @@ type Service struct {
 	Files  []File `json:"values"`
 }
 
-//File represents an individual file containing template values
+// File represents an individual file containing template values
 type File struct {
 	EnvID  int     `json:"envID"`
 	ProjID int     `json:"projID"`
@@ -56,7 +56,7 @@ type File struct {
 	Values []Value `json:"values"`
 }
 
-//Value represents an individual key-value pair with source
+// Value represents an individual key-value pair with source
 type Value struct {
 	EnvID  int    `json:"envID"`
 	ProjID int    `json:"projID"`
@@ -73,7 +73,7 @@ type visitedNode struct {
 	children map[string]*visitedNode
 }
 
-//Provider represents a login session provider
+// Provider represents a login session provider
 type Provider struct {
 	EnvID    int
 	ID       int
@@ -81,7 +81,7 @@ type Provider struct {
 	Sessions []map[string]interface{}
 }
 
-//GraphQL Accepts a GraphQL query and creates a response
+// GraphQL Accepts a GraphQL query and creates a response
 func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQLResp, error) {
 	rawResult := graphql.Do(graphql.Params{
 		Schema:        s.GQLSchema,
@@ -96,7 +96,7 @@ func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQL
 	return result, nil
 }
 
-//InitGQL Initializes the GQL schema
+// InitGQL Initializes the GQL schema
 func (s *Server) InitGQL() {
 	s.Log.Println("InitGQL")
 	makeVaultReq := &pb.GetValuesReq{}
@@ -634,7 +634,7 @@ func (s *Server) InitGQL() {
 					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 						envs := []Env{}
 						for _, e := range vaultQL.Envs {
-							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "performance" || e.Name == "itdev" || e.Name == "servicepack" || e.Name == "staging" {
+							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "auto" || e.Name == "performance" || e.Name == "itdev" || e.Name == "servicepack" || e.Name == "staging" {
 								envs = append(envs, e)
 							} else if e.Name == "local/"+params.Context.Value("user").(string) {
 								nameBlocks := strings.Split(params.Context.Value("user").(string), "/")
