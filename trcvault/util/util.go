@@ -17,7 +17,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	vcutils "tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfigbase/utils"
 	"tierceron/trcx/extract"
 	"tierceron/trcx/xutil"
 

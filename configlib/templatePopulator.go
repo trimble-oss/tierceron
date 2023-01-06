@@ -5,7 +5,7 @@ import (
 
 	"encoding/base64"
 
-	vcutils "tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfigbase/utils"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 )
