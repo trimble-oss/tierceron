@@ -6,12 +6,15 @@ resource "azurerm_resource_group" "rg" {
     "Application" = var.resource_group_name
     "Billing"     = var.environment
   }
+  timeouts {
+    delete = "1m" #Shared resource usually, so time out quickly if it is...
+  }
 }
 
 
 
-resource "azurerm_virtual_network" "rg-virtual-network" {
-  name                = "${var.resource_group_name}-Vnet"
+resource "azurerm_virtual_network" "vm-virtual-network" {
+  name                = "${var.resource_group_name}-vm-Vnet"
   address_space       = ["10.0.0.0/16"]
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
@@ -22,14 +25,90 @@ resource "azurerm_virtual_network" "rg-virtual-network" {
   }
 }
 
+resource "azurerm_virtual_network" "db-virtual-network" {
+  name                = "${var.resource_group_name}-db-Vnet"
+  address_space       = ["10.1.0.0/16"]
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
 
+  tags = {
+    "Application" = var.resource_group_name
+    "Billing"     = var.environment
+  }
+}
 
+resource "azurerm_private_dns_zone_virtual_network_link" "db-virtual-network-link" {
+  name                  = "${var.resource_group_name}-db-virtual-network-link"
+  resource_group_name   = azurerm_resource_group.rg.name
+  private_dns_zone_name = azurerm_private_dns_zone.tierceron-db-dns-zone.name
+  virtual_network_id    = azurerm_virtual_network.db-virtual-network.id
+  registration_enabled  = true
+}
 
-resource "azurerm_subnet" "rg-subnet" {
+// If you are not using custom DNS, you will need to link every zone you 
+// want to use, to every VNET in your environment where you want the private
+// endpoint resolution to work.
+
+// azurerm_virtual_network_dns_servers
+
+resource "azurerm_private_dns_zone_virtual_network_link" "vm-virtual-network-link" {
+  name                  = "${var.resource_group_name}-vm-virtual-network-link"
+  resource_group_name   = azurerm_resource_group.rg.name
+  private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
+  virtual_network_id    = azurerm_virtual_network.vm-virtual-network.id
+  registration_enabled  = true
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "vm-db-virtual-network-link" {
+  name                  = "${var.resource_group_name}-vm-virtual-network-link"
+  resource_group_name   = azurerm_resource_group.rg.name
+  private_dns_zone_name = azurerm_private_dns_zone.tierceron-db-dns-zone.name
+  virtual_network_id    = azurerm_virtual_network.vm-virtual-network.id
+}
+
+resource "azurerm_virtual_network_peering" "peer-db-vm" {
+  name                      = "${var.resource_group_name}-peerVMToDb"
+  resource_group_name       = azurerm_resource_group.rg.name
+  virtual_network_name      = azurerm_virtual_network.db-virtual-network.name
+  remote_virtual_network_id = azurerm_virtual_network.vm-virtual-network.id
+#  lifecycle  {
+#    replace_triggered_by = [azurerm_virtual_network.peer-db-vm.address_space, azurerm_virtual_network.peer-vm-db.address_space]
+#  }
+}
+
+resource "azurerm_virtual_network_peering" "peer-vm-db" {
+  name                      = "${var.resource_group_name}-peerDbToVm"
+  resource_group_name       = azurerm_resource_group.rg.name
+  virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
+  remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
+ # lifecycle  {
+ #   replace_triggered_by = [azurerm_virtual_network.peer-vm-db.address_space, azurerm_virtual_network.peer-db-vm.address_space]
+ # }
+}
+
+resource "azurerm_subnet" "vm-subnet" {
   name                 = "${var.resource_group_name}-subnet"
   resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.rg-virtual-network.name
-  address_prefixes     = ["10.0.1.0/24"]
+  virtual_network_name = azurerm_virtual_network.vm-virtual-network.name
+  address_prefixes     = ["10.0.0.0/24"]
+}
+
+resource "azurerm_subnet" "db-subnet" {
+  name                 = "${var.resource_group_name}-db-subnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.db-virtual-network.name
+  address_prefixes     = ["10.1.0.0/24"]
+  service_endpoints    = ["Microsoft.Storage"]
+
+  delegation {
+    name = "fs"
+    service_delegation {
+        name = "Microsoft.DBforMySQL/flexibleServers"
+        actions = [
+          "Microsoft.Network/virtualNetworks/subnets/join/action",
+        ]
+      }
+  }
 }
 
 
@@ -81,60 +160,111 @@ resource "azurerm_network_security_group" "nsg" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
-    source_address_prefix      = var.allowed_ips
+    source_address_prefixes    = var.allowed_ip_ranges
     destination_address_prefix = "*"
   }
 
   #TCP INBOUND VAULT - Restrict to allowed IPs and Port(s)
   security_rule {
     name                       = "Allow${var.org_name}IpsInbound"
-    priority                   = 111
+    priority                   = 120
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = var.dest_port_range
-    source_address_prefix      = var.allowed_ips
+    destination_port_ranges    = var.dest_port_ranges
+    source_address_prefixes    = var.allowed_ip_ranges
+    destination_address_prefix = "*"
+  }
+
+  #UDP INBOUND DNS
+  security_rule {
+    name                       = "Allow${var.org_name}UdpInbound"
+    priority                   = 130
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Udp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["53"]
+    source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
 
   #SSH OUTBOUND - Restrict to allowed IPs on Port 22
   security_rule {
-    name                       = "Allow${var.org_name}SshOutbound"
-    priority                   = 110
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
-    destination_address_prefix = var.allowed_ips
+    name                         = "Allow${var.org_name}-VPN-SshOutbound"
+    priority                     = 110
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_range       = "22"
+    source_address_prefix        = "*"
+    destination_address_prefix   = var.allowed_ip_ranges[0]
   }
+
+    security_rule {
+      name                         = "Allow${var.org_name}-Corp-SshOutbound"
+      priority                     = 120
+      direction                    = "Outbound"
+      access                       = "Allow"
+      protocol                     = "Tcp"
+      source_port_range            = "*"
+      destination_port_range       = "22"
+      source_address_prefix        = "*"
+      destination_address_prefix   = var.allowed_ip_ranges[1]
+    }
 
   #TCP OUTBOUND VAULT - Restrict to allowed IPs on all ports - Narrow this down if needed.
   security_rule {
-    name                       = "Allow${var.org_name}TcpOutbound"
-    priority                   = 111
+    name                         = "Allow${var.org_name}-VPN-TcpOutbound"
+    priority                     = 130
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_range       = "*"
+    source_address_prefix        = "*"
+    destination_address_prefix   = var.allowed_ip_ranges[0]
+  }
+
+  security_rule {
+    name                         = "Allow${var.org_name}-Corp-TcpOutbound"
+    priority                     = 140
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_range       = "*"
+    source_address_prefix        = "*"
+    destination_address_prefix   = var.allowed_ip_ranges[1]
+  }
+
+  #UDP OUTBOUND DNS
+  security_rule {
+    name                       = "Allow${var.org_name}UdpOutbound"
+    priority                   = 150
     direction                  = "Outbound"
     access                     = "Allow"
-    protocol                   = "Tcp"
+    protocol                   = "Udp"
     source_port_range          = "*"
-    destination_port_range     = "*"
+    destination_port_ranges    = ["22", "53"]
     source_address_prefix      = "*"
-    destination_address_prefix = var.allowed_ips
+    destination_address_prefix = "*"
   }
+
 }
 
 
 
-resource "azurerm_network_interface" "rg-network-interface" {
+resource "azurerm_network_interface" "vm-network-interface" {
   name                = "${var.resource_group_name}-NIC"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
   ip_configuration {
     name                          = "${var.resource_group_name}-NicConfiguration"
-    subnet_id                     = azurerm_subnet.rg-subnet.id
+    subnet_id                     = azurerm_subnet.vm-subnet.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.public-ip.id
   }
@@ -157,12 +287,60 @@ resource "azurerm_network_interface" "rg-network-interface" {
 
 
 # Connect the security group to the network interface
-resource "azurerm_network_interface_security_group_association" "example" {
-  network_interface_id      = azurerm_network_interface.rg-network-interface.id
+resource "azurerm_network_interface_security_group_association" "tierceron-security-group" {
+  network_interface_id      = azurerm_network_interface.vm-network-interface.id
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
+# TODO: this creates the wrong kind of record...
+# I want name.domain1 --> name.domain2
+# This creates name.domain1->name.name.domain1 -- or some such.
 
+# resource "azurerm_private_dns_cname_record" "tierceron-cname" {
+#  name                = "${var.tierceronname}.${var.tierceronzone}"
+#  zone_name           = azurerm_private_dns_zone.tierceron-dns-zone.name
+#  resource_group_name = azurerm_resource_group.rg.name
+#  ttl                 = 300
+#  record              = "${var.tierceronname}"
+#  depends_on = [
+#    azurerm_private_dns_zone.tierceron-dns-zone
+#  ]
+#}
+
+resource "azurerm_private_dns_zone" "tierceron-db-dns-zone" {
+  name                = "${var.dbzone}"
+  resource_group_name = azurerm_resource_group.rg.name
+  tags = {
+    "Application" = var.resource_group_name
+    "Billing"     = var.environment
+  }
+}
+
+resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
+  name                = "${var.tierceronzone}"
+  resource_group_name = azurerm_resource_group.rg.name
+  tags = {
+    "Application" = var.resource_group_name
+    "Billing"     = var.environment
+  }
+}
+
+resource "azurerm_mysql_flexible_server" "tierceron-db" {
+  name                   = "${var.dbaddress}"
+  resource_group_name    = azurerm_resource_group.rg.name
+  location               = azurerm_resource_group.rg.location
+  administrator_login    = "${var.mysql_admin}"
+  administrator_password = "${var.mysql_admin_password}"
+  backup_retention_days  = "${var.mysql_backup_retention_days}"
+  delegated_subnet_id    = azurerm_subnet.db-subnet.id
+  private_dns_zone_id    = azurerm_private_dns_zone.tierceron-db-dns-zone.id
+  sku_name               = "B_Standard_B2s"
+
+  storage {
+    auto_grow_enabled = true
+  }
+  depends_on = [azurerm_private_dns_zone_virtual_network_link.db-virtual-network-link]
+}
 
 resource "tls_private_key" "private_key" {
   algorithm = "RSA"
@@ -190,7 +368,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   name                  = "${var.resource_group_name}-vm"
   location              = azurerm_resource_group.rg.location
   resource_group_name   = azurerm_resource_group.rg.name
-  network_interface_ids = [azurerm_network_interface.rg-network-interface.id]
+  network_interface_ids = [azurerm_network_interface.vm-network-interface.id]
   size                  = "Standard_B1ls"
 
   os_disk {
@@ -206,7 +384,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
     version   = "latest"
   }
 
-  computer_name                   = "${var.resource_group_name}-vm"
+  computer_name         = "${var.tierceronname}"
   admin_username                  = "ubuntu"
   disable_password_authentication = true
 
@@ -221,6 +399,15 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
     public_key = tls_private_key.private_key.public_key_openssh
   }
 
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command = <<EOT
+      echo ${azurerm_mysql_flexible_server.tierceron-db.fqdn}
+      rm resources/vault_properties.sub
+      sed 's/TRCDBNAME/${azurerm_mysql_flexible_server.tierceron-db.fqdn}/g' resources/vault_properties.hcl > resources/vault_properties.sub
+    EOT
+  }
+
   # Connections and provisioners must be inside of the vm block
   # in order to have multiple connections. The connection for each
   # must be nested inside of the associated provisioner.
@@ -232,7 +419,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       private_key = tls_private_key.private_key.private_key_pem
       timeout     = "30s"
     }
-    source      = "resources/vault_properties.hcl"
+    source      = "resources/vault_properties.sub"
     destination = "/tmp/vault_properties.hcl"
   }
 
@@ -287,11 +474,17 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       #inject variables into the install script via template file
       "${path.module}/scripts/install.sh.tpl",
       {
-        "HOSTPORT"      = var.hostport
-        "HOST"          = var.host
-        "write_service" = var.write_service
-        "SSH_PORT"      = var.ssh_port
+        "HOSTPORT"        = var.hostport
+        "VAULTIP"         = var.vaultip
+        "CONTROLLERA_PORT" = var.controllera_port
+        "CONTROLLERB_PORT" = var.controllerb_port
+        "TRCDBA_PORT"     = var.trcdba_port
+        "TRCDBB_PORT"     = var.trcdbb_port
+        "HOST"            = var.host
+        "write_service"   = var.write_service
+        "SSH_PORT"        = var.ssh_port
         "SCRIPT_CIDR_BLOCK" = var.script_cidr_block
+        "ONSITE_CIDR_BLOCK" = var.onsite_cidr_block
       }
     )
   }
