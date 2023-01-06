@@ -22,7 +22,7 @@ import (
 // This assumes that the vault is completely new, and should only be run for the purpose
 // of automating setup and initial seeding
 
-func CommonMain(envPtr *string, addrPtrIn *string) {
+func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	devPtr := flag.Bool("dev", false, "Vault server running in dev mode (does not need to be unsealed)")
 	newPtr := flag.Bool("new", false, "New vault being initialized. Creates engines and requests first-time initialization")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
@@ -176,7 +176,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 			fmt.Println("Address must be specified using -addr flag")
 			os.Exit(1)
 		}
-		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger}, nil, nil, tokenPtr, nil, envPtr, addrPtr, *pingPtr)
+		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger}, nil, nil, tokenPtr, nil, envPtr, addrPtr, envCtxPtr, *pingPtr)
 		if autoErr != nil {
 			fmt.Println("Auth failure: " + autoErr.Error())
 			os.Exit(1)
@@ -338,7 +338,7 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 		if *rotateTokens && !*tokenExpiration {
 			// Create new tokens.
 			tokens := il.UploadTokens(config, namespaceTokenConfigs, fileFilterPtr, v)
-			if !*prodPtr && *namespaceVariable == "vault" && *fileFilterPtr == "" {
+			if !*prodPtr && *namespaceVariable == "vault" {
 				//
 				// Dev, QA specific token creation.
 				//
@@ -349,115 +349,174 @@ func CommonMain(envPtr *string, addrPtrIn *string) {
 				if mod != nil {
 					defer mod.Release()
 				}
-				eUtils.LogErrorObject(config, err, false)
 
-				mod.RawEnv = "bamboo"
-				mod.Env = "bamboo"
+				if *fileFilterPtr != "" {
+					mod.RawEnv = "bamboo"
+					mod.Env = "bamboo"
 
-				//Checks if vault is initialized already
-				if !mod.Exists("values/metadata") && !mod.Exists("templates/metadata") && !mod.Exists("super-secrets/metadata") {
-					fmt.Println("Vault has not been initialized yet")
-					os.Exit(1)
-				}
+					existingTokens, err := mod.ReadData("super-secrets/tokens")
+					if err != nil {
+						fmt.Println("Read existing tokens failure.  Cannot continue.")
+						eUtils.LogErrorObject(config, err, false)
+						os.Exit(-1)
+					}
 
-				existingTokens, err := mod.ReadData("super-secrets/tokens")
-				if err != nil {
-					fmt.Println("Read existing tokens failure.  Cannot continue.")
+					// We have names of tokens that were referenced in old role.  Ok to delete the role now.
+					//
+					// Merge token data.
+					//
+					// Copy existing.
+					for key, valueObj := range existingTokens {
+						if value, ok := valueObj.(string); ok {
+							tokenMap[key] = value
+						} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
+							tokenMap[key] = stringer.GoString()
+						}
+
+						if strings.Contains(key, "protected") {
+							protectedTokenMap[key] = tokenMap[key]
+						}
+					}
+
+					// Overwrite new.
+					for _, token := range tokens {
+						// Everything but webapp give access by app role and secret.
+						if token.Name != "admin" && token.Name != "webapp" && !strings.Contains(token.Name, "unrestricted") {
+							tokenMap[token.Name] = token.Value
+						}
+						if strings.Contains(token.Name, "protected") {
+							protectedTokenMap[token.Name] = token.Value
+						}
+					}
+
+					// Just update tokens in approle.
+					if len(tokenMap) > 0 {
+						warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
+						eUtils.LogErrorObject(config, err, true)
+						eUtils.LogWarningsObject(config, warn, true)
+						fmt.Println("Any new tokens added to approle")
+					}
+
+					if len(protectedTokenMap) > 0 {
+						mod.Env = "sugarcane"
+						caneWarn, caneErr := mod.Write("super-secrets/tokens", protectedTokenMap, config.Log)
+						eUtils.LogErrorObject(config, caneErr, true)
+						eUtils.LogWarningsObject(config, caneWarn, true)
+						fmt.Println("Any new tokens added to approle")
+					}
+
+				} else {
 					eUtils.LogErrorObject(config, err, false)
-					os.Exit(-1)
-				}
 
-				// We have names of tokens that were referenced in old role.  Ok to delete the role now.
-				//
-				// Merge token data.
-				//
-				// Copy existing.
-				for key, valueObj := range existingTokens {
-					if value, ok := valueObj.(string); ok {
-						tokenMap[key] = value
-					} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
-						tokenMap[key] = stringer.GoString()
+					mod.RawEnv = "bamboo"
+					mod.Env = "bamboo"
+
+					//Checks if vault is initialized already
+					if !mod.Exists("values/metadata") && !mod.Exists("templates/metadata") && !mod.Exists("super-secrets/metadata") {
+						fmt.Println("Vault has not been initialized yet")
+						os.Exit(1)
 					}
-				}
 
-				// Overwrite new.
-				for _, token := range tokens {
-					// Everything but webapp give access by app role and secret.
-					if token.Name != "admin" && token.Name != "webapp" && !strings.Contains(token.Name, "unrestricted") {
-						tokenMap[token.Name] = token.Value
+					existingTokens, err := mod.ReadData("super-secrets/tokens")
+					if err != nil {
+						fmt.Println("Read existing tokens failure.  Cannot continue.")
+						eUtils.LogErrorObject(config, err, false)
+						os.Exit(-1)
 					}
-					if strings.Contains(token.Name, "protected") {
-						protectedTokenMap[token.Name] = token.Value
+
+					// We have names of tokens that were referenced in old role.  Ok to delete the role now.
+					//
+					// Merge token data.
+					//
+					// Copy existing.
+					for key, valueObj := range existingTokens {
+						if value, ok := valueObj.(string); ok {
+							tokenMap[key] = value
+						} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
+							tokenMap[key] = stringer.GoString()
+						}
 					}
-				}
 
-				//
-				// Wipe existing role.
-				// Recreate the role.
-				//
-				resp, role_cleanup := v.DeleteRole("bamboo")
-				eUtils.LogErrorObject(config, role_cleanup, false)
+					// Overwrite new.
+					for _, token := range tokens {
+						// Everything but webapp give access by app role and secret.
+						if token.Name != "admin" && token.Name != "webapp" && !strings.Contains(token.Name, "unrestricted") {
+							tokenMap[token.Name] = token.Value
+						}
+						if strings.Contains(token.Name, "protected") {
+							protectedTokenMap[token.Name] = token.Value
+						}
+					}
 
-				if resp.StatusCode == 404 {
-					err = v.EnableAppRole()
+					//
+					// Wipe existing role.
+					// Recreate the role.
+					//
+					resp, role_cleanup := v.DeleteRole("bamboo")
+					eUtils.LogErrorObject(config, role_cleanup, false)
+
+					if resp.StatusCode == 404 {
+						err = v.EnableAppRole()
+						eUtils.LogErrorObject(config, err, true)
+					}
+
+					err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
+						TokenTTL:    "10m",
+						TokenMaxTTL: "15m",
+						Policies:    []string{"bamboo"},
+					})
 					eUtils.LogErrorObject(config, err, true)
-				}
 
-				err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
-					TokenTTL:    "10m",
-					TokenMaxTTL: "15m",
-					Policies:    []string{"bamboo"},
-				})
-				eUtils.LogErrorObject(config, err, true)
-
-				roleID, _, err := v.GetRoleID("bamboo")
-				eUtils.LogErrorObject(config, err, true)
-
-				secretID, err := v.GetSecretID("bamboo")
-				eUtils.LogErrorObject(config, err, true)
-
-				fmt.Printf("Rotated role id and secret id for bamboo.\n")
-				fmt.Printf("Role ID: %s\n", roleID)
-				fmt.Printf("Secret ID: %s\n", secretID)
-
-				// Store all new tokens to new appRole.
-				warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
-				eUtils.LogErrorObject(config, err, true)
-				eUtils.LogWarningsObject(config, warn, true)
-				//
-				// Wipe existing protected app role.
-				// Recreate the protected app role.
-				//
-
-				caneResp, caneRole_cleanup := v.DeleteRole("sugarcane")
-				eUtils.LogErrorObject(config, caneRole_cleanup, false)
-
-				if caneResp.StatusCode == 404 {
-					err = v.EnableAppRole()
+					roleID, _, err := v.GetRoleID("bamboo")
 					eUtils.LogErrorObject(config, err, true)
+
+					secretID, err := v.GetSecretID("bamboo")
+					eUtils.LogErrorObject(config, err, true)
+
+					fmt.Printf("Rotated role id and secret id for bamboo.\n")
+					fmt.Printf("Role ID: %s\n", roleID)
+					fmt.Printf("Secret ID: %s\n", secretID)
+
+					// Store all new tokens to new appRole.
+					warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
+					eUtils.LogErrorObject(config, err, true)
+					eUtils.LogWarningsObject(config, warn, true)
+					//
+					// Wipe existing protected app role.
+					// Recreate the protected app role.
+					//
+
+					caneResp, caneRole_cleanup := v.DeleteRole("sugarcane")
+					eUtils.LogErrorObject(config, caneRole_cleanup, false)
+
+					if caneResp.StatusCode == 404 {
+						err = v.EnableAppRole()
+						eUtils.LogErrorObject(config, err, true)
+					}
+
+					err = v.CreateNewRole("sugarcane", &sys.NewRoleOptions{
+						TokenTTL:    "10m",
+						TokenMaxTTL: "15m",
+						Policies:    []string{"sugarcane"},
+					})
+					eUtils.LogErrorObject(config, err, true)
+
+					tokenRoleID, _, err := v.GetRoleID("sugarcane")
+					eUtils.LogErrorObject(config, err, true)
+
+					tokenSecretID, err := v.GetSecretID("sugarcane")
+					eUtils.LogErrorObject(config, err, true)
+
+					fmt.Printf("Rotated role id and secret id for sugarcane.\n")
+					fmt.Printf("Role ID: %s\n", tokenRoleID)
+					fmt.Printf("Secret ID: %s\n", tokenSecretID)
+					mod.Env = "sugarcane"
+					// Store all new tokens to new appRole.
+					caneWarn, caneErr := mod.Write("super-secrets/tokens", protectedTokenMap, config.Log)
+					eUtils.LogErrorObject(config, caneErr, true)
+					eUtils.LogWarningsObject(config, caneWarn, true)
 				}
 
-				err = v.CreateNewRole("sugarcane", &sys.NewRoleOptions{
-					TokenTTL:    "10m",
-					TokenMaxTTL: "15m",
-					Policies:    []string{"sugarcane"},
-				})
-				eUtils.LogErrorObject(config, err, true)
-
-				tokenRoleID, _, err := v.GetRoleID("sugarcane")
-				eUtils.LogErrorObject(config, err, true)
-
-				tokenSecretID, err := v.GetSecretID("sugarcane")
-				eUtils.LogErrorObject(config, err, true)
-
-				fmt.Printf("Rotated role id and secret id for sugarcane.\n")
-				fmt.Printf("Role ID: %s\n", tokenRoleID)
-				fmt.Printf("Secret ID: %s\n", tokenSecretID)
-				mod.Env = "sugarcane"
-				// Store all new tokens to new appRole.
-				caneWarn, caneErr := mod.Write("super-secrets/tokens", protectedTokenMap, config.Log)
-				eUtils.LogErrorObject(config, caneErr, true)
-				eUtils.LogWarningsObject(config, caneWarn, true)
 			}
 		}
 		os.Exit(0)

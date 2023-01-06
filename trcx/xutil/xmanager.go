@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"tierceron/buildopts/coreopts"
-	vcutils "tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfigbase/utils"
 	"tierceron/trcx/extract"
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"

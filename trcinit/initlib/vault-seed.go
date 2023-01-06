@@ -17,7 +17,7 @@ import (
 	"text/template/parse"
 
 	"tierceron/buildopts/coreopts"
-	vcutils "tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfigbase/utils"
 	"tierceron/trcx/xutil"
 	"tierceron/validator"
 	"tierceron/vaulthelper/kv"
@@ -478,6 +478,9 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 				break
 			case "QA":
 				certHost = strings.Replace(certHost, "*", "qa", 1)
+				break
+			case "auto":
+				certHost = strings.Replace(certHost, "*", "auto", 1)
 				break
 			case "performance":
 				certHost = strings.Replace(certHost, "*", "performance", 1)
