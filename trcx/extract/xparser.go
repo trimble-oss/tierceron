@@ -10,7 +10,7 @@ import (
 	"tierceron/buildopts/coreopts"
 	eUtils "tierceron/utils"
 
-	vcutils "tierceron/trcconfig/utils"
+	vcutils "tierceron/trcconfigbase/utils"
 	helperkv "tierceron/vaulthelper/kv"
 )
 
