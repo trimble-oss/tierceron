@@ -281,7 +281,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 				tokenMap["env"] = env
 				tokenMap["insecure"] = true
 				tokenMap["vaddress"] = vaultHost
-				logger.Println("Pushing env: " + env)
+				logger.Println("Initialize Pushing env: " + env)
 				PushEnv(tokenMap)
 			}
 		}
@@ -362,6 +362,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 			return nil, mTokenErr
 		}
 		tokenEnvMap["token"] = vData["token"]
+		logger.Println("Read Pushing env: " + tokenEnvMap["env"].(string))
 		PushEnv(tokenEnvMap)
 		//ctx.Done()
 	}
