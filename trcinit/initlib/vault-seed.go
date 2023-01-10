@@ -411,6 +411,11 @@ func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string) {
 	rawFile, err := ioutil.ReadFile(filepath)
 	// Open file
 	eUtils.LogErrorAndSafeExit(config, err, 1)
+	if config.WantCerts && (strings.Contains(filepath, "/Index/") || strings.Contains(filepath, "/PublicIndex/") || strings.Contains(filepath, "/Restricted/")) {
+		config.Log.Println("Skipping index: " + filepath + " Certs not allowed within index data.")
+		return
+	}
+
 	eUtils.LogInfo(config, "Seed written to vault from "+filepath)
 	if len(config.ServiceFilter) > 0 && !strings.Contains(filepath, config.ServiceFilter[0]) {
 		lastSlashIndex := strings.LastIndex(filepath, "/")
