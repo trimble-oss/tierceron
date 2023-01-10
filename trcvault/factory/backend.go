@@ -355,6 +355,10 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		tokenEnvMap["insecure"] = true
 		if vData["token"] != nil {
 			logger.Println("Env queued: " + req.Path)
+		} else {
+			mTokenErr := errors.New("Skipping environment due to missing token: " + req.Path)
+			logger.Println(mTokenErr.Error())
+			return nil, mTokenErr
 		}
 		tokenEnvMap["token"] = vData["token"]
 		PushEnv(tokenEnvMap)
