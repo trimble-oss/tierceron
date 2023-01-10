@@ -281,6 +281,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 				tokenMap["env"] = env
 				tokenMap["insecure"] = true
 				tokenMap["vaddress"] = vaultHost
+				logger.Println("Initialize Pushing env: " + env)
 				PushEnv(tokenMap)
 			}
 		}
@@ -361,6 +362,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 			return nil, mTokenErr
 		}
 		tokenEnvMap["token"] = vData["token"]
+		logger.Println("Read Pushing env: " + tokenEnvMap["env"].(string))
 		PushEnv(tokenEnvMap)
 		//ctx.Done()
 	}
@@ -425,6 +427,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, fmt.Errorf("failed to write: %v", err)
 	}
 
+	logger.Println("Create Pushing env: " + tokenEnvMap["env"].(string))
 	tokenEnvChan <- tokenEnvMap
 	//ctx.Done()
 	logger.Println("TrcCreateUpdate complete.")
@@ -559,6 +562,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	// This will kick off the main flow for the plugin..
+	logger.Println("Update Pushing env: " + tokenEnvMap["env"].(string))
 	tokenEnvChan <- tokenEnvMap
 
 	if pluginOk {
