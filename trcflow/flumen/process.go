@@ -247,6 +247,16 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		FlowControllerUpdateAlert: make(chan string, 1),
 	}
 
+	if len(sourceDatabaseConnectionsMap) == 0 {
+		sourceDatabaseConnectionsMap = make(map[string]map[string]interface{}, 1)
+		sourceDatabaseDetails := make(map[string]interface{}, 1)
+		sourceDatabaseDetails["dbsourceregion"] = "NA"
+		var d time.Duration = 60000
+		sourceDatabaseDetails["dbingestinterval"] = d
+		sourceDatabaseConnectionsMap["NA"] = sourceDatabaseDetails
+		sourceDatabaseDetails["sqlConn"] = nil
+	}
+
 	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
