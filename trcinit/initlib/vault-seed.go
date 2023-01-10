@@ -188,7 +188,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 			if config.DynamicPathFilter != "" {
 				sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + config.DynamicPathFilter)
 				if err != nil {
-					config.Log.Printf("Couldn't read into: %s \n", config.DynamicPathFilter)
+					config.Log.Printf("Seed Sections Couldn't read into: %s \n", config.DynamicPathFilter)
 				}
 				seedFileCount := 0
 				var seedFileName string
@@ -250,7 +250,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 					}
 					projectDirectories, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
 					if err != nil {
-						config.Log.Printf("Couldn't read into: %s \n", fileSteppedInto.Name())
+						config.Log.Printf("Projects Couldn't read into: %s \n", fileSteppedInto.Name())
 					}
 					// Iterate of projects...
 					for _, projectDirectory := range projectDirectories {
@@ -268,7 +268,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 						}
 						sectionNames, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name())
 						if err != nil {
-							config.Log.Printf("Couldn't read into: %s \n", projectDirectory.Name())
+							config.Log.Printf("Sections Couldn't read into: %s \n", projectDirectory.Name())
 						}
 						for _, sectionName := range sectionNames {
 							if config.SectionName != "" && sectionName.Name() != config.SectionName {
@@ -277,7 +277,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 
 							sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name())
 							if err != nil {
-								config.Log.Printf("Couldn't read into: %s \n", sectionName.Name())
+								config.Log.Printf("Section Config Couldn't read into: %s \n", sectionName.Name())
 							}
 
 							for _, sectionConfigFile := range sectionConfigFiles {
@@ -288,7 +288,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 								subSectionConfigFiles, err := ioutil.ReadDir(path)
 
 								if err != nil {
-									config.Log.Printf("Couldn't read into: %s \n", config.SubSectionName)
+									config.Log.Printf("Sub Sections Couldn't read into: %s \n", config.SubSectionName)
 								}
 
 								if len(subSectionConfigFiles) > 0 {
@@ -303,7 +303,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 										if subSectionConfigFile.IsDir() {
 											deepNestedFiles, err := ioutil.ReadDir(subSectionPath)
 											if err != nil {
-												config.Log.Printf("Couldn't read into: %s \n", config.SubSectionName)
+												config.Log.Printf("Deep Nested Couldn't read into: %s \n", config.SubSectionName)
 												continue
 											}
 
@@ -312,7 +312,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 													subSectionPath = subSectionPath + "/" + deepNestedFile.Name()
 													deeplyNestedFiles, err := ioutil.ReadDir(subSectionPath)
 													if err != nil {
-														config.Log.Printf("Couldn't read into: %s \n", config.SubSectionName)
+														config.Log.Printf("Sub secting deep nested Couldn't read into: %s \n", config.SubSectionName)
 														continue
 													}
 													for _, deeplyNestedFile := range deeplyNestedFiles {
