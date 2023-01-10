@@ -77,7 +77,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			regions, err := goMod.ListSubsection("/Index/", projects[i], goMod.SectionName, logger)
 			if err != nil {
 				eUtils.LogErrorObject(config, err, false)
-				return err
+				eUtils.LogInfo(config, "Skipping service: "+services[i])
+				continue
 			}
 			indexValues = regions
 		} else {
@@ -244,6 +245,16 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		FlowControllerInit:        true,
 		FlowControllerUpdateLock:  sync.Mutex{},
 		FlowControllerUpdateAlert: make(chan string, 1),
+	}
+
+	if len(sourceDatabaseConnectionsMap) == 0 {
+		sourceDatabaseConnectionsMap = make(map[string]map[string]interface{}, 1)
+		sourceDatabaseDetails := make(map[string]interface{}, 1)
+		sourceDatabaseDetails["dbsourceregion"] = "NA"
+		var d time.Duration = 60000
+		sourceDatabaseDetails["dbingestinterval"] = d
+		sourceDatabaseConnectionsMap["NA"] = sourceDatabaseDetails
+		sourceDatabaseDetails["sqlConn"] = nil
 	}
 
 	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())
