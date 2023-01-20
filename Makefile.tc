@@ -80,7 +80,7 @@ sub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install   -tags "memonly" tierceron/trcsub
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcsub
 certify:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "tc awsecr memonly" tierceron/trcvault/trcplgtoolbase
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "tc awsecr memonly" tierceron/trcvault/trcplgtool
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcplgtool
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
