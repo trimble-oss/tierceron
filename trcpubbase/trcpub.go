@@ -48,6 +48,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
 	eUtils.CheckError(config, err, true)
 
+	autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "configdeploy.yml", *pingPtr)
+
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			eUtils.CheckError(config, fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
