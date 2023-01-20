@@ -66,6 +66,7 @@ func AutoAuth(config *DriverConfig,
 	envPtr *string,
 	addrPtr *string,
 	envCtxPtr *string,
+	configFile string,
 	ping bool) error {
 	// Declare local variables
 	var override bool
@@ -97,7 +98,10 @@ func AutoAuth(config *DriverConfig,
 		secretIDPtr = nil
 	} else {
 		config.Log.Printf("User home directory %v ", userHome)
-		if _, err := os.Stat(userHome + "/.tierceron/config.yml"); !os.IsNotExist(err) {
+		if len(configFile) == 0 {
+			configFile = "config.yml"
+		}
+		if _, err := os.Stat(userHome + "/.tierceron/" + configFile); !os.IsNotExist(err) {
 			exists = true
 			_, certErr := c.getCert(config.Log)
 			if certErr != nil {
