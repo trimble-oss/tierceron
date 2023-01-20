@@ -90,6 +90,8 @@ func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifi
 				if _, dataOk := tfMap["data"]; dataOk {
 					data = tfMap["data"].(string)
 				} else {
+					// TODO: In recent run in prod, sub was printing an annoying warning here
+					// and yet correct templates seem to have gotten created...
 					fmt.Println("No data found for: " + path + "template-file")
 					continue
 				}
