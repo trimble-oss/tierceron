@@ -15,6 +15,7 @@ import (
 	eUtils "tierceron/utils"
 	helperkv "tierceron/vaulthelper/kv"
 	sys "tierceron/vaulthelper/system"
+	"tierceron/webapi/rpc/apinator"
 
 	"tierceron/utils/mlock"
 )
@@ -48,7 +49,8 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
-	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
+	tokenFileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
+	roleFileFilterPtr := flag.String("approle", "", "Filter files for approle rotation.")
 	dynamicPathPtr := flag.String("dynamicPath", "", "Seed a specific directory in vault.")
 
 	// indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
@@ -273,7 +275,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 
 			// Upload tokens from the given token directory
 			fmt.Println("Creating tokens")
-			tokens := il.UploadTokens(config, namespaceTokenConfigs, fileFilterPtr, v)
+			tokens := il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
 			if len(tokens) > 0 {
 				logger.Println(*namespaceVariable + " tokens successfully created.")
 			} else {
@@ -295,15 +297,15 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
 		} else {
 			if *rotateTokens {
-				if *fileFilterPtr == "" {
+				if *tokenFileFilterPtr == "" {
 					fmt.Println("Rotating tokens.")
 				} else {
-					fmt.Println("Adding token: " + *fileFilterPtr)
+					fmt.Println("Adding token: " + *tokenFileFilterPtr)
 				}
 			}
 		}
 
-		if (*rotateTokens || *tokenExpiration) && *fileFilterPtr == "" {
+		if (*rotateTokens || *tokenExpiration) && *tokenFileFilterPtr == "" {
 			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
 			if getOrRevokeError != nil {
 				fmt.Println("Token revocation or access failure.  Cannot continue.")
@@ -316,8 +318,12 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			fmt.Println("Updating role")
 			errTokenCidr := il.UploadTokenCidrRoles(config, namespaceRoleConfigs, v)
 			if errTokenCidr != nil {
-				fmt.Println("Role update failed.  Cannot continue.")
-				os.Exit(-1)
+				if *roleFileFilterPtr != "" { //If old way didn't work -> try new way.
+					*rotateTokens = true
+				} else {
+					fmt.Println("Role update failed.  Cannot continue.")
+					os.Exit(-1)
+				}
 			} else {
 				fmt.Println("Role updated")
 			}
@@ -337,7 +343,10 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 
 		if *rotateTokens && !*tokenExpiration {
 			// Create new tokens.
-			tokens := il.UploadTokens(config, namespaceTokenConfigs, fileFilterPtr, v)
+			var tokens []*apinator.InitResp_Token
+			if *roleFileFilterPtr == "" {
+				tokens = il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
+			}
 			if !*prodPtr && *namespaceVariable == "vault" {
 				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
 				if mod != nil {
@@ -349,9 +358,12 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 					eUtils.LogErrorObject(config, err, false)
 					os.Exit(-1)
 				}
-				if *fileFilterPtr != "" {
+				if *tokenFileFilterPtr != "" {
 					approleFiles := il.GetApproleFileNames(config)
 					for _, approleFile := range approleFiles {
+						if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
+							continue
+						}
 						tokenMap := map[string]interface{}{}
 						fileYAML, parseErr := il.ParseApproleYaml(approleFile)
 						if parseErr != nil {
@@ -377,7 +389,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 							continue
 						}
 
-						if found, ok := tokenPerms[*fileFilterPtr].(bool); !ok && !found {
+						if found, ok := tokenPerms[*tokenFileFilterPtr].(bool); !ok && !found {
 							fmt.Println("Skipping " + mod.RawEnv + " as there is no token permission for this approle.")
 							continue
 						}
@@ -430,6 +442,9 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 
 					approleFiles := il.GetApproleFileNames(config)
 					for _, approleFile := range approleFiles {
+						if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
+							continue
+						}
 						tokenMap := map[string]interface{}{}
 						fileYAML, parseErr := il.ParseApproleYaml(approleFile)
 						if parseErr != nil {
@@ -564,7 +579,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 		// Upload policies from the given policy directory
 		il.UploadPolicies(config, namespacePolicyConfigs, v, false)
 		// Upload tokens from the given token directory
-		tokens := il.UploadTokens(config, namespaceTokenConfigs, fileFilterPtr, v)
+		tokens := il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
 		if !*prodPtr {
 			tokenMap := map[string]interface{}{}
 			for _, token := range tokens {
