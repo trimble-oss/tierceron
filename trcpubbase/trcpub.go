@@ -26,7 +26,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	fmt.Println("Version: " + "1.4")
+
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
@@ -47,8 +47,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	logger := log.New(f, "[INIT]", log.LstdFlags)
 	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
 	eUtils.CheckError(config, err, true)
-
-	autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "configdeploy.yml", *pingPtr)
 
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
@@ -78,6 +76,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 		mlock.MunlockAll(nil)
 		mlock.Mlock2(nil, tokenPtr)
 	}
+
+	autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "config.yml", *pingPtr)
+	eUtils.CheckError(config, autoErr, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
