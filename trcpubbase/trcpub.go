@@ -26,7 +26,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	fmt.Println("Version: " + "1.4")
+
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
@@ -35,6 +35,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"pub.log", "Output path for log files")
+	configFilePtr := flag.String("", "config.yml", "Name of auth config file - example.yml")
 
 	flag.Parse()
 
@@ -76,6 +77,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 		mlock.MunlockAll(nil)
 		mlock.Mlock2(nil, tokenPtr)
 	}
+
+	autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
+	eUtils.CheckError(config, autoErr, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error

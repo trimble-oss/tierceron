@@ -498,7 +498,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 
 			if _, err := cert.Verify(opts); err != nil {
 				if _, isUnknownAuthority := err.(x509.UnknownAuthorityError); !isUnknownAuthority {
-					eUtils.LogInfo(config, "Unknown authority: failed to verify certificate: "+err.Error())
+					eUtils.LogInfo(config, "Seeding of requested cert failed because it is invalid: Unknown authority: failed to verify certificate: "+err.Error())
 					return
 				}
 			}
