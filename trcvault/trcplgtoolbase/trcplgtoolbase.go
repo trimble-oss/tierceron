@@ -22,9 +22,6 @@ func PluginMain() {
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"plgtool.log", "Output path for log files")
 	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
-	kubeNamePtr := flag.String("kubeName", "", "Used to certify kube service.")
-	kubeTagPtr := flag.String("kubeTag", "", "Build tag to deploy to kubernetes.")
-
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
 	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
@@ -46,13 +43,13 @@ func PluginMain() {
 		os.Exit(1)
 	}
 
-	if *certifyImagePtr && ((len(*pluginNamePtr) == 0 && len(*kubeNamePtr) == 0) || len(*sha256Ptr) == 0) {
-		fmt.Println("Must use -pluginName or -kubeName && -sha256 flags to use -certify flag")
+	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
+		fmt.Println("Must use -pluginName && -sha256 flags to use -certify flag")
 		os.Exit(1)
 	}
 
-	if *checkDeployedPtr && (len(*pluginNamePtr) == 0 && len(*kubeNamePtr) == 0) {
-		fmt.Println("Must use -pluginName or -kubeName flags to use -checkDeployed flag")
+	if *checkDeployedPtr && (len(*pluginNamePtr) == 0) {
+		fmt.Println("Must use -pluginName flag to use -checkDeployed flag")
 		os.Exit(1)
 	}
 
@@ -63,15 +60,7 @@ func PluginMain() {
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
 	logger := log.New(f, "[INIT]", log.LstdFlags)
-	binaryName := *pluginNamePtr
-	if len(binaryName) == 0 {
-		binaryName = *kubeNamePtr
-		if len(*kubeTagPtr) == 0 {
-			fmt.Println("Must use -kubeTag flag with -kubeName")
-			os.Exit(1)
-		}
-	}
-	config := &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true, StartDir: []string{*startDirPtr}, SubSectionValue: binaryName}
+	config := &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
 
 	eUtils.CheckError(config, err, true)
 
@@ -84,23 +73,17 @@ func PluginMain() {
 		eUtils.CheckError(config, err, true)
 	}
 	mod.Env = *envPtr
-	pluginEnvConfig := coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{})
-	if len(*pluginNamePtr) == 0 {
-		// Seed the initial plugin path to the /trckube/ basis subpath.
-		pluginEnvConfig["pluginpath"] = "/trckube/"
-	}
-
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, pluginEnvConfig)
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		os.Exit(1)
 	}
-	pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", binaryName, -1) //"https://" +
+	pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", *pluginNamePtr, -1) //"https://" +
 	pluginToolConfig["trcsha256"] = *sha256Ptr
-	pluginToolConfig["binaryNamePtr"] = binaryName
+	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
-		pluginToolConfig["trcplugin"] = pluginToolConfig["binaryNamePtr"].(string)
+		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
 		if *certifyImagePtr {
 			certifyInit = true
 		}
@@ -121,12 +104,7 @@ func PluginMain() {
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-			if len(*kubeTagPtr) == 0 {
-				writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
-			} else {
-				writeMap["trckubetag"] = *kubeTagPtr
-			}
-
+			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
 			writeMap["copied"] = false
 			writeMap["deployed"] = false
 			_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, config.Log)
