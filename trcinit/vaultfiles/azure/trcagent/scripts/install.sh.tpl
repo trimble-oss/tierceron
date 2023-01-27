@@ -12,7 +12,7 @@ sudo -- sh -c "echo '127.0.0.1 $(hostname)' >> /etc/hosts"
 sudo unzip vault.zip
 sudo mkdir -p /usr/src/app
 sudo mv vault /usr/src/app/vault
-sudo chmod 0755 /usr/src/app/vault
+sudo chmod 0700 /usr/src/app/vault
 sudo chown root:root /usr/src/app/vault
 sudo mkdir -p /etc/opt/vault/data/
 #make directory etc/opt/vault
