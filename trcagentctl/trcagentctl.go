@@ -116,6 +116,7 @@ func ProcessDeploy(env string, token string) {
 		case "config":
 			config.FileFilter = nil
 			config.FileFilter = append(config.FileFilter, "config.yml")
+			config.EndDir = "deploy"
 			trcconfigbase.CommonMain(&env, &addr, &token, &envContext, config)
 			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.

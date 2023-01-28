@@ -374,7 +374,9 @@ func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *st
 		}(&config)
 	}
 	wg.Wait() //Wait for templates
-	close(resultChannel)
+	if c.EndDir != "deploy" {
+		close(resultChannel)
+	}
 	if *diffPtr { //Diff if needed
 		if fileSysIndex != -1 {
 			envDiffSlice = append(envDiffSlice, "filesys")
