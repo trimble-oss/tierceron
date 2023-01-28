@@ -51,6 +51,7 @@ func ProcessDeploy(env string, token string) {
 	}
 
 	deployArgLines := strings.Split(string(content), "\n")
+	configCount := strings.Count(string(content), "trcconfig") //Uses this to close result channel on last run.
 
 	logFile := "./" + coreopts.GetFolderPrefix() + "deploy.log"
 	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix()+"deploy.log" {
@@ -74,6 +75,7 @@ func ProcessDeploy(env string, token string) {
 	config.EnvRaw = env
 
 	for _, deployLine := range deployArgLines {
+		fmt.Println(deployLine)
 		deployLine = strings.TrimPrefix(deployLine, "trc")
 		deployArgs := strings.Split(deployLine, " ")
 		control := deployArgs[0]
@@ -101,6 +103,7 @@ func ProcessDeploy(env string, token string) {
 			}
 			os.Args = append(os.Args, deployArgs...)
 		}
+
 		switch control {
 		case "pub":
 			config.FileFilter = nil
@@ -114,9 +117,12 @@ func ProcessDeploy(env string, token string) {
 				config.Token = token
 			}
 		case "config":
+			configCount -= 1
+			if configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
+				config.EndDir = "deploy"
+			}
 			config.FileFilter = nil
 			config.FileFilter = append(config.FileFilter, "config.yml")
-			config.EndDir = "deploy"
 			trcconfigbase.CommonMain(&env, &addr, &token, &envContext, config)
 			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
