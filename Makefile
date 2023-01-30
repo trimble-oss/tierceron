@@ -63,7 +63,7 @@ sub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcsub
 certify:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "memonly awsecr" tierceron/trcvault/trcplgtoolbase
-agent:
+agentctl: 
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcagentctl
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
