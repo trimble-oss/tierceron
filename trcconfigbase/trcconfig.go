@@ -374,7 +374,9 @@ func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *st
 		}(&config)
 	}
 	wg.Wait() //Wait for templates
-	if c != nil && c.EndDir != "deploy" {
+	if c == nil {
+		close(resultChannel)
+	} else if c.EndDir != "deploy" {
 		close(resultChannel)
 	}
 	if *diffPtr { //Diff if needed
