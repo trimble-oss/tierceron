@@ -84,7 +84,8 @@ certify:
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcplgtool
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
-
+agentctl:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcagentctl
 ttdiserver:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/ttdiserver -tags "insecure fyneboot argosy tc" -ldflags="$(LD_FLAGS)" tierceron/trcgorillaz/ttdiserver
 
