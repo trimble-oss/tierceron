@@ -1,0 +1,20 @@
+variable "resource_group_location" {
+  default     = {{.resource_group_location}}
+  description = "Location of the resource group."
+}
+
+variable "org_name" {
+  type    = string
+  default = {{.org_name}}
+}
+
+variable "vm_size" {
+    default = {{.vault_vm_size}}
+}
+
+variable "environment" {
+  default = {{.env}}
+}
+
+
+
