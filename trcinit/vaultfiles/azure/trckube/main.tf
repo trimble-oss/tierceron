@@ -37,14 +37,14 @@ resource "azurerm_kubernetes_cluster" "kcluster" {
 
 
 resource "tls_private_key" "private_key" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
+  algorithm = var.algorithm
+  rsa_bits  = var.rsa_bits
 }
 
 resource "local_file" "private_key" {
   content              = tls_private_key.private_key.private_key_pem
   filename             = "kube_key.pem"
   file_permission      = "600"
-  directory_permission = "755"
+  directory_permission = "700"
 }
 
