@@ -73,7 +73,7 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOOS=linux GOARCH=amd64 go install  -tags "memonly tc vaultname" -a -ldflags '-w' tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOOS=linux GOARCH=amd64 go install  -tags "azure memonly tc vaultname" -a -ldflags '-w' tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
@@ -93,7 +93,7 @@ steps:
     done
 
     echo "Compile Mac"
-    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install  -tags "memonly tc vaultname" -a -ldflags '-w' tierceron/{trcconfig,trcpub,trcx,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install  -tags "azure memonly tc vaultname" -a -ldflags '-w' tierceron/{trcconfig,trcpub,trcx,trcsub}
     for p in trcconfig trcpub trcx trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
@@ -103,7 +103,7 @@ steps:
     done
 
     echo Compiling conflib
-    GOOS=linux GOARCH=amd64 go build  -buildmode=c-shared -tags "memonly tc vaultname" -o $GOBIN/nc.so tierceron/configlib
+    GOOS=linux GOARCH=amd64 go build  -buildmode=c-shared -tags "azure memonly tc vaultname" -o $GOBIN/nc.so tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1

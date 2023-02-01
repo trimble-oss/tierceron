@@ -7,7 +7,7 @@ apiprod:
 api:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install   tierceron/webapi/apiRouter
 config:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly"  tierceron/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly"  tierceron/trcconfig
 
 devplugincarrierbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "insecure awsecr" -o trcvault/deploy/target/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
@@ -40,27 +40,27 @@ pluginprodcarriersha:
 pluginprodcarrier: pluginprodcarrierbuild pluginprodcarriersha
 
 configmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "memonly" -o $(GOBIN)/trcconfig.mac tierceron/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "azure memonly" -o $(GOBIN)/trcconfig.mac tierceron/trcconfig
 seed:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcinit
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly" tierceron/trcinit
 seedmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "memonly" -o $(GOBIN)/trcinit.mac tierceron/trcinit 
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "azure memonly" -o $(GOBIN)/trcinit.mac tierceron/trcinit 
 seedp:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcinitp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly" tierceron/trcinitp
 x:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly" tierceron/trcx
 xmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "memonly" -o $(GOBIN)/trcx.mac tierceron/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "azure memonly" -o $(GOBIN)/trcx.mac tierceron/trcx
 xlib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build   -buildmode=c-shared -a -ldflags '-w' -tags "memonly" -o $(GOBIN)/nc.so tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build   -buildmode=c-shared -a -ldflags '-w' -tags "azure memonly" -o $(GOBIN)/nc.so tierceron/configlib
 maclib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build   -buildmode=c-shared -tags "memonly" -o $(GOBIN)/nc.dylib tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build   -buildmode=c-shared -tags "azure memonly" -o $(GOBIN)/nc.dylib tierceron/configlib
 xp:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcxp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly" tierceron/trcxp
 pub:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcpub
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly" tierceron/trcpub
 sub:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcsub
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly" tierceron/trcsub
 certify:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "memonly awsecr" tierceron/trcvault/trcplgtoolbase
 agentctl: 
