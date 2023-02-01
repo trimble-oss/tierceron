@@ -3,6 +3,11 @@ resource "azurerm_resource_group" "rg" {
   location = var.resource_group_location
 }
 
+resource "azurerm_resource_group" "trg" {
+  name     = var.resource_group_name_trg
+  location = var.resource_group_location
+}
+
 resource "azurerm_kubernetes_cluster" "kcluster" {
   name                = "${var.resource_group_name}-kubernetes"
   location            = var.resource_group_location
