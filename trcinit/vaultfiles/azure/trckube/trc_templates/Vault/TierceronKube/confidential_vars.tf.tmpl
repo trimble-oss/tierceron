@@ -1,11 +1,14 @@
 variable "resource_group_name" {
-  default = {{.resource_group_name}}
+  type = string
+  default = "{{.resource_group_name}}"
 }
 
 variable "dnsprefix" {
-  default = {{.dnsprefix}}
+  type = string
+  default = "{{.dnsprefix}}"
 }
 
 variable "node_count" {
+  type = number
   default = {{.node_count}}
 }
