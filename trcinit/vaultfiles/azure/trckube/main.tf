@@ -19,7 +19,7 @@ resource "azurerm_kubernetes_cluster" "kcluster" {
 
   default_node_pool {
     name       = "default"  
-    node_count = 2
+    node_count = var.node_count
     vm_size    = var.vm_size  
   }
 
