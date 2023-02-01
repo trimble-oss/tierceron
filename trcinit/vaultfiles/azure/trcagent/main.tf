@@ -66,6 +66,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "vm-db-virtual-network-
   virtual_network_id    = azurerm_virtual_network.vm-virtual-network.id
 }
 
+# MysqlDb sees Tierceron Agent
 resource "azurerm_virtual_network_peering" "peer-db-vm" {
   name                      = "${var.resource_group_name}-peerVMToDb"
   resource_group_name       = azurerm_resource_group.rg.name
@@ -76,8 +77,20 @@ resource "azurerm_virtual_network_peering" "peer-db-vm" {
 #  }
 }
 
+# Tierceron Agent sees MysqlDb
 resource "azurerm_virtual_network_peering" "peer-vm-db" {
   name                      = "${var.resource_group_name}-peerDbToVm"
+  resource_group_name       = azurerm_resource_group.rg.name
+  virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
+  remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
+ # lifecycle  {
+ #   replace_triggered_by = [azurerm_virtual_network.peer-vm-db.address_space, azurerm_virtual_network.peer-db-vm.address_space]
+ # }
+}
+
+# Tierceron Agent sees Kubernetes Cluster.
+resource "azurerm_virtual_network_peering" "peer-vm-kc" {
+  name                      = "${var.resource_group_name}-peerVmToKc"
   resource_group_name       = azurerm_resource_group.rg.name
   virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
   remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
