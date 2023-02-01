@@ -26,6 +26,11 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
+	pluginConfig["address"] = "https://atvc.dexchadev.com:8305"
+	pluginConfig["vaddress"] = "https://atvc.dexchadev.com:8305"
+	//	pluginConfig["token"] = "INSERT TOKEN HERE"
+	pluginConfig["env"] = "dev"
+
 	if memonly.IsMemonly() {
 		mlock.MunlockAll(nil)
 		for _, value := range pluginConfig {

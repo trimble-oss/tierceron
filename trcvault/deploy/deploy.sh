@@ -43,11 +43,11 @@ fi
 
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
     if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ]; then
-    trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
+    trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -binaryName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
     fi
 else
     if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ]; then
-    trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+    trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -binaryName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
     fi
 fi
 
@@ -58,12 +58,12 @@ else
     echo "Checking plugin deploy status."
     if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
     echo "Certifying plugin for env $VAULT_ENV."
-    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
+    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -binaryName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
     status=$?
     echo "Plugin certified with result $status."
     else
     echo "Certifying plugin for env $VAULT_ENV."
-    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -binaryName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
     status=$?
     echo "Plugin certified with result $status."
     fi 
@@ -91,10 +91,11 @@ export VAULT_API_ADDR
 
 echo "Disable and unregister old plugin."
 export VAULT_CLIENT_TIMEOUT=300s
+# Migrate to carrier maybe?
 vault secrets disable $TRC_PLUGIN_NAME/
 vault plugin deregister $TRC_PLUGIN_NAME
 
-sleep 3
+sleep 12
 
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
     # Just writing to vault will trigger the carrier plugin...
@@ -115,12 +116,18 @@ if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
     fi
 
     echo "Registering new plugin."
+    # This can be replaced with? https://developer.hashicorp.com/vault/api-docs/system/plugins-catalog#register-plugin
+    # POST to: curl -H "X-Vault-Token: $VAULT_TOKEN" https://vault.dexchadev.com:8020/v1/sys/plugins/catalog/secret/trc-vault-plugin
+    # Migrate to carrier maybe?
     vault plugin register \
             -command=$TRC_PLUGIN_NAME-prod \
             -sha256=$(echo $SHAVAL) \
             -args=`backendUUID=789` \
             $TRC_PLUGIN_NAME-prod
     echo "Enabling new plugin."
+    # This can be replaces with? https://developer.hashicorp.com/vault/api-docs/v1.4.x/system/mounts#enable-secrets-engine
+    # POST to: curl -H "X-Vault-Token: $VAULT_TOKEN" https://127.0.0.1:10001/v1/sys/mounts
+    # Migrate to carrie maybe?
     vault secrets enable \
             -path=$TRC_PLUGIN_NAME \
             -plugin-name=$TRC_PLUGIN_NAME-prod \
@@ -138,7 +145,7 @@ else
         # First we set Copied to false...
         # This should also trigger the copy process...
         # It should return sha256 of copied plugin on success.
-        SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME vaddress=$VAULT_ADDR)
+        SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME plugintype=$TRC_PLUGIN_TYPE  vaddress=$VAULT_ADDR)
         SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
 
         if [ "$SHAVAL" = "Failure" ]; then
