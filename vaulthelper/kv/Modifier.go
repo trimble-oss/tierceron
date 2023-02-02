@@ -152,6 +152,24 @@ func (m *Modifier) Release() {
 	modifierCache[m.RawEnv].modifierChan <- m
 }
 
+func (m *Modifier) RemoveFromCache() {
+	m.Close()
+
+	modifierCachLock.Lock()
+	if modifierCache[m.RawEnv].modCount > 1 {
+	emptied:
+		for i := 0; i < 20; i++ {
+			select {
+			case <-modifierCache[m.RawEnv].modifierChan:
+			default:
+				break emptied
+			}
+		}
+	}
+	modifierCache[m.RawEnv].modCount = 0
+	modifierCachLock.Unlock()
+}
+
 // ValidateEnvironment Ensures token has access to requested data.
 func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuffix string, logger *log.Logger) (bool, error) {
 	env, sub, _, envErr := PreCheckEnvironment(environment)

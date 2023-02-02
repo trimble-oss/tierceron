@@ -22,12 +22,11 @@ import (
 // The file is saved under the data key, and the extension under the ext key
 // Vault automatically encodes the file into base64
 
-func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
+func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *string, c *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
-	tokenPtr := flag.String("token", "", "Vault access token")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix()+"pub to access the vault")
@@ -45,7 +44,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
 	logger := log.New(f, "[INIT]", log.LstdFlags)
+
 	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+	if c != nil {
+		config = c
+		*insecurePtr = config.Insecure
+		*configFilePtr = config.FileFilter[0]
+	}
 	eUtils.CheckError(config, err, true)
 
 	if len(*tokenNamePtr) > 0 {
