@@ -86,6 +86,24 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 		os.Exit(1)
 	}
 
+	if *newPtr {
+		currentDir, dirErr := os.Getwd()
+		if dirErr != nil {
+			fmt.Println("Couldn not retrieve current working directory")
+			os.Exit(1)
+		}
+
+		if _, err := os.Stat(currentDir + "/vault_namespace/vault/token_files"); err != nil {
+			fmt.Println("Could not locate token files required to initialize a new vault.")
+			os.Exit(1)
+		}
+
+		if _, err := os.Stat(currentDir + "/vault_namespace/vault/policy_files"); err != nil {
+			fmt.Println("Could not locate policy files  required to initialize a new vault.")
+			os.Exit(1)
+		}
+	}
+
 	// Enter ID tokens
 	if *insecurePtr {
 		if isLocal, lookupErr := helperkv.IsUrlIp(*addrPtr); isLocal && lookupErr == nil {
