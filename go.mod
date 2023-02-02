@@ -28,7 +28,7 @@ require (
 	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/mrjrieke/nute v0.0.0-20221220150022-370bea61eb44
+	//github.com/mrjrieke/nute v0.0.0-20221220150022-370bea61eb44
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.0
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible
@@ -50,6 +50,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
+	github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect

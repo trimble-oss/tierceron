@@ -549,6 +549,8 @@ github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb h1:tA/ri6AMAepfw+
 github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb/go.mod h1:gLRWYfYnMA9TONeppRSikMdXlHQ97xVsPojddUv3b/E=
 github.com/mrjrieke/nute v0.0.0-20221220150022-370bea61eb44 h1:j6UgdhHXoZ4EQORs/Vre5YfWq6erftZvSUSbSl2UFHg=
 github.com/mrjrieke/nute v0.0.0-20221220150022-370bea61eb44/go.mod h1:IqTCYHrKoTQW/Nb/JQWGULNKSqwSca7iw2o49Rd964U=
+github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b h1:rO2BIwfKa2Nqt4Emfods5y9W9UEeVfzgmwOzP2LV4z4=
+github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b/go.mod h1:fIZKEiVoz+BJE1MFlaeSAvifHp1SVXE5xdYBDEWZUw0=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/nats-io/jwt v0.3.0/go.mod h1:fRYCDE99xlTsqUzISS1Bi75UBJ6ljOJQOAAu5VglpSg=
 github.com/nats-io/jwt v0.3.2/go.mod h1:/euKqTS1ZD+zzjYrY7pseZrTtWQSjujC7xjPc8wL6eU=
