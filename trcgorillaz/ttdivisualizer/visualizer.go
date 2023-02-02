@@ -32,7 +32,7 @@ var mashupKey embed.FS
 
 func main() {
 	callerCreds := flag.String("CREDS", "", "Credentials of caller")
-	insecure := flag.Bool("insecure", false, "Skip server validation")
+	insecure := flag.Bool("tls-skip-validation", false, "Skip server validation")
 	custos := flag.Bool("custos", false, "Run in guardian mode.")
 	headless := flag.Bool("headless", false, "Run headless")
 	flag.Parse()
