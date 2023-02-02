@@ -12,7 +12,7 @@ sudo -- sh -c "echo '127.0.0.1 $(hostname)' >> /etc/hosts"
 sudo unzip vault.zip
 sudo mkdir -p /usr/src/app
 sudo mv vault /usr/src/app/vault
-sudo chmod 0755 /usr/src/app/vault
+sudo chmod 0700 /usr/src/app/vault
 sudo chown root:root /usr/src/app/vault
 sudo mkdir -p /etc/opt/vault/data/
 #make directory etc/opt/vault
@@ -25,6 +25,11 @@ privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
 sudo chown root:root /etc/opt/vault/vault_properties.hcl
 
+sudo mkuser azuredeploy
+sudo mkdir /home/azuredeploy/bin
+sudo chmod 1750 /home/azuredeploy/bin
+sudo chown root:azuredeploy /home/azuredeploy/bin
+# Agent is presently installed manually.  Probably best to keep it that way for now.
 
 # Set up IP Table
 # Add a rule to allow ssh connections
