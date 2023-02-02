@@ -75,7 +75,7 @@ xp:
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcxp
 pub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" tierceron/trcpub
-	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcsub
+	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcpub
 sub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install   -tags "memonly" tierceron/trcsub
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcsub

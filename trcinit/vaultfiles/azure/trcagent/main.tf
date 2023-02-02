@@ -348,7 +348,6 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   delegated_subnet_id    = azurerm_subnet.db-subnet.id
   private_dns_zone_id    = azurerm_private_dns_zone.tierceron-db-dns-zone.id
   sku_name               = "B_Standard_B2s"
-  zone                   = "2"
 
   storage {
     auto_grow_enabled = true
@@ -383,7 +382,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   location              = azurerm_resource_group.rg.location
   resource_group_name   = azurerm_resource_group.rg.name
   network_interface_ids = [azurerm_network_interface.vm-network-interface.id]
-  size                  = "${var.vault_vm_size}"
+  size                  = "Standard_B1ls"
 
   os_disk {
     name                 = "${var.resource_group_name}-OsDisk"
