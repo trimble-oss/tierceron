@@ -66,6 +66,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "vm-db-virtual-network-
   virtual_network_id    = azurerm_virtual_network.vm-virtual-network.id
 }
 
+# MysqlDb sees Tierceron Agent
 resource "azurerm_virtual_network_peering" "peer-db-vm" {
   name                      = "${var.resource_group_name}-peerVMToDb"
   resource_group_name       = azurerm_resource_group.rg.name
@@ -76,8 +77,20 @@ resource "azurerm_virtual_network_peering" "peer-db-vm" {
 #  }
 }
 
+# Tierceron Agent sees MysqlDb
 resource "azurerm_virtual_network_peering" "peer-vm-db" {
   name                      = "${var.resource_group_name}-peerDbToVm"
+  resource_group_name       = azurerm_resource_group.rg.name
+  virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
+  remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
+ # lifecycle  {
+ #   replace_triggered_by = [azurerm_virtual_network.peer-vm-db.address_space, azurerm_virtual_network.peer-db-vm.address_space]
+ # }
+}
+
+# Tierceron Agent sees Kubernetes Cluster.
+resource "azurerm_virtual_network_peering" "peer-vm-kc" {
+  name                      = "${var.resource_group_name}-peerVmToKc"
   resource_group_name       = azurerm_resource_group.rg.name
   virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
   remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
@@ -335,7 +348,6 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   delegated_subnet_id    = azurerm_subnet.db-subnet.id
   private_dns_zone_id    = azurerm_private_dns_zone.tierceron-db-dns-zone.id
   sku_name               = "B_Standard_B2s"
-  zone                   = "2"
 
   storage {
     auto_grow_enabled = true
@@ -370,7 +382,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   location              = azurerm_resource_group.rg.location
   resource_group_name   = azurerm_resource_group.rg.name
   network_interface_ids = [azurerm_network_interface.vm-network-interface.id]
-  size                  = "${var.vault_vm_size}"
+  size                  = "Standard_B1ls"
 
   os_disk {
     name                 = "${var.resource_group_name}-OsDisk"
