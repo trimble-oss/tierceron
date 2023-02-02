@@ -1,6 +1,6 @@
 module tierceron
 
-go 1.19
+go 1.20
 
 require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
@@ -28,7 +28,10 @@ require (
 	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/mrjrieke/nute v0.0.0-20221220150022-370bea61eb44
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.0
+	github.com/sendgrid/rest v2.6.9+incompatible
+	github.com/sendgrid/sendgrid-go v3.12.0+incompatible
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 
 )
@@ -38,9 +41,6 @@ require (
 	github.com/gocraft/dbr/v2 v2.7.2 // indirect
 	github.com/google/flatbuffers v2.0.6+incompatible // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
-	github.com/mrjrieke/nute v0.0.0-20221220150022-370bea61eb44 // indirect
-	github.com/sendgrid/rest v2.6.9+incompatible // indirect
-	github.com/sendgrid/sendgrid-go v3.12.0+incompatible // indirect
 	github.com/tevino/abool v1.2.0 // indirect
 	go.opentelemetry.io/otel v1.7.0 // indirect
 	go.opentelemetry.io/otel/trace v1.7.0 // indirect
@@ -144,6 +144,8 @@ replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 replace VaultConfig.Test => ../VaultConfig.Test
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.6
+
+// replace github.com/mrjrieke/nute => github.com/trimble-oss/tierceron-nute
 
 replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d
 
