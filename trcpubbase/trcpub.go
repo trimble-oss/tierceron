@@ -26,7 +26,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
