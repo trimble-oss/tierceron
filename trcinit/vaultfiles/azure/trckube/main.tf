@@ -3,6 +3,10 @@ resource "azurerm_resource_group" "rg" {
   location = var.resource_group_location
 }
 
+data "azurerm_resource_group" "trg" {
+  name     = var.resource_group_name_trg
+}
+
 resource "azurerm_kubernetes_cluster" "kcluster" {
   name                = "${var.resource_group_name}-kubernetes"
   location            = var.resource_group_location
@@ -41,7 +45,7 @@ resource "tls_private_key" "private_key" {
   rsa_bits  = var.rsa_bits
 }
 
-resource "local_file" "private_key" {
+resource "local_file" "kube_key" {
   content              = tls_private_key.private_key.private_key_pem
   filename             = "kube_key.pem"
   file_permission      = "600"
