@@ -42,6 +42,8 @@ resources:
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
   GOPATH: '$(system.defaultWorkingDirectory)' # Go workspace path
+  GOCACHE: '$(Pipeline.Workspace)/.cache/go-build/'
+  GO_CACHE_DIR: $(Pipeline.Workspace)/.cache/go-build/
   modulePath: 'tierceron' # Path to the module's code
 
 steps:
@@ -62,6 +64,13 @@ steps:
 - checkout: VaultConfig.TenantConfig
 - checkout: VaultConfig.Test
 - checkout: self
+- task: Cache@2
+  inputs:
+    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
+    restoreKeys: | 
+      go | "$(Agent.OS)"
+    path: $(GO_CACHE_DIR)
+  displayName: Cache GO packages
 - script: |
     go version
     pwd
@@ -71,7 +80,7 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install  -a -ldflags '-w' -tags "azure memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install  -a -ldflags '-w' -tags "azure memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
@@ -81,7 +90,7 @@ steps:
     done
 
     echo "Compile Windows"
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install  -a -ldflags '-w' -tags "tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$(GOCACHE) go install  -a -ldflags '-w' -tags "tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
@@ -91,7 +100,7 @@ steps:
     done
 
     echo "Compile Mac"
-    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install  -a -ldflags '-w' -tags "azure memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GOCACHE=$(GOCACHE) go install  -a -ldflags '-w' -tags "azure memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
@@ -102,21 +111,21 @@ steps:
 
 
     echo Compiling/Verifying trc-vault-plugin
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc memonly" -o $GOBIN/verify-trc-vault-plugin tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go build  -tags "tc memonly" -o $GOBIN/verify-trc-vault-plugin tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/verify-trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo Compiling api
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install  -a -ldflags '-w' tierceron/webapi/apiRouter
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install  -a -ldflags '-w' tierceron/webapi/apiRouter
     if [[ ! -f $GOBIN/apiRouter ]] ; then
         echo File apiRouter was not built, aborting.
         exit 1
     fi
 
     echo Compiling conflib
-    GOBIN= GOOS=linux GOARCH=amd64 go build  -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' tierceron/configlib
+    GOBIN= GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go build -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
