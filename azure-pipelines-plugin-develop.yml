@@ -13,10 +13,8 @@ pr:
   autoCancel: 'true'
   branches:
     include:
-    - releases/plugin/*
-    exclude:
-    - main
     - develop
+    - main
 
 pool:
   vmImage: 'ubuntu-latest'
