@@ -45,9 +45,17 @@ func ProcessDeploy(env string, token string) {
 		agentToken = true
 	}
 	pwd, _ := os.Getwd()
-	content, err := ioutil.ReadFile(pwd + "/deploy/deploy.trc")
-	if err != nil {
-		fmt.Println("Error could not find /deploy/deploy.trc for deployment instructions")
+	var content []byte
+	if env == "itdev" {
+		content, err = ioutil.ReadFile(pwd + "/deploy/deploytest.trc")
+		if err != nil {
+			fmt.Println("Error could not find /deploy/deploytest.trc for deployment instructions")
+		}
+	} else {
+		content, err = ioutil.ReadFile(pwd + "/deploy/deploy.trc")
+		if err != nil {
+			fmt.Println("Error could not find /deploy/deploy.trc for deployment instructions")
+		}
 	}
 
 	deployArgLines := strings.Split(string(content), "\n")
