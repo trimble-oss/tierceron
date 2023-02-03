@@ -75,8 +75,6 @@ steps:
     go version
     pwd
     echo $GOBIN
-    echo "Mod download"
-    go mod download
     echo "Compile start"
 
     echo "Compile Linux"
