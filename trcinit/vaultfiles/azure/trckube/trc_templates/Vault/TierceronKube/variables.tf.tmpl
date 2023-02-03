@@ -28,4 +28,7 @@ variable "algorithm" {
   default = {{.rsa_bits}}
 }
 
-
+variable "billing_env" {
+  type = string
+  default = "{{.billing_env}}"
+}
