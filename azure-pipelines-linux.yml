@@ -64,7 +64,7 @@ steps:
 - checkout: self
 - task: Cache@2
   inputs:
-    key: 'go | "$(Agent.OS)" | go.mod'
+    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/go.mod'
     restoreKeys: | 
       go | "$(Agent.OS)"
     path: $(GO_CACHE_DIR)
