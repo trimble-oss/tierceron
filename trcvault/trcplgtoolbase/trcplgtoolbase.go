@@ -22,6 +22,7 @@ func PluginMain() {
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"plgtool.log", "Output path for log files")
 	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
+	pluginTypePtr := flag.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
 	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
@@ -53,6 +54,14 @@ func PluginMain() {
 		os.Exit(1)
 	}
 
+	switch *pluginTypePtr {
+	case "vault":
+	case "agent":
+	default:
+		fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
+		os.Exit(1)
+	}
+
 	// If logging production directory does not exist and is selected log to local directory
 	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"plgtool.log" {
 		*logFilePtr = "./" + coreopts.GetFolderPrefix() + "plgtool.log"
@@ -73,6 +82,7 @@ func PluginMain() {
 		eUtils.CheckError(config, err, true)
 	}
 	mod.Env = *envPtr
+	// Get existing configs if they exist...
 	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
@@ -104,6 +114,7 @@ func PluginMain() {
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
+			writeMap["trctype"] = *pluginTypePtr
 			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
 			writeMap["copied"] = false
 			writeMap["deployed"] = false
