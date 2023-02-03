@@ -39,16 +39,36 @@ resource "azurerm_kubernetes_cluster" "kcluster" {
   depends_on = [azurerm_resource_group.rg]
 }
 
-
-resource "tls_private_key" "private_key" {
-  algorithm = var.algorithm
-  rsa_bits  = var.rsa_bits
+resource "azurerm_virtual_network" "kubeVN" {
+  name                = "${var.resource_group_name}-kubernetes-VN"
+  resource_group_name = var.resource_group_name
+  address_space       = [var.VN_rg_addr]
+  location            = var.resource_group_location
 }
 
-resource "local_file" "kube_key" {
-  content              = tls_private_key.private_key.private_key_pem
-  filename             = "kube_key.pem"
-  file_permission      = "600"
-  directory_permission = "700"
+data "azurerm_virtual_network" "agentVN" {
+  name                = "${var.VN_trg_name}"
+  resource_group_name = var.resource_group_name_trg
 }
 
+resource "azurerm_virtual_network_peering" "peerKubetoAgent" {
+  name                      = "peerKubetoAgent"
+  resource_group_name       = var.resource_group_name
+  virtual_network_name      = azurerm_virtual_network.kubeVN.name
+  remote_virtual_network_id = data.azurerm_virtual_network.agentVN.id
+    depends_on = [
+      azurerm_virtual_network.kubeVN,
+      data.azurerm_virtual_network.agentVN
+    ]
+}
+
+resource "azurerm_virtual_network_peering" "peerAgenttoKube" {
+  name                      = "peerAgenttoKube"
+  resource_group_name       = var.resource_group_name_trg
+  virtual_network_name      = data.azurerm_virtual_network.agentVN.name
+  remote_virtual_network_id = azurerm_virtual_network.kubeVN.id
+  depends_on = [
+      azurerm_virtual_network.kubeVN,
+      data.azurerm_virtual_network.agentVN
+    ]
+}
