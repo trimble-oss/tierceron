@@ -9,14 +9,16 @@ trigger:
     - releases/comprehensive/1.0.0
     exclude:
     - develop
+    - main
 
 pr:
   autoCancel: 'true'
   branches: 
     include:
-    - main
+    - releases/comprehensive/1.0.0
     exclude:
     - develop
+    - main
     - releases/plugin/*
 
 pool:
