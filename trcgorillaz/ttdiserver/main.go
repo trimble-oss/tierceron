@@ -34,7 +34,7 @@ var logoIcon embed.FS
 
 func main() {
 	callerCreds := flag.String("CREDS", "", "Credentials of caller")
-	insecure := flag.Bool("insecure", false, "Skip server validation")
+	insecure := flag.Bool("tls-skip-validation", false, "Skip server validation")
 	headless := flag.Bool("headless", false, "Run headless")
 	serverheadless := flag.Bool("serverheadless", false, "Run server completely headless")
 	envPtr := flag.String("env", "QA", "Environment to configure")
