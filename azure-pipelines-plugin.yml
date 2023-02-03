@@ -5,7 +5,6 @@
 
 trigger:
   branches:
-   branches:
      include:
      - releases/plugin/*
      exclude:
