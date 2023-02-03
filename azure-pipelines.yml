@@ -79,7 +79,7 @@ steps:
 
     echo "Compile Linux"
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
-    for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
+    for p in trcconfig trcpub trcagentctl trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
@@ -145,7 +145,7 @@ steps:
     ArtifactName: 'drop'
     publishLocation: 'Container'
 
-- task: Docker@2
+- task: Docker@2 # TODO: Deprecate - azure migration
   displayName: Build an image
   inputs:
     repository: trcconfig
@@ -155,7 +155,7 @@ steps:
     tags: |
       $(Build.SourceVersion)
 
-- task: Docker@2
+- task: Docker@2 # TODO: Deprecate - azure migration
   displayName: Build an image
   inputs:
     repository: trcpub
@@ -165,7 +165,17 @@ steps:
     tags: |
       $(Build.SourceVersion)
 
-- task: ECRPushImage@1
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trcagentctl
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcagentctl/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
+- task: ECRPushImage@1 # TODO: Deprecate - azure migration
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
@@ -174,7 +184,7 @@ steps:
     sourceImageTag: '$(Build.SourceVersion)'
     repositoryName: 'trcconfig'
     pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
+- task: ECRPushImage@1 # TODO: Deprecate - azure migration
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
@@ -184,7 +194,7 @@ steps:
     repositoryName: 'trcconfig'
     pushTag: 'latest'
 
-- task: ECRPushImage@1
+- task: ECRPushImage@1 # TODO: Deprecate - azure migration
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
@@ -193,7 +203,7 @@ steps:
     sourceImageTag: '$(Build.SourceVersion)'
     repositoryName: 'trcpub'
     pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
+- task: ECRPushImage@1 # TODO: Deprecate - azure migration
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
@@ -201,4 +211,23 @@ steps:
     sourceImageName: 'trcpub'
     sourceImageTag: '$(Build.SourceVersion)'
     repositoryName: 'trcpub'
+    pushTag: 'latest'
+
+- task: ECRPushImage@1 
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'trcagentctl'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'trcagentctl'
+    pushTag: '$(Build.SourceVersion)'
+- task: ECRPushImage@1 
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'trcagentctl'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'trcagentctl'
     pushTag: 'latest'
