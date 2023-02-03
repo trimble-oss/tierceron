@@ -5,7 +5,6 @@
 
 trigger:
   branches:
-   branches:
      include:
      - releases/plugin/*
      exclude:
@@ -80,14 +79,11 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" tierceron/{trcagentctl}
-    for p in trcagentctl; do
-      echo Compiling $p
-      if [[ ! -f $GOBIN/$p ]] ; then
-          echo File $p was not built, aborting.
-          exit 1
-      fi
-    done
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" tierceron/trcagentctl
+    if [[ ! -f $GOBIN/trcagentctl ]] ; then
+        echo File trcagentctl was not built, aborting.
+        exit 1
+    fi
 
     echo "Compile Agent plugin trc-vault-carrier-plugin"
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly awsecr insecure" -o $GOBIN/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
