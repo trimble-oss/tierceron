@@ -6,7 +6,7 @@
 trigger:
   branches:
     include:
-    - release/comprehensive/1.0.0
+    - releases/comprehensive/1.0.0
     exclude:
     - develop
 
