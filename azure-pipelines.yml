@@ -78,7 +78,7 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub,trcagentctl}
     for p in trcconfig trcpub trcagentctl trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
