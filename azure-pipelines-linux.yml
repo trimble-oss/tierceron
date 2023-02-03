@@ -44,6 +44,10 @@ variables:
   modulePath: 'tierceron' # Path to the module's code
 
 steps:
+
+- task: GoTool@0
+  inputs:
+    version: '1.20'
 - task: Cache@2
   inputs:
     key: 'go | "$(Agent.OS)" | go.mod'
@@ -51,10 +55,6 @@ steps:
       go | "$(Agent.OS)"
     path: $(GO_CACHE_DIR)
   displayName: Cache GO packages
-
-- task: GoTool@0
-  inputs:
-    version: '1.20'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
