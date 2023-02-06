@@ -1,4 +1,4 @@
-module tierceron
+module github.com/trimble-oss/tierceron
 
 go 1.20
 

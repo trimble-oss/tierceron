@@ -9,21 +9,21 @@ import (
 	"sync"
 	"time"
 
-	"tierceron/buildopts"
-	"tierceron/buildopts/flowopts"
-	"tierceron/buildopts/harbingeropts"
-	"tierceron/buildopts/testopts"
-	trcvutils "tierceron/trcvault/util"
-	trcdb "tierceron/trcx/db"
+	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/testopts"
+	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcdb "github.com/trimble-oss/tierceron/trcx/db"
 
-	flowcore "tierceron/trcflow/core"
-	flowcorehelper "tierceron/trcflow/core/flowcorehelper"
-	"tierceron/trcflow/deploy"
-	helperkv "tierceron/vaulthelper/kv"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	flowcorehelper "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
+	"github.com/trimble-oss/tierceron/trcflow/deploy"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	eUtils "tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
-	sys "tierceron/vaulthelper/system"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )

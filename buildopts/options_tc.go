@@ -12,7 +12,7 @@ import (
 	configcore "VaultConfig.Bootstrap/configcore"
 
 	"database/sql"
-	trcf "tierceron/trcflow/core/flowcorehelper"
+	trcf "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
 )
 
 func SetLogger(logger interface{}) {

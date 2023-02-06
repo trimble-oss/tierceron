@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"tierceron/trcx/engine"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/trcx/engine"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
