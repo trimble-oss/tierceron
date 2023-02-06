@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	eUtils "tierceron/utils"
-	pb "tierceron/webapi/rpc/apinator"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 )
 
 func main() {

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templateFilter *string) (error, []string) {

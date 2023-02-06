@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
-	"tierceron/buildopts/coreopts"
-	"tierceron/trcvault/opts/memonly"
-	"tierceron/trcx/xutil"
-	"tierceron/trcxbase"
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcx/xutil"
+	"github.com/trimble-oss/tierceron/trcxbase"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This executable automates the creation of seed files from template file(s).
