@@ -11,7 +11,7 @@ import (
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 
-	eUtils "tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
 //need mssql for spectrum

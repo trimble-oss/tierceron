@@ -9,8 +9,9 @@ import (
 	"flag"
 	"log"
 	"os"
-	"tierceron/trcgorillaz/ttdiserver/data"
-	"tierceron/trcgorillaz/ttdiserver/trcRenderers"
+
+	"github.com/trimble-oss/tierceron/trcgorillaz/ttdiserver/data"
+	"github.com/trimble-oss/tierceron/trcgorillaz/ttdiserver/trcRenderers"
 
 	"fyne.io/fyne/v2"
 	"github.com/mrjrieke/nute/custos/custosworld"

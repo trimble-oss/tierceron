@@ -5,11 +5,11 @@ package argosyopts
 
 import (
 	"github.com/mrjrieke/nute/mashupsdk"
+	"github.com/trimble-oss/tierceron/trcvault/util"
+	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	"log"
 	"math"
 	"strconv"
-	"tierceron/trcvault/util"
-	"tierceron/vaulthelper/kv"
 	//	"time"
 )
 
@@ -19,7 +19,7 @@ var data []string = []string{"UpdateBudget", "AddChangeOrder", "UpdateChangeOrde
 	"UpdateItemCost", "AddItemMarkup", "UpdateItemMarkup", "AddPhase", "UpdatePhase", "AddScheduleOfValuesFixedPrice",
 	"UpdateScheduleOfValuesFixedPrice", "AddScheduleOfValuesUnitPrice", "UpdateScheduleOfValuesUnitPrice"}
 
-//using tests from 8/24/22
+// using tests from 8/24/22
 var TimeData = map[string][]float64{
 	data[0]:  []float64{0.0, .650, .95, 5.13, 317.85, 317.85},
 	data[1]:  []float64{0.0, 0.3, 0.56, 5.06, 78.4, 78.4},

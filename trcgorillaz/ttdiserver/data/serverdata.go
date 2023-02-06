@@ -6,11 +6,12 @@ import (
 	"math"
 	"sort"
 	"strconv"
-	"tierceron/buildopts/argosyopts"
-	flowcore "tierceron/trcflow/core"
 
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts/argosyopts"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"github.com/mrjrieke/nute/mashupsdk"
 )
