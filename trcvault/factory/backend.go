@@ -9,12 +9,13 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"tierceron/trcvault/opts/memonly"
-	trcvutils "tierceron/trcvault/util"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
-	helperkv "tierceron/vaulthelper/kv"
 	"time"
+
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 

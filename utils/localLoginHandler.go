@@ -7,9 +7,10 @@ import (
 	"strings"
 	"syscall"
 
-	"tierceron/buildopts/coreopts"
-	helperkv "tierceron/vaulthelper/kv"
-	//pb "tierceron/webapi/rpc/apinator"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+
+	//pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 
 	tm "golang.org/x/crypto/ssh/terminal"
 )

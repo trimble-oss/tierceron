@@ -1,4 +1,4 @@
-module tierceron
+module github.com/trimble-oss/tierceron
 
 go 1.20
 
@@ -36,31 +36,16 @@ require (
 
 )
 
+require github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b
+
 require (
-	github.com/cilium/ebpf v0.10.0 // indirect
-	github.com/cosiner/argv v0.1.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
-	github.com/derekparker/trie v0.0.0-20221221181808-1424fce0c981 // indirect
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
-	github.com/go-delve/delve v1.20.1 // indirect
-	github.com/go-delve/liner v1.2.3-0.20220127212407-d32d89dd2a5d // indirect
 	github.com/gocraft/dbr/v2 v2.7.2 // indirect
 	github.com/google/flatbuffers v2.0.6+incompatible // indirect
-	github.com/google/go-dap v0.7.0 // indirect
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
-	github.com/mattn/go-runewidth v0.0.14 // indirect
-	github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b // indirect
-	github.com/rivo/uniseg v0.4.3 // indirect
-	github.com/rogpeppe/go-internal v1.9.0 // indirect
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/spf13/cobra v1.6.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tevino/abool v1.2.0 // indirect
 	go.opentelemetry.io/otel v1.7.0 // indirect
 	go.opentelemetry.io/otel/trace v1.7.0 // indirect
-	go.starlark.net v0.0.0-20230128213706-3f75dec8e403 // indirect
-	golang.org/x/arch v0.2.0 // indirect
 	golang.org/x/exp/shiny v0.0.0-20230202163644-54bba9f4231b // indirect
 )
 

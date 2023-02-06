@@ -11,8 +11,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
-	eUtils "tierceron/utils"
 	"time"
+
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 
