@@ -6,11 +6,12 @@ import (
 	"log"
 	"os"
 	"strings"
-	"tierceron/buildopts/coreopts"
-	trcvutils "tierceron/trcvault/util"
-	"tierceron/trcvault/util/repository"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	"github.com/trimble-oss/tierceron/trcvault/util/repository"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 func PluginMain() {

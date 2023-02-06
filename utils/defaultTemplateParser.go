@@ -6,7 +6,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"tierceron/buildopts/coreopts"
+
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 )

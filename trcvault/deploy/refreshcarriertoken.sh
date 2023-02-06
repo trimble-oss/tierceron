@@ -19,6 +19,18 @@ echo "Enter environment token with write permissions: "
 read VAULT_ENV_TOKEN
 fi
 
+
+if [[ -z "${VAULT_CONFIG_ROLE}" ]]; then
+echo "Enter config approle: "
+read VAULT_CONFIG_ROLE
+fi
+
+if [[ -z "${VAULT_PUB_ROLE}" ]]; then
+echo "Enter config pubrole: "
+read VAULT_PUB_ROLE
+fi
+
+
 VAULT_API_ADDR=VAULT_ADDR
 export VAULT_ADDR
 export VAULT_TOKEN
@@ -26,5 +38,5 @@ export VAULT_API_ADDR
 
 echo $VAULT_ADDR
 
-vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR
+vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR pubrole=$VAULT_PUB_ROLE configrole=$VAULT_CONFIG_ROLE
 

@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 
-	trcinitbase "tierceron/trcinitbase"
-	"tierceron/trcvault/opts/memonly"
-	"tierceron/utils/mlock"
+	trcinitbase "github.com/trimble-oss/tierceron/trcinitbase"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose

@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	eUtils "tierceron/utils"
-	sys "tierceron/vaulthelper/system"
-	pb "tierceron/webapi/rpc/apinator"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
+	pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 )
 
-//UploadTokens accepts a file directory and vault object to upload tokens to. Logs to pased logger
+// UploadTokens accepts a file directory and vault object to upload tokens to. Logs to pased logger
 func UploadTokens(config *eUtils.DriverConfig, dir string, fileFilterPtr *string, v *sys.Vault) []*pb.InitResp_Token {
 	tokens := []*pb.InitResp_Token{}
 	config.Log.SetPrefix("[TOKEN]")

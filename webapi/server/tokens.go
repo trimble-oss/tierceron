@@ -7,10 +7,10 @@ import (
 
 	jwt "github.com/golang-jwt/jwt"
 
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
-	pb "tierceron/webapi/rpc/apinator"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
+	pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 )
 
 func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (string, error) {
