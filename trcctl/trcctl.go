@@ -8,14 +8,14 @@ import (
 	"os"
 	"strings"
 
-	"tierceron/trcconfigbase"
-	trcinitbase "tierceron/trcinitbase"
-	"tierceron/trcpubbase"
-	"tierceron/trcsubbase"
-	"tierceron/trcvault/opts/memonly"
-	"tierceron/trcx/xutil"
-	"tierceron/trcxbase"
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/trcconfigbase"
+	trcinitbase "github.com/trimble-oss/tierceron/trcinitbase"
+	"github.com/trimble-oss/tierceron/trcpubbase"
+	"github.com/trimble-oss/tierceron/trcsubbase"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcx/xutil"
+	"github.com/trimble-oss/tierceron/trcxbase"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 const configDir = "/.tierceron/config.yml"
