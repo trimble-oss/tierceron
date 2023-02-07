@@ -5,8 +5,8 @@ package flowopts
 
 import (
 	tccutil "VaultConfig.TenantConfig/util/controller"
-	flowcore "tierceron/trcflow/core"
-	trcf "tierceron/trcflow/core/flowcorehelper"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	trcf "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
 )
 
 func GetAdditionalFlows() []flowcore.FlowNameType {

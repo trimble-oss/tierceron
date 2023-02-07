@@ -4,8 +4,8 @@
 package argosyopts
 
 import (
-	"tierceron/trcvault/util"
-	"tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/trcvault/util"
+	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
