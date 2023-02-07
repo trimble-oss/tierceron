@@ -4,7 +4,8 @@ import (
 	"log"
 	"strings"
 	"sync"
-	flowcore "tierceron/trcflow/core"
+
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"

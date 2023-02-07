@@ -7,11 +7,12 @@ import (
 	"io/ioutil"
 	"strings"
 	"text/template/parse"
-	"tierceron/buildopts/coreopts"
-	eUtils "tierceron/utils"
 
-	vcutils "tierceron/trcconfigbase/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+
+	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 const (

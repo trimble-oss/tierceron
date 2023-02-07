@@ -6,11 +6,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"tierceron/buildopts"
-	"tierceron/buildopts/coreopts"
-	"tierceron/trcflow/deploy"
-	"tierceron/trcvault/factory"
-	eUtils "tierceron/utils"
+
+	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/trcflow/deploy"
+	"github.com/trimble-oss/tierceron/trcvault/factory"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
 var signalChannel chan os.Signal
