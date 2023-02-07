@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
-	"tierceron/buildopts/coreopts"
-	"tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
-	"tierceron/vaulthelper/kv"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/vaulthelper/kv"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"github.com/hashicorp/vault/api"
 )

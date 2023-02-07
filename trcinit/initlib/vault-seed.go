@@ -16,14 +16,14 @@ import (
 	"strings"
 	"text/template/parse"
 
-	"tierceron/buildopts/coreopts"
-	vcutils "tierceron/trcconfigbase/utils"
-	"tierceron/trcx/xutil"
-	"tierceron/validator"
-	"tierceron/vaulthelper/kv"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
+	"github.com/trimble-oss/tierceron/trcx/xutil"
+	"github.com/trimble-oss/tierceron/validator"
+	"github.com/trimble-oss/tierceron/vaulthelper/kv"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	eUtils "tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	"gopkg.in/yaml.v2"
 )

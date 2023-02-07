@@ -3,17 +3,13 @@
 # Add steps that test, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/go
 
-trigger:
-  branches:
-    include:
-    - develop
-
-pr: 
-  autoCancel: 'true'
+pr:
   branches:
     include:
     - develop
     - main
+    exclude:
+    - releases/comprehensive/1.0.0
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -33,6 +29,11 @@ resources:
     type: git
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.TenantConfig
+    ref: main
+  - repository: tierceron-hat
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-hat
     ref: main
 
 variables:
@@ -59,6 +60,7 @@ steps:
 - checkout: VaultConfig.Bootstrap
 - checkout: VaultConfig.TenantConfig
 - checkout: VaultConfig.Test
+- checkout: tierceron-hat
 - checkout: self
 - task: Cache@2
   inputs:
@@ -74,28 +76,28 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" tierceron/trcagentctl
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcagentctl
     if [[ ! -f $GOBIN/trcagentctl ]] ; then
         echo File trcagentctl was not built, aborting.
         exit 1
     fi
 
     echo "Compile Agent plugin trc-vault-carrier-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly awsecr insecure" -o $GOBIN/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly awsecr insecure" -o $GOBIN/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/trcvault/plugins/carrier
     if [[ ! -f $GOBIN/trc-vault-carrier-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo "Compile Test Linux trc-vault-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc harbinger memonly" -o $GOBIN/trc-vault-plugin tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc harbinger memonly" -o $GOBIN/trc-vault-plugin github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo "Compile Prod Linux trc-vault-plugin-prod"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly prod" -o $GOBIN/trc-vault-plugin-prod tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly prod" -o $GOBIN/trc-vault-plugin-prod github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/trc-vault-plugin-prod ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
@@ -128,6 +130,7 @@ steps:
     targetFile: go.mod
     projectName: 'Tierceron'
     organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
+    additionalArguments: '-d'
 
 - task: PublishBuildArtifacts@1
   inputs:

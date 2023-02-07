@@ -4,11 +4,12 @@ import (
 	"flag"
 	"log"
 	"os"
-	"tierceron/buildopts/testopts"
-	trcflow "tierceron/trcflow/flumen"
-	"tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
+
+	"github.com/trimble-oss/tierceron/buildopts/testopts"
+	trcflow "github.com/trimble-oss/tierceron/trcflow/flumen"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This executable automates the creation of seed files from template file(s).

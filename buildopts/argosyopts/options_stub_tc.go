@@ -8,11 +8,11 @@ import (
 
 	"encoding/json"
 	"github.com/mrjrieke/nute/mashupsdk"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	"log"
 	"math"
 	"strconv"
-	flowcore "tierceron/trcflow/core"
-	"tierceron/vaulthelper/kv"
 )
 
 var pointer int

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	plgt "tierceron/trcvault/trcplgtoolbase"
+	plgt "github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
 )
 
 // This executable automates the cerification of a plugin docker image.

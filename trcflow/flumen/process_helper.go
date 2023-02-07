@@ -3,14 +3,15 @@ package flumen
 import (
 	"errors"
 	"sync"
-	trcvutils "tierceron/trcvault/util"
-	trcdb "tierceron/trcx/db"
-	trcengine "tierceron/trcx/engine"
-	"tierceron/trcx/extract"
 
-	flowcore "tierceron/trcflow/core"
+	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcdb "github.com/trimble-oss/tierceron/trcx/db"
+	trcengine "github.com/trimble-oss/tierceron/trcx/engine"
+	"github.com/trimble-oss/tierceron/trcx/extract"
 
-	eUtils "tierceron/utils"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+
+	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
 const (
