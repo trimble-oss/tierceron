@@ -12,7 +12,6 @@ pr:
   autoCancel: 'true'
   branches:
     include:
-    - develop
     - main
 
 pool:
