@@ -122,6 +122,7 @@ steps:
     targetFile: go.mod
     projectName: 'Tierceron'
     organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
+    additionalArguments: '-d'
 
 - task: PublishBuildArtifacts@1
   inputs:
