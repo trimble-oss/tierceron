@@ -58,7 +58,7 @@ steps:
 - checkout: VaultConfig.Bootstrap
 - checkout: VaultConfig.TenantConfig
 - checkout: VaultConfig.Test
-- checkout: trimble-oss/tierceron-hat
+#- checkout: trimble-oss/tierceron-hat
 - checkout: self
 - task: Cache@2
   inputs:
