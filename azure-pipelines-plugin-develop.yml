@@ -8,6 +8,8 @@ pr:
     include:
     - develop
     - main
+    exclude:
+    - releases/comprehensive/1.0.0
 
 pool:
   vmImage: 'ubuntu-latest'
