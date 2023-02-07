@@ -7,13 +7,13 @@ import (
 	"os"
 	"strings"
 
-	"tierceron/buildopts/coreopts"
-	il "tierceron/trcinit/initlib"
-	"tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
-	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	il "github.com/trimble-oss/tierceron/trcinit/initlib"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 )
 
 // Reads in template files in specified directory

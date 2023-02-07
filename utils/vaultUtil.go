@@ -5,10 +5,11 @@ import (
 	"log"
 	"os"
 	"strings"
-	"tierceron/buildopts/coreopts"
-	"tierceron/trcvault/opts/prod"
-	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
+
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 )
 
 // Helper to easiliy intialize a vault and a mod all at once.

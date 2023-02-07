@@ -1,6 +1,6 @@
 package flowcorehelper
 
-//import "tierceron/buildopts/flowopts"
+//import "github.com/trimble-oss/tierceron/buildopts/flowopts"
 
 const TierceronFlowConfigurationTableName = "TierceronFlow"
 const TierceronFlowDB = "FlumeDatabase"

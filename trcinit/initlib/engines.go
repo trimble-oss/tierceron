@@ -1,8 +1,8 @@
 package initlib
 
 import (
-	eUtils "tierceron/utils"
-	sys "tierceron/vaulthelper/system"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 )
 
 var engines = [...]string{
@@ -14,7 +14,7 @@ var engines = [...]string{
 	"verification",
 }
 
-//CreateEngines adds engines specified by the list 'engines'
+// CreateEngines adds engines specified by the list 'engines'
 func CreateEngines(config *eUtils.DriverConfig, v *sys.Vault) {
 	// Delete the kv path secreat first time (originally v1)
 	for _, eng := range engines {

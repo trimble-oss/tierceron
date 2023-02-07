@@ -10,15 +10,16 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"tierceron/trcvault/factory"
-	"tierceron/trcvault/opts/insecure"
-	"tierceron/trcvault/opts/prod"
-	trcvutils "tierceron/trcvault/util"
-	"tierceron/trcvault/util/repository"
-	sys "tierceron/vaulthelper/system"
 
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/trcvault/factory"
+	"github.com/trimble-oss/tierceron/trcvault/opts/insecure"
+	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
+	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	"github.com/trimble-oss/tierceron/trcvault/util/repository"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
+
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 	//"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 

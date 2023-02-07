@@ -5,7 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	eUtils "tierceron/utils"
+
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	"gopkg.in/yaml.v2"
 )

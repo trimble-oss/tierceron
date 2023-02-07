@@ -5,13 +5,14 @@ import (
 	"log"
 	"os"
 	"strings"
-	"tierceron/buildopts"
-	"tierceron/buildopts/coreopts"
-	"tierceron/trcflow/deploy"
-	"tierceron/trcvault/factory"
-	"tierceron/trcvault/opts/insecure"
-	memonly "tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
+
+	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/trcflow/deploy"
+	"github.com/trimble-oss/tierceron/trcvault/carrierfactory"
+	"github.com/trimble-oss/tierceron/trcvault/opts/insecure"
+	memonly "github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
@@ -33,18 +34,22 @@ func main() {
 	}
 
 	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if logErr != nil {
+		logFile = "./trcplugincarrier.log"
+		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	}
 	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 	logger.Println("Beginning plugin startup.")
 
 	buildopts.SetLogger(logger.Writer())
-	factory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
+	carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
 
 	args := os.Args
-	vaultHost := factory.GetVaultHost()
+	vaultHost := carrierfactory.GetVaultHost()
 	if strings.HasPrefix(vaultHost, buildopts.GetLocalVaultAddr()) {
 		logger.Println("Running in developer mode with self signed certs.")
 		args = append(args, "--tls-skip-verify=true")
@@ -64,7 +69,7 @@ func main() {
 
 	logger.Print("Starting server...")
 	err := plugin.Serve(&plugin.ServeOpts{
-		BackendFactoryFunc: factory.TrcFactory,
+		BackendFactoryFunc: carrierfactory.TrcFactory,
 		TLSProviderFunc:    tlsProviderFunc,
 	})
 	if err != nil {

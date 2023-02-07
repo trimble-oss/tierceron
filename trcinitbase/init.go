@@ -9,15 +9,15 @@ import (
 	"strconv"
 	"strings"
 
-	"tierceron/buildopts/coreopts"
-	il "tierceron/trcinit/initlib"
-	"tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
-	"tierceron/webapi/rpc/apinator"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	il "github.com/trimble-oss/tierceron/trcinit/initlib"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
+	"github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose
