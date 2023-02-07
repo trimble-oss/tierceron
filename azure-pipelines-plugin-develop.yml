@@ -120,16 +120,16 @@ steps:
     cp $GOBIN/trc-vault-plugin-prod.sha256  $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
-#- task: SnykSecurityScan@1
-#  inputs:
-#    serviceConnectionEndpoint: 'Spectrum Snyk'
-#    testType: 'app'
-#    monitorWhen: 'always'
-#    failOnIssues: false
-#    testDirectory: '$(modulePath)'
-#    targetFile: go.mod
-#    projectName: 'Tierceron'
-#    organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
+- task: SnykSecurityScan@1
+  inputs:
+    serviceConnectionEndpoint: 'Spectrum Snyk'
+    testType: 'app'
+    monitorWhen: 'always'
+    failOnIssues: false
+    testDirectory: '$(modulePath)'
+    targetFile: go.mod
+    projectName: 'Tierceron'
+    organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
 
 - task: PublishBuildArtifacts@1
   inputs:
