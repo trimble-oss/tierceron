@@ -9,9 +9,9 @@ import (
 	"os"
 	"strings"
 
-	sys "tierceron/vaulthelper/system"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 
-	helperkv "tierceron/vaulthelper/kv"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
 )

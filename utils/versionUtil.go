@@ -6,8 +6,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"tierceron/buildopts/coreopts"
-	helperkv "tierceron/vaulthelper/kv"
+
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 func SplitEnv(env string) []string {

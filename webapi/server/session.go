@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"tierceron/buildopts"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	"tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"sync"
 
-	eUtils "tierceron/utils"
-	"tierceron/validator"
-	helperkv "tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/validator"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 var mutex = &sync.Mutex{}

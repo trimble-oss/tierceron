@@ -11,11 +11,11 @@ import (
 	"strings"
 	"sync"
 
-	"tierceron/buildopts/coreopts"
-	vcutils "tierceron/trcconfigbase/utils"
-	"tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 
 	"github.com/google/go-cmp/cmp"
 )

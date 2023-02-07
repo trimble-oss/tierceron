@@ -10,14 +10,14 @@ import (
 	"regexp"
 	"strings"
 
-	"tierceron/buildopts/coreopts"
-	"tierceron/trcconfigbase"
-	"tierceron/trcpubbase"
-	"tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/trcconfigbase"
+	"github.com/trimble-oss/tierceron/trcpubbase"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 
-	helperkv "tierceron/vaulthelper/kv"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 const configDir = "/.tierceron/config.yml"

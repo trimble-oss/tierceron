@@ -35,6 +35,11 @@ resources:
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.TenantConfig
     ref: develop
+  - repository: tierceron-hat
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-hat
+    ref: main
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
@@ -61,6 +66,7 @@ steps:
 - checkout: VaultConfig.Bootstrap
 - checkout: VaultConfig.TenantConfig
 - checkout: VaultConfig.Test
+- checkout: tierceron-hat
 - checkout: self
 - task: Cache@2
   inputs:
@@ -76,7 +82,7 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
@@ -86,21 +92,21 @@ steps:
     done
 
     echo Compiling trc-vault-plugin
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly" -o $GOBIN/trc-vault-plugin tierceron/trcvault/plugins/trcdb
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly" -o $GOBIN/trc-vault-plugin github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo Compiling api
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  tierceron/webapi/apiRouter
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  github.com/trimble-oss/tierceron/webapi/apiRouter
     if [[ ! -f $GOBIN/apiRouter ]] ; then
         echo File apiRouter was not built, aborting.
         exit 1
     fi
 
     echo Compiling conflib
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -buildmode=c-shared -tags "azure memonly tc" -o $GOBIN/nc.so tierceron/configlib
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -buildmode=c-shared -tags "azure memonly tc" -o $GOBIN/nc.so github.com/trimble-oss/tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1

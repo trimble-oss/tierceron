@@ -7,9 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"tierceron/buildopts/coreopts"
-	eUtils "tierceron/utils"
-	pb "tierceron/webapi/rpc/apinator"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 )
 
 // ProxyLogin proxy logs in the user.

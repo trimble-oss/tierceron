@@ -13,10 +13,11 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"tierceron/buildopts"
-	"tierceron/trcvault/opts/memonly"
-	"tierceron/utils/mlock"
 	"time"
+
+	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 
 	"github.com/hashicorp/vault/api"
 )
