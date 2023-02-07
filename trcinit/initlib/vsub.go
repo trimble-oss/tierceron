@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templateFilter *string) (error, []string) {
@@ -90,6 +90,8 @@ func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifi
 				if _, dataOk := tfMap["data"]; dataOk {
 					data = tfMap["data"].(string)
 				} else {
+					// TODO: In recent run in prod, sub was printing an annoying warning here
+					// and yet correct templates seem to have gotten created...
 					fmt.Println("No data found for: " + path + "template-file")
 					continue
 				}

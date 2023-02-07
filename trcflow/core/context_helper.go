@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"tierceron/buildopts/coreopts"
-	trcvutils "tierceron/trcvault/util"
-	"tierceron/trcx/extract"
 
-	trcdb "tierceron/trcx/db"
-	trcengine "tierceron/trcx/engine"
-	eUtils "tierceron/utils"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	"github.com/trimble-oss/tierceron/trcx/extract"
+
+	trcdb "github.com/trimble-oss/tierceron/trcx/db"
+	trcengine "github.com/trimble-oss/tierceron/trcx/engine"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
 )

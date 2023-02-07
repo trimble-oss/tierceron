@@ -8,8 +8,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	helperkv "tierceron/vaulthelper/kv"
 	"time"
+
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"

@@ -3,10 +3,11 @@ package flumen
 import (
 	"errors"
 
-	flowcore "tierceron/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
 
-	flowcorehelper "tierceron/trcflow/core/flowcorehelper"
 	"time"
+
+	flowcorehelper "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"

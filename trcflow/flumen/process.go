@@ -9,21 +9,21 @@ import (
 	"sync"
 	"time"
 
-	"tierceron/buildopts"
-	"tierceron/buildopts/flowopts"
-	"tierceron/buildopts/harbingeropts"
-	"tierceron/buildopts/testopts"
-	trcvutils "tierceron/trcvault/util"
-	trcdb "tierceron/trcx/db"
+	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/testopts"
+	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcdb "github.com/trimble-oss/tierceron/trcx/db"
 
-	flowcore "tierceron/trcflow/core"
-	flowcorehelper "tierceron/trcflow/core/flowcorehelper"
-	"tierceron/trcflow/deploy"
-	helperkv "tierceron/vaulthelper/kv"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	flowcorehelper "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
+	"github.com/trimble-oss/tierceron/trcflow/deploy"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	eUtils "tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
-	sys "tierceron/vaulthelper/system"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
@@ -77,7 +77,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			regions, err := goMod.ListSubsection("/Index/", projects[i], goMod.SectionName, logger)
 			if err != nil {
 				eUtils.LogErrorObject(config, err, false)
-				return err
+				eUtils.LogInfo(config, "Skipping service: "+services[i])
+				continue
 			}
 			indexValues = regions
 		} else {
@@ -244,6 +245,16 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		FlowControllerInit:        true,
 		FlowControllerUpdateLock:  sync.Mutex{},
 		FlowControllerUpdateAlert: make(chan string, 1),
+	}
+
+	if len(sourceDatabaseConnectionsMap) == 0 {
+		sourceDatabaseConnectionsMap = make(map[string]map[string]interface{}, 1)
+		sourceDatabaseDetails := make(map[string]interface{}, 1)
+		sourceDatabaseDetails["dbsourceregion"] = "NA"
+		var d time.Duration = 60000
+		sourceDatabaseDetails["dbingestinterval"] = d
+		sourceDatabaseConnectionsMap["NA"] = sourceDatabaseDetails
+		sourceDatabaseDetails["sqlConn"] = nil
 	}
 
 	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())

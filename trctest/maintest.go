@@ -4,11 +4,12 @@ import (
 	"flag"
 	"log"
 	"os"
-	"tierceron/buildopts/testopts"
-	trcflow "tierceron/trcflow/flumen"
-	"tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
+
+	"github.com/trimble-oss/tierceron/buildopts/testopts"
+	trcflow "github.com/trimble-oss/tierceron/trcflow/flumen"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This executable automates the creation of seed files from template file(s).
@@ -26,6 +27,11 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
+	pluginConfig["address"] = "https://atvc.dexchadev.com:8305"
+	pluginConfig["vaddress"] = "https://atvc.dexchadev.com:8305"
+	//	pluginConfig["token"] = "INSERT TOKEN HERE"
+	pluginConfig["env"] = "dev"
+
 	if memonly.IsMemonly() {
 		mlock.MunlockAll(nil)
 		for _, value := range pluginConfig {

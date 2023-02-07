@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
-	pb "tierceron/webapi/rpc/apinator"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 )
 
 // getTemplateData Fetches all keys listed under 'templates' substituting private values with verification

@@ -5,25 +5,26 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	flowcore "tierceron/trcflow/core"
 
-	flowcorehelper "tierceron/trcflow/core/flowcorehelper"
-	trcvutils "tierceron/trcvault/util"
-	"tierceron/trcx/extract"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+
 	"time"
+
+	flowcorehelper "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
+	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	"github.com/trimble-oss/tierceron/trcx/extract"
 
 	utilcore "VaultConfig.TenantConfig/util/core"
 
-	dfssql "tierceron/trcflow/flows/flowsql"
+	dfssql "github.com/trimble-oss/tierceron/trcflow/flows/flowsql"
 
-	"VaultConfig.TenantConfig/util/core"
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
 const flowGroupName = "Ninja"
 
 func GetDataflowStatIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
-	tenantIndexPath, _ := core.GetDFSPathName()
+	tenantIndexPath, _ := utilcore.GetDFSPathName()
 
 	if first, second, third, fourth := rowDataMap[dfssql.DataflowTestIdColumn].(string), rowDataMap[dfssql.DataflowTestNameColumn].(string), rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), rowDataMap["flowGroup"].(string); first != "" && second != "" && third != "" && fourth != "" {
 		return "super-secrets/PublicIndex/" + tenantIndexPath + "/" + dfssql.DataflowTestIdColumn + "/" + rowDataMap[dfssql.DataflowTestIdColumn].(string) + "/DataFlowStatistics/DataFlowGroup/" + rowDataMap["flowGroup"].(string) + "/dataFlowName/" + rowDataMap[dfssql.DataflowTestNameColumn].(string) + "/" + rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), nil
@@ -59,7 +60,7 @@ func getDataFlowStatisticsSchema(tableName string) sqle.PrimaryKeySchema {
 }
 
 func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) error {
-	tenantIndexPath, tenantDFSIdPath := core.GetDFSPathName()
+	tenantIndexPath, tenantDFSIdPath := utilcore.GetDFSPathName()
 	tenantListData, tenantListErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath, tfmContext.Config.Log)
 	if tenantListErr != nil {
 		return tenantListErr
@@ -188,7 +189,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				stateUpdate.SyncFilter = "N/A"
 				if previousState.State == stateUpdate.State && previousState.SyncMode == stateUpdate.SyncMode && previousState.SyncFilter == stateUpdate.SyncFilter && previousState.FlowAlias == stateUpdate.FlowAlias {
 					continue
-				} else if int(previousState.State) != core.PreviousStateCheck(int(stateUpdate.State)) && stateUpdate.State != previousState.State {
+				} else if int(previousState.State) != utilcore.PreviousStateCheck(int(stateUpdate.State)) && stateUpdate.State != previousState.State {
 					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(previousState.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: stateUpdate.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
 					continue
 				}

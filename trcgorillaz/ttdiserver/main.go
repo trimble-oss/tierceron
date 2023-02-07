@@ -9,8 +9,9 @@ import (
 	"flag"
 	"log"
 	"os"
-	"tierceron/trcgorillaz/ttdiserver/data"
-	"tierceron/trcgorillaz/ttdiserver/trcRenderers"
+
+	"github.com/trimble-oss/tierceron/trcgorillaz/ttdiserver/data"
+	"github.com/trimble-oss/tierceron/trcgorillaz/ttdiserver/trcRenderers"
 
 	"fyne.io/fyne/v2"
 	"github.com/mrjrieke/nute/custos/custosworld"
@@ -34,7 +35,7 @@ var logoIcon embed.FS
 
 func main() {
 	callerCreds := flag.String("CREDS", "", "Credentials of caller")
-	insecure := flag.Bool("insecure", false, "Skip server validation")
+	insecure := flag.Bool("tls-skip-validation", false, "Skip server validation")
 	headless := flag.Bool("headless", false, "Run headless")
 	serverheadless := flag.Bool("serverheadless", false, "Run server completely headless")
 	envPtr := flag.String("env", "QA", "Environment to configure")

@@ -9,14 +9,15 @@ import (
 	"strconv"
 	"strings"
 
-	"tierceron/buildopts/coreopts"
-	il "tierceron/trcinit/initlib"
-	"tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	il "github.com/trimble-oss/tierceron/trcinit/initlib"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
+	"github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose
@@ -48,7 +49,8 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
 	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
-	fileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
+	tokenFileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
+	roleFileFilterPtr := flag.String("approle", "", "Filter files for approle rotation.")
 	dynamicPathPtr := flag.String("dynamicPath", "", "Seed a specific directory in vault.")
 
 	// indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
@@ -82,6 +84,24 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	if *namespaceVariable == "" && *newPtr {
 		fmt.Println("Namespace (-namespace) required to initialize a new vault.")
 		os.Exit(1)
+	}
+
+	if *newPtr {
+		currentDir, dirErr := os.Getwd()
+		if dirErr != nil {
+			fmt.Println("Couldn not retrieve current working directory")
+			os.Exit(1)
+		}
+
+		if _, err := os.Stat(currentDir + "/vault_namespace/vault/token_files"); err != nil {
+			fmt.Println("Could not locate token files required to initialize a new vault.")
+			os.Exit(1)
+		}
+
+		if _, err := os.Stat(currentDir + "/vault_namespace/vault/policy_files"); err != nil {
+			fmt.Println("Could not locate policy files  required to initialize a new vault.")
+			os.Exit(1)
+		}
 	}
 
 	// Enter ID tokens
@@ -176,7 +196,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			fmt.Println("Address must be specified using -addr flag")
 			os.Exit(1)
 		}
-		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger}, nil, nil, tokenPtr, nil, envPtr, addrPtr, envCtxPtr, *pingPtr)
+		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger}, nil, nil, tokenPtr, nil, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
 		if autoErr != nil {
 			fmt.Println("Auth failure: " + autoErr.Error())
 			os.Exit(1)
@@ -273,7 +293,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 
 			// Upload tokens from the given token directory
 			fmt.Println("Creating tokens")
-			tokens := il.UploadTokens(config, namespaceTokenConfigs, fileFilterPtr, v)
+			tokens := il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
 			if len(tokens) > 0 {
 				logger.Println(*namespaceVariable + " tokens successfully created.")
 			} else {
@@ -295,15 +315,15 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
 		} else {
 			if *rotateTokens {
-				if *fileFilterPtr == "" {
+				if *tokenFileFilterPtr == "" {
 					fmt.Println("Rotating tokens.")
 				} else {
-					fmt.Println("Adding token: " + *fileFilterPtr)
+					fmt.Println("Adding token: " + *tokenFileFilterPtr)
 				}
 			}
 		}
 
-		if (*rotateTokens || *tokenExpiration) && *fileFilterPtr == "" {
+		if (*rotateTokens || *tokenExpiration) && *tokenFileFilterPtr == "" {
 			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
 			if getOrRevokeError != nil {
 				fmt.Println("Token revocation or access failure.  Cannot continue.")
@@ -316,8 +336,12 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			fmt.Println("Updating role")
 			errTokenCidr := il.UploadTokenCidrRoles(config, namespaceRoleConfigs, v)
 			if errTokenCidr != nil {
-				fmt.Println("Role update failed.  Cannot continue.")
-				os.Exit(-1)
+				if *roleFileFilterPtr != "" { //If old way didn't work -> try new way.
+					*rotateTokens = true
+				} else {
+					fmt.Println("Role update failed.  Cannot continue.")
+					os.Exit(-1)
+				}
 			} else {
 				fmt.Println("Role updated")
 			}
@@ -337,77 +361,94 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 
 		if *rotateTokens && !*tokenExpiration {
 			// Create new tokens.
-			tokens := il.UploadTokens(config, namespaceTokenConfigs, fileFilterPtr, v)
+			var tokens []*apinator.InitResp_Token
+			if *roleFileFilterPtr == "" {
+				tokens = il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
+			}
 			if !*prodPtr && *namespaceVariable == "vault" {
-				//
-				// Dev, QA specific token creation.
-				//
-				tokenMap := map[string]interface{}{}
-				protectedTokenMap := map[string]interface{}{}
-
 				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
 				if mod != nil {
 					defer mod.Release()
 				}
 
-				if *fileFilterPtr != "" {
-					mod.RawEnv = "bamboo"
-					mod.Env = "bamboo"
-
-					existingTokens, err := mod.ReadData("super-secrets/tokens")
-					if err != nil {
-						fmt.Println("Read existing tokens failure.  Cannot continue.")
-						eUtils.LogErrorObject(config, err, false)
-						os.Exit(-1)
-					}
-
-					// We have names of tokens that were referenced in old role.  Ok to delete the role now.
-					//
-					// Merge token data.
-					//
-					// Copy existing.
-					for key, valueObj := range existingTokens {
-						if value, ok := valueObj.(string); ok {
-							tokenMap[key] = value
-						} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
-							tokenMap[key] = stringer.GoString()
-						}
-
-						if strings.Contains(key, "protected") {
-							protectedTokenMap[key] = tokenMap[key]
-						}
-					}
-
-					// Overwrite new.
-					for _, token := range tokens {
-						// Everything but webapp give access by app role and secret.
-						if token.Name != "admin" && token.Name != "webapp" && !strings.Contains(token.Name, "unrestricted") {
-							tokenMap[token.Name] = token.Value
-						}
-						if strings.Contains(token.Name, "protected") {
-							protectedTokenMap[token.Name] = token.Value
-						}
-					}
-
-					// Just update tokens in approle.
-					if len(tokenMap) > 0 {
-						warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
-						eUtils.LogErrorObject(config, err, true)
-						eUtils.LogWarningsObject(config, warn, true)
-						fmt.Println("Any new tokens added to approle")
-					}
-
-					if len(protectedTokenMap) > 0 {
-						mod.Env = "sugarcane"
-						caneWarn, caneErr := mod.Write("super-secrets/tokens", protectedTokenMap, config.Log)
-						eUtils.LogErrorObject(config, caneErr, true)
-						eUtils.LogWarningsObject(config, caneWarn, true)
-						fmt.Println("Any new tokens added to approle")
-					}
-
-				} else {
+				if err != nil {
+					fmt.Println("Error creating modifer.")
 					eUtils.LogErrorObject(config, err, false)
+					os.Exit(-1)
+				}
+				if *tokenFileFilterPtr != "" {
+					approleFiles := il.GetApproleFileNames(config)
+					for _, approleFile := range approleFiles {
+						if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
+							continue
+						}
+						tokenMap := map[string]interface{}{}
+						fileYAML, parseErr := il.ParseApproleYaml(approleFile)
+						if parseErr != nil {
+							fmt.Println("Read parsing approle yaml file, continuing to next file.")
+							eUtils.LogErrorObject(config, parseErr, false)
+							continue
+						}
+						if approleName, ok := fileYAML["Approle_Name"].(string); ok {
+							mod.RawEnv = approleName
+							mod.Env = approleName
+						} else {
+							fmt.Println("Read parsing approle name from file, continuing to next file.")
+							eUtils.LogErrorObject(config, parseErr, false)
+							continue
+						}
 
+						var tokenPerms map[interface{}]interface{}
+						if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
+							tokenPerms = permMap
+						} else {
+							fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
+							eUtils.LogErrorObject(config, parseErr, false)
+							continue
+						}
+
+						if found, ok := tokenPerms[*tokenFileFilterPtr].(bool); !ok && !found {
+							fmt.Println("Skipping " + mod.RawEnv + " as there is no token permission for this approle.")
+							continue
+						}
+
+						existingTokens, err := mod.ReadData("super-secrets/tokens")
+						if err != nil {
+							fmt.Println("Read existing tokens failure.  Cannot continue.")
+							eUtils.LogErrorObject(config, err, false)
+							os.Exit(-1)
+						}
+
+						// We have names of tokens that were referenced in old role.  Ok to delete the role now.
+						//
+						// Merge token data.
+						//
+						// Copy existing.
+						for key, valueObj := range existingTokens {
+							if value, ok := valueObj.(string); ok {
+								tokenMap[key] = value
+							} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
+								tokenMap[key] = stringer.GoString()
+							}
+						}
+
+						//Overwrite new
+						for _, token := range tokens {
+							// Everything but webapp give access by app role and secret.
+							if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
+								tokenMap[token.Name] = token.Value
+							}
+						}
+
+						// Just update tokens in approle.
+						if len(tokenMap) > 0 {
+							warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
+							eUtils.LogErrorObject(config, err, true)
+							eUtils.LogWarningsObject(config, warn, true)
+							fmt.Println("Any new tokens added to approle")
+						}
+					}
+				} else {
 					mod.RawEnv = "bamboo"
 					mod.Env = "bamboo"
 
@@ -417,104 +458,99 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 						os.Exit(1)
 					}
 
-					existingTokens, err := mod.ReadData("super-secrets/tokens")
-					if err != nil {
-						fmt.Println("Read existing tokens failure.  Cannot continue.")
-						eUtils.LogErrorObject(config, err, false)
-						os.Exit(-1)
-					}
-
-					// We have names of tokens that were referenced in old role.  Ok to delete the role now.
-					//
-					// Merge token data.
-					//
-					// Copy existing.
-					for key, valueObj := range existingTokens {
-						if value, ok := valueObj.(string); ok {
-							tokenMap[key] = value
-						} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
-							tokenMap[key] = stringer.GoString()
+					approleFiles := il.GetApproleFileNames(config)
+					for _, approleFile := range approleFiles {
+						if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
+							continue
 						}
-					}
-
-					// Overwrite new.
-					for _, token := range tokens {
-						// Everything but webapp give access by app role and secret.
-						if token.Name != "admin" && token.Name != "webapp" && !strings.Contains(token.Name, "unrestricted") {
-							tokenMap[token.Name] = token.Value
+						tokenMap := map[string]interface{}{}
+						fileYAML, parseErr := il.ParseApproleYaml(approleFile)
+						if parseErr != nil {
+							fmt.Println("Read parsing approle yaml file, continuing to next file.")
+							eUtils.LogErrorObject(config, parseErr, false)
+							continue
 						}
-						if strings.Contains(token.Name, "protected") {
-							protectedTokenMap[token.Name] = token.Value
+
+						if approleName, ok := fileYAML["Approle_Name"].(string); ok {
+							mod.RawEnv = approleName
+							mod.Env = approleName
+						} else {
+							fmt.Println("Read parsing approle name from file, continuing to next file.")
+							eUtils.LogErrorObject(config, parseErr, false)
+							continue
 						}
-					}
 
-					//
-					// Wipe existing role.
-					// Recreate the role.
-					//
-					resp, role_cleanup := v.DeleteRole("bamboo")
-					eUtils.LogErrorObject(config, role_cleanup, false)
+						var tokenPerms map[interface{}]interface{}
+						if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
+							tokenPerms = permMap
+						} else {
+							fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
+							eUtils.LogErrorObject(config, parseErr, false)
+							continue
+						}
 
-					if resp.StatusCode == 404 {
-						err = v.EnableAppRole()
+						existingTokens, err := mod.ReadData("super-secrets/tokens")
+						if err != nil {
+							fmt.Println("Read existing tokens failure.  Cannot continue.")
+							eUtils.LogErrorObject(config, err, false)
+							os.Exit(-1)
+						}
+
+						// We have names of tokens that were referenced in old role.  Ok to delete the role now.
+						//
+						// Merge token data.
+						//
+						// Copy existing.
+						for key, valueObj := range existingTokens {
+							if value, ok := valueObj.(string); ok {
+								tokenMap[key] = value
+							} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
+								tokenMap[key] = stringer.GoString()
+							}
+						}
+
+						// Overwrite new.
+						for _, token := range tokens {
+							// Everything but webapp give access by app role and secret.
+							if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
+								tokenMap[token.Name] = token.Value
+							}
+						}
+
+						//
+						// Wipe existing role.
+						// Recreate the role.
+						//
+						resp, role_cleanup := v.DeleteRole(mod.RawEnv)
+						eUtils.LogErrorObject(config, role_cleanup, false)
+
+						if resp.StatusCode == 404 {
+							err = v.EnableAppRole()
+							eUtils.LogErrorObject(config, err, true)
+						}
+
+						err = v.CreateNewRole(mod.RawEnv, &sys.NewRoleOptions{
+							TokenTTL:    "10m",
+							TokenMaxTTL: "15m",
+							Policies:    []string{mod.RawEnv},
+						})
 						eUtils.LogErrorObject(config, err, true)
-					}
 
-					err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
-						TokenTTL:    "10m",
-						TokenMaxTTL: "15m",
-						Policies:    []string{"bamboo"},
-					})
-					eUtils.LogErrorObject(config, err, true)
-
-					roleID, _, err := v.GetRoleID("bamboo")
-					eUtils.LogErrorObject(config, err, true)
-
-					secretID, err := v.GetSecretID("bamboo")
-					eUtils.LogErrorObject(config, err, true)
-
-					fmt.Printf("Rotated role id and secret id for bamboo.\n")
-					fmt.Printf("Role ID: %s\n", roleID)
-					fmt.Printf("Secret ID: %s\n", secretID)
-
-					// Store all new tokens to new appRole.
-					warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
-					eUtils.LogErrorObject(config, err, true)
-					eUtils.LogWarningsObject(config, warn, true)
-					//
-					// Wipe existing protected app role.
-					// Recreate the protected app role.
-					//
-
-					caneResp, caneRole_cleanup := v.DeleteRole("sugarcane")
-					eUtils.LogErrorObject(config, caneRole_cleanup, false)
-
-					if caneResp.StatusCode == 404 {
-						err = v.EnableAppRole()
+						roleID, _, err := v.GetRoleID(mod.RawEnv)
 						eUtils.LogErrorObject(config, err, true)
+
+						secretID, err := v.GetSecretID(mod.RawEnv)
+						eUtils.LogErrorObject(config, err, true)
+
+						fmt.Printf("Rotated role id and secret id for " + mod.RawEnv + ".\n")
+						fmt.Printf("Role ID: %s\n", roleID)
+						fmt.Printf("Secret ID: %s\n", secretID)
+
+						// Store all new tokens to new appRole.
+						warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
+						eUtils.LogErrorObject(config, err, true)
+						eUtils.LogWarningsObject(config, warn, true)
 					}
-
-					err = v.CreateNewRole("sugarcane", &sys.NewRoleOptions{
-						TokenTTL:    "10m",
-						TokenMaxTTL: "15m",
-						Policies:    []string{"sugarcane"},
-					})
-					eUtils.LogErrorObject(config, err, true)
-
-					tokenRoleID, _, err := v.GetRoleID("sugarcane")
-					eUtils.LogErrorObject(config, err, true)
-
-					tokenSecretID, err := v.GetSecretID("sugarcane")
-					eUtils.LogErrorObject(config, err, true)
-
-					fmt.Printf("Rotated role id and secret id for sugarcane.\n")
-					fmt.Printf("Role ID: %s\n", tokenRoleID)
-					fmt.Printf("Secret ID: %s\n", tokenSecretID)
-					mod.Env = "sugarcane"
-					// Store all new tokens to new appRole.
-					caneWarn, caneErr := mod.Write("super-secrets/tokens", protectedTokenMap, config.Log)
-					eUtils.LogErrorObject(config, caneErr, true)
-					eUtils.LogWarningsObject(config, caneWarn, true)
 				}
 
 			}
@@ -561,7 +597,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 		// Upload policies from the given policy directory
 		il.UploadPolicies(config, namespacePolicyConfigs, v, false)
 		// Upload tokens from the given token directory
-		tokens := il.UploadTokens(config, namespaceTokenConfigs, fileFilterPtr, v)
+		tokens := il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
 		if !*prodPtr {
 			tokenMap := map[string]interface{}{}
 			for _, token := range tokens {
