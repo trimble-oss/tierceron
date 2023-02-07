@@ -28,11 +28,11 @@ resources:
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.TenantConfig
     ref: main
-  - repository: https://github.com/trimble-oss/tierceron
-    type: githubenterprise
-    endpoint: AzureBuilderConnection
-    name: tierceron-hat
-    ref: main
+#  - repository: https://github.com/trimble-oss/tierceron
+#    type: githubenterprise
+#    endpoint: AzureBuilderConnection
+#    name: tierceron-hat
+#    ref: main
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
