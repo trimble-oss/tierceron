@@ -40,7 +40,7 @@ require (
 	github.com/trimble-oss/tierceron-hat v0.0.0-20230206214723-e766990c2a5f
 )
 
-require github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067 // indirect
+require github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 
 require (
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
@@ -148,6 +148,8 @@ replace VaultConfig.Bootstrap => ../VaultConfig.Bootstrap
 replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 
 replace VaultConfig.Test => ../VaultConfig.Test
+
+replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.6
 
