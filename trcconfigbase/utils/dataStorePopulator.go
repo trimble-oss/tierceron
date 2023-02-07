@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 // ConfigDataStore stores the data needed to configure the specified template files

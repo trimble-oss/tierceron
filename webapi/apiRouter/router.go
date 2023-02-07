@@ -8,11 +8,11 @@ import (
 	"os"
 	"strings"
 
-	"tierceron/buildopts/coreopts"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
-	twp "tierceron/webapi/rpc/apinator"
-	"tierceron/webapi/server"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
+	twp "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
+	"github.com/trimble-oss/tierceron/webapi/server"
 
 	jwt "github.com/golang-jwt/jwt"
 	rtr "github.com/julienschmidt/httprouter"

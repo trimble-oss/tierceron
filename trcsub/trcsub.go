@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 
-	"tierceron/trcsubbase"
-	"tierceron/trcvault/opts/memonly"
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/trcsubbase"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // Reads in template files in specified directory

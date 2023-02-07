@@ -11,10 +11,10 @@ import (
 
 	"os"
 
-	eUtils "tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
-	"tierceron/buildopts/argosyopts"
-	"tierceron/trcgorillaz/ttdivisualizer/ttdirender"
+	"github.com/trimble-oss/tierceron/buildopts/argosyopts"
+	"github.com/trimble-oss/tierceron/trcgorillaz/ttdivisualizer/ttdirender"
 
 	"github.com/mrjrieke/nute/g3nd/g3nworld"
 	"github.com/mrjrieke/nute/g3nd/worldg3n/g3nrender"
