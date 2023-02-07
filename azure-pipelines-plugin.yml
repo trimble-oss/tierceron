@@ -5,11 +5,13 @@
 
 trigger:
   branches:
-     include:
-     - releases/plugin/*
-     exclude:
-     - main
-     - develop
+    include:
+    - releases/plugin/*
+    exclude:
+    - main
+    - develop
+    - releases/comprehensive/1.0.0
+    - releases/legacy/*
 
 pr: 
   autoCancel: 'true'
@@ -19,6 +21,8 @@ pr:
     exclude:
     - main
     - develop
+    - releases/comprehensive/1.0.0
+    - releases/legacy/*
 
 pool:
   vmImage: 'ubuntu-latest'
