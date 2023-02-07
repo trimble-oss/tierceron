@@ -4,17 +4,11 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/go
 
 trigger:
-  batch: true
+pr:
   branches:
     include:
     - develop
     exclude:
-    - main
-
-pr: 
-  autoCancel: 'true'
-  branches:
-    include:
     - main
 
 pool:
