@@ -11,11 +11,11 @@ import (
 	"strings"
 	"sync"
 
-	"tierceron/buildopts/coreopts"
-	vcutils "tierceron/trcconfigbase/utils"
-	"tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -75,11 +75,11 @@ func reciever() {
 	}
 }
 
-func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
+func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *string, c *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	tokenPtr := flag.String("token", "", "Vault access token")
+
 	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix()+"_templates", "Template directory")
 	endDirPtr := flag.String("endDir", ".", "Directory to put configured templates into")
 	regionPtr := flag.String("region", "", "Region to configure")
@@ -127,6 +127,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	}
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	config := eUtils.DriverConfig{ExitOnFailure: true}
+	var configFile string
+	if c != nil {
+		config = *c
+		*insecurePtr = config.Insecure
+		configFile = config.FileFilter[0]
+	}
 	eUtils.CheckError(&config, err, true)
 	logger := log.New(f, "["+coreopts.GetFolderPrefix()+"config]", log.LstdFlags)
 
@@ -181,7 +187,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, configFile, *pingPtr)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				os.Exit(1)
@@ -275,7 +281,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, configFile, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					os.Exit(1)
@@ -368,7 +374,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 		}(&config)
 	}
 	wg.Wait() //Wait for templates
-	close(resultChannel)
+	if c == nil {
+		close(resultChannel)
+	} else if c.EndDir != "deploy" {
+		close(resultChannel)
+	}
 	if *diffPtr { //Diff if needed
 		if fileSysIndex != -1 {
 			envDiffSlice = append(envDiffSlice, "filesys")

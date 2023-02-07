@@ -6,17 +6,20 @@
 trigger:
   branches:
     include:
-    - main
+    - releases/comprehensive/1.0.0
     exclude:
     - develop
+    - main
+    - releases/plugin/*
 
 pr:
   autoCancel: 'true'
   branches: 
     include:
-    - main
+    - releases/comprehensive/1.0.0
     exclude:
     - develop
+    - main
     - releases/plugin/*
 
 pool:
@@ -38,16 +41,23 @@ resources:
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.TenantConfig
     ref: main
+  - repository: tierceron-hat
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-hat
+    ref: main
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
   GOPATH: '$(system.defaultWorkingDirectory)' # Go workspace path
+  GOCACHE: '$(Pipeline.Workspace)/.cache/go-build/'
+  GO_CACHE_DIR: $(Pipeline.Workspace)/.cache/go-build/
   modulePath: 'tierceron' # Path to the module's code
 
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.19.1'
+    version: '1.20'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -61,18 +71,24 @@ steps:
 - checkout: VaultConfig.Bootstrap
 - checkout: VaultConfig.TenantConfig
 - checkout: VaultConfig.Test
+- checkout: tierceron-hat
 - checkout: self
+- task: Cache@2
+  inputs:
+    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
+    restoreKeys: | 
+      go | "$(Agent.OS)"
+    path: $(GO_CACHE_DIR)
+  displayName: Cache GO packages
 - script: |
     go version
     pwd
     echo $GOBIN
-    echo "Mod download"
-    go mod download
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install  -a -ldflags '-w' -tags "memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
-    for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub,trcagentctl}
+    for p in trcconfig trcpub trcagentctl trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
@@ -81,7 +97,7 @@ steps:
     done
 
     echo "Compile Windows"
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install  -a -ldflags '-w' -tags "tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "tc" github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
@@ -91,7 +107,7 @@ steps:
     done
 
     echo "Compile Mac"
-    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install  -a -ldflags '-w' -tags "memonly tc" tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
@@ -102,21 +118,21 @@ steps:
 
 
     echo Compiling/Verifying trc-vault-plugin
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc memonly" -o $GOBIN/verify-trc-vault-plugin tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly" -o $GOBIN/verify-trc-vault-plugin github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/verify-trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo Compiling api
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install  -a -ldflags '-w' tierceron/webapi/apiRouter
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' github.com/trimble-oss/tierceron/webapi/apiRouter
     if [[ ! -f $GOBIN/apiRouter ]] ; then
         echo File apiRouter was not built, aborting.
         exit 1
     fi
 
     echo Compiling conflib
-    GOBIN= GOOS=linux GOARCH=amd64 go build  -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' tierceron/configlib
+    GOBIN= GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build -buildmode=c-shared -o $GOBIN/nc.so -a -ldflags '-w' github.com/trimble-oss/tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
@@ -138,60 +154,89 @@ steps:
     ArtifactName: 'drop'
     publishLocation: 'Container'
 
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trcconfig
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcconfig/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
+#- task: Docker@2 # TODO: Deprecate - azure migration
+#  displayName: Build an image
+#  inputs:
+#    repository: trcconfig
+#    buildContext: '$(Build.ArtifactStagingDirectory)'
+#    command: build
+#    dockerfile: '**/docker/trcconfig/Dockerfile'
+#    tags: |
+#      $(Build.SourceVersion)
+
+#- task: Docker@2 # TODO: Deprecate - azure migration
+#  displayName: Build an image
+#  inputs:
+#    repository: trcpub
+#    buildContext: '$(Build.ArtifactStagingDirectory)'
+#    command: build
+#    dockerfile: '**/docker/trcpub/Dockerfile'
+#    tags: |
+#      $(Build.SourceVersion)
 
 - task: Docker@2
   displayName: Build an image
   inputs:
-    repository: trcpub
+    repository: trcagentctl
     buildContext: '$(Build.ArtifactStagingDirectory)'
     command: build
-    dockerfile: '**/docker/trcpub/Dockerfile'
+    dockerfile: '**/docker/trcagentctl/Dockerfile'
     tags: |
       $(Build.SourceVersion)
 
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trcconfig'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcconfig'
-    pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trcconfig'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcconfig'
-    pushTag: 'latest'
+#- task: ECRPushImage@1 # TODO: Deprecate - azure migration
+#  inputs:
+#    awsCredentials: 'Seattle AWS Development'
+#    regionName: 'us-west-2'
+#    imageSource: 'imagename'
+#    sourceImageName: 'trcconfig'
+#    sourceImageTag: '$(Build.SourceVersion)'
+#    repositoryName: 'trcconfig'
+#    pushTag: '$(Build.SourceVersion)'
+#- task: ECRPushImage@1 # TODO: Deprecate - azure migration
+#  inputs:
+#    awsCredentials: 'Seattle AWS Development'
+#    regionName: 'us-west-2'
+#    imageSource: 'imagename'
+#    sourceImageName: 'trcconfig'
+#    sourceImageTag: '$(Build.SourceVersion)'
+#    repositoryName: 'trcconfig'
+#    pushTag: 'latest'
+
+#- task: ECRPushImage@1 # TODO: Deprecate - azure migration
+#  inputs:
+#    awsCredentials: 'Seattle AWS Development'
+#    regionName: 'us-west-2'
+#    imageSource: 'imagename'
+#    sourceImageName: 'trcpub'
+#    sourceImageTag: '$(Build.SourceVersion)'
+#    repositoryName: 'trcpub'
+#    pushTag: '$(Build.SourceVersion)'
+#- task: ECRPushImage@1 # TODO: Deprecate - azure migration
+#  inputs:
+#    awsCredentials: 'Seattle AWS Development'
+#    regionName: 'us-west-2'
+#    imageSource: 'imagename'
+#    sourceImageName: 'trcpub'
+#    sourceImageTag: '$(Build.SourceVersion)'
+#    repositoryName: 'trcpub'
+#    pushTag: 'latest'
 
 - task: ECRPushImage@1
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'trcpub'
+    sourceImageName: 'trcagentctl'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcpub'
+    repositoryName: 'trcagentctl'
     pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
+- task: ECRPushImage@1 
   inputs:
     awsCredentials: 'Seattle AWS Development'
     regionName: 'us-west-2'
     imageSource: 'imagename'
-    sourceImageName: 'trcpub'
+    sourceImageName: 'trcagentctl'
     sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcpub'
+    repositoryName: 'trcagentctl'
     pushTag: 'latest'

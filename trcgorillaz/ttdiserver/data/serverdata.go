@@ -6,11 +6,12 @@ import (
 	"math"
 	"sort"
 	"strconv"
-	"tierceron/buildopts/argosyopts"
-	flowcore "tierceron/trcflow/core"
 
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts/argosyopts"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"github.com/mrjrieke/nute/mashupsdk"
 )
@@ -88,7 +89,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	token := ""
 	empty := ""
 
-	autoErr := eUtils.AutoAuth(&config, &secretID, &appRoleID, &token, &empty, envPtr, &address, nil, false)
+	autoErr := eUtils.AutoAuth(&config, &secretID, &appRoleID, &token, &empty, envPtr, &address, nil, "", false)
 	eUtils.CheckError(&config, autoErr, true)
 
 	mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, true, logger)

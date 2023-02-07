@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 
-	"tierceron/trcvault/opts/memonly"
-	"tierceron/trcx/xutil"
-	trcxbase "tierceron/trcxbase"
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcx/xutil"
+	trcxbase "github.com/trimble-oss/tierceron/trcxbase"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This executable automates the creation of seed files from template file(s).

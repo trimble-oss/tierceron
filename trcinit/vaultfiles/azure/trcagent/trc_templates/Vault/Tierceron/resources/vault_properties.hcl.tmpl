@@ -15,6 +15,17 @@ storage "mysql" {
 }
 
 listener "tcp" {
+<<<<<<< HEAD:trcinit/vaultfiles/azure/trcagent/trc_templates/Vault/Tierceron/resources/vault_properties.hcl.tmpl
+   address = "127.0.0.1:{{.hostport}}"
+   tls_disable = "false"
+
+   tls_cert_file = "/etc/opt/vault/certs/serv_cert.pem"
+   tls_key_file = "/etc/opt/vault/certs/serv_key.pem"
+}
+
+listener "tcp" {
+=======
+>>>>>>> releases/legacy/1.0.0:trcinit/vaultfiles/azure/trc_templates/Vault/Tierceron/resources/vault_properties.hcl.tmpl
     address     = "{{.vault_ip}}:{{.hostport}}"
     tls_disable = "false"
     tls_cert_file = "/etc/opt/vault/certs/serv_cert.pem"

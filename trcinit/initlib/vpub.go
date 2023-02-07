@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"tierceron/buildopts/coreopts"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 func UploadTemplateDirectory(mod *helperkv.Modifier, dirName string, logger *log.Logger) (error, []string) {

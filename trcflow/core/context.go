@@ -18,19 +18,19 @@ import (
 	"VaultConfig.TenantConfig/lib"
 	tclibc "VaultConfig.TenantConfig/lib/libsqlc"
 
-	"tierceron/buildopts/coreopts"
-	"tierceron/buildopts/flowcoreopts"
-	"tierceron/trcflow/core/flowcorehelper"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/flowcoreopts"
+	"github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
 
-	trcvutils "tierceron/trcvault/util"
-	trcdb "tierceron/trcx/db"
-	trcengine "tierceron/trcx/engine"
-	"tierceron/trcx/extract"
-	sys "tierceron/vaulthelper/system"
+	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcdb "github.com/trimble-oss/tierceron/trcx/db"
+	trcengine "github.com/trimble-oss/tierceron/trcx/engine"
+	"github.com/trimble-oss/tierceron/trcx/extract"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 
-	dfssql "tierceron/trcflow/flows/flowsql"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	dfssql "github.com/trimble-oss/tierceron/trcflow/flows/flowsql"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"VaultConfig.TenantConfig/util/core"
 	utilcore "VaultConfig.TenantConfig/util/core"
@@ -613,6 +613,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	}
 	tfContext.FlowLock.Unlock()
 
+	if _, ok := tfContext.RemoteDataSource["connection"].(*sql.DB); !ok {
+		flowPushRemote = nil
+	}
 	if !tfContext.Restart {
 		go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, indexColumnNames, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
 	} else {
@@ -919,20 +922,23 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	}
 
 	tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
-	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"]
+	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"] //60000
 	//if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() { //Flag is now replaced by syncMode in controller
 	// Create remote data source with only what is needed.
 	if flow.ServiceName() != flowcorehelper.TierceronFlowConfigurationTableName {
-		eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
-		dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+		if _, ok := sourceDatabaseConnectionMap["dbsourceurl"].(string); ok {
 
-		if err != nil {
-			eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.", false)
-			return err
+			eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
+			dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+
+			if err != nil {
+				eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.", false)
+				return err
+			}
+			defer dbsourceConn.Close()
+
+			tfContext.RemoteDataSource["connection"] = dbsourceConn
 		}
-		defer dbsourceConn.Close()
-
-		tfContext.RemoteDataSource["connection"] = dbsourceConn
 	}
 
 	if initConfigWG, ok := tfContext.RemoteDataSource["controllerInitWG"].(*sync.WaitGroup); ok {

@@ -5,11 +5,11 @@
 
 trigger:
   branches:
-    include:
-    - releases/plugin/*
-    exclude:
-    - main
-    - develop
+     include:
+     - releases/plugin/*
+     exclude:
+     - main
+     - develop
 
 pr: 
   autoCancel: 'true'
@@ -39,16 +39,23 @@ resources:
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.TenantConfig
     ref: main
+  - repository: tierceron-hat
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-hat
+    ref: main
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
   GOPATH: '$(system.defaultWorkingDirectory)' # Go workspace path
+  GOCACHE: '$(Pipeline.Workspace)/.cache/go-build/'
+  GO_CACHE_DIR: $(Pipeline.Workspace)/.cache/go-build/
   modulePath: 'tierceron' # Path to the module's code
 
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.19.1'
+    version: '1.20'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -62,41 +69,58 @@ steps:
 - checkout: VaultConfig.Bootstrap
 - checkout: VaultConfig.TenantConfig
 - checkout: VaultConfig.Test
+- checkout: tierceron-hat
 - checkout: self
+- task: Cache@2
+  inputs:
+    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
+    restoreKeys: | 
+      go | "$(Agent.OS)"
+    path: $(GO_CACHE_DIR)
+  displayName: Cache GO packages
 - script: |
     go version
     pwd
     echo $GOBIN
-    echo "Mod download"
-    go mod download
     echo "Compile start"
 
-    echo "Compile Deployer plugin trc-vault-carrier-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc memonly awsecr insecure" -o $GOBIN/trc-vault-carrier-plugin tierceron/trcvault/plugins/carrier
+    echo "Compile Linux"
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcagentctl
+    if [[ ! -f $GOBIN/trcagentctl ]] ; then
+        echo File trcagentctl was not built, aborting.
+        exit 1
+    fi
+
+    echo "Compile Agent plugin trc-vault-carrier-plugin"
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly awsecr insecure" -o $GOBIN/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/trcvault/plugins/carrier
     if [[ ! -f $GOBIN/trc-vault-carrier-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo "Compile Test Linux trc-vault-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc harbinger memonly" -o $GOBIN/trc-vault-plugin tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc harbinger memonly" -o $GOBIN/trc-vault-plugin github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo "Compile Prod Linux trc-vault-plugin-prod"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc memonly prod" -o $GOBIN/trc-vault-plugin-prod tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly prod" -o $GOBIN/trc-vault-plugin-prod github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
     if [[ ! -f $GOBIN/trc-vault-plugin-prod ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
+    sha256sum $GOBIN/trcagentctl | cut -d' ' -f1 > $GOBIN/trcagentctl.sha256
     sha256sum $GOBIN/trc-vault-carrier-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-carrier-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin-prod | cut -d' ' -f1 > $GOBIN/trc-vault-plugin-prod.sha256
 
     echo "Compile Complete"
+    cp $GOBIN/trcagentctl $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/trcagentctl.sha256 $(Build.ArtifactStagingDirectory)
+
     cp $GOBIN/trc-vault-carrier-plugin $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-carrier-plugin.sha256 $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin  $(Build.ArtifactStagingDirectory)

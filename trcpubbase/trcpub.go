@@ -7,13 +7,13 @@ import (
 	"os"
 	"strings"
 
-	"tierceron/buildopts/coreopts"
-	il "tierceron/trcinit/initlib"
-	"tierceron/trcvault/opts/memonly"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
-	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	il "github.com/trimble-oss/tierceron/trcinit/initlib"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 )
 
 // Reads in template files in specified directory
@@ -22,19 +22,18 @@ import (
 // The file is saved under the data key, and the extension under the ext key
 // Vault automatically encodes the file into base64
 
-func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
+func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *string, c *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	fmt.Println("Version: " + "1.4")
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
-	tokenPtr := flag.String("token", "", "Vault access token")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix()+"pub to access the vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"pub.log", "Output path for log files")
+	configFilePtr := flag.String("", "config.yml", "Name of auth config file - example.yml")
 
 	flag.Parse()
 
@@ -45,7 +44,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
 	logger := log.New(f, "[INIT]", log.LstdFlags)
+
 	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+	if c != nil {
+		config = c
+		*insecurePtr = config.Insecure
+		*configFilePtr = config.FileFilter[0]
+	}
 	eUtils.CheckError(config, err, true)
 
 	if len(*tokenNamePtr) > 0 {
@@ -76,6 +81,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 		mlock.MunlockAll(nil)
 		mlock.Mlock2(nil, tokenPtr)
 	}
+
+	autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
+	eUtils.CheckError(config, autoErr, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error

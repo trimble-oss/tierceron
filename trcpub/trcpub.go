@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 
-	"tierceron/trcpubbase"
-	"tierceron/trcvault/opts/memonly"
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/trcpubbase"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // Reads in template files in specified directory
@@ -22,6 +22,7 @@ func main() {
 	fmt.Println("Version: " + "1.26")
 	envPtr := flag.String("env", "dev", "Environment to configure")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
+	tokenPtr := flag.String("token", "", "Vault access token")
 
-	trcpubbase.CommonMain(envPtr, addrPtr, nil)
+	trcpubbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, nil)
 }
