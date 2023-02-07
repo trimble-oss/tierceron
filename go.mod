@@ -10,7 +10,6 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.9
-	github.com/graphql-go/graphql v0.7.9
 	github.com/hashicorp/vault-plugin-secrets-kv v0.9.0
 	github.com/hashicorp/vault/api v1.1.0
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221838-e0cfd64bc267 // IMPORTANT! This must match vault sdk used by vault for plugin to be stable!
@@ -41,10 +40,13 @@ require (
 	github.com/trimble-oss/tierceron-hat v0.0.0-20230206214723-e766990c2a5f
 )
 
+require github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067 // indirect
+
 require (
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
 	github.com/gocraft/dbr/v2 v2.7.2 // indirect
 	github.com/google/flatbuffers v2.0.6+incompatible // indirect
+	//	github.com/graphql-go/graphql     v0.0.0- // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/tevino/abool v1.2.0 // indirect
 	go.opentelemetry.io/otel v1.7.0 // indirect
