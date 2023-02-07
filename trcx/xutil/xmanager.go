@@ -9,11 +9,11 @@ import (
 	"strings"
 	"sync"
 
-	"tierceron/buildopts/coreopts"
-	vcutils "tierceron/trcconfigbase/utils"
-	"tierceron/trcx/extract"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
+	"github.com/trimble-oss/tierceron/trcx/extract"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	trcxerutil "VaultConfig.TenantConfig/util/trcxerutil"
 

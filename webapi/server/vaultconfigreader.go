@@ -1,7 +1,7 @@
 package server
 
 import (
-	helperkv "tierceron/vaulthelper/kv"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 // GetConfig gets a configuration by env and path.

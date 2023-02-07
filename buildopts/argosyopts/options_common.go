@@ -5,8 +5,9 @@ package argosyopts
 
 import (
 	"log"
-	flowcore "tierceron/trcflow/core"
-	"tierceron/vaulthelper/kv"
+
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {

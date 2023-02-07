@@ -10,18 +10,18 @@ import (
 	"strings"
 	"time"
 
-	"tierceron/trcvault/opts/insecure"
-	"tierceron/trcvault/opts/prod"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/trcvault/opts/insecure"
+	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
 
-	vcutils "tierceron/trcconfigbase/utils"
-	"tierceron/trcx/extract"
-	"tierceron/trcx/xutil"
+	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
+	"github.com/trimble-oss/tierceron/trcx/extract"
+	"github.com/trimble-oss/tierceron/trcx/xutil"
 
-	il "tierceron/trcinit/initlib"
+	il "github.com/trimble-oss/tierceron/trcinit/initlib"
 
 	"log"
 )

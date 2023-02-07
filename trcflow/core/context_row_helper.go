@@ -4,8 +4,8 @@ import (
 	"sync"
 	"unsafe"
 
-	"tierceron/trcvault/opts/memonly"
-	"tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 var m sync.Mutex

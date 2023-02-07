@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	eUtils "tierceron/utils"
-	sys "tierceron/vaulthelper/system"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 )
 
 // UploadTokenCidrRoles accepts a file directory and vault object to upload token roles to. Logs to pased logger

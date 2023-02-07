@@ -1,4 +1,4 @@
-package factory
+package carrierfactory
 
 import (
 	"context"
@@ -183,12 +183,16 @@ func initVaultHostBootstrap() error {
 func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	tokenMap := map[string]interface{}{}
 	type tokenWrapper struct {
-		Token    string `json:"token,omitempty"`
-		VAddress string `json:"vaddress,omitempty"`
+		Token      string `json:"token,omitempty"`
+		VAddress   string `json:"vaddress,omitempty"`
+		Pubrole    string `json:"pubrole,omitempty"`
+		Configrole string `json:"configrole,omitempty"`
 	}
 	tokenConfig := tokenWrapper{}
 	e.DecodeJSON(&tokenConfig)
 	tokenMap["token"] = tokenConfig.Token
+	tokenMap["pubrole"] = tokenConfig.Pubrole
+	tokenMap["configrole"] = tokenConfig.Configrole
 
 	vaultUrl, err := url.Parse(tokenConfig.VAddress)
 	if err == nil {
@@ -219,6 +223,18 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	if !aOk || address.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing address.")
 		return errors.New("missing address")
+	}
+
+	pubrole, pOk := pluginEnvConfig["pubrole"]
+	if !pOk || pubrole.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing pub role.")
+		return errors.New("missing pub role")
+	}
+
+	configrole, rOk := pluginEnvConfig["configrole"]
+	if !rOk || configrole.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing config role.")
+		return errors.New("missing config role")
 	}
 
 	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
@@ -259,7 +275,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 }
 
 func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) error {
-	logger.Println("TrcInitialize begun.")
+	logger.Println("TrcCarrierInitialize begun.")
 
 	for _, env := range environments {
 		logger.Println("Processing env: " + env)
@@ -294,7 +310,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 	}
 
 	//ctx.Done()
-	logger.Println("TrcInitialize complete.")
+	logger.Println("TrcCarrierInitialize complete.")
 	return nil
 }
 
@@ -329,7 +345,7 @@ func handleWrite(ctx context.Context, req *logical.Request, data *framework.Fiel
 }
 
 func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	logger.Println("TrcRead")
+	logger.Println("TrcCarrierRead")
 
 	key := req.Path //data.Get("path").(string)
 	if key == "" {
@@ -337,7 +353,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		return logical.ErrorResponse("missing path"), nil
 	}
 
-	// Write out a new key
+	// Read existing data.
 	if entry, err := req.Storage.Get(ctx, key); err != nil || entry == nil {
 		//ctx.Done()
 		return &logical.Response{
@@ -354,6 +370,9 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		tokenEnvMap := map[string]interface{}{}
 		tokenEnvMap["env"] = req.Path
 		tokenEnvMap["vaddress"] = vData["vaddress"]
+		tokenEnvMap["pubrole"] = vData["pubrole"]
+		tokenEnvMap["configrole"] = vData["configrole"]
+
 		tokenEnvMap["insecure"] = true
 		if vData["token"] != nil {
 			logger.Println("Env queued: " + req.Path)
@@ -367,7 +386,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		PushEnv(tokenEnvMap)
 		//ctx.Done()
 	}
-	logger.Println("TrcRead complete.")
+	logger.Println("TrcCarrierRead complete.")
 
 	return &logical.Response{
 		Data: map[string]interface{}{
@@ -377,7 +396,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 }
 
 func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	logger.Println("TrcCreateUpdate")
+	logger.Println("TrcCarrierCreateUpdate")
 	tokenEnvMap := map[string]interface{}{}
 	key := req.Path //data.Get("path").(string)
 	if key == "" {
@@ -431,7 +450,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	logger.Println("Create Pushing env: " + tokenEnvMap["env"].(string))
 	tokenEnvChan <- tokenEnvMap
 	//ctx.Done()
-	logger.Println("TrcCreateUpdate complete.")
+	logger.Println("TrcCarrierCreateUpdate complete.")
 
 	return &logical.Response{
 		Data: map[string]interface{}{
@@ -440,33 +459,36 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}, nil
 }
 
+// TrcUpdate -- called during write operations...
+// req  -- contains actual request.
+// data -- contains schema validated request fields... best to pull from data...
 func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	logger.Println("TrcUpdate")
+	logger.Println("TrcCarrierUpdate")
 	tokenEnvMap := map[string]interface{}{}
 
 	var plugin interface{}
 	pluginOk := false
 	if plugin, pluginOk = data.GetOk("plugin"); pluginOk {
-		logger.Println("TrcUpdate checking plugin: " + plugin.(string))
+		logger.Println("TrcCarrierUpdate checking plugin: " + plugin.(string))
 
 		// Then this is the carrier calling.
 		tokenEnvMap["trcplugin"] = plugin.(string)
 		if _, pscOk := pluginSettingsChan[plugin.(string)]; !pscOk {
 			pluginSettingsChan[plugin.(string)] = make(chan time.Time, 1)
 		}
-		logger.Println("TrcUpdate begin setup for plugin settings init")
+		logger.Println("TrcCarrierUpdate begin setup for plugin settings init")
 
 		if token, tokenOk := data.GetOk("token"); tokenOk {
-			logger.Println("TrcUpdate stage 1")
+			logger.Println("TrcCarrierUpdate stage 1")
 
 			if GetVaultPort() == "" {
-				logger.Println("TrcUpdate stage 1.1")
+				logger.Println("TrcCarrierUpdate stage 1.1")
 				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-					logger.Println("TrcUpdate stage 1.1.1")
+					logger.Println("TrcCarrierUpdate stage 1.1.1")
 					vaultUrl, err := url.Parse(vaddr.(string))
 					tokenEnvMap["vaddress"] = vaddr.(string)
 					if err == nil {
-						logger.Println("TrcUpdate stage 1.1.1.1")
+						logger.Println("TrcCarrierUpdate stage 1.1.1.1")
 						vaultPort = vaultUrl.Port()
 					} else {
 						logger.Println("Bad address: " + vaddr.(string))
@@ -493,14 +515,17 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
 			mod.Env = req.Path
-			logger.Println("TrcUpdate getting plugin settings for env: " + req.Path)
+			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + req.Path)
+			// The following confirms that this version of carrier has been certified to run...
+			// It will bail if it hasn't.
+
 			writeMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
 			if err != nil {
 				logger.Println("Failed to read previous plugin status from vault")
 				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to read previous plugin status from vault"), nil
 			}
-			logger.Println("TrcUpdate Checking sha")
+			logger.Println("TrcCarrierUpdate Checking sha")
 
 			if _, ok := writeMap["trcsha256"]; !ok {
 				logger.Println("Failed to read previous plugin sha from vault")
@@ -590,7 +615,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	//ctx.Done()
 
-	logger.Println("TrcUpdate complete.")
+	logger.Println("TrcCarrierUpdate complete.")
 
 	return &logical.Response{
 		Data: map[string]interface{}{
@@ -601,7 +626,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 // TrcFactory configures and returns Mock backends
 func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-	logger.Println("TrcFactory")
+	logger.Println("TrcCarrierFactory")
 	env, err := conf.System.PluginEnv(ctx)
 	if env != nil {
 		logger.Println("=============== Initializing Vault Tierceron Plugin ===============")
@@ -641,6 +666,14 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 			HelpDescription: "Use this endpoint to configure the auth tokens required by trcvault.",
 
 			Fields: map[string]*framework.FieldSchema{
+				"pubrole": {
+					Type:        framework.TypeString,
+					Description: "Pub role for specified environment.",
+				},
+				"configrole": {
+					Type:        framework.TypeString,
+					Description: "Read only role for specified environment.",
+				},
 				"token": {
 					Type:        framework.TypeString,
 					Description: "Token used for specified environment.",
@@ -670,7 +703,7 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 	}
 
 	if err != nil {
-		logger.Println("TrcFactory had an error: " + err.Error())
+		logger.Println("TrcCarrierFactory had an error: " + err.Error())
 	}
 
 	return bkv, err

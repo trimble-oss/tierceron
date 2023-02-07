@@ -40,6 +40,11 @@ resources:
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.TenantConfig
     ref: develop
+  - repository: tierceron-hat
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-hat
+    ref: main
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
@@ -65,6 +70,7 @@ steps:
 - checkout: VaultConfig.Bootstrap
 - checkout: VaultConfig.TenantConfig
 - checkout: VaultConfig.Test
+- checkout: tierceron-hat
 - checkout: self
 - task: Cache@2
   inputs:
@@ -80,7 +86,7 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "azure memonly tc vaultname" -a -ldflags '-w' tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "azure memonly tc vaultname" -a -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
@@ -90,7 +96,7 @@ steps:
     done
 
     echo "Compile Windows"
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "tc vaultname" -a -ldflags '-w' tierceron/{trcconfig,trcpub,trcinit,trcx,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "tc vaultname" -a -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcx,trcsub}
     for p in trcconfig trcpub trcinit trcx trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
@@ -100,7 +106,7 @@ steps:
     done
 
     echo "Compile Mac"
-    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "azure memonly tc vaultname" -a -ldflags '-w' tierceron/{trcconfig,trcpub,trcx,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "azure memonly tc vaultname" -a -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcx,trcsub}
     for p in trcconfig trcpub trcx trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
@@ -110,7 +116,7 @@ steps:
     done
 
     echo Compiling conflib
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build -buildmode=c-shared -tags "azure memonly tc vaultname" -o $GOBIN/nc.so tierceron/configlib
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build -buildmode=c-shared -tags "azure memonly tc vaultname" -o $GOBIN/nc.so github.com/trimble-oss/tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
