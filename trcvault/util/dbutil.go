@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"time"
 
-	"tierceron/validator"
+	"github.com/trimble-oss/tierceron/validator"
 
 	"github.com/xo/dburl"
 
-	eUtils "tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
 // OpenDirectConnection opens connection to a database using various sql urls used by Spectrum.

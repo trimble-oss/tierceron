@@ -2,9 +2,10 @@ package xdbutil
 
 import (
 	"os"
-	trcdb "tierceron/trcx/db"
-	"tierceron/trcx/xutil"
-	eUtils "tierceron/utils"
+
+	trcdb "github.com/trimble-oss/tierceron/trcx/db"
+	"github.com/trimble-oss/tierceron/trcx/xutil"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
 // GenerateSeedsFromVaultToDb pulls all data from vault for each template into a database

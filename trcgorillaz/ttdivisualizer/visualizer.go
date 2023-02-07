@@ -11,10 +11,10 @@ import (
 
 	"os"
 
-	eUtils "tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
-	"tierceron/buildopts/argosyopts"
-	"tierceron/trcgorillaz/ttdivisualizer/ttdirender"
+	"github.com/trimble-oss/tierceron/buildopts/argosyopts"
+	"github.com/trimble-oss/tierceron/trcgorillaz/ttdivisualizer/ttdirender"
 
 	"github.com/mrjrieke/nute/g3nd/g3nworld"
 	"github.com/mrjrieke/nute/g3nd/worldg3n/g3nrender"
@@ -32,7 +32,7 @@ var mashupKey embed.FS
 
 func main() {
 	callerCreds := flag.String("CREDS", "", "Credentials of caller")
-	insecure := flag.Bool("insecure", false, "Skip server validation")
+	insecure := flag.Bool("tls-skip-validation", false, "Skip server validation")
 	custos := flag.Bool("custos", false, "Run in guardian mode.")
 	headless := flag.Bool("headless", false, "Run headless")
 	flag.Parse()

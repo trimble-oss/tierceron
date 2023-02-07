@@ -5,8 +5,9 @@ package flowopts
 
 import (
 	"errors"
-	flowcore "tierceron/trcflow/core"
-	trcf "tierceron/trcflow/core/flowcorehelper"
+
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	trcf "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
 )
 
 // Flow names

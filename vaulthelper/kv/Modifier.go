@@ -13,10 +13,11 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"tierceron/buildopts"
-	"tierceron/trcvault/opts/memonly"
-	"tierceron/utils/mlock"
 	"time"
+
+	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -150,6 +151,24 @@ func (m *Modifier) Release() {
 	//	m.httpClient.CloseIdleConnections()
 
 	modifierCache[m.RawEnv].modifierChan <- m
+}
+
+func (m *Modifier) RemoveFromCache() {
+	m.Close()
+
+	modifierCachLock.Lock()
+	if modifierCache[m.RawEnv].modCount > 1 {
+	emptied:
+		for i := 0; i < 20; i++ {
+			select {
+			case <-modifierCache[m.RawEnv].modifierChan:
+			default:
+				break emptied
+			}
+		}
+	}
+	modifierCache[m.RawEnv].modCount = 0
+	modifierCachLock.Unlock()
 }
 
 // ValidateEnvironment Ensures token has access to requested data.

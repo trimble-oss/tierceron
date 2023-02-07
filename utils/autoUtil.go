@@ -9,9 +9,9 @@ import (
 	"os"
 	"strings"
 
-	sys "tierceron/vaulthelper/system"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 
-	helperkv "tierceron/vaulthelper/kv"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
 )
@@ -29,13 +29,13 @@ func GetSupportedProdRegions() []string {
 	return prodRegions
 }
 
-func (c *cert) getCert(logger *log.Logger) (*cert, error) {
+func (c *cert) getConfig(logger *log.Logger, file string) (*cert, error) {
 	userHome, err := userHome(logger)
 	if err != nil {
 		return nil, err
 	}
 
-	yamlFile, err := ioutil.ReadFile(userHome + "/.tierceron/config.yml")
+	yamlFile, err := ioutil.ReadFile(userHome + "/.tierceron/" + file)
 	if err != nil {
 		logger.Printf("yamlFile.Get err #%v ", err)
 	}
@@ -66,6 +66,7 @@ func AutoAuth(config *DriverConfig,
 	envPtr *string,
 	addrPtr *string,
 	envCtxPtr *string,
+	configFile string,
 	ping bool) error {
 	// Declare local variables
 	var override bool
@@ -97,11 +98,14 @@ func AutoAuth(config *DriverConfig,
 		secretIDPtr = nil
 	} else {
 		config.Log.Printf("User home directory %v ", userHome)
-		if _, err := os.Stat(userHome + "/.tierceron/config.yml"); !os.IsNotExist(err) {
+		if len(configFile) == 0 {
+			configFile = "config.yml"
+		}
+		if _, err := os.Stat(userHome + "/.tierceron/" + configFile); !os.IsNotExist(err) {
 			exists = true
-			_, certErr := c.getCert(config.Log)
-			if certErr != nil {
-				return certErr
+			_, configErr := c.getConfig(config.Log, configFile)
+			if configErr != nil {
+				return configErr
 			}
 
 			if addrPtr == nil || *addrPtr == "" {
@@ -268,26 +272,34 @@ func AutoAuth(config *DriverConfig,
 			return envErr
 		}
 
+		tokenNamePrefix := "config"
+		if configFile == "configpub.yml" {
+			tokenNamePrefix = "vault_pub"
+		} else if configFile == "configdeploy.yml" {
+			tokenNamePrefix = "vault_token_deploy"
+			goto skipswitch
+		}
 		switch env {
 		case "dev":
-			*tokenNamePtr = "config_token_dev"
+			*tokenNamePtr = tokenNamePrefix + "_token_dev"
 		case "QA":
-			*tokenNamePtr = "config_token_QA"
+			*tokenNamePtr = tokenNamePrefix + "_token_QA"
 		case "RQA":
-			*tokenNamePtr = "config_token_RQA"
+			*tokenNamePtr = tokenNamePrefix + "_token_RQA"
 		case "itdev":
-			*tokenNamePtr = "config_token_itdev"
+			*tokenNamePtr = tokenNamePrefix + "_token_itdev"
 		case "performance":
-			*tokenNamePtr = "config_token_performance"
+			*tokenNamePtr = tokenNamePrefix + "_token_performance"
 		case "servicepack":
-			*tokenNamePtr = "config_token_servicepack"
+			*tokenNamePtr = tokenNamePrefix + "_token_servicepack"
 		case "auto":
-			*tokenNamePtr = "config_token_auto"
+			*tokenNamePtr = tokenNamePrefix + "_token_auto"
 		case "local":
-			*tokenNamePtr = "config_token_local"
+			*tokenNamePtr = tokenNamePrefix + "_token_local"
 		default:
 			*tokenNamePtr = "Invalid environment"
 		}
+	skipswitch:
 		//check that none are empty
 		if *secretIDPtr == "" {
 			return LogAndSafeExit(config, "Missing required secretID", 1)
@@ -325,6 +337,13 @@ func AutoAuth(config *DriverConfig,
 		}
 		mod.RawEnv = "bamboo"
 		mod.Env = "bamboo"
+		if configFile == "configpub.yml" {
+			mod.RawEnv = "pub"
+			mod.Env = "pub"
+		} else if configFile == "configdeploy.yml" {
+			mod.RawEnv = "deploy"
+			mod.Env = "deploy"
+		}
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") {

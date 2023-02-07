@@ -1,12 +1,12 @@
 package util
 
 import (
-	vcutils "tierceron/trcconfigbase/utils"
-	eUtils "tierceron/utils"
+	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
-	helperkv "tierceron/vaulthelper/kv"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	sys "tierceron/vaulthelper/system"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 )
 
 // Properties stores all configuration properties for a project.

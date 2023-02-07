@@ -9,10 +9,10 @@ import (
 	"strings"
 	"text/template"
 
-	"tierceron/buildopts/coreopts"
-	eUtils "tierceron/utils"
-	"tierceron/validator"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/validator"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
 )

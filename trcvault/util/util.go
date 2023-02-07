@@ -10,18 +10,18 @@ import (
 	"strings"
 	"time"
 
-	"tierceron/trcvault/opts/insecure"
-	"tierceron/trcvault/opts/prod"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/trcvault/opts/insecure"
+	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
 
-	vcutils "tierceron/trcconfigbase/utils"
-	"tierceron/trcx/extract"
-	"tierceron/trcx/xutil"
+	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
+	"github.com/trimble-oss/tierceron/trcx/extract"
+	"github.com/trimble-oss/tierceron/trcx/xutil"
 
-	il "tierceron/trcinit/initlib"
+	il "github.com/trimble-oss/tierceron/trcinit/initlib"
 
 	"log"
 )
@@ -295,7 +295,12 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	for _, templatePath := range templatePaths {
 		project, service, _ := eUtils.GetProjectService(templatePath)
 		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
-		mod.SectionPath = "super-secrets/Index/" + project + "/" + "trcplugin" + "/" + config.SubSectionValue + "/" + service
+
+		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 {
+			mod.SectionPath = "super-secrets/Index/" + project + pluginPath.(string) + config.SubSectionValue + "/" + service
+		} else {
+			mod.SectionPath = "super-secrets/Index/" + project + "/trcplugin/" + config.SubSectionValue + "/" + service
+		}
 		ptc1, err = mod.ReadData(mod.SectionPath)
 		pluginToolConfig["pluginpath"] = mod.SectionPath
 		if err != nil || ptc1 == nil {

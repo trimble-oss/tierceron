@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"log"
 
-	il "tierceron/trcinit/initlib"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
-	pb "tierceron/webapi/rpc/apinator"
+	il "github.com/trimble-oss/tierceron/trcinit/initlib"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
+	pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 )
 
 const tokenPath string = "token_files"

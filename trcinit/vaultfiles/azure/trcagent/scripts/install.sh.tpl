@@ -3,16 +3,19 @@
 # Install packages
 sudo apt-get update -y
 sudo apt-get install -y curl unzip
+sudo apt-get install openjdk-11-jre-headless
+sudo apt install docker.io
+sudo apt install maven
 
 # Download Vault into some temporary directory
-curl -L "https://releases.hashicorp.com/vault/0.10.1/vault_0.10.1_linux_amd64.zip" > /tmp/vault.zip
+curl -L "https://releases.hashicorp.com/vault/1.3.6/vault_1.3.6_linux_amd64.zip" > /tmp/vault.zip
 
 cd /tmp
 sudo -- sh -c "echo '127.0.0.1 $(hostname)' >> /etc/hosts"
 sudo unzip vault.zip
 sudo mkdir -p /usr/src/app
 sudo mv vault /usr/src/app/vault
-sudo chmod 0755 /usr/src/app/vault
+sudo chmod 0700 /usr/src/app/vault
 sudo chown root:root /usr/src/app/vault
 sudo mkdir -p /etc/opt/vault/data/
 #make directory etc/opt/vault
@@ -25,6 +28,11 @@ privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
 sudo chown root:root /etc/opt/vault/vault_properties.hcl
 
+sudo mkuser azuredeploy
+sudo mkdir /home/azuredeploy/bin
+sudo chmod 1750 /home/azuredeploy/bin
+sudo chown root:azuredeploy /home/azuredeploy/bin
+# Agent is presently installed manually.  Probably best to keep it that way for now.
 
 # Set up IP Table
 # Add a rule to allow ssh connections
