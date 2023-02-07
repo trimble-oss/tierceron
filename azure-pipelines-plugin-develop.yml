@@ -29,7 +29,7 @@ resources:
     name: Spectrum/_git/VaultConfig.TenantConfig
     ref: main
   - repository: tierceron-hat
-    type: git
+    type: github
     endpoint: trimble-oss/tierceron-hat
     name: tierceron-hat
     ref: main
