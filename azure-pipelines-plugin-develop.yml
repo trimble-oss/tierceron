@@ -31,7 +31,7 @@ resources:
   - repository: trimble-oss/tierceron-hat
     type: githubenterprise
     endpoint: AzureBuilderConnection
-    name: trimble-oss/tierceron-hat
+    name: tierceron-hat
     ref: main
 
 variables:
