@@ -28,7 +28,7 @@ resources:
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.TenantConfig
     ref: main
-  - repository: tierceron-hat
+  - repository: trimble-oss/tierceron-hat
     type: github
     endpoint: trimble-oss
     name: tierceron-hat
