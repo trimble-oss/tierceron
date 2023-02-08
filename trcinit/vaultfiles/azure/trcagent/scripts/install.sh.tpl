@@ -38,7 +38,8 @@ sudo chown root:root /etc/opt/vault/vault_properties.hcl
 sudo mkdir -p /home/azuredeploy/bin
 sudo mkdir -p /home/azuredeploy/myagent
 
-sudo adduser azuredeploy
+sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/azuredeploy azuredeploy
+
 # MANUAL STEP: IMPORTANT! Ensure azuredeploy is *not* a sudoer...
 sudo chmod 1750 /home/azuredeploy/bin
 sudo chown root:azuredeploy /home/azuredeploy/bin
