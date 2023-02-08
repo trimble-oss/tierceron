@@ -55,6 +55,8 @@ sudo chown -R azuredeploy:azuredeploy /home/azuredeploy
 # ./config.sh #Provide PAT from above.
 # ./run.sh
 # ./svc.sh install azuredeploy # important to install under restricted user azuredeploy
+# After install, run:
+# ./svc.sh start as user root...
 # If you ever have to re-register agent: ./config.sh remove --auth 'PAT' --token ''
 
 
