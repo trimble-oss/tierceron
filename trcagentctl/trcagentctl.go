@@ -85,6 +85,7 @@ func ProcessDeploy(env string, token string) {
 	for _, deployLine := range deployArgLines {
 		fmt.Println(deployLine)
 		deployLine = strings.TrimPrefix(deployLine, "trc")
+		deployLine = strings.TrimRight(deployLine, "")
 		deployArgs := strings.Split(deployLine, " ")
 		control := deployArgs[0]
 		if len(deployArgs) > 1 {
