@@ -3,14 +3,14 @@
 # Install packages
 sudo apt-get update -y
 sudo apt-get install -y curl unzip
-sudo apt-get install coreutils
-sudo apt install docker.io
-sudo apt-get install openjdk-11-jre-headless
-sudo apt install maven
+sudo apt-get install -y coreutils 
+sudo apt-get install -y docker.io
+sudo apt-get install -y openjdk-11-jre-headless
+sudo apt-get install -y maven
 curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
 curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
 
-apt-get install mssql-tools unixodbc-dev
+sudo apt-get install -y mssql-tools unixodbc-dev
 
 # Download Vault into some temporary directory
 curl -L "https://releases.hashicorp.com/vault/1.3.6/vault_1.3.6_linux_amd64.zip" > /tmp/vault.zip
