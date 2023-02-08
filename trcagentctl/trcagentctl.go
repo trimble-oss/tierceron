@@ -29,7 +29,7 @@ func main() {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	fmt.Println("trcagentctl Version: " + "1.00")
+	fmt.Println("trcagentctl Version: " + "1.01")
 	envPtr := flag.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 
 	flag.Parse()
