@@ -33,6 +33,8 @@ privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
 sudo chown root:root /etc/opt/vault/vault_properties.hcl
 
+# AGENT BLOCK: begin
+# When building out TrcDb instances, remove this AGENT BLOCK section from .tpl....
 sudo mkdir -p /home/azuredeploy/bin
 sudo mkdir -p /home/azuredeploy/myagent
 
@@ -58,6 +60,8 @@ sudo chown -R azuredeploy:azuredeploy /home/azuredeploy
 # After install, run:
 # ./svc.sh start as user root...
 # If you ever have to re-register agent: ./config.sh remove --auth 'PAT' --token ''
+
+# AGENT BLOCK: end
 
 
 # Set up IP Table
