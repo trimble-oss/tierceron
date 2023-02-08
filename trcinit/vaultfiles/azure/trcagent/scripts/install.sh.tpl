@@ -3,9 +3,14 @@
 # Install packages
 sudo apt-get update -y
 sudo apt-get install -y curl unzip
-sudo apt-get install openjdk-11-jre-headless
+sudo apt-get install coreutils
 sudo apt install docker.io
+sudo apt-get install openjdk-11-jre-headless
 sudo apt install maven
+curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+
+apt-get install mssql-tools unixodbc-dev
 
 # Download Vault into some temporary directory
 curl -L "https://releases.hashicorp.com/vault/1.3.6/vault_1.3.6_linux_amd64.zip" > /tmp/vault.zip
@@ -28,11 +33,30 @@ privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
 sudo chown root:root /etc/opt/vault/vault_properties.hcl
 
-sudo mkuser azuredeploy
-sudo mkdir /home/azuredeploy/bin
+sudo mkdir -p /home/azuredeploy/bin
+sudo mkdir -p /home/azuredeploy/myagent
+
+sudo adduser azuredeploy
+# MANUAL STEP: IMPORTANT! Ensure azuredeploy is *not* a sudoer...
 sudo chmod 1750 /home/azuredeploy/bin
 sudo chown root:azuredeploy /home/azuredeploy/bin
-# Agent is presently installed manually.  Probably best to keep it that way for now.
+
+curl -L "https://vstsagentpackage.azureedge.net/agent/2.217.2/vsts-agent-linux-x64-2.217.2.tar.gz" > /tmp/vsts-agent-linux-x64-2.217.2.tar.gz
+tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-2.217.2.tar.gz
+
+# Give ownership over to azuredeploy.
+sudo chown -R azuredeploy:azuredeploy /home/azuredeploy
+
+# MANUAL STEP: Agent is presently installed manually.  Probably best to keep it that way for now because of dependency on PAT.
+# Get a PAT from https://viewpointvso.visualstudio.com/_usersSettings/tokens with Agent Pools (Read + Manage) permissions.
+# 
+# SSH and sudo/su ubuntu->root->azuredeploy
+# Run following as azuredeploy:
+# ./config.sh #Provide PAT from above.
+# ./run.sh
+# ./svc.sh install azuredeploy # important to install under restricted user azuredeploy
+# If you ever have to re-register agent: ./config.sh remove --auth 'PAT' --token ''
+
 
 # Set up IP Table
 # Add a rule to allow ssh connections
