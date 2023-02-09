@@ -89,15 +89,16 @@ resource "azurerm_virtual_network_peering" "peer-vm-db" {
 }
 
 # Tierceron Agent sees Kubernetes Cluster.
-resource "azurerm_virtual_network_peering" "peer-vm-kc" {
-  name                      = "${var.resource_group_name}-peerVmToKc"
-  resource_group_name       = azurerm_resource_group.rg.name
-  virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
-  remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
+# TODO: Something like this....
+#resource "azurerm_virtual_network_peering" "peer-vm-kc" {
+#  name                      = "${var.resource_group_name}-peerVmToKc"
+#  resource_group_name       = azurerm_resource_group.rg.name
+#  virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
+#  remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
  # lifecycle  {
  #   replace_triggered_by = [azurerm_virtual_network.peer-vm-db.address_space, azurerm_virtual_network.peer-db-vm.address_space]
  # }
-}
+#}
 
 resource "azurerm_subnet" "vm-subnet" {
   name                 = "${var.resource_group_name}-subnet"

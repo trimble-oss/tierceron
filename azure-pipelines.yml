@@ -174,16 +174,6 @@ steps:
 #    tags: |
 #      $(Build.SourceVersion)
 
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trcagentctl
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcagentctl/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
 #- task: ECRPushImage@1 # TODO: Deprecate - azure migration
 #  inputs:
 #    awsCredentials: 'Seattle AWS Development'
@@ -221,22 +211,3 @@ steps:
 #    sourceImageTag: '$(Build.SourceVersion)'
 #    repositoryName: 'trcpub'
 #    pushTag: 'latest'
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trcagentctl'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcagentctl'
-    pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1 
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trcagentctl'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcagentctl'
-    pushTag: 'latest'
