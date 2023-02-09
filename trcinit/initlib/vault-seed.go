@@ -478,6 +478,8 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 				return
 			}
 			switch config.EnvRaw {
+			case "itdev":
+				fallthrough
 			case "dev":
 				certHost = strings.Replace(certHost, "*", "develop", 1)
 				break
