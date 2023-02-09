@@ -144,12 +144,12 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	}
 
 	namespaceTokenConfigs := "vault_namespaces" + string(os.PathSeparator) + "token_files"
-	namespaceRoleConfigs := "vault_namespaces" + string(os.PathSeparator) + "approle_files"
+	namespaceRoleConfigs := "vault_namespaces" + string(os.PathSeparator) + "role_files"
 	namespacePolicyConfigs := "vault_namespaces" + string(os.PathSeparator) + "policy_files"
 
 	if *namespaceVariable != "" {
 		namespaceTokenConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "token_files"
-		namespaceRoleConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "approle_files"
+		namespaceRoleConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "role_files"
 		namespacePolicyConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "policy_files"
 	}
 
