@@ -5,11 +5,13 @@
 
 trigger:
   branches:
-     include:
-     - releases/plugin/*
-     exclude:
-     - main
-     - develop
+    include:
+    - releases/plugin/*
+    exclude:
+    - main
+    - develop
+    - releases/comprehensive/1.0.0
+    - releases/legacy/*
 
 pr: 
   autoCancel: 'true'
@@ -19,6 +21,8 @@ pr:
     exclude:
     - main
     - develop
+    - releases/comprehensive/1.0.0
+    - releases/legacy/*
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -146,6 +150,17 @@ steps:
     ArtifactName: 'drop'
     publishLocation: 'Container'
 
+
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trcagentctl
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcagentctl/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
 - task: Docker@2
   displayName: Build an image
   inputs:
@@ -222,4 +237,24 @@ steps:
     sourceImageName: 'trc-vault-plugin-prod'
     sourceImageTag: '$(Build.SourceVersion)'
     repositoryName: 'trc-vault-plugin-prod'
+    pushTag: 'latest'
+
+- task: ECRPushImage@1
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'trcagentctl'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'trcagentctl'
+    pushTag: '$(Build.SourceVersion)'
+
+- task: ECRPushImage@1 
+  inputs:
+    awsCredentials: 'Seattle AWS Development'
+    regionName: 'us-west-2'
+    imageSource: 'imagename'
+    sourceImageName: 'trcagentctl'
+    sourceImageTag: '$(Build.SourceVersion)'
+    repositoryName: 'trcagentctl'
     pushTag: 'latest'
