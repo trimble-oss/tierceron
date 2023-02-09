@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 )
@@ -107,17 +106,26 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+	logger.Println("InitVaultModForPlugin log setup: " + pluginConfig["env"].(string))
+
 	logPrefix := fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
 	var trcdbEnvLogger *log.Logger
 
 	if logger.Prefix() != logPrefix {
+		logger.Println("Checking log permissions..")
 		logFile := fmt.Sprintf("/var/log/trcplugin%s-%s.log", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
-		if !prod.IsProd() && coreopts.IsTestRunner() {
+		f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		if logErr != nil {
 			logFile = fmt.Sprintf("trcplugin%s-%s.log", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
 		}
-		f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		if logErr != nil {
+			logger.Println("Log permissions failure.  Will exit.")
+		}
+
 		trcdbEnvLogger = log.New(f, fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string)), log.LstdFlags)
 		CheckError(&DriverConfig{Insecure: true, Log: trcdbEnvLogger, ExitOnFailure: true}, logErr, true)
+		logger.Println("InitVaultModForPlugin log setup complete")
 	} else {
 		trcdbEnvLogger = logger
 	}
