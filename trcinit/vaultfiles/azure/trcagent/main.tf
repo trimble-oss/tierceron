@@ -1,14 +1,5 @@
-resource "azurerm_resource_group" "rg" {
+data "azurerm_resource_group" "rg" {
   name     = var.resource_group_name
-  location = var.resource_group_location
-
-  tags = {
-    "Application" = var.resource_group_name
-    "Billing"     = var.environment
-  }
-  timeouts {
-    delete = "1m" #Shared resource usually, so time out quickly if it is...
-  }
 }
 
 data "azurerm_virtual_network" "virtual-network" {
@@ -35,28 +26,28 @@ data "azurerm_subnet" "db-subnet" {
 // azurerm_virtual_network_dns_servers
 
 resource "azurerm_private_dns_zone_virtual_network_link" "vm-virtual-network-link" {
-  name                  = "${var.resource_group_name}-vm-virtual-network-link"
-  resource_group_name   = azurerm_resource_group.rg.name
+  name                  = "${var.subresource_group_name}-vm-virtual-network-link"
+  resource_group_name   = data.azurerm_resource_group.rg.name
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
   virtual_network_id    = data.azurerm_virtual_network.virtual-network.id
   registration_enabled  = true
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "vm-db-virtual-network-link" {
-  name                  = "${var.resource_group_name}-vm-virtual-network-link"
-  resource_group_name   = azurerm_resource_group.rg.name
+  name                  = "${var.subresource_group_name}-vm-virtual-network-link"
+  resource_group_name   = data.azurerm_resource_group.rg.name
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-db-dns-zone.name
   virtual_network_id    = data.azurerm_virtual_network.virtual-network.id
 }
 
 resource "azurerm_public_ip" "public-ip" {
-  name                = "${var.resource_group_name}-PublicIP"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  name                = "${var.subresource_group_name}-PublicIP"
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
   allocation_method   = "Static"
 
   tags = {
-    "Application" = var.resource_group_name
+    "Application" = var.subresource_group_name
     "Billing"     = var.environment
   }
 
@@ -76,12 +67,12 @@ resource "azurerm_public_ip" "public-ip" {
 
 # Create Network Security Group and rule
 resource "azurerm_network_security_group" "nsg" {
-  name                = "${var.resource_group_name}-NetworkSecurityGroup"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  name                = "${var.subresource_group_name}-NetworkSecurityGroup"
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
 
   tags = {
-    "Application" = var.resource_group_name
+    "Application" = var.subresource_group_name
     "Billing"     = var.environment
   }
 
@@ -192,19 +183,19 @@ resource "azurerm_network_security_group" "nsg" {
 
 
 resource "azurerm_network_interface" "vm-network-interface" {
-  name                = "${var.resource_group_name}-NIC"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  name                = "${var.subresource_group_name}-NIC"
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
 
   ip_configuration {
-    name                          = "${var.resource_group_name}-NicConfiguration"
+    name                          = "${var.subresource_group_name}-NicConfiguration"
     subnet_id                     = data.azurerm_subnet.vm-subnet.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.public-ip.id
   }
 
   tags = {
-    "Application" = var.resource_group_name
+    "Application" = var.subresource_group_name
     "Billing"     = var.environment
   }
 
@@ -233,7 +224,7 @@ resource "azurerm_network_interface_security_group_association" "tierceron-secur
 # resource "azurerm_private_dns_cname_record" "tierceron-cname" {
 #  name                = "${var.tierceronname}.${var.tierceronzone}"
 #  zone_name           = azurerm_private_dns_zone.tierceron-dns-zone.name
-#  resource_group_name = azurerm_resource_group.rg.name
+#  resource_group_name = data.azurerm_resource_group.rg.name
 #  ttl                 = 300
 #  record              = "${var.tierceronname}"
 #  depends_on = [
@@ -243,26 +234,26 @@ resource "azurerm_network_interface_security_group_association" "tierceron-secur
 
 resource "azurerm_private_dns_zone" "tierceron-db-dns-zone" {
   name                = "${var.dbzone}"
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = data.azurerm_resource_group.rg.name
   tags = {
-    "Application" = var.resource_group_name
+    "Application" = var.subresource_group_name
     "Billing"     = var.environment
   }
 }
 
 resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
   name                = "${var.tierceronzone}"
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = data.azurerm_resource_group.rg.name
   tags = {
-    "Application" = var.resource_group_name
+    "Application" = var.subresource_group_name
     "Billing"     = var.environment
   }
 }
 
 resource "azurerm_mysql_flexible_server" "tierceron-db" {
   name                   = "${var.dbaddress}"
-  resource_group_name    = azurerm_resource_group.rg.name
-  location               = azurerm_resource_group.rg.location
+  resource_group_name    = data.azurerm_resource_group.rg.name
+  location               = data.azurerm_resource_group.rg.location
   administrator_login    = "${var.mysql_admin}"
   administrator_password = "${var.mysql_admin_password}"
   backup_retention_days  = "${var.mysql_backup_retention_days}"
@@ -272,6 +263,9 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   storage {
     auto_grow_enabled = true
   }
+  depends_on = [
+   azurerm_private_dns_zone.tierceron-dns-zone
+  ]
 }
 
 resource "tls_private_key" "private_key" {
@@ -293,14 +287,14 @@ resource "local_file" "private_key" {
 }
 
 resource "azurerm_linux_virtual_machine" "az-vm" {
-  name                  = "${var.resource_group_name}-vm"
-  location              = azurerm_resource_group.rg.location
-  resource_group_name   = azurerm_resource_group.rg.name
+  name                  = "${var.subresource_group_name}-vm"
+  location              = data.azurerm_resource_group.rg.location
+  resource_group_name   = data.azurerm_resource_group.rg.name
   network_interface_ids = [azurerm_network_interface.vm-network-interface.id]
   size                  = "Standard_B1ls"
 
   os_disk {
-    name                 = "${var.resource_group_name}-OsDisk"
+    name                 = "${var.subresource_group_name}-OsDisk"
     caching              = "ReadWrite"
     storage_account_type = "Premium_LRS"
   }
@@ -317,7 +311,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   disable_password_authentication = true
 
   tags = {
-    "Application" = var.resource_group_name
+    "Application" = var.subresource_group_name
     "Billing"     = var.environment
   }
 
@@ -464,7 +458,7 @@ resource "azurerm_virtual_machine_extension" "security_software" {
   type_handler_version = "2.0"
 
   tags = {
-    "Application" = var.resource_group_name
+    "Application" = var.subresource_group_name
     "Billing"     = var.environment
   }
 
