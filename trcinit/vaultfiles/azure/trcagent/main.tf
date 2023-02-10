@@ -260,6 +260,7 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   delegated_subnet_id    = data.azurerm_subnet.db-subnet.id
   private_dns_zone_id    = azurerm_private_dns_zone.tierceron-db-dns-zone.id
   sku_name               = "B_Standard_B2s"
+
   storage {
     auto_grow_enabled = true
   }
@@ -301,9 +302,9 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   source_image_reference {
     publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "20.04-LTS"
-    version   = "latest"
+    offer     = "0001-com-ubuntu-server-focal"
+    sku       = "20_04-lts-gen2"
+    version   = "20.04.202302090"
   }
 
   computer_name         = "${var.tierceronname}"
