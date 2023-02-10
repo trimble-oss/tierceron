@@ -11,38 +11,21 @@ resource "azurerm_resource_group" "rg" {
   }
 }
 
-
-
-resource "azurerm_virtual_network" "vm-virtual-network" {
-  name                = "${var.resource_group_name}-vm-Vnet"
-  address_space       = ["10.0.0.0/16"]
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-
-  tags = {
-    "Application" = var.resource_group_name
-    "Billing"     = var.environment
-  }
+data "azurerm_virtual_network" "virtual-network" {
+  name                = var.vm_db_VN
+  resource_group_name = var.VN_rg_name
 }
 
-resource "azurerm_virtual_network" "db-virtual-network" {
-  name                = "${var.resource_group_name}-db-Vnet"
-  address_space       = ["10.1.0.0/16"]
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-
-  tags = {
-    "Application" = var.resource_group_name
-    "Billing"     = var.environment
-  }
+data "azurerm_subnet" "vm-subnet" {
+  name                 = var.VM_subnet_name
+  resource_group_name  = var.VN_rg_name
+  virtual_network_name = var.vm_db_VN
 }
 
-resource "azurerm_private_dns_zone_virtual_network_link" "db-virtual-network-link" {
-  name                  = "${var.resource_group_name}-db-virtual-network-link"
-  resource_group_name   = azurerm_resource_group.rg.name
-  private_dns_zone_name = azurerm_private_dns_zone.tierceron-db-dns-zone.name
-  virtual_network_id    = azurerm_virtual_network.db-virtual-network.id
-  registration_enabled  = true
+data "azurerm_subnet" "db-subnet" {
+ name                 = var.DB_subnet_name
+  resource_group_name  = var.VN_rg_name
+  virtual_network_name = var.vm_db_VN
 }
 
 // If you are not using custom DNS, you will need to link every zone you 
@@ -55,7 +38,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "vm-virtual-network-lin
   name                  = "${var.resource_group_name}-vm-virtual-network-link"
   resource_group_name   = azurerm_resource_group.rg.name
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
-  virtual_network_id    = azurerm_virtual_network.vm-virtual-network.id
+  virtual_network_id    = data.azurerm_virtual_network.virtual-network.id
   registration_enabled  = true
 }
 
@@ -63,69 +46,8 @@ resource "azurerm_private_dns_zone_virtual_network_link" "vm-db-virtual-network-
   name                  = "${var.resource_group_name}-vm-virtual-network-link"
   resource_group_name   = azurerm_resource_group.rg.name
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-db-dns-zone.name
-  virtual_network_id    = azurerm_virtual_network.vm-virtual-network.id
+  virtual_network_id    = data.azurerm_virtual_network.virtual-network.id
 }
-
-# MysqlDb sees Tierceron Agent
-resource "azurerm_virtual_network_peering" "peer-db-vm" {
-  name                      = "${var.resource_group_name}-peerVMToDb"
-  resource_group_name       = azurerm_resource_group.rg.name
-  virtual_network_name      = azurerm_virtual_network.db-virtual-network.name
-  remote_virtual_network_id = azurerm_virtual_network.vm-virtual-network.id
-#  lifecycle  {
-#    replace_triggered_by = [azurerm_virtual_network.peer-db-vm.address_space, azurerm_virtual_network.peer-vm-db.address_space]
-#  }
-}
-
-# Tierceron Agent sees MysqlDb
-resource "azurerm_virtual_network_peering" "peer-vm-db" {
-  name                      = "${var.resource_group_name}-peerDbToVm"
-  resource_group_name       = azurerm_resource_group.rg.name
-  virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
-  remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
- # lifecycle  {
- #   replace_triggered_by = [azurerm_virtual_network.peer-vm-db.address_space, azurerm_virtual_network.peer-db-vm.address_space]
- # }
-}
-
-# Tierceron Agent sees Kubernetes Cluster.
-# TODO: Something like this....
-#resource "azurerm_virtual_network_peering" "peer-vm-kc" {
-#  name                      = "${var.resource_group_name}-peerVmToKc"
-#  resource_group_name       = azurerm_resource_group.rg.name
-#  virtual_network_name      = azurerm_virtual_network.vm-virtual-network.name
-#  remote_virtual_network_id = azurerm_virtual_network.db-virtual-network.id
- # lifecycle  {
- #   replace_triggered_by = [azurerm_virtual_network.peer-vm-db.address_space, azurerm_virtual_network.peer-db-vm.address_space]
- # }
-#}
-
-resource "azurerm_subnet" "vm-subnet" {
-  name                 = "${var.resource_group_name}-subnet"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vm-virtual-network.name
-  address_prefixes     = ["10.0.0.0/24"]
-}
-
-resource "azurerm_subnet" "db-subnet" {
-  name                 = "${var.resource_group_name}-db-subnet"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.db-virtual-network.name
-  address_prefixes     = ["10.1.0.0/24"]
-  service_endpoints    = ["Microsoft.Storage"]
-
-  delegation {
-    name = "fs"
-    service_delegation {
-        name = "Microsoft.DBforMySQL/flexibleServers"
-        actions = [
-          "Microsoft.Network/virtualNetworks/subnets/join/action",
-        ]
-      }
-  }
-}
-
-
 
 resource "azurerm_public_ip" "public-ip" {
   name                = "${var.resource_group_name}-PublicIP"
@@ -151,8 +73,6 @@ resource "azurerm_public_ip" "public-ip" {
     ]
   }
 }
-
-
 
 # Create Network Security Group and rule
 resource "azurerm_network_security_group" "nsg" {
@@ -278,7 +198,7 @@ resource "azurerm_network_interface" "vm-network-interface" {
 
   ip_configuration {
     name                          = "${var.resource_group_name}-NicConfiguration"
-    subnet_id                     = azurerm_subnet.vm-subnet.id
+    subnet_id                     = data.azurerm_subnet.vm-subnet.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.public-ip.id
   }
@@ -346,14 +266,13 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   administrator_login    = "${var.mysql_admin}"
   administrator_password = "${var.mysql_admin_password}"
   backup_retention_days  = "${var.mysql_backup_retention_days}"
-  delegated_subnet_id    = azurerm_subnet.db-subnet.id
+  delegated_subnet_id    = data.azurerm_subnet.db-subnet.id
   private_dns_zone_id    = azurerm_private_dns_zone.tierceron-db-dns-zone.id
   sku_name               = "B_Standard_B2s"
-
+  zone = "2"
   storage {
     auto_grow_enabled = true
   }
-  depends_on = [azurerm_private_dns_zone_virtual_network_link.db-virtual-network-link]
 }
 
 resource "tls_private_key" "private_key" {
