@@ -269,7 +269,6 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   delegated_subnet_id    = data.azurerm_subnet.db-subnet.id
   private_dns_zone_id    = azurerm_private_dns_zone.tierceron-db-dns-zone.id
   sku_name               = "B_Standard_B2s"
-  zone = "2"
   storage {
     auto_grow_enabled = true
   }
@@ -279,8 +278,6 @@ resource "tls_private_key" "private_key" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
-
-
 
 resource "local_file" "private_key" {
   content              = tls_private_key.private_key.private_key_pem
@@ -294,8 +291,6 @@ resource "local_file" "private_key" {
     command = "rm -f private_key.pem"
   }
 }
-
-
 
 resource "azurerm_linux_virtual_machine" "az-vm" {
   name                  = "${var.resource_group_name}-vm"
