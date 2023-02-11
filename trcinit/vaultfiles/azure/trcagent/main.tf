@@ -292,7 +292,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   location              = data.azurerm_resource_group.rg.location
   resource_group_name   = data.azurerm_resource_group.rg.name
   network_interface_ids = [azurerm_network_interface.vm-network-interface.id]
-  size                  = "Standard_B1ls"
+  size                  = "${var.vault_vm_size}"
 
   os_disk {
     name                 = "${var.subresource_group_name}-OsDisk"
