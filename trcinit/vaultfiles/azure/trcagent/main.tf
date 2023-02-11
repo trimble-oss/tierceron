@@ -304,9 +304,8 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-focal"
     sku       = "20_04-lts-gen2"
-    version   = "20.04.202302090"
+    version   = "20.04.202302070"
   }
-
 
   computer_name         = "${var.tierceronname}"
   admin_username                  = "ubuntu"
