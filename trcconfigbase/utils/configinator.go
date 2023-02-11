@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dsnet/golib/memfile"
+
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/validator"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -405,19 +407,24 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	byteData := []byte(data)
 	//Ensure directory has been created
+	var newFile *os.File
 
-	dirPath := filepath.Dir(path)
-	err := os.MkdirAll(dirPath, os.ModePerm)
-	eUtils.CheckError(config, err, true)
-	//create new file
-	newFile, err := os.Create(path)
-	eUtils.CheckError(config, err, true)
-	//write to file
-	_, err = newFile.Write(byteData)
-	eUtils.CheckError(config, err, true)
-	err = newFile.Sync()
-	eUtils.CheckError(config, err, true)
-	newFile.Close()
+	if config.OutputMemCache {
+		config.MemCache[path] = memfile.New(byteData)
+	} else {
+		dirPath := filepath.Dir(path)
+		err := os.MkdirAll(dirPath, os.ModePerm)
+		eUtils.CheckError(config, err, true)
+		//create new file
+		newFile, err = os.Create(path)
+		eUtils.CheckError(config, err, true)
+		//write to file
+		_, err = newFile.Write(byteData)
+		eUtils.CheckError(config, err, true)
+		err = newFile.Sync()
+		eUtils.CheckError(config, err, true)
+		newFile.Close()
+	}
 }
 
 func getDirFiles(dir string, endDir string) ([]string, []string) {
