@@ -43,6 +43,11 @@ require (
 require github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 
 require (
+	github.com/dsnet/golib v1.0.2 // indirect
+	github.com/dsnet/golib/memfile v1.0.0 // indirect
+)
+
+require (
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
 	github.com/gocraft/dbr/v2 v2.7.2 // indirect
 	github.com/google/flatbuffers v2.0.6+incompatible // indirect
