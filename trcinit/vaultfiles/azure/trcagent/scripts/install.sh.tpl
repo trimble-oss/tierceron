@@ -55,7 +55,7 @@ sudo tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-2.217.2.ta
 # Give ownership over to azuredeploy.
 sudo chown -R azuredeploy:azuredeploy /home/azuredeploy/myagent
 
-# echo 'export PATH="$PATH:/opt/mssql-tools/bin:/home/azuredeploy/bin"' >> ~/.bash_profile
+# echo 'export PATH="$PATH:/opt/mssql-tools/bin:/home/azuredeploy/bin"' >> ~/.bashrc
 # echo $PATH > ~/myagent/.path
 
 # MANUAL STEP: Agent is presently installed manually.  Probably best to keep it that way for now because of dependency on PAT.
