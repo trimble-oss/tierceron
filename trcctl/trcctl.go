@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	trcinitbase "github.com/trimble-oss/tierceron/trcinitbase"
 	"github.com/trimble-oss/tierceron/trcpubbase"
@@ -30,6 +31,9 @@ func main() {
 	fmt.Println("Version: " + "1.34")
 	envPtr := flag.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 	tokenPtr := flag.String("token", "", "Vault access token")
+	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
+	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this"+coreopts.GetFolderPrefix()+"config to access the vault")
 	var envContext string
 
 	var ctl string
@@ -80,13 +84,13 @@ func main() {
 		var addrPtr string
 		switch ctl {
 		case "pub":
-			trcpubbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, nil)
+			trcpubbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil)
 		case "sub":
 			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext)
 		case "init":
 			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext)
 		case "config":
-			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, nil)
+			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil)
 		case "x":
 			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil)
 		}
