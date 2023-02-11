@@ -300,12 +300,13 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
     storage_account_type = "Premium_LRS"
   }
 
-    source_image_reference {
-      publisher = "Canonical"
-      offer     = "UbuntuServer"
-      sku       = "18.04-LTS"
-      version   = "latest"
-    }
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-focal"
+    sku       = "20_04-lts-gen2"
+    version   = "20.04.202302090"
+  }
+
 
   computer_name         = "${var.tierceronname}"
   admin_username                  = "ubuntu"
