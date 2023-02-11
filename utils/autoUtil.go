@@ -101,7 +101,7 @@ func AutoAuth(config *DriverConfig,
 		if len(configFile) == 0 {
 			configFile = "config.yml"
 		}
-		if appRoleIDPtr == nil || secretIDPtr == nil {
+		if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
 			if _, err := os.Stat(userHome + "/.tierceron/" + configFile); !os.IsNotExist(err) {
 				exists = true
 				_, configErr := c.getConfig(config.Log, configFile)

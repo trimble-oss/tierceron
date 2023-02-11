@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dsnet/golib/memfile"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 )
@@ -36,9 +37,10 @@ type DriverConfig struct {
 
 	SecretMode bool
 	// Tierceron source and destination I/O
-	StartDir  []string // Starting directory. possibly multiple
-	EndDir    string
-	OutputMap map[string]os.File // Where to send output.
+	StartDir       []string // Starting directory. possibly multiple
+	EndDir         string
+	OutputMemCache bool
+	MemCache       map[string]*memfile.File // Where to send output.
 
 	// Config modes....
 	WantCerts  bool
