@@ -22,14 +22,18 @@ import (
 // The file is saved under the data key, and the extension under the ext key
 // Vault automatically encodes the file into base64
 
-func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *string, c *eUtils.DriverConfig) {
+func CommonMain(envPtr *string,
+	addrPtr *string,
+	tokenPtr *string,
+	envCtxPtr *string,
+	secretIDPtr *string,
+	appRoleIDPtr *string,
+	tokenNamePtr *string,
+	c *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
-	secretIDPtr := flag.String("secretID", "", "Public app role ID")
-	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix()+"pub to access the vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"pub.log", "Output path for log files")
