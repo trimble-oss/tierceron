@@ -101,30 +101,32 @@ func AutoAuth(config *DriverConfig,
 		if len(configFile) == 0 {
 			configFile = "config.yml"
 		}
-		if _, err := os.Stat(userHome + "/.tierceron/" + configFile); !os.IsNotExist(err) {
-			exists = true
-			_, configErr := c.getConfig(config.Log, configFile)
-			if configErr != nil {
-				return configErr
-			}
+		if appRoleIDPtr == nil || secretIDPtr == nil {
+			if _, err := os.Stat(userHome + "/.tierceron/" + configFile); !os.IsNotExist(err) {
+				exists = true
+				_, configErr := c.getConfig(config.Log, configFile)
+				if configErr != nil {
+					return configErr
+				}
 
-			if addrPtr == nil || *addrPtr == "" {
-				*addrPtr = c.VaultHost
-			}
+				if addrPtr == nil || *addrPtr == "" {
+					*addrPtr = c.VaultHost
+				}
 
-			if *tokenPtr == "" {
-				if !override {
-					LogInfo(config, "Obtaining auth credentials.")
-					if c.SecretID != "" && secretIDPtr != nil {
-						*secretIDPtr = c.SecretID
-					}
-					if c.ApproleID != "" && appRoleIDPtr != nil {
-						*appRoleIDPtr = c.ApproleID
+				if *tokenPtr == "" {
+					if !override {
+						LogInfo(config, "Obtaining auth credentials.")
+						if c.SecretID != "" && secretIDPtr != nil {
+							*secretIDPtr = c.SecretID
+						}
+						if c.ApproleID != "" && appRoleIDPtr != nil {
+							*appRoleIDPtr = c.ApproleID
+						}
 					}
 				}
+			} else {
+				config.Log.Printf("Invalid home directory %v ", err)
 			}
-		} else {
-			config.Log.Printf("Invalid home directory %v ", err)
 		}
 	}
 

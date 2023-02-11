@@ -75,7 +75,14 @@ func reciever() {
 	}
 }
 
-func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *string, c *eUtils.DriverConfig) {
+func CommonMain(envPtr *string,
+	addrPtr *string,
+	tokenPtr *string,
+	envCtxPtr *string,
+	secretIDPtr *string,
+	appRoleIDPtr *string,
+	tokenNamePtr *string,
+	c *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
@@ -85,9 +92,6 @@ func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *st
 	regionPtr := flag.String("region", "", "Region to configure")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
-	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
-	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this"+coreopts.GetFolderPrefix()+"config to access the vault")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	keyStorePtr := flag.String("keystore", "", "Put certificates into this keystore file.")
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"config.log", "Output path for log file")

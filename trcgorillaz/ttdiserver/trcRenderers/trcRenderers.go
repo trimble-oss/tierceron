@@ -119,7 +119,6 @@ func (tr *TenantDataRenderer) PreRender() { //3
 func (tr *TenantDataRenderer) renderTabItemHelper(concreteElement *mashupsdk.MashupDetailedElement) {
 	//log.Printf("renderTabItemHelper called - TenantDataRenderer")
 	//log.Printf("TorusRender Widget lookup: %s\n", concreteElement.Alias)
-	//log.Print(spew.Sdump(concreteElement))
 	if concreteElement.IsStateSet(mashupsdk.Clicked) {
 		//log.Printf("TorusRender Widget looking up: %s\n", concreteElement.Alias)
 		if fyneWidgetElement, fyneOk := tr.CustosWorldApp.FyneWidgetElements[concreteElement.Name]; fyneOk {
