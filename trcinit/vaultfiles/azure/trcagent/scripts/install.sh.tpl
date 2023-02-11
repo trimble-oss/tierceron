@@ -31,6 +31,9 @@ sudo mkdir -p /etc/opt/vault/certs/
 #copy everything from /tmp
 sudo mv /tmp/serv_*.pem /etc/opt/vault/certs/
 sudo mv /tmp/Digi*.crt.pem /etc/opt/vault/certs/
+sudo chown -R root:root /etc/opt/vault/certs
+sudo chmod 600 /etc/opt/vault/certs/*.pem
+
 privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp/vault_properties.hcl
 #get pem files locally 
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
@@ -52,17 +55,21 @@ sudo tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-2.217.2.ta
 # Give ownership over to azuredeploy.
 sudo chown -R azuredeploy:azuredeploy /home/azuredeploy/myagent
 
+# echo 'export PATH="$PATH:/opt/mssql-tools/bin:/home/azuredeploy/bin"' >> ~/.bash_profile
+# echo $PATH > ~/myagent/.path
+
 # MANUAL STEP: Agent is presently installed manually.  Probably best to keep it that way for now because of dependency on PAT.
 # Get a PAT from https://viewpointvso.visualstudio.com/_usersSettings/tokens with Agent Pools (Read + Manage) permissions.
 # 
 # SSH and sudo/su ubuntu->root->azuredeploy
 # Run following as azuredeploy:
 # ./config.sh #Provide PAT from above.
-# ./run.sh
-# ./svc.sh install azuredeploy # important to install under restricted user azuredeploy
+# As root, run: ./svc.sh install azuredeploy # important to install under restricted user azuredeploy
 # After install, run:
 # ./svc.sh start as user root...
-# If you ever have to re-register agent: ./config.sh remove --auth 'PAT' --token ''
+# If you ever have to re-register agent: 
+#  ./svc.sh uninstall
+#  ./config.sh remove --auth 'PAT' --token ''
 
 # AGENT BLOCK: end
 
