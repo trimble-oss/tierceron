@@ -133,16 +133,16 @@ func CommonMain(envPtr *string,
 	logger := log.New(f, "["+coreopts.GetFolderPrefix()+"config]", log.LstdFlags)
 
 	var configFilePtr *string
-	var config *eUtils.DriverConfig
+	var configBase *eUtils.DriverConfig
 	if c != nil {
-		config = c
-		*insecurePtr = config.Insecure
-		configFilePtr = &(config.FileFilter[0])
+		configBase = c
+		*insecurePtr = configBase.Insecure
+		configFilePtr = &(configBase.FileFilter[0])
 	} else {
-		config = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
 		configFilePtr = new(string)
 	}
-	eUtils.CheckError(config, err, true)
+	eUtils.CheckError(configBase, err, true)
 
 	//Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
@@ -242,7 +242,7 @@ func CommonMain(envPtr *string,
 			var err error
 			*envPtr, err = eUtils.LoginToLocal()
 			fmt.Println(*envPtr)
-			eUtils.CheckError(config, err, true)
+			eUtils.CheckError(configBase, err, true)
 		}
 	}
 
