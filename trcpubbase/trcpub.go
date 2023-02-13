@@ -41,17 +41,16 @@ func CommonMain(envPtr *string,
 
 	flag.Parse()
 
-	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"pub.log" {
-		*logFilePtr = "./" + coreopts.GetFolderPrefix() + "pub.log"
-	}
-
 	var configBase *eUtils.DriverConfig
 	if c != nil {
 		configBase = c
 		*insecurePtr = configBase.Insecure
 		*configFilePtr = configBase.FileFilter[0]
 	} else {
+		// If logging production directory does not exist and is selected log to local directory
+		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"pub.log" {
+			*logFilePtr = "./" + coreopts.GetFolderPrefix() + "pub.log"
+		}
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "[INIT]", log.LstdFlags)
 		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
