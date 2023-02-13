@@ -49,54 +49,54 @@ func CommonMain(envPtr *string,
 
 	logger := log.New(f, "[INIT]", log.LstdFlags)
 
-	var config *eUtils.DriverConfig
+	var configBase *eUtils.DriverConfig
 	if c != nil {
-		config = c
-		*insecurePtr = config.Insecure
-		*configFilePtr = config.FileFilter[0]
+		configBase = c
+		*insecurePtr = configBase.Insecure
+		*configFilePtr = configBase.FileFilter[0]
 	} else {
-		config = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
 	}
 
-	eUtils.CheckError(config, err, true)
+	eUtils.CheckError(configBase, err, true)
 
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
-			eUtils.CheckError(config, fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
+			eUtils.CheckError(configBase, fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
 		}
 		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr, false, logger)
 		if v != nil {
 			defer v.Close()
 		}
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(configBase, err, true)
 
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(configBase, err, true)
 
 		mod, err := helperkv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, true, logger)
 		if mod != nil {
 			defer mod.Release()
 		}
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(configBase, err, true)
 		mod.RawEnv = "bamboo"
 		mod.Env = "bamboo"
 
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(configBase, err, true)
 	}
 	if memonly.IsMemonly() {
 		mlock.MunlockAll(nil)
 		mlock.Mlock2(nil, tokenPtr)
 	}
 
-	autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
-	eUtils.CheckError(config, autoErr, true)
+	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
+	eUtils.CheckError(configBase, autoErr, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(configBase, err, true)
 	}
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
@@ -106,7 +106,7 @@ func CommonMain(envPtr *string,
 	if mod != nil {
 		defer mod.Release()
 	}
-	eUtils.CheckError(config, err, true)
+	eUtils.CheckError(configBase, err, true)
 	mod.Env = *envPtr
 
 	err, warn := il.UploadTemplateDirectory(mod, *dirPtr, logger)
@@ -116,6 +116,6 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	eUtils.CheckError(config, err, true)
-	eUtils.CheckWarnings(config, warn, true)
+	eUtils.CheckError(configBase, err, true)
+	eUtils.CheckWarnings(configBase, warn, true)
 }
