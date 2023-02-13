@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dsnet/golib/memfile"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
@@ -118,7 +119,15 @@ func ProcessDeploy(env string, token string) {
 	}
 	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
-	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+	config := &eUtils.DriverConfig{Insecure: true,
+		Log:            logger,
+		OutputMemCache: true,
+		MemCache:       map[string]*memfile.File{},
+		ExitOnFailure:  true}
+
+	if env == "itdev" {
+		config.OutputMemCache = false
+	}
 
 	var addrPort string
 	var envContext string
