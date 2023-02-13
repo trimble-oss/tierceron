@@ -45,9 +45,6 @@ func CommonMain(envPtr *string,
 	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"pub.log" {
 		*logFilePtr = "./" + coreopts.GetFolderPrefix() + "pub.log"
 	}
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-
-	logger := log.New(f, "[INIT]", log.LstdFlags)
 
 	var configBase *eUtils.DriverConfig
 	if c != nil {
@@ -55,16 +52,17 @@ func CommonMain(envPtr *string,
 		*insecurePtr = configBase.Insecure
 		*configFilePtr = configBase.FileFilter[0]
 	} else {
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		logger := log.New(f, "[INIT]", log.LstdFlags)
 		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+		eUtils.CheckError(configBase, err, true)
 	}
-
-	eUtils.CheckError(configBase, err, true)
 
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			eUtils.CheckError(configBase, fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
 		}
-		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr, false, logger)
+		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr, false, configBase.Log)
 		if v != nil {
 			defer v.Close()
 		}
@@ -73,7 +71,7 @@ func CommonMain(envPtr *string,
 		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		eUtils.CheckError(configBase, err, true)
 
-		mod, err := helperkv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, true, logger)
+		mod, err := helperkv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, true, configBase.Log)
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -102,14 +100,14 @@ func CommonMain(envPtr *string,
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, logger)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
 	eUtils.CheckError(configBase, err, true)
 	mod.Env = *envPtr
 
-	err, warn := il.UploadTemplateDirectory(mod, *dirPtr, logger)
+	err, warn := il.UploadTemplateDirectory(mod, *dirPtr, configBase.Log)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)
