@@ -129,8 +129,6 @@ func CommonMain(envPtr *string,
 		fmt.Println("* is not available as an environment suffix.")
 		os.Exit(1)
 	}
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	logger := log.New(f, "["+coreopts.GetFolderPrefix()+"config]", log.LstdFlags)
 
 	var configFilePtr *string
 	var configBase *eUtils.DriverConfig
@@ -139,10 +137,12 @@ func CommonMain(envPtr *string,
 		*insecurePtr = configBase.Insecure
 		configFilePtr = &(configBase.FileFilter[0])
 	} else {
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		logger := log.New(f, "["+coreopts.GetFolderPrefix()+"config]", log.LstdFlags)
 		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
 		configFilePtr = new(string)
+		eUtils.CheckError(configBase, err, true)
 	}
-	eUtils.CheckError(configBase, err, true)
 
 	//Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
@@ -195,7 +195,7 @@ func CommonMain(envPtr *string,
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				os.Exit(1)
@@ -289,7 +289,7 @@ func CommonMain(envPtr *string,
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					os.Exit(1)
@@ -326,7 +326,7 @@ func CommonMain(envPtr *string,
 				WantKeystore:   *keyStorePtr,
 				ZeroConfig:     *zcPtr,
 				GenAuth:        false,
-				Log:            logger,
+				Log:            configBase.Log,
 				Diff:           *diffPtr,
 				Update:         messenger,
 				FileFilter:     fileFilterSlice,
@@ -370,7 +370,7 @@ func CommonMain(envPtr *string,
 			WantKeystore:   *keyStorePtr,
 			ZeroConfig:     *zcPtr,
 			GenAuth:        false,
-			Log:            logger,
+			Log:            configBase.Log,
 			Diff:           *diffPtr,
 			FileFilter:     fileFilterSlice,
 			VersionInfo:    eUtils.VersionHelper,
