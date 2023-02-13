@@ -49,12 +49,15 @@ func CommonMain(envPtr *string,
 
 	logger := log.New(f, "[INIT]", log.LstdFlags)
 
-	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+	var config *eUtils.DriverConfig
 	if c != nil {
 		config = c
 		*insecurePtr = config.Insecure
 		*configFilePtr = config.FileFilter[0]
+	} else {
+		config = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
 	}
+
 	eUtils.CheckError(config, err, true)
 
 	if len(*tokenNamePtr) > 0 {

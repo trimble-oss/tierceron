@@ -130,15 +130,19 @@ func CommonMain(envPtr *string,
 		os.Exit(1)
 	}
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	config := eUtils.DriverConfig{ExitOnFailure: true}
-	var configFile string
-	if c != nil {
-		config = *c
-		*insecurePtr = config.Insecure
-		configFile = config.FileFilter[0]
-	}
-	eUtils.CheckError(&config, err, true)
 	logger := log.New(f, "["+coreopts.GetFolderPrefix()+"config]", log.LstdFlags)
+
+	var configFilePtr *string
+	var config *eUtils.DriverConfig
+	if c != nil {
+		config = c
+		*insecurePtr = config.Insecure
+		configFilePtr = &(config.FileFilter[0])
+	} else {
+		config = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+		configFilePtr = new(string)
+	}
+	eUtils.CheckError(config, err, true)
 
 	//Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
@@ -191,7 +195,7 @@ func CommonMain(envPtr *string,
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, configFile, *pingPtr)
+			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				os.Exit(1)
@@ -238,7 +242,7 @@ func CommonMain(envPtr *string,
 			var err error
 			*envPtr, err = eUtils.LoginToLocal()
 			fmt.Println(*envPtr)
-			eUtils.CheckError(&config, err, true)
+			eUtils.CheckError(config, err, true)
 		}
 	}
 
@@ -285,7 +289,7 @@ func CommonMain(envPtr *string,
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, configFile, *pingPtr)
+				autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					os.Exit(1)
