@@ -76,16 +76,17 @@ func ProcessDeploy(env string, token string) {
 	}
 	pwd, _ := os.Getwd()
 	var content []byte
-	if env == "itdev" {
-		content, err = ioutil.ReadFile(pwd + "/deploy/deploytest.trc")
+
+	if len(os.Args) > 1 {
+		content, err = ioutil.ReadFile(os.Args[1])
 		if err != nil {
-			fmt.Println("Error could not find /deploy/deploytest.trc for deployment instructions")
+			fmt.Println("Error could not find " + os.Args[1] + " for deployment instructions")
 		}
 	} else {
-		if len(os.Args) > 1 {
-			content, err = ioutil.ReadFile(os.Args[1])
+		if env == "itdev" {
+			content, err = ioutil.ReadFile(pwd + "/deploy/deploytest.trc")
 			if err != nil {
-				fmt.Println("Error could not find " + os.Args[1] + " for deployment instructions")
+				fmt.Println("Error could not find /deploy/deploytest.trc for deployment instructions")
 			}
 		} else {
 			content, err = ioutil.ReadFile(pwd + "/deploy/deploy.trc")
