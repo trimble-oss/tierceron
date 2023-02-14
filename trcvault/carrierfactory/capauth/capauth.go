@@ -25,8 +25,9 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 	if _, ok := certifyMap["trcsha256"]; ok {
 		logger.Println("Registering cap auth.")
 		go func() {
-			//		err := cap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string))
-			err := cap.Tap("/home/azuredeploy/bin/trcsh", certifyMap["trcsha256"].(string))
+			//          err := cap.Tap("/home/jrieke/workspace/Github/tierceron/trcvault/deploy/trcsh", certifyMap["trcsha256"].(string))
+			//			err := cap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string))
+			err := cap.Tap("/home/azuredeploy/bin/trcsh", certifyMap["trcsha256"].(string), "azuredeploy")
 			if err != nil {
 				logger.Println("Cap tap failed with error: " + err.Error())
 			}
