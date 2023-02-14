@@ -76,6 +76,10 @@ func ProcessDeploy(env string, token string) {
 	}
 	pwd, _ := os.Getwd()
 	var content []byte
+	if env == "" {
+		env = os.Getenv("TRC_ENV")
+	}
+	fmt.Println("trcsh env: " + env)
 
 	if len(os.Args) > 1 {
 		content, err = ioutil.ReadFile(os.Args[1])
