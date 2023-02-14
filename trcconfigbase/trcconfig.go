@@ -75,7 +75,14 @@ func reciever() {
 	}
 }
 
-func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *string, c *eUtils.DriverConfig) {
+func CommonMain(envPtr *string,
+	addrPtr *string,
+	tokenPtr *string,
+	envCtxPtr *string,
+	secretIDPtr *string,
+	appRoleIDPtr *string,
+	tokenNamePtr *string,
+	c *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
@@ -85,9 +92,6 @@ func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *st
 	regionPtr := flag.String("region", "", "Region to configure")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
-	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
-	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this"+coreopts.GetFolderPrefix()+"config to access the vault")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	keyStorePtr := flag.String("keystore", "", "Put certificates into this keystore file.")
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"config.log", "Output path for log file")
@@ -125,16 +129,20 @@ func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *st
 		fmt.Println("* is not available as an environment suffix.")
 		os.Exit(1)
 	}
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	config := eUtils.DriverConfig{ExitOnFailure: true}
-	var configFile string
+
+	var configFilePtr *string
+	var configBase *eUtils.DriverConfig
 	if c != nil {
-		config = *c
-		*insecurePtr = config.Insecure
-		configFile = config.FileFilter[0]
+		configBase = c
+		*insecurePtr = configBase.Insecure
+		configFilePtr = &(configBase.FileFilter[0])
+	} else {
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		logger := log.New(f, "["+coreopts.GetFolderPrefix()+"config]", log.LstdFlags)
+		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+		configFilePtr = new(string)
+		eUtils.CheckError(configBase, err, true)
 	}
-	eUtils.CheckError(&config, err, true)
-	logger := log.New(f, "["+coreopts.GetFolderPrefix()+"config]", log.LstdFlags)
 
 	//Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
@@ -187,7 +195,7 @@ func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *st
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, configFile, *pingPtr)
+			autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				os.Exit(1)
@@ -234,7 +242,7 @@ func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *st
 			var err error
 			*envPtr, err = eUtils.LoginToLocal()
 			fmt.Println(*envPtr)
-			eUtils.CheckError(&config, err, true)
+			eUtils.CheckError(configBase, err, true)
 		}
 	}
 
@@ -281,7 +289,7 @@ func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *st
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, configFile, *pingPtr)
+				autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					os.Exit(1)
@@ -318,7 +326,7 @@ func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *st
 				WantKeystore:   *keyStorePtr,
 				ZeroConfig:     *zcPtr,
 				GenAuth:        false,
-				Log:            logger,
+				Log:            configBase.Log,
 				Diff:           *diffPtr,
 				Update:         messenger,
 				FileFilter:     fileFilterSlice,
@@ -362,7 +370,7 @@ func CommonMain(envPtr *string, addrPtr *string, tokenPtr *string, envCtxPtr *st
 			WantKeystore:   *keyStorePtr,
 			ZeroConfig:     *zcPtr,
 			GenAuth:        false,
-			Log:            logger,
+			Log:            configBase.Log,
 			Diff:           *diffPtr,
 			FileFilter:     fileFilterSlice,
 			VersionInfo:    eUtils.VersionHelper,

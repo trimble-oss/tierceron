@@ -7,12 +7,16 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/user"
 	"regexp"
+	"strconv"
 	"strings"
 
+	"github.com/dsnet/golib/memfile"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	"github.com/trimble-oss/tierceron/trcpubbase"
+	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/utils/mlock"
@@ -24,12 +28,38 @@ const configDir = "/.tierceron/config.yml"
 const envContextPrefix = "envContext: "
 
 // This is a controller program that can act as any command line utility.
-// The agent swiss army knife of tierceron if you will.
+// The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
 func main() {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	fmt.Println("trcagentctl Version: " + "1.01")
+	fmt.Println("trcsh Version: " + "1.01")
+	if os.Geteuid() == 0 {
+		fmt.Println("Trcsh cannot be run as root.")
+		os.Exit(-1)
+	} else {
+		sudoer, sudoErr := user.LookupGroup("sudo")
+		if sudoErr != nil {
+			fmt.Println("Trcsh unable to definitively identify sudoers.")
+			os.Exit(-1)
+		}
+		sudoerGid, sudoConvErr := strconv.Atoi(sudoer.Gid)
+		if sudoConvErr != nil {
+			fmt.Println("Trcsh unable to definitively identify sudoers.  Conversion error.")
+			os.Exit(-1)
+		}
+		groups, groupErr := os.Getgroups()
+		if groupErr != nil {
+			fmt.Println("Trcsh unable to definitively identify sudoers.  Missing groups.")
+			os.Exit(-1)
+		}
+		for _, groupId := range groups {
+			if groupId == sudoerGid {
+				fmt.Println("Trcsh cannot be run with user having sudo privileges.")
+				os.Exit(-1)
+			}
+		}
+	}
 	envPtr := flag.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 
 	flag.Parse()
@@ -46,15 +76,27 @@ func ProcessDeploy(env string, token string) {
 	}
 	pwd, _ := os.Getwd()
 	var content []byte
-	if env == "itdev" {
-		content, err = ioutil.ReadFile(pwd + "/deploy/deploytest.trc")
+	if env == "" {
+		env = os.Getenv("TRC_ENV")
+	}
+	fmt.Println("trcsh env: " + env)
+
+	if len(os.Args) > 1 {
+		content, err = ioutil.ReadFile(os.Args[1])
 		if err != nil {
-			fmt.Println("Error could not find /deploy/deploytest.trc for deployment instructions")
+			fmt.Println("Error could not find " + os.Args[1] + " for deployment instructions")
 		}
 	} else {
-		content, err = ioutil.ReadFile(pwd + "/deploy/deploy.trc")
-		if err != nil {
-			fmt.Println("Error could not find /deploy/deploy.trc for deployment instructions")
+		if env == "itdev" {
+			content, err = ioutil.ReadFile(pwd + "/deploy/deploytest.trc")
+			if err != nil {
+				fmt.Println("Error could not find /deploy/deploytest.trc for deployment instructions")
+			}
+		} else {
+			content, err = ioutil.ReadFile(pwd + "/deploy/deploy.trc")
+			if err != nil {
+				fmt.Println("Error could not find " + pwd + " /deploy/deploy.trc for deployment instructions")
+			}
 		}
 	}
 
@@ -65,9 +107,17 @@ func ProcessDeploy(env string, token string) {
 	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix()+"deploy.log" {
 		logFile = "./" + coreopts.GetFolderPrefix() + "deploy.log"
 	}
-	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
-	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+	config := &eUtils.DriverConfig{Insecure: true,
+		Log:            logger,
+		OutputMemCache: true,
+		MemCache:       map[string]*memfile.File{},
+		ExitOnFailure:  true}
+
+	if env == "itdev" {
+		config.OutputMemCache = false
+	}
 
 	var addrPort string
 	var envContext string
@@ -81,6 +131,30 @@ func ProcessDeploy(env string, token string) {
 	config.VaultAddress = addr
 	config.Env = env
 	config.EnvRaw = env
+	addr, vAddressErr := trcshauth.PenseQuery("vaddress")
+	if vAddressErr != nil {
+		fmt.Println(vAddressErr)
+		return
+	}
+	mlock.Mlock2(nil, &addr)
+	pubRole, penseErr := trcshauth.PenseQuery("pubrole")
+	if penseErr != nil {
+		fmt.Println(err)
+		return
+	}
+	mlock.Mlock2(nil, &pubRole)
+	configRole, configPenseErr := trcshauth.PenseQuery("configrole")
+	if configPenseErr != nil {
+		fmt.Println(configPenseErr)
+		return
+	}
+	mlock.Mlock2(nil, &configRole)
+	kubeconfig, kubePenseErr := trcshauth.PenseQuery("kubeconfig")
+	if kubePenseErr != nil {
+		fmt.Println(kubePenseErr)
+		return
+	}
+	mlock.Mlock2(nil, &kubeconfig)
 
 	for _, deployLine := range deployArgLines {
 		fmt.Println(deployLine)
@@ -117,7 +191,10 @@ func ProcessDeploy(env string, token string) {
 		case "pub":
 			config.FileFilter = nil
 			config.FileFilter = append(config.FileFilter, "configpub.yml")
-			trcpubbase.CommonMain(&env, &addr, &token, &envContext, config)
+			pubRoleSlice := strings.Split(pubRole, ":")
+			tokenName := "pub_token_" + env
+
+			trcpubbase.CommonMain(&env, &addr, &token, &envContext, &pubRoleSlice[0], &pubRoleSlice[1], &tokenName, config)
 			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 			env = *flag.String("env", config.Env, "Environment to be seeded")
@@ -132,7 +209,10 @@ func ProcessDeploy(env string, token string) {
 			}
 			config.FileFilter = nil
 			config.FileFilter = append(config.FileFilter, "config.yml")
-			trcconfigbase.CommonMain(&env, &addr, &token, &envContext, config)
+			configRoleSlice := strings.Split(configRole, ":")
+			tokenName := "config_token_" + env
+
+			trcconfigbase.CommonMain(&env, &addr, &token, &envContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
 			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 			env = *flag.String("env", config.Env, "Environment to be seeded")
@@ -182,7 +262,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 				output = fileContent + envContextPrefix + envContext + "\n"
 			}
 
-			if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
+			if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
 				return "", "", "", err
 			}
 			fmt.Println("Context flag has been written out.")
@@ -198,7 +278,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 			currentEnvContext := strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
 			if envContext != "" {
 				output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
-				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
+				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
 					return "", "", "", err
 				}
 				fmt.Println("Context flag has been written out.")
