@@ -35,16 +35,14 @@ require (
 
 )
 
-require (
-	github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b
-	github.com/trimble-oss/tierceron-hat v0.0.0-20230206214723-e766990c2a5f
-)
+require github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b
 
 require github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 
 require (
 	github.com/dsnet/golib v1.0.2 // indirect
 	github.com/dsnet/golib/memfile v1.0.0 // indirect
+	github.com/trimble-oss/tierceron-hat v0.0.0-00010101000000-000000000000 // indirect
 )
 
 require (
