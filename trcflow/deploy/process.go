@@ -10,7 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
+	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/factory"
 	"github.com/trimble-oss/tierceron/trcvault/opts/insecure"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
@@ -26,6 +28,8 @@ import (
 func init() {
 	factory.StartPluginSettingEater()
 }
+
+var onceAuth sync.Once
 
 func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
@@ -43,6 +47,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
 	}
+
+	onceAuth.Do(func() {
+		fmt.Println("Load run-time configuration first and the only time. ")
+		capauth.Init(goMod, pluginConfig, logger)
+	})
 
 	logger.Println("PluginDeployFlow begin processing plugins.")
 	for _, pluginName := range pluginConfig["pluginNameList"].([]string) {
@@ -72,12 +81,18 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 		pluginDownloadNeeded := false
 		pluginCopied := false
+		var agentPath string
+		if vaultPluginSignature["trctype"] == "agent" {
+			agentPath = "/home/azuredevops/bin/" + vaultPluginSignature["trcplugin"].(string)
+		} else {
+			agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)
+		}
 
-		if _, err := os.Stat("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); errors.Is(err, os.ErrNotExist) {
+		if _, err := os.Stat(agentPath); errors.Is(err, os.ErrNotExist) {
 			pluginDownloadNeeded = true
 			logger.Println("Attempting to download new image.")
 		} else {
-			if imageFile, err := os.Open("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); err == nil {
+			if imageFile, err := os.Open(agentPath); err == nil {
 				logger.Println("Found image for: " + vaultPluginSignature["trcplugin"].(string))
 
 				sha256 := sha256.New()
@@ -112,7 +127,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				continue
 			}
 			if vaultPluginSignature["imagesha256"] == vaultPluginSignature["trcsha256"] { //Sha256 from download matches in vault
-				err = ioutil.WriteFile("/etc/opt/vault/plugins/"+vaultPluginSignature["trcplugin"].(string), vaultPluginSignature["rawImageFile"].([]byte), 0644)
+				err = ioutil.WriteFile(agentPath, vaultPluginSignature["rawImageFile"].([]byte), 0644)
 				vaultPluginSignature["rawImageFile"] = nil
 
 				if err != nil {
@@ -120,7 +135,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 					continue
 				}
 
-				if imageFile, err := os.Open("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)); err == nil {
+				if imageFile, err := os.Open(agentPath); err == nil {
 					chdModErr := imageFile.Chmod(0750)
 					if chdModErr != nil {
 						eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not give permission to image in file system.", false)
@@ -136,7 +151,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				//				capSet, err := cap.GetFile("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string))
 				//				cap.GetFd
 				//				capSet.SetFlag(cap.Permitted, true)
-				cmd := exec.Command("setcap", "cap_ipc_lock=+ep", "/etc/opt/vault/plugins/"+vaultPluginSignature["trcplugin"].(string))
+				cmd := exec.Command("setcap", "cap_ipc_lock=+ep", agentPath)
 				output, err := cmd.CombinedOutput()
 				if !insecure.IsInsecure() && err != nil {
 					eUtils.LogErrorMessage(config, fmt.Sprint(err)+": "+string(output), false)
@@ -164,6 +179,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
 			writeMap["trcsha256"] = vaultPluginSignature["trcsha256"].(string)
+			writeMap["trctype"] = vaultPluginSignature["trctype"].(string)
 			writeMap["copied"] = true
 			writeMap["deployed"] = false
 			_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
@@ -194,8 +210,16 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 			if !prod.IsProd() && insecure.IsInsecure() {
 				pluginData = make(map[string]interface{})
 				pluginData["trcplugin"] = pluginName
+
+				var agentPath string
+				if pluginData["trctype"] == "agent" {
+					agentPath = "/home/azuredevops/bin/" + pluginName
+				} else {
+					agentPath = "/etc/opt/vault/plugins/" + pluginName
+				}
+
 				logger.Println("Checking file.")
-				if imageFile, err := os.Open("/etc/opt/vault/plugins/" + pluginName); err == nil {
+				if imageFile, err := os.Open(agentPath); err == nil {
 					sha256 := sha256.New()
 
 					defer imageFile.Close()
@@ -223,6 +247,7 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 
 		writeMap := make(map[string]interface{})
 		writeMap["trcplugin"] = pluginData["trcplugin"]
+		writeMap["trctype"] = pluginData["trctype"]
 		writeMap["trcsha256"] = pluginData["trcsha256"]
 		writeMap["copied"] = pluginData["copied"]
 		writeMap["deployed"] = true
