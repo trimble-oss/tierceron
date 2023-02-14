@@ -107,7 +107,7 @@ func ProcessDeploy(env string, token string) {
 	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix()+"deploy.log" {
 		logFile = "./" + coreopts.GetFolderPrefix() + "deploy.log"
 	}
-	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
 	config := &eUtils.DriverConfig{Insecure: true,
 		Log:            logger,
@@ -274,7 +274,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 			currentEnvContext := strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
 			if envContext != "" {
 				output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
-				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
+				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
 					return "", "", "", err
 				}
 				fmt.Println("Context flag has been written out.")
