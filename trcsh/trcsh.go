@@ -1,30 +1,25 @@
 package main
 
 import (
-	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"os"
+	"os/user"
 	"regexp"
+	"strconv"
 	"strings"
-	"time"
 
 	"github.com/dsnet/golib/memfile"
-	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	"github.com/trimble-oss/tierceron/trcpubbase"
+	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/utils/mlock"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
@@ -32,56 +27,39 @@ import (
 const configDir = "/.tierceron/config.yml"
 const envContextPrefix = "envContext: "
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-
-func randomString(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
-
-func penseQuery(pense string) (string, error) {
-	penseCode := randomString(7 + rand.Intn(7))
-	penseArray := sha256.Sum256([]byte(penseCode))
-	penseSum := hex.EncodeToString(penseArray[:])
-
-	capWritErr := cap.TapWriter(penseSum)
-	if capWritErr != nil {
-		return "", capWritErr
-	}
-
-	conn, err := grpc.Dial("127.0.0.1:12384", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	c := cap.NewCapClient(conn)
-
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
-	if err != nil {
-		return "", err
-	}
-
-	return r.GetPense(), nil
-}
-
 // This is a controller program that can act as any command line utility.
-// The agent swiss army knife of tierceron if you will.
+// The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
 func main() {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	fmt.Println("trcagentctl Version: " + "1.01")
+	fmt.Println("trcsh Version: " + "1.01")
+	if os.Geteuid() == 0 {
+		fmt.Println("Trcsh cannot be run as root.")
+		os.Exit(-1)
+	} else {
+		sudoer, sudoErr := user.LookupGroup("sudo")
+		if sudoErr != nil {
+			fmt.Println("Trcsh unable to definitively identify sudoers.")
+			os.Exit(-1)
+		}
+		sudoerGid, sudoConvErr := strconv.Atoi(sudoer.Gid)
+		if sudoConvErr != nil {
+			fmt.Println("Trcsh unable to definitively identify sudoers.  Conversion error.")
+			os.Exit(-1)
+		}
+		groups, groupErr := os.Getgroups()
+		if groupErr != nil {
+			fmt.Println("Trcsh unable to definitively identify sudoers.  Missing groups.")
+			os.Exit(-1)
+		}
+		for _, groupId := range groups {
+			if groupId == sudoerGid {
+				fmt.Println("Trcsh cannot be run with user having sudo privileges.")
+				os.Exit(-1)
+			}
+		}
+	}
 	envPtr := flag.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 
 	flag.Parse()
@@ -141,22 +119,22 @@ func ProcessDeploy(env string, token string) {
 	config.VaultAddress = addr
 	config.Env = env
 	config.EnvRaw = env
-	addr, vAddressErr := penseQuery("vaddress")
+	addr, vAddressErr := trcshauth.PenseQuery("vaddress")
 	if vAddressErr != nil {
 		fmt.Println(vAddressErr)
 		return
 	}
-	pubRole, penseErr := penseQuery("pubrole")
+	pubRole, penseErr := trcshauth.PenseQuery("pubrole")
 	if penseErr != nil {
 		fmt.Println(err)
 		return
 	}
-	configRole, configPenseErr := penseQuery("configrole")
+	configRole, configPenseErr := trcshauth.PenseQuery("configrole")
 	if configPenseErr != nil {
 		fmt.Println(configPenseErr)
 		return
 	}
-	_, kubePenseErr := penseQuery("kubeconfig")
+	_, kubePenseErr := trcshauth.PenseQuery("kubeconfig")
 	if kubePenseErr != nil {
 		fmt.Println(kubePenseErr)
 		return
