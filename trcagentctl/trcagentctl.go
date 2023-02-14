@@ -141,6 +141,26 @@ func ProcessDeploy(env string, token string) {
 	config.VaultAddress = addr
 	config.Env = env
 	config.EnvRaw = env
+	addr, vAddressErr := penseQuery("vaddress")
+	if vAddressErr != nil {
+		fmt.Println(vAddressErr)
+		return
+	}
+	pubRole, penseErr := penseQuery("pubrole")
+	if penseErr != nil {
+		fmt.Println(err)
+		return
+	}
+	configRole, configPenseErr := penseQuery("configrole")
+	if configPenseErr != nil {
+		fmt.Println(configPenseErr)
+		return
+	}
+	_, kubePenseErr := penseQuery("kubeconfig")
+	if kubePenseErr != nil {
+		fmt.Println(kubePenseErr)
+		return
+	}
 
 	for _, deployLine := range deployArgLines {
 		fmt.Println(deployLine)
@@ -177,11 +197,6 @@ func ProcessDeploy(env string, token string) {
 		case "pub":
 			config.FileFilter = nil
 			config.FileFilter = append(config.FileFilter, "configpub.yml")
-			pubRole, penseErr := penseQuery("pubrole")
-			if penseErr != nil {
-				fmt.Println(err)
-				return
-			}
 			pubRoleSlice := strings.Split(pubRole, ":")
 			tokenName := "pub_token_" + env
 
@@ -200,16 +215,6 @@ func ProcessDeploy(env string, token string) {
 			}
 			config.FileFilter = nil
 			config.FileFilter = append(config.FileFilter, "config.yml")
-			addr, vAddressErr := penseQuery("vaddress")
-			if vAddressErr != nil {
-				fmt.Println(vAddressErr)
-				return
-			}
-			configRole, penseErr := penseQuery("configrole")
-			if penseErr != nil {
-				fmt.Println(penseErr)
-				return
-			}
 			configRoleSlice := strings.Split(configRole, ":")
 			tokenName := "config_token_" + env
 
