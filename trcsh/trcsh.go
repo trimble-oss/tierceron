@@ -136,21 +136,25 @@ func ProcessDeploy(env string, token string) {
 		fmt.Println(vAddressErr)
 		return
 	}
+	mlock.Mlock2(nil, &addr)
 	pubRole, penseErr := trcshauth.PenseQuery("pubrole")
 	if penseErr != nil {
 		fmt.Println(err)
 		return
 	}
+	mlock.Mlock2(nil, &pubRole)
 	configRole, configPenseErr := trcshauth.PenseQuery("configrole")
 	if configPenseErr != nil {
 		fmt.Println(configPenseErr)
 		return
 	}
-	_, kubePenseErr := trcshauth.PenseQuery("kubeconfig")
+	mlock.Mlock2(nil, &configRole)
+	kubeconfig, kubePenseErr := trcshauth.PenseQuery("kubeconfig")
 	if kubePenseErr != nil {
 		fmt.Println(kubePenseErr)
 		return
 	}
+	mlock.Mlock2(nil, &kubeconfig)
 
 	for _, deployLine := range deployArgLines {
 		fmt.Println(deployLine)
