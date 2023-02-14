@@ -85,8 +85,11 @@ certify:
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
-trcshell:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcsh -tags "memonly" github.com/trimble-oss/tierceron/trcsh
+trcshellbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o trcvault/deploy/target/trcsh -tags "memonly" github.com/trimble-oss/tierceron/trcsh
+trcshellsha:
+	sha256sum trcvault/deploy/target/trcsh | cut -d' ' -f1 > trcvault/deploy/target/trcsh.sha256
+trcshell: trcshellbuild trcshellsha
 
 ttdiserver:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/ttdiserver -tags "insecure fyneboot argosy tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/trcgorillaz/ttdiserver
