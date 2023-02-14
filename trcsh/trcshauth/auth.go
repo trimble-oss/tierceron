@@ -33,11 +33,7 @@ func init() {
 		return
 	}
 
-	mashupBlock, decodeErr := pem.Decode([]byte(mashupCertBytes))
-	if decodeErr != nil {
-		fmt.Println("Cert decode failure.")
-		return
-	}
+	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
 
 	mashupClientCert, parseErr := x509.ParseCertificate(mashupBlock.Bytes)
 	if parseErr != nil {
