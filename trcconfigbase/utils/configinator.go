@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dsnet/golib/memfile"
+
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/validator"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -302,7 +304,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 					destFile := certData[0]
 					certDestination := config.EndDir + "/" + destFile
 					writeToFile(config, certData[1], certDestination)
-					eUtils.LogInfo(config, "certificate written to "+certDestination)
+					if config.OutputMemCache {
+						eUtils.LogInfo(config, "certificate pre-processed for "+certDestination)
+					} else {
+						eUtils.LogInfo(config, "certificate written to "+certDestination)
+					}
 					goto wait
 				} else {
 					if config.Diff {
@@ -354,7 +360,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 					}
 					certDestination := config.EndDir + "/" + certData[0]
 					writeToFile(config, certData[1], certDestination)
-					eUtils.LogInfo(config, "certificate written to "+certDestination)
+					if config.OutputMemCache {
+						eUtils.LogInfo(config, "certificate pre-processed for "+certDestination)
+					} else {
+						eUtils.LogInfo(config, "certificate written to "+certDestination)
+					}
 					goto wait
 				} else {
 					if config.Diff {
@@ -371,10 +381,14 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 
 			//print that we're done
 			if !config.Diff && !isCert && !templateInfo {
+				messageBase := "template configured and written to "
+				if config.OutputMemCache {
+					messageBase = "template configured and pre-processed for "
+				}
 				if runtime.GOOS == "windows" {
-					eUtils.LogInfo(config, "template configured and written to "+endPaths[i])
+					eUtils.LogInfo(config, messageBase+endPaths[i])
 				} else {
-					eUtils.LogInfo(config, "\033[0;33m"+"template configured and written to "+endPaths[i]+"\033[0m")
+					eUtils.LogInfo(config, "\033[0;33m"+messageBase+endPaths[i]+"\033[0m")
 				}
 			}
 
@@ -405,19 +419,24 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	byteData := []byte(data)
 	//Ensure directory has been created
+	var newFile *os.File
 
-	dirPath := filepath.Dir(path)
-	err := os.MkdirAll(dirPath, os.ModePerm)
-	eUtils.CheckError(config, err, true)
-	//create new file
-	newFile, err := os.Create(path)
-	eUtils.CheckError(config, err, true)
-	//write to file
-	_, err = newFile.Write(byteData)
-	eUtils.CheckError(config, err, true)
-	err = newFile.Sync()
-	eUtils.CheckError(config, err, true)
-	newFile.Close()
+	if config.OutputMemCache {
+		config.MemCache[path] = memfile.New(byteData)
+	} else {
+		dirPath := filepath.Dir(path)
+		err := os.MkdirAll(dirPath, os.ModePerm)
+		eUtils.CheckError(config, err, true)
+		//create new file
+		newFile, err = os.Create(path)
+		eUtils.CheckError(config, err, true)
+		//write to file
+		_, err = newFile.Write(byteData)
+		eUtils.CheckError(config, err, true)
+		err = newFile.Sync()
+		eUtils.CheckError(config, err, true)
+		newFile.Close()
+	}
 }
 
 func getDirFiles(dir string, endDir string) ([]string, []string) {
