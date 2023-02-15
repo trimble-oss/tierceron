@@ -85,7 +85,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		pluginCopied := false
 		var agentPath string
 		if vaultPluginSignature["trctype"] == "agent" {
-			agentPath = "/home/azuredevops/bin/" + vaultPluginSignature["trcplugin"].(string)
+			agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
 		} else {
 			agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)
 		}
@@ -229,7 +229,7 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 
 				var agentPath string
 				if pluginData["trctype"] == "agent" {
-					agentPath = "/home/azuredevops/bin/" + pluginName
+					agentPath = "/home/azuredeploy/bin/" + pluginName
 				} else {
 					agentPath = "/etc/opt/vault/plugins/" + pluginName
 				}
