@@ -25,12 +25,17 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 	if _, ok := certifyMap["trcsha256"]; ok {
 		logger.Println("Registering cap auth.")
 		go func() {
-			//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/trcvault/deploy/trcsh", certifyMap["trcsha256"].(string), "azuredeploy")
-			//			err := cap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy")
-			err := cap.Tap("/home/azuredeploy/bin/trcsh", certifyMap["trcsha256"].(string), "azuredeploy")
-			if err != nil {
-				logger.Println("Cap tap failed with error: " + err.Error())
+			retryCap := 0
+			for retryCap < 5 {
+				//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/trcvault/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
+				//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
+				err := cap.Tap("/home/azuredeploy/bin/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", false)
+				if err != nil {
+					logger.Println("Cap failure with error: " + err.Error())
+				}
+				retryCap++
 			}
+			logger.Println("Mad hat cap failure with error: " + err.Error())
 		}()
 		logger.Println("Memorizing")
 		go MemorizeAndStart(pluginConfig, logger)
@@ -51,24 +56,27 @@ func MemorizeAndStart(memorizeFields map[string]interface{}, logger *log.Logger)
 	}
 	mashupCertBytes, err := trcshauth.MashupCert.ReadFile("tls/mashup.crt")
 	if err != nil {
-		log.Printf("Couldn't load cert: %v\n", err)
+		logger.Printf("Couldn't load cert: %v\n", err)
 		return err
 	}
 
 	mashupKeyBytes, err := trcshauth.MashupKey.ReadFile("tls/mashup.key")
 	if err != nil {
-		log.Printf("Couldn't load key: %v\n", err)
+		logger.Printf("Couldn't load key: %v\n", err)
 		return err
 	}
 
 	cert, err := tls.X509KeyPair(mashupCertBytes, mashupKeyBytes)
 	if err != nil {
-		log.Printf("Couldn't load cert: %v\n", err)
+		logger.Printf("Couldn't load cert: %v\n", err)
 		return err
 	}
 	creds := credentials.NewServerTLSFromCert(&cert)
+	logger.Println("Tapping server.")
 
 	// TODO: make port configured and stored in vault.
 	cap.TapServer("127.0.0.1:12384", grpc.Creds(creds))
+	logger.Println("Server tapped.")
+
 	return nil
 }
