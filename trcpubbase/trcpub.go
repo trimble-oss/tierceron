@@ -39,7 +39,11 @@ func CommonMain(envPtr *string,
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"pub.log", "Output path for log files")
 	configFilePtr := flag.String("", "config.yml", "Name of auth config file - example.yml")
 
-	flag.Parse()
+	if c == nil || !c.IsShell {
+		flag.Parse()
+	} else {
+		flag.CommandLine.Parse(os.Args[2:])
+	}
 
 	var configBase *eUtils.DriverConfig
 	if c != nil {
