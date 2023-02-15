@@ -101,30 +101,32 @@ func AutoAuth(config *DriverConfig,
 		if len(configFile) == 0 {
 			configFile = "config.yml"
 		}
-		if _, err := os.Stat(userHome + "/.tierceron/" + configFile); !os.IsNotExist(err) {
-			exists = true
-			_, configErr := c.getConfig(config.Log, configFile)
-			if configErr != nil {
-				return configErr
-			}
+		if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
+			if _, err := os.Stat(userHome + "/.tierceron/" + configFile); !os.IsNotExist(err) {
+				exists = true
+				_, configErr := c.getConfig(config.Log, configFile)
+				if configErr != nil {
+					return configErr
+				}
 
-			if addrPtr == nil || *addrPtr == "" {
-				*addrPtr = c.VaultHost
-			}
+				if addrPtr == nil || *addrPtr == "" {
+					*addrPtr = c.VaultHost
+				}
 
-			if *tokenPtr == "" {
-				if !override {
-					LogInfo(config, "Obtaining auth credentials.")
-					if c.SecretID != "" && secretIDPtr != nil {
-						*secretIDPtr = c.SecretID
-					}
-					if c.ApproleID != "" && appRoleIDPtr != nil {
-						*appRoleIDPtr = c.ApproleID
+				if *tokenPtr == "" {
+					if !override {
+						LogInfo(config, "Obtaining auth credentials.")
+						if c.SecretID != "" && secretIDPtr != nil {
+							*secretIDPtr = c.SecretID
+						}
+						if c.ApproleID != "" && appRoleIDPtr != nil {
+							*appRoleIDPtr = c.ApproleID
+						}
 					}
 				}
+			} else {
+				config.Log.Printf("Invalid home directory %v ", err)
 			}
-		} else {
-			config.Log.Printf("Invalid home directory %v ", err)
 		}
 	}
 
@@ -209,7 +211,9 @@ func AutoAuth(config *DriverConfig,
 
 			dump = []byte(certConfigData)
 		} else if override && !exists {
-			LogInfo(config, "No cert file exists, continuing without saving config IDs")
+			if !config.IsShell {
+				LogInfo(config, "No approle file exists, continuing without saving config IDs")
+			}
 		} else {
 			LogInfo(config, fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"))
 			certConfigData := "vaultHost: " + vaultHost + "\n"
@@ -223,7 +227,7 @@ func AutoAuth(config *DriverConfig,
 			dump = []byte(certConfigData)
 		}
 
-		// Do not save IDs if overriding and no cert file exists
+		// Do not save IDs if overriding and no approle file exists
 		if !override || exists {
 
 			// Create hidden folder

@@ -47,6 +47,8 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 		<-vaultInitialized
 		for {
 			pluginEnvConfig := <-tokenEnvChan
+			logger.Println("Received new config for env: " + pluginEnvConfig["env"].(string))
+
 			environmentConfigs[pluginEnvConfig["env"].(string)] = pluginEnvConfig
 
 			if _, ok := pluginEnvConfig["vaddress"]; !ok {
@@ -187,12 +189,14 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 		VAddress   string `json:"vaddress,omitempty"`
 		Pubrole    string `json:"pubrole,omitempty"`
 		Configrole string `json:"configrole,omitempty"`
+		Kubeconfig string `json:"kubeconfig,omitempty"`
 	}
 	tokenConfig := tokenWrapper{}
 	e.DecodeJSON(&tokenConfig)
 	tokenMap["token"] = tokenConfig.Token
 	tokenMap["pubrole"] = tokenConfig.Pubrole
 	tokenMap["configrole"] = tokenConfig.Configrole
+	tokenMap["kubeconfig"] = tokenConfig.Kubeconfig
 
 	vaultUrl, err := url.Parse(tokenConfig.VAddress)
 	if err == nil {
@@ -237,6 +241,12 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		return errors.New("missing config role")
 	}
 
+	kubeconfig, rOk := pluginEnvConfig["kubeconfig"]
+	if !rOk || kubeconfig.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing kube config.")
+		return errors.New("missing kube config")
+	}
+
 	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
 	logger.Println("Begin processFlows for env: " + env.(string))
 	if memonly.IsMemonly() {
@@ -260,6 +270,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	}
 
 	go func(pec map[string]interface{}, l *log.Logger) {
+		logger.Println("Begin processFlows for env: " + env.(string))
 		flowErr := processFlows(pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
@@ -274,6 +285,8 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	return nil
 }
 
+// TrcInitialize -- main entry point for plugin.  When carrier is started,
+// this function is always called.
 func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) error {
 	logger.Println("TrcCarrierInitialize begun.")
 
@@ -299,6 +312,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 				tokenMap["insecure"] = true
 				tokenMap["vaddress"] = vaultHost
 				logger.Println("Initialize Pushing env: " + env)
+
 				PushEnv(tokenMap)
 			}
 		}
@@ -372,6 +386,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		tokenEnvMap["vaddress"] = vData["vaddress"]
 		tokenEnvMap["pubrole"] = vData["pubrole"]
 		tokenEnvMap["configrole"] = vData["configrole"]
+		tokenEnvMap["kubeconfig"] = vData["kubeconfig"]
 
 		tokenEnvMap["insecure"] = true
 		if vData["token"] != nil {
@@ -545,6 +560,27 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, errors.New("Token required.")
 	}
 
+	if pubrole, pubroleOk := data.GetOk("pubrole"); pubroleOk {
+		tokenEnvMap["pubrole"] = pubrole
+	} else {
+		//ctx.Done()
+		return nil, errors.New("Pubrole required.")
+	}
+
+	if configrole, configroleOk := data.GetOk("configrole"); configroleOk {
+		tokenEnvMap["configrole"] = configrole
+	} else {
+		//ctx.Done()
+		return nil, errors.New("Configrole required.")
+	}
+
+	if kubeconfig, kubeconfigOk := data.GetOk("kubeconfig"); kubeconfigOk {
+		tokenEnvMap["kubeconfig"] = kubeconfig
+	} else {
+		//ctx.Done()
+		return nil, errors.New("Kubeconfig required.")
+	}
+
 	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
 		vaultUrl, err := url.Parse(vaddr.(string))
 		tokenEnvMap["vaddress"] = vaddr.(string)
@@ -673,6 +709,10 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 				"configrole": {
 					Type:        framework.TypeString,
 					Description: "Read only role for specified environment.",
+				},
+				"kubeconfig": {
+					Type:        framework.TypeString,
+					Description: "kube config for specified environment.",
 				},
 				"token": {
 					Type:        framework.TypeString,
