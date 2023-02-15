@@ -89,6 +89,23 @@ func SeedVault(config *eUtils.DriverConfig) error {
 
 	files, err := ioutil.ReadDir(config.StartDir[0])
 
+	if len(config.FileFilter) == 1 && config.FileFilter[0] == "nest" {
+		err := filepath.Walk(config.StartDir[0]+"/"+config.Env,
+			func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if strings.HasSuffix(path, "_seed.yml") {
+					SeedVaultFromFile(config, path)
+				}
+				return nil
+			})
+		if err != nil {
+			config.Log.Println(err)
+		}
+		fmt.Println("Nested initialization complete")
+		return nil
+	}
 	templateWritten = make(map[string]bool)
 	//
 	// The following logic section for server based certificate loading is for when it is known that
