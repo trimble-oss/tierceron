@@ -165,7 +165,7 @@ Will not run if you don't have appRoleID and secretID tokens.
 **CLI Syntax:**
 
 *	`trcconfig` 
-    Executes trcconfig. If the cert file exists trcconfig will use appRoleID and secretID tokens from the file. If no cert file exists trcconfig will prompt for appRoleID and secretID then create a cert file and save those tokens to it for future use.
+    Executes trcconfig. If the cert file exists trcconfig will use appRoleID and secretID tokens from the file. If no approle file exists trcconfig will prompt for appRoleID and secretID then create a cert file and save those tokens to it for future use.
 
 *	`trcconfig -appRoleID=foo -secretID=bar`
      Overrides the tokens in the cert file. The new tokens will be saved for future use.
