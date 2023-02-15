@@ -33,23 +33,23 @@ privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp
 #get pem files locally 
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
 sudo chown root:root /etc/opt/vault/vault_properties.hcl
+sudo chmod -R 0700 /etc/opt/vault/
 
 # AGENT BLOCK: begin
 # When building out TrcDb instances, remove this AGENT BLOCK section from .tpl....
+sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/azuredeploy azuredeploy
 sudo mkdir -p /home/azuredeploy/bin
 sudo mkdir -p /home/azuredeploy/myagent
-
-sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/azuredeploy azuredeploy
 
 # MANUAL STEP: IMPORTANT! Ensure azuredeploy is *not* a sudoer...
 sudo chmod 1750 /home/azuredeploy/bin
 sudo chown root:azuredeploy /home/azuredeploy/bin
 
 curl -L "https://vstsagentpackage.azureedge.net/agent/2.217.2/vsts-agent-linux-x64-2.217.2.tar.gz" > /tmp/vsts-agent-linux-x64-2.217.2.tar.gz
-tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-2.217.2.tar.gz
+sudo tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-2.217.2.tar.gz
 
 # Give ownership over to azuredeploy.
-sudo chown -R azuredeploy:azuredeploy /home/azuredeploy
+sudo chown -R azuredeploy:azuredeploy /home/azuredeploy/myagent
 
 # MANUAL STEP: Agent is presently installed manually.  Probably best to keep it that way for now because of dependency on PAT.
 # Get a PAT from https://viewpointvso.visualstudio.com/_usersSettings/tokens with Agent Pools (Read + Manage) permissions.
@@ -94,6 +94,12 @@ sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${TRCDBB_PORT} -j DROP
 # iptables -I INPUT 2 -p tcp -s <ip_address> --dport <PORT> -j ACCEPT
 
 
+# Manual Mysql Database step...
+# Connect with local mysql and Run sql command: `alter table vault modify vault_key varbinary(1024);`
+# Update mysql variables to following:
+# character_set_server	utf8
+# collation_server	utf8_unicode_ci
+# max_connections	512
 
 # Setup the init script
 
