@@ -104,17 +104,19 @@ func CommonMain(envPtr *string,
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 
-	args := os.Args[1:]
-
-	for i := 0; i < len(args); i++ {
-		s := args[i]
-		if s[0] != '-' {
-			fmt.Println("Wrong flag syntax: ", s)
-			os.Exit(1)
+	if c == nil || !c.IsShell {
+		args := os.Args[1:]
+		for i := 0; i < len(args); i++ {
+			s := args[i]
+			if s[0] != '-' {
+				fmt.Println("Wrong flag syntax: ", s)
+				os.Exit(1)
+			}
 		}
+		flag.Parse()
+	} else {
+		flag.CommandLine.Parse(os.Args[2:])
 	}
-
-	flag.Parse()
 
 	if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 		fmt.Println("Missing required template folder: " + *startDirPtr)
