@@ -25,6 +25,7 @@ type DriverConfig struct {
 	// Internal systems...
 	ExitOnFailure bool // Exit on a failure or try to continue
 	Insecure      bool
+	IsShell       bool // If tool running in shell.
 	Log           *log.Logger
 
 	// Vault Configurations...
