@@ -33,7 +33,7 @@ func main() {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	fmt.Println("trcsh Version: " + "1.01")
+	fmt.Println("trcsh Version: " + "1.02")
 	if os.Geteuid() == 0 {
 		fmt.Println("Trcsh cannot be run as root.")
 		os.Exit(-1)
@@ -111,6 +111,7 @@ func ProcessDeploy(env string, token string) {
 	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
 	config := &eUtils.DriverConfig{Insecure: true,
 		Log:            logger,
+		IsShell:        true,
 		OutputMemCache: true,
 		MemCache:       map[string]*memfile.File{},
 		ExitOnFailure:  true}
@@ -156,8 +157,12 @@ func ProcessDeploy(env string, token string) {
 	}
 	mlock.Mlock2(nil, &kubeconfig)
 
+	argsOrig := os.Args
+
 	for _, deployLine := range deployArgLines {
 		fmt.Println(deployLine)
+		os.Args = argsOrig
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 		deployLine = strings.TrimPrefix(deployLine, "trc")
 		deployLine = strings.TrimRight(deployLine, "")
 		deployArgs := strings.Split(deployLine, " ")
@@ -194,7 +199,7 @@ func ProcessDeploy(env string, token string) {
 			pubRoleSlice := strings.Split(pubRole, ":")
 			tokenName := "pub_token_" + env
 
-			trcpubbase.CommonMain(&env, &addr, &token, &envContext, &pubRoleSlice[0], &pubRoleSlice[1], &tokenName, config)
+			trcpubbase.CommonMain(&env, &addr, &token, &envContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
 			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 			env = *flag.String("env", config.Env, "Environment to be seeded")
@@ -213,9 +218,8 @@ func ProcessDeploy(env string, token string) {
 			tokenName := "config_token_" + env
 
 			trcconfigbase.CommonMain(&env, &addr, &token, &envContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
-			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
-			env = *flag.String("env", config.Env, "Environment to be seeded")
+			ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
+
 			if !agentToken {
 				token = ""
 				config.Token = token
