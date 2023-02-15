@@ -211,7 +211,9 @@ func AutoAuth(config *DriverConfig,
 
 			dump = []byte(certConfigData)
 		} else if override && !exists {
-			LogInfo(config, "No cert file exists, continuing without saving config IDs")
+			if !config.IsShell {
+				LogInfo(config, "No approle file exists, continuing without saving config IDs")
+			}
 		} else {
 			LogInfo(config, fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"))
 			certConfigData := "vaultHost: " + vaultHost + "\n"
@@ -225,7 +227,7 @@ func AutoAuth(config *DriverConfig,
 			dump = []byte(certConfigData)
 		}
 
-		// Do not save IDs if overriding and no cert file exists
+		// Do not save IDs if overriding and no approle file exists
 		if !override || exists {
 
 			// Create hidden folder
