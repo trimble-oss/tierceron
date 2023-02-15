@@ -194,7 +194,7 @@ func ProcessDeploy(env string, token string) {
 			pubRoleSlice := strings.Split(pubRole, ":")
 			tokenName := "pub_token_" + env
 
-			trcpubbase.CommonMain(&env, &addr, &token, &envContext, &pubRoleSlice[0], &pubRoleSlice[1], &tokenName, config)
+			trcpubbase.CommonMain(&env, &addr, &token, &envContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
 			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 			env = *flag.String("env", config.Env, "Environment to be seeded")
