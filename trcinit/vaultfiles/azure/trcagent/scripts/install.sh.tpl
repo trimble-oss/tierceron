@@ -33,6 +33,7 @@ privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp
 #get pem files locally 
 sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
 sudo chown root:root /etc/opt/vault/vault_properties.hcl
+sudo chmod -R 0700 /etc/opt/vault/
 
 # AGENT BLOCK: begin
 # When building out TrcDb instances, remove this AGENT BLOCK section from .tpl....
@@ -93,6 +94,12 @@ sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${TRCDBB_PORT} -j DROP
 # iptables -I INPUT 2 -p tcp -s <ip_address> --dport <PORT> -j ACCEPT
 
 
+# Manual Mysql Database step...
+# Connect with local mysql and Run sql command: `alter table vault modify vault_key varbinary(1024);`
+# Update mysql variables to following:
+# character_set_server	utf8
+# collation_server	utf8_unicode_ci
+# max_connections	512
 
 # Setup the init script
 
