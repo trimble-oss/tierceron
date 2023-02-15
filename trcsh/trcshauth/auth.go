@@ -8,6 +8,7 @@ import (
 	"embed"
 	"encoding/hex"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -59,9 +60,9 @@ func PenseQuery(pense string) (string, error) {
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
-	capWritErr := cap.TapWriter(penseSum)
-	if capWritErr != nil {
-		return "", capWritErr
+	capWriteErr := cap.TapWriter(penseSum)
+	if capWriteErr != nil {
+		return "", errors.Join(errors.New("Tap writer error"), capWriteErr)
 	}
 
 	conn, err := grpc.Dial("127.0.0.1:12384", grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: "", RootCAs: mashupCertPool, InsecureSkipVerify: true})))
@@ -75,9 +76,9 @@ func PenseQuery(pense string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
-	if err != nil {
-		return "", err
+	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
+	if penseErr != nil {
+		return "", errors.Join(errors.New("Pense error"), penseErr)
 	}
 
 	return r.GetPense(), nil
