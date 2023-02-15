@@ -9,6 +9,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/user"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -145,6 +147,20 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not open image in file system to give permissions.", false)
 					continue
 				}
+
+				if vaultPluginSignature["trctype"] == "agent" {
+					azureDeployGroup, azureDeployGroupErr := user.LookupGroup("azuredeploy")
+					if azureDeployGroupErr != nil {
+						return errors.Join(errors.New("Group lookup failure"), azureDeployGroupErr)
+					}
+					azureDeployGID, azureGIDConvErr := strconv.Atoi(azureDeployGroup.Gid)
+					if azureGIDConvErr != nil {
+						return errors.Join(errors.New("Group ID lookup failure"), azureGIDConvErr)
+					}
+					os.Chown(agentPath, -1, azureDeployGID)
+					os.Chmod(agentPath, 1750)
+				}
+
 				// TODO: setcap more directly using kernel lib if possible...
 				//"kernel.org/pub/linux/libs/security/libcap/cap"
 
