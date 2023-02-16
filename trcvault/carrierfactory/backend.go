@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
@@ -42,6 +43,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 	if !headless {
 		configCompleteChan = make(chan bool)
 	}
+	var configInitOnce sync.Once
 
 	go func() {
 		<-vaultInitialized
@@ -69,8 +71,12 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 
 			if pecError != nil {
 				logger.Println("Bad configuration data for env: " + pluginEnvConfig["env"].(string) + " error: " + pecError.Error())
-				configCompleteChan <- true
 			}
+			configInitOnce.Do(func() {
+				if configCompleteChan != nil {
+					configCompleteChan <- true
+				}
+			})
 			logger.Println("Config engine setup complete for env: " + pluginEnvConfig["env"].(string))
 		}
 
