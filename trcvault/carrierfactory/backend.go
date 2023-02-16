@@ -198,7 +198,10 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 		Kubeconfig string `json:"kubeconfig,omitempty"`
 	}
 	tokenConfig := tokenWrapper{}
-	e.DecodeJSON(&tokenConfig)
+	decodeErr := e.DecodeJSON(&tokenConfig)
+	if decodeErr != nil {
+		return nil, decodeErr
+	}
 	if memonly.IsMemonly() {
 		mlock.Mlock2(nil, &tokenConfig.Token)
 		mlock.Mlock2(nil, &tokenConfig.Pubrole)
@@ -571,7 +574,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	var tokenMap map[string]interface{}
 	var existingErr, tokenParseDataErr error
 
-	logger.Println("TrcCarrierUpdate check existing tokens")
+	logger.Println("TrcCarrierUpdate check existing tokens for env: " + tokenEnvMap["env"].(string))
 	if tokenData, existingErr = req.Storage.Get(ctx, tokenEnvMap["env"].(string)); existingErr == nil {
 		if tokenMap, tokenParseDataErr = parseToken(tokenData); tokenParseDataErr != nil {
 			tokenMap = map[string]interface{}{}
