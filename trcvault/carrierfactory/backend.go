@@ -206,12 +206,14 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 		return nil, decodeErr
 	}
 	if memonly.IsMemonly() {
+		mlock.Mlock2(nil, &tokenConfig.VAddress)
 		mlock.Mlock2(nil, &tokenConfig.Token)
 		mlock.Mlock2(nil, &tokenConfig.Pubrole)
 		mlock.Mlock2(nil, &tokenConfig.Configrole)
 		mlock.Mlock2(nil, &tokenConfig.Kubeconfig)
 	}
 
+	tokenMap["vaddress"] = tokenConfig.VAddress
 	tokenMap["token"] = tokenConfig.Token
 	tokenMap["pubrole"] = tokenConfig.Pubrole
 	tokenMap["configrole"] = tokenConfig.Configrole
@@ -572,7 +574,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	// Path includes Env and token will only work if it has right permissions.
 	tokenEnvMap["env"] = req.Path
 
-	tokenNameSlice := []string{"token", "pubrole", "configrole", "kubeconfig"}
+	tokenNameSlice := []string{"vaddress", "token", "pubrole", "configrole", "kubeconfig"}
 	var tokenData *logical.StorageEntry
 	var tokenMap map[string]interface{}
 	var existingErr, tokenParseDataErr error
@@ -595,7 +597,15 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			if memonly.IsMemonly() {
 				mlock.Mlock2(nil, &tokenStr)
 			}
-			tokenEnvMap[tokenName] = tokenStr
+			if tokenName == "vaddress" {
+				vaultUrl, err := url.Parse(tokenStr)
+				if err == nil {
+					vaultPort = vaultUrl.Port()
+				}
+				tokenEnvMap[tokenName] = tokenStr
+			} else {
+				tokenEnvMap[tokenName] = tokenStr
+			}
 		} else {
 			if token, tokenOk := tokenMap[tokenName]; tokenOk {
 				tokenEnvMap[tokenName] = token
