@@ -199,6 +199,13 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	}
 	tokenConfig := tokenWrapper{}
 	e.DecodeJSON(&tokenConfig)
+	if memonly.IsMemonly() {
+		mlock.Mlock2(nil, &tokenConfig.Token)
+		mlock.Mlock2(nil, &tokenConfig.Pubrole)
+		mlock.Mlock2(nil, &tokenConfig.Configrole)
+		mlock.Mlock2(nil, &tokenConfig.Kubeconfig)
+	}
+
 	tokenMap["token"] = tokenConfig.Token
 	tokenMap["pubrole"] = tokenConfig.Pubrole
 	tokenMap["configrole"] = tokenConfig.Configrole
@@ -574,7 +581,11 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	logger.Println("TrcCarrierUpdate merging tokens.")
 	for _, tokenName := range tokenNameSlice {
 		if token, tokenOk := data.GetOk(tokenName); tokenOk {
-			tokenEnvMap[tokenName] = token
+			tokenStr := token.(string)
+			if memonly.IsMemonly() {
+				mlock.Mlock2(nil, &tokenStr)
+			}
+			tokenEnvMap[tokenName] = tokenStr
 		} else {
 			if token, tokenOk := tokenMap[tokenName]; tokenOk {
 				tokenEnvMap[tokenName] = token
