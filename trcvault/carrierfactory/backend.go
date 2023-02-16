@@ -584,6 +584,8 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				tokenMap = map[string]interface{}{}
 			}
 		}
+	} else {
+		tokenMap = map[string]interface{}{}
 	}
 
 	logger.Println("TrcCarrierUpdate merging tokens.")
