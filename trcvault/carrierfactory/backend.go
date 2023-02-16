@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
@@ -42,6 +43,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 	if !headless {
 		configCompleteChan = make(chan bool)
 	}
+	var configInitOnce sync.Once
 
 	go func() {
 		<-vaultInitialized
@@ -69,8 +71,12 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 
 			if pecError != nil {
 				logger.Println("Bad configuration data for env: " + pluginEnvConfig["env"].(string) + " error: " + pecError.Error())
-				configCompleteChan <- true
 			}
+			configInitOnce.Do(func() {
+				if configCompleteChan != nil {
+					configCompleteChan <- true
+				}
+			})
 			logger.Println("Config engine setup complete for env: " + pluginEnvConfig["env"].(string))
 		}
 
@@ -553,42 +559,24 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	// Path includes Env and token will only work if it has right permissions.
 	tokenEnvMap["env"] = req.Path
 
-	if token, tokenOk := data.GetOk("token"); tokenOk {
-		tokenEnvMap["token"] = token
-	} else {
-		//ctx.Done()
-		return nil, errors.New("Token required.")
-	}
+	tokenNameSlice := []string{"token", "pubrole", "configrole", "kubeconfig"}
+	tokenData, existingErr := req.Storage.Get(ctx, tokenEnvMap["env"].(string))
+	tokenMap, tokenParseDataErr := parseToken(tokenData)
 
-	if pubrole, pubroleOk := data.GetOk("pubrole"); pubroleOk {
-		tokenEnvMap["pubrole"] = pubrole
-	} else {
-		//ctx.Done()
-		return nil, errors.New("Pubrole required.")
-	}
-
-	if configrole, configroleOk := data.GetOk("configrole"); configroleOk {
-		tokenEnvMap["configrole"] = configrole
-	} else {
-		//ctx.Done()
-		return nil, errors.New("Configrole required.")
-	}
-
-	if kubeconfig, kubeconfigOk := data.GetOk("kubeconfig"); kubeconfigOk {
-		tokenEnvMap["kubeconfig"] = kubeconfig
-	} else {
-		//ctx.Done()
-		return nil, errors.New("Kubeconfig required.")
-	}
-
-	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-		vaultUrl, err := url.Parse(vaddr.(string))
-		tokenEnvMap["vaddress"] = vaddr.(string)
-		if err == nil {
-			vaultPort = vaultUrl.Port()
+	for _, tokenName := range tokenNameSlice {
+		if token, tokenOk := data.GetOk(tokenName); tokenOk {
+			tokenEnvMap[tokenName] = token
+		} else {
+			if token, tokenOk := tokenMap[tokenName]; tokenOk {
+				tokenEnvMap[tokenName] = token
+			} else {
+				if existingErr != nil || tokenParseDataErr != nil {
+					// Bad or corrupt data in vault.
+					return nil, errors.New(tokenName + " required.  Bad or corrupt token data.  Refresh carrier required.")
+				}
+				return nil, errors.New(tokenName + " required.")
+			}
 		}
-	} else {
-		return nil, errors.New("Vault Create Url required.")
 	}
 
 	tokenEnvMap["vaddress"] = vaultHost
