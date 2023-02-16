@@ -560,8 +560,15 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	tokenEnvMap["env"] = req.Path
 
 	tokenNameSlice := []string{"token", "pubrole", "configrole", "kubeconfig"}
-	tokenData, existingErr := req.Storage.Get(ctx, tokenEnvMap["env"].(string))
-	tokenMap, tokenParseDataErr := parseToken(tokenData)
+	var tokenData *logical.StorageEntry
+	var tokenMap map[string]interface{}
+	var existingErr, tokenParseDataErr error
+
+	if tokenData, existingErr = req.Storage.Get(ctx, tokenEnvMap["env"].(string)); existingErr == nil {
+		if tokenMap, tokenParseDataErr = parseToken(tokenData); tokenParseDataErr != nil {
+			tokenMap = map[string]interface{}{}
+		}
+	}
 
 	for _, tokenName := range tokenNameSlice {
 		if token, tokenOk := data.GetOk(tokenName); tokenOk {
