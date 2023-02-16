@@ -195,7 +195,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
 			writeMap["trcsha256"] = vaultPluginSignature["trcsha256"].(string)
-			writeMap["trctype"] = vaultPluginSignature["trctype"].(string)
+			if trcType, trcTypeOk := vaultPluginSignature["trctype"]; trcTypeOk {
+				writeMap["trctype"] = trcType.(string)
+			} else {
+				writeMap["trctype"] = "vault"
+			}
 			writeMap["copied"] = true
 			writeMap["deployed"] = false
 			_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
