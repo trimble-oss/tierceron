@@ -163,7 +163,6 @@ func ProcessDeploy(env string, token string) {
 		fmt.Println(deployLine)
 		os.Args = argsOrig
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
-		deployLine = strings.TrimPrefix(deployLine, "trc")
 		deployLine = strings.TrimRight(deployLine, "")
 		deployArgs := strings.Split(deployLine, " ")
 		control := deployArgs[0]
@@ -193,7 +192,7 @@ func ProcessDeploy(env string, token string) {
 		}
 
 		switch control {
-		case "pub":
+		case "trcpub":
 			config.FileFilter = nil
 			config.FileFilter = append(config.FileFilter, "configpub.yml")
 			pubRoleSlice := strings.Split(pubRole, ":")
@@ -207,7 +206,7 @@ func ProcessDeploy(env string, token string) {
 				token = ""
 				config.Token = token
 			}
-		case "config":
+		case "trcconfig":
 			configCount -= 1
 			if configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
 				config.EndDir = "deploy"
@@ -224,7 +223,9 @@ func ProcessDeploy(env string, token string) {
 				token = ""
 				config.Token = token
 			}
+		case "trcpluginctl":
 		case "kubectl":
+			// Placeholder.
 
 		}
 	}
