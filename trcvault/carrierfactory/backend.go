@@ -564,12 +564,14 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	var tokenMap map[string]interface{}
 	var existingErr, tokenParseDataErr error
 
+	logger.Println("TrcCarrierUpdate check existing tokens")
 	if tokenData, existingErr = req.Storage.Get(ctx, tokenEnvMap["env"].(string)); existingErr == nil {
 		if tokenMap, tokenParseDataErr = parseToken(tokenData); tokenParseDataErr != nil {
 			tokenMap = map[string]interface{}{}
 		}
 	}
 
+	logger.Println("TrcCarrierUpdate merging tokens.")
 	for _, tokenName := range tokenNameSlice {
 		if token, tokenOk := data.GetOk(tokenName); tokenOk {
 			tokenEnvMap[tokenName] = token
