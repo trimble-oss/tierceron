@@ -35,7 +35,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 				}
 				retryCap++
 			}
-			logger.Println("Mad hat cap failure with error: " + err.Error())
+			logger.Println("Mad hat cap failure.")
 		}()
 		logger.Println("Memorizing")
 		go MemorizeAndStart(pluginConfig, logger)
