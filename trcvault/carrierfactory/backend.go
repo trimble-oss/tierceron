@@ -189,6 +189,9 @@ func initVaultHostBootstrap() error {
 }
 
 func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
+	if e == nil {
+		return nil, errors.New("no entry data")
+	}
 	tokenMap := map[string]interface{}{}
 	type tokenWrapper struct {
 		Token      string `json:"token,omitempty"`
@@ -575,9 +578,11 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	var existingErr, tokenParseDataErr error
 
 	logger.Println("TrcCarrierUpdate check existing tokens for env: " + tokenEnvMap["env"].(string))
-	if tokenData, existingErr = req.Storage.Get(ctx, tokenEnvMap["env"].(string)); existingErr == nil {
-		if tokenMap, tokenParseDataErr = parseToken(tokenData); tokenParseDataErr != nil {
-			tokenMap = map[string]interface{}{}
+	if req != nil && req.Storage != nil {
+		if tokenData, existingErr = req.Storage.Get(ctx, tokenEnvMap["env"].(string)); existingErr == nil {
+			if tokenMap, tokenParseDataErr = parseToken(tokenData); tokenParseDataErr != nil {
+				tokenMap = map[string]interface{}{}
+			}
 		}
 	}
 
