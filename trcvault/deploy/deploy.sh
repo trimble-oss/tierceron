@@ -29,9 +29,6 @@ read VAULT_ENV
 echo "Enter trc plugin runtime environment token with write permissions unrestricted: "
 read VAULT_ENV_TOKEN
 
-echo "Enter carrier deployment runtime token pluginEnv: "
-read VAULT_CARRIER_DEPLOY_TOKEN
-
 if [ "$VAULT_PLUGIN_DIR" ]
 then
     echo "Deploying using local vault strategy."
@@ -102,7 +99,7 @@ if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
     # First we set Copied to false...
     # This should also trigger the copy process...
     # It should return sha256 of copied plugin on success.
-    SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME-prod vaddress=$VAULT_ADDR)
+    SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME-prod)
     SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
     
     if [ "$SHAVAL" != "$FILESHAVAL" ]; then
@@ -145,7 +142,7 @@ else
         # First we set Copied to false...
         # This should also trigger the copy process...
         # It should return sha256 of copied plugin on success.
-        SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME plugintype=$TRC_PLUGIN_TYPE  vaddress=$VAULT_ADDR)
+        SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME)
         SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
 
         if [ "$SHAVAL" = "Failure" ]; then
