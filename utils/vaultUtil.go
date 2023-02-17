@@ -142,12 +142,17 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 
 	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
 
+	var regions []string
+	if _, regionsOk := pluginConfig["regions"]; regionsOk {
+		regions = pluginConfig["regions"].([]string)
+	}
+
 	config := DriverConfig{
 		Insecure:       !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
 		Token:          pluginConfig["token"].(string),
 		VaultAddress:   pluginConfig["vaddress"].(string),
 		Env:            pluginConfig["env"].(string),
-		Regions:        pluginConfig["regions"].([]string),
+		Regions:        regions,
 		SecretMode:     true, //  "Only override secret values in templates?"
 		ServicesWanted: []string{},
 		StartDir:       append([]string{}, ""),
