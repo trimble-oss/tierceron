@@ -217,7 +217,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	if (!pluginDownloadNeeded && !pluginCopied) || (pluginDownloadNeeded && pluginCopied) { // No download needed because it's already there, but vault may be wrong.
 		if vaultPluginSignature["copied"].(bool) && !vaultPluginSignature["deployed"].(bool) { //If status hasn't changed, don't update
 			eUtils.LogInfo(config, "Not updating plugin image to vault as status is the same for plugin: "+pluginName)
-			factory.PushPluginSha(config, pluginConfig, vaultPluginSignature)
 		}
 
 		eUtils.LogInfo(config, "Updating plugin image to vault.")
@@ -241,9 +240,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		if !pluginDownloadNeeded && pluginCopied {
 			eUtils.LogInfo(config, "Not updating plugin image to vault as status is the same for  plugin: "+pluginName)
 			// Already copied... Just echo back the sha256...
-			factory.PushPluginSha(config, pluginConfig, vaultPluginSignature)
 		}
 	}
+	// ALways set this so it completes if there is a sha256 available...
+	// This will also release any clients attempting to communicate with carrier.
+	factory.PushPluginSha(config, pluginConfig, vaultPluginSignature)
 
 	logger.Println("PluginDeployFlow complete.")
 
