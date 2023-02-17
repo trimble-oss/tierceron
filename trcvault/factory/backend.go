@@ -131,7 +131,9 @@ func StartPluginSettingEater() {
 
 func PushPluginSha(config *eUtils.DriverConfig, pluginConfig map[string]interface{}, vaultPluginSignature map[string]interface{}) {
 	if _, trcShaChanOk := pluginConfig["trcsha256chan"]; trcShaChanOk {
-		pluginConfig["trcsha256"] = vaultPluginSignature["trcsha256"]
+		if vaultPluginSignature != nil {
+			pluginConfig["trcsha256"] = vaultPluginSignature["trcsha256"]
+		}
 		pluginConfig["trcsha256chan"].(chan bool) <- true
 	}
 }
