@@ -42,7 +42,7 @@ func main() {
 	//Grabbing configs
 	envMap := buildopts.GetTestDeployConfig(*tokenPtr)
 
-	go carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
+	go carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "QA"
 	envMap["insecure"] = true
 	envMap["syncOnce"] = &sync.Once{}
