@@ -932,10 +932,10 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 			dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
 			if err != nil {
-				eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.", false)
-				return err
+				eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.  Sync modes will fail.", false)
+			} else {
+				defer dbsourceConn.Close()
 			}
-			defer dbsourceConn.Close()
 
 			tfContext.RemoteDataSource["connection"] = dbsourceConn
 		}
