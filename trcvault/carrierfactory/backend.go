@@ -592,7 +592,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	logger.Println("TrcCarrierUpdate merging tokens.")
 	for _, tokenName := range tokenNameSlice {
-		if token, tokenOk := data.GetOk(tokenName); tokenOk {
+		if token, tokenOk := data.GetOk(tokenName); tokenOk && token.(string) != "" {
 			tokenStr := token.(string)
 			if memonly.IsMemonly() {
 				mlock.Mlock2(nil, &tokenStr)
@@ -607,7 +607,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				tokenEnvMap[tokenName] = tokenStr
 			}
 		} else {
-			if token, tokenOk := tokenMap[tokenName]; tokenOk {
+			if token, tokenOk := tokenMap[tokenName]; tokenOk && token.(string) != "" {
 				tokenEnvMap[tokenName] = token
 			} else {
 				if existingErr != nil || tokenParseDataErr != nil {
