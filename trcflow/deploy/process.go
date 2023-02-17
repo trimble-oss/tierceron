@@ -33,6 +33,45 @@ func init() {
 
 var onceAuth sync.Once
 
+func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
+	logger.Println("PluginDeployInitFlow begun.")
+	var err error
+
+	onceAuth.Do(func() {
+		logger.Println("Cap auth init. ")
+		var config *eUtils.DriverConfig
+		var goMod *helperkv.Modifier
+		var vault *sys.Vault
+
+		//Grabbing configs
+		config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+		if vault != nil {
+			defer vault.Close()
+		}
+
+		if goMod != nil {
+			defer goMod.Release()
+		}
+
+		if err != nil {
+			eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
+			return
+		}
+
+		capauth.Init(goMod, pluginConfig, logger)
+
+		capauth.Memorize(pluginConfig, logger)
+
+		// TODO: Support variables for different environments...
+		capauth.Start(logger)
+		logger.Println("Cap auth init complete.")
+	})
+
+	logger.Println("PluginDeployInitFlow complete.")
+
+	return err
+}
+
 func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
 	var config *eUtils.DriverConfig
@@ -57,15 +96,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
 	}
-
-	onceAuth.Do(func() {
-		logger.Println("Cap auth init. ")
-		capauth.Init(goMod, pluginConfig, logger)
-		// TODO: Support multiple environments...
-		capauth.Memorize(pluginConfig, logger)
-		go capauth.Start(logger)
-		logger.Println("Cap auth init complete.")
-	})
 
 	logger.Println("PluginDeployFlow begun for plugin: " + pluginName)
 	config = &eUtils.DriverConfig{Insecure: pluginConfig["insecure"].(bool), Log: logger, ExitOnFailure: false, StartDir: []string{}, SubSectionValue: pluginName}
