@@ -29,7 +29,7 @@ var _ logical.Factory = TrcFactory
 
 var logger *log.Logger
 
-func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
+func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvutils.ProcessFlowInitConfig, processFlow trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
 	logger.Println("Init begun.")
@@ -70,6 +70,11 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 
 			if configInitOnce, ciOk := pluginEnvConfig["syncOnce"]; ciOk {
 				configInitOnce.(*sync.Once).Do(func() {
+
+					if processFlowInit != nil {
+						processFlowInit(pluginEnvConfig, logger)
+					}
+
 					logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
 
 					// Get complete list of plugins...
@@ -88,7 +93,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 						}
 						pluginEnvConfigClone["trcplugin"] = pluginName
 						logger.Println("*****Env: " + pluginEnvConfig["env"].(string) + " plugin: " + pluginEnvConfigClone["trcplugin"].(string))
-						pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfigClone, configCompleteChan)
+						pecError := ProcessPluginEnvConfig(processFlowConfig, processFlow, pluginEnvConfigClone, configCompleteChan)
 						if pecError != nil {
 							logger.Println("Bad configuration data for env: " + pluginEnvConfig["env"].(string) + " and plugin: " + pluginName + " error: " + pecError.Error())
 						}
@@ -235,7 +240,7 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 }
 
 func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
-	processFlows trcvutils.ProcessFlowFunc,
+	processPluginFlow trcvutils.ProcessFlowFunc,
 	pluginEnvConfig map[string]interface{},
 	configCompleteChan chan bool) error {
 	logger.Println("ProcessPluginEnvConfig begun: " + pluginEnvConfig["env"].(string) + " plugin: " + pluginEnvConfig["trcplugin"].(string))
@@ -295,7 +300,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	go func(pec map[string]interface{}, l *log.Logger) {
 		logger.Println("Begin processFlows for env: " + pec["env"].(string) + " plugin: " + pec["trcplugin"].(string))
 
-		flowErr := processFlows(pec, l)
+		flowErr := processPluginFlow(pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
 		}
