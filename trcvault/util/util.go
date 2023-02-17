@@ -27,6 +27,7 @@ import (
 )
 
 type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
+type ProcessFlowInitConfig func(pluginConfig map[string]interface{}, logger *log.Logger) error
 type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
