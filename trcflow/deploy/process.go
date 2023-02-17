@@ -63,7 +63,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		capauth.Memorize(pluginConfig, logger)
 
 		// TODO: Support variables for different environments...
-		capauth.Start(logger)
+		go capauth.Start(logger)
 		logger.Println("Cap auth init complete.")
 	})
 
