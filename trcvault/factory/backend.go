@@ -129,14 +129,11 @@ func StartPluginSettingEater() {
 	}()
 }
 
-func PushPluginSha(config *eUtils.DriverConfig, plugin string, sha string) {
-	pluginShaMap[plugin] = sha
-	if _, pscOk := pluginSettingsChan[plugin]; !pscOk {
-		eUtils.LogInfo(config, "Creating new plugin chan.")
-		pluginSettingsChan[plugin] = make(chan time.Time, 1)
+func PushPluginSha(config *eUtils.DriverConfig, pluginConfig map[string]interface{}, vaultPluginSignature map[string]interface{}) {
+	if _, trcShaChanOk := pluginConfig["trcsha256chan"]; trcShaChanOk {
+		pluginConfig["trcsha256"] = vaultPluginSignature["trcsha256"]
+		pluginConfig["trcsha256chan"].(chan bool) <- true
 	}
-
-	pluginSettingsChan[plugin] <- time.Now()
 }
 
 func GetVaultHost() string {

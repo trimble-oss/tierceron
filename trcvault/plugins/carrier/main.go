@@ -43,7 +43,7 @@ func main() {
 	logger.Println("Beginning plugin startup.")
 
 	buildopts.SetLogger(logger.Writer())
-	carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
+	carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()

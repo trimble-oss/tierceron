@@ -37,14 +37,11 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 			}
 			logger.Println("Mad hat cap failure.")
 		}()
-		logger.Println("Memorizing")
-		go MemorizeAndStart(pluginConfig, logger)
 	}
 	return nil
 }
 
-// Things to make available to trusted agent.
-func MemorizeAndStart(memorizeFields map[string]interface{}, logger *log.Logger) error {
+func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 	for key, value := range memorizeFields {
 		switch key {
 		case "vaddress", "pubrole", "configrole", "kubeconfig":
@@ -54,6 +51,10 @@ func MemorizeAndStart(memorizeFields map[string]interface{}, logger *log.Logger)
 			logger.Println("Skipping key: " + key)
 		}
 	}
+}
+
+// Things to make available to trusted agent.
+func Start(logger *log.Logger) error {
 	mashupCertBytes, err := trcshauth.MashupCert.ReadFile("tls/mashup.crt")
 	if err != nil {
 		logger.Printf("Couldn't load cert: %v\n", err)
