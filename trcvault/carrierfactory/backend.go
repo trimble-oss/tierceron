@@ -590,6 +590,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		tokenMap = map[string]interface{}{}
 	}
 
+	updateCarrierTokens := true
 	logger.Println("TrcCarrierUpdate merging tokens.")
 	for _, tokenName := range tokenNameSlice {
 		if token, tokenOk := data.GetOk(tokenName); tokenOk && token.(string) != "" {
@@ -607,6 +608,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				tokenEnvMap[tokenName] = tokenStr
 			}
 		} else {
+			updateCarrierTokens = false
 			if token, tokenOk := tokenMap[tokenName]; tokenOk && token.(string) != "" {
 				tokenEnvMap[tokenName] = token
 			} else {
@@ -634,21 +636,23 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return logical.ErrorResponse("missing data fields"), nil
 	}
 
-	// JSON encode the data
-	buf, err := json.Marshal(req.Data)
-	if err != nil {
-		//ctx.Done()
-		return nil, fmt.Errorf("json encoding failed: %v", err)
-	}
+	if updateCarrierTokens {
+		// JSON encode the data
+		buf, err := json.Marshal(req.Data)
+		if err != nil {
+			//ctx.Done()
+			return nil, fmt.Errorf("json encoding failed: %v", err)
+		}
 
-	// Write out a new key
-	entry := &logical.StorageEntry{
-		Key:   key,
-		Value: buf,
-	}
-	if err := req.Storage.Put(ctx, entry); err != nil {
-		//ctx.Done()
-		return nil, fmt.Errorf("failed to write: %v", err)
+		// Write out a new key
+		entry := &logical.StorageEntry{
+			Key:   key,
+			Value: buf,
+		}
+		if err := req.Storage.Put(ctx, entry); err != nil {
+			//ctx.Done()
+			return nil, fmt.Errorf("failed to write: %v", err)
+		}
 	}
 
 	// This will kick off the main flow for the plugin..
@@ -665,7 +669,11 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			sha256 = pluginShaMap[tokenEnvMap["trcplugin"].(string)]
 		case <-time.After(time.Second * 7):
 			if !shaOk {
-				sha256 = "Failure to copy plugin."
+				sha256, shaOk = pluginShaMap[tokenEnvMap["trcplugin"].(string)]
+
+				if !shaOk {
+					sha256 = "Failure to copy plugin."
+				}
 			}
 		}
 		//ctx.Done()
