@@ -61,6 +61,9 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	onceAuth.Do(func() {
 		logger.Println("Cap auth init. ")
 		capauth.Init(goMod, pluginConfig, logger)
+		// TODO: Support multiple environments...
+		capauth.Memorize(pluginConfig, logger)
+		go capauth.Start(logger)
 		logger.Println("Cap auth init complete.")
 	})
 
