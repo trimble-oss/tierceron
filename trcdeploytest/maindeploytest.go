@@ -5,12 +5,13 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcflow/deploy"
-	"github.com/trimble-oss/tierceron/trcvault/factory"
+	"github.com/trimble-oss/tierceron/trcvault/carrierfactory"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
@@ -41,10 +42,11 @@ func main() {
 	//Grabbing configs
 	envMap := buildopts.GetTestDeployConfig(*tokenPtr)
 
-	go factory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
+	go carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "QA"
 	envMap["insecure"] = true
-	factory.PushEnv(envMap)
+	envMap["syncOnce"] = &sync.Once{}
+	carrierfactory.PushEnv(envMap)
 
 	for {
 		select {
