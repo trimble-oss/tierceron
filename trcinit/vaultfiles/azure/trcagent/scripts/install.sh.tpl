@@ -13,6 +13,24 @@ sudo apt-get install -y maven
 
 #sudo apt-get install -y mssql-tools unixodbc-dev
 
+# Upgrade openssl to latest....
+# https://www.openssl.org/news/openssl-1.1.1-notes.html
+# sudo apt-get install make
+# Insall openssl-1.1.1.t
+# wget https://www.openssl.org/source/openssl-1.1.1t.tar.gz -O openssl-1.1.1t.tar.gz
+# tar -zxvf openssl-1.1.1t.tar.gz
+# cd openssl-1.1.1t
+# ./config
+# make
+# sudo make install
+# sudo ldconfig
+# openssl version
+#
+# IMPORTANT!!!  If thinks go sideways after install check this directory: /usr/local/ssl/certs
+# If it is empty....
+# sudo rmdir /usr/local/ssl/certs
+# sudo ln -s /etc/ssl/certs /usr/local/ssl/certs
+
 # Download Vault into some temporary directory
 curl -L "https://releases.hashicorp.com/vault/1.3.6/vault_1.3.6_linux_amd64.zip" > /tmp/vault.zip
 
@@ -53,12 +71,16 @@ sudo chown -R azuredeploy:azuredeploy /home/azuredeploy/myagent
 
 #Give docker permission to azuredeploy. 
 sudo usermod -a -G docker azuredeploy
+sudo chown root:azuredeploy /usr/bin/docker
+sudo chmod 750 /usr/bin/docker
+
 # MANUAL STEP: Agent is presently installed manually.  Probably best to keep it that way for now because of dependency on PAT.
 # Get a PAT from https://viewpointvso.visualstudio.com/_usersSettings/tokens with Agent Pools (Read + Manage) permissions.
 # 
 # SSH and sudo/su ubuntu->root->azuredeploy
 # Run following as azuredeploy:
 # ./config.sh #Provide PAT from above.
+#  When it asks for server url, use: https://dev.azure.com/<organization>
 # ./run.sh
 # ./svc.sh install azuredeploy # important to install under restricted user azuredeploy
 # After install, run:
