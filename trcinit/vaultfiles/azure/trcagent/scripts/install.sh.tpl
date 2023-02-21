@@ -77,12 +77,18 @@ sudo chmod 750 /usr/bin/docker
 # MANUAL STEP: Agent is presently installed manually.  Probably best to keep it that way for now because of dependency on PAT.
 # Get a PAT from https://viewpointvso.visualstudio.com/_usersSettings/tokens with Agent Pools (Read + Manage) permissions.
 # 
+
 # SSH and sudo/su ubuntu->root->azuredeploy
 # Run following as azuredeploy:
 # ./config.sh #Provide PAT from above.
 #  When it asks for server url, use: https://dev.azure.com/<organization>
 # ./run.sh
 # ./svc.sh install azuredeploy # important to install under restricted user azuredeploy
+
+# As user azuredeploy, run the following:
+# echo 'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/opt/mssql-tools/bin:/home/azuredeploy/bin' >> ~/.bashrc
+# . ~/.bashrc
+# echo $PATH > ~/myagent/.path
 # After install, run:
 # ./svc.sh start as user root...
 # If you ever have to re-register agent: ./config.sh remove --auth 'PAT' --token ''
