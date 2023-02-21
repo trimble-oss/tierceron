@@ -13,7 +13,6 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/utils/mlock"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
-	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 )
 
 // Reads in template files in specified directory
@@ -42,7 +41,7 @@ func CommonMain(envPtr *string,
 	if c == nil || !c.IsShell {
 		flag.Parse()
 	} else {
-		flag.CommandLine.Parse(os.Args[2:])
+		flag.CommandLine.Parse(nil)
 	}
 
 	var configBase *eUtils.DriverConfig
@@ -59,35 +58,6 @@ func CommonMain(envPtr *string,
 		logger := log.New(f, "[INIT]", log.LstdFlags)
 		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
 		eUtils.CheckError(configBase, err, true)
-	}
-
-	if len(*tokenNamePtr) > 0 {
-		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
-			eUtils.CheckError(configBase, fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
-		}
-		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr, false, configBase.Log)
-		if v != nil {
-			defer v.Close()
-		}
-		eUtils.CheckError(configBase, err, true)
-
-		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
-		eUtils.CheckError(configBase, err, true)
-
-		mod, err := helperkv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, true, configBase.Log)
-		if mod != nil {
-			defer mod.Release()
-		}
-		eUtils.CheckError(configBase, err, true)
-		mod.RawEnv = "bamboo"
-		mod.Env = "bamboo"
-
-		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
-		eUtils.CheckError(configBase, err, true)
-	}
-	if memonly.IsMemonly() {
-		mlock.MunlockAll(nil)
-		mlock.Mlock2(nil, tokenPtr)
 	}
 
 	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
