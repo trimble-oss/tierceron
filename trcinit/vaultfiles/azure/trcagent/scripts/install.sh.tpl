@@ -51,6 +51,8 @@ sudo tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-2.217.2.ta
 # Give ownership over to azuredeploy.
 sudo chown -R azuredeploy:azuredeploy /home/azuredeploy/myagent
 
+#Give docker permission to azuredeploy. 
+sudo usermod -a -G docker azuredeploy
 # MANUAL STEP: Agent is presently installed manually.  Probably best to keep it that way for now because of dependency on PAT.
 # Get a PAT from https://viewpointvso.visualstudio.com/_usersSettings/tokens with Agent Pools (Read + Manage) permissions.
 # 
