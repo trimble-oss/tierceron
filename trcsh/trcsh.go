@@ -198,7 +198,7 @@ func ProcessDeploy(env string, token string, trcPathPtr string) {
 			config.FileFilter = nil
 			config.FileFilter = append(config.FileFilter, "configpub.yml")
 			pubRoleSlice := strings.Split(pubRole, ":")
-			tokenName := "pub_token_" + env
+			tokenName := "vault_pub_token_" + env
 
 			trcpubbase.CommonMain(&env, &addr, &token, &envContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
 			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
