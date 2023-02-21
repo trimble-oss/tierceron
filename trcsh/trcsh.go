@@ -60,15 +60,16 @@ func main() {
 			}
 		}
 	}
-	envPtr := flag.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
+	envPtr := flag.String("env", "", "Environment to be seeded")      //If this is blank -> use context otherwise override context.
+	trcPathPtr := flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 
 	flag.Parse()
 
 	//Open deploy script and parse it.
-	ProcessDeploy(*envPtr, "")
+	ProcessDeploy(*envPtr, "", *trcPathPtr)
 }
 
-func ProcessDeploy(env string, token string) {
+func ProcessDeploy(env string, token string, trcPathPtr string) {
 	var err error
 	agentToken := false
 	if token != "" {
@@ -81,8 +82,8 @@ func ProcessDeploy(env string, token string) {
 	}
 	fmt.Println("trcsh env: " + env)
 
-	if len(os.Args) > 1 {
-		content, err = ioutil.ReadFile(os.Args[1])
+	if len(os.Args) > 1 || len(trcPathPtr) > 0 {
+		content, err = ioutil.ReadFile(trcPathPtr)
 		if err != nil {
 			fmt.Println("Error could not find " + os.Args[1] + " for deployment instructions")
 		}
@@ -122,22 +123,23 @@ func ProcessDeploy(env string, token string) {
 
 	var addrPort string
 	var envContext string
-	//Env should come from command line - not context here. but addr port is needed.
-	env, envContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	addr := "https://127.0.0.1:" + addrPort
-	config.VaultAddress = addr
-	config.Env = env
-	config.EnvRaw = env
 	addr, vAddressErr := trcshauth.PenseQuery("vaddress")
 	if vAddressErr != nil {
 		fmt.Println(vAddressErr)
-		return
+		//Env should come from command line - not context here. but addr port is needed.
+		env, envContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		addr = "https://127.0.0.1:" + addrPort
 	}
+	config.VaultAddress = addr
+	config.Env = env
+	config.EnvRaw = env
+
 	mlock.Mlock2(nil, &addr)
+
 	pubRole, penseErr := trcshauth.PenseQuery("pubrole")
 	if penseErr != nil {
 		fmt.Println(err)
