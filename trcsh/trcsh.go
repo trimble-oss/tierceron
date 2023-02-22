@@ -144,7 +144,7 @@ func ProcessDeploy(env string, token string, trcPathPtr string) {
 
 	argsOrig := os.Args
 
-	var kubeApiConfig clientcmdapi.Config
+	var kubeApiConfig *clientcmdapi.Config
 	var onceKubeInit sync.Once
 
 	for _, deployLine := range deployArgLines {
