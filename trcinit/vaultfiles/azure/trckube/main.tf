@@ -44,11 +44,13 @@ resource "azurerm_virtual_network" "kubeVN" {
   resource_group_name = var.resource_group_name
   address_space       = [var.VN_rg_addr]
   location            = var.resource_group_location
+  depends_on = [azurerm_resource_group.rg]
 }
 
 data "azurerm_virtual_network" "agentVN" {
   name                = "${var.VN_trg_name}"
   resource_group_name = var.resource_group_name_trg
+  depends_on = [azurerm_resource_group.rg]
 }
 
 resource "azurerm_virtual_network_peering" "peerKubetoAgent" {
