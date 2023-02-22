@@ -161,7 +161,7 @@ func ProcessDeploy(env string, token string, trcPath string) {
 			tokenName := "vault_pub_token_" + env
 			tokenPub := ""
 			pubEnv := env
-			config.EnvRaw = "dev"
+			config.EnvRaw = env
 
 			trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
 			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
@@ -181,7 +181,7 @@ func ProcessDeploy(env string, token string, trcPath string) {
 			tokenName := "config_token_" + env
 			tokenConfig := ""
 			configEnv := env
-			config.EnvRaw = "dev"
+			config.EnvRaw = env
 
 			trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
 			ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
