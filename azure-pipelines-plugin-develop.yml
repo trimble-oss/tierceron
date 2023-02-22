@@ -46,7 +46,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.20'
+    version: '1.20.1'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -76,9 +76,9 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcagentctl
-    if [[ ! -f $GOBIN/trcagentctl ]] ; then
-        echo File trcagentctl was not built, aborting.
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcsh
+    if [[ ! -f $GOBIN/trcsh ]] ; then
+        echo File trcsh was not built, aborting.
         exit 1
     fi
 
@@ -103,14 +103,14 @@ steps:
         exit 1
     fi
 
-    sha256sum $GOBIN/trcagentctl | cut -d' ' -f1 > $GOBIN/trcagentctl.sha256
+    sha256sum $GOBIN/trcsh | cut -d' ' -f1 > $GOBIN/trcsh.sha256
     sha256sum $GOBIN/trc-vault-carrier-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-carrier-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin-prod | cut -d' ' -f1 > $GOBIN/trc-vault-plugin-prod.sha256
 
     echo "Compile Complete"
-    cp $GOBIN/trcagentctl $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/trcagentctl.sha256 $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/trcsh $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/trcsh.sha256 $(Build.ArtifactStagingDirectory)
 
     cp $GOBIN/trc-vault-carrier-plugin $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-carrier-plugin.sha256 $(Build.ArtifactStagingDirectory)

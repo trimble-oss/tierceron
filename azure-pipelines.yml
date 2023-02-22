@@ -57,7 +57,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.20'
+    version: '1.20.1'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -87,8 +87,8 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub,trcagentctl}
-    for p in trcconfig trcpub trcagentctl trcinit trcinitp trcx trcxp trcsub; do
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub,trcsh}
+    for p in trcconfig trcpub trcsh trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
           echo File $p was not built, aborting.
