@@ -10,9 +10,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/dsnet/golib/memfile"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	"github.com/trimble-oss/tierceron/trcpubbase"
+	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
+	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/utils/mlock"
@@ -24,21 +27,28 @@ const configDir = "/.tierceron/config.yml"
 const envContextPrefix = "envContext: "
 
 // This is a controller program that can act as any command line utility.
-// The agent swiss army knife of tierceron if you will.
+// The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
 func main() {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	fmt.Println("trcagentctl Version: " + "1.01")
-	envPtr := flag.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
+	fmt.Println("trcsh Version: " + "1.02")
+	if os.Geteuid() == 0 {
+		fmt.Println("Trcsh cannot be run as root.")
+		os.Exit(-1)
+	} else {
+		capauth.CheckNotSudo()
+	}
+	envPtr := flag.String("env", "", "Environment to be seeded")      //If this is blank -> use context otherwise override context.
+	trcPathPtr := flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 
 	flag.Parse()
 
 	//Open deploy script and parse it.
-	ProcessDeploy(*envPtr, "")
+	ProcessDeploy(*envPtr, "", *trcPathPtr)
 }
 
-func ProcessDeploy(env string, token string) {
+func ProcessDeploy(env string, token string, trcPathPtr string) {
 	var err error
 	agentToken := false
 	if token != "" {
@@ -46,15 +56,27 @@ func ProcessDeploy(env string, token string) {
 	}
 	pwd, _ := os.Getwd()
 	var content []byte
-	if env == "itdev" {
-		content, err = ioutil.ReadFile(pwd + "/deploy/deploytest.trc")
+	if env == "" {
+		env = os.Getenv("TRC_ENV")
+	}
+	fmt.Println("trcsh env: " + env)
+
+	if len(os.Args) > 1 || len(trcPathPtr) > 0 {
+		content, err = ioutil.ReadFile(trcPathPtr)
 		if err != nil {
-			fmt.Println("Error could not find /deploy/deploytest.trc for deployment instructions")
+			fmt.Println("Error could not find " + os.Args[1] + " for deployment instructions")
 		}
 	} else {
-		content, err = ioutil.ReadFile(pwd + "/deploy/deploy.trc")
-		if err != nil {
-			fmt.Println("Error could not find /deploy/deploy.trc for deployment instructions")
+		if env == "itdev" {
+			content, err = ioutil.ReadFile(pwd + "/deploy/deploytest.trc")
+			if err != nil {
+				fmt.Println("Error could not find /deploy/deploytest.trc for deployment instructions")
+			}
+		} else {
+			content, err = ioutil.ReadFile(pwd + "/deploy/deploy.trc")
+			if err != nil {
+				fmt.Println("Error could not find " + pwd + " /deploy/deploy.trc for deployment instructions")
+			}
 		}
 	}
 
@@ -65,26 +87,63 @@ func ProcessDeploy(env string, token string) {
 	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix()+"deploy.log" {
 		logFile = "./" + coreopts.GetFolderPrefix() + "deploy.log"
 	}
-	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
-	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+	config := &eUtils.DriverConfig{Insecure: true,
+		Log:            logger,
+		IsShell:        true,
+		OutputMemCache: true,
+		MemCache:       map[string]*memfile.File{},
+		ExitOnFailure:  true}
+
+	if env == "itdev" {
+		config.OutputMemCache = false
+	}
 
 	var addrPort string
 	var envContext string
-	//Env should come from command line - not context here. but addr port is needed.
-	env, envContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
-	if err != nil {
-		fmt.Println(err)
-		return
+	addr, vAddressErr := trcshauth.PenseQuery("vaddress")
+	if vAddressErr != nil {
+		fmt.Println(vAddressErr)
+		//Env should come from command line - not context here. but addr port is needed.
+		env, envContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		addr = "https://127.0.0.1:" + addrPort
 	}
-	addr := "https://127.0.0.1:" + addrPort
 	config.VaultAddress = addr
 	config.Env = env
 	config.EnvRaw = env
 
+	mlock.Mlock2(nil, &addr)
+
+	pubRole, penseErr := trcshauth.PenseQuery("pubrole")
+	if penseErr != nil {
+		fmt.Println(err)
+		return
+	}
+	mlock.Mlock2(nil, &pubRole)
+	configRole, configPenseErr := trcshauth.PenseQuery("configrole")
+	if configPenseErr != nil {
+		fmt.Println(configPenseErr)
+		return
+	}
+	mlock.Mlock2(nil, &configRole)
+	kubeconfig, kubePenseErr := trcshauth.PenseQuery("kubeconfig")
+	if kubePenseErr != nil {
+		fmt.Println(kubePenseErr)
+		return
+	}
+	mlock.Mlock2(nil, &kubeconfig)
+
+	argsOrig := os.Args
+
 	for _, deployLine := range deployArgLines {
 		fmt.Println(deployLine)
-		deployLine = strings.TrimPrefix(deployLine, "trc")
+		os.Args = argsOrig
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 		deployLine = strings.TrimRight(deployLine, "")
 		deployArgs := strings.Split(deployLine, " ")
 		control := deployArgs[0]
@@ -114,10 +173,13 @@ func ProcessDeploy(env string, token string) {
 		}
 
 		switch control {
-		case "pub":
+		case "trcpub":
 			config.FileFilter = nil
 			config.FileFilter = append(config.FileFilter, "configpub.yml")
-			trcpubbase.CommonMain(&env, &addr, &token, &envContext, config)
+			pubRoleSlice := strings.Split(pubRole, ":")
+			tokenName := "vault_pub_token_" + env
+
+			trcpubbase.CommonMain(&env, &addr, &token, &envContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
 			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 			env = *flag.String("env", config.Env, "Environment to be seeded")
@@ -125,22 +187,26 @@ func ProcessDeploy(env string, token string) {
 				token = ""
 				config.Token = token
 			}
-		case "config":
+		case "trcconfig":
 			configCount -= 1
 			if configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
 				config.EndDir = "deploy"
 			}
 			config.FileFilter = nil
 			config.FileFilter = append(config.FileFilter, "config.yml")
-			trcconfigbase.CommonMain(&env, &addr, &token, &envContext, config)
-			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
-			env = *flag.String("env", config.Env, "Environment to be seeded")
+			configRoleSlice := strings.Split(configRole, ":")
+			tokenName := "config_token_" + env
+
+			trcconfigbase.CommonMain(&env, &addr, &token, &envContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
+			ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
+
 			if !agentToken {
 				token = ""
 				config.Token = token
 			}
+		case "trcpluginctl":
 		case "kubectl":
+			// Placeholder.
 
 		}
 	}
@@ -182,7 +248,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 				output = fileContent + envContextPrefix + envContext + "\n"
 			}
 
-			if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
+			if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
 				return "", "", "", err
 			}
 			fmt.Println("Context flag has been written out.")
@@ -198,7 +264,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 			currentEnvContext := strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
 			if envContext != "" {
 				output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
-				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
+				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
 					return "", "", "", err
 				}
 				fmt.Println("Context flag has been written out.")
