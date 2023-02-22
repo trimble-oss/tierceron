@@ -52,6 +52,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	tokenFileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
 	roleFileFilterPtr := flag.String("approle", "", "Filter files for approle rotation.")
 	dynamicPathPtr := flag.String("dynamicPath", "", "Seed a specific directory in vault.")
+	nestPtr := flag.Bool("nest", false, "Seed a specific directory in vault.")
 
 	// indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
 	// indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // Table names
@@ -93,12 +94,12 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			os.Exit(1)
 		}
 
-		if _, err := os.Stat(currentDir + "/vault_namespace/vault/token_files"); err != nil {
+		if _, err := os.Stat(currentDir + "/vault_namespaces/vault/token_files"); err != nil {
 			fmt.Println("Could not locate token files required to initialize a new vault.")
 			os.Exit(1)
 		}
 
-		if _, err := os.Stat(currentDir + "/vault_namespace/vault/policy_files"); err != nil {
+		if _, err := os.Stat(currentDir + "/vault_namespaces/vault/policy_files"); err != nil {
 			fmt.Println("Could not locate policy files  required to initialize a new vault.")
 			os.Exit(1)
 		}
@@ -122,6 +123,21 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 				fmt.Println("This is a remote host and you did not confirm allow non local.  If this is a remote host with a self signed cert, init will fail.")
 				*insecurePtr = false
 			}
+		}
+	}
+
+	if *nestPtr {
+		var input string
+
+		fmt.Printf("Are you sure you want to seed nested files? [y|n]: ")
+		_, err := fmt.Scanln(&input)
+		if err != nil {
+			os.Exit(1)
+		}
+		input = strings.ToLower(input)
+
+		if input != "y" && input != "yes" {
+			os.Exit(1)
 		}
 	}
 
@@ -736,17 +752,22 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			subSectionName = ""
 		}
 
-		config = &eUtils.DriverConfig{
-			Insecure:        *insecurePtr,
-			Token:           v.GetToken(),
-			VaultAddress:    *addrPtr,
-			Env:             *envPtr,
-			EnvRaw:          strings.Split(*envPtr, "_")[0],
-			SectionKey:      sectionKey,
-			SectionName:     subSectionName,
-			SubSectionValue: *eUtils.IndexValueFilterPtr,
-			SubSectionName:  *eUtils.ServiceNameFilterPtr,
+		var fileFilter []string
+		if *nestPtr {
+			fileFilter = append(fileFilter, "nest")
+		}
 
+		config = &eUtils.DriverConfig{
+			Insecure:          *insecurePtr,
+			Token:             v.GetToken(),
+			VaultAddress:      *addrPtr,
+			Env:               *envPtr,
+			EnvRaw:            strings.Split(*envPtr, "_")[0],
+			SectionKey:        sectionKey,
+			SectionName:       subSectionName,
+			SubSectionValue:   *eUtils.IndexValueFilterPtr,
+			SubSectionName:    *eUtils.ServiceNameFilterPtr,
+			FileFilter:        fileFilter,
 			SecretMode:        true, //  "Only override secret values in templates?"
 			ProjectSections:   subSectionSlice,
 			ServiceFilter:     serviceFilterSlice,

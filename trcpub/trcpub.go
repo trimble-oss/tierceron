@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcpubbase"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/utils/mlock"
@@ -23,6 +24,9 @@ func main() {
 	envPtr := flag.String("env", "dev", "Environment to configure")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
+	secretIDPtr := flag.String("secretID", "", "Public app role ID")
+	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix()+"pub to access the vault")
 
-	trcpubbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, nil)
+	trcpubbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil)
 }

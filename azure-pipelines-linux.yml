@@ -52,7 +52,7 @@ steps:
 
 - task: GoTool@0
   inputs:
-    version: '1.20'
+    version: '1.20.1'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
