@@ -7,9 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/user"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/dsnet/golib/memfile"
@@ -17,6 +15,7 @@ import (
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	"github.com/trimble-oss/tierceron/trcpubbase"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
+	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/utils/mlock"
@@ -38,27 +37,7 @@ func main() {
 		fmt.Println("Trcsh cannot be run as root.")
 		os.Exit(-1)
 	} else {
-		sudoer, sudoErr := user.LookupGroup("sudo")
-		if sudoErr != nil {
-			fmt.Println("Trcsh unable to definitively identify sudoers.")
-			os.Exit(-1)
-		}
-		sudoerGid, sudoConvErr := strconv.Atoi(sudoer.Gid)
-		if sudoConvErr != nil {
-			fmt.Println("Trcsh unable to definitively identify sudoers.  Conversion error.")
-			os.Exit(-1)
-		}
-		groups, groupErr := os.Getgroups()
-		if groupErr != nil {
-			fmt.Println("Trcsh unable to definitively identify sudoers.  Missing groups.")
-			os.Exit(-1)
-		}
-		for _, groupId := range groups {
-			if groupId == sudoerGid {
-				fmt.Println("Trcsh cannot be run with user having sudo privileges.")
-				os.Exit(-1)
-			}
-		}
+		capauth.CheckNotSudo()
 	}
 	envPtr := flag.String("env", "", "Environment to be seeded")      //If this is blank -> use context otherwise override context.
 	trcPathPtr := flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
