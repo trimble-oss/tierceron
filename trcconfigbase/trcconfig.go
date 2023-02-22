@@ -115,7 +115,12 @@ func CommonMain(envPtr *string,
 		}
 		flag.Parse()
 	} else {
-		flag.CommandLine.Parse(os.Args[2:])
+		for _, args := range os.Args {
+			if args == "-certs" {
+				c.WantCerts = true
+			}
+		}
+		flag.CommandLine.Parse(nil)
 	}
 
 	if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
