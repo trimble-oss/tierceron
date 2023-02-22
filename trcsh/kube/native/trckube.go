@@ -6,8 +6,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/klog/v2"
 
+	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
@@ -16,55 +16,59 @@ type TrcKubeConfig struct {
 	apiConfig  *clientcmdapi.Config
 }
 
-func LoadFromKube(kubeconfigBytes []byte) (*clientcmdapi.Config, error) {
-	config, err := clientcmd.Load(kubeconfigBytes)
+func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*rest.Config, *clientcmdapi.Config, error) {
+	kubeConfig, err := clientcmd.Load(kubeConfigBytes)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	klog.V(6).Infoln("Config loaded from file: ", ".kube/config")
+
+	restConfig, restErr := clientcmd.RESTConfigFromKubeConfig(kubeConfigBytes)
+	if restErr != nil {
+		eUtils.LogErrorObject(config, restErr, false)
+	}
 
 	// set LocationOfOrigin on every Cluster, User, and Context
-	for key, obj := range config.AuthInfos {
+	for key, obj := range kubeConfig.AuthInfos {
 		obj.LocationOfOrigin = ".kube/config"
-		config.AuthInfos[key] = obj
+		kubeConfig.AuthInfos[key] = obj
 	}
-	for key, obj := range config.Clusters {
+	for key, obj := range kubeConfig.Clusters {
 		obj.LocationOfOrigin = ".kube/config"
-		config.Clusters[key] = obj
+		kubeConfig.Clusters[key] = obj
 	}
-	for key, obj := range config.Contexts {
+	for key, obj := range kubeConfig.Contexts {
 		obj.LocationOfOrigin = ".kube/config"
-		config.Contexts[key] = obj
+		kubeConfig.Contexts[key] = obj
 	}
 
-	if config.AuthInfos == nil {
-		config.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
+	if kubeConfig.AuthInfos == nil {
+		kubeConfig.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
 	}
-	if config.Clusters == nil {
-		config.Clusters = map[string]*clientcmdapi.Cluster{}
+	if kubeConfig.Clusters == nil {
+		kubeConfig.Clusters = map[string]*clientcmdapi.Cluster{}
 	}
-	if config.Contexts == nil {
-		config.Contexts = map[string]*clientcmdapi.Context{}
+	if kubeConfig.Contexts == nil {
+		kubeConfig.Contexts = map[string]*clientcmdapi.Context{}
 	}
 
-	return config, nil
+	return restConfig, kubeConfig, nil
 }
 
-func InitKubeConfig(data string, config *eUtils.DriverConfig) (*clientcmdapi.Config, error) {
-	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(data)
+func InitKubeConfig(trcshConfig *trcshauth.TrcShConfig, config *eUtils.DriverConfig) (*rest.Config, *clientcmdapi.Config, error) {
+	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(trcshConfig.KubeConfig)
 	if decodeErr != nil {
 		eUtils.LogErrorObject(config, decodeErr, false)
 	}
 
-	return LoadFromKube(kubeConfigBytes)
+	return LoadFromKube(kubeConfigBytes, config)
 }
 
-func CreateSecret(kubeConfig *rest.Config, config *eUtils.DriverConfig) {
-	// clientset, err := kubernetes.NewForConfig(kubeConfig)
+func CreateSecret(restConfig *rest.Config, kubeConfig *clientcmdapi.Config, config *eUtils.DriverConfig) {
+	// clientset, err := kubernetes.NewForConfig(restConfig)
 	// if err != nil {
 	// 	eUtils.LogErrorObject(config, err, false)
 	// }
-	//	clientset.CoreV1().Secrets().Create()
+	// clientset.CoreV1().Secrets().Create()
 }
 
 func CreateConfigMap(kubeConfig *rest.Config, config *eUtils.DriverConfig) {
