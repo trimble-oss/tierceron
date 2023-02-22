@@ -8,7 +8,6 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
 
-	"github.com/davecgh/go-spew/spew"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
@@ -51,26 +50,13 @@ func LoadFromKube(kubeconfigBytes []byte) (*clientcmdapi.Config, error) {
 	return config, nil
 }
 
-func InitKubeConfig(data string, config *eUtils.DriverConfig) (clientcmdapi.Config, error) {
+func InitKubeConfig(data string, config *eUtils.DriverConfig) (*clientcmdapi.Config, error) {
 	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(data)
 	if decodeErr != nil {
 		eUtils.LogErrorObject(config, decodeErr, false)
 	}
-	restConfig, restErr := clientcmd.RESTConfigFromKubeConfig(kubeConfigBytes)
-	if restErr != nil {
-		eUtils.LogErrorObject(config, restErr, false)
-	}
-	spew.Dump(restConfig)
-	//	loader := &clientcmd.ClientConfigLoadingRules{}
 
-	return clientcmdapi.Config{}, nil
-
-	// return clientcmd.NewNonInteractiveClientConfig(
-	// 	*restConfig,
-	// 	restConfig.CurrentContext,
-	// 	&clientcmd.ConfigOverrides{},
-	// 	loader,
-	// ).RawConfig()
+	return LoadFromKube(kubeConfigBytes)
 }
 
 func CreateSecret(kubeConfig *rest.Config, config *eUtils.DriverConfig) {
