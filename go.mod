@@ -19,7 +19,7 @@ require (
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	github.com/xo/dburl v0.9.0
 	golang.org/x/crypto v0.5.0
-	golang.org/x/sys v0.4.0
+	golang.org/x/sys v0.5.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -35,12 +35,15 @@ require (
 
 )
 
-require (
-	github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b
-	github.com/trimble-oss/tierceron-hat v0.0.0-20230206214723-e766990c2a5f
-)
+require github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b
 
 require github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
+
+require (
+	github.com/dsnet/golib v1.0.2 // indirect
+	github.com/dsnet/golib/memfile v1.0.0 // indirect
+	github.com/trimble-oss/tierceron-hat v0.0.0-00010101000000-000000000000 // indirect
+)
 
 require (
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
@@ -130,10 +133,10 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.5.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/term v0.4.0 // indirect
-	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	golang.org/x/tools v0.3.1-0.20221213193459-ca17b2c27ca8 // indirect
 	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
