@@ -10,10 +10,16 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/trimble-oss/tierceron-hat/cap"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/utils/mlock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -53,6 +59,121 @@ func randomString(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+type TrcShConfig struct {
+	Env        string
+	EnvContext string // Current env context...
+	ConfigRole string
+	PubRole    string
+	KubeConfig string
+}
+
+const configDir = "/.tierceron/config.yml"
+const envContextPrefix = "envContext: "
+
+func GetSetEnvAddrContext(env string, envContext string, addrPort string) (string, string, string, error) {
+	dirname, err := os.UserHomeDir()
+	if err != nil {
+		return "", "", "", err
+	}
+
+	//This will use env by default, if blank it will use context. If context is defined, it will replace context.
+	if env == "" {
+		file, err := ioutil.ReadFile(dirname + configDir)
+		if err != nil {
+			fmt.Printf("Could not read the context file due to this %s error \n", err)
+			return "", "", "", err
+		}
+		fileContent := string(file)
+		if fileContent == "" {
+			return "", "", "", errors.New("Could not read the context file")
+		}
+		if !strings.Contains(fileContent, envContextPrefix) && envContext != "" {
+			var output string
+			if !strings.HasSuffix(fileContent, "\n") {
+				output = fileContent + "\n" + envContextPrefix + envContext + "\n"
+			} else {
+				output = fileContent + envContextPrefix + envContext + "\n"
+			}
+
+			if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+				return "", "", "", err
+			}
+			fmt.Println("Context flag has been written out.")
+			env = envContext
+		} else {
+			re := regexp.MustCompile(`[-]?\d[\d,]*[\.]?[\d{2}]*`)
+			result := re.FindAllString(fileContent[:strings.Index(fileContent, "\n")], -1)
+			if len(result) == 1 {
+				addrPort = result[0]
+			} else {
+				return "", "", "", errors.New("Couldn't find port.")
+			}
+			currentEnvContext := strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
+			if envContext != "" {
+				output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
+				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+					return "", "", "", err
+				}
+				fmt.Println("Context flag has been written out.")
+				env = envContext
+			} else if env == "" {
+				env = currentEnvContext
+				envContext = currentEnvContext
+			}
+		}
+	} else {
+		envContext = env
+		fmt.Println("Context flag will be ignored as env is defined.")
+	}
+	return env, envContext, addrPort, nil
+}
+
+// Helper function for obtaining auth components.
+func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
+	var err error
+
+	trcshConfig := &TrcShConfig{}
+	addr, vAddressErr := PenseQuery("vaddress")
+	if vAddressErr != nil {
+		var addrPort string
+		var env, envContext string
+
+		fmt.Println(vAddressErr)
+		//Env should come from command line - not context here. but addr port is needed.
+		trcshConfig.Env, trcshConfig.EnvContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
+		if err != nil {
+			fmt.Println(err)
+			return trcshConfig, err
+		}
+		addr = "https://127.0.0.1:" + addrPort
+
+		config.Env = env
+		config.EnvRaw = env
+	}
+
+	config.VaultAddress = addr
+	mlock.Mlock2(nil, &config.VaultAddress)
+
+	trcshConfig.ConfigRole, err = PenseQuery("configrole")
+	if err != nil {
+		return trcshConfig, err
+	}
+	mlock.Mlock2(nil, &trcshConfig.ConfigRole)
+
+	trcshConfig.PubRole, err = PenseQuery("pubrole")
+	if err != nil {
+		return trcshConfig, err
+	}
+	mlock.Mlock2(nil, &trcshConfig.PubRole)
+
+	trcshConfig.KubeConfig, err = PenseQuery("kubeconfig")
+	if err != nil {
+		return trcshConfig, err
+	}
+	mlock.Mlock2(nil, &trcshConfig.KubeConfig)
+	return trcshConfig, err
 }
 
 func PenseQuery(pense string) (string, error) {

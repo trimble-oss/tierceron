@@ -140,17 +140,20 @@ func CommonMain(envPtr *string,
 		os.Exit(1)
 	}
 
-	var configFilePtr *string
+	var appRoleConfigPtr *string
 	var configBase *eUtils.DriverConfig
 	if c != nil {
 		configBase = c
 		*insecurePtr = configBase.Insecure
-		configFilePtr = &(configBase.FileFilter[0])
+		appRoleConfigPtr = &(configBase.AppRoleConfig)
+		if configBase.FileFilter != nil {
+			fileFilterPtr = &(configBase.FileFilter[0])
+		}
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "["+coreopts.GetFolderPrefix()+"config]", log.LstdFlags)
 		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
-		configFilePtr = new(string)
+		appRoleConfigPtr = new(string)
 		eUtils.CheckError(configBase, err, true)
 	}
 
@@ -205,7 +208,7 @@ func CommonMain(envPtr *string,
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				os.Exit(1)
@@ -299,7 +302,7 @@ func CommonMain(envPtr *string,
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					os.Exit(1)
