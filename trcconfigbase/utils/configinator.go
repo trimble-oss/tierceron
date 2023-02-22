@@ -416,13 +416,17 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	return nil, nil
 }
 
+var memCacheLock sync.Mutex
+
 func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	byteData := []byte(data)
 	//Ensure directory has been created
 	var newFile *os.File
 
 	if config.OutputMemCache {
+		memCacheLock.Lock()
 		config.MemCache[path] = memfile.New(byteData)
+		memCacheLock.Unlock()
 	} else {
 		dirPath := filepath.Dir(path)
 		err := os.MkdirAll(dirPath, os.ModePerm)
