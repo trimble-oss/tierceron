@@ -121,6 +121,9 @@ func CommonMain(envPtr *string,
 			}
 		}
 		flag.CommandLine.Parse(nil)
+		if c.WantCerts {
+			*wantCertsPtr = true
+		}
 	}
 
 	if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
