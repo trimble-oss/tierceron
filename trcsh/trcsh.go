@@ -9,16 +9,20 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/dsnet/golib/memfile"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	"github.com/trimble-oss/tierceron/trcpubbase"
+	kube "github.com/trimble-oss/tierceron/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/utils/mlock"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
@@ -140,6 +144,9 @@ func ProcessDeploy(env string, token string, trcPathPtr string) {
 
 	argsOrig := os.Args
 
+	var kubeApiConfig clientcmdapi.Config
+	var onceKubeInit sync.Once
+
 	for _, deployLine := range deployArgLines {
 		fmt.Println(deployLine)
 		os.Args = argsOrig
@@ -207,6 +214,17 @@ func ProcessDeploy(env string, token string, trcPathPtr string) {
 		case "trcpluginctl":
 		case "kubectl":
 			// Placeholder.
+
+			onceKubeInit.Do(func() {
+				var kubeInitErr error
+				kubeApiConfig, kubeInitErr = kube.InitKubeConfig(kubeconfig, config)
+				if kubeInitErr != nil {
+					fmt.Println(kubeInitErr)
+					return
+				}
+			})
+
+			spew.Dump(kubeApiConfig)
 
 		}
 	}
