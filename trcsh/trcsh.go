@@ -119,9 +119,14 @@ func ProcessDeploy(env string, token string, trcPath string) {
 	var onceKubeInit sync.Once
 
 	for _, deployLine := range deployArgLines {
+		deployLine = strings.TrimLeft(deployLine, "")
+		if strings.HasPrefix(deployLine, "#") {
+			continue
+		}
 		fmt.Println(deployLine)
 		os.Args = argsOrig
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+
 		deployLine = strings.TrimRight(deployLine, "")
 		deployArgs := strings.Split(deployLine, " ")
 		control := deployArgs[0]
