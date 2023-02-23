@@ -18,13 +18,17 @@ variable "node_count" {
   default = {{.node_count}}
 }
 
-variable "VN_trg_name" {
+variable "VN_name" {
   type = string
-  default = "{{.VN_trg_name}}"
+  default = "{{.VN_name}}"
 }
 
-variable "VN_rg_addr" {
+variable "VN_subnet_name" {
   type = string
-  default = "{{.VN_rg_addr}}"
+  default = "{{.VN_subnet_name}}"
 }
 
+variable "Kube_version" {
+  type = string
+  default = "{{.Kube_version}}"
+}
