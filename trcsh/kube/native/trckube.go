@@ -2,7 +2,12 @@ package kube
 
 import (
 	"encoding/base64"
+	"fmt"
+	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -11,15 +16,33 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
-type TrcKubeConfig struct {
-	kubeConfig *rest.Config
-	apiConfig  *clientcmdapi.Config
+type TrcKubeContext struct {
+	User      string
+	Cluster   string
+	Context   string
+	Namespace string
 }
 
-func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*rest.Config, *clientcmdapi.Config, error) {
+type TrcKubeDirective struct {
+	Action       string // Probably not used...
+	Object       string
+	Type         string
+	Name         string
+	FromFilePath string
+	DryRun       bool
+}
+
+type TrcKubeConfig struct {
+	RestConfig    *rest.Config
+	ApiConfig     *clientcmdapi.Config
+	KubeContext   *TrcKubeContext
+	KubeDirective *TrcKubeDirective
+}
+
+func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
 	kubeConfig, err := clientcmd.Load(kubeConfigBytes)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	restConfig, restErr := clientcmd.RESTConfigFromKubeConfig(kubeConfigBytes)
@@ -51,10 +74,10 @@ func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*rest.Co
 		kubeConfig.Contexts = map[string]*clientcmdapi.Context{}
 	}
 
-	return restConfig, kubeConfig, nil
+	return &TrcKubeConfig{RestConfig: restConfig, ApiConfig: kubeConfig}, nil
 }
 
-func InitKubeConfig(trcshConfig *trcshauth.TrcShConfig, config *eUtils.DriverConfig) (*rest.Config, *clientcmdapi.Config, error) {
+func InitTrcKubeConfig(trcshConfig *trcshauth.TrcShConfig, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
 	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(trcshConfig.KubeConfig)
 	if decodeErr != nil {
 		eUtils.LogErrorObject(config, decodeErr, false)
@@ -63,15 +86,157 @@ func InitKubeConfig(trcshConfig *trcshauth.TrcShConfig, config *eUtils.DriverCon
 	return LoadFromKube(kubeConfigBytes, config)
 }
 
-func CreateSecret(restConfig *rest.Config, kubeConfig *clientcmdapi.Config, config *eUtils.DriverConfig) {
-	// clientset, err := kubernetes.NewForConfig(restConfig)
-	// if err != nil {
-	// 	eUtils.LogErrorObject(config, err, false)
-	// }
-	// clientset.CoreV1().Secrets().Create()
+func ParseTrcKubeContext(trcKubeContext *TrcKubeContext, deployArgs []string) *TrcKubeContext {
+	if trcKubeContext == nil {
+		trcKubeContext = &TrcKubeContext{}
+	}
+
+	for i, _ := range deployArgs {
+		if deployArgs[i] == "set-context" {
+			if i+1 < len(deployArgs) {
+				trcKubeContext.Context = deployArgs[i+1]
+			}
+		} else {
+			argsSlice := strings.Split(deployArgs[i], "=")
+			switch argsSlice[0] {
+			case "--cluster":
+				trcKubeContext.Cluster = argsSlice[1]
+			case "--user":
+				trcKubeContext.User = argsSlice[1]
+			case "--namespace":
+				trcKubeContext.Namespace = argsSlice[1]
+			}
+		}
+
+	}
+
+	return trcKubeContext
 }
 
-func CreateConfigMap(kubeConfig *rest.Config, config *eUtils.DriverConfig) {
+func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs []string) *TrcKubeDirective {
+	if trcKubeDirective == nil {
+		trcKubeDirective = &TrcKubeDirective{}
+	}
+	trcKubeDirective.Action = "create"
+
+	for i, _ := range deployArgs {
+		if deployArgs[i] == "secret" || deployArgs[i] == "configmap" {
+			trcKubeDirective.Object = deployArgs[i]
+			if i+1 < len(deployArgs) {
+				if deployArgs[i] == "secret" {
+					trcKubeDirective.Type = deployArgs[i+1]
+					trcKubeDirective.Name = deployArgs[i+2]
+				} else if deployArgs[i] == "configmap" {
+					trcKubeDirective.Name = deployArgs[i+1]
+				} else {
+					fmt.Println("Unsupported element: " + deployArgs[i])
+				}
+			}
+		} else {
+			argsSlice := strings.Split(deployArgs[i], "=")
+			switch argsSlice[0] {
+			case "--from-file":
+				trcKubeDirective.FromFilePath = argsSlice[1]
+			case "--dry-run":
+				trcKubeDirective.DryRun = true
+			}
+		}
+	}
+
+	return trcKubeDirective
+}
+
+func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) {
+	// TODO: Fix the protocol in this client create???
+	//_, err := kubernetes.NewForConfig(trcKubeDeploymentConfig.RestConfig)
+	//if err != nil {
+	//	eUtils.LogErrorObject(config, err, false)
+	//	return
+	//}
+
+	switch trcKubeDeploymentConfig.KubeDirective.Object {
+	case "secret":
+		var secretType corev1.SecretType
+		if trcKubeDeploymentConfig.KubeDirective.Type == "generic" {
+			secretType = corev1.SecretType("")
+		} else {
+			fmt.Println("Unsupported secret type: " + trcKubeDeploymentConfig.KubeDirective.Type)
+		}
+
+		secret := &corev1.Secret{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: corev1.SchemeGroupVersion.String(),
+				Kind:       "Secret",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      trcKubeDeploymentConfig.KubeDirective.Name, // vault-cert
+				Namespace: "",                                         // I think it can always be blank...
+			},
+			Type: secretType,
+			Data: map[string][]byte{},
+		}
+
+		keyParts := strings.Split(trcKubeDeploymentConfig.KubeDirective.FromFilePath, "/")
+		keyName := keyParts[len(keyParts)-1]
+
+		if errs := validation.IsConfigMapKey(keyName); len(errs) != 0 {
+			eUtils.LogErrorObject(config, fmt.Errorf("%q invalid keyname having errors %s", keyName, strings.Join(errs, ";")), false)
+			return
+		} else {
+			if secretData, secretDataOk := config.MemCache[trcKubeDeploymentConfig.KubeDirective.FromFilePath]; secretDataOk {
+				secret.Data[keyName] = secretData.Bytes()
+			} else if secretData, secretDataOk := config.MemCache["./"+trcKubeDeploymentConfig.KubeDirective.FromFilePath]; secretDataOk {
+				secret.Data[keyName] = secretData.Bytes()
+			}
+		}
+
+		switch trcKubeDeploymentConfig.KubeDirective.Action {
+		case "create":
+			createOptions := metav1.CreateOptions{}
+			createOptions.FieldManager = "" //
+		//	clientset.CoreV1().Secrets(trcKubeDeploymentConfig.KubeContext.Namespace).Create(context.TODO(), secret, createOptions)
+		case "update":
+			updateOptions := metav1.UpdateOptions{}
+			updateOptions.FieldManager = "" //
+			//	clientset.CoreV1().Secrets(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), secret, updateOptions)
+
+		}
+	case "configmap":
+		configMap := &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: corev1.SchemeGroupVersion.String(),
+				Kind:       "ConfigMap",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      trcKubeDeploymentConfig.KubeDirective.Name, // vault-cert
+				Namespace: "",                                         // I think it can always be blank...
+			},
+			Data: map[string]string{},
+		}
+
+		keyParts := strings.Split(trcKubeDeploymentConfig.KubeDirective.FromFilePath, "/")
+		keyName := keyParts[len(keyParts)-1]
+
+		if errs := validation.IsConfigMapKey(keyName); len(errs) != 0 {
+			eUtils.LogErrorObject(config, fmt.Errorf("%q invalid keyname having errors %s", keyName, strings.Join(errs, ";")), false)
+			return
+		} else {
+			if secretData, secretDataOk := config.MemCache[trcKubeDeploymentConfig.KubeDirective.FromFilePath]; secretDataOk {
+				configMap.Data[keyName] = string(secretData.Bytes())
+			}
+		}
+
+		switch trcKubeDeploymentConfig.KubeDirective.Action {
+		case "create":
+			createOptions := metav1.CreateOptions{}
+			createOptions.FieldManager = "" //
+		//	clientset.CoreV1().ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Create(context.TODO(), configMap, createOptions)
+		case "update":
+			updateOptions := metav1.UpdateOptions{}
+			updateOptions.FieldManager = "" //
+			//	clientset.CoreV1().ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), configMap, updateOptions)
+		}
+	}
 
 }
 

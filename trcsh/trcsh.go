@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/dsnet/golib/memfile"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
@@ -20,8 +19,6 @@ import (
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/utils/mlock"
-	"k8s.io/client-go/rest"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
@@ -118,8 +115,7 @@ func ProcessDeploy(env string, token string, trcPath string) {
 
 	argsOrig := os.Args
 
-	var kubeRestConfig *rest.Config
-	var kubeApiConfig *clientcmdapi.Config
+	var trcKubeDeploymentConfig *kube.TrcKubeConfig
 	var onceKubeInit sync.Once
 
 	for _, deployLine := range deployArgLines {
@@ -151,7 +147,9 @@ func ProcessDeploy(env string, token string, trcPath string) {
 			} else {
 				deployArgs = deployArgs[1:]
 			}
-			os.Args = append(os.Args, deployArgs...)
+			if control != "kubectl" {
+				os.Args = append(os.Args, deployArgs...)
+			}
 		}
 
 		switch control {
@@ -192,19 +190,27 @@ func ProcessDeploy(env string, token string, trcPath string) {
 			}
 		case "trcpluginctl":
 		case "kubectl":
-			// Placeholder.
-
 			onceKubeInit.Do(func() {
 				var kubeInitErr error
-				kubeRestConfig, kubeApiConfig, kubeInitErr = kube.InitKubeConfig(trcshConfig, config)
+				trcKubeDeploymentConfig, kubeInitErr = kube.InitTrcKubeConfig(trcshConfig, config)
 				if kubeInitErr != nil {
 					fmt.Println(kubeInitErr)
 					return
 				}
 			})
 
-			spew.Dump(kubeRestConfig)
-			spew.Dump(kubeApiConfig)
+			// Placeholder.
+			if deployArgs[0] == "config" {
+				trcKubeDeploymentConfig.KubeContext = kube.ParseTrcKubeContext(trcKubeDeploymentConfig.KubeContext, deployArgs[1:])
+			} else if deployArgs[0] == "create" {
+				trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs[1:])
+				kube.CreateKubeResource(trcKubeDeploymentConfig, config)
+			}
+
+			fmt.Println(trcKubeDeploymentConfig.RestConfig.APIPath)
+			fmt.Println(trcKubeDeploymentConfig.ApiConfig.APIVersion)
+			//spew.Dump(kubeRestConfig)
+			//spew.Dump(kubeApiConfig)
 
 		}
 	}
