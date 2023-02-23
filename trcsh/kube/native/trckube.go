@@ -122,6 +122,9 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 	trcKubeDirective.Action = "create"
 
 	for i, _ := range deployArgs {
+		if strings.HasPrefix(deployArgs[i], "#") {
+			continue
+		}
 		if deployArgs[i] == "secret" || deployArgs[i] == "configmap" {
 			trcKubeDirective.Object = deployArgs[i]
 			if i+1 < len(deployArgs) {
