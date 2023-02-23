@@ -28,7 +28,7 @@ resource "azurerm_kubernetes_cluster" "tierceron_aks_cluster" {
   location            = var.resource_group_location
   resource_group_name = local.rgname
   dns_prefix          = "${var.dnsprefix}"
-  kubernetes_version        = "1.23.12"
+  kubernetes_version        = var.Kube_version
   private_cluster_enabled   = true
   automatic_channel_upgrade = "patch"
   
