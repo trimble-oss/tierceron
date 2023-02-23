@@ -221,8 +221,10 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 			eUtils.LogErrorObject(config, fmt.Errorf("%q invalid keyname having errors %s", keyName, strings.Join(errs, ";")), false)
 			return
 		} else {
-			if secretData, secretDataOk := config.MemCache[trcKubeDeploymentConfig.KubeDirective.FromFilePath]; secretDataOk {
-				configMap.Data[keyName] = string(secretData.Bytes())
+			if configData, configDataOk := config.MemCache[trcKubeDeploymentConfig.KubeDirective.FromFilePath]; configDataOk {
+				configMap.Data[keyName] = string(configData.Bytes())
+			} else if configData, configDataOk := config.MemCache["./"+trcKubeDeploymentConfig.KubeDirective.FromFilePath]; configDataOk {
+				configMap.Data[keyName] = string(configData.Bytes())
 			}
 		}
 
