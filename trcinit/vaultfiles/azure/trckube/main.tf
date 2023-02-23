@@ -3,10 +3,6 @@ resource "azurerm_resource_group" "rg" {
   location = var.resource_group_location
 }
 
-data "azurerm_resource_group" "trg" {
-  name     = var.resource_group_name_trg
-}
-
 resource "azurerm_kubernetes_cluster" "kcluster" {
   name                = "${var.resource_group_name}-kubernetes"
   location            = var.resource_group_location
@@ -39,38 +35,17 @@ resource "azurerm_kubernetes_cluster" "kcluster" {
   depends_on = [azurerm_resource_group.rg]
 }
 
-resource "azurerm_virtual_network" "kubeVN" {
-  name                = "${var.resource_group_name}-kubernetes-VN"
-  resource_group_name = var.resource_group_name
-  address_space       = [var.VN_rg_addr]
-  location            = var.resource_group_location
-  depends_on = [azurerm_resource_group.rg]
+resource "azurerm_resource_group" "trg" {
+  name     = var.resource_group_name_trg
 }
 
-data "azurerm_virtual_network" "agentVN" {
-  name                = "${var.VN_trg_name}"
+resource "azurerm_virtual_network" "virtual-network" {
+  name                = var.VN_name
   resource_group_name = var.resource_group_name_trg
-  depends_on = [azurerm_resource_group.rg]
 }
 
-resource "azurerm_virtual_network_peering" "peerKubetoAgent" {
-  name                      = "peerKubetoAgent"
-  resource_group_name       = var.resource_group_name
-  virtual_network_name      = azurerm_virtual_network.kubeVN.name
-  remote_virtual_network_id = data.azurerm_virtual_network.agentVN.id
-    depends_on = [
-      azurerm_virtual_network.kubeVN,
-      data.azurerm_virtual_network.agentVN
-    ]
-}
-
-resource "azurerm_virtual_network_peering" "peerAgenttoKube" {
-  name                      = "peerAgenttoKube"
-  resource_group_name       = var.resource_group_name_trg
-  virtual_network_name      = data.azurerm_virtual_network.agentVN.name
-  remote_virtual_network_id = azurerm_virtual_network.kubeVN.id
-  depends_on = [
-      azurerm_virtual_network.kubeVN,
-      data.azurerm_virtual_network.agentVN
-    ]
+resource "azurerm_subnet" "vm-subnet" {
+  name                 = var.VN_subnet_name
+  resource_group_name  = var.resource_group_name_trg
+  virtual_network_name = var.VN_name
 }
