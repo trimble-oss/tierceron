@@ -8,6 +8,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -147,12 +149,11 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 }
 
 func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) {
-	// TODO: Fix the protocol in this client create???
-	//_, err := kubernetes.NewForConfig(trcKubeDeploymentConfig.RestConfig)
-	//if err != nil {
-	//	eUtils.LogErrorObject(config, err, false)
-	//	return
-	//}
+	clientset, err := corev1client.NewForConfig(trcKubeDeploymentConfig.RestConfig)
+	if err != nil {
+		eUtils.LogErrorObject(config, err, false)
+		return
+	}
 
 	switch trcKubeDeploymentConfig.KubeDirective.Object {
 	case "secret":
@@ -193,13 +194,14 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 		switch trcKubeDeploymentConfig.KubeDirective.Action {
 		case "create":
 			createOptions := metav1.CreateOptions{}
-			createOptions.FieldManager = "" //
-		//	clientset.CoreV1().Secrets(trcKubeDeploymentConfig.KubeContext.Namespace).Create(context.TODO(), secret, createOptions)
+			createOptions.FieldManager = "kubectl-create" //
+			fmt.Println(clientset)
+			//			clientset.Secrets(trcKubeDeploymentConfig.KubeContext.Namespace).Create(context.TODO(), secret, createOptions)
 		case "update":
 			updateOptions := metav1.UpdateOptions{}
 			updateOptions.FieldManager = "" //
-			//	clientset.CoreV1().Secrets(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), secret, updateOptions)
-
+			fmt.Println(clientset)
+			//			clientset.Secrets(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), secret, updateOptions)
 		}
 	case "configmap":
 		configMap := &corev1.ConfigMap{
@@ -232,11 +234,13 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 		case "create":
 			createOptions := metav1.CreateOptions{}
 			createOptions.FieldManager = "" //
-		//	clientset.CoreV1().ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Create(context.TODO(), configMap, createOptions)
+			fmt.Println(clientset)
+			//			clientset.ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Create(context.TODO(), configMap, createOptions)
 		case "update":
 			updateOptions := metav1.UpdateOptions{}
 			updateOptions.FieldManager = "" //
-			//	clientset.CoreV1().ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), configMap, updateOptions)
+			fmt.Println(clientset)
+			//			clientset.ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), configMap, updateOptions)
 		}
 	}
 
