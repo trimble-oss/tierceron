@@ -273,10 +273,10 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConf
 	memBuilder := MemBuilder{}
 
 	memBuilder.
-		Unstructured().
-		Schema(o.Validator).
-		ContinueOnError().
+		Unstructured()
+	memBuilder.MemSchema(o.Validator).ContinueOnError().
 		NamespaceParam(o.Namespace).DefaultNamespace()
+
 	memBuilder.MemFilenameParam(false, &o.DeleteOptions.FilenameOptions)
 
 	r := memBuilder.LabelSelectorParam("").
@@ -325,7 +325,7 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConf
 			// Then create the resource and skip the three-way merge
 			obj, err := helper.Create(info.Namespace, true, info.Object)
 			if err != nil {
-				return cmdutil.AddSourceToErr("creating", info.Source, err)
+				cmdutil.AddSourceToErr("creating", info.Source, err)
 			}
 			info.Refresh(obj, true)
 
