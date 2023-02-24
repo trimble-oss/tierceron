@@ -1,4 +1,4 @@
-package kube
+package native
 
 import (
 	"encoding/base64"
@@ -270,68 +270,84 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 }
 
 func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) {
+	memBuilder := MemBuilder{}
 
-	// *** Chewbacca
-	// Create a new builder that extends resource.Builder
-	// Create a replacement function for FilenameParam (called MemFilenameParam) that creates a MemFileVisitor instead of FileVisitor
-	// inside ExpandPathsToFileVisitors...
+	memBuilder.
+		Unstructured().
+		Schema(o.Validator).
+		ContinueOnError().
+		NamespaceParam(o.Namespace).DefaultNamespace()
+	memBuilder.MemFilenameParam(false, &o.DeleteOptions.FilenameOptions)
 
-	if len(trcKubeDeploymentConfig.KubeDirective.Name) == 0 {
-		metadata, _ := meta.Accessor(trcKubeDeploymentConfig.KubeDirective.Object)
-		generatedName := metadata.GetGenerateName()
-		if len(generatedName) > 0 {
-			fmt.Errorf("from %s: cannot use generate name with apply", generatedName)
-		}
-	}
+	r := memBuilder.LabelSelectorParam("").
+		Flatten().
+		Do()
 
-	helper := resource.NewHelper(info.Client, info.Mapping).
-		DryRun(false).
-		WithFieldManager(o.FieldManager)
+	infos, err := r.Infos()
 
-	// Get the modified configuration of the object. Embed the result
-	// as an annotation in the modified configuration, so that it will appear
-	// in the patch sent to the server.
-	modified, err := util.GetModifiedConfiguration(info.Object, true, unstructured.UnstructuredJSONScheme)
-	if err != nil {
-		cmdutil.AddSourceToErr(fmt.Sprintf("retrieving modified configuration from:\n%s\nfor:", info.String()), info.Source, err)
-	}
+	for _, info := range infos {
+		// *** Chewbacca
+		// Create a new builder that extends resource.Builder
+		// Create a replacement function for FilenameParam (called MemFilenameParam) that creates a MemFileVisitor instead of FileVisitor
+		// inside ExpandPathsToFileVisitors...
 
-	if err := info.Get(); err != nil {
-		if !errors.IsNotFound(err) {
-			cmdutil.AddSourceToErr(fmt.Sprintf("retrieving current configuration of:\n%s\nfrom server for:", info.String()), info.Source, err)
+		if len(trcKubeDeploymentConfig.KubeDirective.Name) == 0 {
+			metadata, _ := meta.Accessor(trcKubeDeploymentConfig.KubeDirective.Object)
+			generatedName := metadata.GetGenerateName()
+			if len(generatedName) > 0 {
+				fmt.Errorf("from %s: cannot use generate name with apply", generatedName)
+			}
 		}
 
-		// Create the resource if it doesn't exist
-		// First, update the annotation used by kubectl apply
-		if err := util.CreateApplyAnnotation(info.Object, unstructured.UnstructuredJSONScheme); err != nil {
-			cmdutil.AddSourceToErr("creating", info.Source, err)
-		}
+		helper := resource.NewHelper(info.Client, info.Mapping).
+			DryRun(false).
+			WithFieldManager(o.FieldManager)
 
-		// Then create the resource and skip the three-way merge
-		obj, err := helper.Create(info.Namespace, true, info.Object)
+		// Get the modified configuration of the object. Embed the result
+		// as an annotation in the modified configuration, so that it will appear
+		// in the patch sent to the server.
+		modified, err := util.GetModifiedConfiguration(info.Object, true, unstructured.UnstructuredJSONScheme)
 		if err != nil {
-			return cmdutil.AddSourceToErr("creating", info.Source, err)
+			cmdutil.AddSourceToErr(fmt.Sprintf("retrieving modified configuration from:\n%s\nfor:", info.String()), info.Source, err)
 		}
-		info.Refresh(obj, true)
 
-	}
+		if err := info.Get(); err != nil {
+			if !errors.IsNotFound(err) {
+				cmdutil.AddSourceToErr(fmt.Sprintf("retrieving current configuration of:\n%s\nfrom server for:", info.String()), info.Source, err)
+			}
 
-	metadata, _ := meta.Accessor(info.Object)
-	annotationMap := metadata.GetAnnotations()
-	if _, ok := annotationMap[corev1.LastAppliedConfigAnnotation]; !ok {
-		fmt.Fprintf(o.ErrOut, warningNoLastAppliedConfigAnnotation, info.ObjectName(), corev1.LastAppliedConfigAnnotation, o.cmdBaseName)
-	}
+			// Create the resource if it doesn't exist
+			// First, update the annotation used by kubectl apply
+			if err := util.CreateApplyAnnotation(info.Object, unstructured.UnstructuredJSONScheme); err != nil {
+				cmdutil.AddSourceToErr("creating", info.Source, err)
+			}
 
-	patcher, err := newPatcher(o, info, helper)
-	if err != nil {
-		return err
-	}
-	patchBytes, patchedObject, err := patcher.Patch(info.Object, modified, info.Source, info.Namespace, info.Name, o.ErrOut)
-	if err != nil {
-		return cmdutil.AddSourceToErr(fmt.Sprintf("applying patch:\n%s\nto:\n%v\nfor:", patchBytes, info), info.Source, err)
-	}
+			// Then create the resource and skip the three-way merge
+			obj, err := helper.Create(info.Namespace, true, info.Object)
+			if err != nil {
+				return cmdutil.AddSourceToErr("creating", info.Source, err)
+			}
+			info.Refresh(obj, true)
 
-	info.Refresh(patchedObject, true)
+		}
+
+		metadata, _ := meta.Accessor(info.Object)
+		annotationMap := metadata.GetAnnotations()
+		if _, ok := annotationMap[corev1.LastAppliedConfigAnnotation]; !ok {
+			fmt.Fprintf(o.ErrOut, warningNoLastAppliedConfigAnnotation, info.ObjectName(), corev1.LastAppliedConfigAnnotation, o.cmdBaseName)
+		}
+
+		patcher, err := newPatcher(o, info, helper)
+		if err != nil {
+			return err
+		}
+		patchBytes, patchedObject, err := patcher.Patch(info.Object, modified, info.Source, info.Namespace, info.Name, o.ErrOut)
+		if err != nil {
+			return cmdutil.AddSourceToErr(fmt.Sprintf("applying patch:\n%s\nto:\n%v\nfor:", patchBytes, info), info.Source, err)
+		}
+
+		info.Refresh(patchedObject, true)
+	}
 
 	return nil
 }
