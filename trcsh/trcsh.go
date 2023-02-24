@@ -208,8 +208,11 @@ func ProcessDeploy(env string, token string, trcPath string) {
 			if deployArgs[0] == "config" {
 				trcKubeDeploymentConfig.KubeContext = kube.ParseTrcKubeContext(trcKubeDeploymentConfig.KubeContext, deployArgs[1:])
 			} else if deployArgs[0] == "create" {
-				trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs[1:])
+				trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
 				kube.CreateKubeResource(trcKubeDeploymentConfig, config)
+			} else if deployArgs[0] == "apply" {
+				trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
+				kube.KubeApply(trcKubeDeploymentConfig, config)
 			}
 
 			fmt.Println(trcKubeDeploymentConfig.RestConfig.APIPath)

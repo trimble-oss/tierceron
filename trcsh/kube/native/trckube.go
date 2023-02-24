@@ -6,13 +6,19 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/cli-runtime/pkg/resource"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"k8s.io/kubectl/pkg/util"
 
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
@@ -35,9 +41,13 @@ type TrcKubeDirective struct {
 }
 
 type TrcKubeConfig struct {
-	RestConfig    *rest.Config
-	ApiConfig     *clientcmdapi.Config
-	KubeContext   *TrcKubeContext
+	// .kube/config is parsed into these fields...
+	RestConfig *rest.Config
+	ApiConfig  *clientcmdapi.Config
+
+	// config context stuff..
+	KubeContext *TrcKubeContext
+	// Current kubectl directive... configmap, secret, apply, etc...
 	KubeDirective *TrcKubeDirective
 }
 
@@ -118,11 +128,19 @@ func ParseTrcKubeContext(trcKubeContext *TrcKubeContext, deployArgs []string) *T
 func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs []string) *TrcKubeDirective {
 	if trcKubeDirective == nil {
 		trcKubeDirective = &TrcKubeDirective{}
+	} else {
+		trcKubeDirective.Action = ""
+		trcKubeDirective.FromFilePath = ""
+		trcKubeDirective.Name = ""
+		trcKubeDirective.Object = ""
+		trcKubeDirective.Type = ""
+		trcKubeDirective.DryRun = false
 	}
-	trcKubeDirective.Action = "create"
+	trcKubeDirective.Action = deployArgs[0]
+	deployArgs = deployArgs[1:]
 
 	for i, _ := range deployArgs {
-		if deployArgs[i] == "secret" || deployArgs[i] == "configmap" {
+		if trcKubeDirective.Action == "create" && (deployArgs[i] == "secret" || deployArgs[i] == "configmap") {
 			trcKubeDirective.Object = deployArgs[i]
 			if i+1 < len(deployArgs) {
 				if deployArgs[i] == "secret" {
@@ -138,9 +156,15 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 			argsSlice := strings.Split(deployArgs[i], "=")
 			switch argsSlice[0] {
 			case "--from-file":
-				trcKubeDirective.FromFilePath = argsSlice[1]
+				if len(argsSlice) > 1 {
+					trcKubeDirective.FromFilePath = argsSlice[1]
+				}
 			case "--dry-run":
 				trcKubeDirective.DryRun = true
+			case "-f": // From apply...
+				if len(argsSlice) > 1 {
+					trcKubeDirective.FromFilePath = argsSlice[1]
+				}
 			}
 		}
 	}
@@ -243,7 +267,73 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 			//			clientset.ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), configMap, updateOptions)
 		}
 	}
+}
 
+func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) {
+
+	// *** Chewbacca
+	// Create a new builder that extends resource.Builder
+	// Create a replacement function for FilenameParam (called MemFilenameParam) that creates a MemFileVisitor instead of FileVisitor
+	// inside ExpandPathsToFileVisitors...
+
+	if len(trcKubeDeploymentConfig.KubeDirective.Name) == 0 {
+		metadata, _ := meta.Accessor(trcKubeDeploymentConfig.KubeDirective.Object)
+		generatedName := metadata.GetGenerateName()
+		if len(generatedName) > 0 {
+			fmt.Errorf("from %s: cannot use generate name with apply", generatedName)
+		}
+	}
+
+	helper := resource.NewHelper(info.Client, info.Mapping).
+		DryRun(false).
+		WithFieldManager(o.FieldManager)
+
+	// Get the modified configuration of the object. Embed the result
+	// as an annotation in the modified configuration, so that it will appear
+	// in the patch sent to the server.
+	modified, err := util.GetModifiedConfiguration(info.Object, true, unstructured.UnstructuredJSONScheme)
+	if err != nil {
+		cmdutil.AddSourceToErr(fmt.Sprintf("retrieving modified configuration from:\n%s\nfor:", info.String()), info.Source, err)
+	}
+
+	if err := info.Get(); err != nil {
+		if !errors.IsNotFound(err) {
+			cmdutil.AddSourceToErr(fmt.Sprintf("retrieving current configuration of:\n%s\nfrom server for:", info.String()), info.Source, err)
+		}
+
+		// Create the resource if it doesn't exist
+		// First, update the annotation used by kubectl apply
+		if err := util.CreateApplyAnnotation(info.Object, unstructured.UnstructuredJSONScheme); err != nil {
+			cmdutil.AddSourceToErr("creating", info.Source, err)
+		}
+
+		// Then create the resource and skip the three-way merge
+		obj, err := helper.Create(info.Namespace, true, info.Object)
+		if err != nil {
+			return cmdutil.AddSourceToErr("creating", info.Source, err)
+		}
+		info.Refresh(obj, true)
+
+	}
+
+	metadata, _ := meta.Accessor(info.Object)
+	annotationMap := metadata.GetAnnotations()
+	if _, ok := annotationMap[corev1.LastAppliedConfigAnnotation]; !ok {
+		fmt.Fprintf(o.ErrOut, warningNoLastAppliedConfigAnnotation, info.ObjectName(), corev1.LastAppliedConfigAnnotation, o.cmdBaseName)
+	}
+
+	patcher, err := newPatcher(o, info, helper)
+	if err != nil {
+		return err
+	}
+	patchBytes, patchedObject, err := patcher.Patch(info.Object, modified, info.Source, info.Namespace, info.Name, o.ErrOut)
+	if err != nil {
+		return cmdutil.AddSourceToErr(fmt.Sprintf("applying patch:\n%s\nto:\n%v\nfor:", patchBytes, info), info.Source, err)
+	}
+
+	info.Refresh(patchedObject, true)
+
+	return nil
 }
 
 // func main() {
