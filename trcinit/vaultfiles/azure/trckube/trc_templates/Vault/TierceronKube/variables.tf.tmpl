@@ -32,3 +32,13 @@ variable "billing_env" {
   type = string
   default = "{{.billing_env}}"
 }
+
+variable "service_cidrs" {
+  type = string
+  default = "{{.service_cidrs}}"
+}
+
+variable "docker_bridge_cidr" {
+  type = string
+  default = "{{.docker_bridge_cidr}}"
+}
