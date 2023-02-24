@@ -14,6 +14,7 @@ import (
 
 type MemBuilder struct {
 	resource.Builder
+	schema resource.ContentValidator
 	paths  []resource.Visitor
 	errs   []error
 	config *eUtils.DriverConfig
@@ -42,6 +43,12 @@ func (b *MemBuilder) Path(recursive bool, paths ...string) *MemBuilder {
 		b.errs = append(b.errs, fmt.Errorf("error reading %v: recognized file extensions are %v", paths, resource.FileExtensions))
 	}
 	return b
+}
+
+func (b *MemBuilder) MemSchema(schema resource.ContentValidator) *resource.Builder {
+	b.schema = schema
+	b.Schema(schema)
+	return &b.Builder
 }
 
 func (b *MemBuilder) MemFilenameParam(enforceNamespace bool, filenameOptions *resource.FilenameOptions) *MemBuilder {
