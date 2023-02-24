@@ -272,10 +272,16 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 	}
 }
 
+// KubeApply applies an in memory yaml file to a kubernetes cluster
 func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
 	memBuilder := &MemBuilder{}
 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 	o := apply.NewApplyOptions(ioStreams)
+	kubeConfigFlags := genericclioptions.NewConfigFlags(true).WithDeprecatedPasswordFlag()
+	matchVersionKubeConfigFlags := cmdutil.NewMatchVersionFlags(kubeConfigFlags)
+	f := cmdutil.NewFactory(matchVersionKubeConfigFlags)
+	cmd := apply.NewCmdApply("kubectl", f, ioStreams)
+	o.Complete(f, cmd)
 
 	memBuilder.
 		Unstructured()
