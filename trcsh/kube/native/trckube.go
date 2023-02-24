@@ -3,6 +3,7 @@ package native
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -11,12 +12,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/kubectl/pkg/cmd/apply"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util"
 
@@ -269,13 +272,19 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 	}
 }
 
-func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) {
-	memBuilder := MemBuilder{}
+func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
+	memBuilder := &MemBuilder{}
+	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
+	o := apply.NewApplyOptions(ioStreams)
 
 	memBuilder.
 		Unstructured()
-	memBuilder.MemSchema(o.Validator).ContinueOnError().
-		NamespaceParam(o.Namespace).DefaultNamespace()
+
+	memBuilder.
+		MemSchema(o.Validator).
+		ContinueOnError().
+		NamespaceParam(o.Namespace).
+		DefaultNamespace()
 
 	memBuilder.MemFilenameParam(false, &o.DeleteOptions.FilenameOptions)
 
@@ -284,13 +293,11 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConf
 		Do()
 
 	infos, err := r.Infos()
+	if err != nil {
+		return err
+	}
 
 	for _, info := range infos {
-		// *** Chewbacca
-		// Create a new builder that extends resource.Builder
-		// Create a replacement function for FilenameParam (called MemFilenameParam) that creates a MemFileVisitor instead of FileVisitor
-		// inside ExpandPathsToFileVisitors...
-
 		if len(trcKubeDeploymentConfig.KubeDirective.Name) == 0 {
 			metadata, _ := meta.Accessor(trcKubeDeploymentConfig.KubeDirective.Object)
 			generatedName := metadata.GetGenerateName()
@@ -334,14 +341,14 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConf
 		metadata, _ := meta.Accessor(info.Object)
 		annotationMap := metadata.GetAnnotations()
 		if _, ok := annotationMap[corev1.LastAppliedConfigAnnotation]; !ok {
-			fmt.Fprintf(o.ErrOut, warningNoLastAppliedConfigAnnotation, info.ObjectName(), corev1.LastAppliedConfigAnnotation, o.cmdBaseName)
+			fmt.Fprintf(os.Stdout, warningNoLastAppliedConfigAnnotation, info.ObjectName(), corev1.LastAppliedConfigAnnotation, "kubectl")
 		}
 
 		patcher, err := newPatcher(o, info, helper)
 		if err != nil {
 			return err
 		}
-		patchBytes, patchedObject, err := patcher.Patch(info.Object, modified, info.Source, info.Namespace, info.Name, o.ErrOut)
+		patchBytes, patchedObject, err := patcher.Patch(info.Object, modified, info.Source, info.Namespace, info.Name, os.Stderr)
 		if err != nil {
 			return cmdutil.AddSourceToErr(fmt.Sprintf("applying patch:\n%s\nto:\n%v\nfor:", patchBytes, info), info.Source, err)
 		}

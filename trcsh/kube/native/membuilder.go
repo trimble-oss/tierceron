@@ -6,10 +6,18 @@ import (
 	"path/filepath"
 
 	"github.com/dsnet/golib/memfile"
+	"github.com/jonboulle/clockwork"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/kubectl/pkg/cmd/apply"
+	"k8s.io/kubectl/pkg/util/openapi"
+)
+
+const (
+	maxPatchRetry                        = 5
+	warningNoLastAppliedConfigAnnotation = "Warning: resource %[1]s is missing the %[2]s annotation which is required by %[3]s apply. %[3]s apply should only be used on resources created declaratively by either %[3]s create --save-config or %[3]s apply. The missing annotation will be patched automatically.\n"
 )
 
 type MemBuilder struct {
@@ -18,6 +26,26 @@ type MemBuilder struct {
 	paths  []resource.Visitor
 	errs   []error
 	config *eUtils.DriverConfig
+}
+
+func newPatcher(o *apply.ApplyOptions, info *resource.Info, helper *resource.Helper) (*apply.Patcher, error) {
+	var openapiSchema openapi.Resources
+	if o.OpenAPIPatch {
+		openapiSchema = o.OpenAPISchema
+	}
+
+	return &apply.Patcher{
+		Mapping:           info.Mapping,
+		Helper:            helper,
+		Overwrite:         o.Overwrite,
+		BackOff:           clockwork.NewRealClock(),
+		Force:             o.DeleteOptions.ForceDeletion,
+		CascadingStrategy: o.DeleteOptions.CascadingStrategy,
+		Timeout:           o.DeleteOptions.Timeout,
+		GracePeriod:       o.DeleteOptions.GracePeriod,
+		OpenapiSchema:     openapiSchema,
+		Retries:           maxPatchRetry,
+	}, nil
 }
 
 func (b *MemBuilder) Path(recursive bool, paths ...string) *MemBuilder {
@@ -45,17 +73,13 @@ func (b *MemBuilder) Path(recursive bool, paths ...string) *MemBuilder {
 	return b
 }
 
-func (b *MemBuilder) MemSchema(schema resource.ContentValidator) *resource.Builder {
+func (b *MemBuilder) MemSchema(schema resource.ContentValidator) *MemBuilder {
 	b.schema = schema
 	b.Schema(schema)
-	return &b.Builder
+	return b
 }
 
 func (b *MemBuilder) MemFilenameParam(enforceNamespace bool, filenameOptions *resource.FilenameOptions) *MemBuilder {
-	if errs := filenameOptions.validate(); len(errs) > 0 {
-		b.errs = append(b.errs, errs...)
-		return b
-	}
 	recursive := filenameOptions.Recursive
 	paths := filenameOptions.Filenames
 	for _, s := range paths {
