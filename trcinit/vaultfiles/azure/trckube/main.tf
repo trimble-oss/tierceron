@@ -1,14 +1,14 @@
 locals {
   locationCode          = var.resource_group_location == "East US 2" ? "EUS2" : "WUS2"
   envshort              = "dev-qa"
-  productenv            = "Tierceron-${upper(local.envshort)}"
-  max_count             = 2
+  productenv            = "${upper(local.envshort)}"
+  max_count             = 4
   min_count             = 1
-  rgname                = "${local.productenv}-${local.locationCode}-AKS-RG"
+  rgname                = "${var.resource_group_name}-${local.productenv}-${local.locationCode}-AKS-RG"
 }
 
 resource "azurerm_resource_group" "rg" {
-  name     = var.resource_group_name
+  name     = local.rgname
   location = var.resource_group_location
 }
 
@@ -24,7 +24,7 @@ data "azurerm_virtual_network" "virtual-network" {
 }
 
 resource "azurerm_kubernetes_cluster" "tierceron_aks_cluster" {
-  name                = "${local.productenv}-${local.locationCode}-AKS"
+  name                = "Tierceron-${local.productenv}-${local.locationCode}-AKS"
   location            = var.resource_group_location
   resource_group_name = local.rgname
   dns_prefix          = "${var.dnsprefix}"
@@ -52,7 +52,7 @@ resource "azurerm_kubernetes_cluster" "tierceron_aks_cluster" {
   network_profile {
     network_plugin      = "azure"
     service_cidrs       = [var.service_cidrs]
-#    dns_service_ip      = var.dns_service_ip TODO: why???
+    dns_service_ip      = var.dns_service_ip
     docker_bridge_cidr  = var.docker_bridge_cidr
     load_balancer_sku   = "standard"
   }
