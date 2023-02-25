@@ -40,10 +40,13 @@ require github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b
 require (
 	github.com/dsnet/golib/memfile v1.0.0
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
+	github.com/jonboulle/clockwork v0.3.0
 	github.com/trimble-oss/tierceron-hat v0.0.0-00010101000000-000000000000
 	k8s.io/api v0.20.4
 	k8s.io/apimachinery v0.20.4
+	k8s.io/cli-runtime v0.20.4
 	k8s.io/client-go v0.20.4
+	k8s.io/kubectl v0.20.4
 )
 
 require (
@@ -69,7 +72,6 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
@@ -85,11 +87,9 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/cli-runtime v0.20.4 // indirect
 	k8s.io/component-base v0.20.4 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd // indirect
-	k8s.io/kubectl v0.20.4 // indirect
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491 // indirect
 	sigs.k8s.io/kustomize v2.0.3+incompatible // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
@@ -187,7 +187,7 @@ require (
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/text v0.7.0
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	golang.org/x/tools v0.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
