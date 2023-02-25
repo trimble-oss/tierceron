@@ -19,12 +19,20 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/kubectl/pkg/cmd/apply"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util"
+	"k8s.io/kubectl/pkg/util/openapi"
 
+	"github.com/jonboulle/clockwork"
+	"github.com/trimble-oss/tierceron/trcsh/kube/native/memapply"
+	"github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
+)
+
+const (
+	maxPatchRetry                        = 5
+	warningNoLastAppliedConfigAnnotation = "Warning: resource %[1]s is missing the %[2]s annotation which is required by %[3]s apply. %[3]s apply should only be used on resources created declaratively by either %[3]s create --save-config or %[3]s apply. The missing annotation will be patched automatically.\n"
 )
 
 type TrcKubeContext struct {
@@ -165,8 +173,8 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 			case "--dry-run":
 				trcKubeDirective.DryRun = true
 			case "-f": // From apply...
-				if len(argsSlice) > 1 {
-					trcKubeDirective.FromFilePath = argsSlice[1]
+				if len(deployArgs) > i {
+					trcKubeDirective.FromFilePath = deployArgs[i+1]
 				}
 			}
 		}
@@ -272,29 +280,48 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 	}
 }
 
+func newPatcher(o *memapply.ApplyOptions, info *resource.Info, helper *resource.Helper) (*memapply.Patcher, error) {
+	var openapiSchema openapi.Resources
+	if o.OpenAPIPatch {
+		openapiSchema = o.OpenAPISchema
+	}
+
+	return &memapply.Patcher{
+		Mapping:           info.Mapping,
+		Helper:            helper,
+		Overwrite:         o.Overwrite,
+		BackOff:           clockwork.NewRealClock(),
+		Force:             o.DeleteOptions.ForceDeletion,
+		CascadingStrategy: o.DeleteOptions.CascadingStrategy,
+		Timeout:           o.DeleteOptions.Timeout,
+		GracePeriod:       o.DeleteOptions.GracePeriod,
+		OpenapiSchema:     openapiSchema,
+		Retries:           maxPatchRetry,
+	}, nil
+}
+
 // KubeApply applies an in memory yaml file to a kubernetes cluster
 func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
-	memBuilder := &MemBuilder{}
 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
-	o := apply.NewApplyOptions(ioStreams)
+	o := memapply.NewApplyOptions(ioStreams)
 	kubeConfigFlags := genericclioptions.NewConfigFlags(true).WithDeprecatedPasswordFlag()
 	matchVersionKubeConfigFlags := cmdutil.NewMatchVersionFlags(kubeConfigFlags)
-	f := cmdutil.NewFactory(matchVersionKubeConfigFlags)
-	cmd := apply.NewCmdApply("kubectl", f, ioStreams)
+	f := memfactory.NewFactory(matchVersionKubeConfigFlags, config.MemCache)
+	memBuilder := f.NewBuilder()
+
+	cmd := memapply.NewCmdApply("kubectl", f, ioStreams)
+	fileNames := o.DeleteFlags.FileNameFlags.Filenames
+	*fileNames = append(*fileNames, trcKubeDeploymentConfig.KubeDirective.FromFilePath)
 	o.Complete(f, cmd)
 
-	memBuilder.
-		Unstructured()
-
-	memBuilder.
-		MemSchema(o.Validator).
+	r := memBuilder.
+		Unstructured().
+		Schema(o.Validator).
 		ContinueOnError().
 		NamespaceParam(o.Namespace).
-		DefaultNamespace()
-
-	memBuilder.MemFilenameParam(false, &o.DeleteOptions.FilenameOptions)
-
-	r := memBuilder.LabelSelectorParam("").
+		DefaultNamespace().
+		FilenameParam(false, &o.DeleteOptions.FilenameOptions).
+		LabelSelectorParam("").
 		Flatten().
 		Do()
 
@@ -304,8 +331,8 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConf
 	}
 
 	for _, info := range infos {
-		if len(trcKubeDeploymentConfig.KubeDirective.Name) == 0 {
-			metadata, _ := meta.Accessor(trcKubeDeploymentConfig.KubeDirective.Object)
+		if len(info.Name) == 0 {
+			metadata, _ := meta.Accessor(info.Object)
 			generatedName := metadata.GetGenerateName()
 			if len(generatedName) > 0 {
 				fmt.Errorf("from %s: cannot use generate name with apply", generatedName)
@@ -364,59 +391,3 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConf
 
 	return nil
 }
-
-// func main() {
-// 	var ns string
-// 	flag.StringVar(&ns, "namespace", "", "namespace")
-
-// 	// Bootstrap k8s configuration from local 	Kubernetes config file
-// 	kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-// 	log.Println("Using kubeconfig file: ", kubeconfig)
-// 	// config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-// 	// if err != nil {
-// 	// 	log.Fatal(err)
-// 	// }
-
-// 	// //
-// 	// // This actually loades the context....
-// 	// //
-// 	// configFromMem, configLoadErr := clientcmd.Load([]byte{})
-
-// 	// if configLoadErr != nil {
-// 	// 	log.Fatal(configLoadErr)
-// 	// }
-
-// 	// spew.Dump(configFromMem)
-// 	// set-context -- Just pick one of the contexts in .Contexts using --cluser, --user, and --namespace to guide.
-// 	// configFromMem.Contexts
-
-// 	//	cmdContext := clientcmdapi.NewContext()
-// 	//	cmdContext.Cluster = "$ARN"
-// 	//	cmdContext.AuthInfo = "$ARN"     // --User
-// 	//	cmdContext.Namespace = "$KUBENV" // --namespace
-// 	//	clientcmd.Write(cmdContext)
-
-// 	// Create an rest client not targeting specific API version
-// 	clientset, err := kubernetes.NewForConfig(config)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	//	clientset.CoreV1().Secrets().Create()
-
-// 	//	clientset.CoreV1().ConfigMaps().Create()
-// 	/*
-// 		newConfigMap := clientset.CoreV1().ConfigMaps().Create()
-// 		clientset.CoreV1().Apply(newConfigMap)
-
-// 		pods, err := clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
-// 		if err != nil {
-// 			log.Fatalln("failed to get pods:", err)
-// 		}
-
-// 		// print pods
-// 		for i, pod := range pods.Items {
-// 			fmt.Printf("[%d] %s\n", i, pod.GetName())
-// 		}
-// 	*/
-// }

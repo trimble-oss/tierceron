@@ -29,7 +29,7 @@ func main() {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	fmt.Println("trcsh Version: " + "1.02")
+	fmt.Println("trcsh Version: " + "1.03")
 	if os.Geteuid() == 0 {
 		fmt.Println("Trcsh cannot be run as root.")
 		os.Exit(-1)
