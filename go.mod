@@ -41,12 +41,14 @@ require (
 	github.com/dsnet/golib/memfile v1.0.0
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/jonboulle/clockwork v0.3.0
+	github.com/spf13/pflag v1.0.5
 	github.com/trimble-oss/tierceron-hat v0.0.0-00010101000000-000000000000
-	k8s.io/api v0.20.4
-	k8s.io/apimachinery v0.20.4
-	k8s.io/cli-runtime v0.20.4
-	k8s.io/client-go v0.20.4
-	k8s.io/kubectl v0.20.4
+	k8s.io/api v0.20.15
+	k8s.io/apimachinery v0.20.15
+	k8s.io/cli-runtime v0.20.15
+	k8s.io/client-go v0.20.15
+	k8s.io/component-base v0.20.15
+	k8s.io/kubectl v0.20.15
 )
 
 require (
@@ -82,14 +84,12 @@ require (
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/russross/blackfriday v1.5.2 // indirect
 	github.com/spf13/cobra v1.2.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/component-base v0.20.4 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd // indirect
+	k8s.io/kube-openapi v0.0.0-20211110013926-83f114cd0513 // indirect
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491 // indirect
 	sigs.k8s.io/kustomize v2.0.3+incompatible // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
