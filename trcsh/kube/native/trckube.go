@@ -7,23 +7,16 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/resource"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	"k8s.io/kubectl/pkg/util"
-	"k8s.io/kubectl/pkg/util/openapi"
 
-	"github.com/jonboulle/clockwork"
 	memapply "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/apply"
 	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/factory"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
@@ -280,114 +273,19 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 	}
 }
 
-func newPatcher(o *memapply.ApplyOptions, info *resource.Info, helper *resource.Helper) (*memapply.Patcher, error) {
-	var openapiSchema openapi.Resources
-	if o.OpenAPIPatch {
-		openapiSchema = o.OpenAPISchema
-	}
-
-	return &memapply.Patcher{
-		Mapping:           info.Mapping,
-		Helper:            helper,
-		Overwrite:         o.Overwrite,
-		BackOff:           clockwork.NewRealClock(),
-		Force:             o.DeleteOptions.ForceDeletion,
-		CascadingStrategy: o.DeleteOptions.CascadingStrategy,
-		Timeout:           o.DeleteOptions.Timeout,
-		GracePeriod:       o.DeleteOptions.GracePeriod,
-		OpenapiSchema:     openapiSchema,
-		Retries:           maxPatchRetry,
-	}, nil
-}
-
 // KubeApply applies an in memory yaml file to a kubernetes cluster
 func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
+	f := memfactory.NewFactory(
+		cmdutil.NewMatchVersionFlags(genericclioptions.
+			NewConfigFlags(true).
+			WithDeprecatedPasswordFlag()),
+		config.MemCache)
+
 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
+
 	o := memapply.NewApplyOptions(ioStreams)
-	kubeConfigFlags := genericclioptions.NewConfigFlags(true).WithDeprecatedPasswordFlag()
-	matchVersionKubeConfigFlags := cmdutil.NewMatchVersionFlags(kubeConfigFlags)
-	f := memfactory.NewFactory(matchVersionKubeConfigFlags, config.MemCache)
-	memBuilder := f.NewBuilder()
-
-	cmd := memapply.NewCmdApply("kubectl", f, ioStreams)
-	fileNames := o.DeleteFlags.FileNameFlags.Filenames
-	*fileNames = append(*fileNames, trcKubeDeploymentConfig.KubeDirective.FromFilePath)
-	o.Complete(f, cmd)
-
-	r := memBuilder.
-		Unstructured().
-		Schema(o.Validator).
-		ContinueOnError().
-		NamespaceParam(o.Namespace).
-		DefaultNamespace().
-		FilenameParam(false, &o.DeleteOptions.FilenameOptions).
-		LabelSelectorParam("").
-		Flatten().
-		Do()
-
-	infos, err := r.Infos()
-	if err != nil {
-		return err
-	}
-
-	for _, info := range infos {
-		if len(info.Name) == 0 {
-			metadata, _ := meta.Accessor(info.Object)
-			generatedName := metadata.GetGenerateName()
-			if len(generatedName) > 0 {
-				fmt.Errorf("from %s: cannot use generate name with apply", generatedName)
-			}
-		}
-
-		helper := resource.NewHelper(info.Client, info.Mapping).
-			DryRun(false).
-			WithFieldManager(o.FieldManager)
-
-		// Get the modified configuration of the object. Embed the result
-		// as an annotation in the modified configuration, so that it will appear
-		// in the patch sent to the server.
-		modified, err := util.GetModifiedConfiguration(info.Object, true, unstructured.UnstructuredJSONScheme)
-		if err != nil {
-			cmdutil.AddSourceToErr(fmt.Sprintf("retrieving modified configuration from:\n%s\nfor:", info.String()), info.Source, err)
-		}
-
-		if err := info.Get(); err != nil {
-			if !errors.IsNotFound(err) {
-				cmdutil.AddSourceToErr(fmt.Sprintf("retrieving current configuration of:\n%s\nfrom server for:", info.String()), info.Source, err)
-			}
-
-			// Create the resource if it doesn't exist
-			// First, update the annotation used by kubectl apply
-			if err := util.CreateApplyAnnotation(info.Object, unstructured.UnstructuredJSONScheme); err != nil {
-				cmdutil.AddSourceToErr("creating", info.Source, err)
-			}
-
-			// Then create the resource and skip the three-way merge
-			obj, err := helper.Create(info.Namespace, true, info.Object)
-			if err != nil {
-				cmdutil.AddSourceToErr("creating", info.Source, err)
-			}
-			info.Refresh(obj, true)
-
-		}
-
-		metadata, _ := meta.Accessor(info.Object)
-		annotationMap := metadata.GetAnnotations()
-		if _, ok := annotationMap[corev1.LastAppliedConfigAnnotation]; !ok {
-			fmt.Fprintf(os.Stdout, warningNoLastAppliedConfigAnnotation, info.ObjectName(), corev1.LastAppliedConfigAnnotation, "kubectl")
-		}
-
-		patcher, err := newPatcher(o, info, helper)
-		if err != nil {
-			return err
-		}
-		patchBytes, patchedObject, err := patcher.Patch(info.Object, modified, info.Source, info.Namespace, info.Name, os.Stderr)
-		if err != nil {
-			return cmdutil.AddSourceToErr(fmt.Sprintf("applying patch:\n%s\nto:\n%v\nfor:", patchBytes, info), info.Source, err)
-		}
-
-		info.Refresh(patchedObject, true)
-	}
+	o.Complete(f, memapply.NewCmdApply("kubectl", f, ioStreams))
+	o.Run()
 
 	return nil
 }
