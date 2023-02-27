@@ -1,4 +1,4 @@
-package memresource
+package resource
 
 import (
 	"bytes"
