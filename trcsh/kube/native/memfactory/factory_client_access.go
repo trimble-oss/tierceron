@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/dsnet/golib/memfile"
-	"github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
+	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"

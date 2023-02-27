@@ -17,7 +17,7 @@ limitations under the License.
 package memfactory
 
 import (
-	"github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
+	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"

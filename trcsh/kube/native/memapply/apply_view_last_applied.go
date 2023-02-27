@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
+	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
