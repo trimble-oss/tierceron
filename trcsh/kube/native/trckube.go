@@ -25,7 +25,7 @@ import (
 
 	"github.com/jonboulle/clockwork"
 	"github.com/trimble-oss/tierceron/trcsh/kube/native/memapply"
-	"github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
+	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
