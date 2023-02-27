@@ -1,0 +1,10 @@
+#!/bin/bash
+
+
+AKS_CLUSTER=$(az aks show --resource-group {{.resource_group_name}}-{{.envshort}}-{{.locationCode}}-AKS-RG --name Tierceron-{{.envshort}}-{{.locationCode}}-AKS --query id -o tsv)
+ACCOUNT_UPN=$(az account show --query user.name -o tsv)
+ACCOUNT_ID=$(az ad user show --id $ACCOUNT_UPN --query objectId -o tsv)
+az role assignment create \
+    --assignee $ACCOUNT_ID \
+    --scope $AKS_CLUSTER \
+    --role "Azure Kubernetes Service Cluster Admin Role"
