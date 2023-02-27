@@ -379,6 +379,8 @@ func (o *ApplyOptions) Run() error {
 	if len(infos) == 0 && len(errs) == 0 {
 		return fmt.Errorf("no objects passed to apply")
 	}
+	panic("After this deploys to kubernetes cluster....   Remove when ready to test...")
+
 	// Iterate through all objects, applying each one.
 	for _, info := range infos {
 		if err := o.applyOneObject(info); err != nil {
