@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/dsnet/golib/memfile"
-	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
+	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/resource"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -98,7 +98,7 @@ func (f *factoryImpl) DynamicClient() (dynamic.Interface, error) {
 }
 
 // NewBuilder returns a new resource builder for structured api objects.
-func (f *factoryImpl) NewBuilder() *memresource.MemBuilder {
+func (f *factoryImpl) NewBuilder() *memresource.Builder {
 	builder := memresource.NewBuilder(f.clientGetter)
 	builder.MemCache = f.MemCache
 	return builder

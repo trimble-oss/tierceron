@@ -48,7 +48,7 @@ const defaultHttpGetAttempts int = 3
 // Builder provides convenience functions for taking arguments and parameters
 // from the command line and converting them to a list of resources to iterate
 // over using the Visitor interface.
-type MemBuilder struct {
+type Builder struct {
 	categoryExpanderFn resource.CategoryExpanderFunc
 
 	// mapper is set explicitly by resource builders
@@ -165,13 +165,13 @@ type resourceTuple struct {
 
 type FakeClientFunc func(version schema.GroupVersion) (resource.RESTClient, error)
 
-func NewFakeBuilder(fakeClientFn FakeClientFunc, restMapper resource.RESTMapperFunc, categoryExpander resource.CategoryExpanderFunc) *MemBuilder {
+func NewFakeBuilder(fakeClientFn FakeClientFunc, restMapper resource.RESTMapperFunc, categoryExpander resource.CategoryExpanderFunc) *Builder {
 	ret := newBuilder(nil, restMapper, categoryExpander)
 	ret.fakeClientFn = fakeClientFn
 	return ret
 }
 
-func NewMemBuilder(restClientGetter resource.RESTClientGetter) *MemBuilder {
+func NewBuilder(restClientGetter resource.RESTClientGetter) *Builder {
 	categoryExpanderFn := func() (restmapper.CategoryExpander, error) {
 		discoveryClient, err := restClientGetter.ToDiscoveryClient()
 		if err != nil {
@@ -191,8 +191,8 @@ func NewMemBuilder(restClientGetter resource.RESTClientGetter) *MemBuilder {
 // internal or unstructured must be specified.
 // TODO: Add versioned client (although versioned is still lossy)
 // TODO remove internal and unstructured mapper and instead have them set the negotiated serializer for use in the client
-func newBuilder(clientConfigFn ClientConfigFunc, restMapper resource.RESTMapperFunc, categoryExpander resource.CategoryExpanderFunc) *MemBuilder {
-	return &MemBuilder{
+func newBuilder(clientConfigFn ClientConfigFunc, restMapper resource.RESTMapperFunc, categoryExpander resource.CategoryExpanderFunc) *Builder {
+	return &Builder{
 		clientConfigFn:     clientConfigFn,
 		restMapperFn:       restMapper,
 		categoryExpanderFn: categoryExpander,
@@ -215,32 +215,16 @@ func (noopClientGetter) ToRESTMapper() (meta.RESTMapper, error) {
 }
 
 // NewLocalBuilder returns a builder that is configured not to create REST clients and avoids asking the server for results.
-func NewLocalBuilder() *MemBuilder {
+func NewLocalBuilder() *Builder {
 	return NewBuilder(noopClientGetter{}).Local()
 }
 
-func NewBuilder(restClientGetter resource.RESTClientGetter) *MemBuilder {
-	categoryExpanderFn := func() (restmapper.CategoryExpander, error) {
-		discoveryClient, err := restClientGetter.ToDiscoveryClient()
-		if err != nil {
-			return nil, err
-		}
-		return restmapper.NewDiscoveryCategoryExpander(discoveryClient), err
-	}
-
-	return newBuilder(
-		restClientGetter.ToRESTConfig,
-		(&cachingRESTMapperFunc{delegate: restClientGetter.ToRESTMapper}).ToRESTMapper,
-		(&cachingCategoryExpanderFunc{delegate: categoryExpanderFn}).ToCategoryExpander,
-	)
-}
-
-func (b *MemBuilder) Schema(schema resource.ContentValidator) *MemBuilder {
+func (b *Builder) Schema(schema resource.ContentValidator) *Builder {
 	b.schema = schema
 	return b
 }
 
-func (b *MemBuilder) AddError(err error) *MemBuilder {
+func (b *Builder) AddError(err error) *Builder {
 	if err == nil {
 		return b
 	}
@@ -254,7 +238,7 @@ func (b *MemBuilder) AddError(err error) *MemBuilder {
 // will cause an error.
 // If ContinueOnError() is set prior to this method, objects on the path that are not
 // recognized will be ignored (but logged at V(2)).
-func (b *MemBuilder) FilenameParam(enforceNamespace bool, filenameOptions *resource.FilenameOptions) *MemBuilder {
+func (b *Builder) FilenameParam(enforceNamespace bool, filenameOptions *resource.FilenameOptions) *Builder {
 	recursive := filenameOptions.Recursive
 	paths := filenameOptions.Filenames
 	for _, s := range paths {
@@ -273,7 +257,7 @@ func (b *MemBuilder) FilenameParam(enforceNamespace bool, filenameOptions *resou
 // based on the object's JSON structure which means no data is lost when the client
 // reads and then writes an object. Use this mode in preference to Internal unless you
 // are working with Go types directly.
-func (b *MemBuilder) Unstructured() *MemBuilder {
+func (b *Builder) Unstructured() *Builder {
 	if b.mapper != nil {
 		b.errs = append(b.errs, fmt.Errorf("another mapper was already selected, cannot use unstructured types"))
 		return b
@@ -291,7 +275,7 @@ func (b *MemBuilder) Unstructured() *MemBuilder {
 
 // WithScheme uses the scheme to manage typing, conversion (optional), and decoding.  If decodingVersions
 // is empty, then you can end up with internal types.  You have been warned.
-func (b *MemBuilder) WithScheme(scheme *runtime.Scheme, decodingVersions ...schema.GroupVersion) *MemBuilder {
+func (b *Builder) WithScheme(scheme *runtime.Scheme, decodingVersions ...schema.GroupVersion) *Builder {
 	if b.mapper != nil {
 		b.errs = append(b.errs, fmt.Errorf("another mapper was already selected, cannot use internal types"))
 		return b
@@ -317,7 +301,7 @@ func (b *MemBuilder) WithScheme(scheme *runtime.Scheme, decodingVersions ...sche
 }
 
 // LocalParam calls Local() if local is true.
-func (b *MemBuilder) LocalParam(local bool) *MemBuilder {
+func (b *Builder) LocalParam(local bool) *Builder {
 	if local {
 		b.Local()
 	}
@@ -325,17 +309,17 @@ func (b *MemBuilder) LocalParam(local bool) *MemBuilder {
 }
 
 // Local will avoid asking the server for results.
-func (b *MemBuilder) Local() *MemBuilder {
+func (b *Builder) Local() *Builder {
 	b.local = true
 	return b
 }
 
-func (b *MemBuilder) isLocal() bool {
+func (b *Builder) isLocal() bool {
 	return b.local
 }
 
 // Mapper returns a copy of the current mapper.
-func (b *MemBuilder) Mapper() *mapper {
+func (b *Builder) Mapper() *mapper {
 	mapper := *b.mapper
 	return &mapper
 }
@@ -344,7 +328,7 @@ func (b *MemBuilder) Mapper() *mapper {
 // input should not be used by another entity. If Stdin() is set prior to this method
 // being called, an error will be recorded as there are multiple entities trying to use
 // the single standard input stream.
-func (b *MemBuilder) StdinInUse() *MemBuilder {
+func (b *Builder) StdinInUse() *Builder {
 	if b.stdinInUse {
 		b.errs = append(b.errs, StdinMultiUseError)
 	}
@@ -356,7 +340,7 @@ func (b *MemBuilder) StdinInUse() *MemBuilder {
 // include the name string in the error message. If ContinueOnError() is set
 // prior to this method being called, objects in the stream that are unrecognized
 // will be ignored (but logged at V(2)).
-func (b *MemBuilder) Stream(r io.Reader, name string) *MemBuilder {
+func (b *Builder) Stream(r io.Reader, name string) *Builder {
 	b.stream = true
 	b.paths = append(b.paths, NewStreamVisitor(r, b.mapper, name, b.schema))
 	return b
@@ -367,7 +351,7 @@ func (b *MemBuilder) Stream(r io.Reader, name string) *MemBuilder {
 // FileVisitor is streaming the content to a StreamVisitor. If ContinueOnError() is set
 // prior to this method being called, objects on the path that are unrecognized will be
 // ignored (but logged at V(2)).
-func (b *MemBuilder) Path(recursive bool, paths ...string) *MemBuilder {
+func (b *Builder) Path(recursive bool, paths ...string) *Builder {
 	for _, p := range paths {
 		_, err := os.Stat(p)
 		if os.IsNotExist(err) {
@@ -397,14 +381,14 @@ func (b *MemBuilder) Path(recursive bool, paths ...string) *MemBuilder {
 
 // ResourceTypes is a list of types of resources to operate on, when listing objects on
 // the server or retrieving objects that match a selector.
-func (b *MemBuilder) ResourceTypes(types ...string) *MemBuilder {
+func (b *Builder) ResourceTypes(types ...string) *Builder {
 	b.resources = append(b.resources, types...)
 	return b
 }
 
 // ResourceNames accepts a default type and one or more names, and creates tuples of
 // resources
-func (b *MemBuilder) ResourceNames(resource string, names ...string) *MemBuilder {
+func (b *Builder) ResourceNames(resource string, names ...string) *Builder {
 	for _, name := range names {
 		// See if this input string is of type/name format
 		tuple, ok, err := splitResourceTypeName(name)
@@ -431,7 +415,7 @@ func (b *MemBuilder) ResourceNames(resource string, names ...string) *MemBuilder
 // LabelSelectorParam defines a selector that should be applied to the object types to load.
 // This will not affect files loaded from disk or URL. If the parameter is empty it is
 // a no-op - to select all resources invoke `b.LabelSelector(labels.Everything.String)`.
-func (b *MemBuilder) LabelSelectorParam(s string) *MemBuilder {
+func (b *Builder) LabelSelectorParam(s string) *Builder {
 	selector := strings.TrimSpace(s)
 	if len(selector) == 0 {
 		return b
@@ -445,7 +429,7 @@ func (b *MemBuilder) LabelSelectorParam(s string) *MemBuilder {
 
 // LabelSelector accepts a selector directly and will filter the resulting list by that object.
 // Use LabelSelectorParam instead for user input.
-func (b *MemBuilder) LabelSelector(selector string) *MemBuilder {
+func (b *Builder) LabelSelector(selector string) *Builder {
 	if len(selector) == 0 {
 		return b
 	}
@@ -457,7 +441,7 @@ func (b *MemBuilder) LabelSelector(selector string) *MemBuilder {
 // FieldSelectorParam defines a selector that should be applied to the object types to load.
 // This will not affect files loaded from disk or URL. If the parameter is empty it is
 // a no-op - to select all resources.
-func (b *MemBuilder) FieldSelectorParam(s string) *MemBuilder {
+func (b *Builder) FieldSelectorParam(s string) *Builder {
 	s = strings.TrimSpace(s)
 	if len(s) == 0 {
 		return b
@@ -472,21 +456,21 @@ func (b *MemBuilder) FieldSelectorParam(s string) *MemBuilder {
 
 // NamespaceParam accepts the namespace that these resources should be
 // considered under from - used by DefaultNamespace() and RequireNamespace()
-func (b *MemBuilder) NamespaceParam(namespace string) *MemBuilder {
+func (b *Builder) NamespaceParam(namespace string) *Builder {
 	b.namespace = namespace
 	return b
 }
 
 // DefaultNamespace instructs the builder to set the namespace value for any object found
 // to NamespaceParam() if empty.
-func (b *MemBuilder) DefaultNamespace() *MemBuilder {
+func (b *Builder) DefaultNamespace() *Builder {
 	b.defaultNamespace = true
 	return b
 }
 
 // AllNamespaces instructs the builder to metav1.NamespaceAll as a namespace to request resources
 // across all of the namespace. This overrides the namespace set by NamespaceParam().
-func (b *MemBuilder) AllNamespaces(allNamespace bool) *MemBuilder {
+func (b *Builder) AllNamespaces(allNamespace bool) *Builder {
 	if allNamespace {
 		b.namespace = metav1.NamespaceAll
 	}
@@ -497,7 +481,7 @@ func (b *MemBuilder) AllNamespaces(allNamespace bool) *MemBuilder {
 // RequireNamespace instructs the builder to set the namespace value for any object found
 // to NamespaceParam() if empty, and if the value on the resource does not match
 // NamespaceParam() an error will be returned.
-func (b *MemBuilder) RequireNamespace() *MemBuilder {
+func (b *Builder) RequireNamespace() *Builder {
 	b.requireNamespace = true
 	return b
 }
@@ -505,20 +489,20 @@ func (b *MemBuilder) RequireNamespace() *MemBuilder {
 // RequestChunksOf attempts to load responses from the server in batches of size limit
 // to avoid long delays loading and transferring very large lists. If unset defaults to
 // no chunking.
-func (b *MemBuilder) RequestChunksOf(chunkSize int64) *MemBuilder {
+func (b *Builder) RequestChunksOf(chunkSize int64) *Builder {
 	b.limitChunks = chunkSize
 	return b
 }
 
 // TransformRequests alters API calls made by clients requested from this builder. Pass
 // an empty list to clear modifiers.
-func (b *MemBuilder) TransformRequests(opts ...resource.RequestTransform) *MemBuilder {
+func (b *Builder) TransformRequests(opts ...resource.RequestTransform) *Builder {
 	b.requestTransforms = opts
 	return b
 }
 
 // SelectEverythingParam
-func (b *MemBuilder) SelectAllParam(selectAll bool) *MemBuilder {
+func (b *Builder) SelectAllParam(selectAll bool) *Builder {
 	if selectAll && (b.labelSelector != nil || b.fieldSelector != nil) {
 		b.errs = append(b.errs, fmt.Errorf("setting 'all' parameter but found a non empty selector. "))
 		return b
@@ -532,7 +516,7 @@ func (b *MemBuilder) SelectAllParam(selectAll bool) *MemBuilder {
 // received, the types provided will be retrieved from the server (and be comma delimited).
 // When two or more arguments are received, they must be a single type and resource name(s).
 // The allowEmptySelector permits to select all the resources (via Everything func).
-func (b *MemBuilder) ResourceTypeOrNameArgs(allowEmptySelector bool, args ...string) *MemBuilder {
+func (b *Builder) ResourceTypeOrNameArgs(allowEmptySelector bool, args ...string) *Builder {
 	args = normalizeMultipleResourcesArgs(args)
 	if ok, err := hasCombinedTypeArgs(args); ok {
 		if err != nil {
@@ -577,7 +561,7 @@ func (b *MemBuilder) ResourceTypeOrNameArgs(allowEmptySelector bool, args ...str
 
 // ReplaceAliases accepts an argument and tries to expand any existing
 // aliases found in it
-func (b *MemBuilder) ReplaceAliases(input string) string {
+func (b *Builder) ReplaceAliases(input string) string {
 	replaced := []string{}
 	for _, arg := range strings.Split(input, ",") {
 		if b.categoryExpanderFn == nil {
@@ -668,19 +652,19 @@ func splitResourceTypeName(s string) (resourceTuple, bool, error) {
 // Flatten will convert any objects with a field named "Items" that is an array of runtime.Object
 // compatible types into individual entries and give them their own items. The original object
 // is not passed to any visitors.
-func (b *MemBuilder) Flatten() *MemBuilder {
+func (b *Builder) Flatten() *Builder {
 	b.flatten = true
 	return b
 }
 
 // Latest will fetch the latest copy of any objects loaded from URLs or files from the server.
-func (b *MemBuilder) Latest() *MemBuilder {
+func (b *Builder) Latest() *Builder {
 	b.latest = true
 	return b
 }
 
 // RequireObject ensures that resulting infos have an object set. If false, resulting info may not have an object set.
-func (b *MemBuilder) RequireObject(require bool) *MemBuilder {
+func (b *Builder) RequireObject(require bool) *Builder {
 	b.requireObject = require
 	return b
 }
@@ -688,14 +672,14 @@ func (b *MemBuilder) RequireObject(require bool) *MemBuilder {
 // ContinueOnError will attempt to load and visit as many objects as possible, even if some visits
 // return errors or some objects cannot be loaded. The default behavior is to terminate after
 // the first error is returned from a VisitorFunc.
-func (b *MemBuilder) ContinueOnError() *MemBuilder {
+func (b *Builder) ContinueOnError() *Builder {
 	b.continueOnError = true
 	return b
 }
 
 // SingleResourceType will cause the builder to error if the user specifies more than a single type
 // of resource.
-func (b *MemBuilder) SingleResourceType() *MemBuilder {
+func (b *Builder) SingleResourceType() *Builder {
 	b.singleResourceType = true
 	return b
 }
@@ -703,7 +687,7 @@ func (b *MemBuilder) SingleResourceType() *MemBuilder {
 // mappingFor returns the RESTMapping for the Kind given, or the Kind referenced by the resource.
 // Prefers a fully specified GroupVersionResource match. If one is not found, we match on a fully
 // specified GroupVersionKind, or fallback to a match on GroupKind.
-func (b *MemBuilder) mappingFor(resourceOrKindArg string) (*meta.RESTMapping, error) {
+func (b *Builder) mappingFor(resourceOrKindArg string) (*meta.RESTMapping, error) {
 	fullySpecifiedGVR, groupResource := schema.ParseResourceArg(resourceOrKindArg)
 	gvk := schema.GroupVersionKind{}
 	restMapper, err := b.restMapperFn()
@@ -749,7 +733,7 @@ func (b *MemBuilder) mappingFor(resourceOrKindArg string) (*meta.RESTMapping, er
 	return mapping, nil
 }
 
-func (b *MemBuilder) resourceMappings() ([]*meta.RESTMapping, error) {
+func (b *Builder) resourceMappings() ([]*meta.RESTMapping, error) {
 	if len(b.resources) > 1 && b.singleResourceType {
 		return nil, fmt.Errorf("you may only specify a single resource type")
 	}
@@ -771,7 +755,7 @@ func (b *MemBuilder) resourceMappings() ([]*meta.RESTMapping, error) {
 	return mappings, nil
 }
 
-func (b *MemBuilder) resourceTupleMappings() (map[string]*meta.RESTMapping, error) {
+func (b *Builder) resourceTupleMappings() (map[string]*meta.RESTMapping, error) {
 	mappings := make(map[string]*meta.RESTMapping)
 	canonical := make(map[schema.GroupVersionResource]struct{})
 	for _, r := range b.resourceTuples {
@@ -792,7 +776,7 @@ func (b *MemBuilder) resourceTupleMappings() (map[string]*meta.RESTMapping, erro
 	return mappings, nil
 }
 
-func (b *MemBuilder) visitorResult() *Result {
+func (b *Builder) visitorResult() *Result {
 	if len(b.errs) > 0 {
 		return &Result{err: utilerrors.NewAggregate(b.errs)}
 	}
@@ -834,7 +818,7 @@ func (b *MemBuilder) visitorResult() *Result {
 	return &Result{err: missingResourceError}
 }
 
-func (b *MemBuilder) visitBySelector() *Result {
+func (b *Builder) visitBySelector() *Result {
 	result := &Result{
 		targetsSingleItems: false,
 	}
@@ -884,7 +868,7 @@ func (b *MemBuilder) visitBySelector() *Result {
 	return result
 }
 
-func (b *MemBuilder) getClient(gv schema.GroupVersion) (resource.RESTClient, error) {
+func (b *Builder) getClient(gv schema.GroupVersion) (resource.RESTClient, error) {
 	var (
 		client resource.RESTClient
 		err    error
@@ -906,7 +890,7 @@ func (b *MemBuilder) getClient(gv schema.GroupVersion) (resource.RESTClient, err
 	return resource.NewClientWithOptions(client, b.requestTransforms...), nil
 }
 
-func (b *MemBuilder) visitByResource() *Result {
+func (b *Builder) visitByResource() *Result {
 	// if b.singleItemImplied is false, this could be by default, so double-check length
 	// of resourceTuples to determine if in fact it is singleItemImplied or not
 	isSingleItemImplied := b.singleItemImplied
@@ -988,7 +972,7 @@ func (b *MemBuilder) visitByResource() *Result {
 	return result
 }
 
-func (b *MemBuilder) visitByName() *Result {
+func (b *Builder) visitByName() *Result {
 	result := &Result{
 		singleItemImplied:  len(b.names) == 1,
 		targetsSingleItems: true,
@@ -1045,7 +1029,7 @@ func (b *MemBuilder) visitByName() *Result {
 	return result
 }
 
-func (b *MemBuilder) visitByPaths() *Result {
+func (b *Builder) visitByPaths() *Result {
 	result := &Result{
 		singleItemImplied:  !b.dir && !b.stream && len(b.paths) == 1,
 		targetsSingleItems: true,
@@ -1096,7 +1080,7 @@ func (b *MemBuilder) visitByPaths() *Result {
 // The visitor will respect the error behavior specified by ContinueOnError. Note that stream
 // inputs are consumed by the first execution - use Infos() or Object() on the Result to capture a list
 // for further iteration.
-func (b *MemBuilder) Do() *Result {
+func (b *Builder) Do() *Result {
 	r := b.visitorResult()
 	r.mapper = b.Mapper()
 	if r.err != nil {

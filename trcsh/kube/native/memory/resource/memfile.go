@@ -18,14 +18,14 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 )
 
-// FileVisitor is wrapping around a StreamVisitor, to handle open/close files
-type MemFileVisitor struct {
+// MemoryFileVisitor is wrapping around a StreamVisitor, to handle open/close files
+type MemoryFileVisitor struct {
 	MemFile *memfile.File
 	*StreamVisitor
 }
 
 // Visit in a FileVisitor is just taking care of opening/closing files
-func (v *MemFileVisitor) Visit(fn resource.VisitorFunc) error {
+func (v *MemoryFileVisitor) Visit(fn resource.VisitorFunc) error {
 	// TODO: Consider adding a flag to force to UTF16, apparently some
 	// Windows tools don't write the BOM
 	utf16bom := unicode.BOMOverride(unicode.UTF8.NewDecoder())
@@ -47,7 +47,7 @@ func ignoreFile(path string, extensions []string) bool {
 	return true
 }
 
-func (b *MemBuilder) ExpandPathsToFileVisitors(paths string, recursive bool, extensions []string) ([]resource.Visitor, error) {
+func (b *Builder) ExpandPathsToFileVisitors(paths string, recursive bool, extensions []string) ([]resource.Visitor, error) {
 	var visitors []resource.Visitor
 	err := filepath.Walk(paths, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
@@ -67,7 +67,7 @@ func (b *MemBuilder) ExpandPathsToFileVisitors(paths string, recursive bool, ext
 			}
 		}
 
-		visitor := &MemFileVisitor{
+		visitor := &MemoryFileVisitor{
 			MemFile:       memFile,
 			StreamVisitor: NewStreamVisitor(nil, b.mapper, path, b.schema),
 		}

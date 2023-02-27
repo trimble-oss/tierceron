@@ -30,8 +30,8 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/spf13/cobra"
-	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
-	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
+	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/factory"
+	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/resource"
 	"k8s.io/klog/v2"
 
 	corev1 "k8s.io/api/core/v1"
