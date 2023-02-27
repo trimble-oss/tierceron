@@ -18,8 +18,8 @@ package memapply
 
 import (
 	"github.com/spf13/cobra"
-	memeditor "github.com/trimble-oss/tierceron/trcsh/kube/native/memeditor"
-	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
+	memeditor "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/editor"
+	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/factory"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"

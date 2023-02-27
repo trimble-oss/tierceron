@@ -22,8 +22,8 @@ import (
 	"net/http"
 
 	"github.com/spf13/cobra"
-	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
-	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
+	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/factory"
+	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/resource"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -74,7 +74,7 @@ type ApplyOptions struct {
 	PruneWhitelist  []string
 
 	Validator     validation.Schema
-	Builder       *memresource.MemBuilder
+	Builder       *memresource.Builder
 	Mapper        meta.RESTMapper
 	DynamicClient dynamic.Interface
 	OpenAPISchema openapi.Resources

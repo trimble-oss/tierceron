@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
-	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
+	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/factory"
+	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/resource"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -56,7 +56,7 @@ type SetLastAppliedOptions struct {
 	shortOutput                  bool
 	output                       string
 	patchBufferList              []PatchBuffer
-	builder                      *memresource.MemBuilder
+	builder                      *memresource.Builder
 	unstructuredClientForMapping func(mapping *meta.RESTMapping) (resource.RESTClient, error)
 
 	genericclioptions.IOStreams

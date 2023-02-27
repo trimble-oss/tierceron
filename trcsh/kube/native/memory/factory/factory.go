@@ -17,7 +17,7 @@ limitations under the License.
 package memfactory
 
 import (
-	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
+	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/resource"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -52,7 +52,7 @@ type Factory interface {
 
 	// NewBuilder returns an object that assists in loading objects from both disk and the server
 	// and which implements the common patterns for CLI interactions with generic resources.
-	NewBuilder() *memresource.MemBuilder
+	NewBuilder() *memresource.Builder
 
 	// Returns a RESTClient for working with the specified RESTMapping or an error. This is intended
 	// for working with arbitrary resources and is not guaranteed to point to a Kubernetes APIServer.

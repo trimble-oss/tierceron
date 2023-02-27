@@ -24,8 +24,8 @@ import (
 	"k8s.io/kubectl/pkg/util/openapi"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/trimble-oss/tierceron/trcsh/kube/native/memapply"
-	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
+	memapply "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/apply"
+	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/factory"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
