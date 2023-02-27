@@ -16,7 +16,7 @@ limitations under the License.
 
 // this file contains factories with no other dependencies
 
-package memfactory
+package factory
 
 import (
 	"sync"
