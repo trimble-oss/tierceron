@@ -1,10 +1,10 @@
 locals {
-  locationCode          = var.resource_group_location == "East US 2" ? "EUS2" : "WUS2"
-  envshort              = "dev-qa"
-  productenv            = "${upper(local.envshort)}"
+  locationCode          = var.locationCode
+  envshort              = "${lower(var.envshort)}"
+  productenv            = var.envshort
   max_count             = 4
   min_count             = 1
-  rgname                = "${var.resource_group_name}-${local.productenv}-${local.locationCode}-AKS-RG"
+  rgname                = "${var.resource_group_name}-${upper(var.envshort)}-${var.locationCode}-AKS-RG"
 }
 
 resource "azurerm_resource_group" "rg" {
@@ -24,7 +24,7 @@ data "azurerm_virtual_network" "virtual-network" {
 }
 
 resource "azurerm_kubernetes_cluster" "tierceron_aks_cluster" {
-  name                = "Tierceron-${local.productenv}-${local.locationCode}-AKS"
+  name                = "Tierceron-${var.productenv}-${local.locationCode}-AKS"
   location            = var.resource_group_location
   resource_group_name = local.rgname
   dns_prefix          = "${var.dnsprefix}"
