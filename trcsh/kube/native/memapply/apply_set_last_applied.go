@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
-	"github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
+	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memfactory"
+	memresource "github.com/trimble-oss/tierceron/trcsh/kube/native/memresource"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
