@@ -284,6 +284,9 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConf
 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 
 	flags := apply.NewApplyFlags(ioStreams)
+	fileNamesPtr := flags.DeleteFlags.FileNameFlags.Filenames
+	*fileNamesPtr = append(*fileNamesPtr, trcKubeDeploymentConfig.KubeDirective.FromFilePath)
+
 	o, err := flags.ToOptions(f, apply.NewCmdApply("kubectl", f, ioStreams), "kubectl", []string{})
 	if err != nil {
 		return err
