@@ -1,1 +1,0 @@
-This package is a shameless refactor k8s.io/cli-runtime/pkg/resource in order to support in memory files.

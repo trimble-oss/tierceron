@@ -15,10 +15,10 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/kubectl/pkg/cmd/apply"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
-	memapply "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/apply"
-	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/factory"
+	"github.com/trimble-oss/tierceron/trcsh/kube/native/path"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
@@ -275,16 +275,19 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 
 // KubeApply applies an in memory yaml file to a kubernetes cluster
 func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
-	f := memfactory.NewFactory(
+	f := cmdutil.NewFactory(
 		cmdutil.NewMatchVersionFlags(genericclioptions.
 			NewConfigFlags(true).
 			WithDeprecatedPasswordFlag()),
-		config.MemCache)
+		&path.MemPathVisitor{MemCache: config.MemCache})
 
 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 
-	o := memapply.NewApplyOptions(ioStreams)
-	o.Complete(f, memapply.NewCmdApply("kubectl", f, ioStreams))
+	flags := apply.NewApplyFlags(ioStreams)
+	o, err := flags.ToOptions(f, apply.NewCmdApply("kubectl", f, ioStreams), "kubectl", []string{})
+	if err != nil {
+		return err
+	}
 	o.Run()
 
 	return nil
