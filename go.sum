@@ -729,8 +729,8 @@ github.com/trimble-oss/cli-runtime v0.0.1 h1:pj66JHHoi/tZNb+C2HxGw62iDmQKP+hZ4z9
 github.com/trimble-oss/cli-runtime v0.0.1/go.mod h1:vHZb1K0wxLPJhnJVfdZCh8PJomSsJgd4olTvxLqZt+0=
 github.com/trimble-oss/go-mysql-server v0.12.0-1.6 h1:MSaLKPO+FyLkcFGK12Qx03ouU/BLmf1lYFstH4tdz/0=
 github.com/trimble-oss/go-mysql-server v0.12.0-1.6/go.mod h1:qQReFVsJ0CPJLxX3lAuZxYWi6T4twzErI//D2bSSttY=
-github.com/trimble-oss/kubectl v0.0.1 h1:wwHuZrJ5Dt6n1GekVKkOB5T6jeS7YBi2foKm01SZjbQ=
-github.com/trimble-oss/kubectl v0.0.1/go.mod h1:V+ivAn0PvtBhgnjiBq1rk9EcijMNmAbD+Bc4SrMFP50=
+github.com/trimble-oss/kubectl v0.0.2 h1:FT03z2btqp7S0j/wNUmue2zo4b2mCx/+aXxfPhl8A7Y=
+github.com/trimble-oss/kubectl v0.0.2/go.mod h1:V+ivAn0PvtBhgnjiBq1rk9EcijMNmAbD+Bc4SrMFP50=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
 github.com/twitchtv/twirp v5.12.1+incompatible h1:UnrJ4Z8llkdjnQbLqJBWRBwaDGojBsU5lft3DrD/SvY=
 github.com/twitchtv/twirp v5.12.1+incompatible/go.mod h1:RRJoFSAmTEh2weEqWtpPE3vFK5YBhA6bqp2l1kfCC5A=
