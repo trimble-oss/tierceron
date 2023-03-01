@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/klog/v2"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -45,6 +46,8 @@ type TrcKubeDirective struct {
 }
 
 type TrcKubeConfig struct {
+	// .kube/config
+	KubeConfigBytes []byte
 	// .kube/config is parsed into these fields...
 	RestConfig *rest.Config
 	ApiConfig  *clientcmdapi.Config
@@ -90,7 +93,7 @@ func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*TrcKube
 		kubeConfig.Contexts = map[string]*clientcmdapi.Context{}
 	}
 
-	return &TrcKubeConfig{RestConfig: restConfig, ApiConfig: kubeConfig}, nil
+	return &TrcKubeConfig{KubeConfigBytes: kubeConfigBytes, RestConfig: restConfig, ApiConfig: kubeConfig}, nil
 }
 
 func InitTrcKubeConfig(trcshConfig *trcshauth.TrcShConfig, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
@@ -275,10 +278,50 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 
 // KubeApply applies an in memory yaml file to a kubernetes cluster
 func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
+	configFlags := genericclioptions.
+		NewConfigFlags(true).
+		WithDeprecatedPasswordFlag()
+	configFlags.KubeConfigLoader = func(filename string) (*clientcmdapi.Config, error) {
+		var kubeconfigBytes []byte
+		var err error
+		if len(trcKubeDeploymentConfig.KubeConfigBytes) > 0 {
+			kubeconfigBytes = trcKubeDeploymentConfig.KubeConfigBytes
+		}
+		config, err := clientcmd.Load(kubeconfigBytes)
+		if err != nil {
+			return nil, err
+		}
+		klog.V(6).Infoln("Config loaded from file: ", filename)
+
+		// set LocationOfOrigin on every Cluster, User, and Context
+		for key, obj := range config.AuthInfos {
+			obj.LocationOfOrigin = filename
+			config.AuthInfos[key] = obj
+		}
+		for key, obj := range config.Clusters {
+			obj.LocationOfOrigin = filename
+			config.Clusters[key] = obj
+		}
+		for key, obj := range config.Contexts {
+			obj.LocationOfOrigin = filename
+			config.Contexts[key] = obj
+		}
+
+		if config.AuthInfos == nil {
+			config.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
+		}
+		if config.Clusters == nil {
+			config.Clusters = map[string]*clientcmdapi.Cluster{}
+		}
+		if config.Contexts == nil {
+			config.Contexts = map[string]*clientcmdapi.Context{}
+		}
+
+		return config, nil
+	}
+
 	f := cmdutil.NewFactory(
-		cmdutil.NewMatchVersionFlags(genericclioptions.
-			NewConfigFlags(true).
-			WithDeprecatedPasswordFlag()),
+		cmdutil.NewMatchVersionFlags(configFlags),
 		&path.MemPathVisitor{MemCache: config.MemCache})
 
 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
