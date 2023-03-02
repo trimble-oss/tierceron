@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -51,6 +53,12 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	versionData := make(map[string]interface{})
 	if config.Token != "novault" {
 		if valid, errValidateEnvironment := modCheck.ValidateEnvironment(config.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
+			if errValidateEnvironment != nil {
+				if _, sErrOk := errValidateEnvironment.(*url.Error).Err.(*tls.CertificateVerificationError); sErrOk {
+					return nil, eUtils.LogAndSafeExit(config, "Invalid certificate.", 1)
+				}
+			}
+
 			if unrestrictedValid, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(config.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
 				return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
 			}

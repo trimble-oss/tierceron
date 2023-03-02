@@ -292,14 +292,14 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 
 				if hasCertDefinition && hasCertSourcePath {
 					if !ok {
-						vaultCertErr := errors.New("No certDestPath in config template section of seed for this service. Unable to generate cert.pfx")
+						vaultCertErr := errors.New("No certDestPath in config template section of seed for this service. Unable to generate: " + certDestPath.(string))
 						eUtils.LogErrorMessage(config, vaultCertErr.Error(), false)
 						return "", nil, vaultCertErr
 					}
 					certData[0] = certDestPath.(string)
 					data, ok := valueData["certData"].(interface{})
 					if !ok {
-						vaultCertErr := errors.New("No certData in config template section of seed for this service. Unable to generate cert.pfx")
+						vaultCertErr := errors.New("No certData in config template section of seed for this service. Unable to generate: " + certDestPath.(string))
 						eUtils.LogInfo(config, vaultCertErr.Error())
 						return "", nil, vaultCertErr
 					}
