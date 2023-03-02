@@ -11,8 +11,7 @@ pr:
     exclude:
     - releases/comprehensive/1.0.0
 
-pool:
-  vmImage: 'ubuntu-latest'
+pool: 'TierceronPool'
 resources:
   repositories:
   - repository: VaultConfig.Bootstrap
