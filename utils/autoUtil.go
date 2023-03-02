@@ -282,6 +282,9 @@ func AutoAuth(config *DriverConfig,
 		} else if appRoleConfig == "configdeploy.yml" {
 			tokenNamePrefix = "vault_token_deploy"
 			goto skipswitch
+		} else if appRoleConfig == "deployauth" {
+			tokenNamePrefix = "vault_token_azuredeploy"
+			goto skipswitch
 		}
 		switch env {
 		case "dev":
@@ -347,6 +350,9 @@ func AutoAuth(config *DriverConfig,
 		} else if appRoleConfig == "configdeploy.yml" {
 			mod.RawEnv = "deploy"
 			mod.Env = "deploy"
+		} else if appRoleConfig == "deployauth" {
+			mod.RawEnv = "azuredeploy"
+			mod.Env = "azuredeploy"
 		}
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {
