@@ -29,6 +29,7 @@ func main() {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
+	eUtils.InitHeadless(true)
 	fmt.Println("trcsh Version: " + "1.03")
 
 	if os.Geteuid() == 0 {
