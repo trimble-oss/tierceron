@@ -45,6 +45,11 @@ resources:
     endpoint: trimble-oss
     name: trimble-oss/tierceron-hat
     ref: main
+  - repository: client-go
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/client-go
+    ref: main
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
@@ -71,6 +76,7 @@ steps:
 - checkout: VaultConfig.TenantConfig
 - checkout: VaultConfig.Test
 - checkout: tierceron-hat
+- checkout: client-go
 - checkout: self
 - task: Cache@2
   inputs:
