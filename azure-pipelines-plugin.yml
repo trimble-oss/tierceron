@@ -23,9 +23,8 @@ pr:
     - develop
     - releases/comprehensive/1.0.0
     - releases/legacy/*
-
-pool:
-  vmImage: 'ubuntu-latest'
+    
+pool: 'TierceronPool'
 resources:
   repositories:
   - repository: VaultConfig.Bootstrap

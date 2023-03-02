@@ -16,8 +16,7 @@ pr:
     exclude:
     - main
 
-pool:
-  vmImage: 'ubuntu-latest'
+pool: 'TierceronPool'
 resources:
   repositories:
   - repository: VaultConfig.Bootstrap
