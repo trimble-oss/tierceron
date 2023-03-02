@@ -150,10 +150,14 @@ func ProcessDeploy(env string, token string, trcPath string) {
 					deployArgs = append(deployArgs, tempArgs...)
 				}
 			} else {
-				deployArgs = deployArgs[1:]
+				if control != "kubectl" {
+					deployArgs = deployArgs[1:]
+				}
 			}
 			if control != "kubectl" {
 				os.Args = append(os.Args, deployArgs...)
+			} else {
+				os.Args = deployArgs
 			}
 		}
 
@@ -205,18 +209,20 @@ func ProcessDeploy(env string, token string, trcPath string) {
 			})
 
 			// Placeholder.
-			if deployArgs[0] == "config" {
-				trcKubeDeploymentConfig.KubeContext = kube.ParseTrcKubeContext(trcKubeDeploymentConfig.KubeContext, deployArgs[1:])
-			} else if deployArgs[0] == "create" {
-				trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
-				kube.CreateKubeResource(trcKubeDeploymentConfig, config)
-			} else if deployArgs[0] == "apply" {
-				trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
-				kube.KubeApply(trcKubeDeploymentConfig, config)
-			}
+			// if deployArgs[0] == "config" {
+			// 	trcKubeDeploymentConfig.KubeContext = kube.ParseTrcKubeContext(trcKubeDeploymentConfig.KubeContext, deployArgs[1:])
+			// } else if deployArgs[0] == "create" {
+			// 	trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
+			// 	kube.CreateKubeResource(trcKubeDeploymentConfig, config)
+			// } else if deployArgs[0] == "apply" {
+			// 	trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
+			// 	kube.KubeApply(trcKubeDeploymentConfig, config)
+			// }
 
-			fmt.Println(trcKubeDeploymentConfig.RestConfig.APIPath)
-			fmt.Println(trcKubeDeploymentConfig.ApiConfig.APIVersion)
+			kube.KubeCtl(trcKubeDeploymentConfig, config)
+
+			fmt.Println(trcKubeDeploymentConfig.RestConfig)
+			fmt.Println(trcKubeDeploymentConfig.ApiConfig)
 			//spew.Dump(kubeRestConfig)
 			//spew.Dump(kubeApiConfig)
 
