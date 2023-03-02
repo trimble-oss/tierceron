@@ -10,13 +10,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/resource"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/component-base/cli"
 	"k8s.io/klog/v2"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/kubectl/pkg/cmd"
 	"k8s.io/kubectl/pkg/cmd/apply"
+	"k8s.io/kubectl/pkg/cmd/plugin"
+	"k8s.io/kubectl/pkg/cmd/util"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
 	"github.com/trimble-oss/tierceron/trcsh/kube/native/path"
@@ -50,7 +55,7 @@ type TrcKubeConfig struct {
 	KubeConfigBytes []byte
 	// .kube/config is parsed into these fields...
 	RestConfig *rest.Config
-	ApiConfig  *clientcmdapi.Config
+	ApiConfig  map[string]*clientcmdapi.Config
 
 	// config context stuff..
 	KubeContext *TrcKubeContext
@@ -59,41 +64,43 @@ type TrcKubeConfig struct {
 }
 
 func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
-	kubeConfig, err := clientcmd.Load(kubeConfigBytes)
-	if err != nil {
-		return nil, err
-	}
+	// kubeConfig, err := clientcmd.Load(kubeConfigBytes)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	restConfig, restErr := clientcmd.RESTConfigFromKubeConfig(kubeConfigBytes)
-	if restErr != nil {
-		eUtils.LogErrorObject(config, restErr, false)
-	}
+	// restConfig, restErr := clientcmd.RESTConfigFromKubeConfig(kubeConfigBytes)
+	// if restErr != nil {
+	// 	eUtils.LogErrorObject(config, restErr, false)
+	// }
 
-	// set LocationOfOrigin on every Cluster, User, and Context
-	for key, obj := range kubeConfig.AuthInfos {
-		obj.LocationOfOrigin = ".kube/config"
-		kubeConfig.AuthInfos[key] = obj
-	}
-	for key, obj := range kubeConfig.Clusters {
-		obj.LocationOfOrigin = ".kube/config"
-		kubeConfig.Clusters[key] = obj
-	}
-	for key, obj := range kubeConfig.Contexts {
-		obj.LocationOfOrigin = ".kube/config"
-		kubeConfig.Contexts[key] = obj
-	}
+	// // set LocationOfOrigin on every Cluster, User, and Context
+	// for key, obj := range kubeConfig.AuthInfos {
+	// 	obj.LocationOfOrigin = ".kube/config"
+	// 	kubeConfig.AuthInfos[key] = obj
+	// }
+	// for key, obj := range kubeConfig.Clusters {
+	// 	obj.LocationOfOrigin = ".kube/config"
+	// 	kubeConfig.Clusters[key] = obj
+	// }
+	// for key, obj := range kubeConfig.Contexts {
+	// 	obj.LocationOfOrigin = ".kube/config"
+	// 	kubeConfig.Contexts[key] = obj
+	// }
 
-	if kubeConfig.AuthInfos == nil {
-		kubeConfig.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
-	}
-	if kubeConfig.Clusters == nil {
-		kubeConfig.Clusters = map[string]*clientcmdapi.Cluster{}
-	}
-	if kubeConfig.Contexts == nil {
-		kubeConfig.Contexts = map[string]*clientcmdapi.Context{}
-	}
+	// if kubeConfig.AuthInfos == nil {
+	// 	kubeConfig.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
+	// }
+	// if kubeConfig.Clusters == nil {
+	// 	kubeConfig.Clusters = map[string]*clientcmdapi.Cluster{}
+	// }
+	// if kubeConfig.Contexts == nil {
+	// 	kubeConfig.Contexts = map[string]*clientcmdapi.Context{}
+	// }
 
-	return &TrcKubeConfig{KubeConfigBytes: kubeConfigBytes, RestConfig: restConfig, ApiConfig: kubeConfig}, nil
+	trcConfig := &TrcKubeConfig{KubeConfigBytes: kubeConfigBytes, ApiConfig: map[string]*clientcmdapi.Config{}}
+
+	return trcConfig, nil
 }
 
 func InitTrcKubeConfig(trcshConfig *trcshauth.TrcShConfig, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
@@ -274,6 +281,75 @@ func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.D
 			//			clientset.ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), configMap, updateOptions)
 		}
 	}
+}
+
+func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
+	configFlags := genericclioptions.NewConfigFlags(true).
+		WithDeprecatedPasswordFlag().
+		WithDiscoveryBurst(300).
+		WithDiscoveryQPS(50.0)
+
+	configFlags.KubeConfigLoader = func(filename string) (*clientcmdapi.Config, error) {
+		var kubeconfigBytes []byte
+		var err error
+		if apiConfig, apiConfigOk := trcKubeDeploymentConfig.ApiConfig[filename]; apiConfigOk {
+			return apiConfig, nil
+		}
+
+		if len(trcKubeDeploymentConfig.KubeConfigBytes) > 0 {
+			kubeconfigBytes = trcKubeDeploymentConfig.KubeConfigBytes
+		}
+		config, err := clientcmd.Load(kubeconfigBytes)
+		if err != nil {
+			return nil, err
+		}
+		klog.V(6).Infoln("Config loaded from file: ", filename)
+
+		// set LocationOfOrigin on every Cluster, User, and Context
+		for key, obj := range config.AuthInfos {
+			obj.LocationOfOrigin = filename
+			config.AuthInfos[key] = obj
+		}
+		for key, obj := range config.Clusters {
+			obj.LocationOfOrigin = filename
+			config.Clusters[key] = obj
+		}
+		for key, obj := range config.Contexts {
+			obj.LocationOfOrigin = filename
+			config.Contexts[key] = obj
+		}
+
+		if config.AuthInfos == nil {
+			config.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
+		}
+		if config.Clusters == nil {
+			config.Clusters = map[string]*clientcmdapi.Cluster{}
+		}
+		if config.Contexts == nil {
+			config.Contexts = map[string]*clientcmdapi.Context{}
+		}
+
+		trcKubeDeploymentConfig.ApiConfig[filename] = config
+
+		return config, nil
+	}
+	configFlags.PathVisitorLoader = func() resource.PathVisitor {
+		return &path.MemPathVisitor{MemCache: config.MemCache}
+	}
+
+	command := cmd.NewDefaultKubectlCommandWithArgs(cmd.KubectlOptions{
+		PluginHandler: cmd.NewDefaultPluginHandler(plugin.ValidPluginFilenamePrefixes),
+		Arguments:     os.Args,
+		ConfigFlags:   configFlags,
+		IOStreams:     genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr},
+	})
+
+	if err := cli.RunNoErrOutput(command); err != nil {
+		// Pretty-print the error and exit with an error.
+		util.CheckErr(err)
+	}
+
+	return nil
 }
 
 // KubeApply applies an in memory yaml file to a kubernetes cluster
