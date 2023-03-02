@@ -30,6 +30,7 @@ func main() {
 		mlock.Mlock(nil)
 	}
 	fmt.Println("trcsh Version: " + "1.03")
+
 	if os.Geteuid() == 0 {
 		fmt.Println("Trcsh cannot be run as root.")
 		os.Exit(-1)
@@ -38,14 +39,19 @@ func main() {
 	}
 	envPtr := flag.String("env", "", "Environment to be seeded")      //If this is blank -> use context otherwise override context.
 	trcPathPtr := flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
+	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
+	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
 
 	flag.Parse()
 
+	mlock.Mlock2(nil, secretIDPtr)
+	mlock.Mlock2(nil, appRoleIDPtr)
+
 	//Open deploy script and parse it.
-	ProcessDeploy(*envPtr, "", *trcPathPtr)
+	ProcessDeploy(*envPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
 }
 
-func ProcessDeploy(env string, token string, trcPath string) {
+func ProcessDeploy(env string, token string, trcPath string, secretId *string, approleId *string) {
 	var err error
 	agentToken := false
 	if token != "" {
@@ -80,6 +86,15 @@ func ProcessDeploy(env string, token string, trcPath string) {
 		os.Exit(-1)
 	}
 
+	var auth string
+	authTokenName := "vault_token_azuredeploy"
+	authTokenEnv := "azuredeploy"
+	autoErr := eUtils.AutoAuth(config, secretId, approleId, &auth, &authTokenName, &authTokenEnv, &config.VaultAddress, &config.EnvRaw, "deployauth", false)
+	if autoErr != nil || auth == "" {
+		fmt.Println("Unable to auth.")
+		fmt.Println(autoErr)
+		os.Exit(-1)
+	}
 	if len(os.Args) > 1 || len(trcPath) > 0 {
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
