@@ -82,7 +82,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	}
 	trcshConfig, err := trcshauth.TrcshAuth(config)
 	if err != nil {
-		fmt.Println(err)
+		logger.Println(err)
 		os.Exit(-1)
 	}
 
