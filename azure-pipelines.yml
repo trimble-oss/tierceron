@@ -22,8 +22,7 @@ pr:
     - main
     - releases/plugin/*
 
-pool:
-  vmImage: 'ubuntu-latest'
+pool: 'TierceronPool'
 resources:
   repositories:
   - repository: VaultConfig.Bootstrap
