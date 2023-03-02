@@ -39,7 +39,7 @@ resources:
     type: github
     endpoint: trimble-oss
     name: trimble-oss/client-go
-    ref: main
+    ref: pathvisitor
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
