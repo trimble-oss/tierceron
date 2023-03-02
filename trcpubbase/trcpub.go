@@ -36,7 +36,7 @@ func CommonMain(envPtr *string,
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"pub.log", "Output path for log files")
-	configFilePtr := flag.String("", "config.yml", "Name of auth config file - example.yml")
+	appRolePtr := flag.String("", "config.yml", "Name of auth config file - example.yml")
 
 	if c == nil || !c.IsShell {
 		flag.Parse()
@@ -48,7 +48,7 @@ func CommonMain(envPtr *string,
 	if c != nil {
 		configBase = c
 		*insecurePtr = configBase.Insecure
-		*configFilePtr = configBase.FileFilter[0]
+		*appRolePtr = configBase.AppRoleConfig
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"pub.log" {
@@ -60,7 +60,7 @@ func CommonMain(envPtr *string,
 		eUtils.CheckError(configBase, err, true)
 	}
 
-	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRolePtr, *pingPtr)
 	eUtils.CheckError(configBase, autoErr, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {

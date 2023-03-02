@@ -42,3 +42,7 @@ variable "docker_bridge_cidr" {
   type = string
   default = "{{.docker_bridge_cidr}}"
 }
+
+variable "dns_service_ip" {
+    default = "{{.dns_service_ip}}"
+}
