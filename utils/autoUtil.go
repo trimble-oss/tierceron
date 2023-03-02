@@ -102,6 +102,9 @@ func AutoAuth(config *DriverConfig,
 			appRoleConfig = "config.yml"
 		}
 		if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
+			if config.IsShell {
+				return errors.New("Required azure deploy approle and secret are missing.")
+			}
 			if _, err := os.Stat(userHome + "/.tierceron/" + appRoleConfig); !os.IsNotExist(err) {
 				exists = true
 				_, configErr := c.getConfig(config.Log, appRoleConfig)
