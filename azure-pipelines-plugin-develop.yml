@@ -93,28 +93,36 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install  -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcsh
+    echo $(GOCACHE)
+
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcsh
     if [[ ! -f $GOBIN/trcsh ]] ; then
         echo File trcsh was not built, aborting.
         exit 1
     fi
 
     echo "Compile Agent plugin trc-vault-carrier-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install  -tags "tc memonly awsecr insecure" -o $GOBIN/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/trcvault/plugins/carrier
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install -ldflags '-w' -tags "tc memonly awsecr insecure" github.com/trimble-oss/tierceron/trcvault/plugins/carrier
+    mv $GOBIN/carrier $GOBIN/trc-vault-carrier-plugin
+
     if [[ ! -f $GOBIN/trc-vault-carrier-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo "Compile Test Linux trc-vault-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install  -tags "tc harbinger memonly" -o $GOBIN/trc-vault-plugin github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install -ldflags '-w' -tags "tc harbinger memonly" github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
+    mv  $GOBIN/trcdb $GOBIN/trc-vault-plugin
+
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
     fi
 
     echo "Compile Prod Linux trc-vault-plugin-prod"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install  -tags "tc memonly prod" -o $GOBIN/trc-vault-plugin-prod github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install -ldflags '-w' -tags "tc memonly prod" github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
+    mv  $GOBIN/trcdb $GOBIN/trc-vault-plugin-prod
+
     if [[ ! -f $GOBIN/trc-vault-plugin-prod ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
