@@ -78,25 +78,33 @@ steps:
     mkdir -p '$(modulePath)'
     shopt -s extglob
     shopt -s dotglob
-    mv !(gopath) '$(modulePath)'
     echo '##vso[task.prependpath]$(GOBIN)'
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
 - checkout: VaultConfig.Bootstrap
+  clean: false
 - checkout: VaultConfig.TenantConfig
+  clean: false
 - checkout: VaultConfig.Test
+  clean: false
 - checkout: tierceron-hat
+  clean: false
 - checkout: client-go
+  clean: false
 - checkout: cli-runtime
+  clean: false
 - checkout: kubectl
+  clean: false
 - checkout: self
-- task: Cache@2
-  inputs:
-    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
-    restoreKeys: | 
-      go | "$(Agent.OS)"
-    path: $(GO_CACHE_DIR)
-  displayName: Cache GO packages
+  clean: false
+# Possibly enable for multi agent, but not convinced worth it...
+#- task: Cache@2
+#  inputs:
+#    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
+#    restoreKeys: | 
+#      go | "$(Agent.OS)"
+#    path: $(GO_CACHE_DIR)
+#  displayName: Cache GO packages
 - script: |
     go version
     pwd
