@@ -182,7 +182,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 					return errors.Join(errors.New("Group ID lookup failure"), azureGIDConvErr)
 				}
 				os.Chown(agentPath, -1, azureDeployGID)
-				agentFileMode = os.FileMode(1750)
+				agentFileMode = os.FileMode(0750)
 			}
 
 			if imageFile, err := os.Open(agentPath); err == nil {
