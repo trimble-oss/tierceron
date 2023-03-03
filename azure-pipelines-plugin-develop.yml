@@ -75,17 +75,17 @@ steps:
 - checkout: VaultConfig.TenantConfig
 - checkout: VaultConfig.Test
 - checkout: tierceron-hat
+- checkout: client-go
+- checkout: cli-runtime
+- checkout: kubectl
 - checkout: self
 - task: Cache@2
   inputs:
-    key: 'go | "$(Agent.OS)" | go.mod'
+    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
     restoreKeys: | 
       go | "$(Agent.OS)"
     path: $(GO_CACHE_DIR)
   displayName: Cache GO packages
-- checkout: client-go
-- checkout: cli-runtime
-- checkout: kubectl
 - script: |
     go version
     pwd
