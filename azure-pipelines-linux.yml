@@ -119,7 +119,7 @@ steps:
     echo Compiling trc-vault-plugin
     GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "tc memonly" github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
     mv $GOBIN/trcdb $GOBIN/trc-vault-plugin
-    
+
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
@@ -144,8 +144,8 @@ steps:
     cp $GOBIN/apiRouter $(Build.ArtifactStagingDirectory)
     cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
-  displayName: 'Get dependencies, then build'
-
+  displayName: 'Build - get dependencies when needed.'
+  
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'

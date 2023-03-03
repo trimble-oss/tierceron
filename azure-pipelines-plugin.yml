@@ -163,7 +163,7 @@ steps:
     cp $GOBIN/trc-vault-plugin.sha256  $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin-prod.sha256  $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
-  displayName: 'Get dependencies, then build'
+  displayName: 'Build - get dependencies when needed.'
 - task: SnykSecurityScan@1
   inputs:
     serviceConnectionEndpoint: 'Spectrum Snyk'
