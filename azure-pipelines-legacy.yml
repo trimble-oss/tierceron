@@ -163,7 +163,6 @@ steps:
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/vaultconfig.mac
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
-
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
