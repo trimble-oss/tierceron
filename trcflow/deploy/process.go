@@ -188,10 +188,12 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			if imageFile, err := os.Open(agentPath); err == nil {
 				chdModErr := imageFile.Chmod(agentFileMode)
 				if chdModErr != nil {
-					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not give permission to image in file system.", false)
+					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not give permission to image in file system.  Bailing..", false)
+					return nil
 				}
 			} else {
 				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not open image in file system to give permissions.", false)
+				return nil
 			}
 
 			// TODO: setcap more directly using kernel lib if possible...
