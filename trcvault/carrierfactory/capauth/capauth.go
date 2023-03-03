@@ -2,7 +2,11 @@ package capauth
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
+	"os"
+	"os/user"
+	"strconv"
 	"sync"
 
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
@@ -14,6 +18,32 @@ import (
 )
 
 var onceMemo sync.Once
+
+// CheckNotSudo -- checks if current user is sudoer and exits if they are.
+func CheckNotSudo() {
+	sudoer, sudoErr := user.LookupGroup("sudo")
+	if sudoErr != nil {
+		fmt.Println("Trcsh unable to definitively identify sudoers.")
+		os.Exit(-1)
+	}
+	sudoerGid, sudoConvErr := strconv.Atoi(sudoer.Gid)
+	if sudoConvErr != nil {
+		fmt.Println("Trcsh unable to definitively identify sudoers.  Conversion error.")
+		os.Exit(-1)
+	}
+	groups, groupErr := os.Getgroups()
+	if groupErr != nil {
+		fmt.Println("Trcsh unable to definitively identify sudoers.  Missing groups.")
+		os.Exit(-1)
+	}
+	for _, groupId := range groups {
+		if groupId == sudoerGid {
+			fmt.Println("Trcsh cannot be run with user having sudo privileges.")
+			os.Exit(-1)
+		}
+	}
+
+}
 
 func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) error {
 
@@ -35,16 +65,13 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 				}
 				retryCap++
 			}
-			logger.Println("Mad hat cap failure with error: " + err.Error())
+			logger.Println("Mad hat cap failure.")
 		}()
-		logger.Println("Memorizing")
-		go MemorizeAndStart(pluginConfig, logger)
 	}
 	return nil
 }
 
-// Things to make available to trusted agent.
-func MemorizeAndStart(memorizeFields map[string]interface{}, logger *log.Logger) error {
+func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 	for key, value := range memorizeFields {
 		switch key {
 		case "vaddress", "pubrole", "configrole", "kubeconfig":
@@ -54,6 +81,10 @@ func MemorizeAndStart(memorizeFields map[string]interface{}, logger *log.Logger)
 			logger.Println("Skipping key: " + key)
 		}
 	}
+}
+
+// Things to make available to trusted agent.
+func Start(logger *log.Logger) error {
 	mashupCertBytes, err := trcshauth.MashupCert.ReadFile("tls/mashup.crt")
 	if err != nil {
 		logger.Printf("Couldn't load cert: %v\n", err)
