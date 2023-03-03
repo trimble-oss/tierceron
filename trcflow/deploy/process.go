@@ -284,6 +284,10 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 					filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
 					pluginData["trcsha256"] = filesystemsha256
 					pluginData["copied"] = true
+
+					if pluginData["trctype"].(string) == "agent" {
+						pluginData["deployed"] = true
+					}
 				}
 			} else {
 				return errors.New("Plugin not certified.")
