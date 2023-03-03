@@ -13,7 +13,6 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/utils/mlock"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
-	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 )
 
 // Reads in template files in specified directory
@@ -37,19 +36,19 @@ func CommonMain(envPtr *string,
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"pub.log", "Output path for log files")
-	configFilePtr := flag.String("", "config.yml", "Name of auth config file - example.yml")
+	appRolePtr := flag.String("", "config.yml", "Name of auth config file - example.yml")
 
 	if c == nil || !c.IsShell {
 		flag.Parse()
 	} else {
-		flag.CommandLine.Parse(os.Args[2:])
+		flag.CommandLine.Parse(nil)
 	}
 
 	var configBase *eUtils.DriverConfig
 	if c != nil {
 		configBase = c
 		*insecurePtr = configBase.Insecure
-		*configFilePtr = configBase.FileFilter[0]
+		*appRolePtr = configBase.AppRoleConfig
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"pub.log" {
@@ -61,36 +60,7 @@ func CommonMain(envPtr *string,
 		eUtils.CheckError(configBase, err, true)
 	}
 
-	if len(*tokenNamePtr) > 0 {
-		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
-			eUtils.CheckError(configBase, fmt.Errorf("Need both public and secret app role to retrieve token from vault"), true)
-		}
-		v, err := sys.NewVault(*insecurePtr, *addrPtr, *envPtr, false, *pingPtr, false, configBase.Log)
-		if v != nil {
-			defer v.Close()
-		}
-		eUtils.CheckError(configBase, err, true)
-
-		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
-		eUtils.CheckError(configBase, err, true)
-
-		mod, err := helperkv.NewModifier(*insecurePtr, master, *addrPtr, *envPtr, nil, true, configBase.Log)
-		if mod != nil {
-			defer mod.Release()
-		}
-		eUtils.CheckError(configBase, err, true)
-		mod.RawEnv = "bamboo"
-		mod.Env = "bamboo"
-
-		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
-		eUtils.CheckError(configBase, err, true)
-	}
-	if memonly.IsMemonly() {
-		mlock.MunlockAll(nil)
-		mlock.Mlock2(nil, tokenPtr)
-	}
-
-	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *configFilePtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRolePtr, *pingPtr)
 	eUtils.CheckError(configBase, autoErr, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
