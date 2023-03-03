@@ -171,7 +171,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				eUtils.LogErrorMessage(config, pluginName+": PluginDeployFlow failure: Could not write out download image.", false)
 			}
 
-			agentFileMode := os.FileMode(0750)
 			if vaultPluginSignature["trctype"] == "agent" {
 				azureDeployGroup, azureDeployGroupErr := user.LookupGroup("azuredeploy")
 				if azureDeployGroupErr != nil {
@@ -182,11 +181,10 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 					return errors.Join(errors.New("Group ID lookup failure"), azureGIDConvErr)
 				}
 				os.Chown(agentPath, -1, azureDeployGID)
-				agentFileMode = os.FileMode(0750)
 			}
 
 			if imageFile, err := os.Open(agentPath); err == nil {
-				chdModErr := imageFile.Chmod(agentFileMode)
+				chdModErr := imageFile.Chmod(0750)
 				if chdModErr != nil {
 					eUtils.LogErrorMessage(config, pluginName+": PluginDeployFlow failure: Could not give permission to image in file system.  Bailing..", false)
 					return nil
