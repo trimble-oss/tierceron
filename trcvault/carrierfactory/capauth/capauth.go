@@ -2,7 +2,11 @@ package capauth
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
+	"os"
+	"os/user"
+	"strconv"
 	"sync"
 
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
@@ -14,6 +18,32 @@ import (
 )
 
 var onceMemo sync.Once
+
+// CheckNotSudo -- checks if current user is sudoer and exits if they are.
+func CheckNotSudo() {
+	sudoer, sudoErr := user.LookupGroup("sudo")
+	if sudoErr != nil {
+		fmt.Println("Trcsh unable to definitively identify sudoers.")
+		os.Exit(-1)
+	}
+	sudoerGid, sudoConvErr := strconv.Atoi(sudoer.Gid)
+	if sudoConvErr != nil {
+		fmt.Println("Trcsh unable to definitively identify sudoers.  Conversion error.")
+		os.Exit(-1)
+	}
+	groups, groupErr := os.Getgroups()
+	if groupErr != nil {
+		fmt.Println("Trcsh unable to definitively identify sudoers.  Missing groups.")
+		os.Exit(-1)
+	}
+	for _, groupId := range groups {
+		if groupId == sudoerGid {
+			fmt.Println("Trcsh cannot be run with user having sudo privileges.")
+			os.Exit(-1)
+		}
+	}
+
+}
 
 func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) error {
 

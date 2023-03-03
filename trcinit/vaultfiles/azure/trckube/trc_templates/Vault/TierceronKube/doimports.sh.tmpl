@@ -1,0 +1,5 @@
+#!/bin/bash
+
+terraform import azurerm_resource_group.trg /subscriptions/{{.azure_subscription}}/resourceGroups/{{.resource_group_name_trg}}
+terraform import azurerm_virtual_network.clusterSubnet /subscriptions/{{.azure_subscription}}/resourceGroups/{{.resource_group_name_trg}}/providers/Microsoft.Network/virtualNetworks/{{.VN_name}}
+terraform import azurerm_subnet.clusterSubnet /subscriptions/{{.azure_subscription}}/resourceGroups/{{.resource_group_name_trg}}/providers/Microsoft.Network/virtualNetworks/{{.VN_name}}/subnets/{{.VN_subnet_name}}
