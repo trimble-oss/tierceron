@@ -100,8 +100,6 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    echo $(GOCACHE)
-
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install -a -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcsh
     if [[ ! -f $GOBIN/trcsh ]] ; then
         echo File trcsh was not built, aborting.
