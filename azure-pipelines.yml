@@ -22,8 +22,7 @@ pr:
     - main
     - releases/plugin/*
 
-pool:
-  vmImage: 'ubuntu-latest'
+pool: 'TierceronPool'
 resources:
   repositories:
   - repository: VaultConfig.Bootstrap
@@ -46,6 +45,21 @@ resources:
     endpoint: trimble-oss
     name: trimble-oss/tierceron-hat
     ref: main
+  - repository: client-go
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/client-go
+    ref: pathvisitor
+  - repository: cli-runtime
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/cli-runtime
+    ref: pathvisitor
+  - repository: kubectl
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/kubectl
+    ref: pathvisitor
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
@@ -72,6 +86,9 @@ steps:
 - checkout: VaultConfig.TenantConfig
 - checkout: VaultConfig.Test
 - checkout: tierceron-hat
+- checkout: client-go
+- checkout: cli-runtime
+- checkout: kubectl
 - checkout: self
 - task: Cache@2
   inputs:
