@@ -10,6 +10,7 @@ pr:
     - main
     exclude:
     - releases/comprehensive/1.0.0
+    - releases/plugin/*
 
 pool: 'TierceronPool'
 resources:
