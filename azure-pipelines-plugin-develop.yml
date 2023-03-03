@@ -78,7 +78,7 @@ steps:
 - checkout: cli-runtime
 - checkout: kubectl
 - checkout: self
-  exclude: pkg
+  clean: false
 - task: Cache@2
   inputs:
     key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
