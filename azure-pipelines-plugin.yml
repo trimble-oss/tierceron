@@ -99,13 +99,14 @@ steps:
   clean: false
 - checkout: self
   clean: false
-- task: Cache@2
-  inputs:
-    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
-    restoreKeys: | 
-      go | "$(Agent.OS)"
-    path: $(GO_CACHE_DIR)
-  displayName: Cache GO packages
+# Possibly enable for multi agent, but not convinced worth it...
+#- task: Cache@2
+#  inputs:
+#    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
+#    restoreKeys: | 
+#      go | "$(Agent.OS)"
+#    path: $(GO_CACHE_DIR)
+#  displayName: Cache GO packages
 - script: |
     go version
     pwd
