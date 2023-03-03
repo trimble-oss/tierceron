@@ -78,25 +78,33 @@ steps:
     mkdir -p '$(modulePath)'
     shopt -s extglob
     shopt -s dotglob
-    mv !(gopath) '$(modulePath)'
     echo '##vso[task.prependpath]$(GOBIN)'
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
 - checkout: VaultConfig.Bootstrap
+  clean: false
 - checkout: VaultConfig.TenantConfig
+  clean: false
 - checkout: VaultConfig.Test
+  clean: false
 - checkout: tierceron-hat
+  clean: false
 - checkout: client-go
+  clean: false
 - checkout: cli-runtime
+  clean: false
 - checkout: kubectl
+  clean: false
 - checkout: self
-- task: Cache@2
-  inputs:
-    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
-    restoreKeys: | 
-      go | "$(Agent.OS)"
-    path: $(GO_CACHE_DIR)
-  displayName: Cache GO packages
+  clean: false
+# Possibly enable for multi agent, but not convinced worth it...
+#- task: Cache@2
+#  inputs:
+#    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
+#    restoreKeys: | 
+#      go | "$(Agent.OS)"
+#    path: $(GO_CACHE_DIR)
+#  displayName: Cache GO packages
 - script: |
     go version
     pwd
@@ -104,7 +112,7 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "azure memonly tc vaultname" -a -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "azure memonly tc vaultname" -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
@@ -114,7 +122,7 @@ steps:
     done
 
     echo "Compile Windows"
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "tc vaultname" -a -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcx,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "tc vaultname" -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcx,trcsub}
     for p in trcconfig trcpub trcinit trcx trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
@@ -124,7 +132,7 @@ steps:
     done
 
     echo "Compile Mac"
-    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "azure memonly tc vaultname" -a -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcx,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "azure memonly tc vaultname" -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcx,trcsub}
     for p in trcconfig trcpub trcx trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
@@ -154,8 +162,18 @@ steps:
     cp $GOBIN/windows_amd64/trcpub.exe $(Build.ArtifactStagingDirectory)/vaultpub.exe
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/vaultconfig.mac
   workingDirectory: '$(modulePath)'
-  displayName: 'Get dependencies, then build'
-
+  displayName: 'Build - get dependencies when needed.'
+- task: SnykSecurityScan@1
+  inputs:
+    serviceConnectionEndpoint: 'Spectrum Snyk'
+    testType: 'app'
+    monitorWhen: 'always'
+    failOnIssues: false
+    testDirectory: '$(modulePath)'
+    targetFile: go.mod
+    projectName: 'Tierceron'
+    organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
+    additionalArguments: '-d'
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
