@@ -2,6 +2,13 @@
 # Build your Go project.
 # Add steps that test, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/go
+trigger:
+  branches:
+    exclude:
+    - main
+    - releases/comprehensive/1.0.0
+    - releases/plugin/*
+    - releases/legacy/*
 
 pr:
   branches:
