@@ -16,8 +16,7 @@ pr:
     exclude:
     - main
 
-pool:
-  vmImage: 'ubuntu-latest'
+pool: 'TierceronPool'
 resources:
   repositories:
   - repository: VaultConfig.Bootstrap
@@ -40,6 +39,21 @@ resources:
     endpoint: trimble-oss
     name: trimble-oss/tierceron-hat
     ref: main
+  - repository: client-go
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/client-go
+    ref: pathvisitor
+  - repository: cli-runtime
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/cli-runtime
+    ref: pathvisitor
+  - repository: kubectl
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/kubectl
+    ref: pathvisitor
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
@@ -52,29 +66,40 @@ steps:
 
 - task: GoTool@0
   inputs:
-    version: '1.20'
+    version: '1.20.1'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
     mkdir -p '$(modulePath)'
     shopt -s extglob
     shopt -s dotglob
-    mv !(gopath) '$(modulePath)'
     echo '##vso[task.prependpath]$(GOBIN)'
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
 - checkout: VaultConfig.Bootstrap
+  clean: false
 - checkout: VaultConfig.TenantConfig
+  clean: false
 - checkout: VaultConfig.Test
+  clean: false
 - checkout: tierceron-hat
+  clean: false
+- checkout: client-go
+  clean: false
+- checkout: cli-runtime
+  clean: false
+- checkout: kubectl
+  clean: false
 - checkout: self
-- task: Cache@2
-  inputs:
-    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
-    restoreKeys: | 
-      go | "$(Agent.OS)"
-    path: $(GO_CACHE_DIR)
-  displayName: Cache GO packages
+  clean: false
+# Possibly enable for multi agent, but not convinced worth it...
+#- task: Cache@2
+#  inputs:
+#    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
+#    restoreKeys: | 
+#      go | "$(Agent.OS)"
+#    path: $(GO_CACHE_DIR)
+#  displayName: Cache GO packages
 - script: |
     go version
     pwd
@@ -92,7 +117,9 @@ steps:
     done
 
     echo Compiling trc-vault-plugin
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build  -tags "tc memonly" -o $GOBIN/trc-vault-plugin github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "tc memonly" github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
+    mv $GOBIN/trcdb $GOBIN/trc-vault-plugin
+
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
         echo File trc vault plugin was not built, aborting.
         exit 1
@@ -117,8 +144,18 @@ steps:
     cp $GOBIN/apiRouter $(Build.ArtifactStagingDirectory)
     cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
-  displayName: 'Get dependencies, then build'
-
+  displayName: 'Build - get dependencies when needed.'
+- task: SnykSecurityScan@1
+  inputs:
+    serviceConnectionEndpoint: 'Spectrum Snyk'
+    testType: 'app'
+    monitorWhen: 'always'
+    failOnIssues: false
+    testDirectory: '$(modulePath)'
+    targetFile: go.mod
+    projectName: 'Tierceron'
+    organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
+    additionalArguments: '-d'  
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
