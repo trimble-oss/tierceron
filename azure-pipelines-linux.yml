@@ -145,7 +145,17 @@ steps:
     cp $GOBIN/nc.so $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
-  
+- task: SnykSecurityScan@1
+  inputs:
+    serviceConnectionEndpoint: 'Spectrum Snyk'
+    testType: 'app'
+    monitorWhen: 'always'
+    failOnIssues: false
+    testDirectory: '$(modulePath)'
+    targetFile: go.mod
+    projectName: 'Tierceron'
+    organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
+    additionalArguments: '-d'  
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
