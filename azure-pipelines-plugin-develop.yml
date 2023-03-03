@@ -71,12 +71,19 @@ steps:
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
 - checkout: VaultConfig.Bootstrap
+  clean: false
 - checkout: VaultConfig.TenantConfig
+  clean: false
 - checkout: VaultConfig.Test
+  clean: false
 - checkout: tierceron-hat
+  clean: false
 - checkout: client-go
+  clean: false
 - checkout: cli-runtime
+  clean: false
 - checkout: kubectl
+  clean: false
 - checkout: self
   clean: false
 - task: Cache@2
