@@ -173,8 +173,8 @@ steps:
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/trcconfig.mac
     cp $GOBIN/darwin_amd64/trcinit $(Build.ArtifactStagingDirectory)/trcinit.mac
   workingDirectory: '$(modulePath)'
-  displayName: 'Get dependencies, then build'
-
+  displayName: 'Build - get dependencies when needed.'
+  
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
