@@ -46,10 +46,18 @@ func main() {
 	}
 	envPtr := flag.String("env", "", "Environment to be seeded")      //If this is blank -> use context otherwise override context.
 	trcPathPtr := flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
-	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
+	secretIDPtr := flag.String("secretID", "", "App role secret")
 
 	flag.Parse()
+
+	if len(*appRoleIDPtr) == 0 {
+		*appRoleIDPtr = os.Getenv("DEPLOY_ROLE")
+	}
+
+	if len(*secretIDPtr) == 0 {
+		*secretIDPtr = os.Getenv("DEPLOY_SECRET")
+	}
 
 	mlock.Mlock2(nil, secretIDPtr)
 	mlock.Mlock2(nil, appRoleIDPtr)
