@@ -104,6 +104,10 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	if ptcErr != nil {
 		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
 	}
+	if vaultPluginSignature["deployed"].(bool) && vaultPluginSignature["copied"].(bool) {
+		eUtils.LogErrorMessage(config, "Plugin has already been deployed and copied: "+vaultPluginSignature["trcplugin"].(string), false)
+		return nil
+	}
 
 	if _, ok := vaultPluginSignature["trcplugin"]; !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
