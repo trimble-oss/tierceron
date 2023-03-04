@@ -103,7 +103,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		tokenName := "config_token_" + env
 		configEnv := env
 		config.EnvRaw = env
-
+		config.EndDir = "deploy"
 		trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &token, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
