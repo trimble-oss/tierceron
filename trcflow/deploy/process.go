@@ -115,7 +115,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure - no certification entry found.", false)
 	}
 
-	if _, ok := vaultPluginSignature["deployed"].(bool); ok && vaultPluginSignature["deployed"].(bool) {
+	if deployedVal, ok := vaultPluginSignature["deployed"].(bool); ok && deployedVal {
 		eUtils.LogErrorMessage(config, "Plugin has already been deployed and copied: "+vaultPluginSignature["trcplugin"].(string), false)
 		return nil
 	}
