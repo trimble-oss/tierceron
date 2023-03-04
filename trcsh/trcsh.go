@@ -30,13 +30,19 @@ func main() {
 		mlock.Mlock(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.03")
+	fmt.Println("trcsh Version: " + "1.04")
 
 	if os.Geteuid() == 0 {
 		fmt.Println("Trcsh cannot be run as root.")
 		os.Exit(-1)
 	} else {
 		capauth.CheckNotSudo()
+	}
+	if len(os.Args) > 1 {
+		if strings.Contains(os.Args[1], "trc") {
+			// Running as shell.
+			os.Args[1] = "-c=" + os.Args[1]
+		}
 	}
 	envPtr := flag.String("env", "", "Environment to be seeded")      //If this is blank -> use context otherwise override context.
 	trcPathPtr := flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
