@@ -231,6 +231,9 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		}
 		writeMap["copied"] = true
 		writeMap["deployed"] = false
+		if writeMap["trctype"].(string) == "agent" {
+			writeMap["deployed"] = true
+		}
 		_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
 		if err != nil {
 			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
