@@ -91,11 +91,11 @@ steps:
   clean: false
 - checkout: tierceron-hat
   clean: false
-- checkout: client-go@refs/tags/v0.0.2
+- checkout: client-go
   clean: false
-- checkout: cli-runtime@refs/tags/v0.0.3
+- checkout: cli-runtime
   clean: false
-- checkout: kubectl@refs/tags/v0.0.3
+- checkout: kubectl
   clean: false
 - checkout: self
   clean: false
