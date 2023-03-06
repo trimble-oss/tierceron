@@ -39,7 +39,7 @@ func main() {
 		capauth.CheckNotSudo()
 	}
 	if len(os.Args) > 1 {
-		if strings.Contains(os.Args[1], "trc") {
+		if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
 			// Running as shell.
 			os.Args[1] = "-c=" + os.Args[1]
 		}
