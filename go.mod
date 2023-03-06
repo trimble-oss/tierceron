@@ -239,16 +239,18 @@ replace gioui.org v0.0.0-20220318070519-8833a6738a3b => github.com/mrjrieke/gio 
 
 replace github.com/fyne-io/glfw-js v0.0.0-20220120001248-ee7290d23504 => github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb
 
-//replace k8s.io/cli-runtime v0.26.1 => ../cli-runtime
+//replace k8s.io/client-go v0.26.1 => github.com/trimble-oss/client-go v0.0.2
 
-//replace k8s.io/kubectl v0.26.1 => ../kubectl
+//replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.3
 
-//replace k8s.io/kubectl v0.26.1 => ../client-go
+//replace k8s.io/kubectl v0.26.1 => github.com/trimble-oss/kubectl v0.0.3
 
-replace k8s.io/client-go v0.26.1 => github.com/trimble-oss/client-go v0.0.2
+//Don't forget to update pipelines with the right version.
 
-replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.3
+replace k8s.io/client-go v0.26.1 => ../client-go
 
-replace k8s.io/kubectl v0.26.1 => github.com/trimble-oss/kubectl v0.0.3
+replace k8s.io/cli-runtime v0.26.1 => ../cli-runtime
+
+replace k8s.io/kubectl v0.26.1 => ../kubectl
 
 replace k8s.io/api v0.26.1 => k8s.io/api v0.0.0-20230228090259-b5b22ca1babf
