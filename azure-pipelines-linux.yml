@@ -39,21 +39,21 @@ resources:
     endpoint: trimble-oss
     name: trimble-oss/tierceron-hat
     ref: main
-#  - repository: client-go
-#    type: github
-#    endpoint: trimble-oss
-#    name: trimble-oss/client-go
-#    ref: pathvisitor
-#  - repository: cli-runtime
-#    type: github
-#    endpoint: trimble-oss
-#    name: trimble-oss/cli-runtime
-#    ref: pathvisitor
-#  - repository: kubectl
-#    type: github
-#    endpoint: trimble-oss
-#    name: trimble-oss/kubectl
-#    ref: pathvisitor
+  - repository: client-go
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/client-go
+    ref: refs/tags/v0.0.2
+  - repository: cli-runtime
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/cli-runtime
+    ref: refs/tags/v0.0.3
+  - repository: kubectl
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/kubectl
+    ref: refs/tags/v0.0.3
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
@@ -84,12 +84,12 @@ steps:
   clean: false
 - checkout: tierceron-hat
   clean: false
-#- checkout: client-go
-#  clean: false
-#- checkout: cli-runtime
-#  clean: false
-#- checkout: kubectl
-#  clean: false
+- checkout: client-go
+  clean: false
+- checkout: cli-runtime
+  clean: false
+- checkout: kubectl
+  clean: false
 - checkout: self
   clean: false
 # Possibly enable for multi agent, but not convinced worth it...
