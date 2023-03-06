@@ -776,6 +776,8 @@ github.com/tevino/abool v1.2.0/go.mod h1:qc66Pna1RiIsPa7O4Egxxs9OqkuxDX55zznh9K0
 github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/trimble-oss/cli-runtime v0.0.3 h1:Y4g31MOH0Afjj8MXQa2mS90M80iTWBWH1dXTbLQ2tF0=
 github.com/trimble-oss/cli-runtime v0.0.3/go.mod h1:vHZb1K0wxLPJhnJVfdZCh8PJomSsJgd4olTvxLqZt+0=
+github.com/trimble-oss/client-go v0.0.2 h1:7Q7krbYc+kpmoy/VOPojpcAYHmGYiWdg3l89b+YDvZA=
+github.com/trimble-oss/client-go v0.0.2/go.mod h1:3Qc+Y86+D1z30j+NDDjSW63z4Oi9VGUWgR6vujMT2yQ=
 github.com/trimble-oss/go-mysql-server v0.12.0-1.6 h1:MSaLKPO+FyLkcFGK12Qx03ouU/BLmf1lYFstH4tdz/0=
 github.com/trimble-oss/go-mysql-server v0.12.0-1.6/go.mod h1:qQReFVsJ0CPJLxX3lAuZxYWi6T4twzErI//D2bSSttY=
 github.com/trimble-oss/kubectl v0.0.3 h1:5yFiYDjQOY0RbkkJEPHPR2g6wInk4/hDheBXM1DhloY=
@@ -865,7 +867,6 @@ golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMx
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/image v0.0.0-20210504121937-7319ad40d33e/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/image v0.0.0-20210607152325-775e3b0c77b9/go.mod h1:023OzeP/+EPmXeapQh35lcL3II3LrY8Ic+EFFKVhULM=
-golang.org/x/image v0.0.0-20220601225756-64ec528b34cd h1:9NbNcTg//wfC5JskFW4Z3sqwVnjmJKHxLAol1bW2qgw=
 golang.org/x/image v0.0.0-20220601225756-64ec528b34cd/go.mod h1:doUCurBvlfPMKfmIpRIywoHmhN3VyhnoFDbvIEWF4hY=
 golang.org/x/image v0.5.0 h1:5JMiNunQeQw++mMOz48/ISeNu3Iweh/JaZU8ZLqHRrI=
 golang.org/x/image v0.5.0/go.mod h1:FVC7BI/5Ym8R25iw5OLsgshdUBbT1h5jZTpA+mvAdZ4=
