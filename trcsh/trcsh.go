@@ -30,7 +30,7 @@ func main() {
 		mlock.Mlock(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.03")
+	fmt.Println("trcsh Version: " + "1.04")
 
 	if os.Geteuid() == 0 {
 		fmt.Println("Trcsh cannot be run as root.")
@@ -38,12 +38,26 @@ func main() {
 	} else {
 		capauth.CheckNotSudo()
 	}
+	if len(os.Args) > 1 {
+		if strings.Contains(os.Args[1], "trc") {
+			// Running as shell.
+			os.Args[1] = "-c=" + os.Args[1]
+		}
+	}
 	envPtr := flag.String("env", "", "Environment to be seeded")      //If this is blank -> use context otherwise override context.
 	trcPathPtr := flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
-	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
+	secretIDPtr := flag.String("secretID", "", "App role secret")
 
 	flag.Parse()
+
+	if len(*appRoleIDPtr) == 0 {
+		*appRoleIDPtr = os.Getenv("DEPLOY_ROLE")
+	}
+
+	if len(*secretIDPtr) == 0 {
+		*secretIDPtr = os.Getenv("DEPLOY_SECRET")
+	}
 
 	mlock.Mlock2(nil, secretIDPtr)
 	mlock.Mlock2(nil, appRoleIDPtr)
@@ -103,7 +117,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		tokenName := "config_token_" + env
 		configEnv := env
 		config.EnvRaw = env
-
+		config.EndDir = "deploy"
 		trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &token, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
