@@ -47,7 +47,6 @@ if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
             echo "Deploying agent"
             trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256) -pluginType=agent
             echo "Agent has been copied and certified"
-            exit 0
         else
             trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
         fi
@@ -58,11 +57,14 @@ else
 	        echo "Deploying agent"
             trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256) -pluginType=agent
             echo "Agent has been copied and certified"
-            exit 0
         else
             trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
         fi
     fi
+fi
+
+if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then
+    exit 0
 fi
 
 if [ "$VAULT_PLUGIN_DIR" ]
