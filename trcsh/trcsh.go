@@ -250,12 +250,6 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			// }
 
 			kube.KubeCtl(trcKubeDeploymentConfig, config)
-
-			fmt.Println(trcKubeDeploymentConfig.RestConfig)
-			fmt.Println(trcKubeDeploymentConfig.ApiConfig)
-			//spew.Dump(kubeRestConfig)
-			//spew.Dump(kubeApiConfig)
-
 		}
 	}
 
