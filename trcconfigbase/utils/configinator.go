@@ -427,6 +427,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 var memCacheLock sync.Mutex
 
 func writeToFile(config *eUtils.DriverConfig, data string, path string) {
+	// TODO: Look for ${varname}  eg: ${TAG} in data...
+	// os.GetEnv("TRCENV_" + varname)
+	// strings Replace...
+
 	byteData := []byte(data)
 	//Ensure directory has been created
 	var newFile *os.File
