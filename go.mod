@@ -241,7 +241,7 @@ replace github.com/fyne-io/glfw-js v0.0.0-20220120001248-ee7290d23504 => github.
 
 //replace k8s.io/client-go v0.26.1 => github.com/trimble-oss/client-go v0.0.2
 
-//replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.3
+//replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.4
 
 //replace k8s.io/kubectl v0.26.1 => github.com/trimble-oss/kubectl v0.0.3
 
