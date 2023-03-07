@@ -432,6 +432,7 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 		tag := os.Getenv("TRCENV_TAG")
 		_, err := uuid.Parse(tag)
 		if err != nil {
+			fmt.Println("Invalid build tag")
 			eUtils.LogInfo(config, "Invalid build tag was found:"+tag+"- exiting...")
 			os.Exit(-1)
 		}
