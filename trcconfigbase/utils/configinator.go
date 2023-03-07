@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/dsnet/golib/memfile"
+	"github.com/google/uuid"
 
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/validator"
@@ -429,6 +430,11 @@ var memCacheLock sync.Mutex
 func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	if strings.Contains(data, "${TAG}") {
 		tag := os.Getenv("TRCENV_TAG")
+		_, err := uuid.Parse(tag)
+		if err != nil {
+			eUtils.LogInfo(config, "Invalid build tag was found:"+tag+"- exiting...")
+			os.Exit(-1)
+		}
 		data = strings.Replace(data, "${TAG}", tag, -1)
 	}
 
