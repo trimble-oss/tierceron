@@ -124,13 +124,13 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		if memCacheEntry, mcOk := config.MemCache[trcPath]; mcOk {
 			content = memCacheEntry.Bytes()
 		} else {
-			fmt.Println("Error could not find " + os.Args[1] + " for deployment instructions")
+			fmt.Println("Error could not find " + trcPath + " for deployment instructions")
 		}
 	} else {
 		if env == "itdev" {
-			content, err = ioutil.ReadFile(pwd + "/deploy/deploytest.trc")
+			content, err = ioutil.ReadFile(pwd + "/deploy/buildtest.trc")
 			if err != nil {
-				fmt.Println("Error could not find /deploy/deploytest.trc for deployment instructions")
+				fmt.Println("Error could not find /deploy/buildtest.trc for deployment instructions")
 			}
 		} else {
 			content, err = ioutil.ReadFile(pwd + "/deploy/deploy.trc")
