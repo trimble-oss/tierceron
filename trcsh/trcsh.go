@@ -129,6 +129,10 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		} else {
 			fmt.Println("Error could not find " + trcPath + " for deployment instructions")
 		}
+		if !agentToken {
+			token = ""
+			config.Token = token
+		}
 		if env == "itdev" {
 			config.OutputMemCache = false
 		}
@@ -225,6 +229,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			tokenConfig := ""
 			configEnv := env
 			config.EnvRaw = env
+			config.WantCerts = false
 
 			trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
 			ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
