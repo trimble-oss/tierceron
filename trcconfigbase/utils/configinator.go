@@ -7,12 +7,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/dsnet/golib/memfile"
-	"github.com/google/uuid"
 
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/validator"
@@ -431,8 +431,8 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	if strings.Contains(data, "${TAG}") {
 		tag := os.Getenv("TRCENV_TAG")
 		if len(tag) > 0 {
-			_, err := uuid.Parse(tag)
-			if err != nil {
+			matched, err := regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
+			if !matched || err != nil {
 				fmt.Println("Invalid build tag")
 				eUtils.LogInfo(config, "Invalid build tag was found:"+tag+"- exiting...")
 				os.Exit(-1)
