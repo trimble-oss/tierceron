@@ -136,6 +136,8 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		if env == "itdev" {
 			config.OutputMemCache = false
 		}
+		os.Args = []string{os.Args[0]}
+
 	} else {
 		if env == "itdev" {
 			content, err = ioutil.ReadFile(pwd + "/deploy/buildtest.trc")
@@ -204,6 +206,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 
 		switch control {
 		case "trcpub":
+			config.IsShell = false
 			config.AppRoleConfig = "configpub.yml"
 			pubRoleSlice := strings.Split(trcshConfig.PubRole, ":")
 			tokenName := "vault_pub_token_" + env
@@ -223,6 +226,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			if configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
 				config.EndDir = "deploy"
 			}
+			config.IsShell = false
 			config.AppRoleConfig = "config.yml"
 			config.FileFilter = nil
 			configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
