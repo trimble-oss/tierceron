@@ -173,6 +173,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		if len(deployArgs) > 1 {
 			envArgIndex := -1
 
+			// Supported parameters.
 			for dIndex, dArgs := range deployArgs {
 				if strings.HasPrefix(dArgs, "-env=") {
 					envArgIndex = dIndex
@@ -232,7 +233,8 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			config.WantCerts = false
 
 			trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
-			ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
+			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 
 			if !agentToken {
 				token = ""
