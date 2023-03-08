@@ -129,7 +129,9 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		} else {
 			fmt.Println("Error could not find " + trcPath + " for deployment instructions")
 		}
-		config.OutputMemCache = false
+		if env == "itdev" {
+			config.OutputMemCache = false
+		}
 	} else {
 		if env == "itdev" {
 			content, err = ioutil.ReadFile(pwd + "/deploy/buildtest.trc")
