@@ -62,8 +62,10 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 				err := cap.Tap("/home/azuredeploy/bin/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", false)
 				if err != nil {
 					logger.Println("Cap failure with error: " + err.Error())
+					retryCap++
+				} else {
+					retryCap = 0
 				}
-				retryCap++
 			}
 			logger.Println("Mad hat cap failure.")
 		}()
