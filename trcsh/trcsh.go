@@ -118,14 +118,18 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		configEnv := env
 		config.EnvRaw = env
 		config.EndDir = "deploy"
+		config.OutputMemCache = true
 		trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &token, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
 		if memCacheEntry, mcOk := config.MemCache[trcPath]; mcOk {
 			content = memCacheEntry.Bytes()
+		} else if memCacheEntry, mcOk := config.MemCache["./"+trcPath]; mcOk {
+			content = memCacheEntry.Bytes()
 		} else {
 			fmt.Println("Error could not find " + trcPath + " for deployment instructions")
 		}
+		config.OutputMemCache = false
 	} else {
 		if env == "itdev" {
 			content, err = ioutil.ReadFile(pwd + "/deploy/buildtest.trc")
