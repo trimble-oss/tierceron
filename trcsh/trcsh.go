@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dsnet/golib/memfile"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -266,7 +267,22 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			// 	kube.KubeApply(trcKubeDeploymentConfig, config)
 			// }
 
-			kube.KubeCtl(trcKubeDeploymentConfig, config)
+			kubectlErrChan := make(chan error, 1)
+
+			go func() {
+				kubectlErrChan <- kube.KubeCtl(trcKubeDeploymentConfig, config)
+			}()
+
+			select {
+			case <-time.After(15 * time.Second):
+				logger.Println("Timed out waiting for KubeCtl.")
+				os.Exit(-1)
+			case kubeErr := <-kubectlErrChan:
+				if kubeErr != nil {
+					logger.Println(kubeErr)
+					os.Exit(-1)
+				}
+			}
 		}
 	}
 
