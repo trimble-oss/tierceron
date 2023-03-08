@@ -430,11 +430,13 @@ var memCacheLock sync.Mutex
 func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	if strings.Contains(data, "${TAG}") {
 		tag := os.Getenv("TRCENV_TAG")
-		_, err := uuid.Parse(tag)
-		if err != nil {
-			fmt.Println("Invalid build tag")
-			eUtils.LogInfo(config, "Invalid build tag was found:"+tag+"- exiting...")
-			os.Exit(-1)
+		if len(tag) > 0 {
+			_, err := uuid.Parse(tag)
+			if err != nil {
+				fmt.Println("Invalid build tag")
+				eUtils.LogInfo(config, "Invalid build tag was found:"+tag+"- exiting...")
+				os.Exit(-1)
+			}
 		}
 		data = strings.Replace(data, "${TAG}", tag, -1)
 	}
