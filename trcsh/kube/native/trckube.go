@@ -367,8 +367,8 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 	}
 
 	configFlags.HandleConfigMapFromFileSources = func(configMap *corev1.ConfigMap, fileSources []string) error {
+		fmt.Printf("ConfigMap file sources: %v\n", fileSources)
 		for _, fileSource := range fileSources {
-			fmt.Printf("ConfigMap file sources: %v\n", fileSources)
 			keyName, filePath, err := kubectlutil.ParseFileSource(fileSource)
 			if err != nil {
 				return err
