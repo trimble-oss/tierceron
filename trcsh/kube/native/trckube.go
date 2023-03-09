@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,8 +24,10 @@ import (
 	"k8s.io/kubectl/pkg/cmd/plugin"
 	"k8s.io/kubectl/pkg/cmd/util"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	kubectlutil "k8s.io/kubectl/pkg/util"
 
 	"github.com/trimble-oss/tierceron/trcsh/kube/native/path"
+	"github.com/trimble-oss/tierceron/trcsh/kube/native/trccreate"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
@@ -337,6 +340,99 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 		return &path.MemPathVisitor{MemCache: config.MemCache}
 	}
 
+	configFlags.HandleSecretFromFileSources = func(secret *corev1.Secret, fileSources []string) error {
+		for _, fileSource := range fileSources {
+			keyName, filePath, err := kubectlutil.ParseFileSource(fileSource)
+			if err != nil {
+				return err
+			}
+			var data []byte
+
+			if memCacheEntry, mcOk := config.MemCache[filePath]; mcOk {
+				data = memCacheEntry.Bytes()
+			} else if memCacheEntry, mcOk := config.MemCache["./"+filePath]; mcOk {
+				data = memCacheEntry.Bytes()
+			} else {
+				return fmt.Errorf("Error could not find %s for deployment instructions", filePath)
+			}
+
+			if errs := validation.IsConfigMapKey(keyName); len(errs) != 0 {
+				return fmt.Errorf("%q is not valid key name for a Secret %s", keyName, strings.Join(errs, ";"))
+			}
+			if _, entryExists := secret.Data[keyName]; entryExists {
+				return fmt.Errorf("cannot add key %s, another key by that name already exists", keyName)
+			}
+			secret.Data[keyName] = data
+		}
+		return nil
+	}
+
+	configFlags.HandleConfigMapFromFileSources = func(configMap *corev1.ConfigMap, fileSources []string) error {
+		for _, fileSource := range fileSources {
+			keyName, filePath, err := kubectlutil.ParseFileSource(fileSource)
+			if err != nil {
+				return err
+			}
+			var data []byte
+
+			if memCacheEntry, mcOk := config.MemCache[filePath]; mcOk {
+				data = memCacheEntry.Bytes()
+			} else if memCacheEntry, mcOk := config.MemCache["./"+filePath]; mcOk {
+				data = memCacheEntry.Bytes()
+			} else {
+				return fmt.Errorf("Error could not find %s for deployment instructions", filePath)
+			}
+
+			if utf8.Valid(data) {
+				if errs := validation.IsConfigMapKey(keyName); len(errs) > 0 {
+					return fmt.Errorf("%q is not a valid key name for a ConfigMap: %s", keyName, strings.Join(errs, ","))
+				}
+				if _, exists := configMap.Data[keyName]; exists {
+					return fmt.Errorf("cannot add key %q, another key by that name already exists in Data for ConfigMap %q", keyName, configMap.Name)
+				}
+				if _, exists := configMap.BinaryData[keyName]; exists {
+					return fmt.Errorf("cannot add key %q, another key by that name already exists in BinaryData for ConfigMap %q", keyName, configMap.Name)
+				}
+				configMap.Data[keyName] = string(data)
+			}
+			if errs := validation.IsConfigMapKey(keyName); len(errs) > 0 {
+				return fmt.Errorf("%q is not a valid key name for a ConfigMap: %s", keyName, strings.Join(errs, ","))
+			}
+			if _, exists := configMap.Data[keyName]; exists {
+				return fmt.Errorf("cannot add key %q, another key by that name already exists in Data for ConfigMap %q", keyName, configMap.Name)
+			}
+			if _, exists := configMap.BinaryData[keyName]; exists {
+				return fmt.Errorf("cannot add key %q, another key by that name already exists in BinaryData for ConfigMap %q", keyName, configMap.Name)
+			}
+
+			if err != nil {
+				return err
+			}
+			configMap.BinaryData[keyName] = data
+		}
+		return nil
+	}
+
+	configFlags.HandleConfigMapFromEnvFileSources = func(configMap *corev1.ConfigMap, fileSources []string) error {
+		for _, fileSource := range fileSources {
+			var data []byte
+
+			if memCacheEntry, mcOk := config.MemCache[fileSource]; mcOk {
+				data = memCacheEntry.Bytes()
+			} else if memCacheEntry, mcOk := config.MemCache["./"+fileSource]; mcOk {
+				data = memCacheEntry.Bytes()
+			} else {
+				return fmt.Errorf("Error could not find %s for deployment instructions", fileSource)
+			}
+
+			err := trccreate.HandleConfigMapFromEnvFileSource(configMap, fileSource, data)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	command := cmd.NewDefaultKubectlCommandWithArgs(cmd.KubectlOptions{
 		PluginHandler: cmd.NewDefaultPluginHandler(plugin.ValidPluginFilenamePrefixes),
 		Arguments:     os.Args,
@@ -398,7 +494,11 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConf
 
 	f := cmdutil.NewFactory(
 		cmdutil.NewMatchVersionFlags(configFlags),
-		&path.MemPathVisitor{MemCache: config.MemCache})
+		&path.MemPathVisitor{MemCache: config.MemCache},
+		configFlags.HandleSecretFromFileSources,
+		configFlags.HandleConfigMapFromFileSources,
+		configFlags.HandleConfigMapFromEnvFileSources,
+	)
 
 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 
