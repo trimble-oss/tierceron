@@ -109,6 +109,19 @@ func AddFromMemEnvFile(filePath string, data []byte, addTo func(key, value strin
 	return nil
 }
 
+func HandleConfigMapFromFileSource(configMap *corev1.ConfigMap, keyName, filePath string, data []byte) error {
+	if utf8.Valid(data) {
+		return addKeyFromLiteralToConfigMap(configMap, keyName, string(data))
+	}
+	err := validateNewConfigMap(configMap, keyName)
+	if err != nil {
+		return err
+	}
+	configMap.BinaryData[keyName] = data
+
+	return nil
+}
+
 func HandleConfigMapFromEnvFileSource(configMap *corev1.ConfigMap, filePath string, data []byte) error {
 	err := AddFromMemEnvFile(filePath, data, func(key, value string) error {
 		return addKeyFromLiteralToConfigMap(configMap, key, value)
