@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"unicode/utf8"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -369,6 +368,7 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 
 	configFlags.HandleConfigMapFromFileSources = func(configMap *corev1.ConfigMap, fileSources []string) error {
 		for _, fileSource := range fileSources {
+			fmt.Printf("ConfigMap file sources: %v\n", fileSources)
 			keyName, filePath, err := kubectlutil.ParseFileSource(fileSource)
 			if err != nil {
 				return err
@@ -383,32 +383,9 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 				return fmt.Errorf("Error could not find %s for deployment instructions", filePath)
 			}
 
-			if utf8.Valid(data) {
-				if errs := validation.IsConfigMapKey(keyName); len(errs) > 0 {
-					return fmt.Errorf("%q is not a valid key name for a ConfigMap: %s", keyName, strings.Join(errs, ","))
-				}
-				if _, exists := configMap.Data[keyName]; exists {
-					return fmt.Errorf("cannot add key %q, another key by that name already exists in Data for ConfigMap %q", keyName, configMap.Name)
-				}
-				if _, exists := configMap.BinaryData[keyName]; exists {
-					return fmt.Errorf("cannot add key %q, another key by that name already exists in BinaryData for ConfigMap %q", keyName, configMap.Name)
-				}
-				configMap.Data[keyName] = string(data)
-			}
-			if errs := validation.IsConfigMapKey(keyName); len(errs) > 0 {
-				return fmt.Errorf("%q is not a valid key name for a ConfigMap: %s", keyName, strings.Join(errs, ","))
-			}
-			if _, exists := configMap.Data[keyName]; exists {
-				return fmt.Errorf("cannot add key %q, another key by that name already exists in Data for ConfigMap %q", keyName, configMap.Name)
-			}
-			if _, exists := configMap.BinaryData[keyName]; exists {
-				return fmt.Errorf("cannot add key %q, another key by that name already exists in BinaryData for ConfigMap %q", keyName, configMap.Name)
-			}
-
-			if err != nil {
+			if err := trccreate.HandleConfigMapFromFileSource(configMap, keyName, filePath, data); err != nil {
 				return err
 			}
-			configMap.BinaryData[keyName] = data
 		}
 		return nil
 	}
