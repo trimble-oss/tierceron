@@ -53,7 +53,7 @@ resources:
     type: github
     endpoint: trimble-oss
     name: trimble-oss/kubectl
-    ref: refs/tags/v0.0.4
+    ref: refs/tags/v0.0.5
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
