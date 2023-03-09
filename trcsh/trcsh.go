@@ -161,131 +161,136 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	var trcKubeDeploymentConfig *kube.TrcKubeConfig
 	var onceKubeInit sync.Once
 
-	for _, deployLine := range deployArgLines {
-		deployLine = strings.TrimLeft(deployLine, "")
-		if strings.HasPrefix(deployLine, "#") {
+	for _, deployPipeline := range deployArgLines {
+		deployPipeline = strings.TrimLeft(deployPipeline, "")
+		if strings.HasPrefix(deployPipeline, "#") {
 			continue
 		}
-		fmt.Println(deployLine)
-		os.Args = argsOrig
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
-
-		deployLine = strings.TrimRight(deployLine, "")
-		deployArgs := strings.Split(deployLine, " ")
-		control := deployArgs[0]
-		if len(deployArgs) > 1 {
-			envArgIndex := -1
-
-			// Supported parameters.
-			for dIndex, dArgs := range deployArgs {
-				if strings.HasPrefix(dArgs, "-env=") {
-					envArgIndex = dIndex
-					continue
-				}
+		fmt.Println(deployPipeline)
+		deployPipeSplit := strings.Split(deployPipeline, "|")
+		for deployLineIndex, deployLine := range deployPipeSplit {
+			if deployLineIndex > 0 {
+				continue
 			}
+			os.Args = argsOrig
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 
-			if envArgIndex != -1 {
-				var tempArgs []string
-				if len(deployArgs) > envArgIndex+1 {
-					tempArgs = deployArgs[envArgIndex+1:]
+			deployLine = strings.TrimRight(deployLine, "")
+			deployArgs := strings.Split(deployLine, " ")
+			control := deployArgs[0]
+			if len(deployArgs) > 1 {
+				envArgIndex := -1
+
+				// Supported parameters.
+				for dIndex, dArgs := range deployArgs {
+					if strings.HasPrefix(dArgs, "-env=") {
+						envArgIndex = dIndex
+						continue
+					}
 				}
-				deployArgs = deployArgs[1:envArgIndex]
-				if len(tempArgs) > 0 {
-					deployArgs = append(deployArgs, tempArgs...)
+
+				if envArgIndex != -1 {
+					var tempArgs []string
+					if len(deployArgs) > envArgIndex+1 {
+						tempArgs = deployArgs[envArgIndex+1:]
+					}
+					deployArgs = deployArgs[1:envArgIndex]
+					if len(tempArgs) > 0 {
+						deployArgs = append(deployArgs, tempArgs...)
+					}
+				} else {
+					if control != "kubectl" {
+						deployArgs = deployArgs[1:]
+					}
 				}
-			} else {
 				if control != "kubectl" {
-					deployArgs = deployArgs[1:]
+					os.Args = append(os.Args, deployArgs...)
+				} else {
+					os.Args = deployArgs
 				}
 			}
-			if control != "kubectl" {
-				os.Args = append(os.Args, deployArgs...)
-			} else {
-				os.Args = deployArgs
-			}
-		}
 
-		switch control {
-		case "trcpub":
-			config.IsShell = false
-			config.AppRoleConfig = "configpub.yml"
-			pubRoleSlice := strings.Split(trcshConfig.PubRole, ":")
-			tokenName := "vault_pub_token_" + env
-			tokenPub := ""
-			pubEnv := env
-			config.EnvRaw = env
+			switch control {
+			case "trcpub":
+				config.IsShell = false
+				config.AppRoleConfig = "configpub.yml"
+				pubRoleSlice := strings.Split(trcshConfig.PubRole, ":")
+				tokenName := "vault_pub_token_" + env
+				tokenPub := ""
+				pubEnv := env
+				config.EnvRaw = env
 
-			trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
-			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
-			if !agentToken {
-				token = ""
-				config.Token = token
-			}
-		case "trcconfig":
-			configCount -= 1
-			if configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
-				config.EndDir = "deploy"
-			}
-			config.IsShell = false
-			config.AppRoleConfig = "config.yml"
-			config.FileFilter = nil
-			configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
-			tokenName := "config_token_" + env
-			tokenConfig := ""
-			configEnv := env
-			config.EnvRaw = env
-			config.WantCerts = false
-
-			trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
-			ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
-
-			if !agentToken {
-				token = ""
-				config.Token = token
-			}
-		case "trcpluginctl":
-		case "kubectl":
-			onceKubeInit.Do(func() {
-				var kubeInitErr error
-				trcKubeDeploymentConfig, kubeInitErr = kube.InitTrcKubeConfig(trcshConfig, config)
-				if kubeInitErr != nil {
-					fmt.Println(kubeInitErr)
-					return
+				trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
+				ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+				flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+				if !agentToken {
+					token = ""
+					config.Token = token
 				}
-			})
+			case "trcconfig":
+				configCount -= 1
+				if configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
+					config.EndDir = "deploy"
+				}
+				config.IsShell = false
+				config.AppRoleConfig = "config.yml"
+				config.FileFilter = nil
+				configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
+				tokenName := "config_token_" + env
+				tokenConfig := ""
+				configEnv := env
+				config.EnvRaw = env
+				config.WantCerts = false
 
-			// Placeholder.
-			// if deployArgs[0] == "config" {
-			// 	trcKubeDeploymentConfig.KubeContext = kube.ParseTrcKubeContext(trcKubeDeploymentConfig.KubeContext, deployArgs[1:])
-			// } else if deployArgs[0] == "create" {
-			// 	trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
-			// 	kube.CreateKubeResource(trcKubeDeploymentConfig, config)
-			// } else if deployArgs[0] == "apply" {
-			// 	trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
-			// 	kube.KubeApply(trcKubeDeploymentConfig, config)
-			// }
+				trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
+				ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+				flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 
-			kubectlErrChan := make(chan error, 1)
+				if !agentToken {
+					token = ""
+					config.Token = token
+				}
+			case "trcpluginctl":
+			case "kubectl":
+				onceKubeInit.Do(func() {
+					var kubeInitErr error
+					trcKubeDeploymentConfig, kubeInitErr = kube.InitTrcKubeConfig(trcshConfig, config)
+					if kubeInitErr != nil {
+						fmt.Println(kubeInitErr)
+						return
+					}
+				})
 
-			go func() {
-				kubectlErrChan <- kube.KubeCtl(trcKubeDeploymentConfig, config)
-			}()
+				// Placeholder.
+				// if deployArgs[0] == "config" {
+				// 	trcKubeDeploymentConfig.KubeContext = kube.ParseTrcKubeContext(trcKubeDeploymentConfig.KubeContext, deployArgs[1:])
+				// } else if deployArgs[0] == "create" {
+				// 	trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
+				// 	kube.CreateKubeResource(trcKubeDeploymentConfig, config)
+				// } else if deployArgs[0] == "apply" {
+				// 	trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
+				// 	kube.KubeApply(trcKubeDeploymentConfig, config)
+				// }
 
-			select {
-			case <-time.After(15 * time.Second):
-				logger.Println("Timed out waiting for KubeCtl.")
-				os.Exit(-1)
-			case kubeErr := <-kubectlErrChan:
-				if kubeErr != nil {
-					logger.Println(kubeErr)
+				kubectlErrChan := make(chan error, 1)
+
+				go func() {
+					kubectlErrChan <- kube.KubeCtl(trcKubeDeploymentConfig, config)
+				}()
+
+				select {
+				case <-time.After(15 * time.Second):
+					logger.Println("Timed out waiting for KubeCtl.")
 					os.Exit(-1)
+				case kubeErr := <-kubectlErrChan:
+					if kubeErr != nil {
+						logger.Println(kubeErr)
+						os.Exit(-1)
+					}
 				}
 			}
 		}
 	}
-
 	//Make the arguments in the script -> os.args.
 
 }
