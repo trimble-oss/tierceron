@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dsnet/golib/memfile"
+	"github.com/go-git/go-billy/v5"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 )
@@ -41,7 +41,7 @@ type DriverConfig struct {
 	StartDir       []string // Starting directory. possibly multiple
 	EndDir         string
 	OutputMemCache bool
-	MemCache       map[string]*memfile.File // Where to send output.
+	MemFs          billy.Filesystem
 
 	// Config modes....
 	WantCerts  bool
