@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -10,7 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dsnet/golib/memfile"
+	"github.com/go-git/go-billy/v5"
+	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	"github.com/trimble-oss/tierceron/trcpubbase"
@@ -90,7 +93,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		Log:            logger,
 		IsShell:        true,
 		OutputMemCache: true,
-		MemCache:       map[string]*memfile.File{},
+		MemFs:          memfs.New(),
 		ExitOnFailure:  true}
 
 	if env == "itdev" {
@@ -123,13 +126,17 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &token, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
-		if memCacheEntry, mcOk := config.MemCache[trcPath]; mcOk {
-			content = memCacheEntry.Bytes()
-		} else if memCacheEntry, mcOk := config.MemCache["./"+trcPath]; mcOk {
-			content = memCacheEntry.Bytes()
+		var memFile billy.File
+		var memFileErr error
+
+		if memFile, memFileErr = config.MemFs.Open(trcPath); memFileErr == nil {
+			buf := bytes.NewBuffer(nil)
+			io.Copy(buf, memFile) // Error handling elided for brevity.
+			content = buf.Bytes()
 		} else {
 			fmt.Println("Error could not find " + trcPath + " for deployment instructions")
 		}
+
 		if !agentToken {
 			token = ""
 			config.Token = token
@@ -162,20 +169,29 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	var onceKubeInit sync.Once
 
 	for _, deployPipeline := range deployArgLines {
-		deployPipeline = strings.TrimLeft(deployPipeline, "")
+		deployPipeline = strings.TrimLeft(deployPipeline, " ")
 		if strings.HasPrefix(deployPipeline, "#") {
 			continue
 		}
 		fmt.Println(deployPipeline)
 		deployPipeSplit := strings.Split(deployPipeline, "|")
-		for deployLineIndex, deployLine := range deployPipeSplit {
-			if deployLineIndex > 0 {
-				continue
+		if len(deployPipeSplit) > 1 {
+			if trcKubeDeploymentConfig != nil {
+				if trcKubeDeploymentConfig.PipeOS, err = config.MemFs.Create("io/STDIO"); err != nil {
+					fmt.Println("Failure to open io stream.")
+					os.Exit(-1)
+				}
 			}
+		} else {
+			if trcKubeDeploymentConfig != nil {
+				trcKubeDeploymentConfig.PipeOS = nil
+			}
+		}
+		for _, deployLine := range deployPipeSplit {
 			os.Args = argsOrig
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 
-			deployLine = strings.TrimRight(deployLine, "")
+			deployLine = strings.Trim(deployLine, " ")
 			deployArgs := strings.Split(deployLine, " ")
 			control := deployArgs[0]
 			if len(deployArgs) > 1 {
@@ -279,7 +295,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 				}()
 
 				select {
-				case <-time.After(15 * time.Second):
+				case <-time.After(50000 * time.Second):
 					logger.Println("Timed out waiting for KubeCtl.")
 					os.Exit(-1)
 				case kubeErr := <-kubectlErrChan:
