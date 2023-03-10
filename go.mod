@@ -38,7 +38,7 @@ require (
 require github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b
 
 require (
-	github.com/dsnet/golib/memfile v1.0.0
+	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-hat v0.0.0-00010101000000-000000000000
 	k8s.io/api v0.26.1
@@ -241,7 +241,7 @@ replace github.com/fyne-io/glfw-js v0.0.0-20220120001248-ee7290d23504 => github.
 
 // replace k8s.io/client-go v0.26.1 => github.com/trimble-oss/client-go v0.0.3
 
-// replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.6
+// replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.7
 
 // replace k8s.io/kubectl v0.26.1 => github.com/trimble-oss/kubectl v0.0.5
 
