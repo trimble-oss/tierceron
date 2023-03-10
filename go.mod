@@ -38,7 +38,7 @@ require (
 require github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b
 
 require (
-	github.com/dsnet/golib/memfile v1.0.0
+	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-hat v0.0.0-00010101000000-000000000000
 	k8s.io/api v0.26.1
