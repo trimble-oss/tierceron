@@ -51,7 +51,7 @@ resources:
     type: github
     endpoint: trimble-oss
     name: trimble-oss/cli-runtime
-    ref: refs/tags/v0.0.6
+    ref: refs/tags/v0.0.7
   - repository: kubectl
     type: github
     endpoint: trimble-oss
