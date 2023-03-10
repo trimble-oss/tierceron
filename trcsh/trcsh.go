@@ -295,7 +295,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 				}()
 
 				select {
-				case <-time.After(50000 * time.Second):
+				case <-time.After(15 * time.Second):
 					logger.Println("Timed out waiting for KubeCtl.")
 					os.Exit(-1)
 				case kubeErr := <-kubectlErrChan:
