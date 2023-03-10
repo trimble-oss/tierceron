@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -12,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dsnet/golib/memfile"
+	"github.com/go-git/go-billy/v5"
 
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/validator"
@@ -446,9 +447,20 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	var newFile *os.File
 
 	if config.OutputMemCache {
+		var memFile billy.File
 		memCacheLock.Lock()
-		config.MemCache[path] = memfile.New(byteData)
-		memCacheLock.Unlock()
+		if _, err := config.MemFs.Stat(path); errors.Is(err, os.ErrNotExist) {
+			memFile, err = config.MemFs.Create(path)
+			if err != nil {
+				eUtils.CheckError(config, err, true)
+			}
+			memFile.Write(byteData)
+			memFile.Close()
+			memCacheLock.Unlock()
+		} else {
+			memCacheLock.Unlock()
+			eUtils.CheckError(config, err, true)
+		}
 	} else {
 		dirPath := filepath.Dir(path)
 		err := os.MkdirAll(dirPath, os.ModePerm)

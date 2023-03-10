@@ -1,17 +1,17 @@
 package native
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/component-base/cli"
 	"k8s.io/klog/v2"
 
@@ -25,6 +25,7 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	kubectlutil "k8s.io/kubectl/pkg/util"
 
+	"github.com/go-git/go-billy/v5"
 	"github.com/trimble-oss/tierceron/trcsh/kube/native/path"
 	"github.com/trimble-oss/tierceron/trcsh/kube/native/trccreate"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
@@ -63,6 +64,8 @@ type TrcKubeConfig struct {
 	KubeContext *TrcKubeContext
 	// Current kubectl directive... configmap, secret, apply, etc...
 	KubeDirective *TrcKubeDirective
+
+	PipeOS billy.File // Where to send output.
 }
 
 func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
@@ -188,103 +191,6 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 	return trcKubeDirective
 }
 
-func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) {
-	clientset, err := corev1client.NewForConfig(trcKubeDeploymentConfig.RestConfig)
-	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
-		return
-	}
-
-	switch trcKubeDeploymentConfig.KubeDirective.Object {
-	case "secret":
-		var secretType corev1.SecretType
-		if trcKubeDeploymentConfig.KubeDirective.Type == "generic" {
-			secretType = corev1.SecretType("")
-		} else {
-			fmt.Println("Unsupported secret type: " + trcKubeDeploymentConfig.KubeDirective.Type)
-		}
-
-		secret := &corev1.Secret{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: corev1.SchemeGroupVersion.String(),
-				Kind:       "Secret",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      trcKubeDeploymentConfig.KubeDirective.Name, // vault-cert
-				Namespace: "",                                         // I think it can always be blank...
-			},
-			Type: secretType,
-			Data: map[string][]byte{},
-		}
-
-		keyParts := strings.Split(trcKubeDeploymentConfig.KubeDirective.FromFilePath, "/")
-		keyName := keyParts[len(keyParts)-1]
-
-		if errs := validation.IsConfigMapKey(keyName); len(errs) != 0 {
-			eUtils.LogErrorObject(config, fmt.Errorf("%q invalid keyname having errors %s", keyName, strings.Join(errs, ";")), false)
-			return
-		} else {
-			if secretData, secretDataOk := config.MemCache[trcKubeDeploymentConfig.KubeDirective.FromFilePath]; secretDataOk {
-				secret.Data[keyName] = secretData.Bytes()
-			} else if secretData, secretDataOk := config.MemCache["./"+trcKubeDeploymentConfig.KubeDirective.FromFilePath]; secretDataOk {
-				secret.Data[keyName] = secretData.Bytes()
-			}
-		}
-
-		switch trcKubeDeploymentConfig.KubeDirective.Action {
-		case "create":
-			createOptions := metav1.CreateOptions{}
-			createOptions.FieldManager = "kubectl-create" //
-			fmt.Println(clientset)
-			//			clientset.Secrets(trcKubeDeploymentConfig.KubeContext.Namespace).Create(context.TODO(), secret, createOptions)
-		case "update":
-			updateOptions := metav1.UpdateOptions{}
-			updateOptions.FieldManager = "" //
-			fmt.Println(clientset)
-			//			clientset.Secrets(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), secret, updateOptions)
-		}
-	case "configmap":
-		configMap := &corev1.ConfigMap{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: corev1.SchemeGroupVersion.String(),
-				Kind:       "ConfigMap",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      trcKubeDeploymentConfig.KubeDirective.Name, // vault-cert
-				Namespace: "",                                         // I think it can always be blank...
-			},
-			Data: map[string]string{},
-		}
-
-		keyParts := strings.Split(trcKubeDeploymentConfig.KubeDirective.FromFilePath, "/")
-		keyName := keyParts[len(keyParts)-1]
-
-		if errs := validation.IsConfigMapKey(keyName); len(errs) != 0 {
-			eUtils.LogErrorObject(config, fmt.Errorf("%q invalid keyname having errors %s", keyName, strings.Join(errs, ";")), false)
-			return
-		} else {
-			if configData, configDataOk := config.MemCache[trcKubeDeploymentConfig.KubeDirective.FromFilePath]; configDataOk {
-				configMap.Data[keyName] = string(configData.Bytes())
-			} else if configData, configDataOk := config.MemCache["./"+trcKubeDeploymentConfig.KubeDirective.FromFilePath]; configDataOk {
-				configMap.Data[keyName] = string(configData.Bytes())
-			}
-		}
-
-		switch trcKubeDeploymentConfig.KubeDirective.Action {
-		case "create":
-			createOptions := metav1.CreateOptions{}
-			createOptions.FieldManager = "" //
-			fmt.Println(clientset)
-			//			clientset.ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Create(context.TODO(), configMap, createOptions)
-		case "update":
-			updateOptions := metav1.UpdateOptions{}
-			updateOptions.FieldManager = "" //
-			fmt.Println(clientset)
-			//			clientset.ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), configMap, updateOptions)
-		}
-	}
-}
-
 func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
 	configFlags := genericclioptions.NewConfigFlags(true).
 		WithDeprecatedPasswordFlag().
@@ -335,8 +241,10 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 
 		return config, nil
 	}
+	iostreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
+
 	configFlags.PathVisitorLoader = func() resource.PathVisitor {
-		return &path.MemPathVisitor{MemCache: config.MemCache}
+		return &path.MemPathVisitor{MemFs: config.MemFs, Iostreams: iostreams}
 	}
 
 	configFlags.HandleSecretFromFileSources = func(secret *corev1.Secret, fileSources []string) error {
@@ -347,12 +255,15 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 			}
 			var data []byte
 
-			if memCacheEntry, mcOk := config.MemCache[filePath]; mcOk {
-				data = memCacheEntry.Bytes()
-			} else if memCacheEntry, mcOk := config.MemCache["./"+filePath]; mcOk {
-				data = memCacheEntry.Bytes()
+			var memFile billy.File
+			var memFileErr error
+
+			if memFile, memFileErr = config.MemFs.Open(filePath); memFileErr == nil {
+				buf := bytes.NewBuffer(nil)
+				io.Copy(buf, memFile) // Error handling elided for brevity.
+				data = buf.Bytes()
 			} else {
-				return fmt.Errorf("Error could not find %s for deployment instructions", filePath)
+				return fmt.Errorf("Error could not find %s for deployment instructions", fileSource)
 			}
 
 			if errs := validation.IsConfigMapKey(keyName); len(errs) != 0 {
@@ -375,12 +286,15 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 			}
 			var data []byte
 
-			if memCacheEntry, mcOk := config.MemCache[filePath]; mcOk {
-				data = memCacheEntry.Bytes()
-			} else if memCacheEntry, mcOk := config.MemCache["./"+filePath]; mcOk {
-				data = memCacheEntry.Bytes()
+			var memFile billy.File
+			var memFileErr error
+
+			if memFile, memFileErr = config.MemFs.Open(fileSource); memFileErr == nil {
+				buf := bytes.NewBuffer(nil)
+				io.Copy(buf, memFile) // Error handling elided for brevity.
+				data = buf.Bytes()
 			} else {
-				return fmt.Errorf("Error could not find %s for deployment instructions", filePath)
+				return fmt.Errorf("Error could not find %s for deployment instructions", fileSource)
 			}
 
 			if err := trccreate.HandleConfigMapFromFileSource(configMap, keyName, filePath, data); err != nil {
@@ -394,10 +308,13 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 		for _, fileSource := range fileSources {
 			var data []byte
 
-			if memCacheEntry, mcOk := config.MemCache[fileSource]; mcOk {
-				data = memCacheEntry.Bytes()
-			} else if memCacheEntry, mcOk := config.MemCache["./"+fileSource]; mcOk {
-				data = memCacheEntry.Bytes()
+			var memFile billy.File
+			var memFileErr error
+
+			if memFile, memFileErr = config.MemFs.Open(fileSource); memFileErr == nil {
+				buf := bytes.NewBuffer(nil)
+				io.Copy(buf, memFile) // Error handling elided for brevity.
+				data = buf.Bytes()
 			} else {
 				return fmt.Errorf("Error could not find %s for deployment instructions", fileSource)
 			}
@@ -410,11 +327,25 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 		return nil
 	}
 
+	if trcKubeDeploymentConfig.PipeOS != nil {
+		if iostat, ioerr := config.MemFs.Stat(trcKubeDeploymentConfig.PipeOS.Name()); ioerr == nil {
+			if iostat.Size() > 0 {
+				pipeName := trcKubeDeploymentConfig.PipeOS.Name()
+				trcKubeDeploymentConfig.PipeOS.Close()
+				if trcKubeDeploymentConfig.PipeOS, ioerr = config.MemFs.Open(pipeName); ioerr == nil {
+					iostreams.In = trcKubeDeploymentConfig.PipeOS
+				}
+			} else {
+				iostreams.Out = trcKubeDeploymentConfig.PipeOS
+			}
+		}
+	}
+
 	command := cmd.NewDefaultKubectlCommandWithArgs(cmd.KubectlOptions{
 		PluginHandler: cmd.NewDefaultPluginHandler(plugin.ValidPluginFilenamePrefixes),
 		Arguments:     os.Args,
 		ConfigFlags:   configFlags,
-		IOStreams:     genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr},
+		IOStreams:     iostreams,
 	})
 
 	if err := cli.RunNoErrOutput(command); err != nil {
@@ -471,7 +402,7 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConf
 
 	f := cmdutil.NewFactory(
 		cmdutil.NewMatchVersionFlags(configFlags),
-		&path.MemPathVisitor{MemCache: config.MemCache},
+		&path.MemPathVisitor{MemFs: config.MemFs},
 		configFlags.HandleSecretFromFileSources,
 		configFlags.HandleConfigMapFromFileSources,
 		configFlags.HandleConfigMapFromEnvFileSources,
