@@ -167,6 +167,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 
 	var trcKubeDeploymentConfig *kube.TrcKubeConfig
 	var onceKubeInit sync.Once
+	var PipeOS billy.File
 
 	for _, deployPipeline := range deployArgLines {
 		deployPipeline = strings.TrimLeft(deployPipeline, " ")
@@ -175,18 +176,12 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		}
 		fmt.Println(deployPipeline)
 		deployPipeSplit := strings.Split(deployPipeline, "|")
-		if len(deployPipeSplit) > 1 {
-			if trcKubeDeploymentConfig != nil {
-				if trcKubeDeploymentConfig.PipeOS, err = config.MemFs.Create("io/STDIO"); err != nil {
-					fmt.Println("Failure to open io stream.")
-					os.Exit(-1)
-				}
-			}
-		} else {
-			if trcKubeDeploymentConfig != nil {
-				trcKubeDeploymentConfig.PipeOS = nil
-			}
+
+		if PipeOS, err = config.MemFs.Create("io/STDIO"); err != nil {
+			fmt.Println("Failure to open io stream.")
+			os.Exit(-1)
 		}
+
 		for _, deployLine := range deployPipeSplit {
 			os.Args = argsOrig
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
@@ -276,17 +271,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 						return
 					}
 				})
-
-				// Placeholder.
-				// if deployArgs[0] == "config" {
-				// 	trcKubeDeploymentConfig.KubeContext = kube.ParseTrcKubeContext(trcKubeDeploymentConfig.KubeContext, deployArgs[1:])
-				// } else if deployArgs[0] == "create" {
-				// 	trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
-				// 	kube.CreateKubeResource(trcKubeDeploymentConfig, config)
-				// } else if deployArgs[0] == "apply" {
-				// 	trcKubeDeploymentConfig.KubeDirective = kube.ParseTrcKubeDeployDirective(trcKubeDeploymentConfig.KubeDirective, deployArgs)
-				// 	kube.KubeApply(trcKubeDeploymentConfig, config)
-				// }
+				trcKubeDeploymentConfig.PipeOS = PipeOS
 
 				kubectlErrChan := make(chan error, 1)
 
