@@ -115,6 +115,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure - no certification entry found.", false)
 	}
 
+	if deployedVal, ok := vaultPluginSignature["deployed"].(bool); ok && deployedVal {
+		eUtils.LogErrorMessage(config, "Plugin has already been deployed and copied: "+vaultPluginSignature["trcplugin"].(string), false)
+		return nil
+	}
+
 	// This should come from vault now....
 	vaultPluginSignature["ecrrepository"] = strings.Replace(vaultPluginSignature["ecrrepository"].(string), "__imagename__", pluginName, -1) //"https://" +
 
@@ -161,23 +166,14 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		// 1.c.ii.- if Sha256 of new executable === sha256 from vault.
 		downloadErr := repository.GetImageAndShaFromDownload(vaultPluginSignature)
 		if downloadErr != nil {
-			eUtils.LogErrorMessage(config, "Could not get download image: "+downloadErr.Error(), false)
+			eUtils.LogErrorMessage(config, pluginName+": Could not get download image: "+downloadErr.Error(), false)
 		}
 		if vaultPluginSignature["imagesha256"] == vaultPluginSignature["trcsha256"] { //Sha256 from download matches in vault
 			err = ioutil.WriteFile(agentPath, vaultPluginSignature["rawImageFile"].([]byte), 0644)
 			vaultPluginSignature["rawImageFile"] = nil
 
 			if err != nil {
-				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not write out download image.", false)
-			}
-
-			if imageFile, err := os.Open(agentPath); err == nil {
-				chdModErr := imageFile.Chmod(0750)
-				if chdModErr != nil {
-					eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not give permission to image in file system.", false)
-				}
-			} else {
-				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not open image in file system to give permissions.", false)
+				eUtils.LogErrorMessage(config, pluginName+": PluginDeployFlow failure: Could not write out download image.", false)
 			}
 
 			if vaultPluginSignature["trctype"] == "agent" {
@@ -190,7 +186,17 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 					return errors.Join(errors.New("Group ID lookup failure"), azureGIDConvErr)
 				}
 				os.Chown(agentPath, -1, azureDeployGID)
-				os.Chmod(agentPath, 1750)
+			}
+
+			if imageFile, err := os.Open(agentPath); err == nil {
+				chdModErr := imageFile.Chmod(0750)
+				if chdModErr != nil {
+					eUtils.LogErrorMessage(config, pluginName+": PluginDeployFlow failure: Could not give permission to image in file system.  Bailing..", false)
+					return nil
+				}
+			} else {
+				eUtils.LogErrorMessage(config, pluginName+": PluginDeployFlow failure: Could not open image in file system to give permissions.", false)
+				return nil
 			}
 
 			// TODO: setcap more directly using kernel lib if possible...
@@ -203,23 +209,22 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			output, err := cmd.CombinedOutput()
 			if !insecure.IsInsecure() && err != nil {
 				eUtils.LogErrorMessage(config, fmt.Sprint(err)+": "+string(output), false)
-				eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Could not set needed capabilities.", false)
+				eUtils.LogErrorMessage(config, pluginName+": PluginDeployFlow failure: Could not set needed capabilities.", false)
 			}
 
 			pluginCopied = true
-			eUtils.LogInfo(config, "Image has been copied.")
+			eUtils.LogInfo(config, pluginName+": Image has been copied.")
 		} else {
-			fmt.Sprintf("PluginDeployFlow failure: Refusing to copy since vault certification does not match plugin sha256 signature.  Downloaded: %s, Expected: %s", vaultPluginSignature["imagesha256"], vaultPluginSignature["trcsha256"])
-			eUtils.LogErrorMessage(config, "PluginDeployFlow failure: Refusing to copy since vault certification does not match plugin sha256 signature.", false)
+			eUtils.LogErrorMessage(config, fmt.Sprintf("%s: PluginDeployFlow failure: Refusing to copy since vault certification does not match plugin sha256 signature.  Downloaded: %s, Expected: %s", pluginName, vaultPluginSignature["imagesha256"], vaultPluginSignature["trcsha256"]), false)
 		}
 	}
 
 	if (!pluginDownloadNeeded && !pluginCopied) || (pluginDownloadNeeded && pluginCopied) { // No download needed because it's already there, but vault may be wrong.
 		if vaultPluginSignature["copied"].(bool) && !vaultPluginSignature["deployed"].(bool) { //If status hasn't changed, don't update
-			eUtils.LogInfo(config, "Not updating plugin image to vault as status is the same for plugin: "+pluginName)
+			eUtils.LogInfo(config, pluginName+": Not updating plugin image to vault as status is the same for plugin: "+pluginName)
 		}
 
-		eUtils.LogInfo(config, "Updating plugin image to vault.")
+		eUtils.LogInfo(config, pluginName+": Updating plugin image to vault.")
 		factory.PushPluginSha(config, pluginConfig, vaultPluginSignature)
 		writeMap := make(map[string]interface{})
 		writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
@@ -231,14 +236,17 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		}
 		writeMap["copied"] = true
 		writeMap["deployed"] = false
+		if writeMap["trctype"].(string) == "agent" {
+			writeMap["deployed"] = true
+		}
 		_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
 		if err != nil {
-			logger.Println("PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
+			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
 		}
-		eUtils.LogInfo(config, "Plugin image config in vault has been updated.")
+		eUtils.LogInfo(config, pluginName+": Plugin image config in vault has been updated.")
 	} else {
 		if !pluginDownloadNeeded && pluginCopied {
-			eUtils.LogInfo(config, "Not updating plugin image to vault as status is the same for  plugin: "+pluginName)
+			eUtils.LogInfo(config, pluginName+": Not updating plugin image to vault as status is the same for  plugin: "+pluginName)
 			// Already copied... Just echo back the sha256...
 		}
 	}
@@ -284,6 +292,10 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 					filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
 					pluginData["trcsha256"] = filesystemsha256
 					pluginData["copied"] = true
+
+					if pluginData["trctype"].(string) == "agent" {
+						pluginData["deployed"] = true
+					}
 				}
 			} else {
 				return errors.New("Plugin not certified.")

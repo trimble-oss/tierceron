@@ -1,5 +1,13 @@
+variable "environment_short" {
+  default = "{{.environment_short}}"
+}
+
 variable "environment" {
-  default = "Develop"
+  default = "{{.environment}}"
+}
+
+variable "product" {
+  default = "{{.product}}"
 }
 
 variable "resource_group_location" {
