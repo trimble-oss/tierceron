@@ -31,6 +31,11 @@ resource "azurerm_private_dns_zone_virtual_network_link" "vm-virtual-network-lin
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
   virtual_network_id    = data.azurerm_virtual_network.virtual-network.id
   registration_enabled  = true
+
+  tags                  = {
+     "Environment" = "${var.environment_short}"
+     "Product"     = "${var.product}"
+  }
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "vm-db-virtual-network-link" {
@@ -38,6 +43,10 @@ resource "azurerm_private_dns_zone_virtual_network_link" "vm-db-virtual-network-
   resource_group_name   = data.azurerm_resource_group.rg.name
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-db-dns-zone.name
   virtual_network_id    = data.azurerm_virtual_network.virtual-network.id
+tags                  = {
+     "Environment" = "${var.environment_short}"
+     "Product"     = "${var.product}"
+  }  
 }
 
 resource "azurerm_public_ip" "public-ip" {
@@ -74,17 +83,21 @@ resource "azurerm_network_security_group" "nsg" {
   tags = {
     "Application" = var.subresource_group_name
     "Billing"     = var.environment
+    "Environment" = "${var.environment_short}"
+    "Product"     = "${var.product}"
   }
 
   #SSH INBOUND - Restrict to allowed IPs and Port(s)
   security_rule {
     name                       = "Allow${var.org_name}SshInbound"
+    description                = ""
     priority                   = 110
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
+    source_address_prefix      = ""
     source_address_prefixes    = var.allowed_ip_ranges
     destination_address_prefix = "*"
   }
@@ -92,92 +105,136 @@ resource "azurerm_network_security_group" "nsg" {
   #TCP INBOUND VAULT - Restrict to allowed IPs and Port(s)
   security_rule {
     name                       = "Allow${var.org_name}IpsInbound"
+    description                = ""
     priority                   = 120
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
+    destination_port_range     = ""
     destination_port_ranges    = var.dest_port_ranges
+    source_address_prefix     = ""
     source_address_prefixes    = var.allowed_ip_ranges
     destination_address_prefix = "*"
   }
 
   #UDP INBOUND DNS
   security_rule {
+    access                     = "Allow"
+    description                = ""
+    destination_address_prefix = "*"
+    destination_address_prefixes               = []
+    destination_application_security_group_ids = []
+    destination_port_range     = ""
+    destination_port_ranges    = ["53"]
+    direction                  = "Inbound"
     name                       = "Allow${var.org_name}UdpInbound"
     priority                   = 130
-    direction                  = "Inbound"
-    access                     = "Allow"
     protocol                   = "Udp"
-    source_port_range          = "*"
-    destination_port_ranges    = ["53"]
     source_address_prefix      = "*"
-    destination_address_prefix = "*"
+    source_address_prefixes    = []
+    source_application_security_group_ids      = []
+    source_port_range          = "*"
+    source_port_ranges                         = []
   }
 
   #SSH OUTBOUND - Restrict to allowed IPs on Port 22
   security_rule {
-    name                         = "Allow${var.org_name}-VPN-SshOutbound"
-    priority                     = 110
-    direction                    = "Outbound"
-    access                       = "Allow"
-    protocol                     = "Tcp"
-    source_port_range            = "*"
-    destination_port_range       = "22"
-    source_address_prefix        = "*"
-    destination_address_prefix   = var.allowed_ip_ranges[0]
+    access                                     = "Allow"
+    description                                = ""
+    destination_address_prefix                 = var.allowed_vpn_ip_ranges[0]
+    destination_address_prefixes               = []
+    destination_application_security_group_ids = []
+    destination_port_range                     = "22"
+    destination_port_ranges                    = []
+    direction                                  = "Outbound"
+    name                                       = "Allow${var.org_name}-VPN-SshOutbound"
+    priority                                   = 110
+    protocol                                   = "Tcp"
+    source_address_prefix                      = "*"
+    source_address_prefixes                    = []
+    source_application_security_group_ids      = []
+    source_port_range                          = "*"
+    source_port_ranges                         = []
   }
 
-    security_rule {
-      name                         = "Allow${var.org_name}-Corp-SshOutbound"
-      priority                     = 120
-      direction                    = "Outbound"
-      access                       = "Allow"
-      protocol                     = "Tcp"
-      source_port_range            = "*"
-      destination_port_range       = "22"
-      source_address_prefix        = "*"
-      destination_address_prefix   = var.allowed_ip_ranges[1]
-    }
+  security_rule {
+     access                                     = "Allow"
+     description                                = ""
+     destination_address_prefix                 = var.allowed_ip_ranges[0]
+     destination_address_prefixes               = []
+     destination_application_security_group_ids = []
+     destination_port_range                     = "22"
+     destination_port_ranges                    = []
+     direction                                  = "Outbound"
+     name                                       = "Allow${var.org_name}-Corp-SshOutbound"
+     priority                                   = 120
+     protocol                                   = "Tcp"
+     source_address_prefix                      = "*"
+     source_address_prefixes                    = []
+     source_application_security_group_ids      = []
+     source_port_range                          = "*"
+     source_port_ranges                         = []
+  }
 
   #TCP OUTBOUND VAULT - Restrict to allowed IPs on all ports - Narrow this down if needed.
   security_rule {
-    name                         = "Allow${var.org_name}-VPN-TcpOutbound"
-    priority                     = 130
-    direction                    = "Outbound"
-    access                       = "Allow"
-    protocol                     = "Tcp"
-    source_port_range            = "*"
-    destination_port_range       = "*"
-    source_address_prefix        = "*"
-    destination_address_prefix   = var.allowed_ip_ranges[0]
+     access                                     = "Allow"
+     description                                = ""
+     destination_address_prefix                 = var.allowed_vpn_ip_ranges[0]
+     destination_address_prefixes               = []
+     destination_application_security_group_ids = []
+     destination_port_range                     = "*"
+     destination_port_ranges                    = []
+     direction                                  = "Outbound"
+     name                                       = "Allow${var.org_name}-VPN-TcpOutbound"
+     priority                                   = 130
+     protocol                                   = "Tcp"
+     source_address_prefix                      = "*"
+     source_address_prefixes                    = []
+     source_application_security_group_ids      = []
+     source_port_range                          = "*"
+     source_port_ranges                         = []
   }
 
   security_rule {
-    name                         = "Allow${var.org_name}-Corp-TcpOutbound"
-    priority                     = 140
-    direction                    = "Outbound"
-    access                       = "Allow"
-    protocol                     = "Tcp"
-    source_port_range            = "*"
-    destination_port_range       = "*"
-    source_address_prefix        = "*"
-    destination_address_prefix   = var.allowed_ip_ranges[1]
+     access                                     = "Allow"
+     description                                = ""
+     destination_address_prefix                 = var.allowed_ip_ranges[0]
+     destination_address_prefixes               = []
+     destination_application_security_group_ids = []
+     destination_port_range                     = "*"
+     destination_port_ranges                    = []
+     direction                                  = "Outbound"
+     name                                       = "Allow${var.org_name}-Corp-TcpOutbound"
+     priority                                   = 140
+     protocol                                   = "Tcp"
+     source_address_prefix                      = "*"
+     source_address_prefixes                    = []
+     source_application_security_group_ids      = []
+     source_port_range                          = "*"
+     source_port_ranges                         = []
   }
 
   #UDP OUTBOUND DNS
   security_rule {
-    name                       = "Allow${var.org_name}UdpOutbound"
-    priority                   = 150
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Udp"
-    source_port_range          = "*"
-    destination_port_ranges    = ["22", "53"]
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
+    access                        = "Allow"
+    description                   = ""
+    destination_address_prefix    = "*"
+    destination_address_prefixes  = []
+    destination_application_security_group_ids = []
+    destination_port_range        = ""
+    destination_port_ranges       = ["22", "53"]
+    direction                     = "Outbound"
+    name                          = "Allow${var.org_name}UdpOutbound"
+    priority                      = 150
+    protocol                      = "Udp"
+    source_address_prefix         = "*"
+    source_address_prefixes       = []
+    source_application_security_group_ids      = []
+    source_port_range             = "*"
+    source_port_ranges            = []
   }
-
 }
 
 
@@ -195,6 +252,8 @@ resource "azurerm_network_interface" "vm-network-interface" {
   }
 
   tags = {
+    "Environment" = "${var.environment_short}"
+    "Product"     = "${var.product}"
     "Application" = var.subresource_group_name
     "Billing"     = var.environment
   }
@@ -236,8 +295,10 @@ resource "azurerm_private_dns_zone" "tierceron-db-dns-zone" {
   name                = "${var.dbzone}"
   resource_group_name = data.azurerm_resource_group.rg.name
   tags = {
-    "Application" = var.subresource_group_name
-    "Billing"     = var.environment
+     "Environment" = "${var.environment_short}"
+     "Product"     = "${var.product}"
+     "Application" = var.subresource_group_name
+     "Billing"     = var.environment
   }
 }
 
@@ -245,6 +306,8 @@ resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
   name                = "${var.tierceronzone}"
   resource_group_name = data.azurerm_resource_group.rg.name
   tags = {
+    "Environment" = "${var.environment_short}"
+    "Product"     = "${var.product}"
     "Application" = var.subresource_group_name
     "Billing"     = var.environment
   }
@@ -260,6 +323,12 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   delegated_subnet_id    = data.azurerm_subnet.db-subnet.id
   private_dns_zone_id    = azurerm_private_dns_zone.tierceron-db-dns-zone.id
   sku_name               = "B_Standard_B2s"
+  zone                   = "3"
+
+  tags = {
+    "Environment" = "${var.environment_short}"
+    "Product"     = "${var.product}"
+  }
 
   storage {
     auto_grow_enabled = true
@@ -312,10 +381,17 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   disable_password_authentication = true
 
   tags = {
-    "Application" = var.subresource_group_name
-    "Billing"     = var.environment
+    "CreatedBy"   = "${var.created_by}"
+    "CreatedOn"   = "${var.created_on}2023-02-11T02:35:02.5517868Z"
+    "Environment" = "${var.environment_short}"
+    "Product"     = "${var.product}"
+    "backup"      = "external"
   }
 
+  identity {
+    identity_ids = []
+    type         = "SystemAssigned"
+  }
 
   admin_ssh_key {
     username   = "ubuntu"
@@ -459,6 +535,8 @@ resource "azurerm_virtual_machine_extension" "security_software" {
   type_handler_version = "2.0"
 
   tags = {
+    "Environment" = "${var.environment_short}"
+    "Product"     = "${var.product}"
     "Application" = var.subresource_group_name
     "Billing"     = var.environment
   }
