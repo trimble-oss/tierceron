@@ -2,16 +2,18 @@ package utils
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 
-	"github.com/dsnet/golib/memfile"
+	"github.com/go-git/go-billy/v5"
 
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/validator"
@@ -427,14 +429,38 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 var memCacheLock sync.Mutex
 
 func writeToFile(config *eUtils.DriverConfig, data string, path string) {
+	if strings.Contains(data, "${TAG}") {
+		tag := os.Getenv("TRCENV_TAG")
+		if len(tag) > 0 {
+			matched, err := regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
+			if !matched || err != nil {
+				fmt.Println("Invalid build tag")
+				eUtils.LogInfo(config, "Invalid build tag was found:"+tag+"- exiting...")
+				os.Exit(-1)
+			}
+		}
+		data = strings.Replace(data, "${TAG}", tag, -1)
+	}
+
 	byteData := []byte(data)
 	//Ensure directory has been created
 	var newFile *os.File
 
 	if config.OutputMemCache {
+		var memFile billy.File
 		memCacheLock.Lock()
-		config.MemCache[path] = memfile.New(byteData)
-		memCacheLock.Unlock()
+		if _, err := config.MemFs.Stat(path); errors.Is(err, os.ErrNotExist) {
+			memFile, err = config.MemFs.Create(path)
+			if err != nil {
+				eUtils.CheckError(config, err, true)
+			}
+			memFile.Write(byteData)
+			memFile.Close()
+			memCacheLock.Unlock()
+		} else {
+			memCacheLock.Unlock()
+			eUtils.CheckError(config, err, true)
+		}
 	} else {
 		dirPath := filepath.Dir(path)
 		err := os.MkdirAll(dirPath, os.ModePerm)
