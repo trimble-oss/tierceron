@@ -19,7 +19,7 @@ require (
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	github.com/xo/dburl v0.9.0
 	golang.org/x/crypto v0.5.0
-	golang.org/x/sys v0.5.0
+	golang.org/x/sys v0.6.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -38,7 +38,7 @@ require (
 require github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b
 
 require (
-	github.com/dsnet/golib/memfile v1.0.0
+	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-hat v0.0.0-00010101000000-000000000000
 	k8s.io/api v0.26.1
@@ -76,7 +76,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
-	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -99,7 +99,7 @@ require (
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/spf13/cobra v1.6.0 // indirect
+	github.com/spf13/cobra v1.6.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
@@ -167,7 +167,7 @@ require (
 	github.com/aws/aws-sdk-go v1.43.30
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/dolthub/vitess v0.0.0-20220930181015-759b1acd9188
-	github.com/fatih/color v1.7.0 // indirect
+	github.com/fatih/color v1.15.0 // indirect
 	github.com/frankban/quicktest v1.14.4 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
@@ -227,8 +227,6 @@ replace VaultConfig.Test => ../VaultConfig.Test
 
 replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
-replace k8s.io/client-go v0.26.1 => ../client-go
-
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.6
 
 // replace github.com/mrjrieke/nute => github.com/trimble-oss/tierceron-nute
@@ -241,12 +239,18 @@ replace gioui.org v0.0.0-20220318070519-8833a6738a3b => github.com/mrjrieke/gio 
 
 replace github.com/fyne-io/glfw-js v0.0.0-20220120001248-ee7290d23504 => github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb
 
-//replace k8s.io/cli-runtime v0.26.1 => ../cli-runtime
+// replace k8s.io/client-go v0.26.1 => github.com/trimble-oss/client-go v0.0.3
 
-//replace k8s.io/kubectl v0.26.1 => ../kubectl
+// replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.7
 
-replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.3
+// replace k8s.io/kubectl v0.26.1 => github.com/trimble-oss/kubectl v0.0.5
 
-replace k8s.io/kubectl v0.26.1 => github.com/trimble-oss/kubectl v0.0.3
+//Don't forget to update pipelines with the right version.
+
+replace k8s.io/client-go v0.26.1 => ../client-go
+
+replace k8s.io/cli-runtime v0.26.1 => ../cli-runtime
+
+replace k8s.io/kubectl v0.26.1 => ../kubectl
 
 replace k8s.io/api v0.26.1 => k8s.io/api v0.0.0-20230228090259-b5b22ca1babf

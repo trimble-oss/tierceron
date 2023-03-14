@@ -2,6 +2,13 @@
 # Build your Go project.
 # Add steps that test, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/go
+trigger:
+  branches:
+    exclude:
+    - main
+    - releases/comprehensive/1.0.0
+    - releases/plugin/*
+    - releases/legacy/*
 
 pr:
   branches:
@@ -10,6 +17,7 @@ pr:
     - main
     exclude:
     - releases/comprehensive/1.0.0
+    - releases/plugin/*
 
 pool: 'TierceronPool'
 resources:
@@ -38,17 +46,17 @@ resources:
     type: github
     endpoint: trimble-oss
     name: trimble-oss/client-go
-    ref: pathvisitor
+    ref: refs/tags/v0.0.3
   - repository: cli-runtime
     type: github
     endpoint: trimble-oss
     name: trimble-oss/cli-runtime
-    ref: pathvisitor
+    ref: refs/tags/v0.0.7
   - repository: kubectl
     type: github
     endpoint: trimble-oss
     name: trimble-oss/kubectl
-    ref: pathvisitor
+    ref: refs/tags/v0.0.5
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
@@ -60,7 +68,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.20.1'
+    version: '1.20.2'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
