@@ -16,4 +16,4 @@ trcx -env=QA -token=$VAULT_TOKEN -restricted=VaultDatabase -serviceFilter=config
 
 # Initialize
 trcinit -env=QA -token=$VAULT_TOKEN -restricted=VaultDatabase -serviceFilter=config -indexFilter=config
-trcinit -env=dev -token=$VAULT_TOKEN_DEV -directPath=Restricted/VaultDatabase/config
+trcinit -env=dev -token=$VAULT_TOKEN_DEV -dynamicPath=Restricted/VaultDatabase/config
