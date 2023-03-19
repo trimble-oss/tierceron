@@ -108,7 +108,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 			for _, projectFile := range projectFiles {
 				projectStartDir := config.StartDir[0]
 
-				if projectFile.Name() != "Common" && config.WantCerts {
+				if projectFile.Name() != "Common" && config.WantCerts && config.WantKeystore == "" {
 					// Ignore non-common if wantCerts
 					continue
 				}
