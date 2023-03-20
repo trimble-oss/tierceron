@@ -56,8 +56,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	if config.Token != "novault" {
 		if valid, errValidateEnvironment := modCheck.ValidateEnvironment(config.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
 			if errValidateEnvironment != nil {
-				if _, sErrOk := errValidateEnvironment.(*url.Error).Err.(*tls.CertificateVerificationError); sErrOk {
-					return nil, eUtils.LogAndSafeExit(config, "Invalid certificate.", 1)
+				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
+					if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
+						return nil, eUtils.LogAndSafeExit(config, "Invalid certificate.", 1)
+					}
 				}
 			}
 
