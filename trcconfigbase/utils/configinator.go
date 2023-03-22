@@ -1,13 +1,19 @@
 package utils
 
 import (
+	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/go-git/go-billy/v5"
 
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/validator"
@@ -49,6 +55,14 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	versionData := make(map[string]interface{})
 	if config.Token != "novault" {
 		if valid, errValidateEnvironment := modCheck.ValidateEnvironment(config.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
+			if errValidateEnvironment != nil {
+				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
+					if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
+						return nil, eUtils.LogAndSafeExit(config, "Invalid certificate.", 1)
+					}
+				}
+			}
+
 			if unrestrictedValid, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(config.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
 				return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
 			}
@@ -302,7 +316,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 					destFile := certData[0]
 					certDestination := config.EndDir + "/" + destFile
 					writeToFile(config, certData[1], certDestination)
-					eUtils.LogInfo(config, "certificate written to "+certDestination)
+					if config.OutputMemCache {
+						eUtils.LogInfo(config, "certificate pre-processed for "+certDestination)
+					} else {
+						eUtils.LogInfo(config, "certificate written to "+certDestination)
+					}
 					goto wait
 				} else {
 					if config.Diff {
@@ -354,7 +372,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 					}
 					certDestination := config.EndDir + "/" + certData[0]
 					writeToFile(config, certData[1], certDestination)
-					eUtils.LogInfo(config, "certificate written to "+certDestination)
+					if config.OutputMemCache {
+						eUtils.LogInfo(config, "certificate pre-processed for "+certDestination)
+					} else {
+						eUtils.LogInfo(config, "certificate written to "+certDestination)
+					}
 					goto wait
 				} else {
 					if config.Diff {
@@ -371,10 +393,14 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 
 			//print that we're done
 			if !config.Diff && !isCert && !templateInfo {
+				messageBase := "template configured and written to "
+				if config.OutputMemCache {
+					messageBase = "template configured and pre-processed for "
+				}
 				if runtime.GOOS == "windows" {
-					eUtils.LogInfo(config, "template configured and written to "+endPaths[i])
+					eUtils.LogInfo(config, messageBase+endPaths[i])
 				} else {
-					eUtils.LogInfo(config, "\033[0;33m"+"template configured and written to "+endPaths[i]+"\033[0m")
+					eUtils.LogInfo(config, "\033[0;33m"+messageBase+endPaths[i]+"\033[0m")
 				}
 			}
 
@@ -402,22 +428,55 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	return nil, nil
 }
 
+var memCacheLock sync.Mutex
+
 func writeToFile(config *eUtils.DriverConfig, data string, path string) {
+	if strings.Contains(data, "${TAG}") {
+		tag := os.Getenv("TRCENV_TAG")
+		if len(tag) > 0 {
+			matched, err := regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
+			if !matched || err != nil {
+				fmt.Println("Invalid build tag")
+				eUtils.LogInfo(config, "Invalid build tag was found:"+tag+"- exiting...")
+				os.Exit(-1)
+			}
+		}
+		data = strings.Replace(data, "${TAG}", tag, -1)
+	}
+
 	byteData := []byte(data)
 	//Ensure directory has been created
+	var newFile *os.File
 
-	dirPath := filepath.Dir(path)
-	err := os.MkdirAll(dirPath, os.ModePerm)
-	eUtils.CheckError(config, err, true)
-	//create new file
-	newFile, err := os.Create(path)
-	eUtils.CheckError(config, err, true)
-	//write to file
-	_, err = newFile.Write(byteData)
-	eUtils.CheckError(config, err, true)
-	err = newFile.Sync()
-	eUtils.CheckError(config, err, true)
-	newFile.Close()
+	if config.OutputMemCache {
+		var memFile billy.File
+		memCacheLock.Lock()
+		if _, err := config.MemFs.Stat(path); errors.Is(err, os.ErrNotExist) {
+			memFile, err = config.MemFs.Create(path)
+			if err != nil {
+				eUtils.CheckError(config, err, true)
+			}
+			memFile.Write(byteData)
+			memFile.Close()
+			memCacheLock.Unlock()
+		} else {
+			memCacheLock.Unlock()
+			eUtils.CheckError(config, err, true)
+		}
+	} else {
+		dirPath := filepath.Dir(path)
+		err := os.MkdirAll(dirPath, os.ModePerm)
+		eUtils.CheckError(config, err, true)
+		//create new file
+		newFile, err = os.Create(path)
+		eUtils.CheckError(config, err, true)
+		//write to file
+		_, err = newFile.Write(byteData)
+		eUtils.CheckError(config, err, true)
+		err = newFile.Sync()
+		eUtils.CheckError(config, err, true)
+		newFile.Close()
+	}
 }
 
 func getDirFiles(dir string, endDir string) ([]string, []string) {

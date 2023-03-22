@@ -26,29 +26,64 @@ read VAULT_TOKEN
 echo "Enter environment: "
 read VAULT_ENV
 
-echo "Enter trc plugin runtime environment token with write permissions unrestricted: "
-read VAULT_ENV_TOKEN
+echo "Is this plugin an agent (Y or N): "
+read VAULT_AGENT
 
-echo "Enter carrier deployment runtime token pluginEnv: "
-read VAULT_CARRIER_DEPLOY_TOKEN
-
-if [ "$VAULT_PLUGIN_DIR" ]
-then
-    echo "Deploying using local vault strategy."
-    PRE_CERTIFY="N"
+if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then
+    PRE_CERTIFY="Y"
 else
-    echo "Precertify plugin: "
-    read PRE_CERTIFY
+    echo "Enter trc plugin runtime environment token with write permissions unrestricted: "
+    read VAULT_ENV_TOKEN
+
+    if [ "$VAULT_PLUGIN_DIR" ]
+    then
+        echo "Deploying using local vault strategy."
+        PRE_CERTIFY="N"
+    else
+        echo "Precertify plugin (Y or N): "
+        read PRE_CERTIFY
+    fi
 fi
 
+
 if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
-    if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ]; then
-    trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -binaryName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
+    if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = "y" ]; then
+        if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then 
+            echo "Deploying agent"
+            trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256) -pluginType=agent
+            certifystatus=$?
+            if [ $certifystatus -eq 0 ]; then       
+               echo "No problems encountered."
+               exit $certifystatus
+            else
+               echo "Unexpected certifyication errorerror."
+               exit $certifystatus
+            fi
+        else
+            trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
+        fi
     fi
 else
-    if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ]; then
-    trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -binaryName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+    if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = "y" ]; then
+        if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then 
+	        echo "Deploying agent"
+            trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256) -pluginType=agent
+            certifystatus=$?
+            if [ $certifystatus -eq 0 ]; then       
+               echo "No problems encountered."
+               exit $certifystatus
+            else
+               echo "Unexpected certifyication errorerror."
+               exit $certifystatus
+            fi
+        else
+            trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+        fi
     fi
+fi
+
+if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then
+    exit 0
 fi
 
 if [ "$VAULT_PLUGIN_DIR" ]
@@ -58,12 +93,12 @@ else
     echo "Checking plugin deploy status."
     if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
     echo "Certifying plugin for env $VAULT_ENV."
-    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -binaryName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
+    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME-prod -sha256=$(cat target/$TRC_PLUGIN_NAME-prod.sha256)
     status=$?
     echo "Plugin certified with result $status."
     else
     echo "Certifying plugin for env $VAULT_ENV."
-    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -binaryName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
     status=$?
     echo "Plugin certified with result $status."
     fi 
@@ -102,7 +137,7 @@ if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]; then
     # First we set Copied to false...
     # This should also trigger the copy process...
     # It should return sha256 of copied plugin on success.
-    SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME-prod vaddress=$VAULT_ADDR)
+    SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME-prod)
     SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
     
     if [ "$SHAVAL" != "$FILESHAVAL" ]; then
@@ -145,7 +180,7 @@ else
         # First we set Copied to false...
         # This should also trigger the copy process...
         # It should return sha256 of copied plugin on success.
-        SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV token=$VAULT_CARRIER_DEPLOY_TOKEN plugin=$TRC_PLUGIN_NAME plugintype=$TRC_PLUGIN_TYPE  vaddress=$VAULT_ADDR)
+        SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME)
         SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
 
         if [ "$SHAVAL" = "Failure" ]; then
