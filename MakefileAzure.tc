@@ -49,12 +49,12 @@ pluginprodcarriersha:
 pluginprodcarrier: pluginprodcarrierbuild pluginprodcarriersha
 
 configmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "azure memonly" -o $(GOBIN)/trcconfig.mac github.com/trimble-oss/tierceron/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "azure" -o $(GOBIN)/trcconfig.mac github.com/trimble-oss/tierceron/trcconfig
 seed:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "tc memonly" github.com/trimble-oss/tierceron/trcinit
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcinit
 seedmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "azure memonly" -o $(GOBIN)/trcinit.mac github.com/trimble-oss/tierceron/trcinit 
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "azure" -o $(GOBIN)/trcinit.mac github.com/trimble-oss/tierceron/trcinit 
 seedp:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/trcinitp
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcinitp
@@ -62,12 +62,12 @@ x:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/trcx
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcx
 xmac:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "azure memonly" -o $(GOBIN)/trcx.mac github.com/trimble-oss/tierceron/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build  -tags "azure" -o $(GOBIN)/trcx.mac github.com/trimble-oss/tierceron/trcx
 xlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build   -buildmode=c-shared -a -ldflags '-w' -tags "azure memonly" -o $(GOBIN)/nc.so github.com/trimble-oss/tierceron/configlib
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/nc.so
 maclib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build   -buildmode=c-shared -tags "azure memonly" -o $(GOBIN)/nc.dylib github.com/trimble-oss/tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -tags "azure memonly" -o $(GOBIN)/nc.dylib github.com/trimble-oss/tierceron/configlib
 winlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build   -buildmode=c-shared -o $(GOBIN)/nc.dll github.com/trimble-oss/tierceron/configlib
 xp:
