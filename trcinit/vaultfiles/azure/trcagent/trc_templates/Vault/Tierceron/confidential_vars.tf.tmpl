@@ -1,3 +1,13 @@
+variable "created_by" {
+  type = string
+  default = "{{.created_by}}"
+}
+
+variable "created_on" {
+  type = string
+  default = "{{.created_on}}"
+}
+
 variable "host" {
   type = string
   default = {{.host}}
@@ -36,14 +46,21 @@ variable "trcdbb_port" {
 variable "allowed_ip_ranges" {
   type    = list(string)
   default = [ 
-    {{.script_cidr_block}}, 
+    {{.local_cidr_block}}, 
     {{.onsite_cidr_block}},
+  ]
+}
+
+variable "allowed_vpn_ip_ranges" {
+  type    = list(string)
+  default = [ 
+    {{.vpn_cidr_block}}, 
   ]
 }
 
 variable "dest_port_ranges" {
   type    = list(string)
-  default = [ {{.hostport}}, {{.controllera_port}}, {{.controllerb_port}}, {{.trcdba_port}}, {{.trcdbb_port}} ]
+  default = [ "{{.hostport}}", {{.controllera_port}}, {{.controllerb_port}}, {{.trcdba_port}}, {{.trcdbb_port}} ]
 }
 
 variable "security_software_script_path"{
@@ -101,3 +118,28 @@ variable "tierceronname" {
   default = "{{.tierceronname}}"
 }
 
+variable "vm_db_VN" {
+  type    = string
+  default = "{{.vm_db_VN}}"
+}
+
+variable "VN_rg_name" {
+  type    = string
+  default = "{{.VN_rg_name}}"
+}
+
+
+variable "DB_subnet_name" {
+  type    = string
+  default = "{{.DB_subnet_name}}"
+}
+
+variable "VM_subnet_name" {
+  type    = string
+ default = "{{.VM_subnet_name}}"
+}
+
+variable "subresource_group_name" {
+  type = string
+ default = "{{.subresource_group_name}}"
+}
