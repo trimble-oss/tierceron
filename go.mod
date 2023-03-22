@@ -28,7 +28,7 @@ require (
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	//github.com/mrjrieke/nute v0.0.0-20221220150022-370bea61eb44
-	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.0
+	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
