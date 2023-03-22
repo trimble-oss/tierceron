@@ -198,8 +198,10 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 
 	if err != nil {
 		logger.Println(fmt.Sprintf("LookupSelf Auth failure: %v\n", err))
-		if _, sErrOk := err.(*url.Error).Err.(*tls.CertificateVerificationError); sErrOk {
-			return false, err
+		if urlErr, urlErrOk := err.(*url.Error); urlErrOk {
+			if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
+				return false, err
+			}
 		} else if strings.Contains(err.Error(), "x509: certificate") {
 			return false, err
 		}
