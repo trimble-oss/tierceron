@@ -66,7 +66,7 @@ func AutoAuth(config *DriverConfig,
 	envPtr *string,
 	addrPtr *string,
 	envCtxPtr *string,
-	configFile string,
+	appRoleConfig string,
 	ping bool) error {
 	// Declare local variables
 	var override bool
@@ -98,33 +98,38 @@ func AutoAuth(config *DriverConfig,
 		secretIDPtr = nil
 	} else {
 		config.Log.Printf("User home directory %v ", userHome)
-		if len(configFile) == 0 {
-			configFile = "config.yml"
+		if len(appRoleConfig) == 0 {
+			appRoleConfig = "config.yml"
 		}
-		if _, err := os.Stat(userHome + "/.tierceron/" + configFile); !os.IsNotExist(err) {
-			exists = true
-			_, configErr := c.getConfig(config.Log, configFile)
-			if configErr != nil {
-				return configErr
+		if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
+			if config.IsShell {
+				return errors.New("Required azure deploy approle and secret are missing.")
 			}
+			if _, err := os.Stat(userHome + "/.tierceron/" + appRoleConfig); !os.IsNotExist(err) {
+				exists = true
+				_, configErr := c.getConfig(config.Log, appRoleConfig)
+				if configErr != nil {
+					return configErr
+				}
 
-			if addrPtr == nil || *addrPtr == "" {
-				*addrPtr = c.VaultHost
-			}
+				if addrPtr == nil || *addrPtr == "" {
+					*addrPtr = c.VaultHost
+				}
 
-			if *tokenPtr == "" {
-				if !override {
-					LogInfo(config, "Obtaining auth credentials.")
-					if c.SecretID != "" && secretIDPtr != nil {
-						*secretIDPtr = c.SecretID
-					}
-					if c.ApproleID != "" && appRoleIDPtr != nil {
-						*appRoleIDPtr = c.ApproleID
+				if *tokenPtr == "" {
+					if !override {
+						LogInfo(config, "Obtaining auth credentials.")
+						if c.SecretID != "" && secretIDPtr != nil {
+							*secretIDPtr = c.SecretID
+						}
+						if c.ApproleID != "" && appRoleIDPtr != nil {
+							*appRoleIDPtr = c.ApproleID
+						}
 					}
 				}
+			} else {
+				config.Log.Printf("Invalid home directory %v ", err)
 			}
-		} else {
-			config.Log.Printf("Invalid home directory %v ", err)
 		}
 	}
 
@@ -209,7 +214,9 @@ func AutoAuth(config *DriverConfig,
 
 			dump = []byte(certConfigData)
 		} else if override && !exists {
-			LogInfo(config, "No cert file exists, continuing without saving config IDs")
+			if !config.IsShell {
+				LogInfo(config, "No approle file exists, continuing without saving config IDs")
+			}
 		} else {
 			LogInfo(config, fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"))
 			certConfigData := "vaultHost: " + vaultHost + "\n"
@@ -223,7 +230,7 @@ func AutoAuth(config *DriverConfig,
 			dump = []byte(certConfigData)
 		}
 
-		// Do not save IDs if overriding and no cert file exists
+		// Do not save IDs if overriding and no approle file exists
 		if !override || exists {
 
 			// Create hidden folder
@@ -273,10 +280,13 @@ func AutoAuth(config *DriverConfig,
 		}
 
 		tokenNamePrefix := "config"
-		if configFile == "configpub.yml" {
+		if appRoleConfig == "configpub.yml" {
 			tokenNamePrefix = "vault_pub"
-		} else if configFile == "configdeploy.yml" {
+		} else if appRoleConfig == "configdeploy.yml" {
 			tokenNamePrefix = "vault_token_deploy"
+			goto skipswitch
+		} else if appRoleConfig == "deployauth" {
+			tokenNamePrefix = "vault_token_azuredeploy"
 			goto skipswitch
 		}
 		switch env {
@@ -337,12 +347,15 @@ func AutoAuth(config *DriverConfig,
 		}
 		mod.RawEnv = "bamboo"
 		mod.Env = "bamboo"
-		if configFile == "configpub.yml" {
+		if appRoleConfig == "configpub.yml" {
 			mod.RawEnv = "pub"
 			mod.Env = "pub"
-		} else if configFile == "configdeploy.yml" {
+		} else if appRoleConfig == "configdeploy.yml" {
 			mod.RawEnv = "deploy"
 			mod.Env = "deploy"
+		} else if appRoleConfig == "deployauth" {
+			mod.RawEnv = "azuredeploy"
+			mod.Env = "azuredeploy"
 		}
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {

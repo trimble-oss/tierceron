@@ -89,6 +89,23 @@ func SeedVault(config *eUtils.DriverConfig) error {
 
 	files, err := ioutil.ReadDir(config.StartDir[0])
 
+	if len(config.FileFilter) == 1 && config.FileFilter[0] == "nest" {
+		err := filepath.Walk(config.StartDir[0]+"/"+config.Env,
+			func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if strings.HasSuffix(path, "_seed.yml") {
+					SeedVaultFromFile(config, path)
+				}
+				return nil
+			})
+		if err != nil {
+			config.Log.Println(err)
+		}
+		fmt.Println("Nested initialization complete")
+		return nil
+	}
 	templateWritten = make(map[string]bool)
 	//
 	// The following logic section for server based certificate loading is for when it is known that
@@ -433,7 +450,6 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 	}
 
 	certPath := fmt.Sprintf("%s", certPathData)
-	eUtils.LogInfo(config, fmt.Sprintf("Inspecting certificate: "+certPath+"."))
 
 	if strings.Contains(certPath, "ENV") {
 		if len(config.EnvRaw) >= 5 && (config.EnvRaw)[:5] == "local" {
@@ -444,6 +460,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 		}
 	}
 	certPath = coreopts.GetFolderPrefix() + "_seeds/" + certPath
+	eUtils.LogInfo(config, fmt.Sprintf("Inspecting certificate: "+certPath+"."))
 	cert, err := ioutil.ReadFile(certPath)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -521,7 +538,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 			if _, ok := entry.data["certData"]; ok {
 				// insecure value entry.
 				entry.data["certData"] = certBase64
-
+				eUtils.LogInfo(config, "Writing certificate to vault at: "+entry.path+".")
 				WriteData(config, entry.path, entry.data, mod)
 
 				certPathSplit := strings.Split(certPath, "/")
@@ -544,6 +561,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 						if secretPath == secretEntry.path {
 							if _, ok := secretEntry.data["certData"]; ok {
 								secretEntry.data["certData"] = certBase64
+								eUtils.LogInfo(config, "Writing certificate to vault at: "+secretEntry.path+".")
 								WriteData(config, secretEntry.path, secretEntry.data, mod)
 								WriteData(config, entry.path, entry.data, mod)
 								done = true
@@ -698,7 +716,10 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 
 		// Write Secrets...
 		if seedCert {
+			sectionPathTemp := mod.SectionPath
+			mod.SectionPath = ""
 			seedVaultWithCertsFromEntry(config, mod, &writeStack, &entry)
+			mod.SectionPath = sectionPathTemp
 		} else if seedData {
 			// TODO: Support all services, so range over ServicesWanted....
 			// Populate as a slice...
