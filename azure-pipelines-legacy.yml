@@ -132,7 +132,7 @@ steps:
     done
 
     echo "Compile Mac"
-    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "azure memonly tc vaultname" -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcx,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "azure tc vaultname" -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcx,trcsub}
     for p in trcconfig trcpub trcx trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
