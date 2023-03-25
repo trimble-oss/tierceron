@@ -29,12 +29,13 @@ type DriverConfig struct {
 	Log           *log.Logger
 
 	// Vault Configurations...
-	Token        string
-	VaultAddress string
-	EnvRaw       string
-	Env          string
-	Regions      []string
-	FileFilter   []string // Which systems to operate on.
+	Token         string
+	VaultAddress  string
+	EnvRaw        string
+	Env           string
+	Regions       []string
+	FileFilter    []string // Which systems to operate on.
+	SubPathFilter []string // Which subpaths to operate on.
 
 	SecretMode bool
 	// Tierceron source and destination I/O

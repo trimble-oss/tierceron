@@ -48,7 +48,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 	if len(config.DynamicPathFilter) > 0 {
 		dynamicPathParts := strings.Split(config.DynamicPathFilter, "/")
 
-		if len(dynamicPathParts) > 4 && dynamicPathParts[0] == "Restricted" || dynamicPathParts[0] == "Index" {
+		if len(dynamicPathParts) > 4 && dynamicPathParts[0] == "Restricted" || dynamicPathParts[0] == "Index" || dynamicPathParts[0] == "PublicIndex" {
 			projectFilter := "/" + dynamicPathParts[1] + "/"
 			serviceFilter := "/" + dynamicPathParts[4] + "/"
 			config.SectionName = serviceFilter
@@ -81,6 +81,8 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 					}
 					wantedTemplatePaths = append(wantedTemplatePaths, pathFilter+endPathFilter)
 				}
+			} else if len(config.SubPathFilter) > 0 {
+				wantedTemplatePaths = config.SubPathFilter
 			} else {
 				wantedTemplatePaths = append(wantedTemplatePaths, pathFilter)
 			}
