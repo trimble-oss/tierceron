@@ -48,9 +48,15 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 	if len(config.DynamicPathFilter) > 0 {
 		dynamicPathParts := strings.Split(config.DynamicPathFilter, "/")
 
-		if len(dynamicPathParts) > 4 && dynamicPathParts[0] == "Restricted" || dynamicPathParts[0] == "Index" || dynamicPathParts[0] == "PublicIndex" {
+		if dynamicPathParts[0] == "Restricted" || dynamicPathParts[0] == "Index" || dynamicPathParts[0] == "PublicIndex" || dynamicPathParts[0] == "Protected" {
 			projectFilter := "/" + dynamicPathParts[1] + "/"
-			serviceFilter := "/" + dynamicPathParts[4] + "/"
+			var serviceFilter string
+			if len(dynamicPathParts) > 4 {
+				serviceFilter = "/" + dynamicPathParts[4] + "/"
+			} else if len(dynamicPathParts) < 4 && dynamicPathParts[0] == "Protected" {
+				// Support shorter Protected paths.
+				serviceFilter = "/" + dynamicPathParts[2]
+			}
 			config.SectionName = serviceFilter
 
 			// Now filter and grab the templates we want...
