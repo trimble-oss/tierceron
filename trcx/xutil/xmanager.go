@@ -711,7 +711,10 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 
 			endPath = config.EndDir + envBasePath + config.SectionKey + config.ProjectSections[0] + sectionNamePath + subSectionValuePath + config.SubSectionName + "_seed.yml"
 		} else if len(config.DynamicPathFilter) > 0 {
-			destPath := strings.Replace(endPath, config.SectionName, "/", 1)
+			destPath := endPath
+			if len(config.SectionKey) > 0 {
+				destPath = strings.Replace(endPath, config.SectionName, "/", 1)
+			}
 			destPath = strings.Replace(destPath, "super-secrets/", "", 1)
 			endPath = config.EndDir + envBasePath + "/" + destPath + "_seed.yml"
 		} else {

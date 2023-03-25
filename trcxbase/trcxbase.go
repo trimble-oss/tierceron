@@ -444,7 +444,7 @@ skipDiff:
 						Update:            messenger,
 						VersionInfo:       eUtils.VersionHelper,
 						DynamicPathFilter: pGen,
-						SubPathFilter:     strings.Split(*eUtils.SubPathFilter, ","),
+						SubPathFilter:     strings.Split(pGen, ","),
 						FileFilter:        fileFilter,
 						ExitOnFailure:     true,
 						Trcxr:             *readOnlyPtr,
