@@ -264,7 +264,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					if err != nil {
 						eUtils.LogErrorObject(config, err, false)
 					} else if listValues == nil {
-						eUtils.LogInfo(config, "No values were returned under values/.")
+						//eUtils.LogInfo(config, "No values were returned under values/.")
 					} else {
 						serviceSlice := make([]string, 0)
 						for _, valuesPath := range listValues.Data {
@@ -354,13 +354,14 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 			version = envVersion[1]
 			//check for template_files directory here
 			project, service, tp = vcutils.GetProjectService(tp)
+			useCache := false
 
 			if c.Token != "" && c.Token != "novault" {
 				var err error
-				goMod, err = helperkv.NewModifier(c.Insecure, c.Token, c.VaultAddress, env, c.Regions, true, config.Log)
+				goMod, err = helperkv.NewModifier(c.Insecure, c.Token, c.VaultAddress, env, c.Regions, useCache, config.Log)
 				goMod.Env = c.Env
 				if err != nil {
-					if goMod != nil {
+					if useCache && goMod != nil {
 						goMod.Release()
 					}
 					eUtils.LogErrorObject(config, err, false)
@@ -458,7 +459,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 				templateResult.SectionPath = goMod.SectionPath
 			}
 
-			if goMod != nil {
+			if useCache && goMod != nil {
 				goMod.Release()
 			}
 			if errSeed != nil {
