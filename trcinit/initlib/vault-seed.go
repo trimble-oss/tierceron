@@ -334,7 +334,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 													}
 													for _, deeplyNestedFile := range deeplyNestedFiles {
 														if !deeplyNestedFile.IsDir() {
-															subSectionPath = subSectionPath + deeplyNestedFile.Name()
+															subSectionPath = subSectionPath + "/" + deeplyNestedFile.Name()
 															SeedVaultFromFile(config, subSectionPath)
 															seeded = true
 														}
