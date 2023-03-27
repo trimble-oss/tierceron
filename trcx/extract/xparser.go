@@ -166,8 +166,9 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 		value = "data"
 	} else {
 		if cds != nil {
+			// Load from Config Data Store.
 			vaultValue, vaultError := cds.GetValue(service, keyPath, keyName)
-			if vaultError == nil && vaultValue != "" {
+			if vaultError == nil {
 				value = vaultValue
 				okValue = true
 			}
@@ -281,6 +282,8 @@ func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
 			valueSection,
 			secretSection,
 			templatePathSlice, templateDir, templateDepth, true, keyName, service)
+
+		// Sets the secret from Config Data Store.
 		parseAndSetSection(cds,
 			secretSection,
 			"super-secrets",
