@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+var SubPathFilter = flag.String("subPathFilter", "", "Specifies subpath templates to filter")                           // a sub path filter.
 var ServiceNameFilterPtr = flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
 var ServiceFilterPtr = flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")               // Table names
 var IndexNameFilterPtr = flag.String("indexFilter", "", "Specifies which index names to filter")                        // column index, table to filter.

@@ -345,6 +345,30 @@ retryVaultAccess:
 		return nil, err
 	}
 	if data, ok := secret.Data["data"].(map[string]interface{}); ok {
+		//
+		// TODO: Bad data cleanup.
+		// TODO: Hacking around missing lastTestedDate data.
+		//
+		if testedDate, testedDateOk := data["lastTestedDate"]; testedDateOk {
+			if testedDate == "" {
+				if metadata, ok := secret.Data["metadata"].(map[string]interface{}); ok {
+					data["lastTestedDate"] = metadata["created_time"]
+				}
+			}
+		}
+		// TODO: Bad data cleanup.
+		if strings.Contains(fullPath, "argosId") {
+			if _, argosIdOk := data["argosId"]; !argosIdOk {
+				pathParts := strings.Split(fullPath, "/")
+				for i := 0; i < len(pathParts); i++ {
+					if pathParts[i] == "argosId" {
+						data["argosId"] = pathParts[i+1]
+						break
+					}
+				}
+
+			}
+		}
 		if memonly.IsMemonly() && !strings.HasPrefix(path, "templates") { // Don't lock templates
 			for dataKey, dataValues := range data {
 				if !buildopts.CheckMemLock(bucket, dataKey) {
@@ -402,6 +426,8 @@ func (m *Modifier) ReadMapValue(valueMap map[string]interface{}, path string, ke
 			return value, nil
 		} else if stringer, ok := valueMap[key].(fmt.GoStringer); ok {
 			return stringer.GoString(), nil
+		} else if stringer, ok := valueMap[key].((json.Number)); ok {
+			return stringer.String(), nil
 		} else {
 			return "", fmt.Errorf("Cannot convert value at %s to string", key)
 		}
