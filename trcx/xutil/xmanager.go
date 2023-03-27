@@ -354,7 +354,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 			version = envVersion[1]
 			//check for template_files directory here
 			project, service, tp = vcutils.GetProjectService(tp)
-			useCache := false
+			useCache := true
 
 			if c.Token != "" && c.Token != "novault" {
 				var err error
