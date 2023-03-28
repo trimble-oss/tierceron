@@ -21,8 +21,7 @@ pr:
     - develop
 
 pool:
-#  vmImage: 'ubuntu-22.04' TODO: asap update
-  vmImage: 'ubuntu-18.04'
+  vmImage: 'ubuntu-22.04'
 resources:
   repositories:
   - repository: VaultConfig.Bootstrap
