@@ -111,7 +111,7 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "azure memonly tc vaultname" -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOOS=linux CGO_ENABLED=0 GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "azure memonly tc vaultname" -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
