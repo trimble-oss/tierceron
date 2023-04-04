@@ -26,7 +26,7 @@ func (tl *TrcDBServerEventListener) ClientDisconnected() {}
 func (tl *TrcDBServerEventListener) QueryStarted() {}
 
 func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, duration time.Duration) {
-	if success && (strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update")) {
+	if success && (strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update") || strings.HasPrefix(strings.ToLower(query), "delete")) {
 		// TODO: one could implement exactly which flows to notify based on the query.
 		//
 		// Workaround: Vitess to the rescue.
@@ -64,6 +64,36 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 					}
 				}
 				// TODO: grab changeId for updates as well.
+			} else if sqlDelete, sqlDeleteOk := stmt.(*sqlparser.Delete); sqlDeleteOk {
+				//Grabbing change Ids for writeback
+				//Prevents anything but a single delete for writing back.
+				/*
+					subQuery := strings.Split(strings.ToLower(query), "where")
+					if len(subQuery) == 2 {
+						queryParts, parseErr := url.ParseQuery(subQuery[len(subQuery)-1])
+						if parseErr != nil {
+							tl.Log.Printf("Delete query parser failed: %s %v\n", query, parseErr.Error())
+						} else {
+							for qKey, qVal := range queryParts {
+								if len(qVal) == 1 {
+									changeIds[strings.TrimPrefix(strings.TrimSuffix(strings.TrimPrefix(strings.TrimSuffix(qKey, "\""), "\""), "'"), "'")] = strings.TrimPrefix(strings.TrimSuffix(strings.TrimPrefix(strings.TrimSuffix(qVal[0], "\""), "\""), "'"), "'")
+								}
+							}
+
+						}
+					}*/
+				for _, tableExpr := range sqlDelete.TableExprs {
+					if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
+						if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
+							tableName = tableNameType.Name.String()
+							tl.Log.Printf("Query completed: %s %v\n", query, success)
+							break
+						}
+					}
+				}
+				//	changeLock.Lock()
+				//	flowcore.TriggerDeleteChannel(tableName, changeIds) //ChangeIDs can be non-key values hence a different trigger
+				//	changeLock.Unlock()
 			}
 		}
 

@@ -46,6 +46,13 @@ func GetDataFlowInsertTrigger(databaseName string, tableName string, iden1 strin
 		` END;`
 }
 
+func GetDataFlowDeleteTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
+	return `CREATE TRIGGER tcDeleteTrigger AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+		` BEGIN` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,current_timestamp());` +
+		` END;`
+}
+
 func getDataFlowStatisticsSchema(tableName string) sqle.PrimaryKeySchema {
 	return sqle.NewPrimaryKeySchema(sqle.Schema{
 		{Name: dfssql.DataflowTestNameColumn, Type: sqle.Text, Source: tableName, PrimaryKey: true}, //composite key
@@ -158,7 +165,7 @@ func prepareDataFlowChangeTable(tfmContext *flowcore.TrcFlowMachineContext, tfCo
 	if changeTableErr != nil {
 		tfmContext.Log("Error creating ninja change table", changeTableErr)
 	}
-	tfmContext.CreateDataFlowTableTriggers(tfContext, dfssql.DataflowTestNameColumn, dfssql.DataflowTestIdColumn, dfssql.DataflowTestStateCodeColumn, GetDataFlowInsertTrigger, GetDataFlowUpdateTrigger)
+	tfmContext.CreateDataFlowTableTriggers(tfContext, dfssql.DataflowTestNameColumn, dfssql.DataflowTestIdColumn, dfssql.DataflowTestStateCodeColumn, GetDataFlowInsertTrigger, GetDataFlowUpdateTrigger, GetDataFlowDeleteTrigger)
 	tfmContext.GetTableModifierLock().Unlock()
 }
 
