@@ -280,7 +280,10 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 			if !tfContext.ReadOnly {
 				if !strings.Contains(indexPath, "/PublicIndex/") {
-					indexPath = "Index/" + tfContext.FlowSource + indexPath + "/" + tfContext.Flow.TableName()
+					indexPath = "Index/" + tfContext.FlowSource + indexPath
+					if !strings.HasSuffix(indexPath, tfContext.Flow.TableName()) {
+						indexPath = indexPath + "/" + tfContext.Flow.TableName()
+					}
 				}
 
 				deleteMap, deleteErr := tfContext.GoMod.SoftDelete(indexPath, tfContext.Log)
