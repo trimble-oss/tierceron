@@ -87,13 +87,14 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 						if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
 							tableName = tableNameType.Name.String()
 							tl.Log.Printf("Query completed: %s %v\n", query, success)
-							break
+							changeLock.Lock()
+							flowcore.TriggerChangeChannel(tableName)
+							changeLock.Unlock()
+							return
 						}
 					}
 				}
-				//	changeLock.Lock()
-				//	flowcore.TriggerDeleteChannel(tableName, changeIds) //ChangeIDs can be non-key values hence a different trigger
-				//	changeLock.Unlock()
+
 			}
 		}
 

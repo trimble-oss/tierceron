@@ -25,10 +25,18 @@ const flowGroupName = "Ninja"
 
 func GetDataflowStatIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
 	tenantIndexPath, _ := utilcore.GetDFSPathName()
-
-	if first, second, third, fourth := rowDataMap[dfssql.DataflowTestIdColumn].(string), rowDataMap[dfssql.DataflowTestNameColumn].(string), rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), rowDataMap["flowGroup"].(string); first != "" && second != "" && third != "" && fourth != "" {
-		return "super-secrets/PublicIndex/" + tenantIndexPath + "/" + dfssql.DataflowTestIdColumn + "/" + rowDataMap[dfssql.DataflowTestIdColumn].(string) + "/DataFlowStatistics/DataFlowGroup/" + rowDataMap["flowGroup"].(string) + "/dataFlowName/" + rowDataMap[dfssql.DataflowTestNameColumn].(string) + "/" + rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), nil
+	if _, ok := rowDataMap[dfssql.DataflowTestIdColumn].(string); ok {
+		if _, ok := rowDataMap[dfssql.DataflowTestNameColumn].(string); ok {
+			if _, ok := rowDataMap[dfssql.DataflowTestStateCodeColumn].(string); ok {
+				if _, ok := rowDataMap["flowGroup"].(string); ok {
+					if first, second, third, fourth := rowDataMap[dfssql.DataflowTestIdColumn].(string), rowDataMap[dfssql.DataflowTestNameColumn].(string), rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), rowDataMap["flowGroup"].(string); first != "" && second != "" && third != "" && fourth != "" {
+						return "super-secrets/PublicIndex/" + tenantIndexPath + "/" + dfssql.DataflowTestIdColumn + "/" + rowDataMap[dfssql.DataflowTestIdColumn].(string) + "/DataFlowStatistics/DataFlowGroup/" + rowDataMap["flowGroup"].(string) + "/dataFlowName/" + rowDataMap[dfssql.DataflowTestNameColumn].(string) + "/" + rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), nil
+					}
+				}
+			}
+		}
 	}
+
 	return "", errors.New("Could not find data flow statistic index.")
 }
 
@@ -47,9 +55,9 @@ func GetDataFlowInsertTrigger(databaseName string, tableName string, iden1 strin
 }
 
 func GetDataFlowDeleteTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
-	return `CREATE TRIGGER tcDeleteTrigger AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+	return `CREATE TRIGGER tcDeleteTrigger AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,current_timestamp());` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + iden1 + `,old.` + iden2 + `,old.` + iden3 + `,current_timestamp());` +
 		` END;`
 }
 

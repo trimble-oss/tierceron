@@ -74,7 +74,7 @@ func getInsertTrigger(databaseName string, tableName string, idColumnName string
 func getDeleteTrigger(databaseName string, tableName string, idColumnName string) string {
 	return `CREATE TRIGGER tcDeleteTrigger AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnName + `, current_timestamp());` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + idColumnName + `, current_timestamp());` +
 		` END;`
 }
 
@@ -85,21 +85,8 @@ func (fnt FlowNameType) TableName() string {
 func (fnt FlowNameType) ServiceName() string {
 	return string(fnt)
 }
-func TriggerDeleteChannel(table string, changeIds map[string]string) {
+func TriggerChangeChannel(table string) {
 	for _, tfmContext := range tfmContextMap {
-		for _, changeIdValue := range changeIds {
-			if tfContext, tfContextOk := tfmContext.FlowMap[FlowNameType(table)]; tfContextOk {
-				if table != "" {
-					changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
-					bindings := map[string]sqle.Expression{
-						"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
-					}
-					_, _, _, _ = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
-					break
-				}
-			}
-		}
-
 		if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
 			if len(notificationFlowChannel) == 5 {
 			emptied:
