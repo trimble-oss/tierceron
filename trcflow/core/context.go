@@ -71,12 +71,39 @@ func getInsertTrigger(databaseName string, tableName string, idColumnName string
 		` END;`
 }
 
+func getDeleteTrigger(databaseName string, tableName string, idColumnName string) string {
+	return `CREATE TRIGGER tcDeleteTrigger AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+		` BEGIN` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + idColumnName + `, current_timestamp());` +
+		` END;`
+}
+
 func (fnt FlowNameType) TableName() string {
 	return string(fnt)
 }
 
 func (fnt FlowNameType) ServiceName() string {
 	return string(fnt)
+}
+func TriggerChangeChannel(table string) {
+	for _, tfmContext := range tfmContextMap {
+		if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
+			if len(notificationFlowChannel) == 5 {
+			emptied:
+				for i := 0; i < 3; i++ {
+					select {
+					case <-notificationFlowChannel:
+					default:
+						break emptied
+					}
+				}
+			}
+			go func(nfc chan bool) {
+				nfc <- true
+			}(notificationFlowChannel)
+			return
+		}
+	}
 }
 
 func TriggerAllChangeChannel(table string, changeIds map[string]string) {
@@ -315,8 +342,10 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
+	var delTrigger sqle.TriggerDefinition
 	insTrigger.Name = "tcInsertTrigger_" + trcfc.Flow.TableName()
 	updTrigger.Name = "tcUpdateTrigger_" + trcfc.Flow.TableName()
+	delTrigger.Name = "tcDeleteTrigger_" + trcfc.Flow.TableName()
 	//Prevent duplicate triggers from existing
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
@@ -326,27 +355,31 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 
 	triggerExist := false
 	for _, trigger := range existingTriggers {
-		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name {
+		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name || trigger.Name == delTrigger.Name {
 			triggerExist = true
 		}
 	}
 	if !triggerExist {
 		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
 		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
+		delTrigger.CreateStatement = getDeleteTrigger(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), identityColumnName)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
+		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
 	}
 	tfmContext.GetTableModifierLock().Unlock()
 }
 
 // Set up call back to enable a trigger to track
 // whenever a row in a table changes...
-func (tfmContext *TrcFlowMachineContext) CreateCompositeTableTriggers(trcfc *TrcFlowContext, iden1 string, iden2 string, insertT func(string, string, string, string) string, updateT func(string, string, string, string) string) {
+func (tfmContext *TrcFlowMachineContext) CreateCompositeTableTriggers(trcfc *TrcFlowContext, iden1 string, iden2 string, insertT func(string, string, string, string) string, updateT func(string, string, string, string) string, deleteT func(string, string, string, string) string) {
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
+	var delTrigger sqle.TriggerDefinition
 	insTrigger.Name = "tcInsertTrigger_" + trcfc.Flow.TableName()
 	updTrigger.Name = "tcUpdateTrigger_" + trcfc.Flow.TableName()
+	delTrigger.Name = "tcDeleteTrigger_" + trcfc.Flow.TableName()
 	//Prevent duplicate triggers from existing
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
@@ -356,26 +389,31 @@ func (tfmContext *TrcFlowMachineContext) CreateCompositeTableTriggers(trcfc *Trc
 
 	triggerExist := false
 	for _, trigger := range existingTriggers {
-		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name {
+		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name || trigger.Name == delTrigger.Name {
 			triggerExist = true
 		}
 	}
 	if !triggerExist {
 		updTrigger.CreateStatement = updateT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2)
 		insTrigger.CreateStatement = insertT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2)
+		delTrigger.CreateStatement = deleteT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2)
+
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
+		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
 	}
 }
 
 // Set up call back to enable a trigger to track
 // whenever a row in a table changes...
-func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcFlowContext, iden1 string, iden2 string, iden3 string, insertT func(string, string, string, string, string) string, updateT func(string, string, string, string, string) string) {
+func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcFlowContext, iden1 string, iden2 string, iden3 string, insertT func(string, string, string, string, string) string, updateT func(string, string, string, string, string) string, deleteT func(string, string, string, string, string) string) {
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
+	var delTrigger sqle.TriggerDefinition
 	insTrigger.Name = "tcInsertTrigger_" + trcfc.Flow.TableName()
 	updTrigger.Name = "tcUpdateTrigger_" + trcfc.Flow.TableName()
+	delTrigger.Name = "tcDeleteTrigger_" + trcfc.Flow.TableName()
 	//Prevent duplicate triggers from existing
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
@@ -385,15 +423,17 @@ func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcF
 
 	triggerExist := false
 	for _, trigger := range existingTriggers {
-		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name {
+		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name || trigger.Name == delTrigger.Name {
 			triggerExist = true
 		}
 	}
 	if !triggerExist {
 		updTrigger.CreateStatement = updateT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2, iden3)
 		insTrigger.CreateStatement = insertT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2, iden3)
+		delTrigger.CreateStatement = deleteT(tfmContext.TierceronEngine.Database.Name(), trcfc.Flow.TableName(), iden1, iden2, iden3)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
+		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
 	}
 }
 
