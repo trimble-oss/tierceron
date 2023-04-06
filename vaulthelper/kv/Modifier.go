@@ -958,7 +958,8 @@ indexFound:
 }
 
 func (m *Modifier) SoftDelete(path string, logger *log.Logger) (map[string]interface{}, error) {
-	if !strings.HasPrefix(path, "super-secrets") {
+
+	if !strings.HasPrefix(path, "super-secrets") && !strings.HasPrefix(path, "values") {
 		path = "super-secrets/" + path
 	}
 
@@ -993,7 +994,7 @@ retryQuery:
 }
 
 func (m *Modifier) HardDelete(path string, logger *log.Logger) (map[string]interface{}, error) {
-	if !strings.HasPrefix(path, "super-secrets") {
+	if !strings.HasPrefix(path, "super-secrets") && !strings.HasPrefix(path, "values") {
 		path = "super-secrets/" + path
 	}
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
