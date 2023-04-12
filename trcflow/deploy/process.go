@@ -58,7 +58,11 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 			return
 		}
 
-		capauth.Init(goMod, pluginConfig, logger)
+		err = capauth.Init(goMod, pluginConfig, logger)
+		if err != nil {
+			eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
+			return
+		}
 
 		capauth.Memorize(pluginConfig, logger)
 
