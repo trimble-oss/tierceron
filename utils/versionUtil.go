@@ -34,6 +34,8 @@ func GetRawEnv(env string) string {
 		return "RQA"
 	} else if strings.HasPrefix(env, "staging") {
 		return "staging"
+	} else if strings.HasPrefix(env, "prod") {
+		return "prod"
 	} else {
 		return strings.Split(env, "_")[0]
 	}
