@@ -210,6 +210,10 @@ func SeedVault(config *eUtils.DriverConfig) error {
 	}
 	for _, envDir := range files {
 		if strings.HasPrefix(config.Env, envDir.Name()) || (strings.HasPrefix(config.Env, "local") && envDir.Name() == "local") {
+			if config.Env != config.EnvRaw && config.Env != envDir.Name() { //If raw & env don't match -> current env is env-* so env will be skipped
+				continue
+			}
+
 			config.Log.Println("\tStepping into: " + envDir.Name())
 
 			if config.DynamicPathFilter != "" {

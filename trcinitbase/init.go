@@ -691,8 +691,9 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			defer mod.Release()
 		}
 		mod.Env = *envPtr
-		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.Env, *uploadCertPtr, "", config.Log); errValidateEnvironment != nil || !valid {
-			if unrestrictedValid, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+		mod.RawEnv = eUtils.GetRawEnv(*envPtr)
+		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.RawEnv, *uploadCertPtr, "", config.Log); errValidateEnvironment != nil || !valid {
+			if unrestrictedValid, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.RawEnv, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
 				eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+mod.Env, 1)
 				return
 			}
@@ -762,7 +763,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			Token:             v.GetToken(),
 			VaultAddress:      *addrPtr,
 			Env:               *envPtr,
-			EnvRaw:            strings.Split(*envPtr, "_")[0],
+			EnvRaw:            eUtils.GetRawEnv(*envPtr),
 			SectionKey:        sectionKey,
 			SectionName:       subSectionName,
 			SubSectionValue:   *eUtils.IndexValueFilterPtr,
