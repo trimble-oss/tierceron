@@ -228,6 +228,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 
 	var wg sync.WaitGroup
 	//configure each template in directory
+	config.DiffCounter = len(templatePaths)
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
