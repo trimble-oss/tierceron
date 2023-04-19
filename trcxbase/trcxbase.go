@@ -741,7 +741,7 @@ skipDiff:
 				time.Sleep(time.Duration(time.Second))
 				retry++
 			}
-			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, resultMapLock)
+			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, resultMapLock, len(resultMap)/envLength)
 		}()
 	}
 	waitg.Wait() //Wait for diff
