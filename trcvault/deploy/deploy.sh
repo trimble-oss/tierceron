@@ -180,7 +180,7 @@ else
         # First we set Copied to false...
         # This should also trigger the copy process...
         # It should return sha256 of copied plugin on success.
-        SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME)
+        SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR )
         SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
 
         if [ "$SHAVAL" = "Failure" ]; then

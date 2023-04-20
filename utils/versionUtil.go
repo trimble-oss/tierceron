@@ -25,6 +25,22 @@ func SplitEnv(env string) []string {
 	return envVersion
 }
 
+func GetRawEnv(env string) string {
+	if strings.HasPrefix(env, "dev") {
+		return "dev"
+	} else if strings.HasPrefix(env, "QA") {
+		return "QA"
+	} else if strings.HasPrefix(env, "RQA") {
+		return "RQA"
+	} else if strings.HasPrefix(env, "staging") {
+		return "staging"
+	} else if strings.HasPrefix(env, "prod") {
+		return "prod"
+	} else {
+		return strings.Split(env, "_")[0]
+	}
+}
+
 func GetProjectVersionInfo(config *DriverConfig, mod *helperkv.Modifier) map[string]map[string]interface{} {
 	versionMetadataMap := make(map[string]map[string]interface{})
 	mod.VersionFilter = config.VersionFilter
