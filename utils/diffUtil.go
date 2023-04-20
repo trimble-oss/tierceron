@@ -359,7 +359,7 @@ func RemoveDuplicateValues(intSlice []string) []string {
 	return list
 }
 
-func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []string, fileSysIndex int, config bool, mutex *sync.Mutex) {
+func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []string, fileSysIndex int, config bool, mutex *sync.Mutex, diffFileCount int) {
 	fileIndex := 0
 	keys := []string{}
 	mutex.Lock()
@@ -401,8 +401,22 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		}
 	}
 
-	fileList := make([]string, len(resultMap)/envLength)
+	fileList := make([]string, diffFileCount)
 	mutex.Unlock()
+
+	sleepCount := 0
+	if len(resultMap) != diffFileCount {
+		for {
+			time.Sleep(time.Second)
+			sleepCount++
+			if sleepCount >= 5 {
+				fmt.Println("Timeout: Attempted to wait for remaining configs to come in. Attempting incomplete diff.")
+				break
+			} else if len(resultMap) == diffFileCount*envLength {
+				break
+			}
+		}
+	}
 
 	if config {
 		//Make fileList

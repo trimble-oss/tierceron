@@ -444,6 +444,7 @@ skipDiff:
 						Update:            messenger,
 						VersionInfo:       eUtils.VersionHelper,
 						DynamicPathFilter: pGen,
+						SubPathFilter:     strings.Split(pGen, ","),
 						FileFilter:        fileFilter,
 						ExitOnFailure:     true,
 						Trcxr:             *readOnlyPtr,
@@ -707,6 +708,7 @@ skipDiff:
 					VersionInfo:       eUtils.VersionHelper,
 					DynamicPathFilter: *dynamicPathPtr,
 					FileFilter:        fileFilter,
+					SubPathFilter:     strings.Split(*eUtils.SubPathFilter, ","),
 					ProjectSections:   projectSectionsSlice,
 					ServiceFilter:     serviceFilterSlice,
 					ExitOnFailure:     true,
@@ -739,7 +741,7 @@ skipDiff:
 				time.Sleep(time.Duration(time.Second))
 				retry++
 			}
-			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, resultMapLock)
+			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, resultMapLock, len(resultMap)/envLength)
 		}()
 	}
 	waitg.Wait() //Wait for diff

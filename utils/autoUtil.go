@@ -289,7 +289,7 @@ func AutoAuth(config *DriverConfig,
 			tokenNamePrefix = "vault_token_azuredeploy"
 			goto skipswitch
 		}
-		switch env {
+		switch GetRawEnv(env) {
 		case "dev":
 			*tokenNamePtr = tokenNamePrefix + "_token_dev"
 		case "QA":
@@ -323,7 +323,7 @@ func AutoAuth(config *DriverConfig,
 		//check that token matches environment
 		tokenParts := strings.Split(*tokenNamePtr, "_")
 		tokenEnv := tokenParts[len(tokenParts)-1]
-		if env != tokenEnv {
+		if GetRawEnv(env) != tokenEnv {
 			return LogAndSafeExit(config, "Token doesn't match environment", 1)
 		}
 	}

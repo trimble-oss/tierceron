@@ -90,13 +90,23 @@ func SeedVault(config *eUtils.DriverConfig) error {
 	files, err := ioutil.ReadDir(config.StartDir[0])
 
 	if len(config.FileFilter) == 1 && config.FileFilter[0] == "nest" {
+		dynamicPathFilter := ""
+		if config.DynamicPathFilter != "" {
+			dynamicPathFilter = config.StartDir[0] + "/" + config.Env + "/" + config.DynamicPathFilter
+		}
 		err := filepath.Walk(config.StartDir[0]+"/"+config.Env,
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
-				if strings.HasSuffix(path, "_seed.yml") {
-					SeedVaultFromFile(config, path)
+				if dynamicPathFilter != "" {
+					if strings.HasPrefix(path, dynamicPathFilter) && strings.HasSuffix(path, "_seed.yml") {
+						SeedVaultFromFile(config, path)
+					}
+				} else {
+					if strings.HasSuffix(path, "_seed.yml") {
+						SeedVaultFromFile(config, path)
+					}
 				}
 				return nil
 			})
@@ -200,6 +210,10 @@ func SeedVault(config *eUtils.DriverConfig) error {
 	}
 	for _, envDir := range files {
 		if strings.HasPrefix(config.Env, envDir.Name()) || (strings.HasPrefix(config.Env, "local") && envDir.Name() == "local") {
+			if config.Env != config.EnvRaw && config.Env != envDir.Name() { //If raw & env don't match -> current env is env-* so env will be skipped
+				continue
+			}
+
 			config.Log.Println("\tStepping into: " + envDir.Name())
 
 			if config.DynamicPathFilter != "" {
@@ -334,7 +348,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 													}
 													for _, deeplyNestedFile := range deeplyNestedFiles {
 														if !deeplyNestedFile.IsDir() {
-															subSectionPath = subSectionPath + deeplyNestedFile.Name()
+															subSectionPath = subSectionPath + "/" + deeplyNestedFile.Name()
 															SeedVaultFromFile(config, subSectionPath)
 															seeded = true
 														}
@@ -610,7 +624,13 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 
 	if strings.HasPrefix(filepath, "Restricted/") || strings.HasPrefix(filepath, "Protected/") { //Fix incoming pathing for restricted projects
 		i := strings.LastIndex(filepath, "/"+config.Env)
-		filepath = filepath[:i]
+		if i > 0 {
+			filepath = filepath[:i]
+		}
+	}
+
+	if strings.HasPrefix(filepath, "PublicIndex/") { //Fix incoming pathing for restricted projects
+		filepath = "/" + filepath
 	}
 
 	err := yaml.Unmarshal(fData, &rawYaml)
@@ -727,8 +747,17 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 				if strings.HasSuffix(entry.path, config.ServicesWanted[0]) || strings.Contains(entry.path, "Common") {
 					WriteData(config, entry.path, entry.data, mod)
 				}
-			} else if strings.Contains(filepath, "/PublicIndex/") && !strings.Contains(entry.path, "templates") {
-				WriteData(config, filepath, entry.data, mod)
+			} else if strings.Contains(filepath, "/PublicIndex/") {
+				if !strings.Contains(entry.path, "templates") {
+					if strings.HasSuffix(filepath, "_seed.yml") {
+						filepath = strings.ReplaceAll(filepath, "_seed.yml", "")
+					}
+					if !strings.HasPrefix(filepath, "super-secrets") {
+						filepath = "super-secrets" + filepath
+					}
+
+					WriteData(config, filepath, entry.data, mod)
+				}
 			} else {
 				WriteData(config, entry.path, entry.data, mod)
 			}

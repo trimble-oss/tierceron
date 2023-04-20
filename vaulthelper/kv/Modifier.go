@@ -345,6 +345,30 @@ retryVaultAccess:
 		return nil, err
 	}
 	if data, ok := secret.Data["data"].(map[string]interface{}); ok {
+		//
+		// TODO: Bad data cleanup.
+		// TODO: Hacking around missing lastTestedDate data.
+		//
+		if testedDate, testedDateOk := data["lastTestedDate"]; testedDateOk {
+			if testedDate == "" {
+				if metadata, ok := secret.Data["metadata"].(map[string]interface{}); ok {
+					data["lastTestedDate"] = metadata["created_time"]
+				}
+			}
+		}
+		// TODO: Bad data cleanup.
+		if strings.Contains(fullPath, "argosId") {
+			if _, argosIdOk := data["argosId"]; !argosIdOk {
+				pathParts := strings.Split(fullPath, "/")
+				for i := 0; i < len(pathParts); i++ {
+					if pathParts[i] == "argosId" {
+						data["argosId"] = pathParts[i+1]
+						break
+					}
+				}
+
+			}
+		}
 		if memonly.IsMemonly() && !strings.HasPrefix(path, "templates") { // Don't lock templates
 			for dataKey, dataValues := range data {
 				if !buildopts.CheckMemLock(bucket, dataKey) {
@@ -402,6 +426,8 @@ func (m *Modifier) ReadMapValue(valueMap map[string]interface{}, path string, ke
 			return value, nil
 		} else if stringer, ok := valueMap[key].(fmt.GoStringer); ok {
 			return stringer.GoString(), nil
+		} else if stringer, ok := valueMap[key].((json.Number)); ok {
+			return stringer.String(), nil
 		} else {
 			return "", fmt.Errorf("Cannot convert value at %s to string", key)
 		}
@@ -929,4 +955,100 @@ func (m *Modifier) FindIndexForService(project string, service string, logger *l
 indexFound:
 
 	return index, nil
+}
+
+func (m *Modifier) SoftDelete(path string, logger *log.Logger) (map[string]interface{}, error) {
+
+	if !strings.HasPrefix(path, "super-secrets") && !strings.HasPrefix(path, "values") {
+		path = "super-secrets/" + path
+	}
+
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullDataPath := pathBlocks[0] + "data/"
+	if !noEnvironments[pathBlocks[0]] {
+		fullDataPath += m.Env + "/"
+	}
+	fullDataPath += pathBlocks[1]
+	retries := 0
+retryQuery:
+	secret, err := m.logical.Delete(fullDataPath)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	}
+	if err != nil {
+		logger.Printf("Modifier failing after %d retries.\n", retries)
+	}
+
+	if secret == nil && err == nil {
+		return nil, nil
+	}
+	return nil, errors.New("Could not get metadata from vault response")
+}
+
+func (m *Modifier) HardDelete(path string, logger *log.Logger) (map[string]interface{}, error) {
+	if !strings.HasPrefix(path, "super-secrets") && !strings.HasPrefix(path, "values") {
+		path = "super-secrets/" + path
+	}
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullDataPath := pathBlocks[0] + "data/"
+	fullMetadataPath := pathBlocks[0] + "metadata/"
+	if !noEnvironments[pathBlocks[0]] {
+		fullDataPath += m.Env + "/"
+	}
+	if !noEnvironments[pathBlocks[0]] {
+		fullMetadataPath += m.Env + "/"
+	}
+	fullDataPath += pathBlocks[1]
+	fullMetadataPath += pathBlocks[1]
+	retries := 0
+retryQuery:
+	secret, err := m.logical.Delete(fullDataPath)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	}
+	if err != nil {
+		logger.Printf("Modifier failing after %d retries.\n", retries)
+	}
+
+	if secret == nil && err == nil {
+		metadataSecret, err := m.logical.Delete(fullMetadataPath)
+		if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+			if retries < 3 {
+				retries = retries + 1
+				goto retryQuery
+			}
+		} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+			if retries < 3 {
+				retries = retries + 1
+				goto retryQuery
+			}
+		}
+		if err != nil {
+			logger.Printf("Modifier failing after %d retries.\n", retries)
+		}
+
+		if metadataSecret == nil && err == nil {
+			return nil, err
+		} else {
+			logger.Printf("Unable to delete metadata %d retries.\n", retries)
+			return nil, err
+		}
+	}
+	return nil, errors.New("Could not get metadata from vault response")
 }
