@@ -61,6 +61,7 @@ type DriverConfig struct {
 
 	// Diff tooling
 	Diff          bool
+	DiffCounter   int
 	VersionInfo   func(map[string]interface{}, bool, string, bool)
 	VersionFilter []string
 
