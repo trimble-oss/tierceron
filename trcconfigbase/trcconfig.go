@@ -295,6 +295,7 @@ func CommonMain(envPtr *string,
 
 	//channel reciever
 	go reciever()
+	var diffFileCount int
 	if *diffPtr {
 		configSlice := make([]eUtils.DriverConfig, 0, len(envDiffSlice)-1)
 		for _, env := range envDiffSlice {
@@ -329,7 +330,7 @@ func CommonMain(envPtr *string,
 				Token:          *tokenPtr,
 				VaultAddress:   *addrPtr,
 				Env:            *envPtr,
-				EnvRaw:         strings.Split(*envPtr, "_")[0],
+				EnvRaw:         eUtils.GetRawEnv(*envPtr),
 				Regions:        regions,
 				SecretMode:     *secretMode,
 				ServicesWanted: services,
@@ -352,6 +353,9 @@ func CommonMain(envPtr *string,
 			go func() {
 				defer wg.Done()
 				eUtils.ConfigControl(nil, &configSlice[len(configSlice)-1], vcutils.GenerateConfigsFromVault)
+				if diffFileCount < configSlice[len(configSlice)-1].DiffCounter { //Without this, resultMap may be missing data when diffing.
+					diffFileCount = configSlice[len(configSlice)-1].DiffCounter //This counter helps the diff wait for results
+				}
 			}()
 		}
 	} else {
@@ -376,7 +380,7 @@ func CommonMain(envPtr *string,
 			Token:          *tokenPtr,
 			VaultAddress:   *addrPtr,
 			Env:            *envPtr,
-			EnvRaw:         strings.Split(*envPtr, "_")[0],
+			EnvRaw:         eUtils.GetRawEnv(*envPtr),
 			Regions:        regions,
 			SecretMode:     *secretMode,
 			ServicesWanted: services,
@@ -414,7 +418,7 @@ func CommonMain(envPtr *string,
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			eUtils.DiffHelper(resultMap, envLength, envDiffSlice, fileSysIndex, true, mutex)
+			eUtils.DiffHelper(resultMap, envLength, envDiffSlice, fileSysIndex, true, mutex, diffFileCount)
 		}()
 	}
 	wg.Wait() //Wait for diff

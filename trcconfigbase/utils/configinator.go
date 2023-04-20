@@ -54,7 +54,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	}
 	versionData := make(map[string]interface{})
 	if config.Token != "novault" {
-		if valid, errValidateEnvironment := modCheck.ValidateEnvironment(config.Env, false, "", config.Log); errValidateEnvironment != nil || !valid {
+		if valid, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "", config.Log); errValidateEnvironment != nil || !valid {
 			if errValidateEnvironment != nil {
 				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
 					if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
@@ -63,7 +63,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				}
 			}
 
-			if unrestrictedValid, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(config.Env, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+			if unrestrictedValid, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
 				return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
 			}
 		}
@@ -228,6 +228,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 
 	var wg sync.WaitGroup
 	//configure each template in directory
+	config.DiffCounter = len(templatePaths)
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
