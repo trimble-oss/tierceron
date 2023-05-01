@@ -11,7 +11,7 @@ import (
 	"strconv"
 
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
-	"github.com/mrjrieke/nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
 var elementcollectionIDs []int64

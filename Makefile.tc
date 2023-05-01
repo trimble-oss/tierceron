@@ -59,7 +59,7 @@ seedp:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" github.com/trimble-oss/tierceron/trcinitp
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcinitp
 x:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" github.com/trimble-oss/tierceron/trcx
+	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go install  -tags "memonly" github.com/trimble-oss/tierceron/trcx
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcx
 xmac:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/trcx.mac github.com/trimble-oss/tierceron/trcx
@@ -71,16 +71,16 @@ maclib:
 winlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build   -buildmode=c-shared -o $(GOBIN)/nc.dll github.com/trimble-oss/tierceron/configlib
 xp:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" github.com/trimble-oss/tierceron/trcxp
+	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go install  -tags "memonly" github.com/trimble-oss/tierceron/trcxp
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcxp
 pub:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" github.com/trimble-oss/tierceron/trcpub
+	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go install  -tags "memonly" github.com/trimble-oss/tierceron/trcpub
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcpub
 sub:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install   -tags "memonly" github.com/trimble-oss/tierceron/trcsub
+	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go install   -tags "memonly" github.com/trimble-oss/tierceron/trcsub
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcsub
 certify:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "tc awsecr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
+	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "tc awsecr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcplgtool
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
