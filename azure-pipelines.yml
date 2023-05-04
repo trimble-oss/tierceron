@@ -45,6 +45,11 @@ resources:
     endpoint: trimble-oss
     name: trimble-oss/tierceron-hat
     ref: main
+  - repository: tierceron-nute
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-nute
+    ref: main
   - repository: client-go
     type: github
     endpoint: trimble-oss
@@ -88,6 +93,8 @@ steps:
 - checkout: VaultConfig.Test
   clean: false
 - checkout: tierceron-hat
+  clean: false
+- checkout: tierceron-nute
   clean: false
 - checkout: client-go
   clean: false
