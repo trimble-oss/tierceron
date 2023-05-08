@@ -30,7 +30,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "vm-virtual-network-lin
   resource_group_name   = data.azurerm_resource_group.rg.name
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
   virtual_network_id    = data.azurerm_virtual_network.virtual-network.id
-  registration_enabled  = true
+  registration_enabled  = false
 
   tags                  = {
      "Environment" = "${var.environment_short}"
@@ -324,6 +324,7 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   private_dns_zone_id    = azurerm_private_dns_zone.tierceron-db-dns-zone.id
   sku_name               = "B_Standard_B2s"
   zone                   = "3"
+  count                  = "${var.make_flexible_server}" == "yes" ? 1 : 0
 
   tags = {
     "Environment" = "${var.environment_short}"
@@ -382,7 +383,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   tags = {
     "CreatedBy"   = "${var.created_by}"
-    "CreatedOn"   = "${var.created_on}2023-02-11T02:35:02.5517868Z"
+    "CreatedOn"   = "${var.created_on}"
     "Environment" = "${var.environment_short}"
     "Product"     = "${var.product}"
     "backup"      = "external"
@@ -401,9 +402,9 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
     command = <<EOT
-      echo ${azurerm_mysql_flexible_server.tierceron-db.fqdn}
+      echo ${var.trcdb_provisioner}
       rm resources/vault_properties.sub
-      sed 's/TRCDBNAME/${azurerm_mysql_flexible_server.tierceron-db.fqdn}/g' resources/vault_properties.hcl > resources/vault_properties.sub
+      sed 's/TRCDBNAME/${var.trcdb_provisioner}/g' resources/vault_properties.hcl > resources/vault_properties.sub
     EOT
   }
 

@@ -23,7 +23,7 @@ import (
 
 	"VaultConfig.TenantConfig/lib"
 	"VaultConfig.TenantConfig/util/buildopts"
-	"github.com/mrjrieke/nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
 // type DataFlowStatistic struct {
@@ -753,7 +753,7 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst TTDINode, enrichLastT
 // 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 // 	"time"
 
-// 	"github.com/mrjrieke/nute/mashupsdk"
+// 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 // )
 
 // type DataFlowStatistic struct {

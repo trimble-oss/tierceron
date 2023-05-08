@@ -16,10 +16,10 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/argosyopts"
 	"github.com/trimble-oss/tierceron/trcgorillaz/ttdivisualizer/ttdirender"
 
-	"github.com/mrjrieke/nute/g3nd/g3nworld"
-	"github.com/mrjrieke/nute/g3nd/worldg3n/g3nrender"
-	"github.com/mrjrieke/nute/mashupsdk"
-	"github.com/mrjrieke/nute/mashupsdk/client"
+	"github.com/trimble-oss/tierceron-nute/g3nd/g3nworld"
+	"github.com/trimble-oss/tierceron-nute/g3nd/worldg3n/g3nrender"
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 )
 
 var worldCompleteChan chan bool
