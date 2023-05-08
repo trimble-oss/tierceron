@@ -26,7 +26,7 @@ func main() {
 	tokenPtr := flag.String("token", "", "Vault access token")
 	secretIDPtr := flag.String("secretID", "", "Public app role ID")
 	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix()+"pub to access the vault")
+	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"pub to access the vault")
 
 	trcpubbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil)
 }
