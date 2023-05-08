@@ -8,16 +8,31 @@ import (
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
 	trcprefix "VaultConfig.TenantConfig/util/buildopts/trcprefix"
 	tccore "VaultConfig.TenantConfig/util/core"
+	"strings"
 
 	"database/sql"
 )
 
-func GetFolderPrefix() string {
+func GetFolderPrefix(custom []string) string {
+	if len(custom) > 0 {
+		var ti, endTi int
+		ti = strings.Index(custom[0], "_templates")
+		endTi = 0
+
+		for endTi = ti; endTi > 0; endTi-- {
+			if custom[0][endTi] == '/' {
+				endTi = endTi + 1
+				break
+			}
+		}
+		return custom[0][endTi:ti]
+	}
+
 	return trcprefix.GetFolderPrefix()
 }
 
-func GetSupportedTemplates() []string {
-	return bcore.GetSupportedTemplates(GetFolderPrefix())
+func GetSupportedTemplates(custom []string) []string {
+	return bcore.GetSupportedTemplates(GetFolderPrefix(custom))
 }
 
 func GetLocalHost() string {

@@ -30,13 +30,13 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	if addrPtrIn != nil && *addrPtrIn != "" {
 		addrPtr = addrPtrIn
 	}
-	seedPtr := flag.String("seeds", coreopts.GetFolderPrefix()+"_seeds", "Directory that contains vault seeds")
+	seedPtr := flag.String("seeds", coreopts.GetFolderPrefix(nil)+"_seeds", "Directory that contains vault seeds")
 	tokenPtr := flag.String("token", "", "Vault access token, only use if in dev mode or reseeding")
 	shardPtr := flag.String("shard", "", "Key shard used to unseal a vault that has been initialized but restarted")
 
 	namespaceVariable := flag.String("namespace", "", "name of the namespace")
 
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"init.log", "Output path for log files")
+	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"init.log", "Output path for log files")
 	servicePtr := flag.String("service", "", "Seeding vault with a single service")
 	prodPtr := flag.Bool("prod", false, "Prod only seeds vault with staging environment")
 	uploadCertPtr := flag.Bool("certs", false, "Upload certs if provided")
@@ -189,8 +189,8 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"init.log" && os.IsNotExist(err) {
-		*logFilePtr = "./" + coreopts.GetFolderPrefix() + "init.log"
+	if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"init.log" && os.IsNotExist(err) {
+		*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "init.log"
 	}
 
 	// Initialize logging

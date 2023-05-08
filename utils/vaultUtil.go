@@ -35,7 +35,7 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	return config, mod, vault, nil
 }
 
-var templateName string = coreopts.GetFolderPrefix() + "_templates"
+var templateName string = coreopts.GetFolderPrefix(nil) + "_templates"
 
 func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
 	var acceptedTemplatePaths []string
@@ -74,7 +74,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 		// 1-800-ROIT
 		pathFilterBase := ""
 		if config.SectionKey != "/Restricted/" {
-			pathFilterBase = "/" + coreopts.GetFolderPrefix() + "_templates"
+			pathFilterBase = "/" + coreopts.GetFolderPrefix(config.StartDir) + "_templates"
 		}
 
 		for _, projectSection := range config.ProjectSections {

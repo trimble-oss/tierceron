@@ -90,7 +90,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 	startDirs := []string{}
 
 	// Satisfy needs of templating tool with path cleanup.
-	if config.StartDir[0] == coreopts.GetFolderPrefix()+"_templates" {
+	if config.StartDir[0] == coreopts.GetFolderPrefix(config.StartDir)+"_templates" {
 		// Set up for single service configuration when available.
 		// This is the most common use of the tool.
 		pwd, err := os.Getwd()
