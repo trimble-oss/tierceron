@@ -38,11 +38,13 @@ curl -L "https://releases.hashicorp.com/vault/1.3.6/vault_1.3.6_linux_amd64.zip"
 
 cd /tmp
 sudo -- sh -c "echo '127.0.0.1 $(hostname)' >> /etc/hosts"
+# TODO: fully qualified hostname....
 sudo unzip vault.zip
 sudo mkdir -p /usr/src/app
 sudo mv vault /usr/src/app/vault
 sudo chmod 0700 /usr/src/app/vault
 sudo chown root:root /usr/src/app/vault
+sudo setcap cap_ipc_lock=+ep /usr/src/app/vault
 sudo mkdir -p /etc/opt/vault/data/
 #make directory etc/opt/vault
 sudo mkdir -p /etc/opt/vault/certs/

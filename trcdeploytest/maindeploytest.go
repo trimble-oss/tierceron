@@ -41,6 +41,7 @@ func main() {
 
 	//Grabbing configs
 	envMap := buildopts.GetTestDeployConfig(*tokenPtr)
+	envMap["address"] = "https://vault.dexchadev.com:8020"
 
 	go carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "QA"
