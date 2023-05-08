@@ -87,14 +87,14 @@ func CommonMain(envPtr *string,
 		mlock.Mlock(nil)
 	}
 
-	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix()+"_templates", "Template directory")
+	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
 	endDirPtr := flag.String("endDir", ".", "Directory to put configured templates into")
 	regionPtr := flag.String("region", "", "Region to configure")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	keyStorePtr := flag.String("keystore", "", "Put certificates into this keystore file.")
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"config.log", "Output path for log file")
+	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	zcPtr := flag.Bool("zc", false, "Zero config (no configuration option).")
 	diffPtr := flag.Bool("diff", false, "Diff files")
@@ -151,7 +151,7 @@ func CommonMain(envPtr *string,
 		}
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-		logger := log.New(f, "["+coreopts.GetFolderPrefix()+"config]", log.LstdFlags)
+		logger := log.New(f, "["+coreopts.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
 		appRoleConfigPtr = new(string)
 		eUtils.CheckError(configBase, err, true)

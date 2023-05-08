@@ -42,9 +42,9 @@ type writeCollection struct {
 
 var templateWritten map[string]bool
 
-func GetTemplateParam(mod *kv.Modifier, filePath string, paramWanted string) (string, error) {
+func GetTemplateParam(config *eUtils.DriverConfig, mod *kv.Modifier, filePath string, paramWanted string) (string, error) {
 
-	templateEncoded, err := vcutils.GetTemplate(mod, filePath)
+	templateEncoded, err := vcutils.GetTemplate(config, mod, filePath)
 	if err != nil {
 		return "", err
 	}
@@ -128,7 +128,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 		// Cert rotation support without templates
 		config.Log.Printf("Initializing certificates.  Common service requested.: %s\n", config.StartDir[0])
 
-		var templatePaths = coreopts.GetSupportedTemplates()
+		var templatePaths = coreopts.GetSupportedTemplates(config.StartDir)
 		regions := []string{}
 
 		if strings.HasPrefix(config.Env, "staging") || strings.HasPrefix(config.Env, "prod") || strings.HasPrefix(config.Env, "dev") {
@@ -151,7 +151,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 				mod.SectionName = config.SectionName
 				mod.SubSectionValue = config.SubSectionValue
 			}
-			templateParam, tParamErr := GetTemplateParam(mod, templatePath, ".certSourcePath")
+			templateParam, tParamErr := GetTemplateParam(config, mod, templatePath, ".certSourcePath")
 			if tParamErr != nil {
 				eUtils.LogErrorObject(config, tParamErr, false)
 				continue
@@ -167,7 +167,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 				continue
 			}
 
-			_, fileError := os.Stat(wd + "/" + coreopts.GetFolderPrefix() + "_seeds/" + templateParam)
+			_, fileError := os.Stat(wd + "/" + coreopts.GetFolderPrefix(nil) + "_seeds/" + templateParam)
 			if fileError != nil {
 				if os.IsNotExist(fileError) {
 					eUtils.LogErrorObject(config, errors.New("File does not exist\n"+templateParam), false)
@@ -473,7 +473,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 			certPath = strings.Replace(certPath, "ENV", config.EnvRaw, 1)
 		}
 	}
-	certPath = coreopts.GetFolderPrefix() + "_seeds/" + certPath
+	certPath = coreopts.GetFolderPrefix(nil) + "_seeds/" + certPath
 	eUtils.LogInfo(config, fmt.Sprintf("Inspecting certificate: "+certPath+"."))
 	cert, err := ioutil.ReadFile(certPath)
 	if err != nil {
@@ -558,7 +558,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 				certPathSplit := strings.Split(certPath, "/")
 				for _, path := range config.ServiceFilter {
 					if strings.Contains(path, certPathSplit[len(certPathSplit)-1]) {
-						commonPath := strings.Replace(strings.TrimSuffix(path, ".mf.tmpl"), coreopts.GetFolderPrefix()+"_templates", "values", -1)
+						commonPath := strings.Replace(strings.TrimSuffix(path, ".mf.tmpl"), coreopts.GetFolderPrefix(nil)+"_templates", "values", -1)
 						entry.data["certData"] = "data"
 						WriteData(config, commonPath, entry.data, mod)
 					}
@@ -796,7 +796,7 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 	// Update value metrics to reflect credential use
 	if root == "templates" {
 		//Printing out path of each entry so that users can verify that folder structure in seed files are correct
-		config.Log.Println(coreopts.GetFolderPrefix() + "_" + path + ".*.tmpl")
+		config.Log.Println(coreopts.GetFolderPrefix(nil) + "_" + path + ".*.tmpl")
 		mod.AdjustValue("value-metrics/credentials", data, 1, config.Log)
 	}
 }
