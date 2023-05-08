@@ -38,7 +38,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 	sqlee "github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/mrjrieke/nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
 	sqles "github.com/dolthub/go-mysql-server/sql"

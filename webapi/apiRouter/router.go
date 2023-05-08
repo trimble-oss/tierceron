@@ -179,7 +179,7 @@ func main() {
 	fmt.Println("Version: " + "1.1")
 	addrPtr := flag.String("addr", coreopts.GetVaultHostPort(), "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
-	logPathPtr := flag.String("log", "/etc/opt/"+coreopts.GetFolderPrefix()+"API/server.log", "Log file path for this server")
+	logPathPtr := flag.String("log", "/etc/opt/"+coreopts.GetFolderPrefix(nil)+"API/server.log", "Log file path for this server")
 	tlsPathPtr := flag.String("tlsPath", "../vault/certs", "Path to server certificate and private key")
 	authPtr := flag.Bool("auth", true, "Run with auth enabled?")
 	localPtr := flag.Bool("local", false, "Run locally")
