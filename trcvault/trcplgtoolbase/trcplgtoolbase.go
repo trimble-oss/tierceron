@@ -18,9 +18,9 @@ func PluginMain() {
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	envPtr := flag.String("env", "dev", "Environement in vault")
-	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix()+"_templates", "Template directory")
+	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"plgtool.log", "Output path for log files")
+	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
 	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
 	pluginTypePtr := flag.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
@@ -64,8 +64,8 @@ func PluginMain() {
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"plgtool.log" {
-		*logFilePtr = "./" + coreopts.GetFolderPrefix() + "plgtool.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"plgtool.log" {
+		*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "plgtool.log"
 	}
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
