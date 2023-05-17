@@ -49,31 +49,6 @@ tags                  = {
   }  
 }
 
-resource "azurerm_public_ip" "public-ip" {
-  name                = "${var.subresource_group_name}-PublicIP"
-  location            = data.azurerm_resource_group.rg.location
-  resource_group_name = data.azurerm_resource_group.rg.name
-  allocation_method   = "Static"
-
-  tags = {
-    "Application" = var.subresource_group_name
-    "Billing"     = var.environment
-  }
-
-  # Prevent terraform from changing static ip address on apply.
-  # New vpn firewall rules won't be necessesary on rebuild.
-  # Comment out to allow ip changes when running terraform apply.
-  lifecycle {
-    ignore_changes = [
-      name,
-      location,
-      resource_group_name,
-      allocation_method,
-      tags,
-    ]
-  }
-}
-
 # Create Network Security Group and rule
 resource "azurerm_network_security_group" "nsg" {
   name                = "${var.subresource_group_name}-NetworkSecurityGroup"
@@ -248,7 +223,6 @@ resource "azurerm_network_interface" "vm-network-interface" {
     name                          = "${var.subresource_group_name}-NicConfiguration"
     subnet_id                     = data.azurerm_subnet.vm-subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.public-ip.id
   }
 
   tags = {
@@ -256,15 +230,6 @@ resource "azurerm_network_interface" "vm-network-interface" {
     "Product"     = "${var.product}"
     "Application" = var.subresource_group_name
     "Billing"     = var.environment
-  }
-
-  # Prevent terraform from changing static ip address on apply.
-  # New vpn firewall rules won't be necessesary on rebuild.
-  # Comment out to allow ip changes.
-  lifecycle {
-    ignore_changes = [
-      ip_configuration["public_ip_address"],
-    ]
   }
 }
 
@@ -339,24 +304,6 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   ]
 }
 
-resource "tls_private_key" "private_key" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
-resource "local_file" "private_key" {
-  content              = tls_private_key.private_key.private_key_pem
-  filename             = "private_key.pem"
-  file_permission      = "600"
-  directory_permission = "755"
-
-  # Remove ssh key when running terraform destroy.
-  provisioner "local-exec" {
-    when    = destroy
-    command = "rm -f private_key.pem"
-  }
-}
-
 resource "azurerm_linux_virtual_machine" "az-vm" {
   name                  = "${var.subresource_group_name}-vm"
   location              = data.azurerm_resource_group.rg.location
@@ -396,7 +343,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   admin_ssh_key {
     username   = "ubuntu"
-    public_key = tls_private_key.private_key.public_key_openssh
+    public_key = file(${var.public_key_directory})
   }
 
   provisioner "local-exec" {
@@ -413,10 +360,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   # must be nested inside of the associated provisioner.
   provisioner "file" {
     connection {
-      host        = self.public_ip_address
+      host        = ${var.vm_private_ip}
       user        = "ubuntu"
       type        = "ssh"
-      private_key = tls_private_key.private_key.private_key_pem
+      private_key = file(${var.private_key_directory})
       timeout     = "30s"
     }
     source      = "resources/vault_properties.sub"
@@ -425,10 +372,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   provisioner "file" {
     connection {
-      host        = self.public_ip_address
+      host        = ${var.vm_private_ip}
       user        = "ubuntu"
       type        = "ssh"
-      private_key = tls_private_key.private_key.private_key_pem
+      private_key = file(${var.private_key_directory})
       timeout     = "30s"
     }
     source      = "vault/cert.pem"
@@ -437,10 +384,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   provisioner "file" {
     connection {
-      host        = self.public_ip_address
+      host        = ${var.vm_private_ip}
       user        = "ubuntu"
       type        = "ssh"
-      private_key = tls_private_key.private_key.private_key_pem
+      private_key = file(${var.private_key_directory})
       timeout     = "30s"
     }
     source      = "vault/key.pem"
@@ -449,10 +396,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
     provisioner "file" {
     connection {
-      host        = self.public_ip_address
+      host        = ${var.vm_private_ip}
       user        = "ubuntu"
       type        = "ssh"
-      private_key = tls_private_key.private_key.private_key_pem
+      private_key = file(${var.private_key_directory})
       timeout     = "30s"
     }
     source      = "vault/sqlcert.pem"
@@ -461,10 +408,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   provisioner "file" {
     connection {
-      host        = self.public_ip_address
+      host        = ${var.vm_private_ip}
       user        = "ubuntu"
       type        = "ssh"
-      private_key = tls_private_key.private_key.private_key_pem
+      private_key = file(${var.private_key_directory})
       timeout     = "30s"
     }
     
@@ -501,10 +448,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       "sudo chown ubuntu /tmp/template_files",
     ]
     connection {
-      host        = self.public_ip_address
+      host        = ${var.vm_private_ip}
       user        = "ubuntu"
       type        = "ssh"
-      private_key = tls_private_key.private_key.private_key_pem
+      private_key = file(${var.private_key_directory})
       agent       = false
       timeout     = "30s"
     }
@@ -516,10 +463,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       "/tmp/install.sh"
     ]
     connection {
-      host        = self.public_ip_address
+      host        = ${var.vm_private_ip}
       user        = "ubuntu"
       type        = "ssh"
-      private_key = tls_private_key.private_key.private_key_pem
+      private_key = file(${var.private_key_directory})
       agent       = false
       timeout     = "30s"
     }
