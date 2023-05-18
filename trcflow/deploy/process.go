@@ -141,6 +141,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			for _, instance := range instances {
 				if instance == instanceIndex {
 					instanceFound = true
+					break
 				}
 			}
 
