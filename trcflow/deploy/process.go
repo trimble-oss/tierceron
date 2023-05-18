@@ -261,7 +261,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		writeMap := make(map[string]interface{})
 		writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
 		writeMap["trcsha256"] = vaultPluginSignature["trcsha256"].(string)
-		writeMap["instaances"] = vaultPluginSignature["instaances"].(string)
+		writeMap["instances"] = vaultPluginSignature["instances"].(string)
 		if trcType, trcTypeOk := vaultPluginSignature["trctype"]; trcTypeOk {
 			writeMap["trctype"] = trcType.(string)
 		} else {
