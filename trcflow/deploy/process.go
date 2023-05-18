@@ -122,7 +122,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	//Checks if this instance of carrier is allowed to deploy that certain plugin.
 	if instanceList, ok := vaultPluginSignature["instances"].(string); !ok {
-		eUtils.LogErrorMessage(config, "Plugin has valid no instances: "+vaultPluginSignature["trcplugin"].(string), false)
+		eUtils.LogErrorMessage(config, "Plugin has no valid instances: "+vaultPluginSignature["trcplugin"].(string), false)
 		return nil
 	} else {
 		hostName := os.Getenv("HOSTNAME")
@@ -141,7 +141,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			instances := strings.Split(instanceList, ",") //Checks whether this instance is allowed to run plugin
 			instanceFound := false
 			for _, instance := range instances {
-				if instance == instanceIndex {
+				if strings.TrimSuffix(strings.TrimPrefix(instance, "'"), ("'")) == instanceIndex {
 					instanceFound = true
 					break
 				}
