@@ -156,7 +156,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				return nil
 			}
 		} else {
-			eUtils.LogErrorMessage(config, "$HOSTNAME was not set therefore unable to determine this instance's index for deployment", false)
+			eUtils.LogErrorMessage(config, "$HOSTNAME was not set therefore unable to determine this instance's index for deployment: "+vaultPluginSignature["trcplugin"].(string), false)
 		}
 	}
 
