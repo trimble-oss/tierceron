@@ -238,7 +238,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 			mod.Env = config.Env
 			mod.Version = version
 			//check for template_files directory here
-			project, service, templatePath := GetProjectService(templatePath)
+			project, service, templatePath := GetProjectService(config, templatePath)
 
 			var isCert bool
 			if service != "" {
