@@ -125,7 +125,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "Plugin has valid no instances: "+vaultPluginSignature["trcplugin"].(string), false)
 		return nil
 	} else {
-		if pluginAddrInterface, pluginAddrOk := pluginConfig["address"]; pluginAddrOk {
+		if pluginAddrInterface, pluginAddrOk := pluginConfig["address"]; pluginAddrOk { //Figures out what instance this is
 			pluginAddr := pluginAddrInterface.(string)
 			re := regexp.MustCompile("[0-9]+")
 			instanceIndexes := re.FindAllString(strings.Split(pluginAddr, ":")[0], 1)
@@ -136,15 +136,14 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				instanceIndex = "0"
 			}
 
-			if strings.Contains(instances, instanceIndex) {
+			if strings.Contains(instances, instanceIndex) { //Checks whether this instance is allowed to run plugin
 				logger.Println("Plugin found for this instance: " + vaultPluginSignature["trcplugin"].(string))
 				vaultPluginSignature["deployed"] = false
-				vaultPluginSignature["copied"] = false
+				vaultPluginSignature["copied"] = false //Resets copied & deployed in memory to reset deployment for this instance.
 			} else {
 				eUtils.LogErrorMessage(config, "Plugin not found for this instance: "+vaultPluginSignature["trcplugin"].(string), false)
 				return nil
 			}
-
 		}
 	}
 
