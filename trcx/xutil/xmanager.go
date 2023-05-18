@@ -243,7 +243,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 			serviceFound := false
 			var acceptedTemplatePaths []string
 			for _, templatePath := range templatePaths {
-				_, _, templatePath = vcutils.GetProjectService(templatePath)
+				_, _, templatePath = vcutils.GetProjectService(config, templatePath)
 				_, _, indexed, _ := helperkv.PreCheckEnvironment(mod.Env)
 				//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
 				if (strings.Contains(mod.Env, ".") || len(config.ProjectSections) > 0) && !serviceFound {
@@ -353,7 +353,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 			env = envVersion[0]
 			version = envVersion[1]
 			//check for template_files directory here
-			project, service, tp = vcutils.GetProjectService(tp)
+			project, service, tp = vcutils.GetProjectService(config, tp)
 			useCache := true
 
 			if c.Token != "" && c.Token != "novault" {
@@ -379,7 +379,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					goMod.SubSectionValue = config.SubSectionValue
 				}
 
-				relativeTemplatePathParts := strings.Split(tp, coreopts.GetFolderPrefix()+"_templates")
+				relativeTemplatePathParts := strings.Split(tp, coreopts.GetFolderPrefix(nil)+"_templates")
 				templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
 				goMod.TemplatePath = "templates" + templatePathParts[0]
 
@@ -413,7 +413,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 						var formattedTPath string
 						tempList := make([]string, 0)
 						// TODO: Chebacca Monday!
-						tPath := strings.Split(tp, coreopts.GetFolderPrefix()+"_")[1]
+						tPath := strings.Split(tp, coreopts.GetFolderPrefix(nil)+"_")[1]
 						tPathSplit := strings.Split(tPath, ".")
 						if len(tPathSplit) > 2 {
 							formattedTPath = tPathSplit[0] + "." + tPathSplit[1]
@@ -625,7 +625,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	}
 
 	if len(tempTemplatePaths) == 0 {
-		eUtils.LogErrorMessage(config, "No files found in "+coreopts.GetFolderPrefix()+"_templates", true)
+		eUtils.LogErrorMessage(config, "No files found in "+coreopts.GetFolderPrefix(nil)+"_templates", true)
 	}
 
 	//Duplicate path remover
@@ -728,7 +728,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 
 		for _, templatePath := range tempTemplatePaths {
 
-			project, service, templatePath := vcutils.GetProjectService(templatePath)
+			project, service, templatePath := vcutils.GetProjectService(config, templatePath)
 
 			envVersion := eUtils.SplitEnv(config.Env)
 

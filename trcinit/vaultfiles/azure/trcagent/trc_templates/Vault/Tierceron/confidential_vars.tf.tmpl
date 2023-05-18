@@ -143,3 +143,28 @@ variable "subresource_group_name" {
   type = string
  default = "{{.subresource_group_name}}"
 }
+
+variable "make_flexible_server" {
+  type = string
+  default = "{{.make_flexible_server}}"
+}
+
+variable "trcdb_provisioner" {
+  type = string
+  default = "{{.trcdb_provisioner}}"
+}
+
+variable "vm_private_ip" {
+  type = string
+  default = "{{.vm_private_ip}}"
+}
+
+variable "private_key_directory" {
+  type = string
+  default = "{{.private_key_directory}}"
+}
+
+variable "public_key_directory" {
+  type = string
+  default = "{{.public_key_directory}}"
+}

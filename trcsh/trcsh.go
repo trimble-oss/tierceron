@@ -83,9 +83,9 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	}
 	fmt.Println("trcsh env: " + env)
 
-	logFile := "./" + coreopts.GetFolderPrefix() + "deploy.log"
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix()+"deploy.log" {
-		logFile = "./" + coreopts.GetFolderPrefix() + "deploy.log"
+	logFile := "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix(nil)+"deploy.log" {
+		logFile = "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
 	}
 	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
