@@ -23,7 +23,11 @@ func (t *TrcDBServerEventListener) ClientConnected() {}
 
 func (tl *TrcDBServerEventListener) ClientDisconnected() {}
 
-func (tl *TrcDBServerEventListener) QueryStarted() {}
+func (tl *TrcDBServerEventListener) QueryStarted(query string) {
+	//	if query contains "FOR UPDATE" {
+	//		sync.Lock()
+	//	}
+}
 
 func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, duration time.Duration) {
 	if success && (strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update") || strings.HasPrefix(strings.ToLower(query), "delete")) {
@@ -36,7 +40,27 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 		changeIds := map[string]string{}
 		stmt, err := ast.Parse(query)
 		if err == nil {
-			if sqlInsert, sqlInsertOk := stmt.(*sqlparser.Insert); sqlInsertOk {
+			if _, isSelect := stmt.(*sqlparser.Select); isSelect {
+				//				if query contains "FOR UPDATE" {
+				//					sync.Release()
+				//				}
+
+				tl.Log.Printf("Query completed: %s %v\n", query, success)
+				// Query with bindings may not be deadlock safe.
+				// Disable this for now and hope the triggers work.
+				// if sqlValues, sqlValuesOk := sqlInsert.Rows.(sqlparser.Values); sqlValuesOk {
+				// 	for _, sqlValue := range sqlValues {
+				// 		for sqlExprIndex, sqlExpr := range sqlValue {
+				// 			if sqlValueIdentity, sqlValueIdentityOk := sqlExpr.(*sqlparser.SQLVal); sqlValueIdentityOk {
+				// 				if sqlValueIdentity.Type == sqlparser.StrVal {
+				// 					columnName := sqlInsert.Columns[sqlExprIndex].String()
+				// 					changeIds[columnName] = string(sqlValueIdentity.Val)
+				// 				}
+				// 			}
+				// 		}
+				// 	}
+				// }
+			} else if sqlInsert, isInsertQuery := stmt.(*sqlparser.Insert); isInsertQuery {
 				tableName = sqlInsert.Table.Name.String()
 				tl.Log.Printf("Query completed: %s %v\n", query, success)
 				// Query with bindings may not be deadlock safe.
@@ -53,7 +77,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 				// 		}
 				// 	}
 				// }
-			} else if sqlUpdate, sqlUpdateOk := stmt.(*sqlparser.Update); sqlUpdateOk {
+			} else if sqlUpdate, isUpdateQuery := stmt.(*sqlparser.Update); isUpdateQuery {
 				for _, tableExpr := range sqlUpdate.TableExprs {
 					if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
 						if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
@@ -64,7 +88,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 					}
 				}
 				// TODO: grab changeId for updates as well.
-			} else if sqlDelete, sqlDeleteOk := stmt.(*sqlparser.Delete); sqlDeleteOk {
+			} else if sqlDelete, isDeleteQuery := stmt.(*sqlparser.Delete); isDeleteQuery {
 				//Grabbing change Ids for writeback
 				//Prevents anything but a single delete for writing back.
 				/*

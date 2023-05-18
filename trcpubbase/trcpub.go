@@ -32,10 +32,10 @@ func CommonMain(envPtr *string,
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
 	}
-	dirPtr := flag.String("dir", coreopts.GetFolderPrefix()+"_templates", "Directory containing template files for vault")
+	dirPtr := flag.String("dir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix()+"pub.log", "Output path for log files")
+	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
 	appRolePtr := flag.String("", "config.yml", "Name of auth config file - example.yml")
 
 	if c == nil || !c.IsShell {
@@ -51,8 +51,8 @@ func CommonMain(envPtr *string,
 		*appRolePtr = configBase.AppRoleConfig
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
-		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix()+"pub.log" {
-			*logFilePtr = "./" + coreopts.GetFolderPrefix() + "pub.log"
+		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"pub.log" {
+			*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "pub.log"
 		}
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "[INIT]", log.LstdFlags)
