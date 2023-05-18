@@ -121,7 +121,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	}
 
 	//Checks if this instance of carrier is allowed to deploy that certain plugin.
-	if instances, ok := vaultPluginSignature["instances"].(string); !ok {
+	if instanceList, ok := vaultPluginSignature["instances"].(string); !ok {
 		eUtils.LogErrorMessage(config, "Plugin has valid no instances: "+vaultPluginSignature["trcplugin"].(string), false)
 		return nil
 	} else {
@@ -136,7 +136,15 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				instanceIndex = "0"
 			}
 
-			if strings.Contains(instances, instanceIndex) { //Checks whether this instance is allowed to run plugin
+			instances := strings.Split(instanceList, ",") //Checks whether this instance is allowed to run plugin
+			instanceFound := false
+			for _, instance := range instances {
+				if instance == instanceIndex {
+					instanceFound = true
+				}
+			}
+
+			if instanceFound {
 				logger.Println("Plugin found for this instance: " + vaultPluginSignature["trcplugin"].(string))
 				vaultPluginSignature["deployed"] = false
 				vaultPluginSignature["copied"] = false //Resets copied & deployed in memory to reset deployment for this instance.
