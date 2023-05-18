@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -117,6 +118,34 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	if _, ok := vaultPluginSignature["ecrrepository"].(string); !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
 		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure - no certification entry found.", false)
+	}
+
+	//Checks if this instance of carrier is allowed to deploy that certain plugin.
+	if instances, ok := vaultPluginSignature["instances"].(string); !ok {
+		eUtils.LogErrorMessage(config, "Plugin has valid no instances: "+vaultPluginSignature["trcplugin"].(string), false)
+		return nil
+	} else {
+		if pluginAddrInterface, pluginAddrOk := pluginConfig["address"]; pluginAddrOk {
+			pluginAddr := pluginAddrInterface.(string)
+			re := regexp.MustCompile("[0-9]+")
+			instanceIndexes := re.FindAllString(strings.Split(pluginAddr, ":")[0], 1)
+			var instanceIndex string
+			if len(instanceIndexes) != 0 {
+				instanceIndex = instanceIndexes[0]
+			} else {
+				instanceIndex = "0"
+			}
+
+			if strings.Contains(instances, instanceIndex) {
+				logger.Println("Plugin found for this instance: " + vaultPluginSignature["trcplugin"].(string))
+				vaultPluginSignature["deployed"] = false
+				vaultPluginSignature["copied"] = false
+			} else {
+				eUtils.LogErrorMessage(config, "Plugin not found for this instance: "+vaultPluginSignature["trcplugin"].(string), false)
+				return nil
+			}
+
+		}
 	}
 
 	if deployedVal, ok := vaultPluginSignature["deployed"].(bool); ok && deployedVal {
@@ -233,6 +262,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		writeMap := make(map[string]interface{})
 		writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
 		writeMap["trcsha256"] = vaultPluginSignature["trcsha256"].(string)
+		writeMap["instaances"] = vaultPluginSignature["instaances"].(string)
 		if trcType, trcTypeOk := vaultPluginSignature["trctype"]; trcTypeOk {
 			writeMap["trctype"] = trcType.(string)
 		} else {
@@ -320,6 +350,7 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 		writeMap["trctype"] = pluginData["trctype"]
 		writeMap["trcsha256"] = pluginData["trcsha256"]
 		writeMap["copied"] = pluginData["copied"]
+		writeMap["instances"] = pluginData["instances"]
 		writeMap["deployed"] = true
 
 		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap, logger)
