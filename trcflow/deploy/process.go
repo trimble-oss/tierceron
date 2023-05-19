@@ -125,9 +125,8 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "Plugin has no valid instances: "+vaultPluginSignature["trcplugin"].(string), false)
 		return nil
 	} else {
-		hostName := os.Getenv("HOSTNAME")
-
-		if hostName != "" { //Figures out what instance this is
+		hostName, hostNameErr := os.Hostname()
+		if hostName != "" && hostNameErr == nil { //Figures out what instance this is
 			re := regexp.MustCompile("-[0-9]+")
 			hostNameRegex := re.FindAllString(hostName, 1)
 
@@ -156,7 +155,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				return nil
 			}
 		} else {
-			eUtils.LogErrorMessage(config, "Unable to determine this instance's index for deployment: "+vaultPluginSignature["trcplugin"].(string), false)
+			eUtils.LogErrorMessage(config, "Unable to determine this instance's index for deployment: "+vaultPluginSignature["trcplugin"].(string)+" Error:"+hostNameErr.Error(), false)
 			return nil
 		}
 	}
