@@ -141,7 +141,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			instances := strings.Split(instanceList, ",") //Checks whether this instance is allowed to run plugin
 			instanceFound := false
 			for _, instance := range instances {
-				if strings.TrimSuffix(strings.TrimPrefix(instance, "'"), ("'")) == instanceIndex {
+				if strings.TrimSuffix(strings.TrimPrefix(instance, "\""), ("\"")) == instanceIndex {
 					instanceFound = true
 					break
 				}
@@ -156,7 +156,8 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				return nil
 			}
 		} else {
-			eUtils.LogErrorMessage(config, "$HOSTNAME was not set therefore unable to determine this instance's index for deployment: "+vaultPluginSignature["trcplugin"].(string), false)
+			eUtils.LogErrorMessage(config, "Unable to determine this instance's index for deployment: "+vaultPluginSignature["trcplugin"].(string), false)
+			return nil
 		}
 	}
 
