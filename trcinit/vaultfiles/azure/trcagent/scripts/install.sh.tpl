@@ -47,7 +47,11 @@ sudo chmod 0700 /usr/src/app/vault
 sudo chown root:root /usr/src/app/vault
 sudo setcap cap_ipc_lock=+ep /usr/src/app/vault
 sudo mkdir -p /etc/opt/vault/data/
-#make directory etc/opt/vault
+sudo mkdir -p /etc/opt/vault/plugins/
+sudo chmod 0700 /etc/opt/vault/plugins/
+# Download 
+# Manually Download/copy carrier to plugins directory
+# sudo mv trc-vault-carrier-plugin /etc/opt/vault/plugins/
 sudo mkdir -p /etc/opt/vault/certs/
 #copy everything from /tmp
 sudo mv /tmp/serv_*.pem /etc/opt/vault/certs/
