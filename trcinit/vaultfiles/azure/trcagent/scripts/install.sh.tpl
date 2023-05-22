@@ -75,8 +75,8 @@ sudo mkdir -p /home/azuredeploy/myagent
 sudo chmod 1750 /home/azuredeploy/bin
 sudo chown root:azuredeploy /home/azuredeploy/bin
 
-curl -L "https://vstsagentpackage.azureedge.net/agent/2.217.2/vsts-agent-linux-x64-2.217.2.tar.gz" > /tmp/vsts-agent-linux-x64-2.217.2.tar.gz
-sudo tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-2.217.2.tar.gz
+curl -L "https://vstsagentpackage.azureedge.net/agent/3.220.2/vsts-agent-linux-x64-3.220.2.tar.gz" > /tmp/vsts-agent-linux-x64-3.220.2.tar.gz
+sudo tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-3.220.2.tar.gz
 
 # Give ownership over to azuredeploy.
 sudo chown -R azuredeploy:azuredeploy /home/azuredeploy/myagent
@@ -95,16 +95,16 @@ sudo chmod 750 /usr/bin/docker
 
 # SSH and sudo/su ubuntu->root->azuredeploy
 # Run following as azuredeploy:
+# cd /home/azuredeploy/myagent
 # ./config.sh #Provide PAT from above.
 #  When it asks for server url, use: https://dev.azure.com/<organization>
 # ./run.sh
-# As root, run: ./svc.sh install azuredeploy # important to install under restricted user azuredeploy
-
 # As user azuredeploy, run the following:
 # echo 'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/opt/mssql-tools/bin:/home/azuredeploy/bin' >> ~/.bashrc
 # . ~/.bashrc
 # echo $PATH > ~/myagent/.path
 # After install, run:
+# As root, run: ./svc.sh install azuredeploy # important to install under restricted user azuredeploy
 # ./svc.sh start as user root...
 # If you ever have to re-register agent: 
 #  ./svc.sh uninstall
