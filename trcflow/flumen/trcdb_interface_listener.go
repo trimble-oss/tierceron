@@ -7,6 +7,7 @@ import (
 
 	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
 
+	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -19,11 +20,13 @@ type TrcDBServerEventListener struct {
 	Log *log.Logger
 }
 
+var _ server.ServerEventListener = (*TrcDBServerEventListener)(nil)
+
 func (t *TrcDBServerEventListener) ClientConnected() {}
 
 func (tl *TrcDBServerEventListener) ClientDisconnected() {}
 
-func (tl *TrcDBServerEventListener) QueryStarted(query string) {
+func (tl *TrcDBServerEventListener) QueryStarted( /* query string */ ) {
 	//	if query contains "FOR UPDATE" {
 	//		sync.Lock()
 	//	}
