@@ -55,7 +55,11 @@ func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifi
 					for _, filter := range filterTemplateSlice {
 						filterSplit := strings.Split(filter, "/")
 						if len(filterSplit) > 1 {
-							if strings.Contains(path, filterSplit[1]) {
+							filterPath2nd := filterSplit[1]
+							if strings.HasSuffix(filter, "/") {
+								filterPath2nd = filterPath2nd + "/"
+							}
+							if strings.Contains(path, filterPath2nd) {
 								serviceFound = true
 							}
 							if serviceFound {
