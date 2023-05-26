@@ -343,7 +343,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   admin_ssh_key {
     username   = "ubuntu"
-    public_key = file(${var.public_key_directory})
+    public_key = file("${var.public_key_directory}")
   }
 
   provisioner "local-exec" {
@@ -360,10 +360,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   # must be nested inside of the associated provisioner.
   provisioner "file" {
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       timeout     = "30s"
     }
     source      = "resources/vault_properties.sub"
@@ -372,10 +372,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   provisioner "file" {
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       timeout     = "30s"
     }
     source      = "vault/cert.pem"
@@ -384,10 +384,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   provisioner "file" {
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       timeout     = "30s"
     }
     source      = "vault/key.pem"
@@ -396,10 +396,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
     provisioner "file" {
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       timeout     = "30s"
     }
     source      = "vault/sqlcert.pem"
@@ -408,10 +408,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   provisioner "file" {
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       timeout     = "30s"
     }
     
@@ -448,10 +448,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       "sudo chown ubuntu /tmp/template_files",
     ]
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       agent       = false
       timeout     = "30s"
     }
@@ -463,10 +463,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       "/tmp/install.sh"
     ]
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       agent       = false
       timeout     = "30s"
     }
