@@ -413,7 +413,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 						var formattedTPath string
 						tempList := make([]string, 0)
 						// TODO: Chebacca Monday!
-						tPath := strings.Split(tp, coreopts.GetFolderPrefix(nil)+"_")[1]
+						tPath := strings.Split(tp, coreopts.GetFolderPrefix(config.StartDir)+"_")[1]
 						tPathSplit := strings.Split(tPath, ".")
 						if len(tPathSplit) > 2 {
 							formattedTPath = tPathSplit[0] + "." + tPathSplit[1]
@@ -625,7 +625,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 	}
 
 	if len(tempTemplatePaths) == 0 {
-		eUtils.LogErrorMessage(config, "No files found in "+coreopts.GetFolderPrefix(nil)+"_templates", true)
+		eUtils.LogErrorMessage(config, "No files found in "+coreopts.GetFolderPrefix(config.StartDir)+"_templates", true)
 	}
 
 	//Duplicate path remover
