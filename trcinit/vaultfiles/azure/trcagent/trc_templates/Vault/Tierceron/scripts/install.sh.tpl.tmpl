@@ -47,7 +47,11 @@ sudo chmod 0700 /usr/src/app/vault
 sudo chown root:root /usr/src/app/vault
 sudo setcap cap_ipc_lock=+ep /usr/src/app/vault
 sudo mkdir -p /etc/opt/vault/data/
-#make directory etc/opt/vault
+sudo mkdir -p /etc/opt/vault/plugins/
+sudo chmod 0700 /etc/opt/vault/plugins/
+# Download 
+# Manually Download/copy carrier to plugins directory
+# sudo mv trc-vault-carrier-plugin /etc/opt/vault/plugins/
 sudo mkdir -p /etc/opt/vault/certs/
 #copy everything from /tmp
 sudo mv /tmp/serv_*.pem /etc/opt/vault/certs/
@@ -71,8 +75,8 @@ sudo mkdir -p /home/azuredeploy/myagent
 sudo chmod 1750 /home/azuredeploy/bin
 sudo chown root:azuredeploy /home/azuredeploy/bin
 
-curl -L "https://vstsagentpackage.azureedge.net/agent/2.217.2/vsts-agent-linux-x64-2.217.2.tar.gz" > /tmp/vsts-agent-linux-x64-2.217.2.tar.gz
-sudo tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-2.217.2.tar.gz
+curl -L "https://vstsagentpackage.azureedge.net/agent/3.220.2/vsts-agent-linux-x64-3.220.2.tar.gz" > /tmp/vsts-agent-linux-x64-3.220.2.tar.gz
+sudo tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-3.220.2.tar.gz
 
 # Give ownership over to azuredeploy.
 sudo chown -R azuredeploy:azuredeploy /home/azuredeploy/myagent
@@ -91,16 +95,16 @@ sudo chmod 750 /usr/bin/docker
 
 # SSH and sudo/su ubuntu->root->azuredeploy
 # Run following as azuredeploy:
+# cd /home/azuredeploy/myagent
 # ./config.sh #Provide PAT from above.
 #  When it asks for server url, use: https://dev.azure.com/<organization>
 # ./run.sh
-# As root, run: ./svc.sh install azuredeploy # important to install under restricted user azuredeploy
-
 # As user azuredeploy, run the following:
 # echo 'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/opt/mssql-tools/bin:/home/azuredeploy/bin' >> ~/.bashrc
 # . ~/.bashrc
 # echo $PATH > ~/myagent/.path
 # After install, run:
+# As root, run: ./svc.sh install azuredeploy # important to install under restricted user azuredeploy
 # ./svc.sh start as user root...
 # If you ever have to re-register agent: 
 #  ./svc.sh uninstall
@@ -111,27 +115,27 @@ sudo chmod 750 /usr/bin/docker
 
 # Set up IP Table
 # Add a rule to allow ssh connections
-sudo iptables -A INPUT -p tcp --dport ${SSH_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport ${SSH_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
 # Block all other ip addresses
-sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${SSH_PORT} -j DROP
+#sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${SSH_PORT} -j DROP
 
 # Add a rule to allow service connections
-sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
 # TODO: Uncomment when on azure fully?
 #sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s ${ONSITE_CIDR_BLOCK} -j ACCEPT
-sudo iptables -A INPUT -p tcp --dport ${CONTROLLERA_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
-sudo iptables -A INPUT -p tcp --dport ${CONTROLLERB_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
-sudo iptables -A INPUT -p tcp --dport ${TRCDBA_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
-sudo iptables -A INPUT -p tcp --dport ${TRCDBB_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
-sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s 127.0.0.1 -j ACCEPT
-sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s ${VAULTIP} -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport ${CONTROLLERA_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport ${CONTROLLERB_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport ${TRCDBA_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport ${TRCDBB_PORT} -s ${SCRIPT_CIDR_BLOCK} -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s 127.0.0.1 -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport ${HOSTPORT} -s ${VAULTIP} -j ACCEPT
 
 # Block all other ip addresses
-sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${HOSTPORT} -j DROP
-sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${CONTROLLERA_PORT} -j DROP
-sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${CONTROLLERB_PORT} -j DROP
-sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${TRCDBA_PORT} -j DROP
-sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${TRCDBB_PORT} -j DROP
+#sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${HOSTPORT} -j DROP
+#sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${CONTROLLERA_PORT} -j DROP
+#sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${CONTROLLERB_PORT} -j DROP
+#sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${TRCDBA_PORT} -j DROP
+#sudo iptables -A INPUT -p tcp -s 0.0.0.0/0 --dport ${TRCDBB_PORT} -j DROP
 
 # To add other ip addresses after this process:
 # iptables -I INPUT 2 -p tcp -s <ip_address> --dport <PORT> -j ACCEPT

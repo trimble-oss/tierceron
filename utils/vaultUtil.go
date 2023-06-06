@@ -35,10 +35,9 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	return config, mod, vault, nil
 }
 
-var templateName string = coreopts.GetFolderPrefix(nil) + "_templates"
-
 func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
 	var acceptedTemplatePaths []string
+	var templateName string = coreopts.GetFolderPrefix(config.StartDir) + "_templates"
 
 	if strings.Contains(config.EnvRaw, "_") {
 		config.EnvRaw = strings.Split(config.EnvRaw, "_")[0]
