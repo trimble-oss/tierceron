@@ -116,6 +116,7 @@ steps:
     go version
     pwd
     export TierceronWD=$(pwd)
+    echo $TierceronWD
     echo $GOBIN
     echo "Compile start"
 
