@@ -115,6 +115,7 @@ steps:
 - script: |
     go version
     pwd
+    export TierceronWD=$(pwd)
     echo $GOBIN
     echo "Compile start"
 
@@ -179,8 +180,8 @@ steps:
     cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/trcconfig.mac
     cp $GOBIN/darwin_amd64/trcinit $(Build.ArtifactStagingDirectory)/trcinit.mac
-    cp $GOBIN/../tierceron/docker/trcpub/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcpub/Dockerfile
-    cp $GOBIN/../tierceron/docker/trcconfig/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcconfig/Dockerfile
+    cp $TierceronWD/docker/trcpub/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcpub/Dockerfile
+    cp $TierceronWD/docker/trcconfig/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcconfig/Dockerfile
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
 - task: SnykSecurityScan@1
