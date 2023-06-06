@@ -11,7 +11,7 @@ import (
 
 // Folder prefix for _seed, etc...
 func GetFolderPrefix(custom []string) string {
-	if len(custom) > 0 {
+	if len(custom) > 0 && len(custom[0]) > 0 {
 		var ti, endTi int
 		ti = strings.Index(custom[0], "_templates")
 		endTi = 0
