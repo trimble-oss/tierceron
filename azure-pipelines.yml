@@ -116,7 +116,6 @@ steps:
     go version
     pwd
     export TierceronWD=`pwd`
-    echo $TierceronWD
     echo $GOBIN
     echo "Compile start"
 
@@ -181,7 +180,8 @@ steps:
     cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/trcconfig.mac
     cp $GOBIN/darwin_amd64/trcinit $(Build.ArtifactStagingDirectory)/trcinit.mac
-    echo $TierceronWD
+    mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcpub
+    mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcconfig
     cp $TierceronWD/docker/trcpub/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcpub/Dockerfile
     cp $TierceronWD/docker/trcconfig/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcconfig/Dockerfile
   workingDirectory: '$(modulePath)'
