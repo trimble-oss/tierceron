@@ -192,11 +192,30 @@ steps:
     projectName: 'Tierceron'
     organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
     additionalArguments: '-d'
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trcpub 
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcpub/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trcconfig
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcconfig/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
     publishLocation: 'Container'
+
 
 #- task: Docker@2 # TODO: Deprecate - azure migration
 #  displayName: Build an image
