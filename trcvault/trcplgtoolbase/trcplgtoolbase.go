@@ -117,6 +117,9 @@ func PluginMain() {
 			writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
 			writeMap["trctype"] = *pluginTypePtr
 			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
+			if pluginToolConfig["instances"] == nil {
+				pluginToolConfig["instances"] = "0"
+			}
 			writeMap["instances"] = pluginToolConfig["instances"].(string)
 			writeMap["copied"] = false
 			writeMap["deployed"] = false

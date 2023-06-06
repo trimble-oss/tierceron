@@ -122,12 +122,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	//Checks if this instance of carrier is allowed to deploy that certain plugin.
 	if instanceList, ok := vaultPluginSignature["instances"].(string); !ok {
-		eUtils.LogErrorMessage(config, "Plugin has valid no instances: "+vaultPluginSignature["trcplugin"].(string), false)
+		eUtils.LogErrorMessage(config, "Plugin has no valid instances: "+vaultPluginSignature["trcplugin"].(string), false)
 		return nil
 	} else {
-		hostName := os.Getenv("HOSTNAME")
-
-		if hostName != "" { //Figures out what instance this is
+		hostName, hostNameErr := os.Hostname()
+		if hostName != "" && hostNameErr == nil { //Figures out what instance this is
 			re := regexp.MustCompile("-[0-9]+")
 			hostNameRegex := re.FindAllString(hostName, 1)
 
@@ -141,7 +140,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			instances := strings.Split(instanceList, ",") //Checks whether this instance is allowed to run plugin
 			instanceFound := false
 			for _, instance := range instances {
-				if instance == instanceIndex {
+				if strings.TrimSuffix(strings.TrimPrefix(instance, "\""), ("\"")) == instanceIndex {
 					instanceFound = true
 					break
 				}
@@ -156,7 +155,8 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				return nil
 			}
 		} else {
-			eUtils.LogErrorMessage(config, "$HOSTNAME was not set therefore unable to determine this instance's index for deployment", false)
+			eUtils.LogErrorMessage(config, "Unable to determine this instance's index for deployment: "+vaultPluginSignature["trcplugin"].(string)+" Error:"+hostNameErr.Error(), false)
+			return nil
 		}
 	}
 
@@ -280,7 +280,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		} else {
 			writeMap["trctype"] = "vault"
 		}
-		writeMap["copied"] = true
+		writeMap["copied"] = false
 		writeMap["deployed"] = false
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
@@ -337,10 +337,11 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 
 					filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
 					pluginData["trcsha256"] = filesystemsha256
-					pluginData["copied"] = true
+					pluginData["copied"] = false
+					pluginData["instances"] = "0"
 
 					if pluginData["trctype"].(string) == "agent" {
-						pluginData["deployed"] = true
+						pluginData["deployed"] = false
 					}
 				}
 			} else {
@@ -363,7 +364,7 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 		writeMap["trcsha256"] = pluginData["trcsha256"]
 		writeMap["copied"] = pluginData["copied"]
 		writeMap["instances"] = pluginData["instances"]
-		writeMap["deployed"] = true
+		writeMap["deployed"] = false
 
 		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap, logger)
 		if err != nil {
