@@ -179,6 +179,7 @@ steps:
     cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/trcconfig.mac
     cp $GOBIN/darwin_amd64/trcinit $(Build.ArtifactStagingDirectory)/trcinit.mac
+    cp -r $GOBIN/docker/* $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
 - task: SnykSecurityScan@1
