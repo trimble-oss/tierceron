@@ -74,8 +74,18 @@ func GetTemplate(config *eUtils.DriverConfig, modifier *helperkv.Modifier, templ
 		// No service for Common project...
 		path = "templates/" + project + "/" + templateFile + "/template-file"
 	} else {
-		path = "templates/" + project + "/" + service + "/" + templateFile + "/template-file"
+		if config.ZeroConfig && modifier.TemplatePath != "" && !config.WantCerts {
+			lastDotIndex := strings.LastIndex(templateFile, ".")
+			if lastDotIndex > 0 {
+				modifier.TemplatePath = modifier.TemplatePath + templateFile[lastDotIndex:]
+			}
+
+			path = modifier.TemplatePath + "/template-file"
+		} else {
+			path = "templates/" + project + "/" + service + "/" + templateFile + "/template-file"
+		}
 	}
+
 	data, err := modifier.ReadData(path)
 	if err != nil {
 		return "", err
