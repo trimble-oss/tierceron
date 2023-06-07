@@ -22,8 +22,11 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 	mod, err := helperkv.NewModifier(false, token, address, env, nil, true, logger)
 	mod.Env = env
 	config := &eUtils.DriverConfig{
-		Insecure: false,
-		Log:      logger,
+		ZeroConfig: true,
+		WantCerts:  false,
+		StartDir:   append([]string{}, "trc_templates"),
+		Insecure:   false,
+		Log:        logger,
 	}
 
 	if err != nil {
@@ -47,8 +50,11 @@ func ConfigCertLib(token string, address string, env string, templatePath string
 	mod, err := helperkv.NewModifier(false, token, address, env, nil, true, logger)
 	mod.Env = env
 	config := &eUtils.DriverConfig{
-		Insecure: false,
-		Log:      logger,
+		ZeroConfig: true,
+		WantCerts:  true,
+		StartDir:   append([]string{}, "trc_templates"),
+		Insecure:   false,
+		Log:        logger,
 	}
 	if err != nil {
 		eUtils.LogErrorMessage(config, err.Error(), false)
