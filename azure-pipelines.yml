@@ -179,6 +179,10 @@ steps:
     cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/trcconfig.mac
     cp $GOBIN/darwin_amd64/trcinit $(Build.ArtifactStagingDirectory)/trcinit.mac
+    mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcpub
+    mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcconfig
+    cp docker/trcpub/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcpub/Dockerfile
+    cp docker/trcconfig/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcconfig/Dockerfile
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
 - task: SnykSecurityScan@1
@@ -192,11 +196,30 @@ steps:
     projectName: 'Tierceron'
     organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
     additionalArguments: '-d'
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trcpub 
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcpub/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trcconfig
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcconfig/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
     publishLocation: 'Container'
+
 
 #- task: Docker@2 # TODO: Deprecate - azure migration
 #  displayName: Build an image
