@@ -19,6 +19,11 @@ data "azurerm_subnet" "db-subnet" {
   virtual_network_name = var.vm_db_VN
 }
 
+resource "azurerm_resource_group" "newrg" {
+  name     = var.subresource_group_name
+  location = var.resource_group_location
+}
+
 // If you are not using custom DNS, you will need to link every zone you 
 // want to use, to every VNET in your environment where you want the private
 // endpoint resolution to work.
@@ -52,8 +57,8 @@ tags                  = {
 # Create Network Security Group and rule
 resource "azurerm_network_security_group" "nsg" {
   name                = "${var.subresource_group_name}-NetworkSecurityGroup"
-  location            = data.azurerm_resource_group.rg.location
-  resource_group_name = data.azurerm_resource_group.rg.name
+  location            = var.resource_group_location
+  resource_group_name = var.subresource_group_name
 
   tags = {
     "Application" = var.subresource_group_name
@@ -216,8 +221,8 @@ resource "azurerm_network_security_group" "nsg" {
 
 resource "azurerm_network_interface" "vm-network-interface" {
   name                = "${var.subresource_group_name}-NIC"
-  location            = data.azurerm_resource_group.rg.location
-  resource_group_name = data.azurerm_resource_group.rg.name
+  location            = var.resource_group_location
+  resource_group_name = var.subresource_group_name
 
   ip_configuration {
     name                          = "${var.subresource_group_name}-NicConfiguration"
@@ -248,7 +253,7 @@ resource "azurerm_network_interface_security_group_association" "tierceron-secur
 # resource "azurerm_private_dns_cname_record" "tierceron-cname" {
 #  name                = "${var.tierceronname}.${var.tierceronzone}"
 #  zone_name           = azurerm_private_dns_zone.tierceron-dns-zone.name
-#  resource_group_name = data.azurerm_resource_group.rg.name
+#  resource_group_name = var.subresource_group_name
 #  ttl                 = 300
 #  record              = "${var.tierceronname}"
 #  depends_on = [
@@ -280,8 +285,8 @@ resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
 
 resource "azurerm_mysql_flexible_server" "tierceron-db" {
   name                   = "${var.dbaddress}"
-  resource_group_name    = data.azurerm_resource_group.rg.name
-  location               = data.azurerm_resource_group.rg.location
+  resource_group_name    = var.subresource_group_name
+  location               = var.resource_group_location
   administrator_login    = "${var.mysql_admin}"
   administrator_password = "${var.mysql_admin_password}"
   backup_retention_days  = "${var.mysql_backup_retention_days}"
@@ -306,8 +311,8 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
 
 resource "azurerm_linux_virtual_machine" "az-vm" {
   name                  = "${var.subresource_group_name}-vm"
-  location              = data.azurerm_resource_group.rg.location
-  resource_group_name   = data.azurerm_resource_group.rg.name
+  location              = var.resource_group_location
+  resource_group_name   = var.subresource_group_name
   network_interface_ids = [azurerm_network_interface.vm-network-interface.id]
   size                  = "${var.vault_vm_size}"
 
@@ -343,15 +348,15 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   admin_ssh_key {
     username   = "ubuntu"
-    public_key = file(${var.public_key_directory})
+    public_key = file("${var.public_key_directory}")
   }
 
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
     command = <<EOT
-      echo ${var.trcdb_provisioner}
+      echo "{{.trcdb_provisioner}}"
       rm resources/vault_properties.sub
-      sed 's/TRCDBNAME/${var.trcdb_provisioner}/g' resources/vault_properties.hcl > resources/vault_properties.sub
+      sed 's/TRCDBNAME/{{.trcdb_provisioner}}/g' resources/vault_properties.hcl > resources/vault_properties.sub
     EOT
   }
 
@@ -360,10 +365,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   # must be nested inside of the associated provisioner.
   provisioner "file" {
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       timeout     = "30s"
     }
     source      = "resources/vault_properties.sub"
@@ -372,10 +377,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   provisioner "file" {
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       timeout     = "30s"
     }
     source      = "vault/cert.pem"
@@ -384,10 +389,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   provisioner "file" {
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       timeout     = "30s"
     }
     source      = "vault/key.pem"
@@ -396,10 +401,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
     provisioner "file" {
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       timeout     = "30s"
     }
     source      = "vault/sqlcert.pem"
@@ -408,10 +413,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
 
   provisioner "file" {
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       timeout     = "30s"
     }
     
@@ -448,10 +453,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       "sudo chown ubuntu /tmp/template_files",
     ]
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       agent       = false
       timeout     = "30s"
     }
@@ -463,10 +468,10 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       "/tmp/install.sh"
     ]
     connection {
-      host        = ${var.vm_private_ip}
+      host        = "${var.vm_private_ip}"
       user        = "ubuntu"
       type        = "ssh"
-      private_key = file(${var.private_key_directory})
+      private_key = file("${var.private_key_directory}")
       agent       = false
       timeout     = "30s"
     }

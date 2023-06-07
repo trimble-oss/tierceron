@@ -52,7 +52,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 	pathSlice := strings.SplitN(templatePath, "/", -1)
 
 	// Initialize map subsections
-	templatePathSlice, templateDir, templateDepth := GetInitialTemplateStructure(pathSlice)
+	templatePathSlice, templateDir, templateDepth := GetInitialTemplateStructure(config, pathSlice)
 
 	// Gets the template file
 	var newTemplate string
@@ -63,7 +63,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 			templatePathExtended = templatePath
 			serviceRaw = ""
 		} else {
-			templatePathExtended = strings.Replace(templatePath, coreopts.GetFolderPrefix(nil)+"_templates/", "/", 1)
+			templatePathExtended = strings.Replace(templatePath, coreopts.GetFolderPrefix(config.StartDir)+"_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
 		templateFile, _ := vcutils.ConfigTemplateRaw(config, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, config.ExitOnFailure)
@@ -124,7 +124,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 //
 // Output:
 //   - String(s) containing the structure of the template section
-func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int) {
+func GetInitialTemplateStructure(config *eUtils.DriverConfig, templatePathSlice []string) ([]string, int, int) {
 
 	var templateDir int
 	var templateDepth int
@@ -137,7 +137,7 @@ func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int
 
 	// Find the index in the slice of the vault_template subdirectory
 	for i, folder := range templatePathSlice {
-		if folder == coreopts.GetFolderPrefix(nil)+"_templates" {
+		if folder == coreopts.GetFolderPrefix(config.StartDir)+"_templates" {
 			templateDir = i
 			templatePathSlice[i] = "templates"
 		}
