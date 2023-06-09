@@ -48,7 +48,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 				//					sync.Release()
 				//				}
 
-				tl.Log.Printf("Query completed: %s %v\n", query, success)
+				tl.Log.Printf("Query completed: %s %v\n", tableName, success)
 				// Query with bindings may not be deadlock safe.
 				// Disable this for now and hope the triggers work.
 				// if sqlValues, sqlValuesOk := sqlInsert.Rows.(sqlparser.Values); sqlValuesOk {
@@ -65,7 +65,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 				// }
 			} else if sqlInsert, isInsertQuery := stmt.(*sqlparser.Insert); isInsertQuery {
 				tableName = sqlInsert.Table.Name.String()
-				tl.Log.Printf("Query completed: %s %v\n", query, success)
+				tl.Log.Printf("Query completed: %s %v\n", tableName, success)
 				// Query with bindings may not be deadlock safe.
 				// Disable this for now and hope the triggers work.
 				// if sqlValues, sqlValuesOk := sqlInsert.Rows.(sqlparser.Values); sqlValuesOk {
@@ -85,7 +85,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 					if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
 						if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
 							tableName = tableNameType.Name.String()
-							tl.Log.Printf("Query completed: %s %v\n", query, success)
+							tl.Log.Printf("Query completed: %s %v\n", tableName, success)
 							break
 						}
 					}
@@ -113,7 +113,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 					if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
 						if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
 							tableName = tableNameType.Name.String()
-							tl.Log.Printf("Query completed: %s %v\n", query, success)
+							tl.Log.Printf("Query completed: %s %v\n", tableName, success)
 							changeLock.Lock()
 							flowcore.TriggerChangeChannel(tableName)
 							changeLock.Unlock()
