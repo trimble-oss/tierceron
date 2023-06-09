@@ -267,6 +267,10 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 			rowDataMap := map[string]interface{}{}
 			for index, column := range indexColumnNames.([]string) {
+				if _, strOk := changedEntry[index].(string); strOk && len(changedEntry[index].(string)) == 0 {
+					// Invalid string index...  Skip these.
+					continue
+				}
 				rowDataMap[column] = changedEntry[index]
 			}
 
