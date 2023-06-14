@@ -169,6 +169,10 @@ steps:
     cp $GOBIN/trc-vault-plugin-prod  $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin.sha256  $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin-prod.sha256  $(Build.ArtifactStagingDirectory)
+    mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcsh
+    mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcvaultplugin
+    cp docker/trcsh/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcsh/Dockerfile
+    cp docker/trcvaultplugin/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcvaultplugin/Dockerfile
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
 - task: SnykSecurityScan@1
