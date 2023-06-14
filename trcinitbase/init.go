@@ -178,11 +178,13 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 
 	if *prodPtr {
 		if !strings.HasPrefix(*envPtr, "staging") && !strings.HasPrefix(*envPtr, "prod") {
+			fmt.Println("The prod flag can only be used with the staging or prod env.")
 			flag.Usage()
 			os.Exit(1)
 		}
 	} else {
 		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") {
+			fmt.Println("The prod flag should be used with the staging or prod env.")
 			flag.Usage()
 			os.Exit(1)
 		}
