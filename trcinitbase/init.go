@@ -642,18 +642,18 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			secretID, err := v.GetSecretID("bamboo")
 			eUtils.LogErrorObject(config, err, true)
 
-			fmt.Printf("Rotated role id and secret id for bamboo.\n")
+			fmt.Printf("Created new role id and secret id for bamboo.\n")
 			fmt.Printf("Role ID: %s\n", roleID)
 			fmt.Printf("Secret ID: %s\n", secretID)
 
 			files, err := ioutil.ReadDir(namespaceAppRolePolicies)
-			policies := []string{}
+			appRolePolicies := []string{}
 			if err == nil {
 				for _, file := range files {
 					filename := file.Name()
 					ext := filepath.Ext(filename)
 					filename = filename[0 : len(filename)-len(ext)]
-					policies = append(policies, filename)
+					appRolePolicies = append(appRolePolicies, filename)
 				}
 			}
 
@@ -661,13 +661,13 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			// Wipe existing protected app role.
 			// Recreate the protected app role.
 			//
-			for _, policy := range policies {
+			for _, appRolePolicy := range appRolePolicies {
 
-				if strings.Contains(policy, "bamboo") {
+				if strings.Contains(appRolePolicy, "bamboo") {
 					continue
 				}
 
-				resp, role_cleanup := v.DeleteRole(policy)
+				resp, role_cleanup := v.DeleteRole(appRolePolicy)
 				eUtils.LogErrorObject(config, role_cleanup, false)
 
 				if resp.StatusCode == 404 {
@@ -675,20 +675,20 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 					eUtils.LogErrorObject(config, err, true)
 				}
 
-				err = v.CreateNewRole(policy, &sys.NewRoleOptions{
+				err = v.CreateNewRole(appRolePolicy, &sys.NewRoleOptions{
 					TokenTTL:    "10m",
 					TokenMaxTTL: "15m",
-					Policies:    []string{policy},
+					Policies:    []string{appRolePolicy},
 				})
 				eUtils.LogErrorObject(config, err, true)
 
-				tokenRoleID, _, err := v.GetRoleID(policy)
+				tokenRoleID, _, err := v.GetRoleID(appRolePolicy)
 				eUtils.LogErrorObject(config, err, true)
 
-				tokenSecretID, err := v.GetSecretID(policy)
+				tokenSecretID, err := v.GetSecretID(appRolePolicy)
 				eUtils.LogErrorObject(config, err, true)
 
-				fmt.Printf("Rotated role id and secret id for " + policy + ".\n")
+				fmt.Printf("Created new role id and secret id for " + appRolePolicy + ".\n")
 				fmt.Printf("Role ID: %s\n", tokenRoleID)
 				fmt.Printf("Secret ID: %s\n", tokenSecretID)
 			}
