@@ -682,15 +682,15 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 				})
 				eUtils.LogErrorObject(config, err, true)
 
-				tokenRoleID, _, err := v.GetRoleID(appRolePolicy)
+				appRoleID, _, err := v.GetRoleID(appRolePolicy)
 				eUtils.LogErrorObject(config, err, true)
 
-				tokenSecretID, err := v.GetSecretID(appRolePolicy)
+				appRoleSecretID, err := v.GetSecretID(appRolePolicy)
 				eUtils.LogErrorObject(config, err, true)
 
 				fmt.Printf("Created new role id and secret id for " + appRolePolicy + ".\n")
-				fmt.Printf("Role ID: %s\n", tokenRoleID)
-				fmt.Printf("Secret ID: %s\n", tokenSecretID)
+				fmt.Printf("Role ID: %s\n", appRoleID)
+				fmt.Printf("Secret ID: %s\n", appRoleSecretID)
 			}
 
 			// Store all new tokens to new appRole.
