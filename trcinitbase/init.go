@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -162,11 +164,13 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	namespaceTokenConfigs := "vault_namespaces" + string(os.PathSeparator) + "token_files"
 	namespaceRoleConfigs := "vault_namespaces" + string(os.PathSeparator) + "role_files"
 	namespacePolicyConfigs := "vault_namespaces" + string(os.PathSeparator) + "policy_files"
+	namespaceAppRolePolicies := "vault_namespaces" + string(os.PathSeparator) + "approle_files"
 
 	if *namespaceVariable != "" {
 		namespaceTokenConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "token_files"
 		namespaceRoleConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "role_files"
 		namespacePolicyConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "policy_files"
+		namespaceAppRolePolicies = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "approle_files"
 	}
 
 	if *namespaceVariable == "" && !*rotateTokens && !*tokenExpiration && !*updatePolicy && !*updateRole && !*pingPtr {
@@ -638,20 +642,41 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			secretID, err := v.GetSecretID("bamboo")
 			eUtils.LogErrorObject(config, err, true)
 
-			fmt.Printf("Rotated role id and secret id.\n")
+			fmt.Printf("Rotated role id and secret id for bamboo.\n")
 			fmt.Printf("Role ID: %s\n", roleID)
 			fmt.Printf("Secret ID: %s\n", secretID)
+
+			files, err := ioutil.ReadDir(namespaceAppRolePolicies)
+			policies := []string{}
+			if err == nil {
+				isPolicy := true
+				for _, file := range files {
+					filename := file.Name()
+					ext := filepath.Ext(filename)
+					filename = filename[0 : len(filename)-len(ext)]
+					isPolicy = true
+					for _, token := range tokens {
+						if filename == token.Name {
+							isPolicy = false
+						}
+					}
+					if isPolicy {
+						policies = append(policies, filename)
+					}
+				}
+			}
 
 			//
 			// Wipe existing protected app role.
 			// Recreate the protected app role.
 			//
-			for _, token := range tokens {
-				if !strings.Contains(token.Name, "protected") {
+			for _, policy := range policies {
+
+				if strings.Contains(policy, "bamboo") {
 					continue
 				}
 
-				resp, role_cleanup := v.DeleteRole(token.Name)
+				resp, role_cleanup := v.DeleteRole(policy)
 				eUtils.LogErrorObject(config, role_cleanup, false)
 
 				if resp.StatusCode == 404 {
@@ -659,20 +684,20 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 					eUtils.LogErrorObject(config, err, true)
 				}
 
-				err = v.CreateNewRole(token.Name, &sys.NewRoleOptions{
+				err = v.CreateNewRole(policy, &sys.NewRoleOptions{
 					TokenTTL:    "10m",
 					TokenMaxTTL: "15m",
-					Policies:    []string{token.Name},
+					Policies:    []string{policy},
 				})
 				eUtils.LogErrorObject(config, err, true)
 
-				tokenRoleID, _, err := v.GetRoleID(token.Name)
+				tokenRoleID, _, err := v.GetRoleID(policy)
 				eUtils.LogErrorObject(config, err, true)
 
-				tokenSecretID, err := v.GetSecretID(token.Name)
+				tokenSecretID, err := v.GetSecretID(policy)
 				eUtils.LogErrorObject(config, err, true)
 
-				fmt.Printf("Rotated role id and secret id for " + token.Name + ".\n")
+				fmt.Printf("Rotated role id and secret id for " + policy + ".\n")
 				fmt.Printf("Role ID: %s\n", tokenRoleID)
 				fmt.Printf("Secret ID: %s\n", tokenSecretID)
 			}
