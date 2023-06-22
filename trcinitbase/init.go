@@ -649,20 +649,11 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			files, err := ioutil.ReadDir(namespaceAppRolePolicies)
 			policies := []string{}
 			if err == nil {
-				isPolicy := true
 				for _, file := range files {
 					filename := file.Name()
 					ext := filepath.Ext(filename)
 					filename = filename[0 : len(filename)-len(ext)]
-					isPolicy = true
-					for _, token := range tokens {
-						if filename == token.Name {
-							isPolicy = false
-						}
-					}
-					if isPolicy {
-						policies = append(policies, filename)
-					}
+					policies = append(policies, filename)
 				}
 			}
 
