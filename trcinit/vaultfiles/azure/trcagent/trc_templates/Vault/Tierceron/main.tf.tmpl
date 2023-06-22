@@ -1,5 +1,10 @@
-data "azurerm_resource_group" "rg" {
-  name     = var.resource_group_name
+// data "azurerm_resource_group" "rg" {
+//  name     = var.resource_group_name
+// }
+
+resource "azurerm_resource_group" "newrg" {
+  name     = var.subresource_group_name
+  location = var.resource_group_location
 }
 
 data "azurerm_virtual_network" "virtual-network" {
@@ -19,11 +24,6 @@ data "azurerm_subnet" "db-subnet" {
   virtual_network_name = var.vm_db_VN
 }
 
-resource "azurerm_resource_group" "newrg" {
-  name     = var.subresource_group_name
-  location = var.resource_group_location
-}
-
 // If you are not using custom DNS, you will need to link every zone you 
 // want to use, to every VNET in your environment where you want the private
 // endpoint resolution to work.
@@ -32,7 +32,7 @@ resource "azurerm_resource_group" "newrg" {
 
 resource "azurerm_private_dns_zone_virtual_network_link" "vm-virtual-network-link" {
   name                  = "${var.subresource_group_name}-vm-virtual-network-link"
-  resource_group_name   = data.azurerm_resource_group.rg.name
+  resource_group_name   = var.subresource_group_name
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-dns-zone.name
   virtual_network_id    = data.azurerm_virtual_network.virtual-network.id
   registration_enabled  = false
@@ -45,7 +45,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "vm-virtual-network-lin
 
 resource "azurerm_private_dns_zone_virtual_network_link" "vm-db-virtual-network-link" {
   name                  = "${var.subresource_group_name}-vm-virtual-network-link"
-  resource_group_name   = data.azurerm_resource_group.rg.name
+  resource_group_name   = var.subresource_group_name
   private_dns_zone_name = azurerm_private_dns_zone.tierceron-db-dns-zone.name
   virtual_network_id    = data.azurerm_virtual_network.virtual-network.id
 tags                  = {
@@ -263,7 +263,7 @@ resource "azurerm_network_interface_security_group_association" "tierceron-secur
 
 resource "azurerm_private_dns_zone" "tierceron-db-dns-zone" {
   name                = "${var.dbzone}"
-  resource_group_name = data.azurerm_resource_group.rg.name
+  resource_group_name = var.subresource_group_name
   tags = {
      "Environment" = "${var.environment_short}"
      "Product"     = "${var.product}"
@@ -274,7 +274,7 @@ resource "azurerm_private_dns_zone" "tierceron-db-dns-zone" {
 
 resource "azurerm_private_dns_zone" "tierceron-dns-zone" {
   name                = "${var.tierceronzone}"
-  resource_group_name = data.azurerm_resource_group.rg.name
+  resource_group_name = var.subresource_group_name
   tags = {
     "Environment" = "${var.environment_short}"
     "Product"     = "${var.product}"
