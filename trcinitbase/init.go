@@ -648,12 +648,30 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 
 			files, err := ioutil.ReadDir(namespaceAppRolePolicies)
 			appRolePolicies := []string{}
+			isPolicy := true
 			if err == nil {
 				for _, file := range files {
 					filename := file.Name()
 					ext := filepath.Ext(filename)
 					filename = filename[0 : len(filename)-len(ext)]
-					appRolePolicies = append(appRolePolicies, filename)
+					isPolicy = true
+					fileYAML, parseErr := il.ParseApproleYaml(filename)
+					if parseErr != nil {
+						isPolicy = false
+						fmt.Println("Unable to parse approle yaml file, continuing to next file.")
+						eUtils.LogErrorObject(config, parseErr, false)
+						continue
+					}
+					_, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{})
+					if !okPerms {
+						isPolicy = false
+						fmt.Println("Read incorrect approle token permissions from file, continuing to next file.")
+						eUtils.LogErrorObject(config, parseErr, false)
+						continue
+					}
+					if isPolicy {
+						appRolePolicies = append(appRolePolicies, filename)
+					}
 				}
 			}
 
