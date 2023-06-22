@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -162,11 +164,13 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	namespaceTokenConfigs := "vault_namespaces" + string(os.PathSeparator) + "token_files"
 	namespaceRoleConfigs := "vault_namespaces" + string(os.PathSeparator) + "role_files"
 	namespacePolicyConfigs := "vault_namespaces" + string(os.PathSeparator) + "policy_files"
+	namespaceAppRolePolicies := "vault_namespaces" + string(os.PathSeparator) + "approle_files"
 
 	if *namespaceVariable != "" {
 		namespaceTokenConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "token_files"
 		namespaceRoleConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "role_files"
 		namespacePolicyConfigs = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "policy_files"
+		namespaceAppRolePolicies = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "approle_files"
 	}
 
 	if *namespaceVariable == "" && !*rotateTokens && !*tokenExpiration && !*updatePolicy && !*updateRole && !*pingPtr {
@@ -638,20 +642,50 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			secretID, err := v.GetSecretID("bamboo")
 			eUtils.LogErrorObject(config, err, true)
 
-			fmt.Printf("Rotated role id and secret id.\n")
+			fmt.Printf("Created new role id and secret id for bamboo.\n")
 			fmt.Printf("Role ID: %s\n", roleID)
 			fmt.Printf("Secret ID: %s\n", secretID)
+
+			files, err := ioutil.ReadDir(namespaceAppRolePolicies)
+			appRolePolicies := []string{}
+			isPolicy := true
+			if err == nil {
+				for _, file := range files {
+					filename := file.Name()
+					ext := filepath.Ext(filename)
+					filename = filename[0 : len(filename)-len(ext)]
+					isPolicy = true
+					fileYAML, parseErr := il.ParseApproleYaml(filename)
+					if parseErr != nil {
+						isPolicy = false
+						fmt.Println("Unable to parse approle yaml file, continuing to next file.")
+						eUtils.LogErrorObject(config, parseErr, false)
+						continue
+					}
+					_, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{})
+					if !okPerms {
+						isPolicy = false
+						fmt.Println("Read incorrect approle token permissions from file, continuing to next file.")
+						eUtils.LogErrorObject(config, parseErr, false)
+						continue
+					}
+					if isPolicy {
+						appRolePolicies = append(appRolePolicies, filename)
+					}
+				}
+			}
 
 			//
 			// Wipe existing protected app role.
 			// Recreate the protected app role.
 			//
-			for _, token := range tokens {
-				if !strings.Contains(token.Name, "protected") {
+			for _, appRolePolicy := range appRolePolicies {
+
+				if strings.Contains(appRolePolicy, "bamboo") {
 					continue
 				}
 
-				resp, role_cleanup := v.DeleteRole(token.Name)
+				resp, role_cleanup := v.DeleteRole(appRolePolicy)
 				eUtils.LogErrorObject(config, role_cleanup, false)
 
 				if resp.StatusCode == 404 {
@@ -659,22 +693,22 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 					eUtils.LogErrorObject(config, err, true)
 				}
 
-				err = v.CreateNewRole(token.Name, &sys.NewRoleOptions{
+				err = v.CreateNewRole(appRolePolicy, &sys.NewRoleOptions{
 					TokenTTL:    "10m",
 					TokenMaxTTL: "15m",
-					Policies:    []string{token.Name},
+					Policies:    []string{appRolePolicy},
 				})
 				eUtils.LogErrorObject(config, err, true)
 
-				tokenRoleID, _, err := v.GetRoleID(token.Name)
+				appRoleID, _, err := v.GetRoleID(appRolePolicy)
 				eUtils.LogErrorObject(config, err, true)
 
-				tokenSecretID, err := v.GetSecretID(token.Name)
+				appRoleSecretID, err := v.GetSecretID(appRolePolicy)
 				eUtils.LogErrorObject(config, err, true)
 
-				fmt.Printf("Rotated role id and secret id for " + token.Name + ".\n")
-				fmt.Printf("Role ID: %s\n", tokenRoleID)
-				fmt.Printf("Secret ID: %s\n", tokenSecretID)
+				fmt.Printf("Created new role id and secret id for " + appRolePolicy + ".\n")
+				fmt.Printf("Role ID: %s\n", appRoleID)
+				fmt.Printf("Secret ID: %s\n", appRoleSecretID)
 			}
 
 			// Store all new tokens to new appRole.
