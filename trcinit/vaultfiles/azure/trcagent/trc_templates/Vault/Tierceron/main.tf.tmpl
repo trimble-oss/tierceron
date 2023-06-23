@@ -292,8 +292,8 @@ resource "azurerm_mysql_flexible_server" "tierceron-db" {
   backup_retention_days  = "${var.mysql_backup_retention_days}"
   delegated_subnet_id    = data.azurerm_subnet.db-subnet.id
   private_dns_zone_id    = azurerm_private_dns_zone.tierceron-db-dns-zone.id
-  sku_name               = "B_Standard_B2s"
-  zone                   = "3"
+  sku_name               = "${var.mysql_server_size}"
+  zone                   = "${var.mysql_availability_zone}"
   count                  = "${var.make_flexible_server}" == "yes" ? 1 : 0
 
   tags = {
