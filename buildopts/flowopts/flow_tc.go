@@ -24,7 +24,6 @@ func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
 }
 
 func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	// Update so it checks dfstat and if askflume otherwise go to default in TenantConfig
 	switch trcFlowContext.Flow {
 	case tcutil.DataFlowStatConfigurationsFlow:
 		// Table flow...
