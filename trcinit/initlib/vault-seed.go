@@ -535,6 +535,14 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 					return
 				}
 			}
+		} else if strings.HasSuffix(certPath, ".crt") || strings.HasSuffix(certPath, ".key") {
+			eUtils.LogInfo(config, "Inspecting crt or key: "+certPath+".")
+			pemBlock, _ := pem.Decode(cert)
+			if pemBlock == nil {
+				eUtils.LogInfo(config, "failed to verify certificate crt or pem.")
+			} else {
+				isValidCert = true
+			}
 		} else if strings.HasSuffix(certPath, ".pem") {
 			eUtils.LogInfo(config, "Inspecting pem: "+certPath+".")
 			pemBlock, _ := pem.Decode(cert)
