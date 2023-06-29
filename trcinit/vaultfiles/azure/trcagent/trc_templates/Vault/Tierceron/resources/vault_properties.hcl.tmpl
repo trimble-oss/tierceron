@@ -30,5 +30,6 @@ listener "tcp" {
 }
 disable_mlock = false
 ui = false
+default_lease_ttl = "1h"
 max_lease_ttl = "8760h"
 plugin_directory = "/etc/opt/vault/plugins/"
