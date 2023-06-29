@@ -231,7 +231,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	config.DiffCounter = len(templatePaths)
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
-		func(i int, templatePath string, version string, versionData map[string]interface{}) error {
+		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
 			mod, _ := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
