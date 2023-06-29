@@ -163,3 +163,13 @@ variable "public_key_directory" {
   type = string
   default = "{{.public_key_directory}}"
 }
+
+variable "mysql_availability_zone" {
+  type = string
+  default = "{{.mysql_availability_zone}}"
+}
+
+variable "mysql_server_size" {
+  type = string
+  default = "{{.mysql_server_size}}"
+}
