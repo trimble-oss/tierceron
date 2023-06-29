@@ -249,6 +249,8 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				isCert := false
 				if strings.Contains(templatePath, ".pfx.mf") ||
 					strings.Contains(templatePath, ".cer.mf") ||
+					strings.Contains(templatePath, ".crt.mf") ||
+					strings.Contains(templatePath, ".key.mf") ||
 					strings.Contains(templatePath, ".pem.mf") ||
 					strings.Contains(templatePath, ".jks.mf") {
 					isCert = true
