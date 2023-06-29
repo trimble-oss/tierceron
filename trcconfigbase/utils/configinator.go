@@ -231,7 +231,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	config.DiffCounter = len(templatePaths)
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
+		func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
 			mod, _ := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
@@ -249,6 +249,8 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				isCert := false
 				if strings.Contains(templatePath, ".pfx.mf") ||
 					strings.Contains(templatePath, ".cer.mf") ||
+					strings.Contains(templatePath, ".crt.mf") ||
+					strings.Contains(templatePath, ".key.mf") ||
 					strings.Contains(templatePath, ".pem.mf") ||
 					strings.Contains(templatePath, ".jks.mf") {
 					isCert = true
