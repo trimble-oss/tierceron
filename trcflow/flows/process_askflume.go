@@ -109,31 +109,38 @@ func getGchatQuery(askFlumeContext *flowcore.AskFlumeContext) *flowcore.AskFlume
 }
 
 func handleGChatQuery(askFlumeContext *flowcore.AskFlumeContext, query *flowcore.AskFlumeMessage) error {
-	fmt.Println("Received query from google chat channel: ", query.Message, " with ID: ", query.Id)
-	askFlumeContext.FlowCase = "ChatGptQuery"
-	askFlumeContext.Query = query
+	if query.Message != "" {
+		fmt.Println("Received query from google chat channel: ", query.Message, " with ID: ", query.Id)
+		askFlumeContext.FlowCase = "ChatGptQuery"
+		askFlumeContext.Query = query
+	}
 	return nil
 }
 
 func handleChatGptQuery(askFlumeContext *flowcore.AskFlumeContext, query *flowcore.AskFlumeMessage) error {
-	fmt.Println("Processing query and accessing database...")
-	// Make sure chat gpt is trained for mapping and pass any info through this method that
-	// event mapper will need
-	new_msg := tcutil.ProcessAskFlumeEventMapper(askFlumeContext, query)
-	// Send unformatted message that comes from tenantconfig to answer channel to format it!
-	askFlumeContext.FlowCase = "ChatGptAnswer"
-	askFlumeContext.Query = new_msg
-	// The unformatted answer will then be sent on gpt answer channel
+	if query.Message != "" {
+		fmt.Println("Processing query and accessing database...")
+		// Make sure chat gpt is trained for mapping and pass any info through this method that
+		// event mapper will need
+		new_msg := tcutil.ProcessAskFlumeEventMapper(askFlumeContext, query)
+		// Send unformatted message that comes from tenantconfig to answer channel to format it!
+		askFlumeContext.FlowCase = "ChatGptAnswer"
+		askFlumeContext.Query = new_msg
+		// The unformatted answer will then be sent on gpt answer channel
+	}
+
 	return nil
 }
 
 func handleGptAnswer(askFlumeContext *flowcore.AskFlumeContext, gptanswer *flowcore.AskFlumeMessage) error {
-	fmt.Println("Formatting response from database...")
-	// Will format response and send that to the gchat_response channel and send it out to user
-	fmt.Println("Received query from chatgpt channel: ", gptanswer.Message, " with ID: ", gptanswer.Id)
+	if gptanswer.Message != "" {
+		fmt.Println("Formatting response from database...")
+		// Will format response and send that to the gchat_response channel and send it out to user
+		fmt.Println("Received query from chatgpt channel: ", gptanswer.Message, " with ID: ", gptanswer.Id)
 
-	askFlumeContext.FlowCase = "GChatAnswer"
-	askFlumeContext.Query = gptanswer
+		askFlumeContext.FlowCase = "GChatAnswer"
+		askFlumeContext.Query = gptanswer
+	}
 
 	return nil
 }
