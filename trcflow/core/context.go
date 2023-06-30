@@ -969,12 +969,12 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		if _, ok := sourceDatabaseConnectionMap["dbsourceurl"].(string); ok {
 			retryCount := 0
 			eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
-		retryVaultAccess:
+		retryConnectionAccess:
 			dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
 			if retryCount < 3 && err != nil && dbsourceConn == nil {
 				retryCount = retryCount + 1
-				goto retryVaultAccess
+				goto retryConnectionAccess
 			}
 
 			if err != nil {
