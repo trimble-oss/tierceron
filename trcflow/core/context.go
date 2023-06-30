@@ -47,6 +47,9 @@ import (
 type FlowType int64
 type FlowNameType string
 
+var DataFlowStatConfigurationsFlow FlowNameType = "DataFlowStatistics"
+var AskFlumeFlow FlowNameType = "AskFlumeFlow"
+
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]interface{}
 var tfmContextMap = make(map[string]*TrcFlowMachineContext, 5)
@@ -988,7 +991,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		}
 		tfmContext.FlowControllerUpdateLock.Unlock()
 	}
-	//}
+	//
 	//
 	// Hand processing off to process flow implementor.
 	//
