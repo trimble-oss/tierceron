@@ -6,10 +6,10 @@ type AskFlumeMessage struct {
 }
 
 type AskFlumeContext struct {
-	GchatQueries   chan *AskFlumeMessage
-	ChatGptQueries chan *AskFlumeMessage
-	ChatGptAnswers chan *AskFlumeMessage
-	GchatAnswers   chan *AskFlumeMessage
+	GchatQueries   chan *AskFlumeContext
+	ChatGptQueries chan *AskFlumeContext
+	ChatGptAnswers chan *AskFlumeContext
+	GchatAnswers   chan *AskFlumeContext
 	Close          bool
 	FlowCase       string
 	Query          *AskFlumeMessage
@@ -23,10 +23,10 @@ func GetId() int64 {
 }
 
 func InitAskFlume() (*AskFlumeContext, error) {
-	gchat_queries := make(chan *AskFlumeMessage)
-	chatgpt_queries := make(chan *AskFlumeMessage)
-	chatgpt_ans := make(chan *AskFlumeMessage)
-	gchat_ans := make(chan *AskFlumeMessage)
+	gchat_queries := make(chan *AskFlumeContext)
+	chatgpt_queries := make(chan *AskFlumeContext)
+	chatgpt_ans := make(chan *AskFlumeContext)
+	gchat_ans := make(chan *AskFlumeContext)
 	empty_query := &AskFlumeMessage{
 		Id:      0,
 		Message: "",

@@ -20,7 +20,6 @@ func ProcessAskFlumeController(tfmContext *flowcore.TrcFlowMachineContext, trcFl
 	go askFlumeFlowReceiver(askFlumeContext, &askFlumeWg)
 	go askFlumeFlowSender(askFlumeContext)
 
-	// Get user query from google chat api
 	askFlumeContext.FlowCase = "GChatQuery"
 	askFlumeContext.Query = getGchatQuery(askFlumeContext)
 
@@ -32,22 +31,22 @@ func askFlumeFlowReceiver(askFlumeContext *flowcore.AskFlumeContext, askFlumeWg 
 	for {
 		select {
 		case gchat_query := <-askFlumeContext.GchatQueries:
-			err := handleGChatQuery(askFlumeContext, gchat_query)
+			err := handleGChatQuery(gchat_query)
 			if err != nil {
 				return
 			}
 		case chatgpt_query := <-askFlumeContext.ChatGptQueries:
-			err := handleChatGptQuery(askFlumeContext, chatgpt_query)
+			err := handleChatGptQuery(chatgpt_query)
 			if err != nil {
 				return
 			}
 		case gptanswer := <-askFlumeContext.ChatGptAnswers:
-			err := handleGptAnswer(askFlumeContext, gptanswer)
+			err := handleGptAnswer(gptanswer)
 			if err != nil {
 				return
 			}
 		case gchatanswer := <-askFlumeContext.GchatAnswers:
-			err := handleGchatAnswer(askFlumeContext, gchatanswer)
+			err := handleGchatAnswer(gchatanswer)
 			if err != nil {
 				return
 			}
@@ -63,33 +62,25 @@ func askFlumeFlowSender(askFlumeContext *flowcore.AskFlumeContext) error {
 	for {
 		switch {
 		case askFlumeContext.FlowCase == "GChatQuery":
-			askFlumeContext.GchatQueries <- askFlumeContext.Query
+			go func(askFlumeContext *flowcore.AskFlumeContext) {
+				askFlumeContext.GchatQueries <- askFlumeContext
+			}(askFlumeContext)
 			askFlumeContext.FlowCase = ""
-			askFlumeContext.Query = &flowcore.AskFlumeMessage{
-				Id:      0,
-				Message: "",
-			}
 		case askFlumeContext.FlowCase == "GChatAnswer":
-			askFlumeContext.GchatAnswers <- askFlumeContext.Query
+			go func(askFlumeContext *flowcore.AskFlumeContext) {
+				askFlumeContext.GchatAnswers <- askFlumeContext
+			}(askFlumeContext)
 			askFlumeContext.FlowCase = ""
-			askFlumeContext.Query = &flowcore.AskFlumeMessage{
-				Id:      0,
-				Message: "",
-			}
 		case askFlumeContext.FlowCase == "ChatGptQuery":
-			askFlumeContext.ChatGptQueries <- askFlumeContext.Query
+			go func(askFlumeContext *flowcore.AskFlumeContext) {
+				askFlumeContext.ChatGptQueries <- askFlumeContext
+			}(askFlumeContext)
 			askFlumeContext.FlowCase = ""
-			askFlumeContext.Query = &flowcore.AskFlumeMessage{
-				Id:      0,
-				Message: "",
-			}
 		case askFlumeContext.FlowCase == "ChatGptAnswer":
-			askFlumeContext.ChatGptAnswers <- askFlumeContext.Query
+			go func(askFlumeContext *flowcore.AskFlumeContext) {
+				askFlumeContext.ChatGptAnswers <- askFlumeContext
+			}(askFlumeContext)
 			askFlumeContext.FlowCase = ""
-			askFlumeContext.Query = &flowcore.AskFlumeMessage{
-				Id:      0,
-				Message: "",
-			}
 		default:
 			if askFlumeContext.Close {
 				return nil
@@ -108,44 +99,41 @@ func getGchatQuery(askFlumeContext *flowcore.AskFlumeContext) *flowcore.AskFlume
 	}
 }
 
-func handleGChatQuery(askFlumeContext *flowcore.AskFlumeContext, query *flowcore.AskFlumeMessage) error {
-	if query.Message != "" {
-		fmt.Println("Received query from google chat channel: ", query.Message, " with ID: ", query.Id)
+func handleGChatQuery(askFlumeContext *flowcore.AskFlumeContext) error {
+	if askFlumeContext.Query.Message != "" {
+		fmt.Println("Received query from google chat channel: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
 		askFlumeContext.FlowCase = "ChatGptQuery"
-		askFlumeContext.Query = query
 	}
 	return nil
 }
 
-func handleChatGptQuery(askFlumeContext *flowcore.AskFlumeContext, query *flowcore.AskFlumeMessage) error {
-	if query.Message != "" {
+func handleChatGptQuery(askFlumeContext *flowcore.AskFlumeContext) error {
+	if askFlumeContext.Query.Message != "" {
 		fmt.Println("Processing query and accessing database...")
 		// Make sure chat gpt is trained for mapping and pass any info through this method that
 		// event mapper will need
-		new_msg := tcutil.ProcessAskFlumeEventMapper(askFlumeContext, query)
+		new_msg := tcutil.ProcessAskFlumeEventMapper(askFlumeContext, askFlumeContext.Query)
 		// Send unformatted message that comes from tenantconfig to answer channel to format it!
 		askFlumeContext.FlowCase = "ChatGptAnswer"
 		askFlumeContext.Query = new_msg
 		// The unformatted answer will then be sent on gpt answer channel
 	}
-
 	return nil
 }
 
-func handleGptAnswer(askFlumeContext *flowcore.AskFlumeContext, gptanswer *flowcore.AskFlumeMessage) error {
-	if gptanswer.Message != "" {
+func handleGptAnswer(askFlumeContext *flowcore.AskFlumeContext) error {
+	if askFlumeContext.Query.Message != "" {
 		fmt.Println("Formatting response from database...")
 		// Will format response and send that to the gchat_response channel and send it out to user
-		fmt.Println("Received query from chatgpt channel: ", gptanswer.Message, " with ID: ", gptanswer.Id)
+		fmt.Println("Received query from chatgpt channel: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
 
 		askFlumeContext.FlowCase = "GChatAnswer"
-		askFlumeContext.Query = gptanswer
 	}
 
 	return nil
 }
 
-func handleGchatAnswer(askFlumeContext *flowcore.AskFlumeContext, gchatanswer *flowcore.AskFlumeMessage) error {
+func handleGchatAnswer(askFlumeContext *flowcore.AskFlumeContext) error {
 	fmt.Println("Sending response back to user and ending flow")
 	// Will send answer to user using google chat api
 	askFlumeContext.Close = true
