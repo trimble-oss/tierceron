@@ -967,9 +967,15 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	// Create remote data source with only what is needed.
 	if flow.ServiceName() != flowcorehelper.TierceronFlowConfigurationTableName {
 		if _, ok := sourceDatabaseConnectionMap["dbsourceurl"].(string); ok {
-
+			retryCount := 0
 			eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
+		retryVaultAccess:
 			dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+
+			if retryCount < 3 && err != nil && dbsourceConn == nil {
+				retryCount = retryCount + 1
+				goto retryVaultAccess
+			}
 
 			if err != nil {
 				eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.  Sync modes will fail.", false)
