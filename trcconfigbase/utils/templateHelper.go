@@ -155,7 +155,7 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 	if cert && !strings.Contains(template, ".certData") {
 		return "", certData, false, errors.New("Missing .certData")
 	} else if !cert && strings.Contains(template, ".certData") {
-		return "", certData, false, errors.New("Template with cert provided, but cert not requested.")
+		return "", certData, false, errors.New("Template with cert provided, but cert not requested: " + emptyFilePath)
 	}
 
 	// Construct path for vault
