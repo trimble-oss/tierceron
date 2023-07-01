@@ -264,6 +264,10 @@ func AutoAuth(config *DriverConfig,
 
 		if v != nil {
 			defer v.Close()
+		} else {
+			if ping {
+				return nil
+			}
 		}
 		if err != nil {
 			return err
