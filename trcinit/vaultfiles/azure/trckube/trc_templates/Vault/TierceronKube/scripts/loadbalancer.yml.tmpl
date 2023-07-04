@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-lb
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+    service.beta.kubernetes.io/azure-pls-create: "true"
+#    service.beta.kubernetes.io/azure-pls-name: kube-lb-pls
+#    service.beta.kubernetes.io/azure-pls-ip-configuration-subnet: {{.VN_subnet_name}}
+#    service.beta.kubernetes.io/azure-pls-proxy-protocol: "false"
+#    service.beta.kubernetes.io/azure-pls-visibility: "*"
+    service.beta.kubernetes.io/azure-pls-auto-approval: "{{.azure_subscription}}"
+  labels:
+    run: {{.lb_target_servicename}}
+spec:
+  type: LoadBalancer
+  ports:
+    - name: {{.lb_targetserviceprotocol}}
+      protocol: TCP
+      port: {{.lb_servicesourceport}}
+      targetPort: {{.lb_target_servicedestport}}
+  selector:
+    app: kube-lb
