@@ -33,10 +33,6 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 	logger = l
 	logger.Println("Init begun.")
 
-	// Set up a table process runner.
-	//	go initVaultHostBootstrap()
-	<-vaultHostInitialized
-
 	var configCompleteChan chan bool = nil
 	if !headless {
 		configCompleteChan = make(chan bool)
@@ -51,6 +47,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 			}
 		}()
 		var supportedPluginNames []string
+
 		for {
 			logger.Println("Waiting for plugin env input....")
 			pluginEnvConfig := <-tokenEnvChan
@@ -62,7 +59,12 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 
 			if _, ok := pluginEnvConfig["vaddress"]; !ok {
 				// Testflow won't have this set yet.
-				pluginEnvConfig["vaddress"] = GetVaultHost()
+				if GetVaultHost() != "" {
+					pluginEnvConfig["vaddress"] = GetVaultHost()
+				} else {
+					initVaultHostRemoteBootstrap(pluginEnvConfig["address"].(string))
+					pluginEnvConfig["vaddress"] = GetVaultHost()
+				}
 			}
 
 			if _, ok := pluginEnvConfig["vaddress"]; !ok {
@@ -215,14 +217,12 @@ func initVaultHostRemoteBootstrap(vaddr string) {
 			logger.Println("TrcCarrierUpdate stage 1.1")
 			vaultHost = vaddr
 			vaultPort = vaultUrl.Port()
-			vaultHostInitialized <- true
 			vaultInitialized <- true
 		} else {
 			logger.Println("Bad address: " + vaddr)
 		}
 	} else {
 		go func() { //Is this always true if vaultHost && port is not empty
-			vaultHostInitialized <- true
 			vaultInitialized <- true
 		}()
 	}
