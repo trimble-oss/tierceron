@@ -213,6 +213,9 @@ func CommonMain(envPtr *string,
 				fmt.Println("Missing auth components.")
 				os.Exit(1)
 			}
+			if *pingPtr {
+				os.Exit(0)
+			}
 		} else {
 			*tokenPtr = "novault"
 		}
@@ -307,6 +310,9 @@ func CommonMain(envPtr *string,
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					os.Exit(1)
+				}
+				if *pingPtr {
+					os.Exit(0)
 				}
 			} else {
 				*tokenPtr = "novault"
