@@ -35,7 +35,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 
 	// Set up a table process runner.
 	//	go initVaultHostBootstrap()
-	//	<-vaultHostInitialized
+	<-vaultHostInitialized
 
 	var configCompleteChan chan bool = nil
 	if !headless {
@@ -215,10 +215,16 @@ func initVaultHostRemoteBootstrap(vaddr string) {
 			logger.Println("TrcCarrierUpdate stage 1.1")
 			vaultHost = vaddr
 			vaultPort = vaultUrl.Port()
+			vaultHostInitialized <- true
 		} else {
 			logger.Println("Bad address: " + vaddr)
 		}
+	} else {
+		go func() { //Is this always true is vaultHost && port is not empty
+			vaultInitialized <- true
+		}()
 	}
+
 }
 
 func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
@@ -489,7 +495,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	tokenEnvMap["env"] = req.Path
-	tokenEnvMap["vaddress"] = vaultHost
+	//tokenEnvMap["vaddress"] = vaultHost
 	tokenEnvMap["insecure"] = true
 
 	// Check that some fields are given
