@@ -5,7 +5,7 @@ read VAULT_ADDR
 fi
 
 if [[ -z "${SECRET_VAULT_ADDR}" ]]; then
-echo "Enter secrets vault host base url including port: "
+echo "Enter organization vault host base url including port: "
 read SECRET_VAULT_ADDR
 fi
 
@@ -15,28 +15,28 @@ read VAULT_TOKEN
 fi
 
 if [[ -z "${VAULT_ENV}" ]]; then
-echo "Enter agent and secrets common vault environment: "
+echo "Enter vault environment being configured: "
 read VAULT_ENV
 fi
 
 if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
-echo "Enter agent unrestricted environment token with write permissions: "
+echo "Enter organization vault unrestricted environment token with write permissions: "
 read VAULT_ENV_TOKEN
 fi
 
 
 if [[ -z "${SECRET_VAULT_CONFIG_ROLE}" ]]; then
-echo "Enter secrets vault config approle: "
+echo "Enter organization vault config approle: "
 read SECRET_VAULT_CONFIG_ROLE
 fi
 
 if [[ -z "${SECRET_VAULT_PUB_ROLE}" ]]; then
-echo "Enter secrets vault config pubrole: "
+echo "Enter organization vault config pubrole: "
 read SECRET_VAULT_PUB_ROLE
 fi
 
 if [[ -z "${KUBE_PATH}" ]]; then
-echo "Enter kube config path: "
+echo "Enter organization kube config path: "
 read KUBE_PATH
 fi
 
