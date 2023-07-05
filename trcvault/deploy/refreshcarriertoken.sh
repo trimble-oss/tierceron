@@ -5,7 +5,7 @@ read VAULT_ADDR
 fi
 
 if [[ -z "${SECRET_VAULT_ADDR}" ]]; then
-echo "Enter organization vault host base url including port: "
+echo "Enter organization vault host base url including port (hit enter if just refreshing org tokens): "
 read SECRET_VAULT_ADDR
 fi
 
