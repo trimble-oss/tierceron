@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
@@ -155,7 +154,7 @@ var vaultHost string // Plugin will only communicate locally with a vault instan
 var vaultPort string
 var vaultInitialized chan bool = make(chan bool)
 var vaultHostInitialized chan bool = make(chan bool)
-var environments []string = []string{"dev", "QA"}
+var environments []string = []string{"dev", "QA", "staging"}
 var environmentConfigs map[string]interface{} = map[string]interface{}{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
@@ -208,6 +207,20 @@ func initVaultHostBootstrap() error {
 	return nil
 }
 
+func initVaultHostRemoteBootstrap(vaddr string) {
+	if vaultHost == "" || vaultPort == "" {
+		logger.Println("initVaultHost stage 1")
+		vaultUrl, err := url.Parse(vaddr)
+		if err == nil {
+			logger.Println("TrcCarrierUpdate stage 1.1")
+			vaultHost = vaddr
+			vaultPort = vaultUrl.Port()
+		} else {
+			logger.Println("Bad address: " + vaddr)
+		}
+	}
+}
+
 func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	if e == nil {
 		return nil, errors.New("no entry data")
@@ -239,11 +252,7 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	tokenMap["configrole"] = tokenConfig.Configrole
 	tokenMap["kubeconfig"] = tokenConfig.Kubeconfig
 
-	vaultUrl, err := url.Parse(tokenConfig.VAddress)
-	if err == nil {
-		vaultPort = vaultUrl.Port()
-	}
-
+	initVaultHostRemoteBootstrap(tokenConfig.VAddress)
 	return tokenMap, nil
 }
 
@@ -434,6 +443,8 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		tokenEnvMap["configrole"] = vData["configrole"]
 		tokenEnvMap["kubeconfig"] = vData["kubeconfig"]
 
+		initVaultHostRemoteBootstrap(vData["vaddress"].(string))
+
 		tokenEnvMap["insecure"] = true
 		if vData["token"] != nil {
 			logger.Println("Env queued: " + req.Path)
@@ -472,11 +483,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-		vaultUrl, err := url.Parse(vaddr.(string))
 		tokenEnvMap["vaddress"] = vaddr.(string)
-		if err == nil {
-			vaultPort = vaultUrl.Port()
-		}
 	} else {
 		return nil, errors.New("Vault Url required.")
 	}
@@ -539,26 +546,10 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		if token, tokenOk := data.GetOk("token"); tokenOk {
 			logger.Println("TrcCarrierUpdate stage 1")
 
-			if GetVaultPort() == "" {
-				logger.Println("TrcCarrierUpdate stage 1.1")
+			if vaultHost == "" {
 				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-					logger.Println("TrcCarrierUpdate stage 1.1.1")
-					vaultUrl, err := url.Parse(vaddr.(string))
-					tokenEnvMap["vaddress"] = vaddr.(string)
-					if err == nil {
-						logger.Println("TrcCarrierUpdate stage 1.1.1.1")
-						vaultPort = vaultUrl.Port()
-					} else {
-						logger.Println("Bad address: " + vaddr.(string))
-					}
-				} else {
-					return nil, errors.New("Vault Update Url required.")
+					initVaultHostRemoteBootstrap(vaddr.(string))
 				}
-			}
-
-			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
-				// Missing port.
-				vaultHost = vaultHost + ":" + GetVaultPort()
 			}
 
 			// Plugins
