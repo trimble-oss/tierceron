@@ -497,7 +497,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	tokenEnvMap["env"] = req.Path
-	//tokenEnvMap["vaddress"] = vaultHost
+	tokenEnvMap["vaddress"] = vaultHost
 	tokenEnvMap["insecure"] = true
 
 	// Check that some fields are given
