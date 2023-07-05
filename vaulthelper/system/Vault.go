@@ -68,6 +68,7 @@ func NewVaultWithNonlocal(insecure bool, address string, env string, newVault bo
 	}
 
 	if pingVault {
+		fmt.Println("Ping success!")
 		logger.Println("Ping success!")
 		return nil, nil
 	}
