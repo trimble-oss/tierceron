@@ -35,8 +35,8 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 	logger.Println("Init begun.")
 
 	// Set up a table process runner.
-	go initVaultHostBootstrap()
-	<-vaultHostInitialized
+	//	go initVaultHostBootstrap()
+	//	<-vaultHostInitialized
 
 	var configCompleteChan chan bool = nil
 	if !headless {
@@ -45,6 +45,12 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 
 	go func() {
 		<-vaultInitialized
+		go func() {
+			for {
+				// Sync drain on initialized in case any other updates come in...
+				<-vaultInitialized
+			}
+		}()
 		var supportedPluginNames []string
 		for {
 			logger.Println("Waiting for plugin env input....")
@@ -60,12 +66,11 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 				pluginEnvConfig["vaddress"] = GetVaultHost()
 			}
 
-			if !strings.HasSuffix(pluginEnvConfig["vaddress"].(string), GetVaultPort()) {
-				// Missing port.
-				vhost := pluginEnvConfig["vaddress"].(string)
-				vhost = vhost + ":" + GetVaultPort()
-				pluginEnvConfig["vaddress"] = vhost
+			if _, ok := pluginEnvConfig["vaddress"]; !ok {
+				logger.Println("Vault host not provided for env: " + pluginEnvConfig["env"].(string))
+				continue
 			}
+
 			pluginEnvConfig["insecure"] = true
 
 			if configInitOnce, ciOk := pluginEnvConfig["syncOnce"]; ciOk {
@@ -167,6 +172,7 @@ func GetVaultPort() string {
 	return vaultPort
 }
 
+// Not presently used...  Consider maybe deleting this???
 func initVaultHostBootstrap() error {
 	const (
 		DEFAULT  = 0               //
@@ -194,7 +200,9 @@ func initVaultHostBootstrap() error {
 				vaultBootState = COMPLETE
 			}
 		}
-		vaultInitialized <- true
+		go func() {
+			vaultInitialized <- true
+		}()
 		logger.Println("End finding vault.")
 	}
 	return nil
@@ -349,6 +357,9 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 				logger.Println("Initialize Pushing env: " + env)
 
 				PushEnv(tokenMap)
+				go func() {
+					vaultInitialized <- true
+				}()
 			}
 		}
 	}
@@ -648,6 +659,9 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	if updateCarrierTokens {
+		go func() {
+			vaultInitialized <- true
+		}()
 		logger.Println("Update carrier secrets for env: " + tokenEnvMap["env"].(string))
 		// JSON encode the data
 		buf, err := json.Marshal(req.Data)
