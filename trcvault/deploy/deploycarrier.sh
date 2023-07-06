@@ -30,20 +30,6 @@ vault secrets disable vaultcarrier/
 echo "Unregister old carrier plugin"
 vault plugin deregister trc-vault-carrier-plugin
 
-if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]
-then
-vault plugin register \
-          -command=trc-vault-carrier-plugin-prod \
-          -sha256=$( cat target/trc-vault-carrier-plugin-prod.sha256 ) \
-          -args=`backendUUID=567` \
-          plugin
-vault secrets enable \
-          -path=vaultcarrier \
-          -plugin-name=trc-vault-carrier-plugin-prod \
-          -description="Tierceron Vault Carrier Plugin Prod" \
-          plugin
-else
-
 if [ "$VAULT_PLUGIN_DIR" ]
 then
 echo "Copying new carrier plugin"
