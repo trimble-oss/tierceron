@@ -303,11 +303,11 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 				}
 				eUtils.LogErrorObject(config, errmsg, false)
 				return nil, false, errmsg, nil, nil, nil, ""
-			} else {
-				if len(acceptedTemplatePaths) > 0 {
-					// template paths further trimmed by vault.
-					templatePaths = acceptedTemplatePaths
-				}
+			}
+
+			if len(acceptedTemplatePaths) > 0 {
+				// template paths further trimmed by vault.
+				templatePaths = acceptedTemplatePaths
 			}
 		}
 	}
