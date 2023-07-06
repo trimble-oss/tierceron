@@ -62,8 +62,10 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 				if GetVaultHost() != "" {
 					pluginEnvConfig["vaddress"] = GetVaultHost()
 				} else {
-					initVaultHostRemoteBootstrap(pluginEnvConfig["address"].(string))
-					pluginEnvConfig["vaddress"] = GetVaultHost()
+					initVaultHostRemoteBootstrap(pluginEnvConfig["vaddress"].(string))
+					if GetVaultHost() != "" {
+						pluginEnvConfig["vaddress"] = GetVaultHost()
+					}
 				}
 			}
 
@@ -374,9 +376,6 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 				logger.Println("Initialize Pushing env: " + env)
 
 				PushEnv(tokenMap)
-				go func() {
-					vaultInitialized <- true
-				}()
 			}
 		}
 	}
@@ -658,9 +657,6 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	if updateCarrierTokens {
-		go func() {
-			vaultInitialized <- true
-		}()
 		logger.Println("Update carrier secrets for env: " + tokenEnvMap["env"].(string))
 		// JSON encode the data
 		buf, err := json.Marshal(req.Data)
