@@ -1,23 +1,18 @@
 #!/bin/bash
 
 if [[ -z "${VAULT_ADDR}" ]]; then
-echo "Enter vault host base url: "
+echo "Enter agent vault host base url: "
 read VAULT_ADDR
 fi
 
 if [[ -z "${VAULT_TOKEN}" ]]; then
-echo "Enter root token: "
+echo "Enter agent root token: "
 read VAULT_TOKEN
 fi
 
 if [[ -z "${VAULT_ENV}" ]]; then
-echo "Enter environment: "
+echo "Enter organization/agent environment: "
 read VAULT_ENV
-fi
-
-if [[ -z "${VAULT_ENV}" ]]; then
-echo "Enter carrier environment token with write permissions: "
-read VAULT_ENV_TOKEN
 fi
 
 VAULT_API_ADDR=VAULT_ADDR
@@ -27,6 +22,14 @@ export VAULT_API_ADDR
 
 echo "Disable old carrier secrets"
 vault secrets disable vaultcarrier/
+vault secrets list | grep trc-vault-carrier-plugin
+existingplugin=$?
+if [ $existingplugin -eq 0 ]; then       
+    echo "Carrier plugin still mounted elsewhere.  Manual intervention required to clean up before registration can proceed."
+    exit 1
+else
+    echo "All mounts cleared.  Continuing..."
+fi
 echo "Unregister old carrier plugin"
 vault plugin deregister trc-vault-carrier-plugin
 
@@ -50,4 +53,4 @@ vault secrets enable \
           -plugin-name=trc-vault-carrier-plugin \
           -description="Tierceron Vault Carrier Plugin" \
           plugin
-fi
+
