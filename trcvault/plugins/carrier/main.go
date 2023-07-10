@@ -54,7 +54,7 @@ func main() {
 		logger.Println("Running in developer mode with self signed certs.")
 		args = append(args, "--tls-skip-verify=true")
 	} else {
-		logger.Println("Running in with cert validation...")
+		logger.Println("Running plugin with cert validation...")
 		args = append(args, fmt.Sprintf("--client-cert=%s", "/etc/opt/vault/certs/serv_cert.pem"))
 		args = append(args, fmt.Sprintf("--client-key=%s", "/etc/opt/vault/certs/serv_key.pem"))
 	}
