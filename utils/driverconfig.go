@@ -23,10 +23,11 @@ type DriverConfig struct {
 	Context ProcessContext
 
 	// Internal systems...
-	ExitOnFailure bool // Exit on a failure or try to continue
-	Insecure      bool
-	IsShell       bool // If tool running in shell.
-	Log           *log.Logger
+	ExitOnFailure     bool // Exit on a failure or try to continue
+	Insecure          bool
+	IsShell           bool // If tool running in shell.
+	IsShellSubProcess bool // If subshell
+	Log               *log.Logger
 
 	// Vault Configurations...
 	Token         string
