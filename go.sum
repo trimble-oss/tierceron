@@ -615,8 +615,6 @@ github.com/mrjrieke/gio v0.0.0-20220406132257-ec1380c11ef0 h1:VInZStydZkBifiZvcK
 github.com/mrjrieke/gio v0.0.0-20220406132257-ec1380c11ef0/go.mod h1:b8vBukexG6eYuXZa14asjLAWJ+JjbZ/ophEnS2FjYUg=
 github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb h1:tA/ri6AMAepfw+H05e6z1njpBCyMVIemvAWM/2wAQgU=
 github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb/go.mod h1:gLRWYfYnMA9TONeppRSikMdXlHQ97xVsPojddUv3b/E=
-github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b h1:rO2BIwfKa2Nqt4Emfods5y9W9UEeVfzgmwOzP2LV4z4=
-github.com/mrjrieke/nute v0.0.0-20230128181737-65043c9e434b/go.mod h1:fIZKEiVoz+BJE1MFlaeSAvifHp1SVXE5xdYBDEWZUw0=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
