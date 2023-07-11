@@ -104,7 +104,7 @@ func CommonMain(envPtr *string,
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 
-	if c == nil || !c.IsShell {
+	if c == nil || !c.IsShellSubProcess {
 		args := os.Args[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
