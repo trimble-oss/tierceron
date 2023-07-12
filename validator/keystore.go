@@ -20,13 +20,15 @@ import (
 	"github.com/youmark/pkcs8"
 	"golang.org/x/crypto/pkcs12"
 	pkcs "golang.org/x/crypto/pkcs12"
+	"golang.org/x/crypto/ssh"
 )
 
 // Copied from pkcs12.go... why can't they just make these public.  Gr...
 // PEM block types
 const (
-	certificateType = "CERTIFICATE"
-	privateKeyType  = "PRIVATE KEY"
+	certificateType   = "CERTIFICATE"
+	privateKeyType    = "PRIVATE KEY"
+	rsaPrivateKeyType = "RSA PRIVATE KEY"
 )
 
 func StoreKeystore(config *eUtils.DriverConfig, trustStorePassword string) ([]byte, error) {
@@ -78,13 +80,32 @@ func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, c
 		}, password)
 
 	} else {
-		config.KeyStore.SetTrustedCertificateEntry(alias, keystore.TrustedCertificateEntry{
-			CreationTime: time.Now(),
-			Certificate: keystore.Certificate{
-				Type:    "X509",
-				Content: block.Bytes,
-			},
-		})
+		if block.Type == certificateType {
+			aliasCommon := strings.Replace(alias, "cert.pem", "", 1)
+			config.KeyStore.SetTrustedCertificateEntry(aliasCommon, keystore.TrustedCertificateEntry{
+				CreationTime: time.Now(),
+				Certificate: keystore.Certificate{
+					Type:    "X509",
+					Content: block.Bytes,
+				},
+			})
+			return nil
+		}
+		privateKeyBytes, err := ssh.ParseRawPrivateKey(data)
+		if err == nil {
+			privateKeyBytes, err := pkcs8.MarshalPrivateKey(privateKeyBytes, []byte{}, nil)
+			if err != nil {
+				return err
+			}
+			aliasCommon := strings.Replace(alias, "key.pem", "", 1)
+
+			config.KeyStore.SetPrivateKeyEntry(aliasCommon, keystore.PrivateKeyEntry{
+				CreationTime: time.Now(),
+				PrivateKey:   privateKeyBytes,
+			}, password)
+		} else {
+			return err
+		}
 	}
 
 	return nil

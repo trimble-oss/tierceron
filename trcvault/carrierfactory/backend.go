@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
@@ -19,6 +18,7 @@ import (
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 )
@@ -32,11 +32,12 @@ var logger *log.Logger
 func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvutils.ProcessFlowInitConfig, processFlow trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
-	logger.Println("Init begun.")
-
-	// Set up a table process runner.
-	go initVaultHostBootstrap()
-	<-vaultHostInitialized
+	if os.Getenv(api.PluginMetadataModeEnv) == "true" {
+		logger.Println("Metadata init.")
+		return
+	} else {
+		logger.Println("Plugin Init begun.")
+	}
 
 	var configCompleteChan chan bool = nil
 	if !headless {
@@ -45,7 +46,14 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 
 	go func() {
 		<-vaultInitialized
+		go func() {
+			for {
+				// Sync drain on initialized in case any other updates come in...
+				<-vaultInitialized
+			}
+		}()
 		var supportedPluginNames []string
+
 		for {
 			logger.Println("Waiting for plugin env input....")
 			pluginEnvConfig := <-tokenEnvChan
@@ -57,15 +65,21 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 
 			if _, ok := pluginEnvConfig["vaddress"]; !ok {
 				// Testflow won't have this set yet.
-				pluginEnvConfig["vaddress"] = GetVaultHost()
+				if GetVaultHost() != "" {
+					pluginEnvConfig["vaddress"] = GetVaultHost()
+				} else {
+					initVaultHostRemoteBootstrap(pluginEnvConfig["vaddress"].(string))
+					if GetVaultHost() != "" {
+						pluginEnvConfig["vaddress"] = GetVaultHost()
+					}
+				}
 			}
 
-			if !strings.HasSuffix(pluginEnvConfig["vaddress"].(string), GetVaultPort()) {
-				// Missing port.
-				vhost := pluginEnvConfig["vaddress"].(string)
-				vhost = vhost + ":" + GetVaultPort()
-				pluginEnvConfig["vaddress"] = vhost
+			if _, ok := pluginEnvConfig["vaddress"]; !ok {
+				logger.Println("Vault host not provided for env: " + pluginEnvConfig["env"].(string))
+				continue
 			}
+
 			pluginEnvConfig["insecure"] = true
 
 			if configInitOnce, ciOk := pluginEnvConfig["syncOnce"]; ciOk {
@@ -150,7 +164,7 @@ var vaultHost string // Plugin will only communicate locally with a vault instan
 var vaultPort string
 var vaultInitialized chan bool = make(chan bool)
 var vaultHostInitialized chan bool = make(chan bool)
-var environments []string = []string{"dev", "QA"}
+var environments []string = []string{"dev", "QA", "staging"}
 var environmentConfigs map[string]interface{} = map[string]interface{}{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
@@ -167,6 +181,7 @@ func GetVaultPort() string {
 	return vaultPort
 }
 
+// Not presently used...  Consider maybe deleting this???
 func initVaultHostBootstrap() error {
 	const (
 		DEFAULT  = 0               //
@@ -194,10 +209,32 @@ func initVaultHostBootstrap() error {
 				vaultBootState = COMPLETE
 			}
 		}
-		vaultInitialized <- true
+		go func() {
+			vaultInitialized <- true
+		}()
 		logger.Println("End finding vault.")
 	}
 	return nil
+}
+
+func initVaultHostRemoteBootstrap(vaddr string) {
+	if vaultHost == "" || vaultPort == "" {
+		logger.Println("initVaultHost stage 1")
+		vaultUrl, err := url.Parse(vaddr)
+		if err == nil {
+			logger.Println("TrcCarrierUpdate stage 1.1")
+			vaultHost = vaddr
+			vaultPort = vaultUrl.Port()
+			vaultInitialized <- true
+		} else {
+			logger.Println("Bad address: " + vaddr)
+		}
+	} else {
+		go func() { //Is this always true if vaultHost && port is not empty
+			vaultInitialized <- true
+		}()
+	}
+
 }
 
 func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
@@ -231,11 +268,7 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	tokenMap["configrole"] = tokenConfig.Configrole
 	tokenMap["kubeconfig"] = tokenConfig.Kubeconfig
 
-	vaultUrl, err := url.Parse(tokenConfig.VAddress)
-	if err == nil {
-		vaultPort = vaultUrl.Port()
-	}
-
+	initVaultHostRemoteBootstrap(tokenConfig.VAddress)
 	return tokenMap, nil
 }
 
@@ -423,6 +456,8 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		tokenEnvMap["configrole"] = vData["configrole"]
 		tokenEnvMap["kubeconfig"] = vData["kubeconfig"]
 
+		initVaultHostRemoteBootstrap(vData["vaddress"].(string))
+
 		tokenEnvMap["insecure"] = true
 		if vData["token"] != nil {
 			logger.Println("Env queued: " + req.Path)
@@ -461,11 +496,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-		vaultUrl, err := url.Parse(vaddr.(string))
 		tokenEnvMap["vaddress"] = vaddr.(string)
-		if err == nil {
-			vaultPort = vaultUrl.Port()
-		}
 	} else {
 		return nil, errors.New("Vault Url required.")
 	}
@@ -528,26 +559,10 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		if token, tokenOk := data.GetOk("token"); tokenOk {
 			logger.Println("TrcCarrierUpdate stage 1")
 
-			if GetVaultPort() == "" {
-				logger.Println("TrcCarrierUpdate stage 1.1")
+			if vaultHost == "" {
 				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-					logger.Println("TrcCarrierUpdate stage 1.1.1")
-					vaultUrl, err := url.Parse(vaddr.(string))
-					tokenEnvMap["vaddress"] = vaddr.(string)
-					if err == nil {
-						logger.Println("TrcCarrierUpdate stage 1.1.1.1")
-						vaultPort = vaultUrl.Port()
-					} else {
-						logger.Println("Bad address: " + vaddr.(string))
-					}
-				} else {
-					return nil, errors.New("Vault Update Url required.")
+					initVaultHostRemoteBootstrap(vaddr.(string))
 				}
-			}
-
-			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
-				// Missing port.
-				vaultHost = vaultHost + ":" + GetVaultPort()
 			}
 
 			// Plugins
