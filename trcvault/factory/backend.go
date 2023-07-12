@@ -95,7 +95,7 @@ var vaultHost string // Plugin will only communicate locally with a vault instan
 var vaultPort string
 var vaultInitialized chan bool = make(chan bool)
 var vaultHostInitialized chan bool = make(chan bool)
-var environments []string = []string{"dev", "QA"}
+var environments []string = []string{"dev", "QA", "staging"}
 var environmentConfigs map[string]interface{} = map[string]interface{}{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
