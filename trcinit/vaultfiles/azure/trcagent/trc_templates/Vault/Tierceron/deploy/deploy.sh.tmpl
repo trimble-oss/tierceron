@@ -17,16 +17,25 @@ fi
 
 FILESHAVAL=$(cat $FILESHA)
 
-echo "Enter vault host base url: "
+echo "Enter agent vault host base url: "
 read VAULT_ADDR
 
-echo "Enter root token: "
+if [[ -z "${SECRET_VAULT_ADDR}" ]]; then
+echo "Enter organization vault host base url including port (hit enter if just refreshing org tokens): "
+read SECRET_VAULT_ADDR
+fi
+
+if [[ -z "${SECRET_VAULT_ENV_TOKEN}" ]]; then
+echo "Enter organization vault unrestricted environment token with write permissions: "
+read SECRET_VAULT_ENV_TOKEN
+fi
+echo "Enter agent root token: "
 read VAULT_TOKEN
 
-echo "Enter environment: "
+echo "Enter agent environment: "
 read VAULT_ENV
 
-echo "Is this plugin an agent (Y or N): "
+echo "Is this plugin an agent deployment tool (Y or N): "
 read VAULT_AGENT
 
 if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then
@@ -48,8 +57,8 @@ fi
 
 if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = "y" ]; then
     if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then 
-        echo "Deploying agent"
-        trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256) -pluginType=agent
+        echo "Deploying agent deploy tool"
+        trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256) -pluginType=agent
         certifystatus=$?
         if [ $certifystatus -eq 0 ]; then       
            echo "No problems encountered."
@@ -59,7 +68,7 @@ if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = 
            exit $certifystatus
         fi
     else
-        trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+        trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
     fi
 fi
 
@@ -73,7 +82,7 @@ then
 else
     echo "Checking plugin deploy status."
     echo "Certifying plugin for env $VAULT_ENV."
-    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
     status=$?
     echo "Plugin certified with result $status."
 
