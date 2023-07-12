@@ -18,6 +18,7 @@ import (
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 )
@@ -31,7 +32,12 @@ var logger *log.Logger
 func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvutils.ProcessFlowInitConfig, processFlow trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
-	logger.Println("Init begun.")
+	if os.Getenv(api.PluginMetadataModeEnv) == "true" {
+		logger.Println("Metadata init.")
+		return
+	} else {
+		logger.Println("Plugin Init begun.")
+	}
 
 	var configCompleteChan chan bool = nil
 	if !headless {
