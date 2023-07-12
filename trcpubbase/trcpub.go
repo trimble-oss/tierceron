@@ -38,7 +38,7 @@ func CommonMain(envPtr *string,
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
 	appRolePtr := flag.String("", "config.yml", "Name of auth config file - example.yml")
 
-	if c == nil || !c.IsShell {
+	if c == nil || !c.IsShellSubProcess {
 		flag.Parse()
 	} else {
 		flag.CommandLine.Parse(nil)

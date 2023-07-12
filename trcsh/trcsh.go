@@ -90,11 +90,12 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
 	config := &eUtils.DriverConfig{Insecure: true,
-		Log:            logger,
-		IsShell:        true,
-		OutputMemCache: true,
-		MemFs:          memfs.New(),
-		ExitOnFailure:  true}
+		Log:               logger,
+		IsShell:           true,
+		IsShellSubProcess: false,
+		OutputMemCache:    true,
+		MemFs:             memfs.New(),
+		ExitOnFailure:     true}
 
 	if env == "itdev" {
 		config.OutputMemCache = false
@@ -183,6 +184,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		}
 
 		for _, deployLine := range deployPipeSplit {
+			config.IsShellSubProcess = false
 			os.Args = argsOrig
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 
@@ -223,13 +225,14 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 
 			switch control {
 			case "trcpub":
-				config.IsShell = false
 				config.AppRoleConfig = "configpub.yml"
+				config.EnvRaw = env
+				config.IsShellSubProcess = true
+
 				pubRoleSlice := strings.Split(trcshConfig.PubRole, ":")
 				tokenName := "vault_pub_token_" + env
 				tokenPub := ""
 				pubEnv := env
-				config.EnvRaw = env
 
 				trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
 				ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
@@ -243,15 +246,16 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 				if configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
 					config.EndDir = "deploy"
 				}
-				config.IsShell = false
 				config.AppRoleConfig = "config.yml"
 				config.FileFilter = nil
+				config.EnvRaw = env
+				config.WantCerts = false
+				config.IsShellSubProcess = true
+
 				configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
 				tokenName := "config_token_" + env
 				tokenConfig := ""
 				configEnv := env
-				config.EnvRaw = env
-				config.WantCerts = false
 
 				trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
 				ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.

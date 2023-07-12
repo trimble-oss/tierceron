@@ -183,6 +183,8 @@ func PenseQuery(pense string) (string, error) {
 
 	capWriteErr := cap.TapWriter(penseSum)
 	if capWriteErr != nil {
+		// 2023-06-30T01:29:21.7020686Z read unix @->/tmp/trccarrier/trcsnap.sock: read: connection reset by peer
+		os.Exit(-1) // restarting carrier will rebuild necessary resources...
 		return "", errors.Join(errors.New("Tap writer error"), capWriteErr)
 	}
 

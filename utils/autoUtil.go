@@ -90,19 +90,19 @@ func AutoAuth(config *DriverConfig,
 		override = true
 	}
 
-	// If cert file exists obtain secretID and appRoleID
-	if strings.Index(*envPtr, "staging") == 0 || strings.Index(*envPtr, "prod") == 0 {
+	if !config.IsShell && (strings.Index(*envPtr, "staging") == 0 || strings.Index(*envPtr, "prod") == 0) {
 		override = false
 		exists = true
 		appRoleIDPtr = nil
 		secretIDPtr = nil
 	} else {
+		// If cert file exists obtain secretID and appRoleID
 		config.Log.Printf("User home directory %v ", userHome)
 		if len(appRoleConfig) == 0 {
 			appRoleConfig = "config.yml"
 		}
 		if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
-			if config.IsShell {
+			if config.IsShellSubProcess {
 				return errors.New("Required azure deploy approle and secret are missing.")
 			}
 			if _, err := os.Stat(userHome + "/.tierceron/" + appRoleConfig); !os.IsNotExist(err) {
