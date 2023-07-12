@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -15,6 +16,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/utils/mlock"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
 	"golang.org/x/sys/unix"
@@ -40,6 +42,12 @@ func main() {
 		logger.Println(query)
 	})
 	buildopts.SetErrorLogger(logger.Writer())
+	defer func() {
+		if e := recover(); e != nil {
+			logger.Printf("%s: %s", e, debug.Stack())
+		}
+	}()
+
 	factory.Init(buildopts.ProcessPluginEnvConfig, flumen.ProcessFlows, true, logger)
 	mlock.Mlock(logger)
 
@@ -54,8 +62,9 @@ func main() {
 		logger.Println("Running in developer mode with self signed certs.")
 		args = append(args, "--tls-skip-verify=true")
 	} else {
-		// TODO: this may not be needed...
-		//	args = append(args, fmt.Sprintf("--ca-cert=", caPEM))
+		logger.Println("Running plugin with cert validation...")
+		args = append(args, fmt.Sprintf("--client-cert=%s", "/etc/opt/vault/certs/serv_cert.pem"))
+		args = append(args, fmt.Sprintf("--client-key=%s", "/etc/opt/vault/certs/serv_key.pem"))
 	}
 
 	argErr := flags.Parse(args[1:])
@@ -70,6 +79,11 @@ func main() {
 	err := plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: factory.TrcFactory,
 		TLSProviderFunc:    tlsProviderFunc,
+		Logger: hclog.New(&hclog.LoggerOptions{
+			Level:      hclog.Trace,
+			Output:     logger.Writer(),
+			JSONFormat: false,
+		}),
 	})
 	if err != nil {
 		logger.Fatal("Plugin shutting down")

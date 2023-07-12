@@ -104,7 +104,7 @@ func CommonMain(envPtr *string,
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
 
-	if c == nil || !c.IsShell {
+	if c == nil || !c.IsShellSubProcess {
 		args := os.Args[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
@@ -213,6 +213,9 @@ func CommonMain(envPtr *string,
 				fmt.Println("Missing auth components.")
 				os.Exit(1)
 			}
+			if *pingPtr {
+				os.Exit(0)
+			}
 		} else {
 			*tokenPtr = "novault"
 		}
@@ -307,6 +310,9 @@ func CommonMain(envPtr *string,
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					os.Exit(1)
+				}
+				if *pingPtr {
+					os.Exit(0)
 				}
 			} else {
 				*tokenPtr = "novault"
