@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -28,6 +29,7 @@ func main() {
 			os.Exit(-1)
 		}
 	}
+
 	eUtils.InitHeadless(true)
 	logFile := "/var/log/trcplugincarrier.log"
 	if !memonly.IsMemonly() && insecure.IsInsecure() {
@@ -42,8 +44,12 @@ func main() {
 	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 	logger.Println("Beginning plugin startup.")
-
 	buildopts.SetLogger(logger.Writer())
+	defer func() {
+		if e := recover(); e != nil {
+			logger.Printf("%s: %s", e, debug.Stack())
+		}
+	}()
 	carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
