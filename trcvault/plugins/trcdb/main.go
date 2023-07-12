@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -41,6 +42,12 @@ func main() {
 		logger.Println(query)
 	})
 	buildopts.SetErrorLogger(logger.Writer())
+	defer func() {
+		if e := recover(); e != nil {
+			logger.Printf("%s: %s", e, debug.Stack())
+		}
+	}()
+
 	factory.Init(buildopts.ProcessPluginEnvConfig, flumen.ProcessFlows, true, logger)
 	mlock.Mlock(logger)
 
