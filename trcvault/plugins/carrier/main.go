@@ -14,6 +14,7 @@ import (
 	memonly "github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
 	"golang.org/x/sys/unix"
@@ -72,6 +73,11 @@ func main() {
 	err := plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: carrierfactory.TrcFactory,
 		TLSProviderFunc:    tlsProviderFunc,
+		Logger: hclog.New(&hclog.LoggerOptions{
+			Level:      hclog.Trace,
+			Output:     logger.Writer(),
+			JSONFormat: false,
+		}),
 	})
 	if err != nil {
 		logger.Fatal("Plugin shutting down")
