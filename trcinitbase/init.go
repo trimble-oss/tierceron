@@ -345,29 +345,29 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			}
 		}
 
-		// if (*rotateTokens || *tokenExpiration) && *tokenFileFilterPtr == "" {
-		// 	getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
-		// 	if getOrRevokeError != nil {
-		// 		fmt.Println("Token revocation or access failure.  Cannot continue.")
-		// 		os.Exit(-1)
-		// 	}
-		// }
+		if (*rotateTokens || *tokenExpiration) && *tokenFileFilterPtr == "" {
+			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
+			if getOrRevokeError != nil {
+				fmt.Println("Token revocation or access failure.  Cannot continue.")
+				os.Exit(-1)
+			}
+		}
 
-		// if *updateRole {
-		// 	// Upload Create/Update new cidr roles.
-		// 	fmt.Println("Updating role")
-		// 	errTokenCidr := il.UploadTokenCidrRoles(config, namespaceRoleConfigs, v)
-		// 	if errTokenCidr != nil {
-		// 		if *roleFileFilterPtr != "" { //If old way didn't work -> try new way.
-		// 			*rotateTokens = true
-		// 		} else {
-		// 			fmt.Println("Role update failed.  Cannot continue.")
-		// 			os.Exit(-1)
-		// 		}
-		// 	} else {
-		// 		fmt.Println("Role updated")
-		// 	}
-		// }
+		if *updateRole {
+			// Upload Create/Update new cidr roles.
+			fmt.Println("Updating role")
+			errTokenCidr := il.UploadTokenCidrRoles(config, namespaceRoleConfigs, v)
+			if errTokenCidr != nil {
+				if *roleFileFilterPtr != "" { //If old way didn't work -> try new way.
+					*rotateTokens = true
+				} else {
+					fmt.Println("Role update failed.  Cannot continue.")
+					os.Exit(-1)
+				}
+			} else {
+				fmt.Println("Role updated")
+			}
+		}
 
 		if *updatePolicy {
 			// Upload Create/Update policies from the given policy directory
