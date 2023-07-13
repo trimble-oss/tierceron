@@ -20,7 +20,7 @@ read VAULT_ENV
 fi
 
 if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
-echo "Enter organization vault unrestricted environment token with write permissions: "
+echo "Enter organization vault *plugin* environment token with tightly confined write permissions:  "
 read VAULT_ENV_TOKEN
 fi
 
