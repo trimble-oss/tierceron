@@ -36,18 +36,6 @@ harbingplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin.sha256
 harbinger: harbingplugintrcdbbuild harbingplugintrcdbsha
 
-prodplugintrcdbbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc prod awsecr memonly" -o trcvault/deploy/target/trc-vault-plugin-prod github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
-prodplugintrcdbsha:
-	sha256sum trcvault/deploy/target/trc-vault-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin-prod.sha256
-prodplugintrcdb: prodplugintrcdbbuild prodplugintrcdbsha
-
-pluginprodcarrierbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc prod memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin-prod github.com/trimble-oss/tierceron/trcvault/plugins/carrier
-pluginprodcarriersha:
-	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin-prod.sha256
-pluginprodcarrier: pluginprodcarrierbuild pluginprodcarriersha
-
 configmac:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/trcconfig.mac github.com/trimble-oss/tierceron/trcconfig
 seed:

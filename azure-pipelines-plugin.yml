@@ -148,7 +148,6 @@ steps:
     sha256sum $GOBIN/trcsh | cut -d' ' -f1 > $GOBIN/trcsh.sha256
     sha256sum $GOBIN/trc-vault-carrier-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-carrier-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-plugin.sha256
-    sha256sum $GOBIN/trc-vault-plugin-prod | cut -d' ' -f1 > $GOBIN/trc-vault-plugin-prod.sha256
 
     echo "Compile Complete"
     cp $GOBIN/trcsh $(Build.ArtifactStagingDirectory)
@@ -156,12 +155,8 @@ steps:
 
     cp $GOBIN/trc-vault-carrier-plugin $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-carrier-plugin.sha256 $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/trc-vault-carrier-plugin-prod $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/trc-vault-carrier-plugin-prod.sha256 $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin  $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/trc-vault-plugin-prod  $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin.sha256  $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/trc-vault-plugin-prod.sha256  $(Build.ArtifactStagingDirectory)
     mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcsh
     mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcvaultplugin
     cp docker/trcsh/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcsh/Dockerfile
@@ -216,16 +211,6 @@ steps:
     tags: |
       $(Build.SourceVersion)
 
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trc-vault-plugin-prod
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcvaultpluginprod/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
 - task: ECRPushImage@1
   inputs:
     awsCredentials: 'Seattle AWS Development'
@@ -253,25 +238,6 @@ steps:
     sourceImageName: 'trc-vault-plugin'
     sourceImageTag: '$(Build.SourceVersion)'
     repositoryName: 'trc-vault-plugin'
-    pushTag: 'latest'
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trc-vault-plugin-prod'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-plugin-prod'
-    pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trc-vault-plugin-prod'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-plugin-prod'
     pushTag: 'latest'
 
 - task: ECRPushImage@1
