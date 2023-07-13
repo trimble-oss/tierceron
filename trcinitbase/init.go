@@ -36,7 +36,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	tokenPtr := flag.String("token", "", "Vault access token, only use if in dev mode or reseeding")
 	shardPtr := flag.String("shard", "", "Key shard used to unseal a vault that has been initialized but restarted")
 
-	namespaceVariable := flag.String("namespace", "", "name of the namespace")
+	namespaceVariable := flag.String("namespace", "vault", "name of the namespace")
 
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"init.log", "Output path for log files")
 	servicePtr := flag.String("service", "", "Seeding vault with a single service")
@@ -345,29 +345,29 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			}
 		}
 
-		if (*rotateTokens || *tokenExpiration) && *tokenFileFilterPtr == "" {
-			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
-			if getOrRevokeError != nil {
-				fmt.Println("Token revocation or access failure.  Cannot continue.")
-				os.Exit(-1)
-			}
-		}
+		// if (*rotateTokens || *tokenExpiration) && *tokenFileFilterPtr == "" {
+		// 	getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
+		// 	if getOrRevokeError != nil {
+		// 		fmt.Println("Token revocation or access failure.  Cannot continue.")
+		// 		os.Exit(-1)
+		// 	}
+		// }
 
-		if *updateRole {
-			// Upload Create/Update new cidr roles.
-			fmt.Println("Updating role")
-			errTokenCidr := il.UploadTokenCidrRoles(config, namespaceRoleConfigs, v)
-			if errTokenCidr != nil {
-				if *roleFileFilterPtr != "" { //If old way didn't work -> try new way.
-					*rotateTokens = true
-				} else {
-					fmt.Println("Role update failed.  Cannot continue.")
-					os.Exit(-1)
-				}
-			} else {
-				fmt.Println("Role updated")
-			}
-		}
+		// if *updateRole {
+		// 	// Upload Create/Update new cidr roles.
+		// 	fmt.Println("Updating role")
+		// 	errTokenCidr := il.UploadTokenCidrRoles(config, namespaceRoleConfigs, v)
+		// 	if errTokenCidr != nil {
+		// 		if *roleFileFilterPtr != "" { //If old way didn't work -> try new way.
+		// 			*rotateTokens = true
+		// 		} else {
+		// 			fmt.Println("Role update failed.  Cannot continue.")
+		// 			os.Exit(-1)
+		// 		}
+		// 	} else {
+		// 		fmt.Println("Role updated")
+		// 	}
+		// }
 
 		if *updatePolicy {
 			// Upload Create/Update policies from the given policy directory
@@ -387,8 +387,12 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			if *roleFileFilterPtr == "" {
 				tokens = il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
 			}
-			if !*prodPtr && *namespaceVariable == "vault" {
-				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
+			if (!*prodPtr && *namespaceVariable == "vault") || *namespaceVariable == "agent" {
+				modifierEnv := "nonprod"
+				if *prodPtr {
+					modifierEnv = *envPtr
+				}
+				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, modifierEnv, nil, true, logger) // Connect to vault
 				if mod != nil {
 					defer mod.Release()
 				}
@@ -398,14 +402,16 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 					eUtils.LogErrorObject(config, err, false)
 					os.Exit(-1)
 				}
+
+				// Just rotating tokens within existing approle.
 				if *tokenFileFilterPtr != "" {
-					approleFiles := il.GetApproleFileNames(config)
+					approleFiles := il.GetApproleFileNames(config, *namespaceVariable)
 					for _, approleFile := range approleFiles {
 						if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
 							continue
 						}
 						tokenMap := map[string]interface{}{}
-						fileYAML, parseErr := il.ParseApproleYaml(approleFile)
+						fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
 						if parseErr != nil {
 							fmt.Println("Read parsing approle yaml file, continuing to next file.")
 							eUtils.LogErrorObject(config, parseErr, false)
@@ -480,13 +486,13 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 						os.Exit(1)
 					}
 
-					approleFiles := il.GetApproleFileNames(config)
+					approleFiles := il.GetApproleFileNames(config, *namespaceVariable)
 					for _, approleFile := range approleFiles {
 						if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
 							continue
 						}
 						tokenMap := map[string]interface{}{}
-						fileYAML, parseErr := il.ParseApproleYaml(approleFile)
+						fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
 						if parseErr != nil {
 							fmt.Println("Read parsing approle yaml file, continuing to next file.")
 							eUtils.LogErrorObject(config, parseErr, false)
@@ -655,7 +661,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 					ext := filepath.Ext(filename)
 					filename = filename[0 : len(filename)-len(ext)]
 					isPolicy = true
-					fileYAML, parseErr := il.ParseApproleYaml(filename)
+					fileYAML, parseErr := il.ParseApproleYaml(filename, *namespaceVariable)
 					if parseErr != nil {
 						isPolicy = false
 						fmt.Println("Unable to parse approle yaml file, continuing to next file.")
