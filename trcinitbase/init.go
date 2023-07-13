@@ -387,12 +387,8 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			if *roleFileFilterPtr == "" {
 				tokens = il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
 			}
-			if (!*prodPtr && *namespaceVariable == "vault") || *namespaceVariable == "agent" {
-				modifierEnv := "nonprod"
-				if *prodPtr {
-					modifierEnv = *envPtr
-				}
-				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, modifierEnv, nil, true, logger) // Connect to vault
+			if (*namespaceVariable == "vault") || *namespaceVariable == "agent" {
+				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
 				if mod != nil {
 					defer mod.Release()
 				}
