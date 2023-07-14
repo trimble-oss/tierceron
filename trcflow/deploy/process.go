@@ -17,8 +17,6 @@ import (
 
 	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/factory"
-	"github.com/trimble-oss/tierceron/trcvault/opts/insecure"
-	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	"github.com/trimble-oss/tierceron/trcvault/util/repository"
 	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
@@ -103,7 +101,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	}
 
 	logger.Println("PluginDeployFlow begun for plugin: " + pluginName)
-	config = &eUtils.DriverConfig{Insecure: pluginConfig["insecure"].(bool), Log: logger, ExitOnFailure: false, StartDir: []string{}, SubSectionValue: pluginName}
+	insecure := false
+	if ok, _ := pluginConfig["insecure"].(bool); ok {
+		insecure = pluginConfig["insecure"].(bool)
+	}
+	config = &eUtils.DriverConfig{Insecure: insecure, Log: logger, ExitOnFailure: false, StartDir: []string{}, SubSectionValue: pluginName}
 
 	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(config, goMod, pluginConfig)
 	if ptcErr != nil {
@@ -253,7 +255,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			//				capSet.SetFlag(cap.Permitted, true)
 			cmd := exec.Command("setcap", "cap_ipc_lock=+ep", agentPath)
 			output, err := cmd.CombinedOutput()
-			if !insecure.IsInsecure() && err != nil {
+			if  err != nil {
 				eUtils.LogErrorMessage(config, fmt.Sprint(err)+": "+string(output), false)
 				eUtils.LogErrorMessage(config, pluginName+": PluginDeployFlow failure: Could not set needed capabilities.", false)
 			}
@@ -316,37 +318,33 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 			return err
 		}
 		if pluginData == nil {
-			if !prod.IsProd() && insecure.IsInsecure() {
-				pluginData = make(map[string]interface{})
-				pluginData["trcplugin"] = pluginName
+			pluginData = make(map[string]interface{})
+			pluginData["trcplugin"] = pluginName
 
-				var agentPath string
-				if pluginData["trctype"] == "agent" {
-					agentPath = "/home/azuredeploy/bin/" + pluginName
-				} else {
-					agentPath = "/etc/opt/vault/plugins/" + pluginName
-				}
-
-				logger.Println("Checking file.")
-				if imageFile, err := os.Open(agentPath); err == nil {
-					sha256 := sha256.New()
-
-					defer imageFile.Close()
-					if _, err := io.Copy(sha256, imageFile); err != nil {
-						continue
-					}
-
-					filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
-					pluginData["trcsha256"] = filesystemsha256
-					pluginData["copied"] = false
-					pluginData["instances"] = "0"
-
-					if pluginData["trctype"].(string) == "agent" {
-						pluginData["deployed"] = false
-					}
-				}
+			var agentPath string
+			if pluginData["trctype"] == "agent" {
+				agentPath = "/home/azuredeploy/bin/" + pluginName
 			} else {
-				return errors.New("Plugin not certified.")
+				agentPath = "/etc/opt/vault/plugins/" + pluginName
+			}
+
+			logger.Println("Checking file.")
+			if imageFile, err := os.Open(agentPath); err == nil {
+				sha256 := sha256.New()
+
+				defer imageFile.Close()
+				if _, err := io.Copy(sha256, imageFile); err != nil {
+					continue
+				}
+
+				filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
+				pluginData["trcsha256"] = filesystemsha256
+				pluginData["copied"] = false
+				pluginData["instances"] = "0"
+
+				if pluginData["trctype"].(string) == "agent" {
+					pluginData["deployed"] = false
+				}
 			}
 		}
 
