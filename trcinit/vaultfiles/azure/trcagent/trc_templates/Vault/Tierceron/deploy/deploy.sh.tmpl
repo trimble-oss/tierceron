@@ -3,6 +3,11 @@
 echo "Enter plugin name: "
 read TRC_PLUGIN_NAME
 
+if [ "$TRC_PLUGIN_NAME" = 'trc-vault-carrier-plugin' ] ; then
+    echo "Use deploycarrier to deploy carrier."
+    exit 1
+fi
+
 FILE="target/$TRC_PLUGIN_NAME"
 if [ ! -f "$FILE" ]; then
     echo "$FILE does not exist."
@@ -21,7 +26,7 @@ echo "Enter agent vault host base url: "
 read VAULT_ADDR
 
 if [[ -z "${SECRET_VAULT_ADDR}" ]]; then
-echo "Enter organization vault host base url including port (hit enter if just refreshing org tokens): "
+echo "Enter organization vault host base url including port: "
 read SECRET_VAULT_ADDR
 fi
 
