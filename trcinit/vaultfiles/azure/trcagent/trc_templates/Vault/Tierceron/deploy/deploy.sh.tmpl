@@ -154,11 +154,12 @@ if [ "$SHAVAL" != "$FILESHAVAL" ]; then
     exit -1
 fi
 
-PROD_ENVS=("staging" "prod")
 PROD_EXT=""
-if [[ "$VAULT_ENV" =~ "${PROD_ENVS[@]}" ]]; then
-   PROD_EXT="-prod"
-fi
+for x in "staging" "prod"; do
+    if [ $x = $VAULT_ENV ]; then
+       PROD_EXT="-prod"
+    fi
+done
 
 echo "Registering new plugin."
 vault plugin register \
