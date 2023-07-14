@@ -41,13 +41,15 @@ chmod 700 $VAULT_PLUGIN_DIR/trc-vault-carrier-plugin
 sudo setcap cap_ipc_lock=+ep $VAULT_PLUGIN_DIR/trc-vault-carrier-plugin
 fi
 
-PROD_ENVS=("staging" "prod")
 PROD_EXT=""
-if [[ "$VAULT_ENV" =~ "${PROD_ENVS[@]}" ]]; then
-   PROD_EXT="-prod"
-fi
+for x in "staging" "prod"; do
+    if [ $x = $VAULT_ENV ]; then
+       PROD_EXT="-prod"
+    fi
+done
 
 echo "Registering Carrier"
+echo trc-vault-carrier-plugin$PROD_EXT
 vault plugin register \
           -command=trc-vault-carrier-plugin$PROD_EXT \
           -sha256=$( cat target/trc-vault-carrier-plugin.sha256 ) \
