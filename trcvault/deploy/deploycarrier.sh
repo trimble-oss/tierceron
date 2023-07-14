@@ -48,9 +48,22 @@ vault plugin register \
           -args=`backendUUID=567` \
           trc-vault-carrier-plugin
 echo "Enabling Carrier secret engine"
+
+PROD_ENVS=("staging" "prod")
+
+if [[ "$VAULT_ENV" =~ "${PROD_ENVS[@]}" ]]; then
+vault secrets enable \
+          -path=vaultcarrier \
+          -plugin-name=trc-vault-carrier-plugin \
+          -description="Tierceron Vault Carrier Plugin" \
+          -prod \
+          plugin
+else
 vault secrets enable \
           -path=vaultcarrier \
           -plugin-name=trc-vault-carrier-plugin \
           -description="Tierceron Vault Carrier Plugin" \
           plugin
+fi
+
 

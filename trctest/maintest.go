@@ -27,10 +27,10 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
-	//pluginConfig["address"] = "vaultaddr"
 	//pluginConfig["vaddress"] = "vaultaddr"
 	//	pluginConfig["token"] = "INSERT TOKEN HERE"
 	pluginConfig["env"] = "dev"
+	pluginConfig["insecure"] = false
 
 	if memonly.IsMemonly() {
 		mlock.MunlockAll(nil)
