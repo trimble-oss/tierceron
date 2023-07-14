@@ -11,8 +11,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/trcvault/carrierfactory"
-	"github.com/trimble-oss/tierceron/trcvault/opts/insecure"
 	memonly "github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	"github.com/hashicorp/go-hclog"
@@ -22,6 +22,7 @@ import (
 )
 
 func main() {
+	executableName := os.Args[0]
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
 		if mLockErr != nil {
@@ -32,10 +33,6 @@ func main() {
 
 	eUtils.InitHeadless(true)
 	logFile := "/var/log/trcplugincarrier.log"
-	if !memonly.IsMemonly() && insecure.IsInsecure() {
-		logFile = "trcplugincarrier.log"
-	}
-
 	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if logErr != nil {
 		logFile = "./trcplugincarrier.log"
@@ -44,6 +41,11 @@ func main() {
 	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 	logger.Println("Beginning plugin startup.")
+	if strings.HasSuffix(executableName, "-prod") {
+		logger.Println("Running prod plugin")
+		prod.SetProd(true)
+	}
+
 	buildopts.SetLogger(logger.Writer())
 	defer func() {
 		if e := recover(); e != nil {
