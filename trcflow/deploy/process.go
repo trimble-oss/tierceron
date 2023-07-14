@@ -17,6 +17,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/factory"
+	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	"github.com/trimble-oss/tierceron/trcvault/util/repository"
 	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
@@ -173,10 +174,16 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	pluginDownloadNeeded := false
 	pluginCopied := false
 	var agentPath string
+
+	pluginExtension := ""
+	if prod.IsProd() {
+		pluginExtension = "-prod"
+	}
+
 	if vaultPluginSignature["trctype"] == "agent" {
 		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
 	} else {
-		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)
+		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string) + pluginExtension
 	}
 
 	if _, err := os.Stat(agentPath); errors.Is(err, os.ErrNotExist) {
@@ -255,7 +262,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			//				capSet.SetFlag(cap.Permitted, true)
 			cmd := exec.Command("setcap", "cap_ipc_lock=+ep", agentPath)
 			output, err := cmd.CombinedOutput()
-			if  err != nil {
+			if err != nil {
 				eUtils.LogErrorMessage(config, fmt.Sprint(err)+": "+string(output), false)
 				eUtils.LogErrorMessage(config, pluginName+": PluginDeployFlow failure: Could not set needed capabilities.", false)
 			}
@@ -322,10 +329,15 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 			pluginData["trcplugin"] = pluginName
 
 			var agentPath string
+			pluginExtension := ""
+			if prod.IsProd() {
+				pluginExtension = "-prod"
+			}
+
 			if pluginData["trctype"] == "agent" {
 				agentPath = "/home/azuredeploy/bin/" + pluginName
 			} else {
-				agentPath = "/etc/opt/vault/plugins/" + pluginName
+				agentPath = "/etc/opt/vault/plugins/" + pluginName + pluginExtension
 			}
 
 			logger.Println("Checking file.")
