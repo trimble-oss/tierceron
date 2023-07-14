@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/utils/mlock"
@@ -66,7 +67,6 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 				vhost = vhost + ":" + GetVaultPort()
 				pluginEnvConfig["vaddress"] = vhost
 			}
-			pluginEnvConfig["insecure"] = true
 
 			logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
 			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfig, configCompleteChan)
@@ -95,7 +95,8 @@ var vaultHost string // Plugin will only communicate locally with a vault instan
 var vaultPort string
 var vaultInitialized chan bool = make(chan bool)
 var vaultHostInitialized chan bool = make(chan bool)
-var environments []string = []string{"dev", "QA", "staging", "prod"}
+var environments []string = []string{"dev", "QA"}
+var environmentsProd []string = []string{"staging", "prod"}
 var environmentConfigs map[string]interface{} = map[string]interface{}{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
@@ -266,7 +267,12 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) error {
 	logger.Println("TrcInitialize begun.")
 
-	for _, env := range environments {
+	queuedEnvironments := environments
+	if prod.IsProd() {
+		queuedEnvironments = environmentsProd
+	}
+
+	for _, env := range queuedEnvironments {
 		logger.Println("Processing env: " + env)
 		tokenData, sgErr := req.Storage.Get(ctx, env)
 
@@ -285,7 +291,6 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 		} else {
 			if _, ok := tokenMap["token"]; ok {
 				tokenMap["env"] = env
-				tokenMap["insecure"] = true
 				tokenMap["vaddress"] = vaultHost
 				logger.Println("Initialize Pushing env: " + env)
 				PushEnv(tokenMap)
@@ -359,7 +364,6 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 		tokenEnvMap := map[string]interface{}{}
 		tokenEnvMap["env"] = req.Path
 		tokenEnvMap["vaddress"] = vData["vaddress"]
-		tokenEnvMap["insecure"] = true
 		if vData["token"] != nil {
 			logger.Println("Env queued: " + req.Path)
 		} else {
@@ -408,7 +412,6 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	tokenEnvMap["env"] = req.Path
 	tokenEnvMap["vaddress"] = vaultHost
-	tokenEnvMap["insecure"] = true
 
 	// Check that some fields are given
 	if len(req.Data) == 0 {
@@ -536,7 +539,6 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	tokenEnvMap["vaddress"] = vaultHost
-	tokenEnvMap["insecure"] = true
 
 	key := req.Path
 	if key == "" {
