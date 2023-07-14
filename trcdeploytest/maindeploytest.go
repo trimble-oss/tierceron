@@ -41,7 +41,10 @@ func main() {
 
 	//Grabbing configs
 	envMap := buildopts.GetTestDeployConfig(*tokenPtr)
-	envMap["address"] = "https://vault.dexchadev.com:8020"
+	//envMap["vaddress"] = "vaultaddr"
+	//envMap["token"] = "INSERT TOKEN HERE"
+	carrierfactory.InitLogger(logger)
+	go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))
 
 	go carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "QA"
