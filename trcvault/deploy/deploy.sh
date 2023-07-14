@@ -149,13 +149,20 @@ if [ "$SHAVAL" != "$FILESHAVAL" ]; then
     exit -1
 fi
 
+PROD_ENVS=("staging" "prod")
+PROD_EXT=""
+if [[ "$VAULT_ENV" =~ "${PROD_ENVS[@]}" ]]; then
+   PROD_EXT="-prod"
+fi
+
 echo "Registering new plugin."
 vault plugin register \
-        -command=$TRC_PLUGIN_NAME \
+        -command=$TRC_PLUGIN_NAME$PROD_EXT \
         -sha256=$(echo $SHAVAL) \
         -args=`backendUUID=789` \
         $TRC_PLUGIN_NAME
 echo "Enabling new plugin."
+
 vault secrets enable \
         -path=$TRC_PLUGIN_NAME \
         -plugin-name=$TRC_PLUGIN_NAME \
