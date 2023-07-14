@@ -144,16 +144,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	// 4. Create config for vault for queries to vault.
 	emptySlice := []string{""}
-	insecure := false
-	if ok, _ := pluginConfig["insecure"].(bool); ok {
-		insecure = pluginConfig["insecure"].(bool)
-	}
 
 	configBasis := eUtils.DriverConfig{
 		Regions:      emptySlice,
 		Token:        pluginConfig["token"].(string),
 		VaultAddress: pluginConfig["vaddress"].(string),
-		Insecure:     insecure,
+		Insecure:     true, // Always local...
 		Env:          pluginConfig["env"].(string),
 		Log:          config.Log,
 	}
