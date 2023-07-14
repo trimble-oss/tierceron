@@ -156,11 +156,24 @@ vault plugin register \
         -args=`backendUUID=789` \
         $TRC_PLUGIN_NAME
 echo "Enabling new plugin."
+
+PROD_ENVS=("staging" "prod")
+
+if [[ "$VAULT_ENV" =~ "${PROD_ENVS[@]}" ]]; then
+vault secrets enable \
+        -path=$TRC_PLUGIN_NAME \
+        -plugin-name=$TRC_PLUGIN_NAME \
+        -description="Tierceron Vault Plugin" \
+        -prod \
+        plugin
+else
 vault secrets enable \
         -path=$TRC_PLUGIN_NAME \
         -plugin-name=$TRC_PLUGIN_NAME \
         -description="Tierceron Vault Plugin" \
         plugin
+fi
+
 
 #Activates/starts the deployed plugin.
 # Note: plugin should update deployed flag for itself.
