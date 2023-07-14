@@ -11,8 +11,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/trcvault/carrierfactory"
-	"github.com/trimble-oss/tierceron/trcvault/opts/insecure"
 	memonly "github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	"github.com/hashicorp/go-hclog"
@@ -22,6 +22,10 @@ import (
 )
 
 func main() {
+	isProd := os.Getenv("VAULT_PLUGIN_CONFIG_prod")
+	if isProd != "" {
+		prod.SetProd(true)
+	}
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
 		if mLockErr != nil {
@@ -32,10 +36,6 @@ func main() {
 
 	eUtils.InitHeadless(true)
 	logFile := "/var/log/trcplugincarrier.log"
-	if !memonly.IsMemonly() && insecure.IsInsecure() {
-		logFile = "trcplugincarrier.log"
-	}
-
 	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if logErr != nil {
 		logFile = "./trcplugincarrier.log"
