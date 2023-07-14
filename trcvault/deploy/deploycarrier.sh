@@ -41,29 +41,21 @@ chmod 700 $VAULT_PLUGIN_DIR/trc-vault-carrier-plugin
 sudo setcap cap_ipc_lock=+ep $VAULT_PLUGIN_DIR/trc-vault-carrier-plugin
 fi
 
+PROD_ENVS=("staging" "prod")
+PROD_EXT=""
+if [[ "$VAULT_ENV" =~ "${PROD_ENVS[@]}" ]]; then
+   PROD_EXT="-prod"
+fi
+
 echo "Registering Carrier"
 vault plugin register \
-          -command=trc-vault-carrier-plugin \
+          -command=trc-vault-carrier-plugin$PROD_EXT \
           -sha256=$( cat target/trc-vault-carrier-plugin.sha256 ) \
           -args=`backendUUID=567` \
           trc-vault-carrier-plugin
 echo "Enabling Carrier secret engine"
-
-PROD_ENVS=("staging" "prod")
-
-if [[ "$VAULT_ENV" =~ "${PROD_ENVS[@]}" ]]; then
-vault secrets enable \
-          -path=vaultcarrier \
-          -plugin-name=trc-vault-carrier-plugin \
-          -description="Tierceron Vault Carrier Plugin" \
-          -prod \
-          plugin
-else
 vault secrets enable \
           -path=vaultcarrier \
           -plugin-name=trc-vault-carrier-plugin \
           -description="Tierceron Vault Carrier Plugin" \
           plugin
-fi
-
-

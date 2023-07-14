@@ -22,10 +22,7 @@ import (
 )
 
 func main() {
-	isProd := os.Getenv("VAULT_PLUGIN_CONFIG_prod")
-	if isProd != "" {
-		prod.SetProd(true)
-	}
+	executableName := os.Args[0]
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
 		if mLockErr != nil {
@@ -44,6 +41,11 @@ func main() {
 	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
 	logger.Println("Beginning plugin startup.")
+	if strings.HasSuffix(executableName, "-prod") {
+		logger.Println("Running prod plugin")
+		prod.SetProd(true)
+	}
+
 	buildopts.SetLogger(logger.Writer())
 	defer func() {
 		if e := recover(); e != nil {
