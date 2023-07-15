@@ -1,5 +1,5 @@
-//go:build (!gcr && ignore) || (!azrcr && ignore) || !awsecr
-// +build !gcr,ignore !azrcr,ignore !awsecr
+//go:build (!gcr && ignore) || (!azrcr && ignore) || (!awsecr && ignore)
+// +build !gcr,ignore !azrcr,ignore !awsecr,ignore
 
 package repository
 
