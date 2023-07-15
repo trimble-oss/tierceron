@@ -218,7 +218,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		// 1.c.i. Download new image from ECR.
 		// 1.c.ii. Sha256 of new executable.
 		// 1.c.ii.- if Sha256 of new executable === sha256 from vault.
-		downloadErr := repository.GetImageAndShaFromDownload(vaultPluginSignature)
+		downloadErr := repository.GetImageAndShaFromDownload(config, vaultPluginSignature)
 		if downloadErr != nil {
 			eUtils.LogErrorMessage(config, pluginName+": Could not get download image: "+downloadErr.Error(), false)
 			vaultPluginSignature["imagesha256"] = "invalidurl"
