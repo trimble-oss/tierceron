@@ -75,6 +75,16 @@ sudo mkdir -p /home/azuredeploy/myagent
 sudo chmod 1750 /home/azuredeploy/bin
 sudo chown root:azuredeploy /home/azuredeploy/bin
 
+pushd .
+cd /tmp
+curl -L "https://github.com/Azure/kubelogin/releases/download/v0.0.28/kubelogin-linux-amd64.zip" > /tmp/kubelogin-linux-amd64.zip
+sudo unzip kubelogin-linux-amd64.zip
+sudo rm kubelogin-linux-amd64.zip
+mv bin/linux_amd64/kubelogin /home/azuredeploy/bin
+sudo chown root:azuredeploy /home/azuredeploy/bin/kubelogin
+sudo chmod 0750 /home/azuredeploy/bin/kubelogin
+popd
+
 curl -L "https://vstsagentpackage.azureedge.net/agent/3.220.2/vsts-agent-linux-x64-3.220.2.tar.gz" > /tmp/vsts-agent-linux-x64-3.220.2.tar.gz
 sudo tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-3.220.2.tar.gz
 
