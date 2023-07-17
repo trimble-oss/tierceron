@@ -100,6 +100,9 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	if env == "itdev" {
 		config.OutputMemCache = false
 	}
+	fmt.Println("Logging initialized.")
+	logger.Printf("Logging initialized for env:%s\n", env)
+
 	trcshConfig, err := trcshauth.TrcshAuth(config)
 	if err != nil {
 		logger.Println(err)
