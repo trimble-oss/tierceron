@@ -105,6 +105,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		logger.Println(err)
 		os.Exit(-1)
 	}
+	fmt.Println("Auth loaded" + env)
 
 	var auth string
 	authTokenName := "vault_token_azuredeploy"
@@ -115,6 +116,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		fmt.Println(autoErr)
 		os.Exit(-1)
 	}
+	fmt.Println("Session Authorized")
 	if len(os.Args) > 1 || len(trcPath) > 0 {
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
@@ -160,6 +162,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			}
 		}
 	}
+	fmt.Println("Processing trcshell")
 
 	deployArgLines := strings.Split(string(content), "\n")
 	configCount := strings.Count(string(content), "trcconfig") //Uses this to close result channel on last run.
