@@ -126,6 +126,14 @@ sudo chmod 750 /usr/bin/docker
 #  ./svc.sh uninstall
 #  ./config.sh remove --auth 'PAT' --token ''
 
+# Enable kubelogin:
+# su kubedeploy
+# az login
+# Do this for each subscription and each cluster in each subscription...
+# 1. az account set --subscription <azure subscription for kube cluster(s)>
+# 2. az aks get-credentials --resource-group <resource group> --name <AKS cluster name>
+# kubelogin convert-kubeconfig -l azurecli
+
 # AGENT BLOCK: end
 
 
