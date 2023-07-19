@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"os/user"
 	"regexp"
 	"strings"
 	"time"
@@ -168,7 +169,20 @@ func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
 	}
 	mlock.Mlock2(nil, &trcshConfig.PubRole)
 
-	trcshConfig.KubeConfig, err = PenseQuery("kubeconfig")
+	switch config.EnvRaw {
+	case "staging", "prod":
+		usr, _ := user.Current()
+		dir := usr.HomeDir
+		fileBytes, err := ioutil.ReadFile(dir + "/.kube/config")
+		if err != nil {
+			fmt.Println("No local kube config found...")
+			os.Exit(1)
+		}
+		trcshConfig.KubeConfig = string(fileBytes)
+	default:
+		trcshConfig.KubeConfig, err = PenseQuery("kubeconfig")
+	}
+
 	if err != nil {
 		return trcshConfig, err
 	}
