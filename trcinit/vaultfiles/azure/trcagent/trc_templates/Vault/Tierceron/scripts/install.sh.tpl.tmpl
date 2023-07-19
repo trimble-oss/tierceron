@@ -75,6 +75,25 @@ sudo mkdir -p /home/azuredeploy/myagent
 sudo chmod 1750 /home/azuredeploy/bin
 sudo chown root:azuredeploy /home/azuredeploy/bin
 
+# MANUAL STEP: IMPORTANT! Ensure azuredeploy is *not* a sudoer...
+
+# Creating a walled garden with kubedeploy
+sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/kubedeploy kubedeploy
+sudo chmod 1750 /home/kubedeploy/bin
+sudo chown root:kubedeploy /home/kubedeploy/bin
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+pushd .
+cd /tmp
+curl -L "https://github.com/Azure/kubelogin/releases/download/v0.0.28/kubelogin-linux-amd64.zip" > /tmp/kubelogin-linux-amd64.zip
+sudo unzip kubelogin-linux-amd64.zip
+sudo rm kubelogin-linux-amd64.zip
+mv bin/linux_amd64/kubelogin /home/kubedeploy/bin
+sudo chown kubedeploy:azuredeploy /home/kubedeploy/bin/kubelogin
+chmod u+s /home/kubedeploy/bin/kubelogin
+sudo chmod 0750 /home/kubedeploy/bin/kubelogin
+popd
+
 curl -L "https://vstsagentpackage.azureedge.net/agent/3.220.2/vsts-agent-linux-x64-3.220.2.tar.gz" > /tmp/vsts-agent-linux-x64-3.220.2.tar.gz
 sudo tar -C /home/azuredeploy/myagent -xzvf /tmp/vsts-agent-linux-x64-3.220.2.tar.gz
 
@@ -109,6 +128,14 @@ sudo chmod 750 /usr/bin/docker
 # If you ever have to re-register agent: 
 #  ./svc.sh uninstall
 #  ./config.sh remove --auth 'PAT' --token ''
+
+# Enable kubelogin:
+# su kubedeploy
+# az login
+# Do this for each subscription and each cluster in each subscription...
+# 1. az account set --subscription <azure subscription for kube cluster(s)>
+# 2. az aks get-credentials --resource-group <resource group> --name <AKS cluster name>
+# kubelogin convert-kubeconfig -l azurecli
 
 # AGENT BLOCK: end
 
