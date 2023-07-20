@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"embed"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
@@ -13,7 +14,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"os/user"
 	"regexp"
 	"strings"
 	"time"
@@ -171,14 +171,17 @@ func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
 
 	switch config.EnvRaw {
 	case "staging", "prod":
-		usr, _ := user.Current()
-		dir := usr.HomeDir
+		dir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Println("No user home dir")
+			os.Exit(1)
+		}
 		fileBytes, err := ioutil.ReadFile(dir + "/.kube/config")
 		if err != nil {
 			fmt.Println("No local kube config found...")
 			os.Exit(1)
 		}
-		trcshConfig.KubeConfig = string(fileBytes)
+		trcshConfig.KubeConfig = base64.StdEncoding.EncodeToString(fileBytes)
 	default:
 		trcshConfig.KubeConfig, err = PenseQuery("kubeconfig")
 	}
