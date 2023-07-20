@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"embed"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
@@ -13,7 +14,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"os/user"
 	"regexp"
 	"strings"
 	"time"
@@ -133,9 +133,34 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 
 // Helper function for obtaining auth components.
 func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
+	trcshConfig := &TrcShConfig{}
 	var err error
 
-	trcshConfig := &TrcShConfig{}
+	if config.EnvRaw == "staging" || config.EnvRaw == "prod" || len(config.TrcShellRaw) > 0 {
+		dir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Println("No homedir for current user")
+			os.Exit(1)
+		}
+		fileBytes, err := ioutil.ReadFile(dir + "/.kube/config")
+		if err != nil {
+			fmt.Println("No local kube config found...")
+			os.Exit(1)
+		}
+		trcshConfig.KubeConfig = base64.StdEncoding.EncodeToString(fileBytes)
+
+		if len(config.TrcShellRaw) > 0 {
+			return trcshConfig, nil
+		}
+	} else {
+		trcshConfig.KubeConfig, err = PenseQuery("kubeconfig")
+	}
+
+	if err != nil {
+		return trcshConfig, err
+	}
+	mlock.Mlock2(nil, &trcshConfig.KubeConfig)
+
 	addr, vAddressErr := PenseQuery("vaddress")
 	if vAddressErr != nil {
 		var addrPort string
@@ -169,24 +194,6 @@ func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
 	}
 	mlock.Mlock2(nil, &trcshConfig.PubRole)
 
-	switch config.EnvRaw {
-	case "staging", "prod":
-		usr, _ := user.Current()
-		dir := usr.HomeDir
-		fileBytes, err := ioutil.ReadFile(dir + "/.kube/config")
-		if err != nil {
-			fmt.Println("No local kube config found...")
-			os.Exit(1)
-		}
-		trcshConfig.KubeConfig = string(fileBytes)
-	default:
-		trcshConfig.KubeConfig, err = PenseQuery("kubeconfig")
-	}
-
-	if err != nil {
-		return trcshConfig, err
-	}
-	mlock.Mlock2(nil, &trcshConfig.KubeConfig)
 	return trcshConfig, err
 }
 
