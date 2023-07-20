@@ -78,10 +78,18 @@ sudo chown root:azuredeploy /home/azuredeploy/bin
 # MANUAL STEP: IMPORTANT! Ensure azuredeploy is *not* a sudoer...
 
 # Creating a walled garden with kubedeploy
-sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/kubedeploy kubedeploy
-sudo chmod 1750 /home/kubedeploy/bin
-sudo chown root:kubedeploy /home/kubedeploy/bin
+#sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/kubedeploy kubedeploy
+#sudo mkdir /home/kubedeploy/bin
+#sudo chmod 1750 /home/kubedeploy/bin
+#sudo chown root:kubedeploy /home/kubedeploy/bin
+
+# Install az
 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+# Install compatible kubectl
+wget https://dl.k8s.io/release/v1.26.1/bin/linux/amd64/kubectl -O /tmp/kubectl
+sudo mv /tmp/kubectl ~azuredeploy/bin
+sudo chmod 0750 /home/azuredeploy/bin/kubectl
 
 pushd .
 cd /tmp
@@ -89,9 +97,8 @@ curl -L "https://github.com/Azure/kubelogin/releases/download/v0.0.28/kubelogin-
 sudo unzip kubelogin-linux-amd64.zip
 sudo rm kubelogin-linux-amd64.zip
 mv bin/linux_amd64/kubelogin /home/kubedeploy/bin
-sudo chown kubedeploy:azuredeploy /home/kubedeploy/bin/kubelogin
-chmod u+s /home/kubedeploy/bin/kubelogin
-sudo chmod 0750 /home/kubedeploy/bin/kubelogin
+sudo chown azuredeploy:azuredeploy /home/azuredeploy/bin/kubelogin
+sudo chmod 0750 /home/azuredeploy/bin/kubelogin
 popd
 
 curl -L "https://vstsagentpackage.azureedge.net/agent/3.220.2/vsts-agent-linux-x64-3.220.2.tar.gz" > /tmp/vsts-agent-linux-x64-3.220.2.tar.gz
