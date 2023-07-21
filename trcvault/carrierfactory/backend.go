@@ -6,10 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
+	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
@@ -69,18 +70,6 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 			}
 
 			if _, ok := pluginEnvConfig["vaddress"]; !ok {
-				// Testflow won't have this set yet.
-				if GetVaultHost() != "" {
-					pluginEnvConfig["vaddress"] = GetVaultHost()
-				} else {
-					InitVaultHostRemoteBootstrap(pluginEnvConfig["vaddress"].(string))
-					if GetVaultHost() != "" {
-						pluginEnvConfig["vaddress"] = GetVaultHost()
-					}
-				}
-			}
-
-			if _, ok := pluginEnvConfig["vaddress"]; !ok {
 				logger.Println("Vault host not provided for env: " + pluginEnvConfig["env"].(string))
 				continue
 			}
@@ -120,6 +109,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 						configCompleteChan <- true
 					}
 					logger.Println("Config engine setup complete for env: " + pluginEnvConfig["env"].(string))
+					pluginEnvConfig["syncOnce"] = nil
 				})
 			} else {
 
@@ -163,8 +153,7 @@ var KvUpdate framework.OperationFunc
 var KvRead framework.OperationFunc
 
 var vaultBootState int = 0
-var vaultHost string // Plugin will only communicate locally with a vault instance.
-var vaultPort string
+
 var vaultInitialized chan bool = make(chan bool)
 var vaultHostInitialized chan bool = make(chan bool)
 var environments []string = []string{"dev", "QA"}
@@ -176,104 +165,106 @@ var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{},
 func PushEnv(envMap map[string]interface{}) {
 	tokenEnvChan <- envMap
 }
-
-func GetVaultHost() string {
-	return vaultHost
+func ValidateVaddr(vaddr string) error {
+	logger.Println("ValidateVaddr")
+	for _, endpoint := range coreopts.GetSupportedEndpoints() {
+		if strings.HasPrefix(vaddr, endpoint) {
+			return nil
+		}
+	}
+	logger.Println("Bad address: " + vaddr)
+	return errors.New("Bad address: " + vaddr)
 }
 
-func GetVaultPort() string {
-	return vaultPort
-}
+// Cross checks against storage that this is a valid entry
+func confirmInput(ctx context.Context, req *logical.Request, reqData *framework.FieldData, tokenEnvMap map[string]interface{}) (map[string]interface{}, error) {
+	var env string
+	if tokenEnvMap == nil {
+		tokenEnvMap = map[string]interface{}{}
+	}
+	if _, eOk := tokenEnvMap["env"].(string); !eOk {
+		if req != nil {
+			tokenEnvMap["env"] = req.Path
+		} else {
+			return nil, errors.New("Unable to determine env")
+		}
+	}
+	logger.Println("Input validation for env: " + tokenEnvMap["env"].(string))
+	var tokenConfirmationErr error
+	if req != nil && req.Storage != nil {
+		var tokenMap map[string]interface{}
 
-// Not presently used...  Consider maybe deleting this???
-func initVaultHostBootstrap() error {
-	const (
-		DEFAULT  = 0               //
-		WARMUP   = 1 << iota       // 1
-		HOST     = 1 << iota       // 2
-		COMPLETE = (WARMUP | HOST) // 3
-	)
-
-	if vaultBootState == DEFAULT {
-		vaultBootState = WARMUP
-		logger.Println("Begin finding vault.")
-
-		vaultHostChan := make(chan string, 1)
-		vaultLookupErrChan := make(chan error, 1)
-		trcvutils.GetLocalVaultHost(true, vaultHostChan, vaultLookupErrChan, logger)
-
-		for (vaultBootState & COMPLETE) != COMPLETE {
-			select {
-			case v := <-vaultHostChan:
-				vaultHost = v
-				vaultBootState |= HOST
-				vaultHostInitialized <- true
-			case lvherr := <-vaultLookupErrChan:
-				logger.Println("Couldn't find local vault: " + lvherr.Error())
-				vaultBootState = COMPLETE
+		if tokenData, existingErr := req.Storage.Get(ctx, env); existingErr == nil {
+			if tokenMap, tokenConfirmationErr = parseCarrierEnvRecord(tokenData, reqData, tokenEnvMap); tokenConfirmationErr == nil {
+				return tokenMap, nil
+			} else {
+				return nil, tokenConfirmationErr
+			}
+		} else {
+			// Completely new entry...
+			if tokenMap, tokenConfirmationErr = parseCarrierEnvRecord(tokenData, reqData, tokenEnvMap); tokenConfirmationErr != nil {
+				return nil, tokenConfirmationErr
+			} else {
+				return tokenMap, nil
 			}
 		}
-		go func() {
-			vaultInitialized <- true
-		}()
-		logger.Println("End finding vault.")
-	}
-	return nil
-}
-
-func InitVaultHostRemoteBootstrap(vaddr string) {
-	if vaultHost == "" || vaultPort == "" {
-		logger.Println("initVaultHost stage 1")
-		vaultUrl, err := url.Parse(vaddr)
-		if err == nil {
-			logger.Println("TrcCarrierUpdate stage 1.1")
-			vaultHost = vaddr
-			vaultPort = vaultUrl.Port()
-			vaultInitialized <- true
-		} else {
-			logger.Println("Bad address: " + vaddr)
-		}
 	} else {
-		go func() { //Is this always true if vaultHost && port is not empty
-			vaultInitialized <- true
-		}()
+		return nil, errors.New("Unconfirmed")
 	}
-
+	return nil, tokenConfirmationErr
 }
 
-func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
-	if e == nil {
-		return nil, errors.New("no entry data")
-	}
+func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData, tokenEnvMap map[string]interface{}) (map[string]interface{}, error) {
 	tokenMap := map[string]interface{}{}
-	type tokenWrapper struct {
-		Token      string `json:"token,omitempty"`
-		VAddress   string `json:"vaddress,omitempty"`
-		Pubrole    string `json:"pubrole,omitempty"`
-		Configrole string `json:"configrole,omitempty"`
-		Kubeconfig string `json:"kubeconfig,omitempty"`
-	}
-	tokenConfig := tokenWrapper{}
-	decodeErr := e.DecodeJSON(&tokenConfig)
-	if decodeErr != nil {
-		return nil, decodeErr
-	}
-	if memonly.IsMemonly() {
-		mlock.Mlock2(nil, &tokenConfig.VAddress)
-		mlock.Mlock2(nil, &tokenConfig.Token)
-		mlock.Mlock2(nil, &tokenConfig.Pubrole)
-		mlock.Mlock2(nil, &tokenConfig.Configrole)
-		mlock.Mlock2(nil, &tokenConfig.Kubeconfig)
+
+	if tokenEnvMap != nil {
+		tokenMap["env"] = tokenEnvMap["env"]
 	}
 
-	tokenMap["vaddress"] = tokenConfig.VAddress
-	tokenMap["token"] = tokenConfig.Token
-	tokenMap["pubrole"] = tokenConfig.Pubrole
-	tokenMap["configrole"] = tokenConfig.Configrole
-	tokenMap["kubeconfig"] = tokenConfig.Kubeconfig
+	if e != nil {
+		type tokenWrapper struct {
+			Token      string `json:"token,omitempty"`
+			VAddress   string `json:"vaddress,omitempty"`
+			Pubrole    string `json:"pubrole,omitempty"`
+			Configrole string `json:"configrole,omitempty"`
+			Kubeconfig string `json:"kubeconfig,omitempty"`
+			Plugin     string `json:"plugin,omitempty"`
+		}
+		tokenConfig := tokenWrapper{}
+		decodeErr := e.DecodeJSON(&tokenConfig)
+		if decodeErr != nil {
+			return nil, decodeErr
+		}
+		if memonly.IsMemonly() {
+			mlock.Mlock2(nil, &tokenConfig.VAddress)
+			mlock.Mlock2(nil, &tokenConfig.Token)
+			mlock.Mlock2(nil, &tokenConfig.Pubrole)
+			mlock.Mlock2(nil, &tokenConfig.Configrole)
+			mlock.Mlock2(nil, &tokenConfig.Kubeconfig)
+		}
+		tokenMap["vaddress"] = tokenConfig.VAddress
+		tokenMap["token"] = tokenConfig.Token
+		tokenMap["pubrole"] = tokenConfig.Pubrole
+		tokenMap["configrole"] = tokenConfig.Configrole
+		tokenMap["kubeconfig"] = tokenConfig.Kubeconfig
+		tokenMap["plugin"] = tokenConfig.Plugin
+	}
 
-	InitVaultHostRemoteBootstrap(tokenConfig.VAddress)
-	return tokenMap, nil
+	// Update and lock each field that is provided...
+	if reqData != nil {
+		tokenNameSlice := []string{"vaddress", "token", "pubrole", "configrole", "kubeconfig"}
+		for _, tokenName := range tokenNameSlice {
+			if token, tokenOk := reqData.GetOk(tokenName); tokenOk && token.(string) != "" {
+				tokenStr := token.(string)
+				if memonly.IsMemonly() {
+					mlock.Mlock2(nil, &tokenStr)
+				}
+				tokenMap[tokenName] = tokenStr
+			}
+		}
+	}
+
+	return tokenMap, ValidateVaddr(tokenMap["vaddress"].(string))
 }
 
 func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
@@ -364,6 +355,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 		queuedEnvironments = environmentsProd
 	}
 
+	// Read in existing vault data from all existing environments on startup...
 	for _, env := range queuedEnvironments {
 		logger.Println("Processing env: " + env)
 		tokenData, sgErr := req.Storage.Get(ctx, env)
@@ -376,29 +368,28 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 			}
 			continue
 		}
-		tokenMap, ptError := parseToken(tokenData)
+		tokenMap, ptError := parseCarrierEnvRecord(tokenData, nil, map[string]interface{}{"env": env})
 
 		if ptError != nil {
 			logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())
 		} else {
 			if _, ok := tokenMap["token"]; ok {
 				tokenMap["env"] = env
-				tokenMap["vaddress"] = vaultHost
 				tokenMap["syncOnce"] = &sync.Once{}
 
 				logger.Println("Initialize Pushing env: " + env)
-
-				PushEnv(tokenMap)
+				go PushEnv(tokenMap) // Startup is async queued.
+				logger.Println("Env pushed: " + env)
 			}
 		}
 	}
+	vaultInitialized <- true
 
 	if KvInitialize != nil {
 		logger.Println("Entering KvInitialize...")
 		return KvInitialize(ctx, req)
 	}
 
-	//ctx.Done()
 	logger.Println("TrcCarrierInitialize complete.")
 	return nil
 }
@@ -434,49 +425,6 @@ func handleWrite(ctx context.Context, req *logical.Request, data *framework.Fiel
 }
 
 func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	logger.Println("TrcCarrierRead")
-
-	key := req.Path //data.Get("path").(string)
-	if key == "" {
-		//ctx.Done()
-		return logical.ErrorResponse("missing path"), nil
-	}
-
-	// Read existing data.
-	if entry, err := req.Storage.Get(ctx, key); err != nil || entry == nil {
-		//ctx.Done()
-		return &logical.Response{
-			Data: map[string]interface{}{
-				"message": "Entry missing.",
-			},
-		}, nil
-	} else {
-		vData := map[string]interface{}{}
-		if err := json.Unmarshal(entry.Value, &vData); err != nil {
-			//ctx.Done()
-			return nil, err
-		}
-		tokenEnvMap := map[string]interface{}{}
-		tokenEnvMap["env"] = req.Path
-		tokenEnvMap["vaddress"] = vData["vaddress"]
-		tokenEnvMap["pubrole"] = vData["pubrole"]
-		tokenEnvMap["configrole"] = vData["configrole"]
-		tokenEnvMap["kubeconfig"] = vData["kubeconfig"]
-
-		InitVaultHostRemoteBootstrap(vData["vaddress"].(string))
-
-		if vData["token"] != nil {
-			logger.Println("Env queued: " + req.Path)
-		} else {
-			mTokenErr := errors.New("Skipping environment due to missing token: " + req.Path)
-			logger.Println(mTokenErr.Error())
-			return nil, mTokenErr
-		}
-		tokenEnvMap["token"] = vData["token"]
-		logger.Println("Read Pushing env: " + tokenEnvMap["env"].(string))
-		PushEnv(tokenEnvMap)
-		//ctx.Done()
-	}
 	logger.Println("TrcCarrierRead complete.")
 
 	return &logical.Response{
@@ -491,7 +439,6 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	tokenEnvMap := map[string]interface{}{}
 	key := req.Path //data.Get("path").(string)
 	if key == "" {
-		//ctx.Done()
 		return logical.ErrorResponse("missing path"), nil
 	}
 
@@ -508,7 +455,6 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	tokenEnvMap["env"] = req.Path
-	tokenEnvMap["vaddress"] = vaultHost
 
 	// Check that some fields are given
 	if len(req.Data) == 0 {
@@ -534,8 +480,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	logger.Println("Create Pushing env: " + tokenEnvMap["env"].(string))
-	tokenEnvChan <- tokenEnvMap
-	//ctx.Done()
+	PushEnv(tokenEnvMap)
 	logger.Println("TrcCarrierCreateUpdate complete.")
 
 	return &logical.Response{
@@ -548,36 +493,45 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 // TrcUpdate -- called during write operations...
 // req  -- contains actual request.
 // data -- contains schema validated request fields... best to pull from data...
-func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcCarrierUpdate")
 	tokenEnvMap := map[string]interface{}{}
-
+	key := req.Path
 	var plugin interface{}
+	var tokenParseDataErr error
+
 	pluginOk := false
-	if plugin, pluginOk = data.GetOk("plugin"); pluginOk {
+	if plugin, pluginOk = reqData.GetOk("plugin"); pluginOk {
+		// Then this is the deploy calling.
 		logger.Println("TrcCarrierUpdate checking plugin: " + plugin.(string))
 
-		// Then this is the carrier calling.
-		tokenEnvMap["trcplugin"] = plugin.(string)
-		logger.Println("TrcCarrierUpdate begin setup for plugin settings init")
+		if entry, err := req.Storage.Get(ctx, req.Path); err != nil || entry == nil {
+			//ctx.Done()
+			return &logical.Response{
+				Data: map[string]interface{}{
+					"message": "Nice try.",
+				},
+			}, nil
+		} else {
+			vaultData := map[string]interface{}{}
+			if err := json.Unmarshal(entry.Value, &vaultData); err != nil {
+				//ctx.Done()
+				return nil, err
+			}
 
-		if token, tokenOk := data.GetOk("token"); tokenOk {
-			logger.Println("TrcCarrierUpdate stage 1")
-
-			if vaultHost == "" {
-				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-					InitVaultHostRemoteBootstrap(vaddr.(string))
-				}
+			if tokenEnvMap, tokenParseDataErr = confirmInput(ctx, req, reqData, tokenEnvMap); tokenParseDataErr != nil {
+				return logical.ErrorResponse("Plugin delivery failure: invalid input validation"), nil
+			} else {
+				tokenEnvMap["trcplugin"] = plugin.(string)
 			}
 
 			// Plugins
-			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, true, logger)
+			mod, err := helperkv.NewModifier(true, tokenEnvMap["token"].(string), tokenEnvMap["vaddress"].(string), req.Path, nil, true, logger)
 			if mod != nil {
 				defer mod.Release()
 			}
 			if err != nil {
 				logger.Println("Failed to init mod for deploy update")
-				//ctx.Done()
 				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
@@ -598,80 +552,50 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				logger.Println("Failed to read previous plugin sha from vault")
 				return logical.ErrorResponse("Failed to read previous plugin sha from vault"), nil
 			}
-		}
-	}
 
-	// TODO: Verify token and env...
-	// Path includes Env and token will only work if it has right permissions.
-	tokenEnvMap["env"] = req.Path
+			logger.Println("Update Pushing plugin for env: " + tokenEnvMap["env"].(string) + " and plugin: " + tokenEnvMap["trcplugin"].(string))
+			tokenEnvMap["trcsha256chan"] = make(chan bool)
+			PushEnv(tokenEnvMap)
+			logger.Println("Queued plugin: " + tokenEnvMap["trcplugin"].(string))
 
-	tokenNameSlice := []string{"vaddress", "token", "pubrole", "configrole", "kubeconfig"}
-	var tokenData *logical.StorageEntry
-	var tokenMap map[string]interface{}
-	var existingErr, tokenParseDataErr error
-
-	logger.Println("TrcCarrierUpdate check existing tokens for env: " + tokenEnvMap["env"].(string))
-	if req != nil && req.Storage != nil {
-		if tokenData, existingErr = req.Storage.Get(ctx, tokenEnvMap["env"].(string)); existingErr == nil {
-			if tokenMap, tokenParseDataErr = parseToken(tokenData); tokenParseDataErr != nil {
-				tokenMap = map[string]interface{}{}
+			// Listen on sha256 channel....
+			<-tokenEnvMap["trcsha256chan"].(chan bool)
+			var sha256 string
+			if sha256Interface, shaOk := tokenEnvMap["trcsha256"]; shaOk {
+				sha256 = sha256Interface.(string)
+			} else {
+				sha256 = "Failure to copy plugin."
 			}
+
+			return &logical.Response{
+				Data: map[string]interface{}{
+					"message": sha256,
+				},
+			}, nil
+
 		}
 	} else {
-		tokenMap = map[string]interface{}{}
-	}
-
-	updateCarrierTokens := true
-	logger.Println("TrcCarrierUpdate merging tokens.")
-	for _, tokenName := range tokenNameSlice {
-		if token, tokenOk := data.GetOk(tokenName); tokenOk && token.(string) != "" {
-			tokenStr := token.(string)
-			if memonly.IsMemonly() {
-				mlock.Mlock2(nil, &tokenStr)
-			}
-			if tokenName == "vaddress" {
-				vaultUrl, err := url.Parse(tokenStr)
-				if err == nil {
-					vaultPort = vaultUrl.Port()
-				}
-				tokenEnvMap[tokenName] = tokenStr
-			} else {
-				tokenEnvMap[tokenName] = tokenStr
-			}
-		} else {
-			updateCarrierTokens = false
-			if token, tokenOk := tokenMap[tokenName]; tokenOk && token.(string) != "" {
-				tokenEnvMap[tokenName] = token
-			} else {
-				if existingErr != nil || tokenParseDataErr != nil {
-					// Bad or corrupt data in vault.
-					return nil, errors.New(tokenName + " required.  Bad or corrupt token data.  Refresh carrier required.")
-				}
-				return nil, errors.New(tokenName + " required.")
-			}
+		// Then this is the carrier calling
+		// Path includes Env and token will only work if it has right permissions.
+		if tokenEnvMap, tokenParseDataErr = confirmInput(ctx, req, reqData, tokenEnvMap); tokenParseDataErr != nil {
+			// Bad or corrupt data in vault.
+			return nil, errors.New("Input data validation error.")
 		}
-	}
 
-	tokenEnvMap["vaddress"] = vaultHost
+		logger.Println("TrcCarrierUpdate merging tokens.")
+		if key == "" {
+			return logical.ErrorResponse("missing path"), nil
+		}
 
-	key := req.Path
-	if key == "" {
-		//ctx.Done()
-		return logical.ErrorResponse("missing path"), nil
-	}
+		// Check that some fields are given
+		if len(req.Data) == 0 {
+			return logical.ErrorResponse("missing data fields"), nil
+		}
 
-	// Check that some fields are given
-	if len(req.Data) == 0 {
-		//ctx.Done()
-		return logical.ErrorResponse("missing data fields"), nil
-	}
-
-	if updateCarrierTokens {
 		logger.Println("Update carrier secrets for env: " + tokenEnvMap["env"].(string))
 		// JSON encode the data
 		buf, err := json.Marshal(req.Data)
 		if err != nil {
-			//ctx.Done()
 			return nil, fmt.Errorf("json encoding failed: %v", err)
 		}
 
@@ -685,35 +609,6 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			return nil, fmt.Errorf("failed to write: %v", err)
 		}
 	}
-
-	if pluginOk {
-		logger.Println("Update Pushing plugin for env: " + tokenEnvMap["env"].(string) + " and plugin: " + tokenEnvMap["trcplugin"].(string))
-		tokenEnvMap["trcsha256chan"] = make(chan bool)
-		tokenEnvChan <- tokenEnvMap
-		logger.Println("Queued plugin: " + tokenEnvMap["trcplugin"].(string))
-
-		// Listen on sha256 channel....
-		<-tokenEnvMap["trcsha256chan"].(chan bool)
-		var sha256 string
-		if sha256Interface, shaOk := tokenEnvMap["trcsha256"]; shaOk {
-			sha256 = sha256Interface.(string)
-		} else {
-			sha256 = "Failure to copy plugin."
-		}
-
-		return &logical.Response{
-			Data: map[string]interface{}{
-				"message": sha256,
-			},
-		}, nil
-	} else {
-		// This will kick off the main flow for the plugin..
-		logger.Println("Update Pushing env: " + tokenEnvMap["env"].(string))
-		tokenEnvMap["syncOnce"] = &sync.Once{}
-		tokenEnvChan <- tokenEnvMap
-	}
-
-	//ctx.Done()
 
 	logger.Println("TrcCarrierUpdate complete.")
 
