@@ -82,6 +82,13 @@ trcshellsha:
 	sha256sum trcvault/deploy/target/trcsh | cut -d' ' -f1 > trcvault/deploy/target/trcsh.sha256
 trcshell: trcshellbuild trcshellsha
 
+trckubectlbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o trcvault/deploy/target/kubectl -tags "memonly" github.com/trimble-oss/tierceron/trcsh
+trckubectlsha:
+	sha256sum trcvault/deploy/target/kubectl | cut -d' ' -f1 > trcvault/deploy/target/kubectl.sha256
+trckubectl: trckubectlbuild trckubectlsha
+
+
 ttdiserver:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/ttdiserver -tags "insecure fyneboot argosy tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/trcgorillaz/ttdiserver
 

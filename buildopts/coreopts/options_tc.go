@@ -35,6 +35,10 @@ func GetSupportedTemplates(custom []string) []string {
 	return bcore.GetSupportedTemplates(GetFolderPrefix(custom))
 }
 
+func GetSupportedEndpoints() []string {
+	return bcore.GetSupportedEndpoints()
+}
+
 func GetLocalHost() string {
 	return bcore.LocalHost
 }
