@@ -178,7 +178,6 @@ func ValidateVaddr(vaddr string) error {
 
 // Cross checks against storage that this is a valid entry
 func confirmInput(ctx context.Context, req *logical.Request, reqData *framework.FieldData, tokenEnvMap map[string]interface{}) (map[string]interface{}, error) {
-	var env string
 	if tokenEnvMap == nil {
 		tokenEnvMap = map[string]interface{}{}
 	}
@@ -193,8 +192,9 @@ func confirmInput(ctx context.Context, req *logical.Request, reqData *framework.
 	var tokenConfirmationErr error
 	if req != nil && req.Storage != nil {
 		var tokenMap map[string]interface{}
+		logger.Println("checkingVault")
 
-		if tokenData, existingErr := req.Storage.Get(ctx, env); existingErr == nil {
+		if tokenData, existingErr := req.Storage.Get(ctx, tokenEnvMap["env"].(string)); existingErr == nil {
 			if tokenMap, tokenConfirmationErr = parseCarrierEnvRecord(tokenData, reqData, tokenEnvMap); tokenConfirmationErr == nil {
 				return tokenMap, nil
 			} else {
@@ -202,6 +202,7 @@ func confirmInput(ctx context.Context, req *logical.Request, reqData *framework.
 			}
 		} else {
 			// Completely new entry...
+			logger.Println("This shouldn't happen env.")
 			if tokenMap, tokenConfirmationErr = parseCarrierEnvRecord(tokenData, reqData, tokenEnvMap); tokenConfirmationErr != nil {
 				return nil, tokenConfirmationErr
 			} else {
@@ -215,6 +216,7 @@ func confirmInput(ctx context.Context, req *logical.Request, reqData *framework.
 }
 
 func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData, tokenEnvMap map[string]interface{}) (map[string]interface{}, error) {
+	logger.Println("parseCarrierEnvRecord")
 	tokenMap := map[string]interface{}{}
 
 	if tokenEnvMap != nil {
@@ -263,8 +265,13 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 			}
 		}
 	}
+	logger.Println("parseCarrierEnvRecord complete")
+	vaddrCheck := ""
+	if v, vOk := tokenMap["vaddress"].(string); vOk {
+		vaddrCheck = v
+	}
 
-	return tokenMap, ValidateVaddr(tokenMap["vaddress"].(string))
+	return tokenMap, ValidateVaddr(vaddrCheck)
 }
 
 func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
@@ -524,6 +531,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			} else {
 				tokenEnvMap["trcplugin"] = plugin.(string)
 			}
+			logger.Println("Creating modifier for env: " + req.Path)
 
 			// Plugins
 			mod, err := helperkv.NewModifier(true, tokenEnvMap["token"].(string), tokenEnvMap["vaddress"].(string), req.Path, nil, true, logger)
