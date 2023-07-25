@@ -20,7 +20,7 @@ read VAULT_ENV
 fi
 
 if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
-echo "Enter organization vault unrestricted environment token with write permissions: "
+echo "Enter organization vault *plugin* environment token with tightly confined write permissions: "
 read VAULT_ENV_TOKEN
 fi
 
@@ -50,4 +50,3 @@ export VAULT_API_ADDR
 echo $VAULT_ADDR
 
 vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$SECRET_VAULT_ADDR pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
-

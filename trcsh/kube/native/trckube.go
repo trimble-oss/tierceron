@@ -111,6 +111,7 @@ func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*TrcKube
 func InitTrcKubeConfig(trcshConfig *trcshauth.TrcShConfig, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
 	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(trcshConfig.KubeConfig)
 	if decodeErr != nil {
+		fmt.Println("Decoding error")
 		eUtils.LogErrorObject(config, decodeErr, false)
 	}
 

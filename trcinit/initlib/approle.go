@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func GetApproleFileNames(config *eUtils.DriverConfig) []string {
+func GetApproleFileNames(config *eUtils.DriverConfig, namespace string) []string {
 	var approleFileNames []string
 	cwd, cwdErr := os.Getwd()
 	if cwdErr != nil {
@@ -20,7 +20,7 @@ func GetApproleFileNames(config *eUtils.DriverConfig) []string {
 		os.Exit(-1)
 	}
 
-	approleFiles, approleFilesErr := ioutil.ReadDir(cwd + "/vault_namespaces/vault/approle_files")
+	approleFiles, approleFilesErr := ioutil.ReadDir(cwd + "/vault_namespaces/" + namespace + "/approle_files")
 	if approleFilesErr != nil {
 		fmt.Println("Error reading approle_files directory. Cannot continue.")
 		eUtils.LogErrorObject(config, approleFilesErr, false)
@@ -39,12 +39,12 @@ func GetApproleFileNames(config *eUtils.DriverConfig) []string {
 	return approleFileNames
 }
 
-func ParseApproleYaml(fileName string) (map[interface{}]interface{}, error) {
+func ParseApproleYaml(fileName string, namespace string) (map[interface{}]interface{}, error) {
 	cwd, cwdErr := os.Getwd()
 	if cwdErr != nil {
 		return nil, cwdErr
 	}
-	file, err := ioutil.ReadFile(cwd + "/vault_namespaces/vault/approle_files/" + fileName + ".yml")
+	file, err := ioutil.ReadFile(cwd + "/vault_namespaces/" + namespace + "/approle_files/" + fileName + ".yml")
 	if err != nil {
 		return nil, err
 	}

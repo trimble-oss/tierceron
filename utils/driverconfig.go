@@ -46,11 +46,12 @@ type DriverConfig struct {
 	MemFs          billy.Filesystem
 
 	// Config modes....
-	WantCerts  bool
-	ZeroConfig bool
-	GenAuth    bool
-	Trcxe      []string //Used for TRCXE
-	Trcxr      bool     //Used for TRCXR
+	WantCerts   bool
+	ZeroConfig  bool
+	GenAuth     bool
+	TrcShellRaw string   //Used for TrcShell
+	Trcxe       []string //Used for TRCXE
+	Trcxr       bool     //Used for TRCXR
 
 	Clean  bool
 	Update func(*string, string)

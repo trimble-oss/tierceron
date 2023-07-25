@@ -31,6 +31,10 @@ func GetSupportedTemplates(custom []string) []string {
 	return []string{}
 }
 
+func GetSupportedEndpoints() []string {
+	return []string{}
+}
+
 func GetLocalHost() string {
 	return ""
 }

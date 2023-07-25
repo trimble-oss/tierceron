@@ -68,6 +68,7 @@ xlib:
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/nc.so
 maclib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -tags "azure memonly" -o $(GOBIN)/nc.dylib github.com/trimble-oss/tierceron/configlib
+# Prerequisite: sudo apt-get install gcc-mingw-w64
 winlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build   -buildmode=c-shared -o $(GOBIN)/nc.dll github.com/trimble-oss/tierceron/configlib
 xp:
