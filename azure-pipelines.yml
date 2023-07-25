@@ -148,6 +148,14 @@ steps:
       fi
     done
 
+    echo Compiling/Verifying trcplgtool
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc awsecr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
+    mv $GOBIN/trcplgtool $GOBIN/trcplgtool
+
+    if [[ ! -f $GOBIN/trcplgtool ]] ; then
+        echo File trcplgtool was not built, aborting.
+        exit 1
+    fi
 
     echo Compiling/Verifying trc-vault-plugin
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc memonly" github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
@@ -179,6 +187,8 @@ steps:
     cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/trcconfig.mac
     cp $GOBIN/darwin_amd64/trcinit $(Build.ArtifactStagingDirectory)/trcinit.mac
+    cp $GOBIN/darwin_amd64/trcsub $(Build.ArtifactStagingDirectory)/trcsub.mac
+    cp $GOBIN/darwin_amd64/trcsub $(Build.ArtifactStagingDirectory)/trcx.mac
     mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcpub
     mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcconfig
     cp docker/trcpub/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcpub/Dockerfile

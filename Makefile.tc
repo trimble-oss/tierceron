@@ -36,18 +36,6 @@ harbingplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin.sha256
 harbinger: harbingplugintrcdbbuild harbingplugintrcdbsha
 
-prodplugintrcdbbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc prod awsecr memonly" -o trcvault/deploy/target/trc-vault-plugin-prod github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
-prodplugintrcdbsha:
-	sha256sum trcvault/deploy/target/trc-vault-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin-prod.sha256
-prodplugintrcdb: prodplugintrcdbbuild prodplugintrcdbsha
-
-pluginprodcarrierbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc prod memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin-prod github.com/trimble-oss/tierceron/trcvault/plugins/carrier
-pluginprodcarriersha:
-	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin-prod.sha256
-pluginprodcarrier: pluginprodcarrierbuild pluginprodcarriersha
-
 configmac:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/trcconfig.mac github.com/trimble-oss/tierceron/trcconfig
 seed:
@@ -66,10 +54,13 @@ xmac:
 xlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -a -ldflags '-w' -tags "memonly" -o $(GOBIN)/nc.so github.com/trimble-oss/tierceron/configlib
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/nc.so
+maccrosslib:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 OSXCROSS_NO_INCLUDE_PATH_WARNINGS=1 MACOSX_DEPLOYMENT_TARGET=10.7 CC=o64-clang CXX=o64-clang++ GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -tags "memonly" -o $(GOBIN)/nc.dylib github.com/trimble-oss/tierceron/configlib
 maclib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -tags "memonly" -o $(GOBIN)/nc.dylib github.com/trimble-oss/tierceron/configlib
+# Prerequisit: sudo apt-get install gcc-mingw-w64
 winlib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build   -buildmode=c-shared -o $(GOBIN)/nc.dll github.com/trimble-oss/tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -buildmode=c-shared -o $(GOBIN)/nc.dll github.com/trimble-oss/tierceron/configlib
 xp:
 	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go install  -tags "memonly" github.com/trimble-oss/tierceron/trcxp
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcxp
@@ -90,6 +81,13 @@ trcshellbuild:
 trcshellsha:
 	sha256sum trcvault/deploy/target/trcsh | cut -d' ' -f1 > trcvault/deploy/target/trcsh.sha256
 trcshell: trcshellbuild trcshellsha
+
+trckubectlbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o trcvault/deploy/target/kubectl -tags "memonly" github.com/trimble-oss/tierceron/trcsh
+trckubectlsha:
+	sha256sum trcvault/deploy/target/kubectl | cut -d' ' -f1 > trcvault/deploy/target/kubectl.sha256
+trckubectl: trckubectlbuild trckubectlsha
+
 
 ttdiserver:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/ttdiserver -tags "insecure fyneboot argosy tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/trcgorillaz/ttdiserver
