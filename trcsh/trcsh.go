@@ -34,7 +34,7 @@ func main() {
 		mlock.Mlock(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.10")
+	fmt.Println("trcsh Version: " + "1.11")
 
 	if os.Geteuid() == 0 {
 		fmt.Println("Trcsh cannot be run as root.")
@@ -42,17 +42,10 @@ func main() {
 	} else {
 		capauth.CheckNotSudo()
 	}
-	raw := ""
 	if len(os.Args) > 1 {
-		if (strings.Contains(os.Args[1], "kubectl") || strings.Contains(os.Args[1], "trc")) && !strings.Contains(os.Args[1], "-c") {
+		if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
 			// Running as shell.
 			os.Args[1] = "-c=" + os.Args[1]
-		} else {
-			if strings.Contains(os.Args[0], "kubectl") {
-				// Raw
-				raw = strings.Join(os.Args[:], " ")
-				raw = raw[strings.Index(raw, "kubectl"):]
-			}
 		}
 	}
 	envPtr := flag.String("env", "", "Environment to be seeded")      //If this is blank -> use context otherwise override context.
@@ -74,7 +67,7 @@ func main() {
 	mlock.Mlock2(nil, appRoleIDPtr)
 
 	//Open deploy script and parse it.
-	ProcessDeploy(*envPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, raw)
+	ProcessDeploy(*envPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
 }
 
 // ProcessDeploy
@@ -86,12 +79,11 @@ func main() {
 //   - trcPath: Path to the current executable
 //   - secretId: trcsh secret.
 //   - approleId: trcsh app role.
-//   - raw: A raw command to execut
 //
 // Returns:
 //
 //	Nothing.
-func ProcessDeploy(env string, token string, trcPath string, secretId *string, approleId *string, raw string) {
+func ProcessDeploy(env string, token string, trcPath string, secretId *string, approleId *string) {
 	var err error
 	agentToken := false
 	if token != "" {
@@ -104,18 +96,15 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	}
 	fmt.Println("trcsh env: " + env)
 
-	logFile := "/var/log/" + coreopts.GetFolderPrefix(nil) + "shell.log"
-	f, fCanWriteErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) || fCanWriteErr != nil {
-		f.Close()
-		logFile = "./" + coreopts.GetFolderPrefix(nil) + "shell.log"
-		f, _ = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	logFile := "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix(nil)+"deploy.log" {
+		logFile = "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
 	}
+	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
 	config := &eUtils.DriverConfig{Insecure: true,
 		Log:               logger,
 		IsShell:           true,
-		TrcShellRaw:       raw,
 		IsShellSubProcess: false,
 		OutputMemCache:    true,
 		MemFs:             memfs.New(),
@@ -124,30 +113,27 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	if env == "itdev" {
 		config.OutputMemCache = false
 	}
-	fmt.Printf("Logging initialized to: %s\n", logFile)
+	fmt.Println("Logging initialized.")
 	logger.Printf("Logging initialized for env:%s\n", env)
 
 	trcshConfig, err := trcshauth.TrcshAuth(config)
-	if len(config.TrcShellRaw) == 0 {
-		if err != nil {
-			logger.Println(err)
-			os.Exit(-1)
-		}
-		fmt.Println("Auth loaded" + env)
-
-		var auth string
-		authTokenName := "vault_token_azuredeploy"
-		authTokenEnv := "azuredeploy"
-		autoErr := eUtils.AutoAuth(config, secretId, approleId, &auth, &authTokenName, &authTokenEnv, &config.VaultAddress, &config.EnvRaw, "deployauth", false)
-		if autoErr != nil || auth == "" {
-			fmt.Println("Unable to auth.")
-			fmt.Println(autoErr)
-			os.Exit(-1)
-		}
-		fmt.Println("Session Authorized")
+	if err != nil {
+		logger.Println(err)
+		os.Exit(-1)
 	}
+	fmt.Println("Auth loaded" + env)
 
-	if len(config.TrcShellRaw) == 0 && (len(os.Args) > 1 || len(trcPath) > 0) {
+	var auth string
+	authTokenName := "vault_token_azuredeploy"
+	authTokenEnv := "azuredeploy"
+	autoErr := eUtils.AutoAuth(config, secretId, approleId, &auth, &authTokenName, &authTokenEnv, &config.VaultAddress, &config.EnvRaw, "deployauth", false)
+	if autoErr != nil || auth == "" {
+		fmt.Println("Unable to auth.")
+		fmt.Println(autoErr)
+		os.Exit(-1)
+	}
+	fmt.Println("Session Authorized")
+	if len(os.Args) > 1 || len(trcPath) > 0 {
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 		configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
@@ -178,24 +164,21 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			config.OutputMemCache = false
 		}
 		os.Args = []string{os.Args[0]}
-		fmt.Println("Processing trcshell")
+
 	} else {
-		if len(config.TrcShellRaw) == 0 {
-			if env == "itdev" {
-				content, err = ioutil.ReadFile(pwd + "/deploy/buildtest.trc")
-				if err != nil {
-					fmt.Println("Error could not find /deploy/buildtest.trc for deployment instructions")
-				}
-			} else {
-				content, err = ioutil.ReadFile(pwd + "/deploy/deploy.trc")
-				if err != nil {
-					fmt.Println("Error could not find " + pwd + " /deploy/deploy.trc for deployment instructions")
-				}
+		if env == "itdev" {
+			content, err = ioutil.ReadFile(pwd + "/deploy/buildtest.trc")
+			if err != nil {
+				fmt.Println("Error could not find /deploy/buildtest.trc for deployment instructions")
 			}
 		} else {
-			content = []byte(config.TrcShellRaw)
+			content, err = ioutil.ReadFile(pwd + "/deploy/deploy.trc")
+			if err != nil {
+				fmt.Println("Error could not find " + pwd + " /deploy/deploy.trc for deployment instructions")
+			}
 		}
 	}
+	fmt.Println("Processing trcshell")
 
 	deployArgLines := strings.Split(string(content), "\n")
 	configCount := strings.Count(string(content), "trcconfig") //Uses this to close result channel on last run.
