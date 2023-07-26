@@ -48,9 +48,11 @@ func main() {
 			// Running as shell.
 			os.Args[1] = "-c=" + os.Args[1]
 		} else {
-			// Raw
-			raw = strings.Join(os.Args[:], " ")
-			raw = raw[strings.Index(raw, "kubectl"):]
+			if strings.Contains(os.Args[0], "kubectl") {
+				// Raw
+				raw = strings.Join(os.Args[:], " ")
+				raw = raw[strings.Index(raw, "kubectl"):]
+			}
 		}
 	}
 	envPtr := flag.String("env", "", "Environment to be seeded")      //If this is blank -> use context otherwise override context.
