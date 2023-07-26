@@ -116,6 +116,11 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	fmt.Println("Logging initialized.")
 	logger.Printf("Logging initialized for env:%s\n", env)
 
+	// 	trcshConfig := &trcshauth.TrcShConfig{Env: "",
+	// 		EnvContext: "",
+	// 		ConfigRole: "",
+	// 		PubRole:    "",
+	// 	}
 	trcshConfig, err := trcshauth.TrcshAuth(config)
 	if err != nil {
 		logger.Println(err)
@@ -123,6 +128,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	}
 	fmt.Println("Auth loaded" + env)
 
+	// Begin dbg comment
 	var auth string
 	authTokenName := "vault_token_azuredeploy"
 	authTokenEnv := "azuredeploy"
@@ -132,8 +138,10 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		fmt.Println(autoErr)
 		os.Exit(-1)
 	}
+	// End dbg comment
 	fmt.Println("Session Authorized")
 	if len(os.Args) > 1 || len(trcPath) > 0 {
+		// Generate .trc code...
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 		configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
@@ -149,6 +157,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		var memFileErr error
 
 		if memFile, memFileErr = config.MemFs.Open(trcPath); memFileErr == nil {
+			// Read the generated .trc code...
 			buf := bytes.NewBuffer(nil)
 			io.Copy(buf, memFile) // Error handling elided for brevity.
 			content = buf.Bytes()
@@ -164,8 +173,10 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			config.OutputMemCache = false
 		}
 		os.Args = []string{os.Args[0]}
+		fmt.Println("Processing trcshell")
 
 	} else {
+		fmt.Println("Processing manual trcshell")
 		if env == "itdev" {
 			content, err = ioutil.ReadFile(pwd + "/deploy/buildtest.trc")
 			if err != nil {
@@ -178,7 +189,6 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			}
 		}
 	}
-	fmt.Println("Processing trcshell")
 
 	deployArgLines := strings.Split(string(content), "\n")
 	configCount := strings.Count(string(content), "trcconfig") //Uses this to close result channel on last run.
