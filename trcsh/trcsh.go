@@ -169,7 +169,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			token = ""
 			config.Token = token
 		}
-		if env == "itdev" {
+		if env == "itdev" || env == "staging" || env == "prod" {
 			config.OutputMemCache = false
 		}
 		os.Args = []string{os.Args[0]}
