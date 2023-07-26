@@ -110,7 +110,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		MemFs:             memfs.New(),
 		ExitOnFailure:     true}
 
-	if env == "itdev" || env == "staging" || env == "prod" {
+	if env == "itdev" {
 		config.OutputMemCache = false
 	}
 	fmt.Println("Logging initialized.")
