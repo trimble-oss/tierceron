@@ -37,7 +37,7 @@ func NewVault(insecure bool, address string, env string, newVault bool, pingVaul
 		newVault,
 		pingVault,
 		scanVault,
-		false, // allowInsecure - false
+		false, // allowNonLocal - false
 		logger)
 }
 
@@ -146,7 +146,7 @@ func (v *Vault) RenewSelf(increment int) error {
 }
 
 // GetOrRevokeTokensInScope()
-func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logger *log.Logger) error {
+func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenExpiration bool, logger *log.Logger) error {
 	var tokenPath = dir
 	var tokenPolicies = []string{}
 
@@ -157,6 +157,10 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 
 	for _, f := range files {
 		if f.IsDir() {
+			continue
+		}
+		if tokenFilter != "" && !strings.HasPrefix(f.Name(), tokenFilter) {
+			// Token doesn't match filter...  Skipping.
 			continue
 		}
 		var file, err = os.OpenFile(tokenPath+string(os.PathSeparator)+f.Name(), os.O_RDWR, 0644)
