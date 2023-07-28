@@ -3,6 +3,11 @@
 echo "Enter plugin name: "
 read TRC_PLUGIN_NAME
 
+if [ "$TRC_PLUGIN_NAME" = 'trc-vault-carrier-plugin' ] ; then
+    echo "Use deploycarrier to deploy carrier."
+    exit 1
+fi
+
 FILE="target/$TRC_PLUGIN_NAME"
 if [ ! -f "$FILE" ]; then
     echo "$FILE does not exist."
@@ -21,7 +26,7 @@ echo "Enter agent vault host base url: "
 read VAULT_ADDR
 
 if [[ -z "${SECRET_VAULT_ADDR}" ]]; then
-echo "Enter organization vault host base url including port (hit enter if just refreshing org tokens): "
+echo "Enter organization vault host base url including port: "
 read SECRET_VAULT_ADDR
 fi
 
@@ -149,11 +154,12 @@ if [ "$SHAVAL" != "$FILESHAVAL" ]; then
     exit -1
 fi
 
-PROD_ENVS=("staging" "prod")
 PROD_EXT=""
-if [[ "$VAULT_ENV" =~ "${PROD_ENVS[@]}" ]]; then
-   PROD_EXT="-prod"
-fi
+for x in "staging" "prod"; do
+    if [ $x = $VAULT_ENV ]; then
+       PROD_EXT="-prod"
+    fi
+done
 
 echo "Registering new plugin."
 vault plugin register \
@@ -172,3 +178,5 @@ vault secrets enable \
 #Activates/starts the deployed plugin.
 # Note: plugin should update deployed flag for itself.
 vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR
+
+vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME
