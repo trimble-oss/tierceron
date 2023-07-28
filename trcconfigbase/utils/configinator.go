@@ -437,7 +437,14 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	if strings.Contains(data, "${TAG}") {
 		tag := os.Getenv("TRCENV_TAG")
 		if len(tag) > 0 {
-			matched, err := regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
+			var matched bool
+			var err error
+			if config.Env == "staging" || config.Env == "prod" {
+				matched, err = regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
+			} else {
+				matched, err = regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
+			}
+
 			if !matched || err != nil {
 				fmt.Println("Invalid build tag")
 				eUtils.LogInfo(config, "Invalid build tag was found:"+tag+"- exiting...")
