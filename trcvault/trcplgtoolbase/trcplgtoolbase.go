@@ -102,7 +102,7 @@ func PluginMain() {
 	//Certify Image
 	if *certifyImagePtr {
 		if !certifyInit {
-			err := repository.GetImageAndShaFromDownload(pluginToolConfig)
+			err := repository.GetImageAndShaFromDownload(config, pluginToolConfig)
 			if err != nil {
 				fmt.Println(err.Error())
 				os.Exit(1)
@@ -145,7 +145,7 @@ func PluginMain() {
 			os.Exit(0)
 		}
 
-		err := repository.GetImageAndShaFromDownload(pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(config, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
@@ -168,7 +168,7 @@ func PluginMain() {
 			os.Exit(0)
 		}
 
-		err := repository.GetImageAndShaFromDownload(pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(config, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)

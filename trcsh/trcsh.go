@@ -34,7 +34,7 @@ func main() {
 		mlock.Mlock(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.04")
+	fmt.Println("trcsh Version: " + "1.11")
 
 	if os.Geteuid() == 0 {
 		fmt.Println("Trcsh cannot be run as root.")
@@ -70,6 +70,19 @@ func main() {
 	ProcessDeploy(*envPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
 }
 
+// ProcessDeploy
+//
+// Parameters:
+//
+//   - env: Current environment context
+//   - token: An environment token
+//   - trcPath: Path to the current executable
+//   - secretId: trcsh secret.
+//   - approleId: trcsh app role.
+//
+// Returns:
+//
+//	Nothing.
 func ProcessDeploy(env string, token string, trcPath string, secretId *string, approleId *string) {
 	var err error
 	agentToken := false
@@ -100,12 +113,22 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	if env == "itdev" {
 		config.OutputMemCache = false
 	}
+	fmt.Println("Logging initialized.")
+	logger.Printf("Logging initialized for env:%s\n", env)
+
+	// 	trcshConfig := &trcshauth.TrcShConfig{Env: "",
+	// 		EnvContext: "",
+	// 		ConfigRole: "",
+	// 		PubRole:    "",
+	// 	}
 	trcshConfig, err := trcshauth.TrcshAuth(config)
 	if err != nil {
 		logger.Println(err)
 		os.Exit(-1)
 	}
+	fmt.Println("Auth loaded" + env)
 
+	// Begin dbg comment
 	var auth string
 	authTokenName := "vault_token_azuredeploy"
 	authTokenEnv := "azuredeploy"
@@ -115,7 +138,10 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		fmt.Println(autoErr)
 		os.Exit(-1)
 	}
+	// End dbg comment
+	fmt.Println("Session Authorized")
 	if len(os.Args) > 1 || len(trcPath) > 0 {
+		// Generate .trc code...
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 		configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
@@ -131,6 +157,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		var memFileErr error
 
 		if memFile, memFileErr = config.MemFs.Open(trcPath); memFileErr == nil {
+			// Read the generated .trc code...
 			buf := bytes.NewBuffer(nil)
 			io.Copy(buf, memFile) // Error handling elided for brevity.
 			content = buf.Bytes()
@@ -142,12 +169,14 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 			token = ""
 			config.Token = token
 		}
-		if env == "itdev" {
+		if env == "itdev" || env == "staging" || env == "prod" {
 			config.OutputMemCache = false
 		}
 		os.Args = []string{os.Args[0]}
+		fmt.Println("Processing trcshell")
 
 	} else {
+		fmt.Println("Processing manual trcshell")
 		if env == "itdev" {
 			content, err = ioutil.ReadFile(pwd + "/deploy/buildtest.trc")
 			if err != nil {
@@ -175,6 +204,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		if strings.HasPrefix(deployPipeline, "#") {
 			continue
 		}
+		// Print current process line.
 		fmt.Println(deployPipeline)
 		deployPipeSplit := strings.Split(deployPipeline, "|")
 
