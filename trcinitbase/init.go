@@ -345,8 +345,8 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			}
 		}
 
-		if (*rotateTokens || *tokenExpiration) && *tokenFileFilterPtr == "" {
-			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
+		if (*rotateTokens || *tokenExpiration) && *roleFileFilterPtr == "" {
+			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenFileFilterPtr, *tokenExpiration, logger)
 			if getOrRevokeError != nil {
 				fmt.Println("Token revocation or access failure.  Cannot continue.")
 				os.Exit(-1)
@@ -382,164 +382,108 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 		}
 
 		if *rotateTokens && !*tokenExpiration {
-			// Create new tokens.
 			var tokens []*apinator.InitResp_Token
 			if *roleFileFilterPtr == "" {
+				// Create new tokens.
+				fmt.Println("Creating new tokens")
 				tokens = il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
 			}
-			if (*namespaceVariable == "vault") || *namespaceVariable == "agent" {
-				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
-				if mod != nil {
-					defer mod.Release()
-				}
 
-				if err != nil {
-					fmt.Println("Error creating modifer.")
-					eUtils.LogErrorObject(config, err, false)
-					os.Exit(-1)
-				}
+			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
+			if mod != nil {
+				defer mod.Release()
+			}
 
-				// Just rotating tokens within existing approle.
-				if *tokenFileFilterPtr != "" {
-					approleFiles := il.GetApproleFileNames(config, *namespaceVariable)
-					for _, approleFile := range approleFiles {
-						if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
-							continue
-						}
-						tokenMap := map[string]interface{}{}
-						fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
-						if parseErr != nil {
-							fmt.Println("Read parsing approle yaml file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
-						if approleName, ok := fileYAML["Approle_Name"].(string); ok {
-							mod.RawEnv = approleName
-							mod.Env = approleName
-						} else {
-							fmt.Println("Read parsing approle name from file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
+			if err != nil {
+				fmt.Println("Error creating modifer.")
+				eUtils.LogErrorObject(config, err, false)
+				os.Exit(-1)
+			}
 
-						var tokenPerms map[interface{}]interface{}
-						if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
-							tokenPerms = permMap
-						} else {
-							fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
+			// Process existing approles for provided namespace
+			approleFiles := il.GetApproleFileNames(config, *namespaceVariable)
+			if len(approleFiles) == 0 {
+				fmt.Println("No approles found for namespace: " + *namespaceVariable)
+			} else {
+				for _, approleFile := range approleFiles {
+					if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
+						continue
+					}
+					tokenMap := map[string]interface{}{}
+					fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
+					if parseErr != nil {
+						fmt.Println("Read parsing approle yaml file, continuing to next file.")
+						eUtils.LogErrorObject(config, parseErr, false)
+						continue
+					}
+					if approleName, ok := fileYAML["Approle_Name"].(string); ok {
+						mod.RawEnv = approleName
+						mod.Env = approleName
+					} else {
+						fmt.Println("Read parsing approle name from file, continuing to next file.")
+						eUtils.LogErrorObject(config, parseErr, false)
+						continue
+					}
 
+					var tokenPerms map[interface{}]interface{}
+					if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
+						tokenPerms = permMap
+					} else {
+						fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
+						eUtils.LogErrorObject(config, parseErr, false)
+						continue
+					}
+
+					if len(tokenPerms) == 0 {
+						fmt.Println("Skipping " + mod.RawEnv + " as there is no token permission for this approle.")
+						continue
+					}
+
+					if *tokenFileFilterPtr != "" && *tokenFileFilterPtr != "*" {
+						// Filter out tokens that
 						if found, ok := tokenPerms[*tokenFileFilterPtr].(bool); !ok && !found {
 							fmt.Println("Skipping " + mod.RawEnv + " as there is no token permission for this approle.")
 							continue
 						}
+					}
 
-						existingTokens, err := mod.ReadData("super-secrets/tokens")
-						if err != nil {
-							fmt.Println("Read existing tokens failure.  Cannot continue.")
-							eUtils.LogErrorObject(config, err, false)
-							os.Exit(-1)
-						}
+					existingTokens, err := mod.ReadData("super-secrets/tokens")
+					if err != nil {
+						fmt.Println("Read existing tokens failure.  Cannot continue.")
+						eUtils.LogErrorObject(config, err, false)
+						os.Exit(-1)
+					}
 
-						// We have names of tokens that were referenced in old role.  Ok to delete the role now.
-						//
-						// Merge token data.
-						//
-						// Copy existing.
-						for key, valueObj := range existingTokens {
-							if value, ok := valueObj.(string); ok {
+					// We have names of tokens that were referenced in old role.  Ok to delete the role now.
+					//
+					// Merge token data.
+					//
+					// Copy existing, but only if they are still supported... otherwise strip them from the approle.
+					for key, valueObj := range existingTokens {
+						if value, ok := valueObj.(string); ok {
+							if found, ok := tokenPerms[key].(bool); ok && found && key != "admin" && key != "webapp" {
 								tokenMap[key] = value
-							} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
+							}
+						} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
+							if found, ok := tokenPerms[key].(bool); ok && found && key != "admin" && key != "webapp" {
 								tokenMap[key] = stringer.GoString()
 							}
 						}
-
-						//Overwrite new
-						for _, token := range tokens {
-							// Everything but webapp give access by app role and secret.
-							if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
-								tokenMap[token.Name] = token.Value
-							}
-						}
-
-						// Just update tokens in approle.
-						if len(tokenMap) > 0 {
-							warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
-							eUtils.LogErrorObject(config, err, true)
-							eUtils.LogWarningsObject(config, warn, true)
-							fmt.Println("Any new tokens added to approle")
-						}
-					}
-				} else {
-					mod.RawEnv = "bamboo"
-					mod.Env = "bamboo"
-
-					//Checks if vault is initialized already
-					if !mod.Exists("values/metadata") && !mod.Exists("templates/metadata") && !mod.Exists("super-secrets/metadata") {
-						fmt.Println("Vault has not been initialized yet")
-						os.Exit(1)
 					}
 
-					approleFiles := il.GetApproleFileNames(config, *namespaceVariable)
-					for _, approleFile := range approleFiles {
-						if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
-							continue
+					//Overwrite with new tokens.
+					for _, token := range tokens {
+						// Everything but webapp give access by app role and secret.
+						if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
+							tokenMap[token.Name] = token.Value
 						}
-						tokenMap := map[string]interface{}{}
-						fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
-						if parseErr != nil {
-							fmt.Println("Read parsing approle yaml file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
+					}
 
-						if approleName, ok := fileYAML["Approle_Name"].(string); ok {
-							mod.RawEnv = approleName
-							mod.Env = approleName
-						} else {
-							fmt.Println("Read parsing approle name from file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
-
-						var tokenPerms map[interface{}]interface{}
-						if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
-							tokenPerms = permMap
-						} else {
-							fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
-
-						existingTokens, err := mod.ReadData("super-secrets/tokens")
-						if err != nil {
-							fmt.Println("Read existing tokens failure.  Cannot continue.")
-							eUtils.LogErrorObject(config, err, false)
-							os.Exit(-1)
-						}
-
-						// We have names of tokens that were referenced in old role.  Ok to delete the role now.
-						//
-						// Merge token data.
-						//
-						// Copy existing.
-						for key, valueObj := range existingTokens {
-							if value, ok := valueObj.(string); ok {
-								tokenMap[key] = value
-							} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
-								tokenMap[key] = stringer.GoString()
-							}
-						}
-
-						// Overwrite new.
-						for _, token := range tokens {
-							// Everything but webapp give access by app role and secret.
-							if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
-								tokenMap[token.Name] = token.Value
-							}
-						}
+					if *roleFileFilterPtr != "" && *tokenFileFilterPtr == "" {
+						// approle provided, tokenFileFilter not provided...
+						// This will just be an approler
+						mod.Env = *namespaceVariable
+						mod.RawEnv = *namespaceVariable
 
 						//
 						// Wipe existing role.
@@ -566,17 +510,24 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 						secretID, err := v.GetSecretID(mod.RawEnv)
 						eUtils.LogErrorObject(config, err, true)
 
-						fmt.Printf("Rotated role id and secret id for " + mod.RawEnv + ".\n")
+						fmt.Printf("Rotated role id and secret id for %s.\n", mod.RawEnv)
 						fmt.Printf("Role ID: %s\n", roleID)
 						fmt.Printf("Secret ID: %s\n", secretID)
+					} else {
+						fmt.Printf("Existing role token count: %d.\n", len(existingTokens))
+						fmt.Printf("Adding token to role: %s.\n", mod.RawEnv)
+						fmt.Printf("Post add role token count: %d.\n", len(tokenMap))
+					}
 
-						// Store all new tokens to new appRole.
+					// Just update tokens in approle.
+					// This could be adding to an existing approle or re-adding to rotated role...
+					if len(tokenMap) > 0 {
 						warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 						eUtils.LogErrorObject(config, err, true)
 						eUtils.LogWarningsObject(config, warn, true)
+						fmt.Println("Approle tokens refreshed/updated.")
 					}
 				}
-
 			}
 		}
 		os.Exit(0)
