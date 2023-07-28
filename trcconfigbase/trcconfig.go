@@ -115,9 +115,20 @@ func CommonMain(envPtr *string,
 		}
 		flag.Parse()
 	} else {
+		// TODO: rework to support standard arg parsing...
 		for _, args := range os.Args {
 			if args == "-certs" {
 				c.WantCerts = true
+			} else if strings.HasPrefix(args, "-keystore") {
+				storeArgs := strings.Split(args, "=")
+				if len(storeArgs) > 1 {
+					*keyStorePtr = storeArgs[1]
+				}
+			} else if strings.HasPrefix(args, "-endDir") {
+				endDir := strings.Split(args, "=")
+				if len(endDir) > 1 {
+					*endDirPtr = endDir[1]
+				}
 			}
 		}
 		flag.CommandLine.Parse(nil)
