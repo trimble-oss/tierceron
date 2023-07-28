@@ -432,7 +432,7 @@ func (m *Modifier) ReadMapValue(valueMap map[string]interface{}, path string, ke
 			return "", fmt.Errorf("Cannot convert value at %s to string", key)
 		}
 	}
-	return "", fmt.Errorf("Key '%s' not found in '%s'", key, path)
+	return "", fmt.Errorf("Key '%s' not found in '%s' with env '%s'", key, path, m.Env)
 }
 
 // ReadValue takes a path and a key and returns the corresponding value from the vault
