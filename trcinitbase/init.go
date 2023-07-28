@@ -345,7 +345,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			}
 		}
 
-		if (*rotateTokens || *tokenExpiration) && *roleFileFilterPtr == "" {
+		if (*rotateTokens || *tokenExpiration) && (*roleFileFilterPtr == "" || *tokenFileFilterPtr != "") {
 			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenFileFilterPtr, *tokenExpiration, logger)
 			if getOrRevokeError != nil {
 				fmt.Println("Token revocation or access failure.  Cannot continue.")
@@ -383,7 +383,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 
 		if *rotateTokens && !*tokenExpiration {
 			var tokens []*apinator.InitResp_Token
-			if *roleFileFilterPtr == "" {
+			if *roleFileFilterPtr == "" || *tokenFileFilterPtr != "" {
 				// Create new tokens.
 				fmt.Println("Creating new tokens")
 				tokens = il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
@@ -435,7 +435,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 					}
 
 					if len(tokenPerms) == 0 {
-						fmt.Println("Skipping " + mod.RawEnv + " as there is no token permission for this approle.")
+						fmt.Println("Completely skipping " + mod.RawEnv + " as there is no token permission for this approle.")
 						continue
 					}
 
