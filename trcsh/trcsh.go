@@ -204,6 +204,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		if strings.HasPrefix(deployPipeline, "#") {
 			continue
 		}
+		// Print current process line.
 		fmt.Println(deployPipeline)
 		deployPipeSplit := strings.Split(deployPipeline, "|")
 
