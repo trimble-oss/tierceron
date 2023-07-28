@@ -197,6 +197,7 @@ func AutoAuth(config *DriverConfig,
 				return err
 			}
 		}
+		fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
 		v, err = sys.NewVault(config.Insecure, *addrPtr, *envPtr, false, ping, false, config.Log)
 		if v != nil {
 			defer v.Close()
@@ -260,6 +261,7 @@ func AutoAuth(config *DriverConfig,
 			}
 		}
 	} else {
+		fmt.Printf("No override auth connecting to vault @ %s\n", *addrPtr)
 		v, err = sys.NewVault(config.Insecure, *addrPtr, *envPtr, false, ping, false, config.Log)
 
 		if v != nil {
@@ -345,12 +347,12 @@ func AutoAuth(config *DriverConfig,
 			return errors.New("Need both public and secret app role to retrieve token from vault")
 		}
 
-		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
+		roleToken, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		if err != nil {
 			return err
 		}
 
-		mod, err := helperkv.NewModifier(config.Insecure, master, *addrPtr, *envPtr, nil, false, config.Log)
+		mod, err := helperkv.NewModifier(config.Insecure, roleToken, *addrPtr, *envPtr, nil, false, config.Log)
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -369,6 +371,7 @@ func AutoAuth(config *DriverConfig,
 			mod.RawEnv = "azuredeploy"
 			mod.Env = "azuredeploy"
 		}
+		LogInfo(config, "Detected and utilizing role: "+mod.Env)
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") {
