@@ -193,6 +193,8 @@ steps:
     mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcconfig
     cp docker/trcpub/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcpub/Dockerfile
     cp docker/trcconfig/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcconfig/Dockerfile
+
+    echo $(Build.SourceVersion) > $(Build.ArtifactStagingDirectory)/tools-pipeline.tag
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
 - task: SnykSecurityScan@1
