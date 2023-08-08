@@ -161,7 +161,6 @@ steps:
     mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcvaultplugin
     cp docker/trcsh/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcsh/Dockerfile
     cp docker/trcvaultplugin/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcvaultplugin/Dockerfile
-    echo $(Build.SourceVersion) > $(Build.ArtifactStagingDirectory)/plugin-pipeline.tag
 
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
@@ -181,34 +180,3 @@ steps:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
     publishLocation: 'Container'
-
-
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trcsh
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcsh/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trc-vault-carrier-plugin
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcvaultplugincarrier/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trc-vault-plugin
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcvaultplugin/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
