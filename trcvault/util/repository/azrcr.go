@@ -30,7 +30,7 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 	ctx := context.Background()
 
 	// Get manifest
-	manifestRes, err := client.GetManifest(ctx, pluginToolConfig["trcplugin"].(string), "ab3c17dd36249ab278dac129797c5f841178aff2", &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
+	manifestRes, err := client.GetManifest(ctx, pluginToolConfig["trcplugin"].(string), "", &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
 	if err != nil {
 		config.Log.Printf("failed to get manifest: %v", err)
 		return err
