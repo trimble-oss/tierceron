@@ -21,7 +21,7 @@ import (
 
 func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
 	client, err := azcontainerregistry.NewClient(
-		"https://tierceron.azurecr.io", //pluginToolConfig["ecrrepository"].(string),
+		pluginToolConfig["acrrepository"].(string),
 		svc, nil)
 	if err != nil {
 		config.Log.Printf("failed to create client: %v", err)
@@ -30,7 +30,7 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 	ctx := context.Background()
 
 	// Get manifest
-	manifestRes, err := client.GetManifest(ctx, pluginToolConfig["trcplugin"].(string), "latest", &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
+	manifestRes, err := client.GetManifest(ctx, pluginToolConfig["trcplugin"].(string), "ab3c17dd36249ab278dac129797c5f841178aff2", &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
 	if err != nil {
 		config.Log.Printf("failed to get manifest: %v", err)
 		return err
@@ -76,7 +76,7 @@ func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[strin
 	if imageErr != nil {
 		return "", imageErr
 	}
-	blobClient, err := azcontainerregistry.NewBlobClient("https://tierceron.azurecr.io", svc, nil)
+	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), svc, nil)
 	if err != nil {
 		log.Fatalf("failed to create blob client: %v", err)
 	}
@@ -94,15 +94,18 @@ func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[strin
 	if configErr != nil {
 		log.Fatalf("failed to read config data: %v", configErr)
 	}
-
-	/*//Get the registry download URL for the layer.
-	downloadURL, err := azcontainerregistry.GetLayerDownloadURL(context.Background(), pluginToolConfig["layerDigest"].(string))
+	//Get the registry download URL for the layer.
+	downloadURL, err := getLayerDownloadURL(context.Background(), pluginToolConfig["layerDigest"].(string))
 	if err != nil {
 		log.Fatal(err)
 	}
-	*/
+
 	return "", nil
 
+}
+
+func getLayerDownloadURL() {
+	//pluginToolConfig["acrrepository"].(string)
 }
 
 func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
