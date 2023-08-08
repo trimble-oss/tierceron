@@ -75,7 +75,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.20.5'
+    version: '1.20.7'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -205,41 +205,3 @@ steps:
     dockerfile: '**/docker/legacy/vaultpub/Dockerfile'
     tags: |
       $(Build.SourceVersion)
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'vaultconfig'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultconfig'
-    pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'vaultconfig'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultconfig'
-    pushTag: 'latest'
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'vaultpub'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultpub'
-    pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'vaultpub'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultpub'
-    pushTag: 'latest'
