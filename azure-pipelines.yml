@@ -193,6 +193,8 @@ steps:
     mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcconfig
     cp docker/trcpub/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcpub/Dockerfile
     cp docker/trcconfig/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcconfig/Dockerfile
+
+    echo $(Build.SourceVersion) > $(Build.ArtifactStagingDirectory)/tools-pipeline.tag
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
 - task: SnykSecurityScan@1
@@ -206,85 +208,8 @@ steps:
     projectName: 'Tierceron'
     organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
     additionalArguments: '-d'
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trcpub 
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcpub/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trcconfig
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcconfig/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
     publishLocation: 'Container'
-
-
-#- task: Docker@2 # TODO: Deprecate - azure migration
-#  displayName: Build an image
-#  inputs:
-#    repository: trcconfig
-#    buildContext: '$(Build.ArtifactStagingDirectory)'
-#    command: build
-#    dockerfile: '**/docker/trcconfig/Dockerfile'
-#    tags: |
-#      $(Build.SourceVersion)
-
-#- task: Docker@2 # TODO: Deprecate - azure migration
-#  displayName: Build an image
-#  inputs:
-#    repository: trcpub
-#    buildContext: '$(Build.ArtifactStagingDirectory)'
-#    command: build
-#    dockerfile: '**/docker/trcpub/Dockerfile'
-#    tags: |
-#      $(Build.SourceVersion)
-
-#- task: ECRPushImage@1 # TODO: Deprecate - azure migration
-#  inputs:
-#    awsCredentials: 'Seattle AWS Development'
-#    regionName: 'us-west-2'
-#    imageSource: 'imagename'
-#    sourceImageName: 'trcconfig'
-#    sourceImageTag: '$(Build.SourceVersion)'
-#    repositoryName: 'trcconfig'
-#    pushTag: '$(Build.SourceVersion)'
-#- task: ECRPushImage@1 # TODO: Deprecate - azure migration
-#  inputs:
-#    awsCredentials: 'Seattle AWS Development'
-#    regionName: 'us-west-2'
-#    imageSource: 'imagename'
-#    sourceImageName: 'trcconfig'
-#    sourceImageTag: '$(Build.SourceVersion)'
-#    repositoryName: 'trcconfig'
-#    pushTag: 'latest'
-
-#- task: ECRPushImage@1 # TODO: Deprecate - azure migration
-#  inputs:
-#    awsCredentials: 'Seattle AWS Development'
-#    regionName: 'us-west-2'
-#    imageSource: 'imagename'
-#    sourceImageName: 'trcpub'
-#    sourceImageTag: '$(Build.SourceVersion)'
-#    repositoryName: 'trcpub'
-#    pushTag: '$(Build.SourceVersion)'
-#- task: ECRPushImage@1 # TODO: Deprecate - azure migration
-#  inputs:
-#    awsCredentials: 'Seattle AWS Development'
-#    regionName: 'us-west-2'
-#    imageSource: 'imagename'
-#    sourceImageName: 'trcpub'
-#    sourceImageTag: '$(Build.SourceVersion)'
-#    repositoryName: 'trcpub'
-#    pushTag: 'latest'

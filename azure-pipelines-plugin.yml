@@ -161,6 +161,7 @@ steps:
     mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcvaultplugin
     cp docker/trcsh/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcsh/Dockerfile
     cp docker/trcvaultplugin/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcvaultplugin/Dockerfile
+
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
 - task: SnykSecurityScan@1
@@ -179,83 +180,3 @@ steps:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
     publishLocation: 'Container'
-
-
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trcsh
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcsh/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trc-vault-carrier-plugin
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcvaultplugincarrier/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trc-vault-plugin
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcvaultplugin/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trc-vault-carrier-plugin'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-carrier-plugin'
-    pushTag: '$(Build.SourceVersion)'
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trc-vault-plugin'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-plugin'
-    pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trc-vault-plugin'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-plugin'
-    pushTag: 'latest'
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trcsh'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcsh'
-    pushTag: '$(Build.SourceVersion)'
-
-- task: ECRPushImage@1 
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trcsh'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcsh'
-    pushTag: 'latest'
