@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -60,72 +61,48 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 	}
 
 	pluginToolConfig["layerDigest"] = layerDigest
-
 	return nil
 }
 
 // Return url to the image to be used for download.
 func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) (string, error) {
 	svc, err := azidentity.NewClientSecretCredential(
-		pluginToolConfig["azureSubscriptionId"].(string),
+		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureClientId"].(string),
 		pluginToolConfig["azureClientSecret"].(string),
 		nil)
-	// svc, err := azidentity.NewDefaultAzureCredential(&options)
-	// if err != nil {
-	// 	log.Fatalf("failed to obtain a credential: %v", err)
-	// }
 
-	err = getImageSHA(config, svc, pluginToolConfig)
+	imageErr := getImageSHA(config, svc, pluginToolConfig)
+	if imageErr != nil {
+		return "", imageErr
+	}
+	blobClient, err := azcontainerregistry.NewBlobClient("https://tierceron.azurecr.io", svc, nil)
 	if err != nil {
-		return "", err
+		log.Fatalf("failed to create blob client: %v", err)
 	}
 
+	configRes, err := blobClient.GetBlob(context.Background(), pluginToolConfig["trcplugin"].(string), pluginToolConfig["layerDigest"].(string), nil)
+	if err != nil {
+		log.Fatalf("failed to get config: %v", err)
+	}
+
+	reader, readErr := azcontainerregistry.NewDigestValidationReader(pluginToolConfig["layerDigest"].(string), configRes.BlobData)
+	if readErr != nil {
+		log.Fatalf("failed to create validation reader: %v", readErr)
+	}
+	layerData, configErr := io.ReadAll(reader)
+	if configErr != nil {
+		log.Fatalf("failed to read config data: %v", configErr)
+	}
+
+	/*//Get the registry download URL for the layer.
+	downloadURL, err := azcontainerregistry.GetLayerDownloadURL(context.Background(), pluginToolConfig["layerDigest"].(string))
+	if err != nil {
+		log.Fatal(err)
+	}
+	*/
 	return "", nil
-	// blobClient, err := azcontainerregistry.NewBlobClient("<your Container Registry's endpoint URL>", svc, nil)
-	// if err != nil {
-	// 	log.Fatalf("failed to create blob client: %v", err)
-	// }
 
-	// configRes, err := blobClient.GetBlob(ctx, pluginToolConfig["trcplugin"].(string), configDigest, nil)
-	// if err != nil {
-	// 	log.Fatalf("failed to get config: %v", err)
-	// }
-	// reader, err = azcontainerregistry.NewDigestValidationReader(configDigest, configRes.BlobData)
-	// if err != nil {
-	// 	log.Fatalf("failed to create validation reader: %v", err)
-	// }
-	// config, err := io.ReadAll(reader)
-	// if err != nil {
-	// 	log.Fatalf("failed to read config data: %v", err)
-	// }
-	// fmt.Printf("config: %s\n", config)
-
-	// // Get layers
-	// layers := manifestJSON["layers"].([]any)
-	// for _, layer := range layers {
-	// 	layerDigest := layer.(map[string]any)["digest"].(string)
-	// 	layerRes, err := blobClient.GetBlob(ctx, pluginToolConfig["trcplugin"].(string), layerDigest, nil)
-	// 	if err != nil {
-	// 		log.Fatalf("failed to get layer: %v", err)
-	// 	}
-	// 	reader, err = azcontainerregistry.NewDigestValidationReader(layerDigest, layerRes.BlobData)
-	// 	if err != nil {
-	// 		log.Fatalf("failed to create validation reader: %v", err)
-	// 	}
-	// 	image, err := io.ReadAll(reader)
-	// 	if err != nil {
-	// 		log.Fatalf("Failed to read layer: %v", err)
-	// 	}
-	// }
-
-	// // Get the registry download URL for the layer.
-	// downloadURL, err := image.GetLayerDownloadURL(context.Background(), pluginToolConfig["layerDigest"].(string))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// return downloadUrl, nil
 }
 
 func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
