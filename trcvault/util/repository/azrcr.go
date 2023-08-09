@@ -22,15 +22,30 @@ import (
 func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
 	client, err := azcontainerregistry.NewClient(
 		pluginToolConfig["acrrepository"].(string),
+		pluginToolConfig["acrrepository"].(string),
 		svc, nil)
 	if err != nil {
 		config.Log.Printf("failed to create client: %v", err)
 		return err
 	}
 	ctx := context.Background()
+	latestTag := ""
+	pager := client.NewListTagsPager(pluginToolConfig["trcplugin"].(string), &azcontainerregistry.ClientListTagsOptions{
+		MaxNum:  to.Ptr[int32](1),
+		OrderBy: to.Ptr(azcontainerregistry.ArtifactTagOrderByLastUpdatedOnDescending),
+	})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			log.Fatalf("failed to advance page for tags: %v", err)
+		}
+		for _, v := range page.Tags {
+			latestTag = *v.Name //Always only returns 1 tag due to MaxNum being set
+		}
+	}
 
 	// Get manifest
-	manifestRes, err := client.GetManifest(ctx, pluginToolConfig["trcplugin"].(string), "", &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
+	manifestRes, err := client.GetManifest(ctx, pluginToolConfig["trcplugin"].(string), latestTag, &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
 	if err != nil {
 		config.Log.Printf("failed to get manifest: %v", err)
 		return err
@@ -65,8 +80,9 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 }
 
 // Return url to the image to be used for download.
-func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) (string, error) {
+func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	svc, err := azidentity.NewClientSecretCredential(
+		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureClientId"].(string),
 		pluginToolConfig["azureClientSecret"].(string),
@@ -74,7 +90,7 @@ func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[strin
 
 	imageErr := getImageSHA(config, svc, pluginToolConfig)
 	if imageErr != nil {
-		return "", imageErr
+		return imageErr
 	}
 	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), svc, nil)
 	if err != nil {
@@ -90,34 +106,13 @@ func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[strin
 	if readErr != nil {
 		log.Fatalf("failed to create validation reader: %v", readErr)
 	}
+
 	layerData, configErr := io.ReadAll(reader)
 	if configErr != nil {
 		log.Fatalf("failed to read config data: %v", configErr)
 	}
-	//Get the registry download URL for the layer.
-	downloadURL, err := getLayerDownloadURL(context.Background(), pluginToolConfig["layerDigest"].(string))
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	return "", nil
-
-}
-
-func getLayerDownloadURL() {
-	//pluginToolConfig["acrrepository"].(string)
-}
-
-func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
-	downloadUrl, downloadURlError := GetImageDownloadUrl(config, pluginToolConfig)
-	if downloadURlError != nil {
-		return errors.New("Failed to get download url.")
-	}
-	pluginImageDataCompressed, downloadError := getImage(downloadUrl)
-	if downloadError != nil {
-		return errors.New("Failed to get download from url.")
-	}
-	pluginTarredData, gUnZipError := gUnZipData(pluginImageDataCompressed)
+	pluginTarredData, gUnZipError := gUnZipData(layerData)
 	if gUnZipError != nil {
 		return errors.New("Gunzip failed.")
 	}
