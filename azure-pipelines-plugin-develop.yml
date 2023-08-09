@@ -123,7 +123,7 @@ steps:
     fi
 
     echo "Compile Agent plugin trc-vault-carrier-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install -ldflags '-w' -tags "tc memonly awsecr insecure" github.com/trimble-oss/tierceron/trcvault/plugins/carrier
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install -ldflags '-w' -tags "tc memonly azrcr insecure" github.com/trimble-oss/tierceron/trcvault/plugins/carrier
     mv $GOBIN/carrier $GOBIN/trc-vault-carrier-plugin
 
     if [[ ! -f $GOBIN/trc-vault-carrier-plugin ]] ; then
