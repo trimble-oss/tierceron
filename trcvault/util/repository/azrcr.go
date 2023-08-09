@@ -22,7 +22,6 @@ import (
 func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
 	client, err := azcontainerregistry.NewClient(
 		pluginToolConfig["acrrepository"].(string),
-		pluginToolConfig["acrrepository"].(string),
 		svc, nil)
 	if err != nil {
 		config.Log.Printf("failed to create client: %v", err)
