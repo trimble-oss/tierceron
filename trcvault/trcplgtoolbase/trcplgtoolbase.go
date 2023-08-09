@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
@@ -89,7 +88,7 @@ func PluginMain() {
 		fmt.Println(plcErr.Error())
 		os.Exit(1)
 	}
-	pluginToolConfig["ecrrepository"] = strings.Replace(pluginToolConfig["ecrrepository"].(string), "__imagename__", *pluginNamePtr, -1) //"https://" +
+
 	pluginToolConfig["trcsha256"] = *sha256Ptr
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
 
