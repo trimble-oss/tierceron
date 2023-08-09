@@ -22,6 +22,7 @@ import (
 func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
 	client, err := azcontainerregistry.NewClient(
 		pluginToolConfig["acrrepository"].(string),
+		pluginToolConfig["acrrepository"].(string),
 		svc, nil)
 	if err != nil {
 		config.Log.Printf("failed to create client: %v", err)
@@ -81,6 +82,7 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 // Return url to the image to be used for download.
 func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	svc, err := azidentity.NewClientSecretCredential(
+		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureClientId"].(string),
 		pluginToolConfig["azureClientSecret"].(string),
