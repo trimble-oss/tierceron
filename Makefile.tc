@@ -19,7 +19,7 @@ ctl:
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcctl
 
 devplugincarrierbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "tc insecure awsecr memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/trcvault/plugins/carrier
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "tc insecure azrcr memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/trcvault/plugins/carrier
 devplugincarriersha:
 	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin.sha256
 carrier: devplugincarrierbuild devplugincarriersha
@@ -71,7 +71,7 @@ sub:
 	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go install   -tags "memonly" github.com/trimble-oss/tierceron/trcsub
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcsub
 certify:
-	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "tc awsecr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
+	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "tc azrcr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcplgtool
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto

@@ -149,7 +149,7 @@ steps:
     done
 
     echo Compiling/Verifying trcplgtool
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc awsecr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc azrcr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
     mv $GOBIN/trcplgtool $GOBIN/trcplgtool
 
     if [[ ! -f $GOBIN/trcplgtool ]] ; then
