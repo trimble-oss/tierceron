@@ -82,7 +82,6 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	svc, err := azidentity.NewClientSecretCredential(
 		pluginToolConfig["azureTenantId"].(string),
-		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureClientId"].(string),
 		pluginToolConfig["azureClientSecret"].(string),
 		nil)
