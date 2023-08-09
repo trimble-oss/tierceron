@@ -48,7 +48,8 @@ func main() {
 			os.Args[1] = "-c=" + os.Args[1]
 		}
 	}
-	envPtr := flag.String("env", "", "Environment to be seeded")      //If this is blank -> use context otherwise override context.
+	envPtr := flag.String("env", "", "Environment to be processed")   //If this is blank -> use context otherwise override context.
+	regionPtr := flag.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 	trcPathPtr := flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
 	secretIDPtr := flag.String("secretID", "", "App role secret")
@@ -67,7 +68,7 @@ func main() {
 	mlock.Mlock2(nil, appRoleIDPtr)
 
 	//Open deploy script and parse it.
-	ProcessDeploy(*envPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
+	ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
 }
 
 // ProcessDeploy
@@ -83,7 +84,7 @@ func main() {
 // Returns:
 //
 //	Nothing.
-func ProcessDeploy(env string, token string, trcPath string, secretId *string, approleId *string) {
+func ProcessDeploy(env string, region string, token string, trcPath string, secretId *string, approleId *string) {
 	var err error
 	agentToken := false
 	if token != "" {
@@ -91,10 +92,32 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 	}
 	pwd, _ := os.Getwd()
 	var content []byte
-	if env == "" {
+	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
 	}
+	if len(region) == 0 {
+		region = os.Getenv("TRC_REGION")
+	}
+
+	regions := []string{}
+	if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
+		supportedRegions := eUtils.GetSupportedProdRegions()
+		if region != "" {
+			for _, supportedRegion := range supportedRegions {
+				if region == supportedRegion {
+					regions = append(regions, region)
+					break
+				}
+			}
+			if len(regions) == 0 {
+				fmt.Println("Unsupported region: " + region)
+				os.Exit(1)
+			}
+		}
+	}
+
 	fmt.Println("trcsh env: " + env)
+	fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
 
 	logFile := "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
 	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix(nil)+"deploy.log" {
@@ -108,6 +131,7 @@ func ProcessDeploy(env string, token string, trcPath string, secretId *string, a
 		IsShellSubProcess: false,
 		OutputMemCache:    true,
 		MemFs:             memfs.New(),
+		Regions:           regions,
 		ExitOnFailure:     true}
 
 	if env == "itdev" {
