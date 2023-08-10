@@ -118,7 +118,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure.", false)
 	}
 
-	if _, ok := vaultPluginSignature["ecrrepository"].(string); !ok {
+	if _, ok := vaultPluginSignature["acrrepository"].(string); !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
 		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure - no certification entry found.", false)
 	}
@@ -167,9 +167,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "Plugin has already been deployed and copied: "+vaultPluginSignature["trcplugin"].(string), false)
 		return nil
 	}
-
-	// This should come from vault now....
-	vaultPluginSignature["ecrrepository"] = strings.Replace(vaultPluginSignature["ecrrepository"].(string), "__imagename__", pluginName, -1) //"https://" +
 
 	pluginDownloadNeeded := false
 	pluginCopied := false
