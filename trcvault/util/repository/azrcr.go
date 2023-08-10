@@ -89,7 +89,6 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 	imageErr := getImageSHA(config, svc, pluginToolConfig)
 	if imageErr != nil {
 		return imageErr
-		return imageErr
 	}
 	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), svc, nil)
 	if err != nil {
