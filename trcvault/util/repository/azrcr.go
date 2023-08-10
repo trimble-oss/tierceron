@@ -45,7 +45,6 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 
 	// Get manifest
 	manifestRes, err := client.GetManifest(ctx, pluginToolConfig["trcplugin"].(string), latestTag, &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
-	manifestRes, err := client.GetManifest(ctx, pluginToolConfig["trcplugin"].(string), latestTag, &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
 	if err != nil {
 		config.Log.Printf("failed to get manifest: %v", err)
 		return err
@@ -81,7 +80,6 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 
 // Return url to the image to be used for download.
 func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
-func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	svc, err := azidentity.NewClientSecretCredential(
 		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureClientId"].(string),
@@ -90,7 +88,6 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 
 	imageErr := getImageSHA(config, svc, pluginToolConfig)
 	if imageErr != nil {
-		return imageErr
 		return imageErr
 	}
 	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), svc, nil)
@@ -108,13 +105,11 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 		log.Fatalf("failed to create validation reader: %v", readErr)
 	}
 
-
 	layerData, configErr := io.ReadAll(reader)
 	if configErr != nil {
 		log.Fatalf("failed to read config data: %v", configErr)
 	}
 
-	pluginTarredData, gUnZipError := gUnZipData(layerData)
 	pluginTarredData, gUnZipError := gUnZipData(layerData)
 	if gUnZipError != nil {
 		return errors.New("Gunzip failed.")
