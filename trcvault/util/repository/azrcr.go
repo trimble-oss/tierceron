@@ -22,7 +22,6 @@ import (
 func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
 	client, err := azcontainerregistry.NewClient(
 		pluginToolConfig["acrrepository"].(string),
-		pluginToolConfig["acrrepository"].(string),
 		svc, nil)
 	if err != nil {
 		config.Log.Printf("failed to create client: %v", err)
@@ -83,7 +82,6 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	svc, err := azidentity.NewClientSecretCredential(
 		pluginToolConfig["azureTenantId"].(string),
-		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureClientId"].(string),
 		pluginToolConfig["azureClientSecret"].(string),
 		nil)
@@ -94,22 +92,22 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 	}
 	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), svc, nil)
 	if err != nil {
-		log.Fatalf("failed to create blob client: %v", err)
+		return errors.New("Failed to create blob client: %v", err)
 	}
 
 	configRes, err := blobClient.GetBlob(context.Background(), pluginToolConfig["trcplugin"].(string), pluginToolConfig["layerDigest"].(string), nil)
 	if err != nil {
-		log.Fatalf("failed to get config: %v", err)
+		return errors.New("Failed to get config: %v", err)
 	}
 
 	reader, readErr := azcontainerregistry.NewDigestValidationReader(pluginToolConfig["layerDigest"].(string), configRes.BlobData)
 	if readErr != nil {
-		log.Fatalf("failed to create validation reader: %v", readErr)
+		return errors.New("Failed to create validation reader: %v", readErr)
 	}
 
 	layerData, configErr := io.ReadAll(reader)
 	if configErr != nil {
-		log.Fatalf("failed to read config data: %v", configErr)
+		return errors.New("Failed to read config data: %v", configErr)
 	}
 
 	pluginTarredData, gUnZipError := gUnZipData(layerData)
