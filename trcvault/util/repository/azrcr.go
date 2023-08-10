@@ -31,7 +31,7 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 	latestTag := ""
 	pager := client.NewListTagsPager(pluginToolConfig["trcplugin"].(string), &azcontainerregistry.ClientListTagsOptions{
 		MaxNum:  to.Ptr[int32](1),
-		OrderBy: to.Ptr(azcontainerregistry.ArtifactTagOrderByLastUpdatedOnDescending),
+		OrderBy: to.Ptr(azcontainerregistry.ArtifactTagOrderByLastUpdatedOnAscending),
 	})
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
