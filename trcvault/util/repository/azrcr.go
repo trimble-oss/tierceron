@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -36,7 +35,9 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
-			log.Fatalf("failed to advance page for tags: %v", err)
+			config.Log.Printf("Failed to advance page for tags: %v", err)
+			return err
+
 		}
 		for _, v := range page.Tags {
 			latestTag = *v.Name //Always only returns 1 tag due to MaxNum being set
