@@ -174,7 +174,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 		config.EnvRaw = env
 		config.EndDir = "deploy"
 		config.OutputMemCache = true
-		trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &token, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
+		trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &token, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
 		var memFile billy.File
@@ -311,7 +311,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 				tokenConfig := ""
 				configEnv := env
 
-				trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, config)
+				trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
 				ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 				flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 
