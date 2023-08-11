@@ -92,22 +92,22 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 	}
 	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), svc, nil)
 	if err != nil {
-		return errors.New("Failed to create blob client: %v", err)
+		return errors.New("Failed to create blob client:" + err.Error())
 	}
 
 	configRes, err := blobClient.GetBlob(context.Background(), pluginToolConfig["trcplugin"].(string), pluginToolConfig["layerDigest"].(string), nil)
 	if err != nil {
-		return errors.New("Failed to get config: %v", err)
+		return errors.New("Failed to get config:" + err.Error())
 	}
 
 	reader, readErr := azcontainerregistry.NewDigestValidationReader(pluginToolConfig["layerDigest"].(string), configRes.BlobData)
 	if readErr != nil {
-		return errors.New("Failed to create validation reader: %v", readErr)
+		return errors.New("Failed to create validation reader" + readErr.Error())
 	}
 
 	layerData, configErr := io.ReadAll(reader)
 	if configErr != nil {
-		return errors.New("Failed to read config data: %v", configErr)
+		return errors.New("Failed to read config data:" + configErr.Error())
 	}
 
 	pluginTarredData, gUnZipError := gUnZipData(layerData)
