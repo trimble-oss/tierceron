@@ -82,6 +82,7 @@ func CommonMain(envPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
 	tokenNamePtr *string,
+	regionPtr *string,
 	c *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
 		mlock.Mlock(nil)
@@ -89,7 +90,6 @@ func CommonMain(envPtr *string,
 
 	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
 	endDirPtr := flag.String("endDir", ".", "Directory to put configured templates into")
-	regionPtr := flag.String("region", "", "Region to configure")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
