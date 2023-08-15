@@ -27,10 +27,11 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
-	//pluginConfig["vaddress"] = "vaultaddr"
-	//	pluginConfig["token"] = "INSERT TOKEN HERE"
+	pluginConfig["address"] = "https://vault.whoboot.org:8200"
+	pluginConfig["vaddress"] = "https://vault.whoboot.org:8200"
+	pluginConfig["token"] = "s.QuTHJxhDYjNWnVB083no275G" //s.WkYK920xf4EougSqq3E77MA1
 	pluginConfig["env"] = "dev"
-	pluginConfig["insecure"] = false
+	pluginConfig["insecure"] = true
 
 	if memonly.IsMemonly() {
 		mlock.MunlockAll(nil)

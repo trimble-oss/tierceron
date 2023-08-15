@@ -6,6 +6,7 @@ package flowopts
 import (
 	tccutil "VaultConfig.TenantConfig/util/controller"
 	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	askflumeserver "github.com/trimble-oss/tierceron/trcflow/core/askflumeserver"
 	trcf "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
 	flows "github.com/trimble-oss/tierceron/trcflow/flows"
 )
@@ -28,7 +29,7 @@ func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowCo
 		// Table flow...
 		return flows.ProcessDataFlowStatConfigurations(tfmContext, trcFlowContext)
 	case flowcore.AskFlumeFlow:
-		return flows.ProcessAskFlumeController(tfmContext, trcFlowContext)
+		return askflumeserver.ProcessAskFlumeController(tfmContext, trcFlowContext)
 	default:
 		return tccutil.ProcessFlowController(tfmContext, trcFlowContext)
 	}

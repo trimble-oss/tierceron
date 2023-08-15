@@ -1,8 +1,31 @@
+//go:build darwin || linux
+// +build darwin linux
+
 package core
+
+import (
+	"context"
+
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+
+	chat "google.golang.org/api/chat/v1"
+)
+
+// var GChatHandler trccontext.MashupSdkApiHandler
+
+var clientConnectionConfigs *mashupsdk.MashupConnectionConfigs
+var serverConnectionConfigs *mashupsdk.MashupConnectionConfigs
+
+
 
 type AskFlumeMessage struct {
 	Id      int64
 	Message string
+}
+
+type GoogleChatCxt struct {
+	Context context.Context
+	Service *chat.Service
 }
 
 type AskFlumeContext struct {
@@ -10,9 +33,11 @@ type AskFlumeContext struct {
 	ChatGptQueries chan *AskFlumeContext
 	ChatGptAnswers chan *AskFlumeContext
 	GchatAnswers   chan *AskFlumeContext
+	GoogleChatCxt  *GoogleChatCxt
 	Close          bool
 	FlowCase       string
 	Query          *AskFlumeMessage
+	Queries        []*AskFlumeMessage
 }
 
 var id int64
@@ -31,6 +56,9 @@ func InitAskFlume() (*AskFlumeContext, error) {
 		Id:      0,
 		Message: "",
 	}
+	// gchat_cxt, err := InitGoogleChat()
+	// if e}rr != nil {
+	// 	fmt.Println("Find way to log err")
 
 	id = 1
 	cxt := &AskFlumeContext{
@@ -38,15 +66,12 @@ func InitAskFlume() (*AskFlumeContext, error) {
 		ChatGptQueries: chatgpt_queries,
 		ChatGptAnswers: chatgpt_ans,
 		GchatAnswers:   gchat_ans,
+		GoogleChatCxt:  nil,
 		Close:          false,
 		FlowCase:       "",
 		Query:          empty_query,
 	}
 	return cxt, nil
-}
-
-func InitGoogleChat() {
-	//Initialize the google chat api here!
 }
 
 func InitChatGPT() {
