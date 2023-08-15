@@ -62,18 +62,6 @@ func (msdk *GoogleChatHandler) UpsertElements(detailedElementBundle *mashupsdk.M
 	}, nil
 }
 
-func (msdk *GoogleChatHandler) ChatUpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
-	log.Printf("Google Chat world received upsert elements: %v", detailedElementBundle)
-	// // flumeworldhandler := trccontext.New(trccontext.FlumeWorld(*msdk))
-	// flumehandler := askflumeserver.New(msdk)
-	// return flumehandler.ChatUpsertElements(detailedElementBundle)
-	// // return &mashupsdk.MashupDetailedElementBundle{
-	// // 	AuthToken: client.GetServerAuthToken(),
-	// // 	// DetailedElements: chatworld.DetailedElements,
-	// // }, nil
-	return msdk.UpsertElements(detailedElementBundle)
-}
-
 func (msdk *GoogleChatHandler) TweakStates(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
 	return elementStateBundle, nil
 }

@@ -22,7 +22,6 @@ type ichat interface {
 	OnDisplayChange(displayHint *mashupsdk.MashupDisplayHint)
 	GetElements() (*mashupsdk.MashupDetailedElementBundle, error)
 	UpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error)
-	ChatUpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error)
 	TweakStates(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error)
 	ResetStates()
 	TweakStatesByMotiv(mashupsdk.Motiv)
@@ -76,21 +75,6 @@ func (msdk *FlumeChat) UpsertElements(detailedElementBundle *mashupsdk.MashupDet
 		AuthToken:        client.GetServerAuthToken(),
 		DetailedElements: flumeworld.DetailedElements,
 	}, nil
-}
-
-// func (msdk *FlumeChat) FlumeUpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
-// 	return msdk.UpsertElements(detailedElementBundle)
-// }
-
-func (msdk *FlumeChat) ChatUpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
-	log.Printf("Flume Chat world received upsert elements: %v", detailedElementBundle)
-	// flumeworldhandler := trccontext.New(trccontext.FlumeWorld(*msdk))
-	flumehandler := New(msdk)
-	return flumehandler.FlumeChat.ChatUpsertElements(detailedElementBundle)
-	// return &mashupsdk.MashupDetailedElementBundle{
-	// 	AuthToken: client.GetServerAuthToken(),
-	// 	// DetailedElements: chatworld.DetailedElements,
-	// }, nil
 }
 
 func (msdk *FlumeChat) TweakStates(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
