@@ -78,7 +78,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.21'
+    version: '1.21.0'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
