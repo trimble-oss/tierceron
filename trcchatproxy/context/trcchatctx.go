@@ -1,4 +1,4 @@
-package trcchatproxy
+package context
 
 // type igchathandler interface {
 // 	OnDisplayChange(displayHint *mashupsdk.MashupDisplayHint)

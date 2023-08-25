@@ -1,4 +1,4 @@
-package main
+package context
 
 import (
 	"log"
@@ -7,7 +7,6 @@ import (
 	//sdk "github.com/trimble-oss/tierceron-nute/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/server"
-	"github.com/trimble-oss/tierceron/trcflow/core/askflumeserver"
 )
 
 // var chatworld GChatApp
@@ -15,32 +14,7 @@ import (
 type WorldClientInitHandler struct {
 }
 
-// type MashupSdkApiHandler struct {
-// }
-
-type igchat interface {
-	OnDisplayChange(displayHint *mashupsdk.MashupDisplayHint)
-	GetElements() (*mashupsdk.MashupDetailedElementBundle, error)
-	UpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error)
-	ChatUpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error)
-	TweakStates(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error)
-	ResetStates()
-	TweakStatesByMotiv(mashupsdk.Motiv)
-	ResetG3NDetailedElementStates()
-	UpsertMashupElementsState(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error)
-	UpsertMashupElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error)
-	OnResize(displayHint *mashupsdk.MashupDisplayHint)
-	GetMashupElements() (*mashupsdk.MashupDetailedElementBundle, error)
-}
-
 type GoogleChatHandler struct {
-	GoogleChatHandler igchat
-}
-
-func New(handler igchat) *GoogleChatHandler {
-	return &GoogleChatHandler{
-		GoogleChatHandler: handler,
-	}
 }
 
 func (msdk *GoogleChatHandler) OnDisplayChange(displayHint *mashupsdk.MashupDisplayHint) {
@@ -141,8 +115,7 @@ func ProcessDFQuery(msg *mashupsdk.MashupDetailedElement) {
 	// Connection with mashup fully established.  Initialize mashup elements.
 	// trccontext.SetContext(flumeworld.FlumeWorldContext)
 	c := client.MashupClient{}
-	flumehandler := askflumeserver.FlumeChat{}
-	client.SetHandler(&c, flumehandler.FlumeChat)
+	// client.SetHandler(&c, flumehandler.FlumeChat)
 	server.SetServerConfigs(serverConnectionConfigs)
 	_, upsertErr := c.UpsertElements(flumeworld.FlumeWorldContext, //flumeworld.FlumeWorldContext.C
 		&mashupsdk.MashupDetailedElementBundle{

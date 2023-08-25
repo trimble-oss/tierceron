@@ -1,7 +1,6 @@
 package askflumeserver
 
 import (
-	"context"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -12,12 +11,14 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/server"
+
+	// "github.com/trimble-oss/tierceron-nute/mashupsdk/server"
 
 	// trccontext "github.com/trimble-oss/tierceron/trcchatproxy/context"
 
 	// trcchat "github.com/trimble-oss/tierceron/trcchatproxy"
+	"VaultConfig.TenantConfig/util"
 	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
 )
 
@@ -30,12 +31,14 @@ var mashupCert embed.FS
 //go:embed tls/mashup.key
 var mashupKey embed.FS
 
+var flumeworld FlumeWorldApp
+
 var id int64
 
 func ProcessAskFlumeController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
 	var err error
 	askFlumeContext, err = flowcore.InitAskFlume()
-	id = flowcore.GetId()
+	// id = flowcore.GetId()
 	if err != nil {
 		fmt.Printf("Error initializing AskFlume %v", err)
 		return err
@@ -114,7 +117,6 @@ func askFlumeFlowSender(askFlumeContext *flowcore.AskFlumeContext) error {
 		case askFlumeContext.FlowCase == "ChatGptQuery":
 			go func(askFlumeContext *flowcore.AskFlumeContext) {
 				askFlumeContext.ChatGptQueries <- askFlumeContext
-				// askFlumeContext.FlowCase = ""
 			}(askFlumeContext)
 			askFlumeContext.FlowCase = ""
 		case askFlumeContext.FlowCase == "ChatGptAnswer":
@@ -133,67 +135,57 @@ func askFlumeFlowSender(askFlumeContext *flowcore.AskFlumeContext) error {
 func GetQuery(message *mashupsdk.MashupDetailedElementBundle) {
 	msg = message.DetailedElements[0].Data
 	msg_type := message.DetailedElements[0].Name
-	if askFlumeContext == nil {
-		ProcessAskFlumeController(nil, nil)
-	}
-	askFlumeContext.Query.Id = id
-	askFlumeContext.Query.Message = msg
-	askFlumeContext.FlowCase = msg_type
-	if msg_type != "ChatGptQuery" && msg_type != "ChatGptAnswer" && msg_type != "GChatQuery" {
+
+	if (msg_type != "ChatGptQuery" && msg_type != "ChatGptAnswer" && msg_type != "GChatQuery" && msg_type != "GChatAnswer") || msg_type == "" {
 		log.Printf("Message does not correspond to any channel")
+	} else {
+		askFlumeContext.Query.Id = message.DetailedElements[0].Id
+		askFlumeContext.Query.Message = msg
+		askFlumeContext.FlowCase = msg_type
 	}
 }
 
 func handleGChatQuery(askFlumeContext *flowcore.AskFlumeContext) error {
 	if askFlumeContext.Query.Message != "" {
-		fmt.Println("Received query from google chat channel: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
-		askFlumeContext.FlowCase = "ChatGptQuery"
+		askFlumeContext.Queries = append(askFlumeContext.Queries, askFlumeContext.Query)
+		fmt.Println("Received query from google chat channel in Flume: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
+		Flumeworld.DetailedElements[0].Name = "DialogFlow"
+		// Send query back to DialogFlow to process it after it has been recorded in the flume queries
+		_, upsertErr := Flumeworld.FlumeWorldContext.Client.UpsertElements(Flumeworld.FlumeWorldContext, &mashupsdk.MashupDetailedElementBundle{
+			AuthToken:        " ",
+			DetailedElements: Flumeworld.DetailedElements,
+		})
+		if upsertErr != nil {
+			log.Printf("Failed to upsert google chat query to client: %v", upsertErr)
+		}
 	}
-	askFlumeContext.Queries = append(askFlumeContext.Queries, askFlumeContext.Query)
+
 	return nil
 }
 
 func handleChatGptQuery(askFlumeContext *flowcore.AskFlumeContext) error {
 	if askFlumeContext.Query.Message != "" {
+		askFlumeContext.Queries = append(askFlumeContext.Queries, askFlumeContext.Query)
+		fmt.Println("Received query from ChatGptQueries channel in Flume: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
+		Flumeworld.DetailedElements[0].Name = "DialogFlow"
+		fmt.Println("Processing query and accessing database...")
+		response := util.ProcessAskFlumeEventMapper(askFlumeContext, askFlumeContext.Query)
+		// Send query back to DialogFlow to process it after it has been recorded in the flume queries
 		element := mashupsdk.MashupDetailedElement{
-			Name: "ChatGptQuery",
+			Name: "DialogFlowResponse",
 			Id:   askFlumeContext.Query.Id,
-			Data: askFlumeContext.Query.Message,
+			Data: response.Message,
 		}
 		DetailedElements := []*mashupsdk.MashupDetailedElement{}
 		DetailedElements = append(DetailedElements, &element)
-
-		serverConnectionConfigs := client.GetServerConfigs()
-		client.SetServerConfigs(serverConnectionConfigs)
-
-		// Connection with mashup fully established.  Initialize mashup elements.
-		ctx := mashupsdk.MashupContext{Context: context.Background()} //trccontext.GetContext()
-
-		// gchat_world := trccontext.GChatApp{}
-		gchat_world_handler := &FlumeChat{}
-		s := server.MashupServer{}
-		s.SetHandler(gchat_world_handler)
-		server.SetServerConfigs(serverConnectionConfigs) //may neeed to be in server instead
-		_, upsertErr := s.ChatUpsertElements(ctx.Context, &mashupsdk.MashupDetailedElementBundle{
-			AuthToken:        client.GetServerAuthToken(),
+		fmt.Println("Sending response back to DialogFlow for formatting")
+		_, upsertErr := Flumeworld.FlumeWorldContext.Client.UpsertElements(Flumeworld.FlumeWorldContext, &mashupsdk.MashupDetailedElementBundle{
+			AuthToken:        " ",
 			DetailedElements: DetailedElements,
 		})
-
 		if upsertErr != nil {
-			log.Printf("Element state initialization failure: %s\n", upsertErr.Error())
+			log.Printf("Failed to upsert google chat query to client: %v", upsertErr)
 		}
-
-		fmt.Println("Processing query and accessing database...")
-		//Old:
-		// Make sure chat gpt is trained for mapping and pass any info through this method that
-		// event mapper will need
-
-		// new_msg := tcutil.ProcessAskFlumeEventMapper(askFlumeContext, askFlumeContext.Query)
-		// msg = new_msg.Message
-		// // Send unformatted message that comes from tenantconfig to answer channel to format it!
-		// askFlumeContext.FlowCase = "ChatGptAnswer"
-		// askFlumeContext.Query = new_msg
-		// The unformatted answer will then be sent on gpt answer channel
 	}
 	return nil
 }
@@ -220,24 +212,25 @@ func handleGchatAnswer(askFlumeContext *flowcore.AskFlumeContext) error {
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
 	DetailedElements = append(DetailedElements, &element)
 
-	serverConnectionConfigs := client.GetServerConfigs()
-	client.SetServerConfigs(serverConnectionConfigs)
+	// serverConnectionConfigs := client.GetServerConfigs()
+	// client.SetServerConfigs(serverConnectionConfigs)
 
 	// Connection with mashup fully established.  Initialize mashup elements.
-	ctx := mashupsdk.MashupContext{Context: context.Background()} //trccontext.GetContext()
+	// ctx := mashupsdk.MashupContext{Context: context.Background()} //trccontext.GetContext()
 
-	gchat_world_handler := &FlumeChat{}
-	s := server.MashupServer{}
-	s.SetHandler(gchat_world_handler)
-	server.SetServerConfigs(serverConnectionConfigs) //may neeed to be in server instead
-	_, upsertErr := s.UpsertElements(ctx.Context, &mashupsdk.MashupDetailedElementBundle{
-		AuthToken:        client.GetServerAuthToken(),
-		DetailedElements: DetailedElements,
-	})
+	// gchat_world_handler := &FlumeChat{}
+	// s := server.MashupServer{}
+	// s.SetHandler(gchat_world_handler
+	// s := server.GetServer()
+	// server.SetServerConfigs(serverConnectionConfigs) //may neeed to be in server instead
+	// _, upsertErr := s.UpsertElements(ctx.Context, &mashupsdk.MashupDetailedElementBundle{
+	// 	AuthToken:        client.GetServerAuthToken(),
+	// 	DetailedElements: DetailedElements,
+	// })
 
-	if upsertErr != nil {
-		log.Printf("Element state initialization failure: %s\n", upsertErr.Error())
-	}
+	// if upsertErr != nil {
+	// 	log.Printf("Element state initialization failure: %s\n", upsertErr.Error())
+	// }
 	askFlumeContext.Close = true
 	return nil
 }
@@ -323,7 +316,9 @@ func InitGoogleChat() (*flowcore.GoogleChatCxt, error) {
 
 	mashupsdk.InitCertKeyPair(mashupCert, mashupKey)
 
-	flumeworld := FlumeWorldApp{}
+	flumeworld = FlumeWorldApp{
+		MashupSdkApiHandler: &FlumeHandler{},
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -335,8 +330,9 @@ func InitGoogleChat() (*flowcore.GoogleChatCxt, error) {
 	}
 	// token := mashupsdk.GenAuthToken()
 	configs := mashupsdk.MashupConnectionConfigs{
-		AuthToken:   "", //token
-		CallerToken: "",
+		AuthToken:   " ", //AuthToken provided by user
+		CallerToken: " ",
+		Server:      "localhost",
 		Port:        configPort,
 	}
 	encoding, err := json.Marshal(&configs)
@@ -346,8 +342,11 @@ func InitGoogleChat() (*flowcore.GoogleChatCxt, error) {
 
 	callerCreds := flag.String("CREDS", string(encoding), "Credentials of caller")
 	flag.Parse()
-	mashupsdk.InitCertKeyPair(mashupCert, mashupKey)
-	server.InitServer(*callerCreds, true, -2, flumeworld.MashupSdkApiHandler, flumeworld.WClientInitHandler)
+	// mashupsdk.InitCertKeyPair(mashupCert, mashupKey)
+	// client.SetHandler(flumeworld.MashupSdkApiHandler)
+	server.RemoteInitServer(*callerCreds, true, -2, flumeworld.MashupSdkApiHandler, flumeworld.WClientInitHandler) //Problem: Doesn't return back --> find out why
+	// s := server.GetServer()
+	// log.Println(s)
 
 	return nil, nil
 }

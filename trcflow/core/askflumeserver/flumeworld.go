@@ -4,12 +4,14 @@ import (
 	"log"
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+
 	//sdk "github.com/trimble-oss/tierceron-nute/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/server"
 )
 
-var flumeworld FlumeWorldApp
+var Flumeworld FlumeWorldApp
 
 type WorldClientInitHandler struct {
 }
@@ -18,28 +20,7 @@ type WorldClientInitHandler struct {
 // 	ChatHandler bool
 // }
 
-type ichat interface {
-	OnDisplayChange(displayHint *mashupsdk.MashupDisplayHint)
-	GetElements() (*mashupsdk.MashupDetailedElementBundle, error)
-	UpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error)
-	TweakStates(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error)
-	ResetStates()
-	TweakStatesByMotiv(mashupsdk.Motiv)
-	ResetG3NDetailedElementStates()
-	UpsertMashupElementsState(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error)
-	UpsertMashupElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error)
-	OnResize(displayHint *mashupsdk.MashupDisplayHint)
-	GetMashupElements() (*mashupsdk.MashupDetailedElementBundle, error)
-}
-
-type FlumeChat struct {
-	FlumeChat ichat
-}
-
-func New(flumechat ichat) *FlumeChat {
-	return &FlumeChat{
-		FlumeChat: flumechat,
-	}
+type FlumeHandler struct {
 }
 
 type FlumeWorldContext struct {
@@ -47,7 +28,7 @@ type FlumeWorldContext struct {
 }
 
 type FlumeWorldApp struct {
-	MashupSdkApiHandler          *FlumeChat
+	MashupSdkApiHandler          *FlumeHandler
 	FlumeWorldContext            *mashupsdk.MashupContext //*FlumeWorldContext
 	mashupDisplayContext         *mashupsdk.MashupDisplayContext
 	WClientInitHandler           *WorldClientInitHandler
@@ -56,68 +37,78 @@ type FlumeWorldApp struct {
 	ElementLoaderIndex           map[string]int64 // mashup indexes by Name
 }
 
-func (msdk *FlumeChat) OnDisplayChange(displayHint *mashupsdk.MashupDisplayHint) {
+func (msdk *FlumeHandler) OnDisplayChange(displayHint *mashupsdk.MashupDisplayHint) {
 	return
 }
 
-func (msdk *FlumeChat) GetElements() (*mashupsdk.MashupDetailedElementBundle, error) {
+func (msdk *FlumeHandler) GetElements() (*mashupsdk.MashupDetailedElementBundle, error) {
 	return &mashupsdk.MashupDetailedElementBundle{
 		AuthToken:        client.GetServerAuthToken(),
-		DetailedElements: flumeworld.DetailedElements,
+		DetailedElements: Flumeworld.DetailedElements,
 	}, nil
 }
 
-func (msdk *FlumeChat) UpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
+func (msdk *FlumeHandler) UpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
 	log.Printf("Flume world received upsert elements: %v", detailedElementBundle)
 	// flows.GetGChatQuery(detailedElementBundle)
+	element := detailedElementBundle.DetailedElements[0]
+	element.Id = flowcore.GetId()
+	elements := []*mashupsdk.MashupDetailedElement{element}
+	Flumeworld.DetailedElements = elements
 	GetQuery(detailedElementBundle)
+	// Flumeworld.FlumeWorldContext.Client.UpsertElements(Flumeworld.FlumeWorldContext, &mashupsdk.MashupDetailedElementBundle{
+	// 	AuthToken:        " ",
+	// 	DetailedElements: Flumeworld.DetailedElements,
+	// })
+	// server.UpsertElements(flumeworld.FlumeWorldContext.Context, detailedElementBundle.AuthToken)
+
 	return &mashupsdk.MashupDetailedElementBundle{
 		AuthToken:        client.GetServerAuthToken(),
-		DetailedElements: flumeworld.DetailedElements,
+		DetailedElements: elements,
 	}, nil
 }
 
-func (msdk *FlumeChat) TweakStates(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
+func (msdk *FlumeHandler) TweakStates(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
 	return elementStateBundle, nil
 }
 
-func (msdk *FlumeChat) ResetStates() {
+func (msdk *FlumeHandler) ResetStates() {
 	return
 }
 
-func (msdk *FlumeChat) TweakStatesByMotiv(mashupsdk.Motiv) {
+func (msdk *FlumeHandler) TweakStatesByMotiv(mashupsdk.Motiv) {
 	return
 }
 
-func (msdk *FlumeChat) GetMashupElements() (*mashupsdk.MashupDetailedElementBundle, error) {
+func (msdk *FlumeHandler) GetMashupElements() (*mashupsdk.MashupDetailedElementBundle, error) {
 	return &mashupsdk.MashupDetailedElementBundle{
 		AuthToken:        client.GetServerAuthToken(),
-		DetailedElements: flumeworld.DetailedElements,
+		DetailedElements: Flumeworld.DetailedElements,
 	}, nil
 }
 
-func (msdk *FlumeChat) OnResize(displayHint *mashupsdk.MashupDisplayHint) {
+func (msdk *FlumeHandler) OnResize(displayHint *mashupsdk.MashupDisplayHint) {
 	return
 }
 
-func (msdk *FlumeChat) UpsertMashupElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
+func (msdk *FlumeHandler) UpsertMashupElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
 	log.Printf("Flume world received upsert elements: %v", detailedElementBundle)
 	return &mashupsdk.MashupDetailedElementBundle{
 		AuthToken:        client.GetServerAuthToken(),
-		DetailedElements: flumeworld.DetailedElements,
+		DetailedElements: Flumeworld.DetailedElements,
 	}, nil
 }
 
-func (msdk *FlumeChat) UpsertMashupElementsState(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
+func (msdk *FlumeHandler) UpsertMashupElementsState(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
 	return elementStateBundle, nil
 }
 
-func (msdk *FlumeChat) ResetG3NDetailedElementStates() {
+func (msdk *FlumeHandler) ResetG3NDetailedElementStates() {
 	return
 }
 
 func (w *WorldClientInitHandler) RegisterContext(context *mashupsdk.MashupContext) {
-	flumeworld.FlumeWorldContext = context
+	Flumeworld.FlumeWorldContext = context
 }
 
 func (w *FlumeWorldApp) InitServer(callerCreds string, insecure bool, maxMessageLength int) {
