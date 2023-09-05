@@ -489,8 +489,23 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				vaultHost = vaultHost + ":" + GetVaultPort()
 			}
 
+			if caddr, addressOk := data.GetOk("caddress"); addressOk {
+				vaultUrl, err := url.Parse(caddr.(string))
+				if err == nil {
+					cVaultPort := vaultUrl.Port()
+					tokenEnvMap["caddress"] = vaultUrl.Host + cVaultPort
+				}
+			} else {
+				return nil, errors.New("Certification Vault Url required.")
+			}
+
+			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
+				// Missing port.
+				vaultHost = vaultHost + ":" + GetVaultPort()
+			}
+
 			// Plugins
-			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, true, logger)
+			mod, err := helperkv.NewModifier(true, token.(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger) //atvc -> needs to go to azure
 			if mod != nil {
 				defer mod.Release()
 			}
