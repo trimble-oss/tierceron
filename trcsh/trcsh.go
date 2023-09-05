@@ -147,6 +147,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 	// 	}
 	trcshConfig, err := trcshauth.TrcshAuth(config)
 	if err != nil {
+		fmt.Println("Tierceron bootstrap failure.")
 		logger.Println(err)
 		os.Exit(-1)
 	}
