@@ -136,6 +136,7 @@ func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
 	trcshConfig := &TrcShConfig{}
 	var err error
 
+	fmt.Println("Auth phase 1")
 	if config.EnvRaw == "staging" || config.EnvRaw == "prod" || len(config.TrcShellRaw) > 0 {
 		dir, err := os.UserHomeDir()
 		if err != nil {
@@ -161,6 +162,7 @@ func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
 	}
 	mlock.Mlock2(nil, &trcshConfig.KubeConfig)
 
+	fmt.Println("Auth phase 2")
 	addr, vAddressErr := PenseQuery("vaddress")
 	if vAddressErr != nil {
 		var addrPort string
@@ -182,17 +184,20 @@ func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
 	config.VaultAddress = addr
 	mlock.Mlock2(nil, &config.VaultAddress)
 
+	fmt.Println("Auth phase 3")
 	trcshConfig.ConfigRole, err = PenseQuery("configrole")
 	if err != nil {
 		return trcshConfig, err
 	}
 	mlock.Mlock2(nil, &trcshConfig.ConfigRole)
 
+	fmt.Println("Auth phase 4")
 	trcshConfig.PubRole, err = PenseQuery("pubrole")
 	if err != nil {
 		return trcshConfig, err
 	}
 	mlock.Mlock2(nil, &trcshConfig.PubRole)
+	fmt.Println("Auth complete.")
 
 	return trcshConfig, err
 }
@@ -204,6 +209,7 @@ func PenseQuery(pense string) (string, error) {
 
 	capWriteErr := cap.TapWriter(penseSum)
 	if capWriteErr != nil {
+		fmt.Println("Code 54 failure...")
 		// 2023-06-30T01:29:21.7020686Z read unix @->/tmp/trccarrier/trcsnap.sock: read: connection reset by peer
 		os.Exit(-1) // restarting carrier will rebuild necessary resources...
 		return "", errors.Join(errors.New("Tap writer error"), capWriteErr)
