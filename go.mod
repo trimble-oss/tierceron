@@ -124,9 +124,9 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230629202037-9506855d4529 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/component-helpers v0.26.1 // indirect
+	k8s.io/component-helpers v0.0.0-20230215120307-78f7b9c080f0 // indirect
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect
-	k8s.io/metrics v0.26.1 // indirect
+	k8s.io/metrics v0.0.0-20230215135002-90fa97165491 // indirect
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
@@ -264,10 +264,10 @@ replace github.com/fyne-io/glfw-js v0.0.0-20220120001248-ee7290d23504 => github.
 
 //Don't forget to update pipelines with the right version.
 
-// replace k8s.io/client-go v0.26.1 => ../client-go I commented this out
+replace k8s.io/client-go v0.26.1 => ../client-go I commented this out
 
-// replace k8s.io/cli-runtime v0.26.1 => ../cli-runtime I commented this out
+replace k8s.io/cli-runtime v0.26.1 => ../cli-runtime I commented this out
 
-// replace k8s.io/kubectl v0.26.1 => ../kubectl     I commented this out
+replace k8s.io/kubectl v0.26.1 => ../kubectl     I commented this out
 
 replace k8s.io/api v0.26.1 => k8s.io/api v0.0.0-20230228090259-b5b22ca1babf
