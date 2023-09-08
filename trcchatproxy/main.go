@@ -1,16 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"embed"
+	"encoding/json"
+	"flag"
+	"fmt"
 	"log"
+	"os"
+	"strconv"
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/server"
-	// trccontext "github.com/trimble-oss/tierceron/trcchatproxy/context"
 )
-
-var insecure *bool
 
 //go:embed tls/mashup.crt
 var mashupCert embed.FS
@@ -19,26 +21,7 @@ var mashupCert embed.FS
 var mashupKey embed.FS
 
 var gchatApp GChatApp
-
-type WorldClientInitHandler struct {
-}
-
-type GoogleChatHandler struct {
-}
-
-type GoogleChatContext struct {
-	MashupContext *mashupsdk.MashupContext // Needed for callbacks to other mashups
-}
-
-type GChatApp struct {
-	MashupSdkApiHandler *GoogleChatHandler
-	GoogleChatContext   *GoogleChatContext //*FlumeWorldContext
-	// mashupDisplayContext         *mashupsdk.MashupDisplayContext
-	WClientInitHandler           *WorldClientInitHandler
-	DetailedElements             []*mashupsdk.MashupDetailedElement
-	MashupDetailedElementLibrary map[int64]*mashupsdk.MashupDetailedElement
-	ElementLoaderIndex           map[string]int64 // mashup indexes by Name
-}
+var id int64
 
 func (w *GChatApp) InitServer(callerCreds string, insecure bool, maxMessageLength int) {
 	if callerCreds != "" {
@@ -47,8 +30,6 @@ func (w *GChatApp) InitServer(callerCreds string, insecure bool, maxMessageLengt
 }
 
 func main() {
-	secure := true
-	insecure = &secure
 	gchatApp = GChatApp{
 		MashupSdkApiHandler: &GoogleChatHandler{},
 		GoogleChatContext:   &GoogleChatContext{},
@@ -58,175 +39,85 @@ func main() {
 
 	// Initialize local server.
 	mashupsdk.InitCertKeyPair(mashupCert, mashupKey)
-	params := []string{}
 
-	params = append(params, "remote")
-	params = append(params, "")
-	env_params := []string{}
-	env_params = append(env_params, "localhost")
-	env_params = append(env_params, "8080")
-	env_params = append(env_params, "localhost")
-	gchatApp.GoogleChatContext.MashupContext = client.BootstrapInit("trcchatproxy", gchatApp.MashupSdkApiHandler, env_params, params, insecure)
-	InitGoogleChatStub()
-	log.Printf("Mashup elements delivered.\n")
+	gchatworld := GChatApp{
+		MashupSdkApiHandler: &GoogleChatHandler{},
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	configPort, err := strconv.ParseInt(port, 10, 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	configs := mashupsdk.MashupConnectionConfigs{
+		AuthToken:   "",
+		CallerToken: "",
+		Server:      "",
+		Port:        configPort,
+	}
+	encoding, err := json.Marshal(&configs)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	callerCreds := flag.String("CREDS", string(encoding), "Credentials of caller")
+	flag.Parse()
+	id = 0
+	server.RemoteInitServer(*callerCreds, true, -2, gchatworld.MashupSdkApiHandler, gchatworld.WClientInitHandler)
+
 	<-shutdown
 }
 
-func (msdk *GoogleChatHandler) OnDisplayChange(displayHint *mashupsdk.MashupDisplayHint) {
-	return
-}
-
-func (msdk *GoogleChatHandler) GetElements() (*mashupsdk.MashupDetailedElementBundle, error) {
-	return &mashupsdk.MashupDetailedElementBundle{
-		AuthToken:        client.GetServerAuthToken(),
-		DetailedElements: gchatApp.DetailedElements,
-	}, nil
-}
-
-func (msdk *GoogleChatHandler) UpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
-	log.Printf("Google Chat world received upsert elements: %v", detailedElementBundle)
-	ProcessQuery(detailedElementBundle)
-	return &mashupsdk.MashupDetailedElementBundle{
-		AuthToken:        client.GetServerAuthToken(),
-		DetailedElements: gchatApp.DetailedElements,
-	}, nil
-}
-
-func (msdk *GoogleChatHandler) TweakStates(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
-	return elementStateBundle, nil
-}
-
-func (msdk *GoogleChatHandler) ResetStates() {
-	return
-}
-
-func (msdk *GoogleChatHandler) TweakStatesByMotiv(mashupsdk.Motiv) {
-	return
-}
-
-func (msdk *GoogleChatHandler) GetMashupElements() (*mashupsdk.MashupDetailedElementBundle, error) {
-	return &mashupsdk.MashupDetailedElementBundle{
-		AuthToken:        client.GetServerAuthToken(),
-		DetailedElements: gchatApp.DetailedElements,
-	}, nil
-}
-
-func (msdk *GoogleChatHandler) OnResize(displayHint *mashupsdk.MashupDisplayHint) {
-	return
-}
-
-func (msdk *GoogleChatHandler) UpsertMashupElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
-	log.Printf("Google Chat world received upsert elements: %v", detailedElementBundle)
-	return &mashupsdk.MashupDetailedElementBundle{
-		AuthToken:        client.GetServerAuthToken(),
-		DetailedElements: gchatApp.DetailedElements,
-	}, nil
-}
-
-func (msdk *GoogleChatHandler) UpsertMashupElementsState(elementStateBundle *mashupsdk.MashupElementStateBundle) (*mashupsdk.MashupElementStateBundle, error) {
-	return elementStateBundle, nil
-}
-
-func (msdk *GoogleChatHandler) ResetG3NDetailedElementStates() {
-	return
-}
-
-func (w *WorldClientInitHandler) RegisterContext(context *mashupsdk.MashupContext) {
-	gchatApp.GoogleChatContext.MashupContext = context
-}
-
-func ProcessQuery(message *mashupsdk.MashupDetailedElementBundle) {
-	msg := message.DetailedElements[0]
-	if msg.Name == "GChatQuery" {
-		ProcessGChatQuery(msg)
-	} else if msg.Name == "DialogFlow" {
+// Processes upserted query from client
+// Changes based on msg.Name
+func ProcessQuery(msg *mashupsdk.MashupDetailedElement) {
+	if msg.Name == "DialogFlow" {
 		ProcessDFQuery(msg)
 	} else if msg.Name == "DialogFlowResponse" {
 		ProcessDFResponse(msg)
 	} else if msg.Name == "GChatResponse" {
 		ProcessGChatAnswer(msg)
+	} else if msg.Name == "Get Message" {
+		gchatApp.DetailedElements = gchatApp.DetailedElements[:len(gchatApp.DetailedElements)-1]
+		input := ""
+		for input == "" {
+			input = getUserInput()
+			if input != "" {
+				gchatApp.DetailedElements = append(gchatApp.DetailedElements, &mashupsdk.MashupDetailedElement{
+					Name: "GChatQuery",
+					Id:   int64(len(gchatApp.DetailedElements)), // Make sure id matches index in elements
+					Data: input,
+				})
+			} else {
+				fmt.Println("An error occurred with reading the input. Please input your question in the command line and press enter!")
+			}
+		}
 	} else {
 		log.Printf("Message type does not correspond to either GChatQuery or DialogFlow")
 	}
 }
 
-func InitGoogleChatStub() {
-	var upsertErr error
-
-	element := mashupsdk.MashupDetailedElement{
-		Name: "GChatQuery",
-		Data: "Hello Flume!",
+// Asks user input
+// This is a stub version --> potentially shouldn't be needed if user can @askflume in google chat
+// However, maybe use this as a way to ask user if there is anything else they would like to ask
+func getUserInput() string {
+	fmt.Println("This is a simulation of the Flume Chat App. Please type your question below and press enter: ")
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		log.Printf("Error reading input from user: %v", err)
+		return ""
 	}
-	detailedElements := &mashupsdk.MashupDetailedElementBundle{}
-	log.Printf("Delivering mashup elements.\n")
-	detailedElements, upsertErr = gchatApp.GoogleChatContext.MashupContext.Client.UpsertElements(gchatApp.GoogleChatContext.MashupContext, &mashupsdk.MashupDetailedElementBundle{
-		AuthToken:        " ",
-		DetailedElements: []*mashupsdk.MashupDetailedElement{&element},
-	})
-
-	if upsertErr != nil {
-		log.Printf("Element state initialization failure: %s\n", upsertErr.Error())
-	}
-	gchatApp.DetailedElements = detailedElements.DetailedElements
+	return input
 }
 
-func ProcessGChatQuery(msg *mashupsdk.MashupDetailedElement) {
-	//Send to google chat
-	log.Printf("Message received from Google Chat user")
-	element := mashupsdk.MashupDetailedElement{
-		Name: "GChatQuery",
-		Data: "Hello Flume!",
-	}
-	detailedElements := &mashupsdk.MashupDetailedElementBundle{}
-	log.Printf("Delivering mashup elements.\n")
-	detailedElements, upsertErr := gchatApp.GoogleChatContext.MashupContext.Client.UpsertElements(gchatApp.GoogleChatContext.MashupContext, &mashupsdk.MashupDetailedElementBundle{
-		AuthToken:        " ",
-		DetailedElements: []*mashupsdk.MashupDetailedElement{&element},
-	})
-
-	if upsertErr != nil {
-		log.Printf("Element state initialization failure: %s\n", upsertErr.Error())
-	}
-	gchatApp.DetailedElements = detailedElements.DetailedElements
-}
-
-func ProcessGChatAnswer(msg *mashupsdk.MashupDetailedElement) {
-	log.Printf("Message is ready to send to Google Chat user")
-}
-
-func ProcessDFQuery(msg *mashupsdk.MashupDetailedElement) {
-	log.Printf("DialogFlow received message to process")
-	// Map query to a function call
-
-	if msg.Data == "Hello Flume!" {
-		msg.Data = "Hello World response"
-	}
-
-	element := mashupsdk.MashupDetailedElement{
-		Name: "ChatGptQuery",
-		Id:   msg.Id,
-		Data: msg.Data,
-	}
-
-	DetailedElements := []*mashupsdk.MashupDetailedElement{}
-	DetailedElements = append(DetailedElements, &element)
-
-	log.Printf("Delivering mashup elements.\n")
-
-	_, upsertErr := gchatApp.GoogleChatContext.MashupContext.Client.UpsertElements(gchatApp.GoogleChatContext.MashupContext, //flumeworld.FlumeWorldContext.C
-		&mashupsdk.MashupDetailedElementBundle{
-			AuthToken:        " ", //client.GetServerAuthToken()
-			DetailedElements: DetailedElements,
-		})
-
-	if upsertErr != nil {
-		log.Printf("Element state initialization failure: %s\n", upsertErr.Error())
-	}
-
-	log.Printf("Mashup elements delivered.\n")
-}
-
-func ProcessDFResponse(msg *mashupsdk.MashupDetailedElement) {
-	log.Printf("DialogFlow received response from Flume to format")
-
+// Updates ID and returns value
+// id should match up with number of queries made by user
+func GetId() int64 {
+	id += 1
+	return id
 }

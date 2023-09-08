@@ -4,37 +4,40 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 
-	chat "google.golang.org/api/chat/v1"
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
-func InitGoogleChat() {
-	f := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
+// Prints out answer to google chat user and sets up google chat app
+// to ask another response
+// Once the google chat api is set up, should send response to
+// correct endpoint for google chat
+func ProcessGChatAnswer(msg *mashupsdk.MashupDetailedElement) {
+	log.Printf("Message is ready to send to Google Chat user")
+	var info [][]interface{}
 
-		var event chat.DeprecatedEvent
-		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		switch event.Type {
-		case "ADDED_TO_SPACE":
-			if event.Space.Type != "ROOM" {
-				break
-			}
-			fmt.Fprint(w, `{"text":"Google Chat App has been successfully added to this space!"}`)
-		case "MESSAGE":
-			// Send message to DialogFlow
-			fmt.Fprintf(w, `{"text": "you said %s"}`, event.Message.Text)
-		}
+	err := json.Unmarshal([]byte(msg.Data), &info)
+	if err != nil {
+		log.Println("Error in decoding data in recursiveBuildArgosies")
 	}
-	log.Fatal(http.ListenAndServe(":0", http.HandlerFunc(f)))
-}
 
-// https://medium.com/google-cloud/google-chat-bot-go-cc91c5311d7e
+	tenant := info[0][0]
+	enterpriseId := info[0][1]
+	error_msg := info[0][2]
+	err_time := info[0][3]
+	// Stack trace was empty, so skipping index of 4
+	snap_mode := info[0][5]
+	msg.Data = fmt.Sprintf("The tenant %v with enterprise ID %v is failing with error message %v at %v with snapshot mode %v", tenant, enterpriseId, error_msg, err_time, snap_mode)
+	fmt.Println(msg.Data)
+	element := mashupsdk.MashupDetailedElement{
+		Id:   msg.Id,
+		Name: "GChatAnswer",
+		Data: msg.Data,
+	}
+	offset := GetId()
+	if gchatApp.MashupDetailedElementLibrary == nil {
+		gchatApp.MashupDetailedElementLibrary = make(map[int64]*mashupsdk.MashupDetailedElement)
+	}
+	gchatApp.MashupDetailedElementLibrary[msg.Id+offset] = gchatApp.DetailedElements[0]
+	gchatApp.DetailedElements = []*mashupsdk.MashupDetailedElement{&element}
+}

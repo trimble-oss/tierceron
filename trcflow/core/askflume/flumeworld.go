@@ -1,12 +1,10 @@
-package askflumeserver
+package askflume
 
 import (
 	"log"
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
-	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
 
-	//sdk "github.com/trimble-oss/tierceron-nute/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/server"
 )
@@ -15,10 +13,6 @@ var Flumeworld FlumeWorldApp
 
 type WorldClientInitHandler struct {
 }
-
-// type MashupSdkApiHandler struct {
-// 	ChatHandler bool
-// }
 
 type FlumeHandler struct {
 }
@@ -50,21 +44,10 @@ func (msdk *FlumeHandler) GetElements() (*mashupsdk.MashupDetailedElementBundle,
 
 func (msdk *FlumeHandler) UpsertElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
 	log.Printf("Flume world received upsert elements: %v", detailedElementBundle)
-	// flows.GetGChatQuery(detailedElementBundle)
-	element := detailedElementBundle.DetailedElements[0]
-	element.Id = flowcore.GetId()
-	elements := []*mashupsdk.MashupDetailedElement{element}
-	Flumeworld.DetailedElements = elements
-	GetQuery(detailedElementBundle)
-	// Flumeworld.FlumeWorldContext.Client.UpsertElements(Flumeworld.FlumeWorldContext, &mashupsdk.MashupDetailedElementBundle{
-	// 	AuthToken:        " ",
-	// 	DetailedElements: Flumeworld.DetailedElements,
-	// })
-	// server.UpsertElements(flumeworld.FlumeWorldContext.Context, detailedElementBundle.AuthToken)
 
 	return &mashupsdk.MashupDetailedElementBundle{
 		AuthToken:        client.GetServerAuthToken(),
-		DetailedElements: elements,
+		DetailedElements: nil,
 	}, nil
 }
 

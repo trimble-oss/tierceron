@@ -27,9 +27,9 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
-	pluginConfig["address"] = "https://vault.whoboot.org:8200"
-	pluginConfig["vaddress"] = "https://vault.whoboot.org:8200"
-	pluginConfig["token"] = "s.QuTHJxhDYjNWnVB083no275G" //s.WkYK920xf4EougSqq3E77MA1
+	pluginConfig["address"] = "https://atvc.dexchadev.com:8305"
+	pluginConfig["vaddress"] = "https://atvc.dexchadev.com:8305"
+	pluginConfig["token"] = ""
 	pluginConfig["env"] = "dev"
 	pluginConfig["insecure"] = true
 
@@ -47,4 +47,6 @@ func main() {
 	}
 
 	trcflow.ProcessFlows(pluginConfig, logger)
+	wait := make(chan bool)
+	<-wait
 }
