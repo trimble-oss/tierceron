@@ -27,10 +27,11 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
-	//pluginConfig["vaddress"] = "vaultaddr"
-	//	pluginConfig["token"] = "INSERT TOKEN HERE"
+	pluginConfig["address"] = ""
+	pluginConfig["vaddress"] = ""
+	pluginConfig["token"] = ""
 	pluginConfig["env"] = "dev"
-	pluginConfig["insecure"] = false
+	pluginConfig["insecure"] = true
 
 	if memonly.IsMemonly() {
 		mlock.MunlockAll(nil)
@@ -46,4 +47,6 @@ func main() {
 	}
 
 	trcflow.ProcessFlows(pluginConfig, logger)
+	wait := make(chan bool)
+	<-wait
 }
