@@ -27,8 +27,8 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
-	pluginConfig["address"] = "https://atvc.dexchadev.com:8305"
-	pluginConfig["vaddress"] = "https://atvc.dexchadev.com:8305"
+	pluginConfig["address"] = ""
+	pluginConfig["vaddress"] = ""
 	pluginConfig["token"] = ""
 	pluginConfig["env"] = "dev"
 	pluginConfig["insecure"] = true

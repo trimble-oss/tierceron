@@ -2,6 +2,7 @@ package flumen
 
 import (
 	"errors"
+	"io"
 	"log"
 	"strconv"
 	"strings"
@@ -223,17 +224,17 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			eUtils.LogErrorObject(config, err, false)
 			return err
 		}
-	}
 
-	//tfmContext.ExtensionAuthData, _, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
-	// if err != nil {
-	// 	eUtils.LogErrorObject(config, err, false)
-	// 	//return err
-	// }
-	// // Set up reloader in case things go sideways later on.
-	// tfmContext.ExtensionAuthDataReloader = make(map[string]interface{}, 1)
-	// tfmContext.ExtensionAuthDataReloader["config"] = config
-	// tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
+		tfmContext.ExtensionAuthData, _, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
+		if err != nil {
+			eUtils.LogErrorObject(config, err, false)
+			//return err
+		}
+		// Set up reloader in case things go sideways later on.
+		tfmContext.ExtensionAuthDataReloader = make(map[string]interface{}, 1)
+		tfmContext.ExtensionAuthDataReloader["config"] = config
+		tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
+	}
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
