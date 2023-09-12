@@ -227,6 +227,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 		type tokenWrapper struct {
 			Token      string `json:"token,omitempty"`
 			VAddress   string `json:"vaddress,omitempty"`
+			CAddress   string `json:"caddress,omitempty"`
 			Pubrole    string `json:"pubrole,omitempty"`
 			Configrole string `json:"configrole,omitempty"`
 			Kubeconfig string `json:"kubeconfig,omitempty"`
@@ -239,12 +240,14 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 		}
 		if memonly.IsMemonly() {
 			mlock.Mlock2(nil, &tokenConfig.VAddress)
+			mlock.Mlock2(nil, &tokenConfig.CAddress)
 			mlock.Mlock2(nil, &tokenConfig.Token)
 			mlock.Mlock2(nil, &tokenConfig.Pubrole)
 			mlock.Mlock2(nil, &tokenConfig.Configrole)
 			mlock.Mlock2(nil, &tokenConfig.Kubeconfig)
 		}
 		tokenMap["vaddress"] = tokenConfig.VAddress
+		tokenMap["caddress"] = tokenConfig.CAddress
 		tokenMap["token"] = tokenConfig.Token
 		tokenMap["pubrole"] = tokenConfig.Pubrole
 		tokenMap["configrole"] = tokenConfig.Configrole
@@ -254,7 +257,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 
 	// Update and lock each field that is provided...
 	if reqData != nil {
-		tokenNameSlice := []string{"vaddress", "token", "pubrole", "configrole", "kubeconfig"}
+		tokenNameSlice := []string{"vaddress", "caddress", "token", "pubrole", "configrole", "kubeconfig"}
 		for _, tokenName := range tokenNameSlice {
 			if token, tokenOk := reqData.GetOk(tokenName); tokenOk && token.(string) != "" {
 				tokenStr := token.(string)
@@ -296,6 +299,12 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	if !aOk || address.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing address.")
 		return errors.New("missing address")
+	}
+
+	caddress, aOk := pluginEnvConfig["caddress"]
+	if !aOk || caddress.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing certify address.")
+		return errors.New("missing certify address")
 	}
 
 	pubrole, pOk := pluginEnvConfig["pubrole"]
@@ -461,6 +470,12 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, errors.New("Vault Url required.")
 	}
 
+	if caddr, addressOk := data.GetOk("caddress"); addressOk {
+		tokenEnvMap["caddress"] = caddr.(string)
+	} else {
+		return nil, errors.New("Vault Certify Url required.")
+	}
+
 	tokenEnvMap["env"] = req.Path
 
 	// Check that some fields are given
@@ -534,7 +549,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			logger.Println("Creating modifier for env: " + req.Path)
 
 			// Plugins
-			mod, err := helperkv.NewModifier(true, tokenEnvMap["token"].(string), tokenEnvMap["vaddress"].(string), req.Path, nil, true, logger)
+			mod, err := helperkv.NewModifier(true, tokenEnvMap["token"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
 			if mod != nil {
 				defer mod.Release()
 			}
@@ -687,7 +702,11 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 				},
 				"vaddress": {
 					Type:        framework.TypeString,
-					Description: "Vaurl Url for plugin reference purposes.",
+					Description: "Vault Url for plugin reference purposes.",
+				},
+				"caddress": {
+					Type:        framework.TypeString,
+					Description: "Vault Url for plugin certification purposes.",
 				},
 				"plugin": {
 					Type:        framework.TypeString,

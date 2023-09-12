@@ -154,6 +154,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		Log:          config.Log,
 	}
 
+	// Need to create askflumeflow template --> fill with default vals
 	templateList := pluginConfig["templatePath"].([]string)
 	flowTemplateMap := map[string]string{}
 	flowSourceMap := map[string]string{}
@@ -214,24 +215,26 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// 1. Auth -- Auth is provided by the external library.
 	// 2. Get json by Api call.
 	extensionAuthComponents := buildopts.GetExtensionAuthComponents(trcIdentityConfig)
-	httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
-	if httpClient != nil {
-		defer httpClient.CloseIdleConnections()
-	}
-	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
-		return err
-	}
+	if len(extensionAuthComponents) > 0 {
+		httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
+		if httpClient != nil {
+			defer httpClient.CloseIdleConnections()
+		}
+		if err != nil {
+			eUtils.LogErrorObject(config, err, false)
+			return err
+		}
 
-	tfmContext.ExtensionAuthData, _, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
-	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
-		//return err
+		tfmContext.ExtensionAuthData, _, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
+		if err != nil {
+			eUtils.LogErrorObject(config, err, false)
+			//return err
+		}
+		// Set up reloader in case things go sideways later on.
+		tfmContext.ExtensionAuthDataReloader = make(map[string]interface{}, 1)
+		tfmContext.ExtensionAuthDataReloader["config"] = config
+		tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
 	}
-	// Set up reloader in case things go sideways later on.
-	tfmContext.ExtensionAuthDataReloader = make(map[string]interface{}, 1)
-	tfmContext.ExtensionAuthDataReloader["config"] = config
-	tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
