@@ -505,7 +505,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			}
 
 			// Plugins
-			mod, err := helperkv.NewModifier(true, token.(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger) //atvc -> needs to go to azure
+			mod, err := helperkv.NewModifier(true, token.(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
 			if mod != nil {
 				defer mod.Release()
 			}
