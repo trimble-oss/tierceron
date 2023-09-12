@@ -177,6 +177,6 @@ vault secrets enable \
 
 #Activates/starts the deployed plugin.
 # Note: plugin should update deployed flag for itself.
-vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR
+vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR
 
 vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME
