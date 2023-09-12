@@ -530,7 +530,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				return logical.ErrorResponse("Failed to read previous plugin sha from vault"), nil
 			}
 			cMod.Close()
-			mod, err := helperkv.NewModifier(true, token.(string), tokenEnvMap["vaddress"].(string), req.Path, nil, true, logger) //Might not be used
+			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, true, logger) //Might not be used
 			if mod != nil {
 				defer mod.Release()
 			}
