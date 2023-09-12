@@ -529,6 +529,16 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				logger.Println("Failed to read previous plugin sha from vault")
 				return logical.ErrorResponse("Failed to read previous plugin sha from vault"), nil
 			}
+			mod, err = helperkv.NewModifier(true, token.(string), tokenEnvMap["vaddress"].(string), req.Path, nil, true, logger)
+			if mod != nil {
+				defer mod.Release()
+			}
+			if err != nil {
+				logger.Println("Failed to init mod for deploy update")
+				//ctx.Done()
+				logger.Println("Error: " + err.Error())
+				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
+			}
 		}
 	}
 
