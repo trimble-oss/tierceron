@@ -489,10 +489,25 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				vaultHost = vaultHost + ":" + GetVaultPort()
 			}
 
+			if caddr, addressOk := data.GetOk("caddress"); addressOk {
+				vaultUrl, err := url.Parse(caddr.(string))
+				if err == nil {
+					cVaultPort := vaultUrl.Port()
+					tokenEnvMap["caddress"] = vaultUrl.Host + cVaultPort
+				}
+			} else {
+				return nil, errors.New("Certification Vault Url required.")
+			}
+
+			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
+				// Missing port.
+				vaultHost = vaultHost + ":" + GetVaultPort()
+			}
+
 			// Plugins
-			mod, err := helperkv.NewModifier(true, token.(string), vaultHost, req.Path, nil, true, logger)
-			if mod != nil {
-				defer mod.Release()
+			cMod, err := helperkv.NewModifier(true, token.(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
+			if cMod != nil {
+				defer cMod.Release()
 			}
 			if err != nil {
 				logger.Println("Failed to init mod for deploy update")
@@ -500,9 +515,9 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
 			}
-			mod.Env = req.Path
+			cMod.Env = req.Path
 			logger.Println("TrcUpdate getting plugin settings for env: " + req.Path)
-			writeMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
+			writeMap, err := cMod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
 			if err != nil {
 				logger.Println("Failed to read previous plugin status from vault")
 				logger.Println("Error: " + err.Error())
@@ -514,6 +529,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				logger.Println("Failed to read previous plugin sha from vault")
 				return logical.ErrorResponse("Failed to read previous plugin sha from vault"), nil
 			}
+			cMod.Close()
 		}
 	}
 
