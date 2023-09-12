@@ -95,4 +95,10 @@ ttdiserver:
 ttdivisualizer:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/ttdivisualizer -tags "insecure g3nboot argosy tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/trcgorillaz/ttdivisualizer	
 
+askflume:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/trcchatproxy -tags "insecure tc" github.com/trimble-oss/tierceron/trcchatproxy
+
+askflumeserver:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/trcchatserver -tags "insecure tc" github.com/trimble-oss/tierceron/trcflow
+
 all: api config devplugintrcdb config seed x xlib pub sub
