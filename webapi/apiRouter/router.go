@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 	twp "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 	"github.com/trimble-oss/tierceron/webapi/server"
 
@@ -194,7 +194,7 @@ func main() {
 	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	eUtils.CheckError(config, err, true)
 	s.Log.SetOutput(f)
-	mlock.Mlock(s.Log)
+	memprotectopts.MemProtectInit(nil)
 
 	status, err := s.GetStatus(context.Background(), nil)
 	eUtils.LogErrorObject(config, err, true)

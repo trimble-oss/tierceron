@@ -12,10 +12,10 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -82,14 +82,14 @@ func CommonMain(envPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
 	tokenNamePtr *string,
+	regionPtr *string,
 	c *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
-		mlock.Mlock(nil)
+		memprotectopts.MemProtectInit(nil)
 	}
 
 	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
 	endDirPtr := flag.String("endDir", ".", "Directory to put configured templates into")
-	regionPtr := flag.String("region", "", "Region to configure")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
@@ -338,8 +338,8 @@ func CommonMain(envPtr *string,
 				*envPtr = envVersion[0] + "_0"
 			}
 			if memonly.IsMemonly() {
-				mlock.MunlockAll(nil)
-				mlock.Mlock2(nil, tokenPtr)
+				memprotectopts.MemUnprotectAll(nil)
+				memprotectopts.MemProtect(nil, tokenPtr)
 			}
 
 			config := eUtils.DriverConfig{
@@ -377,8 +377,8 @@ func CommonMain(envPtr *string,
 		}
 	} else {
 		if memonly.IsMemonly() {
-			mlock.MunlockAll(nil)
-			mlock.Mlock2(nil, tokenPtr)
+			memprotectopts.MemUnprotectAll(nil)
+			memprotectopts.MemProtect(nil, tokenPtr)
 		}
 
 		if *templateInfoPtr {
