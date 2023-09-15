@@ -5,11 +5,11 @@ import (
 	"log"
 	"os"
 
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/testopts"
 	trcflow "github.com/trimble-oss/tierceron/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This executable automates the creation of seed files from template file(s).
@@ -27,23 +27,26 @@ func main() {
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
-	//pluginConfig["vaddress"] = "vaultaddr"
-	//	pluginConfig["token"] = "INSERT TOKEN HERE"
+	pluginConfig["address"] = ""
+	pluginConfig["vaddress"] = ""
+	pluginConfig["token"] = ""
 	pluginConfig["env"] = "dev"
-	pluginConfig["insecure"] = false
+	pluginConfig["insecure"] = true
 
 	if memonly.IsMemonly() {
-		mlock.MunlockAll(nil)
+		memprotectopts.MemUnprotectAll(nil)
 		for _, value := range pluginConfig {
 			if valueSlice, isValueSlice := value.([]string); isValueSlice {
 				for _, valueEntry := range valueSlice {
-					mlock.Mlock2(nil, &valueEntry)
+					memprotectopts.MemProtect(nil, &valueEntry)
 				}
 			} else if valueString, isValueString := value.(string); isValueString {
-				mlock.Mlock2(nil, &valueString)
+				memprotectopts.MemProtect(nil, &valueString)
 			}
 		}
 	}
 
 	trcflow.ProcessFlows(pluginConfig, logger)
+	wait := make(chan bool)
+	<-wait
 }

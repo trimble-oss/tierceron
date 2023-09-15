@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose
@@ -15,7 +15,7 @@ import (
 
 func main() {
 	if memonly.IsMemonly() {
-		mlock.Mlock(nil)
+		memprotectopts.MemProtectInit(nil)
 	}
 	fmt.Println("Version: " + "1.26")
 	envPtr := flag.String("env", "dev", "Environment to configure")

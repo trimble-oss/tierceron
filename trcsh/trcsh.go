@@ -15,6 +15,7 @@ import (
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	"github.com/trimble-oss/tierceron/trcpubbase"
 	kube "github.com/trimble-oss/tierceron/trcsh/kube/native"
@@ -22,7 +23,6 @@ import (
 	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
@@ -31,7 +31,7 @@ import (
 // The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
 func main() {
 	if memonly.IsMemonly() {
-		mlock.Mlock(nil)
+		memprotectopts.MemProtectInit(nil)
 	}
 	eUtils.InitHeadless(true)
 	fmt.Println("trcsh Version: " + "1.11")
@@ -64,8 +64,8 @@ func main() {
 		*secretIDPtr = os.Getenv("DEPLOY_SECRET")
 	}
 
-	mlock.Mlock2(nil, secretIDPtr)
-	mlock.Mlock2(nil, appRoleIDPtr)
+	memprotectopts.MemProtect(nil, secretIDPtr)
+	memprotectopts.MemProtect(nil, appRoleIDPtr)
 
 	//Open deploy script and parse it.
 	ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
@@ -147,6 +147,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 	// 	}
 	trcshConfig, err := trcshauth.TrcshAuth(config)
 	if err != nil {
+		fmt.Println("Tierceron bootstrap failure.")
 		logger.Println(err)
 		os.Exit(-1)
 	}
