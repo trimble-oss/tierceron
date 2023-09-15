@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/trcvault/factory"
 	memonly "github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
@@ -51,7 +51,7 @@ func main() {
 	}()
 
 	factory.Init(buildopts.ProcessPluginEnvConfig, flumen.ProcessFlows, true, logger)
-	mlock.Mlock(logger)
+	memprotectopts.MemProtectInit(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()

@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	il "github.com/trimble-oss/tierceron/trcinit/initlib"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
@@ -30,7 +30,7 @@ func CommonMain(envPtr *string,
 	tokenNamePtr *string,
 	c *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
-		mlock.Mlock(nil)
+		memprotectopts.MemProtectInit(nil)
 	}
 	dirPtr := flag.String("dir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
