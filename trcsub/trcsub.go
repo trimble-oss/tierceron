@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcsubbase"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // Reads in template files in specified directory
@@ -17,7 +17,7 @@ import (
 
 func main() {
 	if memonly.IsMemonly() {
-		mlock.Mlock(nil)
+		memprotectopts.MemProtectInit(nil)
 	}
 	fmt.Println("Version: " + "1.26")
 	envPtr := flag.String("env", "dev", "Environment to configure")

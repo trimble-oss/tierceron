@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -377,36 +377,36 @@ retryVaultAccess:
 				if dataValuesSlice, isSlice := dataValues.([]interface{}); isSlice {
 					for _, dataValues := range dataValuesSlice {
 						if dataValueString, isString := dataValues.(string); isString {
-							mlock.Mlock2(nil, &dataValueString)
+							memprotectopts.MemProtect(nil, &dataValueString)
 						} else if _, isBool := dataValues.(bool); isBool {
-							//mlock.Mlock2(nil, &dataValueString)
+							//memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept bools.
 						} else if _, isInt64 := dataValues.(int64); isInt64 {
-							//mlock.Mlock2(nil, &dataValueString)
+							//memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept int64.
 						} else if _, isInt := dataValues.(int); isInt {
-							//mlock.Mlock2(nil, &dataValueString)
+							//memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept int.
 						} else if _, isNumber := dataValues.(json.Number); isNumber {
-							//mlock.Mlock2(nil, &dataValueString)
+							//memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept json.Number.
 						} else {
 							return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. Nested. %T", dataValues))
 						}
 					}
 				} else if dataValueString, isString := dataValues.(string); isString {
-					mlock.Mlock2(nil, &dataValueString)
+					memprotectopts.MemProtect(nil, &dataValueString)
 				} else if _, isBool := dataValues.(bool); isBool {
-					//mlock.Mlock2(nil, &dataValueString)
+					//memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept bools.
 				} else if _, isInt64 := dataValues.(int64); isInt64 {
-					//mlock.Mlock2(nil, &dataValueString)
+					//memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept int64.
 				} else if _, isInt := dataValues.(int); isInt {
-					//mlock.Mlock2(nil, &dataValueString)
+					//memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept int.
 				} else if _, isNumber := dataValues.(json.Number); isNumber {
-					//mlock.Mlock2(nil, &dataValueString)
+					//memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept json.Number.
 				} else {
 					return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. %T", dataValues))
