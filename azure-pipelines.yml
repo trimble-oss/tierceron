@@ -76,7 +76,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.21.0'
+    version: '1.21.1'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -129,7 +129,7 @@ steps:
     done
 
     echo "Compile Windows"
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc" github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "tc memonly windows vaultname" -ldflags '-w' -tags "tc" github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then

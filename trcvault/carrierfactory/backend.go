@@ -11,11 +11,11 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
@@ -239,12 +239,12 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 			return nil, decodeErr
 		}
 		if memonly.IsMemonly() {
-			mlock.Mlock2(nil, &tokenConfig.VAddress)
-			mlock.Mlock2(nil, &tokenConfig.CAddress)
-			mlock.Mlock2(nil, &tokenConfig.Token)
-			mlock.Mlock2(nil, &tokenConfig.Pubrole)
-			mlock.Mlock2(nil, &tokenConfig.Configrole)
-			mlock.Mlock2(nil, &tokenConfig.Kubeconfig)
+			memprotectopts.MemProtect(nil, &tokenConfig.VAddress)
+			memprotectopts.MemProtect(nil, &tokenConfig.CAddress)
+			memprotectopts.MemProtect(nil, &tokenConfig.Token)
+			memprotectopts.MemProtect(nil, &tokenConfig.Pubrole)
+			memprotectopts.MemProtect(nil, &tokenConfig.Configrole)
+			memprotectopts.MemProtect(nil, &tokenConfig.Kubeconfig)
 		}
 		tokenMap["vaddress"] = tokenConfig.VAddress
 		tokenMap["caddress"] = tokenConfig.CAddress
@@ -262,7 +262,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 			if token, tokenOk := reqData.GetOk(tokenName); tokenOk && token.(string) != "" {
 				tokenStr := token.(string)
 				if memonly.IsMemonly() {
-					mlock.Mlock2(nil, &tokenStr)
+					memprotectopts.MemProtect(nil, &tokenStr)
 				}
 				tokenMap[tokenName] = tokenStr
 			}
@@ -330,12 +330,12 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		for _, value := range pluginEnvConfig {
 			if valueSlice, isValueSlice := value.([]string); isValueSlice {
 				for _, valueEntry := range valueSlice {
-					mlock.Mlock2(nil, &valueEntry)
+					memprotectopts.MemProtect(nil, &valueEntry)
 				}
 			} else if valueString, isValueString := value.(string); isValueString {
-				mlock.Mlock2(nil, &valueString)
+				memprotectopts.MemProtect(nil, &valueString)
 			} else if _, isBool := value.(bool); isBool {
-				// mlock.Mlock2(nil, &valueString)
+				// memprotectopts.MemProtect(nil, &valueString)
 				// TODO: no need to lock bools
 			}
 		}
@@ -364,7 +364,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 	logger.Println("TrcCarrierInitialize begun.")
 	if memonly.IsMemonly() {
 		logger.Println("Unlocking everything.")
-		mlock.MunlockAll(nil)
+		memprotectopts.MemUnprotectAll(nil)
 	}
 	queuedEnvironments := environments
 	if prod.IsProd() {
