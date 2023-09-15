@@ -19,7 +19,7 @@ require (
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	github.com/xo/dburl v0.9.0
 	golang.org/x/crypto v0.11.0
-	golang.org/x/sys v0.10.0
+	golang.org/x/sys v0.12.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -61,6 +61,8 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
+	github.com/awnumar/memcall v0.1.2 // indirect
+	github.com/awnumar/memguard v0.22.3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -268,6 +270,6 @@ replace k8s.io/client-go v0.26.1 => ../client-go
 
 replace k8s.io/cli-runtime v0.26.1 => ../cli-runtime
 
-replace k8s.io/kubectl v0.26.1 => ../kubectl    
+replace k8s.io/kubectl v0.26.1 => ../kubectl
 
 replace k8s.io/api v0.26.1 => k8s.io/api v0.0.0-20230228090259-b5b22ca1babf
