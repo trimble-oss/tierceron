@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	trcinitbase "github.com/trimble-oss/tierceron/trcinitbase"
 	"github.com/trimble-oss/tierceron/trcpubbase"
@@ -16,7 +17,6 @@ import (
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcx/xutil"
 	"github.com/trimble-oss/tierceron/trcxbase"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 const configDir = "/.tierceron/config.yml"
@@ -26,7 +26,7 @@ const envContextPrefix = "envContext: "
 // The swiss army knife of tierceron if you will.
 func main() {
 	if memonly.IsMemonly() {
-		mlock.Mlock(nil)
+		memprotectopts.MemProtectInit(nil)
 	}
 	fmt.Println("Version: " + "1.34")
 	envPtr := flag.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.

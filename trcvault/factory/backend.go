@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
@@ -231,17 +231,17 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	logger.Println("Begin processFlows for env: " + env.(string))
 	if memonly.IsMemonly() {
 		logger.Println("Unlocking everything.")
-		mlock.MunlockAll(nil)
+		memprotectopts.MemUnprotectAll(nil)
 		for _, environmentConfig := range environmentConfigs {
 			for _, value := range environmentConfig.(map[string]interface{}) {
 				if valueSlice, isValueSlice := value.([]string); isValueSlice {
 					for _, valueEntry := range valueSlice {
-						mlock.Mlock2(nil, &valueEntry)
+						memprotectopts.MemProtect(nil, &valueEntry)
 					}
 				} else if valueString, isValueString := value.(string); isValueString {
-					mlock.Mlock2(nil, &valueString)
+					memprotectopts.MemProtect(nil, &valueString)
 				} else if _, isBool := value.(bool); isBool {
-					// mlock.Mlock2(nil, &valueString)
+					// memprotectopts.MemProtect(nil, &valueString)
 					// TODO: no need to lock bools
 				}
 			}

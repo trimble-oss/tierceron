@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
@@ -289,8 +289,8 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	}
 
 	if memonly.IsMemonly() {
-		mlock.MunlockAll(nil)
-		mlock.Mlock2(nil, tokenPtr)
+		memprotectopts.MemUnprotectAll(nil)
+		memprotectopts.MemProtect(nil, tokenPtr)
 	}
 
 	//Duplicate env check

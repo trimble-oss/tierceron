@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron-hat/cap"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -160,7 +160,7 @@ func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
 	if err != nil {
 		return trcshConfig, err
 	}
-	mlock.Mlock2(nil, &trcshConfig.KubeConfig)
+	memprotectopts.MemProtect(nil, &trcshConfig.KubeConfig)
 
 	fmt.Println("Auth phase 2")
 	addr, vAddressErr := PenseQuery("vaddress")
@@ -182,21 +182,21 @@ func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
 	}
 
 	config.VaultAddress = addr
-	mlock.Mlock2(nil, &config.VaultAddress)
+	memprotectopts.MemProtect(nil, &config.VaultAddress)
 
 	fmt.Println("Auth phase 3")
 	trcshConfig.ConfigRole, err = PenseQuery("configrole")
 	if err != nil {
 		return trcshConfig, err
 	}
-	mlock.Mlock2(nil, &trcshConfig.ConfigRole)
+	memprotectopts.MemProtect(nil, &trcshConfig.ConfigRole)
 
 	fmt.Println("Auth phase 4")
 	trcshConfig.PubRole, err = PenseQuery("pubrole")
 	if err != nil {
 		return trcshConfig, err
 	}
-	mlock.Mlock2(nil, &trcshConfig.PubRole)
+	memprotectopts.MemProtect(nil, &trcshConfig.PubRole)
 	fmt.Println("Auth complete.")
 
 	return trcshConfig, err
