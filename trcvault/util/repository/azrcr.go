@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -36,7 +35,9 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
-			log.Fatalf("failed to advance page for tags: %v", err)
+			config.Log.Printf("Failed to advance page for tags: %v", err)
+			return err
+
 		}
 		for _, v := range page.Tags {
 			latestTag = *v.Name //Always only returns 1 tag due to MaxNum being set
@@ -92,22 +93,22 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 	}
 	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), svc, nil)
 	if err != nil {
-		log.Fatalf("failed to create blob client: %v", err)
+		return errors.New("Failed to create blob client:" + err.Error())
 	}
 
 	configRes, err := blobClient.GetBlob(context.Background(), pluginToolConfig["trcplugin"].(string), pluginToolConfig["layerDigest"].(string), nil)
 	if err != nil {
-		log.Fatalf("failed to get config: %v", err)
+		return errors.New("Failed to get config:" + err.Error())
 	}
 
 	reader, readErr := azcontainerregistry.NewDigestValidationReader(pluginToolConfig["layerDigest"].(string), configRes.BlobData)
 	if readErr != nil {
-		log.Fatalf("failed to create validation reader: %v", readErr)
+		return errors.New("Failed to create validation reader" + readErr.Error())
 	}
 
 	layerData, configErr := io.ReadAll(reader)
 	if configErr != nil {
-		log.Fatalf("failed to read config data: %v", configErr)
+		return errors.New("Failed to read config data:" + configErr.Error())
 	}
 
 	pluginTarredData, gUnZipError := gUnZipData(layerData)
