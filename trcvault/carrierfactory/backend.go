@@ -11,11 +11,11 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
@@ -227,6 +227,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 		type tokenWrapper struct {
 			Token      string `json:"token,omitempty"`
 			VAddress   string `json:"vaddress,omitempty"`
+			CAddress   string `json:"caddress,omitempty"`
 			Pubrole    string `json:"pubrole,omitempty"`
 			Configrole string `json:"configrole,omitempty"`
 			Kubeconfig string `json:"kubeconfig,omitempty"`
@@ -238,13 +239,15 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 			return nil, decodeErr
 		}
 		if memonly.IsMemonly() {
-			mlock.Mlock2(nil, &tokenConfig.VAddress)
-			mlock.Mlock2(nil, &tokenConfig.Token)
-			mlock.Mlock2(nil, &tokenConfig.Pubrole)
-			mlock.Mlock2(nil, &tokenConfig.Configrole)
-			mlock.Mlock2(nil, &tokenConfig.Kubeconfig)
+			memprotectopts.MemProtect(nil, &tokenConfig.VAddress)
+			memprotectopts.MemProtect(nil, &tokenConfig.CAddress)
+			memprotectopts.MemProtect(nil, &tokenConfig.Token)
+			memprotectopts.MemProtect(nil, &tokenConfig.Pubrole)
+			memprotectopts.MemProtect(nil, &tokenConfig.Configrole)
+			memprotectopts.MemProtect(nil, &tokenConfig.Kubeconfig)
 		}
 		tokenMap["vaddress"] = tokenConfig.VAddress
+		tokenMap["caddress"] = tokenConfig.CAddress
 		tokenMap["token"] = tokenConfig.Token
 		tokenMap["pubrole"] = tokenConfig.Pubrole
 		tokenMap["configrole"] = tokenConfig.Configrole
@@ -254,12 +257,12 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 
 	// Update and lock each field that is provided...
 	if reqData != nil {
-		tokenNameSlice := []string{"vaddress", "token", "pubrole", "configrole", "kubeconfig"}
+		tokenNameSlice := []string{"vaddress", "caddress", "token", "pubrole", "configrole", "kubeconfig"}
 		for _, tokenName := range tokenNameSlice {
 			if token, tokenOk := reqData.GetOk(tokenName); tokenOk && token.(string) != "" {
 				tokenStr := token.(string)
 				if memonly.IsMemonly() {
-					mlock.Mlock2(nil, &tokenStr)
+					memprotectopts.MemProtect(nil, &tokenStr)
 				}
 				tokenMap[tokenName] = tokenStr
 			}
@@ -298,6 +301,12 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		return errors.New("missing address")
 	}
 
+	caddress, aOk := pluginEnvConfig["caddress"]
+	if !aOk || caddress.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing certify address.")
+		return errors.New("missing certify address")
+	}
+
 	pubrole, pOk := pluginEnvConfig["pubrole"]
 	if !pOk || pubrole.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing pub role.")
@@ -321,12 +330,12 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		for _, value := range pluginEnvConfig {
 			if valueSlice, isValueSlice := value.([]string); isValueSlice {
 				for _, valueEntry := range valueSlice {
-					mlock.Mlock2(nil, &valueEntry)
+					memprotectopts.MemProtect(nil, &valueEntry)
 				}
 			} else if valueString, isValueString := value.(string); isValueString {
-				mlock.Mlock2(nil, &valueString)
+				memprotectopts.MemProtect(nil, &valueString)
 			} else if _, isBool := value.(bool); isBool {
-				// mlock.Mlock2(nil, &valueString)
+				// memprotectopts.MemProtect(nil, &valueString)
 				// TODO: no need to lock bools
 			}
 		}
@@ -355,7 +364,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 	logger.Println("TrcCarrierInitialize begun.")
 	if memonly.IsMemonly() {
 		logger.Println("Unlocking everything.")
-		mlock.MunlockAll(nil)
+		memprotectopts.MemUnprotectAll(nil)
 	}
 	queuedEnvironments := environments
 	if prod.IsProd() {
@@ -461,6 +470,12 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, errors.New("Vault Url required.")
 	}
 
+	if caddr, addressOk := data.GetOk("caddress"); addressOk {
+		tokenEnvMap["caddress"] = caddr.(string)
+	} else {
+		return nil, errors.New("Vault Certify Url required.")
+	}
+
 	tokenEnvMap["env"] = req.Path
 
 	// Check that some fields are given
@@ -534,7 +549,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			logger.Println("Creating modifier for env: " + req.Path)
 
 			// Plugins
-			mod, err := helperkv.NewModifier(true, tokenEnvMap["token"].(string), tokenEnvMap["vaddress"].(string), req.Path, nil, true, logger)
+			mod, err := helperkv.NewModifier(true, tokenEnvMap["token"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
 			if mod != nil {
 				defer mod.Release()
 			}
@@ -687,7 +702,11 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 				},
 				"vaddress": {
 					Type:        framework.TypeString,
-					Description: "Vaurl Url for plugin reference purposes.",
+					Description: "Vault Url for plugin reference purposes.",
+				},
+				"caddress": {
+					Type:        framework.TypeString,
+					Description: "Vault Url for plugin certification purposes.",
 				},
 				"plugin": {
 					Type:        framework.TypeString,
