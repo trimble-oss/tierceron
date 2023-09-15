@@ -12,14 +12,13 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	il "github.com/trimble-oss/tierceron/trcinit/initlib"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 	"github.com/trimble-oss/tierceron/webapi/rpc/apinator"
-
-	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose
@@ -74,8 +73,8 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 	flag.Parse()
 	eUtils.CheckInitFlags()
 	if memonly.IsMemonly() {
-		mlock.MunlockAll(nil)
-		mlock.Mlock2(nil, tokenPtr)
+		memprotectopts.MemUnprotectAll(nil)
+		memprotectopts.MemProtect(nil, tokenPtr)
 	}
 
 	// Prints usage if no flags are specified
