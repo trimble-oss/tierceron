@@ -49,4 +49,4 @@ export VAULT_API_ADDR
 
 echo $VAULT_ADDR
 
-vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$SECRET_VAULT_ADDR pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
+vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
