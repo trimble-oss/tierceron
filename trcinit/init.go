@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	trcinitbase "github.com/trimble-oss/tierceron/trcinitbase"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose
@@ -14,7 +14,7 @@ import (
 
 func main() {
 	if memonly.IsMemonly() {
-		mlock.Mlock(nil)
+		memprotectopts.MemProtectInit(nil)
 	}
 	fmt.Println("Version: " + "1.34")
 	envPtr := flag.String("env", "dev", "Environment to be seeded")
