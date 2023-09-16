@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -179,6 +178,8 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	if vaultPluginSignature["trctype"] == "agent" {
 		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
+	} else if vaultPluginSignature["trctype"] == "service" {
+		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
 	} else {
 		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string) + pluginExtension
 	}
@@ -221,7 +222,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			vaultPluginSignature["imagesha256"] = "invalidurl"
 		}
 		if vaultPluginSignature["imagesha256"] == vaultPluginSignature["trcsha256"] { //Sha256 from download matches in vault
-			err = ioutil.WriteFile(agentPath, vaultPluginSignature["rawImageFile"].([]byte), 0644)
+			err = os.WriteFile(agentPath, vaultPluginSignature["rawImageFile"].([]byte), 0644)
 			vaultPluginSignature["rawImageFile"] = nil
 
 			if err != nil {

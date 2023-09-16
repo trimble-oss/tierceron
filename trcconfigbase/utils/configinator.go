@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -490,7 +489,7 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 }
 
 func getDirFiles(dir string, endDir string) ([]string, []string) {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	filePaths := []string{}
 	endPaths := []string{}
 	if err != nil {

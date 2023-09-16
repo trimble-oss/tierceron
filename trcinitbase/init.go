@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -598,7 +597,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			fmt.Printf("Role ID: %s\n", roleID)
 			fmt.Printf("Secret ID: %s\n", secretID)
 
-			files, err := ioutil.ReadDir(namespaceAppRolePolicies)
+			files, err := os.ReadDir(namespaceAppRolePolicies)
 			appRolePolicies := []string{}
 			isPolicy := true
 			if err == nil {

@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"text/template"
 
@@ -146,7 +146,7 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 
 		template = string(templateBytes)
 	} else {
-		emptyTemplate, err := ioutil.ReadFile(emptyFilePath)
+		emptyTemplate, err := os.ReadFile(emptyFilePath)
 		eUtils.CheckError(config, err, true)
 		template = string(emptyTemplate)
 	}
@@ -214,7 +214,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 	if config.Token != "novault" {
 		cds.Init(config, modifier, secretMode, true, project, nil, service)
 	} else {
-		rawFile, err := ioutil.ReadFile(strings.Split(config.StartDir[0], coreopts.GetFolderPrefix(config.StartDir)+"_")[0] + coreopts.GetFolderPrefix(config.StartDir) + "_seeds/" + config.EnvRaw + "/" + config.Env + "_seed.yml")
+		rawFile, err := os.ReadFile(strings.Split(config.StartDir[0], coreopts.GetFolderPrefix(config.StartDir)+"_")[0] + coreopts.GetFolderPrefix(config.StartDir) + "_seeds/" + config.EnvRaw + "/" + config.Env + "_seed.yml")
 		if err != nil {
 			eUtils.LogErrorObject(config, errors.New("Unable to open seed file for -novault"), false)
 		}
