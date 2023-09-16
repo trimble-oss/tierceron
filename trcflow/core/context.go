@@ -40,7 +40,6 @@ import (
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
-	sqles "github.com/dolthub/go-mysql-server/sql"
 )
 
 type FlowType int64
@@ -1043,7 +1042,7 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 
 	if !tableOk {
 		// This is cacheable...
-		tableSchema := sqles.NewPrimaryKeySchema([]*sqles.Column{})
+		tableSchema := sqle.NewPrimaryKeySchema([]*sqle.Column{})
 
 		columnKeys := []string{}
 
@@ -1059,7 +1058,7 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 		sort.Strings(columnKeys)
 
 		for _, columnKey := range columnKeys {
-			column := sqles.Column{Name: columnKey, Type: sqles.Text, Source: tfContext.Flow.TableName()}
+			column := sqle.Column{Name: columnKey, Type: sqle.Text, Source: tfContext.Flow.TableName()}
 			tableSchema.Schema = append(tableSchema.Schema, &column)
 		}
 
