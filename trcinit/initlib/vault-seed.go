@@ -19,7 +19,6 @@ import (
 	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/trcx/xutil"
 	"github.com/trimble-oss/tierceron/validator"
-	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	eUtils "github.com/trimble-oss/tierceron/utils"
@@ -41,7 +40,7 @@ type writeCollection struct {
 
 var templateWritten map[string]bool
 
-func GetTemplateParam(config *eUtils.DriverConfig, mod *kv.Modifier, filePath string, paramWanted string) (string, error) {
+func GetTemplateParam(config *eUtils.DriverConfig, mod *helperkv.Modifier, filePath string, paramWanted string) (string, error) {
 
 	templateEncoded, err := vcutils.GetTemplate(config, mod, filePath)
 	if err != nil {
@@ -512,16 +511,12 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 				fallthrough
 			case "dev":
 				certHost = strings.Replace(certHost, "*", "develop", 1)
-				break
 			case "QA":
 				certHost = strings.Replace(certHost, "*", "qa", 1)
-				break
 			case "auto":
 				certHost = strings.Replace(certHost, "*", "auto", 1)
-				break
 			case "performance":
 				certHost = strings.Replace(certHost, "*", "performance", 1)
-				break
 			}
 
 			opts := x509.VerifyOptions{
@@ -613,7 +608,6 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 		eUtils.LogInfo(config, "Missing expected cert at: "+certPath+".  Cert will not be loaded.")
 		return
 	}
-	return
 }
 
 // SeedVaultFromData takes file bytes and seeds the vault with contained data
@@ -646,7 +640,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 	}
 
 	seed, ok := rawYaml.(map[interface{}]interface{})
-	if ok == false {
+	if !ok {
 		return eUtils.LogAndSafeExit(config, "Invalid yaml file.  Refusing to continue.", 1)
 	}
 

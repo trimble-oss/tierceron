@@ -586,8 +586,6 @@ func (dfs *TTDINode) MapStatistic(data map[string]interface{}, logger *log.Logge
 		return
 	}
 	dfs.MashupDetailedElement.Data = string(newEncodedData)
-
-	return
 }
 
 func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
@@ -603,7 +601,7 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 				return readErr
 			}
 			if data == nil {
-				time.Sleep(1)
+				time.Sleep(1000)
 				data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN + "/" + stateCode.(string))
 				if readErr == nil && data == nil {
 					return nil

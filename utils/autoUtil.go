@@ -289,12 +289,13 @@ func AutoAuth(config *DriverConfig,
 		}
 
 		tokenNamePrefix := "config"
-		if appRoleConfig == "configpub.yml" {
+		switch appRoleConfig {
+		case "configpub.yml":
 			tokenNamePrefix = "vault_pub"
-		} else if appRoleConfig == "configdeploy.yml" {
+		case "configdeploy.yml":
 			tokenNamePrefix = "vault_token_deploy"
 			goto skipswitch
-		} else if appRoleConfig == "deployauth" {
+		case "deployauth":
 			tokenNamePrefix = "vault_token_azuredeploy"
 			goto skipswitch
 		}
@@ -360,13 +361,14 @@ func AutoAuth(config *DriverConfig,
 		}
 		mod.RawEnv = "bamboo"
 		mod.Env = "bamboo"
-		if appRoleConfig == "configpub.yml" {
+		switch appRoleConfig {
+		case "configpub.yml":
 			mod.RawEnv = "pub"
 			mod.Env = "pub"
-		} else if appRoleConfig == "configdeploy.yml" {
+		case "configdeploy.yml":
 			mod.RawEnv = "deploy"
 			mod.Env = "deploy"
-		} else if appRoleConfig == "deployauth" {
+		case "deployauth":
 			mod.RawEnv = "azuredeploy"
 			mod.Env = "azuredeploy"
 		}

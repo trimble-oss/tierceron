@@ -174,10 +174,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 		byteValue, _ := io.ReadAll(file)
 		token := api.TokenCreateRequest{}
 		yaml.Unmarshal(byteValue, &token)
-
-		for _, policy := range token.Policies {
-			tokenPolicies = append(tokenPolicies, policy)
-		}
+		tokenPolicies = append(tokenPolicies, token.Policies...)
 	}
 	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
 	response, err := v.client.RawRequest(r)
@@ -273,8 +270,8 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 						if response.StatusCode == 204 {
 							fmt.Println("Revoked token with policy: " + matchedPolicy)
 						} else {
-							fmt.Println(fmt.Sprintf("Failed with status: %s", response.Status))
-							fmt.Println(fmt.Sprintf("Failed with status code: %d", response.StatusCode))
+							fmt.Printf("Failed with status: %s\n", response.Status)
+							fmt.Printf("Failed with status code: %d\n", response.StatusCode)
 							return errors.New("Failure to revoke tokens")
 						}
 					}
@@ -291,7 +288,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 					log.Fatal(err)
 				}
 
-				fmt.Println(fmt.Sprintf("Tidy success status: %s", response.Status))
+				fmt.Printf("Tidy success status: %s\n", response.Status)
 
 				if response.StatusCode == 202 {
 					var tidyResponseMap map[string]interface{}
@@ -304,8 +301,8 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 						}
 					}
 				} else {
-					fmt.Println(fmt.Sprintf("Non critical tidy success failure: %s", response.Status))
-					fmt.Println(fmt.Sprintf("Non critical tidy success failure: %d", response.StatusCode))
+					fmt.Printf("Non critical tidy success failure: %s\n", response.Status)
+					fmt.Printf("Non critical tidy success failure: %d\n", response.StatusCode)
 				}
 			}
 		}
