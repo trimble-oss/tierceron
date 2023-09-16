@@ -226,7 +226,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 		}
 
 		seed, seedOk := rawYaml.(map[interface{}]interface{})
-		if seedOk == false {
+		if !seedOk {
 			eUtils.LogAndSafeExit(config, "Invalid yaml file.  Refusing to continue.", 1)
 		}
 		tempMap := make(map[string]interface{}, 0)
@@ -270,8 +270,8 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 
 		//Check if filename exists in values map
 
-		_, data := values[filename]
-		if data == false && !config.WantCerts {
+		_, hasData := values[filename]
+		if !hasData && !config.WantCerts {
 			eUtils.LogInfo(config, filename+" does not exist in values. Please check seed files to verify that folder structures are correct.")
 		}
 
@@ -295,10 +295,10 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 		if cert {
 			if serviceValues, ok := values[serviceLookup]; ok {
 				valueData := serviceValues.(map[string]interface{})
-				certDestPath, hasCertDefinition := valueData["certDestPath"].(interface{})
-				certSourcePath, hasCertSourcePath := valueData["certSourcePath"].(interface{})
-				certPasswordVaultPath, hasCertPasswordVaultPath := valueData["certPasswordVaultPath"].(interface{})
-				certBundleJks, hasCertBundleJks := valueData["certBundleJks"].(interface{})
+				certDestPath, hasCertDefinition := valueData["certDestPath"]
+				certSourcePath, hasCertSourcePath := valueData["certSourcePath"]
+				certPasswordVaultPath, hasCertPasswordVaultPath := valueData["certPasswordVaultPath"]
+				certBundleJks, hasCertBundleJks := valueData["certBundleJks"]
 
 				if hasCertDefinition && hasCertSourcePath {
 					if !ok {
@@ -307,7 +307,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 						return "", nil, vaultCertErr
 					}
 					certData[0] = certDestPath.(string)
-					data, ok := valueData["certData"].(interface{})
+					data, ok := valueData["certData"]
 					if !ok {
 						vaultCertErr := errors.New("No certData in config template section of seed for this service. Unable to generate: " + certDestPath.(string))
 						eUtils.LogInfo(config, vaultCertErr.Error())

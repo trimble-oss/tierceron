@@ -161,7 +161,7 @@ func (v *Vault) GetSecretID(roleName string) (string, error) {
 
 // GetListApproles lists available approles
 func (v *Vault) GetListApproles() (string, error) {
-	r := v.client.NewRequest("LIST", fmt.Sprintf("/v1/auth/approle/role"))
+	r := v.client.NewRequest("LIST", "/v1/auth/approle/role")
 	response, err := v.client.RawRequest(r)
 
 	if response != nil && response.Body != nil {

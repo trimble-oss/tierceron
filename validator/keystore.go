@@ -18,7 +18,6 @@ import (
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 
 	"github.com/youmark/pkcs8"
-	"golang.org/x/crypto/pkcs12"
 	pkcs "golang.org/x/crypto/pkcs12"
 	"golang.org/x/crypto/ssh"
 )
@@ -59,7 +58,7 @@ func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, c
 
 	block, _ := pem.Decode(data)
 	if block == nil {
-		key, cert, err := pkcs12.Decode(data, string(password)) // Note the order of the return values.
+		key, cert, err := pkcs.Decode(data, string(password)) // Note the order of the return values.
 		if err != nil {
 			return err
 		}
@@ -128,7 +127,8 @@ func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string)
 		//	certificateType = "CERTIFICATE"
 		//	privateKeyType  = "PRIVATE KEY"
 
-		if (*pemBlock).Type == certificateType {
+		switch (*pemBlock).Type {
+		case certificateType:
 			var cert x509.Certificate
 			_, errUnmarshal := asn1.Unmarshal((*pemBlock).Bytes, &cert)
 			if errUnmarshal != nil {
@@ -140,7 +140,7 @@ func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string)
 				eUtils.LogInfo(config, "Certificate validation failure.")
 			}
 			isValid = isCertValid
-		} else if (*pemBlock).Type == privateKeyType {
+		case privateKeyType:
 			var key rsa.PrivateKey
 			_, errUnmarshal := asn1.Unmarshal((*pemBlock).Bytes, &key)
 			if errUnmarshal != nil {

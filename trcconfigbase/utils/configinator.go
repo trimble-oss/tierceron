@@ -45,9 +45,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 
 		config.Env = envVersion[0]
 		version = envVersion[1]
-		if version == "versionInfo" {
+		switch version {
+		case "versionInfo":
 			versionInfo = true
-		} else if version == "templateInfo" {
+		case "templateInfo":
 			templateInfo = true
 		}
 	}

@@ -212,7 +212,6 @@ func confirmInput(ctx context.Context, req *logical.Request, reqData *framework.
 	} else {
 		return nil, errors.New("Unconfirmed")
 	}
-	return nil, tokenConfirmationErr
 }
 
 func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData, tokenEnvMap map[string]interface{}) (map[string]interface{}, error) {

@@ -21,6 +21,9 @@ import (
 
 func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
 	connInfo, err := mod.ReadData("apiLogins/meta")
+	if err != nil {
+		return false, "", err
+	}
 
 	var url, username, password string
 	url, ok := connInfo["sessionDB"].(string)
