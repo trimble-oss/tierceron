@@ -185,7 +185,7 @@ func confirmInput(ctx context.Context, req *logical.Request, reqData *framework.
 		if req != nil {
 			tokenEnvMap["env"] = req.Path
 		} else {
-			return nil, errors.New("Unable to determine env")
+			return nil, errors.New("unable to determine env")
 		}
 	}
 	logger.Println("Input validation for env: " + tokenEnvMap["env"].(string))
@@ -460,19 +460,19 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	if token, tokenOk := data.GetOk("token"); tokenOk {
 		tokenEnvMap["token"] = token
 	} else {
-		return nil, errors.New("Token required.")
+		return nil, errors.New("token required")
 	}
 
 	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
 		tokenEnvMap["vaddress"] = vaddr.(string)
 	} else {
-		return nil, errors.New("Vault Url required.")
+		return nil, errors.New("vault Url required")
 	}
 
 	if caddr, addressOk := data.GetOk("caddress"); addressOk {
 		tokenEnvMap["caddress"] = caddr.(string)
 	} else {
-		return nil, errors.New("Vault Certify Url required.")
+		return nil, errors.New("vault Certify Url required")
 	}
 
 	tokenEnvMap["env"] = req.Path
@@ -601,7 +601,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 		// Path includes Env and token will only work if it has right permissions.
 		if tokenEnvMap, tokenParseDataErr = confirmInput(ctx, req, reqData, tokenEnvMap); tokenParseDataErr != nil {
 			// Bad or corrupt data in vault.
-			return nil, errors.New("Input data validation error.")
+			return nil, errors.New("input data validation error")
 		}
 
 		logger.Println("TrcCarrierUpdate merging tokens.")

@@ -28,15 +28,15 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 	var url, username, password string
 	url, ok := connInfo["sessionDB"].(string)
 	if !ok {
-		return false, "", fmt.Errorf("Database connection not a string or not found")
+		return false, "", fmt.Errorf("database connection not a string or not found")
 	}
 	username, ok = connInfo["user"].(string)
 	if !ok {
-		return false, "", fmt.Errorf("Username connection not a string or not found")
+		return false, "", fmt.Errorf("username connection not a string or not found")
 	}
 	password, ok = connInfo["pass"].(string)
 	if !ok {
-		return false, "", fmt.Errorf("Password connection not a string or not found")
+		return false, "", fmt.Errorf("password connection not a string or not found")
 	}
 
 	driver, server, port, dbname, parseError := parseURL(config, url)
@@ -69,15 +69,15 @@ func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]m
 	var url, username, password string
 	url, ok := connInfo["sessionDB"].(string)
 	if !ok {
-		return nil, fmt.Errorf("Database connection not a string or not found")
+		return nil, fmt.Errorf("database connection not a string or not found")
 	}
 	username, ok = connInfo["user"].(string)
 	if !ok {
-		return nil, fmt.Errorf("Username connection not a string or not found")
+		return nil, fmt.Errorf("username connection not a string or not found")
 	}
 	password, ok = connInfo["pass"].(string)
 	if !ok {
-		return nil, fmt.Errorf("Password connection not a string or not found")
+		return nil, fmt.Errorf("password connection not a string or not found")
 	}
 
 	driver, server, port, dbname, parseError := parseURL(config, url)

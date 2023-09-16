@@ -41,10 +41,10 @@ func verify(config *eUtils.DriverConfig, mod *helperkv.Modifier, v map[interface
 						isValid, err = validator.Heartbeat(config, url, user, pass)
 						eUtils.LogErrorObject(config, err, false)
 					} else {
-						eUtils.LogErrorObject(config, fmt.Errorf("Password field is not a string value"), false)
+						eUtils.LogErrorObject(config, fmt.Errorf("password field is not a string value"), false)
 					}
 				} else {
-					eUtils.LogErrorObject(config, fmt.Errorf("Username field is not a string value"), false)
+					eUtils.LogErrorObject(config, fmt.Errorf("username field is not a string value"), false)
 				}
 			} else {
 				eUtils.LogErrorObject(config, fmt.Errorf("URL field is not a string value"), false)
