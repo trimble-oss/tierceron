@@ -9,7 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -113,7 +113,7 @@ func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, c
 
 // ValidateKeyStore validates the sendgrid API key.
 func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string) (bool, error) {
-	file, err := ioutil.ReadFile(filename)
+	file, err := os.ReadFile(filename)
 	if err != nil {
 		return false, err
 	}

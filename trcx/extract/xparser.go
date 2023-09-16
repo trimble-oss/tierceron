@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io/ioutil"
+	"os"
 	"strings"
 	"text/template/parse"
 
@@ -69,7 +69,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 		templateFile, _ := vcutils.ConfigTemplateRaw(config, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, config.ExitOnFailure)
 		newTemplate = string(templateFile)
 	} else {
-		templateFile, err := ioutil.ReadFile(templatePath)
+		templateFile, err := os.ReadFile(templatePath)
 		newTemplate = string(templateFile)
 		if err != nil {
 			return nil, nil, nil, 0, eUtils.LogAndSafeExit(config, err.Error(), -1)

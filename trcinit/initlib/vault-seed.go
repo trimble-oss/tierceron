@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -87,7 +86,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 	config.Log.SetPrefix("[SEED]")
 	config.Log.Printf("Seeding vault from seeds in: %s\n", config.StartDir[0])
 
-	files, err := ioutil.ReadDir(config.StartDir[0])
+	files, err := os.ReadDir(config.StartDir[0])
 
 	if len(config.FileFilter) == 1 && config.FileFilter[0] == "nest" {
 		dynamicPathFilter := ""
@@ -217,7 +216,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 			config.Log.Println("\tStepping into: " + envDir.Name())
 
 			if config.DynamicPathFilter != "" {
-				sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + config.DynamicPathFilter)
+				sectionConfigFiles, err := os.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + config.DynamicPathFilter)
 				if err != nil {
 					config.Log.Printf("Seed Sections Couldn't read into: %s \n", config.DynamicPathFilter)
 				}
@@ -239,11 +238,11 @@ func SeedVault(config *eUtils.DriverConfig) error {
 				continue
 			}
 
-			var filesSteppedInto []fs.FileInfo
+			var filesSteppedInto []fs.DirEntry
 			if indexedEnvNot {
-				filesSteppedInto, err = ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + suffix)
+				filesSteppedInto, err = os.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + suffix)
 			} else {
-				filesSteppedInto, err = ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name())
+				filesSteppedInto, err = os.ReadDir(config.StartDir[0] + "/" + envDir.Name())
 			}
 			eUtils.LogErrorObject(config, err, true)
 
@@ -279,7 +278,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 					if eUtils.OnlyBasePtr {
 						continue
 					}
-					projectDirectories, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
+					projectDirectories, err := os.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
 					if err != nil {
 						config.Log.Printf("Projects Couldn't read into: %s \n", fileSteppedInto.Name())
 					}
@@ -297,7 +296,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 								continue
 							}
 						}
-						sectionNames, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name())
+						sectionNames, err := os.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name())
 						if err != nil {
 							config.Log.Printf("Sections Couldn't read into: %s \n", projectDirectory.Name())
 						}
@@ -306,7 +305,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 								continue
 							}
 
-							sectionConfigFiles, err := ioutil.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name())
+							sectionConfigFiles, err := os.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name())
 							if err != nil {
 								config.Log.Printf("Section Config Couldn't read into: %s \n", sectionName.Name())
 							}
@@ -316,7 +315,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 								if strings.HasPrefix(sectionConfigFile.Name(), ".") || (config.SubSectionValue != "" && (sectionConfigFile.Name() != config.SubSectionValue)) {
 									continue
 								}
-								subSectionConfigFiles, err := ioutil.ReadDir(path)
+								subSectionConfigFiles, err := os.ReadDir(path)
 
 								if err != nil {
 									config.Log.Printf("Sub Sections Couldn't read into: %s \n", config.SubSectionName)
@@ -332,7 +331,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 										}
 
 										if subSectionConfigFile.IsDir() {
-											deepNestedFiles, err := ioutil.ReadDir(subSectionPath)
+											deepNestedFiles, err := os.ReadDir(subSectionPath)
 											if err != nil {
 												config.Log.Printf("Deep Nested Couldn't read into: %s \n", config.SubSectionName)
 												continue
@@ -341,7 +340,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 											for _, deepNestedFile := range deepNestedFiles {
 												if deepNestedFile.IsDir() {
 													subSectionPath = subSectionPath + "/" + deepNestedFile.Name()
-													deeplyNestedFiles, err := ioutil.ReadDir(subSectionPath)
+													deeplyNestedFiles, err := os.ReadDir(subSectionPath)
 													if err != nil {
 														config.Log.Printf("Sub secting deep nested Couldn't read into: %s \n", config.SubSectionName)
 														continue
@@ -439,7 +438,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 
 // SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
 func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string) {
-	rawFile, err := ioutil.ReadFile(filepath)
+	rawFile, err := os.ReadFile(filepath)
 	// Open file
 	eUtils.LogErrorAndSafeExit(config, err, 1)
 	if config.WantCerts && (strings.Contains(filepath, "/Index/") || strings.Contains(filepath, "/PublicIndex/") || strings.Contains(filepath, "/Restricted/")) {
@@ -475,7 +474,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 	}
 	certPath = coreopts.GetFolderPrefix(nil) + "_seeds/" + certPath
 	eUtils.LogInfo(config, fmt.Sprintf("Inspecting certificate: "+certPath+"."))
-	cert, err := ioutil.ReadFile(certPath)
+	cert, err := os.ReadFile(certPath)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return
