@@ -23,14 +23,14 @@ func bindataRead(data []byte, name string) ([]byte, error) {
 		defer gz.Close()
 	}
 	if err != nil {
-		return nil, fmt.Errorf("Read %q: %v", name, err)
+		return nil, fmt.Errorf("read %q: %v", name, err)
 	}
 
 	var buf bytes.Buffer
 	_, err = io.Copy(&buf, gz)
 
 	if err != nil {
-		return nil, fmt.Errorf("Read %q: %v", name, err)
+		return nil, fmt.Errorf("read %q: %v", name, err)
 	}
 
 	return buf.Bytes(), nil
