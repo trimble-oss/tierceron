@@ -5,10 +5,11 @@ package argosyopts
 
 import (
 	"encoding/json"
-	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
-	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	"log"
 	"strconv"
+
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
@@ -33,7 +34,7 @@ func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
 // Populates tenant tree with ID and other data and maintains Childnode ordering
 // Returns a parent node that points to the first layer of tenants, the current node's ID, and encoded string
 // of updated parent node's data
-func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, notFirst bool) (flowcore.TTDINode, int64, string) {
+func recursiveBuildArgosies(node *flowcore.TTDINode, parent *flowcore.TTDINode, notFirst bool) (*flowcore.TTDINode, int64, string) {
 	var nodeID int64
 	state := mashupsdk.Hidden
 	var parentIDs []int64
@@ -71,7 +72,7 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, n
 					parent.MashupDetailedElement.Data = string(encodedParentNodeData)
 				}
 			}
-			node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
+			node.MashupDetailedElement = &mashupsdk.MashupDetailedElement{
 				Id:             nodeID,
 				State:          &mashupsdk.MashupElementState{Id: nodeID, State: int64(state)},
 				Name:           decodedNodeData["StateName"].(string) + "-" + strconv.Itoa(int(nodeID)),
@@ -95,7 +96,7 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, n
 			elementcollectionIDs = append(elementcollectionIDs, nodeID)
 			name := node.MashupDetailedElement.Name
 			data := node.MashupDetailedElement.Data
-			node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
+			node.MashupDetailedElement = &mashupsdk.MashupDetailedElement{
 				Id:             nodeID,
 				State:          &mashupsdk.MashupElementState{Id: nodeID, State: int64(state)},
 				Name:           name + "-" + strconv.Itoa(int(nodeID)),
@@ -122,7 +123,7 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, n
 		elementcollectionIDs = append(elementcollectionIDs, nodeID)
 		name := node.MashupDetailedElement.Name
 		data := node.MashupDetailedElement.Data
-		node.MashupDetailedElement = mashupsdk.MashupDetailedElement{
+		node.MashupDetailedElement = &mashupsdk.MashupDetailedElement{
 			Id:             nodeID,
 			State:          &mashupsdk.MashupElementState{Id: nodeID, State: int64(state)},
 			Name:           name + "-" + strconv.Itoa(int(nodeID)),
@@ -140,7 +141,7 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, n
 	var childids []int64
 	var childid int64
 	for i := 0; i < len(node.ChildNodes); i++ {
-		node.ChildNodes[i], childid, node.MashupDetailedElement.Data = recursiveBuildArgosies(node.ChildNodes[i], &node, true)
+		node.ChildNodes[i], childid, node.MashupDetailedElement.Data = recursiveBuildArgosies(node.ChildNodes[i], node, true)
 		childids = append(childids, childid)
 	}
 	node.MashupDetailedElement.Childids = append(node.MashupDetailedElement.Childids, childids...)
@@ -153,14 +154,14 @@ func recursiveBuildArgosies(node flowcore.TTDINode, parent *flowcore.TTDINode, n
 
 // Builds a tree of Tenants and their respective Childnodes populated with
 // corresponding data and an error message
-func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error) {
+func BuildFleet(mod *kv.Modifier, logger *log.Logger) (*flowcore.TTDINode, error) {
 	if mod == nil {
 		return BuildStubFleet(mod, logger)
 	}
 
-	argosies := []flowcore.TTDINode{
+	argosies := []*flowcore.TTDINode{
 		{
-			mashupsdk.MashupDetailedElement{
+			&mashupsdk.MashupDetailedElement{
 				Id:             3,
 				State:          &mashupsdk.MashupElementState{Id: 3, State: int64(mashupsdk.Init)},
 				Name:           "Outside",
@@ -174,10 +175,10 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error)
 				Parentids:      nil,
 				Childids:       nil,
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		},
 		{
-			mashupsdk.MashupDetailedElement{
+			&mashupsdk.MashupDetailedElement{
 				Basisid:        -1,
 				State:          &mashupsdk.MashupElementState{Id: -1, State: int64(mashupsdk.Mutable)},
 				Name:           "Curve",
@@ -192,10 +193,10 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error)
 				Parentids:      []int64{},
 				Childids:       []int64{},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		},
 		{
-			mashupsdk.MashupDetailedElement{
+			&mashupsdk.MashupDetailedElement{
 				Id:             1,
 				State:          &mashupsdk.MashupElementState{Id: 1, State: int64(mashupsdk.Init)},
 				Name:           "CurvePathEntity-1",
@@ -209,10 +210,10 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error)
 				Parentids:      []int64{},
 				Childids:       []int64{-1},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		},
 		{
-			mashupsdk.MashupDetailedElement{
+			&mashupsdk.MashupDetailedElement{
 				Basisid:        -2,
 				State:          &mashupsdk.MashupElementState{Id: -2, State: int64(mashupsdk.Mutable)},
 				Name:           "{0}-Path",
@@ -226,17 +227,17 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error)
 				Parentids:      []int64{},
 				Childids:       []int64{},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		},
 	}
 	args, err := flowcore.InitArgosyFleet(mod, "TenantDatabase", logger)
 	if err != nil {
-		return flowcore.TTDINode{}, err
+		return &flowcore.TTDINode{}, err
 	}
 	currentID = 8
 	args, _, _ = recursiveBuildArgosies(args, &flowcore.TTDINode{}, false)
-	argosies = append(argosies, flowcore.TTDINode{
-		mashupsdk.MashupDetailedElement{
+	argosies = append(argosies, &flowcore.TTDINode{
+		&mashupsdk.MashupDetailedElement{
 			Id:             4,
 			State:          &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
 			Name:           "PathGroupOne",
@@ -249,11 +250,11 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error)
 			Parentids:      []int64{},
 			Childids:       elementcollectionIDs,
 		},
-		[]flowcore.TTDINode{},
+		[]*flowcore.TTDINode{},
 	})
 	curvecollectionIDs = append(curvecollectionIDs, 1)
-	argosies = append(argosies, flowcore.TTDINode{
-		mashupsdk.MashupDetailedElement{
+	argosies = append(argosies, &flowcore.TTDINode{
+		&mashupsdk.MashupDetailedElement{
 			Id:             2,
 			State:          &mashupsdk.MashupElementState{Id: 2, State: int64(mashupsdk.Init)},
 			Name:           "CurvesGroupOne",
@@ -267,10 +268,10 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error)
 			Parentids:      nil,
 			Childids:       curvecollectionIDs,
 		},
-		[]flowcore.TTDINode{},
+		[]*flowcore.TTDINode{},
 	})
-	argosies = append(argosies, flowcore.TTDINode{
-		mashupsdk.MashupDetailedElement{
+	argosies = append(argosies, &flowcore.TTDINode{
+		&mashupsdk.MashupDetailedElement{
 			Id:             updateID(),
 			State:          &mashupsdk.MashupElementState{Id: 9, State: int64(mashupsdk.Init)},
 			Name:           "NodeLabel",
@@ -284,7 +285,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error)
 			Parentids:      nil,
 			Childids:       nil,
 		},
-		[]flowcore.TTDINode{},
+		[]*flowcore.TTDINode{},
 	})
 
 	args.ChildNodes = append(args.ChildNodes, argosies...)
