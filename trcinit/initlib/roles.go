@@ -1,7 +1,7 @@
 package initlib
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	eUtils "github.com/trimble-oss/tierceron/utils"
@@ -12,7 +12,7 @@ import (
 func UploadTokenCidrRoles(config *eUtils.DriverConfig, dir string, v *sys.Vault) error {
 	config.Log.SetPrefix("[ROLE]")
 	config.Log.Printf("Writing token roles from %s\n", dir)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 
 	eUtils.LogErrorObject(config, err, false)
 	if err != nil {
@@ -38,7 +38,7 @@ func UploadTokenCidrRoles(config *eUtils.DriverConfig, dir string, v *sys.Vault)
 func GetExistsRoles(config *eUtils.DriverConfig, dir string, v *sys.Vault) (bool, error) {
 	config.Log.SetPrefix("[ROLE]")
 	config.Log.Printf("Checking exists token roles from %s\n", dir)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return false, nil
 	}

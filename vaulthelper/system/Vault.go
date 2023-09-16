@@ -3,7 +3,7 @@ package system
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -150,7 +150,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 	var tokenPath = dir
 	var tokenPolicies = []string{}
 
-	files, err := ioutil.ReadDir(tokenPath)
+	files, err := os.ReadDir(tokenPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 			log.Fatal(err)
 		}
 
-		byteValue, _ := ioutil.ReadAll(file)
+		byteValue, _ := io.ReadAll(file)
 		token := api.TokenCreateRequest{}
 		yaml.Unmarshal(byteValue, &token)
 
@@ -355,7 +355,7 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 
 // GetExistsTokenRole - Gets the token role by token role name.
 func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
-	roleFile, err := ioutil.ReadFile(filename)
+	roleFile, err := os.ReadFile(filename)
 	if err != nil {
 		return false, err
 	}
@@ -407,7 +407,7 @@ func (v *Vault) GetExistsPolicyFromFileName(filename string) (bool, error) {
 
 // CreatePolicyFromFile Creates a policy with the given name and rules
 func (v *Vault) CreatePolicyFromFile(name string, filepath string) error {
-	data, err := ioutil.ReadFile(filepath)
+	data, err := os.ReadFile(filepath)
 	if err != nil {
 		return err
 	}
@@ -461,7 +461,7 @@ func (v *Vault) Unseal() (int, int, bool, error) {
 
 // CreateTokenCidrRoleFromFile Creates a new token cidr role from the given file and returns the name
 func (v *Vault) CreateTokenCidrRoleFromFile(filename string) error {
-	tokenfile, err := ioutil.ReadFile(filename)
+	tokenfile, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
@@ -476,7 +476,7 @@ func (v *Vault) CreateTokenCidrRoleFromFile(filename string) error {
 
 // CreateTokenFromFile Creates a new token from the given file and returns the name
 func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
-	tokenfile, err := ioutil.ReadFile(filename)
+	tokenfile, err := os.ReadFile(filename)
 	if err != nil {
 		return "", err
 	}

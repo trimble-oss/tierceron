@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -41,7 +41,7 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 		}, nil
 	} else if res.StatusCode == 200 || res.StatusCode == 204 {
 		var response map[string]interface{}
-		bodyBytes, err := ioutil.ReadAll(res.Body)
+		bodyBytes, err := io.ReadAll(res.Body)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 			return "", "", nil, err

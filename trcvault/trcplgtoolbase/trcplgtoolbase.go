@@ -23,6 +23,7 @@ func PluginMain() {
 	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
 	pluginTypePtr := flag.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
+	pluginPathPtr := flag.String("pluginPathPtr", "", "Optional path for deploying services to.")
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
 	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
@@ -114,6 +115,7 @@ func PluginMain() {
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
+			writeMap["trcpluginpath"] = *pluginPathPtr
 			writeMap["trctype"] = *pluginTypePtr
 			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
 			if pluginToolConfig["instances"] == nil {

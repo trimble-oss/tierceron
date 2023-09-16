@@ -2,7 +2,6 @@ package initlib
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,7 +14,7 @@ import (
 
 func UploadTemplateDirectory(mod *helperkv.Modifier, dirName string, logger *log.Logger) (error, []string) {
 
-	dirs, err := ioutil.ReadDir(dirName)
+	dirs, err := os.ReadDir(dirName)
 	if err != nil {
 		fmt.Println("Read directory couldn't be completed.")
 		return err, nil
@@ -37,7 +36,7 @@ func UploadTemplateDirectory(mod *helperkv.Modifier, dirName string, logger *log
 
 func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger) (error, []string) {
 	// Open directory
-	files, err := ioutil.ReadDir(dirName)
+	files, err := os.ReadDir(dirName)
 	if err != nil {
 		return err, nil
 	}
@@ -82,7 +81,12 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 			}
 
 			// Read the file
-			fileBytes := make([]byte, file.Size())
+			fileInfo, err := file.Info()
+			if err != nil {
+				return err, nil
+			}
+
+			fileBytes := make([]byte, fileInfo.Size())
 			_, err = f.Read(fileBytes)
 			if err != nil {
 				return err, nil

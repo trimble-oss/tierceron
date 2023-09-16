@@ -11,7 +11,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"regexp"
@@ -81,7 +80,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 
 	//This will use env by default, if blank it will use context. If context is defined, it will replace context.
 	if env == "" {
-		file, err := ioutil.ReadFile(dirname + configDir)
+		file, err := os.ReadFile(dirname + configDir)
 		if err != nil {
 			fmt.Printf("Could not read the context file due to this %s error \n", err)
 			return "", "", "", err
@@ -98,7 +97,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 				output = fileContent + envContextPrefix + envContext + "\n"
 			}
 
-			if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+			if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
 				return "", "", "", err
 			}
 			fmt.Println("Context flag has been written out.")
@@ -114,7 +113,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 			currentEnvContext := strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
 			if envContext != "" {
 				output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
-				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+				if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
 					return "", "", "", err
 				}
 				fmt.Println("Context flag has been written out.")
@@ -143,7 +142,7 @@ func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
 			fmt.Println("No homedir for current user")
 			os.Exit(1)
 		}
-		fileBytes, err := ioutil.ReadFile(dir + "/.kube/config")
+		fileBytes, err := os.ReadFile(dir + "/.kube/config")
 		if err != nil {
 			fmt.Println("No local kube config found...")
 			os.Exit(1)
