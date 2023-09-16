@@ -34,12 +34,15 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 		return "", "", nil, err
 	}
 
-	if res.StatusCode == 401 {
+	switch res.StatusCode {
+	case 401:
 		return "", "", &pb.LoginResp{
 			Success:   false,
 			AuthToken: "",
 		}, nil
-	} else if res.StatusCode == 200 || res.StatusCode == 204 {
+	case 200:
+		fallthrough
+	case 204:
 		var response map[string]interface{}
 		bodyBytes, err := io.ReadAll(res.Body)
 		if err != nil {

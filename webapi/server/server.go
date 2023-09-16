@@ -234,15 +234,11 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 						eUtils.LogErrorObject(config, err, false)
 						return nil, err
 					}
-					if valueMap != nil {
-
-						for key, value := range valueMap {
-							kv := &pb.ValuesRes_Env_Project_Service_File_Value{Key: key, Value: value.(string), Source: "value"}
-							vals = append(vals, kv)
-							//data = append(data, value.(string))
-							//fmt.Println(value)
-						}
-
+					for key, value := range valueMap {
+						kv := &pb.ValuesRes_Env_Project_Service_File_Value{Key: key, Value: value.(string), Source: "value"}
+						vals = append(vals, kv)
+						//data = append(data, value.(string))
+						//fmt.Println(value)
 					}
 					if len(vals) > 0 {
 						file := &pb.ValuesRes_Env_Project_Service_File{Name: getPathEnd(filePath), Values: vals}
@@ -314,10 +310,8 @@ func (s *Server) getTemplateFilePaths(config *eUtils.DriverConfig, mod *helperkv
 		subPathList := []string{}
 		for _, path := range pathList {
 			subsubList, _ := s.templateFileRecurse(config, mod, path)
-			for _, subsub := range subsubList {
-				//List is returning both pathEnd and pathEnd/
-				subPathList = append(subPathList, subsub)
-			}
+			//List is returning both pathEnd and pathEnd/
+			subPathList = append(subPathList, subsubList...)
 		}
 		if len(subPathList) != 0 {
 			return subPathList, nil
@@ -337,12 +331,10 @@ func (s *Server) templateFileRecurse(config *eUtils.DriverConfig, mod *helperkv.
 			for _, pathEnd := range subslice {
 				//List is returning both pathEnd and pathEnd/
 				subpath := pathName + pathEnd.(string)
-				subsublist, _ := s.templateFileRecurse(config, mod, subpath)
-				if len(subsublist) != 0 {
-					for _, subsub := range subsublist {
-						//List is returning both pathEnd and pathEnd/
-						subPathList = append(subPathList, subsub)
-					}
+				subsubList, _ := s.templateFileRecurse(config, mod, subpath)
+				if len(subsubList) != 0 {
+					//List is returning both pathEnd and pathEnd/
+					subPathList = append(subPathList, subsubList...)
 				}
 				subPathList = append(subPathList, subpath)
 			}

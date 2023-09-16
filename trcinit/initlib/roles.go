@@ -22,7 +22,7 @@ func UploadTokenCidrRoles(config *eUtils.DriverConfig, dir string, v *sys.Vault)
 		// Extract and truncate file name
 		filename := file.Name()
 		ext := filepath.Ext(filename)
-		filename = filename[0 : len(filename)-len(ext)]
+		_ = filename[0 : len(filename)-len(ext)]
 
 		config.Log.Printf("\tFound token role file: %s\n", file.Name())
 		err = v.CreateTokenCidrRoleFromFile(dir + "/" + file.Name())
