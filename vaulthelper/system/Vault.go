@@ -272,7 +272,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 						} else {
 							fmt.Printf("Failed with status: %s\n", response.Status)
 							fmt.Printf("Failed with status code: %d\n", response.StatusCode)
-							return errors.New("Failure to revoke tokens")
+							return errors.New("failure to revoke tokens")
 						}
 					}
 				}
@@ -384,7 +384,7 @@ func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
 		return true, nil
 	}
 
-	return false, fmt.Errorf("Error parsing resonse for key 'data'")
+	return false, fmt.Errorf("error parsing resonse for key 'data'")
 }
 
 // CreatePolicyFromFile Creates a policy with the given name and rules
