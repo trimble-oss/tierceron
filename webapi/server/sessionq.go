@@ -64,10 +64,10 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 					AuthToken: "",
 				}, nil
 			}
-			err = fmt.Errorf("Unable to parse userCodeField in auth response")
+			err = fmt.Errorf("unable to parse userCodeField in auth response")
 			eUtils.LogErrorObject(config, err, false)
 		} else {
-			err = fmt.Errorf("Unable to parse userNameField in auth response")
+			err = fmt.Errorf("unable to parse userNameField in auth response")
 			eUtils.LogErrorObject(config, err, false)
 		}
 
@@ -76,7 +76,7 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 			AuthToken: "",
 		}, err
 	}
-	err = fmt.Errorf("Unexpected response code from auth endpoint: %d", res.StatusCode)
+	err = fmt.Errorf("unexpected response code from auth endpoint: %d", res.StatusCode)
 	eUtils.LogErrorObject(config, err, false)
 	return "", "", &pb.LoginResp{
 		Success:   false,

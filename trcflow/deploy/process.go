@@ -233,11 +233,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			if vaultPluginSignature["trctype"] == "agent" {
 				azureDeployGroup, azureDeployGroupErr := user.LookupGroup("azuredeploy")
 				if azureDeployGroupErr != nil {
-					return errors.Join(errors.New("Group lookup failure"), azureDeployGroupErr)
+					return errors.Join(errors.New("group lookup failure"), azureDeployGroupErr)
 				}
 				azureDeployGID, azureGIDConvErr := strconv.Atoi(azureDeployGroup.Gid)
 				if azureGIDConvErr != nil {
-					return errors.Join(errors.New("Group ID lookup failure"), azureGIDConvErr)
+					return errors.Join(errors.New("group ID lookup failure"), azureGIDConvErr)
 				}
 				os.Chown(agentPath, -1, azureDeployGID)
 			}

@@ -111,7 +111,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 		}
 		fileContent := string(file)
 		if fileContent == "" {
-			return "", "", errors.New("Could not read the context file")
+			return "", "", errors.New("could not read the context file")
 		}
 		if !strings.Contains(fileContent, envContextPrefix) && envContext != "" {
 			var output string

@@ -153,9 +153,9 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 	// cert map
 	certData := make(map[int]string)
 	if cert && !strings.Contains(template, ".certData") {
-		return "", certData, false, errors.New("Missing .certData")
+		return "", certData, false, errors.New("missing .certData")
 	} else if !cert && strings.Contains(template, ".certData") {
-		return "", certData, false, errors.New("Template with cert provided, but cert not requested: " + emptyFilePath)
+		return "", certData, false, errors.New("template with cert provided, but cert not requested: " + emptyFilePath)
 	}
 
 	// Construct path for vault
@@ -216,7 +216,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 	} else {
 		rawFile, err := os.ReadFile(strings.Split(config.StartDir[0], coreopts.GetFolderPrefix(config.StartDir)+"_")[0] + coreopts.GetFolderPrefix(config.StartDir) + "_seeds/" + config.EnvRaw + "/" + config.Env + "_seed.yml")
 		if err != nil {
-			eUtils.LogErrorObject(config, errors.New("Unable to open seed file for -novault"), false)
+			eUtils.LogErrorObject(config, errors.New("unable to open seed file for -novault"), false)
 		}
 
 		var rawYaml interface{}

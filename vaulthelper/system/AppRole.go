@@ -125,10 +125,10 @@ func (v *Vault) GetRoleID(roleName string) (string, string, error) {
 		if roleID, ok := raw["role_id"].(string); ok {
 			return roleID, string(jsonData["lease_duration"].(json.Number)), nil
 		}
-		return "", "", fmt.Errorf("Error parsing response for key 'data.id'")
+		return "", "", fmt.Errorf("error parsing response for key 'data.id'")
 	}
 
-	return "", "", fmt.Errorf("Error parsing resonse for key 'data'")
+	return "", "", fmt.Errorf("error parsing resonse for key 'data'")
 }
 
 // GetSecretID checks the vault for the secret ID corresponding to the role name
@@ -153,10 +153,10 @@ func (v *Vault) GetSecretID(roleName string) (string, error) {
 		if secretID, ok := raw["secret_id"].(string); ok {
 			return secretID, nil
 		}
-		return "", fmt.Errorf("Error parsing response for key 'data.secret_id'")
+		return "", fmt.Errorf("error parsing response for key 'data.secret_id'")
 	}
 
-	return "", fmt.Errorf("Error parsing resonse for key 'data'")
+	return "", fmt.Errorf("error parsing resonse for key 'data'")
 }
 
 // GetListApproles lists available approles
@@ -177,7 +177,7 @@ func (v *Vault) GetListApproles() (string, error) {
 		return "", err
 	}
 
-	return "", fmt.Errorf("Error parsing resonse for key 'data'")
+	return "", fmt.Errorf("error parsing resonse for key 'data'")
 }
 
 // AppRoleLogin tries logging into the vault using app role and returns a client token on success
@@ -212,8 +212,8 @@ func (v *Vault) AppRoleLogin(roleID string, secretID string) (string, error) {
 		if token, ok := authData["client_token"].(string); ok {
 			return token, nil
 		}
-		return "", fmt.Errorf("Error parsing response for key 'auth.client_token'")
+		return "", fmt.Errorf("error parsing response for key 'auth.client_token'")
 	}
 
-	return "", fmt.Errorf("Error parsing response for key 'auth'")
+	return "", fmt.Errorf("error parsing response for key 'auth'")
 }

@@ -69,7 +69,7 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 
 	if len(dataPaths) == 0 {
 		eUtils.LogInfo(config, "No data paths found when initing CDS. \n")
-		return errors.New("No data paths found when initing CDS")
+		return errors.New("no data paths found when initing CDS")
 	}
 	for _, path := range dataPaths {
 		//for each path, read the secrets there
@@ -517,7 +517,7 @@ func verifyTemplatePath(mod *helperkv.Modifier, logger *log.Logger) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Template not found in vault: %s", mod.TemplatePath)
+	return fmt.Errorf("template not found in vault: %s", mod.TemplatePath)
 }
 
 func getPaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {

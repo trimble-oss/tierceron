@@ -102,7 +102,7 @@ func AutoAuth(config *DriverConfig,
 		}
 		if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
 			if config.IsShellSubProcess {
-				return errors.New("Required azure deploy approle and secret are missing.")
+				return errors.New("required azure deploy approle and secret are missing")
 			}
 			if _, err := os.Stat(userHome + "/.tierceron/" + appRoleConfig); !os.IsNotExist(err) {
 				exists = true
@@ -344,7 +344,7 @@ func AutoAuth(config *DriverConfig,
 
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
-			return errors.New("Need both public and secret app role to retrieve token from vault")
+			return errors.New("need both public and secret app role to retrieve token from vault")
 		}
 
 		roleToken, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)

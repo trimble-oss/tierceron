@@ -130,10 +130,10 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 										}
 									}
 								} else {
-									return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
+									return nil, fmt.Errorf("unable to retrieve accessible secret groups for %s", env)
 								}
 							} else {
-								return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
+								return nil, fmt.Errorf("unable to retrieve accessible secret groups for %s", env)
 							}
 						}
 

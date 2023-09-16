@@ -87,7 +87,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 		}
 		fileContent := string(file)
 		if fileContent == "" {
-			return "", "", "", errors.New("Could not read the context file")
+			return "", "", "", errors.New("could not read the context file")
 		}
 		if !strings.Contains(fileContent, envContextPrefix) && envContext != "" {
 			var output string
@@ -108,7 +108,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 			if len(result) == 1 {
 				addrPort = result[0]
 			} else {
-				return "", "", "", errors.New("Couldn't find port.")
+				return "", "", "", errors.New("couldn't find port")
 			}
 			currentEnvContext := strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
 			if envContext != "" {
@@ -227,7 +227,7 @@ func PenseQuery(pense string) (string, error) {
 
 	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 	if penseErr != nil {
-		return "", errors.Join(errors.New("Pense error"), penseErr)
+		return "", errors.Join(errors.New("pense error"), penseErr)
 	}
 
 	return r.GetPense(), nil

@@ -161,7 +161,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 			templateParam = strings.Replace(templateParam, "ENV", config.EnvRaw, -1)
 			wd, err := os.Getwd()
 			if err != nil {
-				eUtils.LogErrorObject(config, errors.New("Could not get working directory for cert existence verification."), false)
+				eUtils.LogErrorObject(config, errors.New("could not get working directory for cert existence verification"), false)
 				continue
 			}
 
@@ -178,7 +178,7 @@ func SeedVault(config *eUtils.DriverConfig) error {
 		if len(tempPaths) > 0 {
 			templatePaths = tempPaths
 		} else {
-			return eUtils.LogErrorAndSafeExit(config, errors.New("No valid cert files were located."), -1)
+			return eUtils.LogErrorAndSafeExit(config, errors.New("no valid cert files were located"), -1)
 		}
 		_, _, seedData, errGenerateSeeds := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
 		if errGenerateSeeds != nil {
