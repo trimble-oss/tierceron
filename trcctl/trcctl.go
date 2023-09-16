@@ -90,7 +90,7 @@ func main() {
 		case "init":
 			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext)
 		case "config":
-			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil)
+			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil, nil)
 		case "x":
 			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil)
 		}
