@@ -3,7 +3,6 @@ package xutil
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -830,7 +829,7 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 }
 
 func GetDirFiles(dir string) []string {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	filePaths := []string{}
 	//endPaths := []string{}
 	if err != nil {

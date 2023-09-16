@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -105,7 +104,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 
 	//This will use env by default, if blank it will use context. If context is defined, it will replace context.
 	if env == "" {
-		file, err := ioutil.ReadFile(dirname + configDir)
+		file, err := os.ReadFile(dirname + configDir)
 		if err != nil {
 			fmt.Printf("Could not read the context file due to this %s error \n", err)
 			return "", "", err
@@ -122,7 +121,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 				output = fileContent + envContextPrefix + envContext + "\n"
 			}
 
-			if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
+			if err = os.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
 				return "", "", err
 			}
 			fmt.Println("Context flag has been written out.")
@@ -131,7 +130,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 			currentEnvContext := strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
 			if envContext != "" {
 				output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
-				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
+				if err = os.WriteFile(dirname+configDir, []byte(output), 0666); err != nil {
 					return "", "", err
 				}
 				fmt.Println("Context flag has been written out.")

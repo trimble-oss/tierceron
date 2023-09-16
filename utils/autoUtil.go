@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -35,7 +34,7 @@ func (c *cert) getConfig(logger *log.Logger, file string) (*cert, error) {
 		return nil, err
 	}
 
-	yamlFile, err := ioutil.ReadFile(userHome + "/.tierceron/" + file)
+	yamlFile, err := os.ReadFile(userHome + "/.tierceron/" + file)
 	if err != nil {
 		logger.Printf("yamlFile.Get err #%v ", err)
 	}
@@ -247,7 +246,7 @@ func AutoAuth(config *DriverConfig,
 			}
 
 			// Create cert file
-			writeErr := ioutil.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
+			writeErr := os.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
 			if writeErr != nil {
 				LogInfo(config, fmt.Sprintf("Unable to write file: %v\n", writeErr))
 			}
