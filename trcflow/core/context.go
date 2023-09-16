@@ -719,7 +719,8 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	if queryMap["TrcQuery"].(string) == "" {
 		return nil
 	}
-	if operation == "INSERT" {
+	switch operation {
+	case "INSERT":
 		var matrix [][]interface{}
 		var err error
 		if bindings == nil {
@@ -803,7 +804,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				}
 			}
 		}
-	} else if operation == "UPDATE" || operation == "DELETE" {
+	case "DELETE":
+		fallthrough
+	case "UPDATE":
 		var tableName string
 		var matrix [][]interface{}
 		var err error
@@ -895,7 +898,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				}
 			}
 		}
-	} else if operation == "SELECT" {
+	case "SELECT":
 		_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), tfContext.FlowLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)

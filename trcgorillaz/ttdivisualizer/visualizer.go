@@ -84,15 +84,15 @@ func main() {
 		for _, argosy := range ArgosyFleet.ChildNodes {
 			argosyBasis := argosy.MashupDetailedElement
 			argosyBasis.Alias = "Argosy"
-			DetailedElements = append(DetailedElements, &argosyBasis)
+			DetailedElements = append(DetailedElements, argosyBasis)
 			for i := 0; i < len(argosy.ChildNodes); i++ {
 				detailedElement := argosy.ChildNodes[i].MashupDetailedElement
 				detailedElement.Alias = "DataFlowGroup"
-				DetailedElements = append(DetailedElements, &detailedElement)
+				DetailedElements = append(DetailedElements, detailedElement)
 				for j := 0; j < len(argosy.ChildNodes[i].ChildNodes); j++ {
 					element := argosy.ChildNodes[i].ChildNodes[j].MashupDetailedElement
 					element.Alias = "DataFlow"
-					DetailedElements = append(DetailedElements, &element)
+					DetailedElements = append(DetailedElements, element)
 					if pointer < len(data)-1 {
 						pointer += 1
 					} else {
@@ -104,7 +104,7 @@ func main() {
 						el.Alias = "DataFlowStatistic"
 						timeSeconds := TimeData[data[pointer]][k]
 						dfstatData[el.Name] = timeSeconds
-						DetailedElements = append(DetailedElements, &el)
+						DetailedElements = append(DetailedElements, el)
 					}
 				}
 			}
