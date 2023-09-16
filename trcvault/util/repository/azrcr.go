@@ -86,6 +86,9 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 		pluginToolConfig["azureClientId"].(string),
 		pluginToolConfig["azureClientSecret"].(string),
 		nil)
+	if err != nil {
+		return err
+	}
 
 	imageErr := getImageSHA(config, svc, pluginToolConfig)
 	if imageErr != nil {

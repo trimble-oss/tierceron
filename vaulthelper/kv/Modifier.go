@@ -177,7 +177,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 	env, sub, _, envErr := PreCheckEnvironment(environment)
 
 	if envErr != nil {
-		logger.Println(fmt.Sprintf("Environment format error: %v\n", envErr))
+		logger.Printf("Environment format error: %v\n", envErr)
 		return false, envErr
 	} else {
 		if sub != "" {
@@ -197,7 +197,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 	secret, err := m.client.Auth().Token().LookupSelf()
 
 	if err != nil {
-		logger.Println(fmt.Sprintf("LookupSelf Auth failure: %v\n", err))
+		logger.Printf("LookupSelf Auth failure: %v\n", err)
 		if urlErr, urlErrOk := err.(*url.Error); urlErrOk {
 			if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
 				return false, err
@@ -391,7 +391,7 @@ retryVaultAccess:
 							//memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept json.Number.
 						} else {
-							return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. Nested. %T", dataValues))
+							return nil, fmt.Errorf("Unexpected datatype. Refusing to read what we cannot lock. Nested. %T", dataValues)
 						}
 					}
 				} else if dataValueString, isString := dataValues.(string); isString {
@@ -409,7 +409,7 @@ retryVaultAccess:
 					//memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept json.Number.
 				} else {
-					return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. %T", dataValues))
+					return nil, fmt.Errorf("Unexpected datatype. Refusing to read what we cannot lock. %T", dataValues)
 				}
 			}
 		}
@@ -756,9 +756,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 					path = enginePath + "/" + path
 					if mod.SubSectionName != "" {
 						subSectionName := mod.SubSectionName
-						if strings.HasPrefix(subSectionName, "/") {
-							subSectionName = subSectionName[1:]
-						}
+						subSectionName = strings.TrimPrefix(subSectionName, "/")
 						path = path + subSectionName
 					}
 
@@ -808,6 +806,9 @@ func (m *Modifier) recursivePathFinder(filePaths []string, versionDataMap map[st
 		}
 
 		metadataValue, err := m.ReadVersionMetadata(filePath, logger)
+		if err != nil {
+			logger.Println(err.Error())
+		}
 		if len(metadataValue) == 0 {
 			continue
 		}
@@ -859,10 +860,7 @@ func (m *Modifier) GetTemplateFilePaths(pathName string, logger *log.Logger) ([]
 		subPathList := []string{}
 		for _, path := range pathList {
 			subsubList, _ := m.templateFileRecurse(path, logger)
-			for _, subsub := range subsubList {
-				//List is returning both pathEnd and pathEnd/
-				subPathList = append(subPathList, subsub)
-			}
+			subPathList = append(subPathList, subsubList...)
 		}
 		if len(subPathList) != 0 {
 			return subPathList, nil
@@ -881,12 +879,10 @@ func (m *Modifier) templateFileRecurse(pathName string, logger *log.Logger) ([]s
 			for _, pathEnd := range subslice {
 				//List is returning both pathEnd and pathEnd/
 				subpath := pathName + pathEnd.(string)
-				subsublist, _ := m.templateFileRecurse(subpath, logger)
-				if len(subsublist) != 0 {
-					for _, subsub := range subsublist {
-						//List is returning both pathEnd and pathEnd/
-						subPathList = append(subPathList, subsub)
-					}
+				subsubList, _ := m.templateFileRecurse(subpath, logger)
+				if len(subsubList) != 0 {
+					//List is returning both pathEnd and pathEnd/
+					subPathList = append(subPathList, subsubList...)
 				}
 				subPathList = append(subPathList, subpath)
 			}

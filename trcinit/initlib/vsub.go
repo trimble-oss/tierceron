@@ -12,7 +12,7 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
-func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templateFilter *string) (error, []string) {
+func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templateFilter *string) ([]string, error) {
 
 	var filterTemplateSlice []string
 	if len(*templateFilter) > 0 {
