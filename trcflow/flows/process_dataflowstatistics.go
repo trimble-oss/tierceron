@@ -150,7 +150,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 
 	tfContext.FlowLock.Lock()
 	if tfContext.Init { //Alert interface that the table is ready for permissions
-		tfmContext.PermissionChan <- flowcore.PermissionUpdate{tfContext.Flow.TableName(), tfContext.FlowState.State}
+		tfmContext.PermissionChan <- flowcore.PermissionUpdate{TableName: tfContext.Flow.TableName(), CurrentState: tfContext.FlowState.State}
 		tfContext.Init = false
 	}
 	tfContext.FlowLock.Unlock()
@@ -230,7 +230,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				tfContext.FlowLock.Lock()
 				if tfContext.FlowState.State == 3 {
 					tfContext.FlowLock.Unlock()
-					tfmContext.PermissionChan <- flowcore.PermissionUpdate{tfContext.Flow.TableName(), tfContext.FlowState.State}
+					tfmContext.PermissionChan <- flowcore.PermissionUpdate{TableName: tfContext.Flow.TableName(), CurrentState: tfContext.FlowState.State}
 					if tfContext.CancelContext != nil {
 						tfContext.CancelContext() //This cancel also pushes any final changes to vault before closing sync cycle.
 						var baseTableTemplate extract.TemplateResultData
