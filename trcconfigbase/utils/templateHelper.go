@@ -339,7 +339,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 							return "", nil, nil
 						}
 					} else {
-						certData[1] = fmt.Sprintf("%s", decoded)
+						certData[1] = string(decoded)
 					}
 
 					certData[2] = certSourcePath.(string)
