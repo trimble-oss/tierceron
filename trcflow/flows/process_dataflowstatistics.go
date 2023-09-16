@@ -37,7 +37,7 @@ func GetDataflowStatIndexedPathExt(engine interface{}, rowDataMap map[string]int
 		}
 	}
 
-	return "", errors.New("Could not find data flow statistic index.")
+	return "", errors.New("could not find data flow statistic index")
 }
 
 func GetDataFlowUpdateTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
