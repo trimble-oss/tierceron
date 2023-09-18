@@ -136,7 +136,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 					for _, idList := range idListData.Data {
 						for _, id := range idList.([]interface{}) {
 							argosId := strings.Trim(id.(string), "/")
-							argosNode := &TTDINode{}
+							argosNode := &TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 							argosNode.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							argosNode.MashupDetailedElement.Name = argosId
 							argosNode.ChildNodes = make([]*TTDINode, 0)
@@ -330,7 +330,7 @@ func InitDataFlow(logF func(string, error), name string, logS bool) *TTDINode {
 	encodedData, err := json.Marshal(&data)
 	if err != nil {
 		log.Println("Error in encoding data in InitDataFlow")
-		return &TTDINode{}
+		return &TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 	}
 	ttdiNode := &TTDINode{&mashupsdk.MashupDetailedElement{Name: name, State: &mashupsdk.MashupElementState{State: int64(mashupsdk.Init)}, Data: string(encodedData)}, stats}
 	//var newDFStatistic = DataFlow{Name: name, TimeStart: time.Now(), Statistics: stats, LogStat: logS, LogFunc: logF}
@@ -628,7 +628,7 @@ func (dfs *TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath st
 					data["lastTestedDate"] = testedDate
 				}
 			}
-			var df TTDINode
+			df := TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 			df.MapStatistic(data, logger)
 			dfs.ChildNodes = append(dfs.ChildNodes, &df)
 		}
