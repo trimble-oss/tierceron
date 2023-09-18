@@ -32,7 +32,6 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	"VaultConfig.TenantConfig/util/core"
 	utilcore "VaultConfig.TenantConfig/util/core"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
@@ -41,7 +40,6 @@ import (
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
-	sqles "github.com/dolthub/go-mysql-server/sql"
 )
 
 type FlowType int64
@@ -673,7 +671,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 
 	// Second row here
 	// Not sure if necessary to copy entire ReportStatistics method
-	tenantIndexPath, tenantDFSIdPath := core.GetDFSPathName()
+	tenantIndexPath, tenantDFSIdPath := utilcore.GetDFSPathName()
 	df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.Config.Log, false)
 
 	//df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, ...)
@@ -721,7 +719,8 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	if queryMap["TrcQuery"].(string) == "" {
 		return nil
 	}
-	if operation == "INSERT" {
+	switch operation {
+	case "INSERT":
 		var matrix [][]interface{}
 		var err error
 		if bindings == nil {
@@ -748,7 +747,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				bindings := map[string]sqle.Expression{
 					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 				}
-				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+				_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
 				if err != nil {
 					tfmContext.Log("Failed to insert changes for INSERT.", err)
 				}
@@ -759,7 +758,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 						changeIdCols[0]: sqlee.NewLiteral(changeIdValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 						changeIdCols[1]: sqlee.NewLiteral(changeIdValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 					}
-					_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+					_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
 					if err != nil {
 						tfmContext.Log("Failed to insert changes for INSERT - 2A.", err)
 					}
@@ -773,7 +772,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 					dfssql.DataflowTestIdColumn:        sqlee.NewLiteral(changeIdValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 					dfssql.DataflowTestStateCodeColumn: sqlee.NewLiteral(changeIdValues[2], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 				}
-				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+				_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
 				if err != nil {
 					tfmContext.Log("Failed to insert dfs changes for INSERT.", err)
 				}
@@ -805,7 +804,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				}
 			}
 		}
-	} else if operation == "UPDATE" || operation == "DELETE" {
+	case "DELETE":
+		fallthrough
+	case "UPDATE":
 		var tableName string
 		var matrix [][]interface{}
 		var err error
@@ -840,7 +841,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				bindings := map[string]sqle.Expression{
 					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 				}
-				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+				_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
 				if err != nil {
 					tfmContext.Log("Failed to insert changes for UPDATE.", err)
 				}
@@ -851,7 +852,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 						changeIdCols[0]: sqlee.NewLiteral(changeIdValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 						changeIdCols[1]: sqlee.NewLiteral(changeIdValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 					}
-					_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+					_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
 					if err != nil {
 						tfmContext.Log("Failed to insert changes for UPDATE - 2A.", err)
 					}
@@ -865,7 +866,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 					dfssql.DataflowTestIdColumn:        sqlee.NewLiteral(changeIdValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 					dfssql.DataflowTestStateCodeColumn: sqlee.NewLiteral(changeIdValues[2], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 				}
-				_, _, matrix, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+				_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
 				if err != nil {
 					tfmContext.Log("Failed to insert dfs changes for UPDATE.", err)
 				}
@@ -897,7 +898,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				}
 			}
 		}
-	} else if operation == "SELECT" {
+	case "SELECT":
 		_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), tfContext.FlowLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
@@ -1044,7 +1045,7 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 
 	if !tableOk {
 		// This is cacheable...
-		tableSchema := sqles.NewPrimaryKeySchema([]*sqles.Column{})
+		tableSchema := sqle.NewPrimaryKeySchema([]*sqle.Column{})
 
 		columnKeys := []string{}
 
@@ -1060,7 +1061,7 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 		sort.Strings(columnKeys)
 
 		for _, columnKey := range columnKeys {
-			column := sqles.Column{Name: columnKey, Type: sqles.Text, Source: tfContext.Flow.TableName()}
+			column := sqle.Column{Name: columnKey, Type: sqle.Text, Source: tfContext.Flow.TableName()}
 			tableSchema.Schema = append(tableSchema.Schema, &column)
 		}
 

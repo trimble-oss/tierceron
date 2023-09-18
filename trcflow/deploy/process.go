@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -177,9 +176,12 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		pluginExtension = "-prod"
 	}
 
-	if vaultPluginSignature["trctype"] == "agent" {
+	switch vaultPluginSignature["trctype"] {
+	case "agent":
 		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
-	} else {
+	case "service":
+		agentPath = vaultPluginSignature["trcpluginpath"].(string) + vaultPluginSignature["trcplugin"].(string)
+	default:
 		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string) + pluginExtension
 	}
 
@@ -221,7 +223,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			vaultPluginSignature["imagesha256"] = "invalidurl"
 		}
 		if vaultPluginSignature["imagesha256"] == vaultPluginSignature["trcsha256"] { //Sha256 from download matches in vault
-			err = ioutil.WriteFile(agentPath, vaultPluginSignature["rawImageFile"].([]byte), 0644)
+			err = os.WriteFile(agentPath, vaultPluginSignature["rawImageFile"].([]byte), 0644)
 			vaultPluginSignature["rawImageFile"] = nil
 
 			if err != nil {
@@ -231,11 +233,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			if vaultPluginSignature["trctype"] == "agent" {
 				azureDeployGroup, azureDeployGroupErr := user.LookupGroup("azuredeploy")
 				if azureDeployGroupErr != nil {
-					return errors.Join(errors.New("Group lookup failure"), azureDeployGroupErr)
+					return errors.Join(errors.New("group lookup failure"), azureDeployGroupErr)
 				}
 				azureDeployGID, azureGIDConvErr := strconv.Atoi(azureDeployGroup.Gid)
 				if azureGIDConvErr != nil {
-					return errors.Join(errors.New("Group ID lookup failure"), azureGIDConvErr)
+					return errors.Join(errors.New("group ID lookup failure"), azureGIDConvErr)
 				}
 				os.Chown(agentPath, -1, azureDeployGID)
 			}

@@ -75,13 +75,14 @@ func main() {
 // Processes upserted query from client
 // Changes based on msg.Name
 func ProcessQuery(msg *mashupsdk.MashupDetailedElement) {
-	if msg.Name == "DialogFlow" {
+	switch msg.Name {
+	case "DialogFlow":
 		ProcessDFQuery(msg)
-	} else if msg.Name == "DialogFlowResponse" {
+	case "DialogFlowResponse":
 		ProcessDFResponse(msg)
-	} else if msg.Name == "GChatResponse" {
+	case "GChatResponse":
 		ProcessGChatAnswer(msg)
-	} else if msg.Name == "Get Message" {
+	case "Get Message":
 		gchatApp.DetailedElements = gchatApp.DetailedElements[:len(gchatApp.DetailedElements)-1]
 		input := ""
 		for input == "" {
@@ -96,7 +97,7 @@ func ProcessQuery(msg *mashupsdk.MashupDetailedElement) {
 				fmt.Println("An error occurred with reading the input. Please input your question in the command line and press enter!")
 			}
 		}
-	} else {
+	default:
 		log.Printf("Message type does not correspond to either GChatQuery or DialogFlow")
 	}
 }
