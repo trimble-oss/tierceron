@@ -235,7 +235,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (*flowcore.TTDINode, error
 		return &flowcore.TTDINode{}, err
 	}
 	currentID = 8
-	args, _, _ = recursiveBuildArgosies(args, &flowcore.TTDINode{}, false)
+	args, _, _ = recursiveBuildArgosies(args, &flowcore.TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}, false)
 	argosies = append(argosies, &flowcore.TTDINode{
 		&mashupsdk.MashupDetailedElement{
 			Id:             4,

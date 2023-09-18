@@ -71,6 +71,7 @@ type TTDINode struct {
 // New API -> Argosy, return dataFlowGroups populated
 func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTDINode, error) {
 	var aFleet TTDINode
+	aFleet.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 	aFleet.MashupDetailedElement.Name = project
 	aFleet.ChildNodes = make([]*TTDINode, 0)
 	idNameListData, serviceListErr := mod.List("super-secrets/PublicIndex/"+project, logger)
@@ -136,6 +137,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 						for _, id := range idList.([]interface{}) {
 							argosId := strings.Trim(id.(string), "/")
 							argosNode := &TTDINode{}
+							argosNode.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							argosNode.MashupDetailedElement.Name = argosId
 							argosNode.ChildNodes = make([]*TTDINode, 0)
 							argosyMap[argosId] = argosNode
@@ -163,7 +165,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 
 						argosNode := argosyMap[argosId]
 						if argosNode == nil {
-							newArgosNode := TTDINode{}
+							newArgosNode := TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 							argosNode = &newArgosNode
 							newArgosNode.MashupDetailedElement.Name = argosId
 							argosyMap[argosId] = argosNode
@@ -177,7 +179,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 							}
 						}
 						if argosDfGroup == nil {
-							newArgosDfGroup := TTDINode{}
+							newArgosDfGroup := TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 							newArgosDfGroup.MashupDetailedElement.Name = flowGroup
 							argosNode.ChildNodes = append(argosNode.ChildNodes, &newArgosDfGroup)
 							argosDfGroup = argosNode.ChildNodes[len(argosNode.ChildNodes)-1]
@@ -195,7 +197,8 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 								}
 							}
 							if dfStatTypeNode == nil {
-								newDfStatTypeNode := TTDINode{}
+								newDfStatTypeNode := TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
+
 								newDfStatTypeNode.MashupDetailedElement.Name = statisticType
 								argosDfGroup.ChildNodes = append(argosDfGroup.ChildNodes, &newDfStatTypeNode)
 								dfStatTypeNode = argosDfGroup.ChildNodes[len(argosDfGroup.ChildNodes)-1]
@@ -209,7 +212,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 								}
 							}
 							if dfStatNameTypeNode == nil {
-								newDfStatNameTypeNode := TTDINode{}
+								newDfStatNameTypeNode := TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 								newDfStatNameTypeNode.MashupDetailedElement.Name = flowName
 								dfStatTypeNode.ChildNodes = append(dfStatTypeNode.ChildNodes, &newDfStatNameTypeNode)
 								dfStatNameTypeNode = dfStatTypeNode.ChildNodes[len(dfStatTypeNode.ChildNodes)-1]
@@ -230,7 +233,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 								}
 							}
 							if dfStatTypeNode == nil {
-								newDfStatTypeNode := TTDINode{}
+								newDfStatTypeNode := TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 								newDfStatTypeNode.MashupDetailedElement.Name = flowName
 								argosDfGroup.ChildNodes = append(argosDfGroup.ChildNodes, &newDfStatTypeNode)
 								dfStatTypeNode = argosDfGroup.ChildNodes[len(argosDfGroup.ChildNodes)-1]
@@ -267,6 +270,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 					for _, serviceList := range serviceListData.Data {
 						for _, service := range serviceList.([]interface{}) {
 							var dfgroup TTDINode
+							dfgroup.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							dfgroup.MashupDetailedElement.Name = strings.TrimSuffix(service.(string), "/")
 
 							statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName.(string)+"/"+id.(string)+"/DataFlowStatistics/DataFlowGroup/"+service.(string)+"/dataFlowName/", logger)
@@ -279,6 +283,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 							}
 
 							var innerDF TTDINode
+							innerDF.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							innerDF.MashupDetailedElement.Name = "empty"
 							//Tenant -> System -> LOgin/Download -> USERS
 							for _, statisticName := range statisticNameList.Data {
@@ -384,7 +389,7 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 		logF("Error in encoding data in UpdateDataFlowStatistics", err)
 		return
 	}
-	newNode := TTDINode{&mashupsdk.MashupDetailedElement{Data: string(newEncodedData)}, []*TTDINode{}}
+	newNode := TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{Data: string(newEncodedData)}, ChildNodes: []*TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, time.Since(dfs.TimeStart), mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, &newNode)
 	newData["decodedData"] = decodedData
@@ -404,7 +409,7 @@ func (dfs *TTDINode) UpdateDataFlowStatisticWithTime(flowG string, flowN string,
 		log.Println("Error in encoding data in UpdateDataFlowStatisticWithTime")
 		return
 	}
-	newNode := TTDINode{&mashupsdk.MashupDetailedElement{State: &mashupsdk.MashupElementState{State: int64(mashupsdk.Init)}, Data: string(newEncodedData)}, []*TTDINode{}}
+	newNode := TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{State: &mashupsdk.MashupElementState{State: int64(mashupsdk.Init)}, Data: string(newEncodedData)}, ChildNodes: []*TTDINode{}}
 	//var newDFStat = DataFlowStatistic{mashupsdk.MashupDetailedElement{}, flowG, flowN, stateN, stateC, elapsedTime, mode}
 	dfs.ChildNodes = append(dfs.ChildNodes, &newNode)
 	dfs.EfficientLog(newData, nil)
