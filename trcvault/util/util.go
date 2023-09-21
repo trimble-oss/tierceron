@@ -248,7 +248,7 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	return nil
 }
 
-func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, hostName string) (map[string]interface{}, error) {
 	config.Log.Println("GetPluginToolConfig begin processing plugins.")
 	//templatePaths
 	indexFound := false
@@ -272,11 +272,13 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	for _, templatePath := range templatePaths {
 		project, service, _ := eUtils.GetProjectService(templatePath)
 		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
-
+		overridePath := ""
 		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 {
 			mod.SectionPath = "super-secrets/Index/" + project + pluginPath.(string) + config.SubSectionValue + "/" + service
+			overridePath = "super-secrets/Index/" + project + pluginPath.(string) + "/overrides/" + hostName + "/" + service
 		} else {
 			mod.SectionPath = "super-secrets/Index/" + project + "/trcplugin/" + config.SubSectionValue + "/" + service
+			overridePath = "super-secrets/Index/" + project + "/trcplugin/overrides/" + hostName + "/" + config.SubSectionValue + "/" + service
 		}
 		ptc1, err = mod.ReadData(mod.SectionPath)
 		pluginToolConfig["pluginpath"] = mod.SectionPath
@@ -288,6 +290,16 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 		for k, v := range ptc1 {
 			pluginToolConfig[k] = v
 		}
+
+		ptc2, err := mod.ReadData(overridePath)
+		if err != nil || ptc2 == nil {
+			config.Log.Println("No override found for plugin.")
+			continue
+		}
+		for k, v := range ptc2 {
+			pluginToolConfig[k] = v
+		}
+
 		break
 	}
 	mod.SectionPath = ""
