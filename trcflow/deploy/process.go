@@ -90,6 +90,13 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		return errors.New("missing plugin name")
 	}
 
+	hostName, hostNameErr := os.Hostname()
+	if hostNameErr != nil {
+		return hostNameErr
+	} else if hostName == "" {
+		return errors.New("Could not find hostname.")
+	}
+
 	//Grabbing configs
 	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if vault != nil {
@@ -107,7 +114,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	}
 	config = &eUtils.DriverConfig{Insecure: insecure, Log: logger, ExitOnFailure: false, StartDir: []string{}, SubSectionValue: pluginName}
 
-	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(config, goMod, pluginConfig)
+	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(config, goMod, pluginConfig, hostNameErr.Error())
 	if ptcErr != nil {
 		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
 	}
@@ -289,15 +296,24 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		} else {
 			writeMap["trctype"] = "vault"
 		}
+
+		_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
+		if err != nil {
+			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
+		}
+
 		writeMap["copied"] = false
 		writeMap["deployed"] = false
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
-		_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
+
+		overridePath := "super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + writeMap["trcplugin"].(string) + "/Certify"
+		_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+overridePath+"/Certify", writeMap, config.Log)
 		if err != nil {
 			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
 		}
+
 		eUtils.LogInfo(config, pluginName+": Plugin image config in vault has been updated.")
 	} else {
 		if !pluginDownloadNeeded && pluginCopied {
@@ -318,11 +334,28 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logger *log.Logger) error {
 	logger.Println("PluginDeployedUpdate start.")
 
+	hostName, hostNameErr := os.Hostname()
+	if hostNameErr != nil {
+		return hostNameErr
+	} else if hostName == "" {
+		return errors.New("Could not find hostname.")
+	}
+
 	for _, pluginName := range pluginNameList {
 		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
 		if err != nil {
 			return err
 		}
+		mod.SectionPath = "super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + pluginName + "/Certify"
+		pluginStatusData, statusErr := mod.ReadData(mod.SectionPath)
+		if statusErr != nil {
+			return statusErr
+		}
+
+		for k, v := range pluginStatusData {
+			pluginData[k] = v
+		}
+
 		if pluginData == nil {
 			pluginData = make(map[string]interface{})
 			pluginData["trcplugin"] = pluginName
@@ -372,11 +405,17 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 		writeMap["trcplugin"] = pluginData["trcplugin"]
 		writeMap["trctype"] = pluginData["trctype"]
 		writeMap["trcsha256"] = pluginData["trcsha256"]
-		writeMap["copied"] = pluginData["copied"]
 		writeMap["instances"] = pluginData["instances"]
-		writeMap["deployed"] = false
 
 		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap, logger)
+		if err != nil {
+			return err
+		}
+
+		writeMap = make(map[string]interface{})
+		writeMap["copied"] = pluginData["copied"]
+		writeMap["deployed"] = false
+		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/overrides/"+hostName+"/"+pluginName+"/Certify", writeMap, logger)
 		if err != nil {
 			return err
 		}

@@ -288,6 +288,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 			pluginToolConfig[k] = v
 		}
 
+		//Override
 		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 && hostName != "" {
 			overridePath = "super-secrets/Index/" + project + "/trcplugin/overrides/" + hostName + "/" + config.SubSectionValue + "/" + service
 			mod.SectionPath = overridePath
