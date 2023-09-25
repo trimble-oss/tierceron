@@ -97,7 +97,24 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		return errors.New("Could not find hostname.")
 	}
 
-	//Grabbing configs
+	//Grabbing certification from vault
+	if pluginConfig["caddress"].(string) == "" { //if no certification address found, it will try to certify against itself.
+		pluginConfig["caddress"] = pluginConfig["vaddress"]
+	}
+	temp := pluginConfig["vaddress"]
+	pluginConfig["vaddress"] = pluginConfig["caddress"]
+	cConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	if err != nil {
+		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
+		return err
+	}
+	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig, hostNameErr.Error())
+	if ptcErr != nil {
+		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
+	}
+	pluginConfig["vaddress"] = temp
+
+	//grabbing configs
 	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if vault != nil {
 		defer vault.Close()
@@ -106,18 +123,12 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
 	}
-
 	logger.Println("PluginDeployFlow begun for plugin: " + pluginName)
 	insecure := false
 	if ok, _ := pluginConfig["insecure"].(bool); ok {
 		insecure = pluginConfig["insecure"].(bool)
 	}
 	config = &eUtils.DriverConfig{Insecure: insecure, Log: logger, ExitOnFailure: false, StartDir: []string{}, SubSectionValue: pluginName}
-
-	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(config, goMod, pluginConfig, hostNameErr.Error())
-	if ptcErr != nil {
-		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
-	}
 
 	if _, ok := vaultPluginSignature["trcplugin"]; !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
