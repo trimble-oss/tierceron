@@ -129,9 +129,14 @@ func PluginMain() {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-
+			writeMap = make(map[string]interface{})
 			writeMap["copied"] = false
 			writeMap["deployed"] = false
+			_, err = mod.Write(pluginToolConfig["overridepath"].(string), writeMap, config.Log)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 
 			fmt.Println("Image certified in vault and is ready for release.")
 

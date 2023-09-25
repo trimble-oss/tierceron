@@ -268,17 +268,14 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	}
 
 	var ptc1 map[string]interface{}
-
 	for _, templatePath := range templatePaths {
 		project, service, _ := eUtils.GetProjectService(templatePath)
 		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
 		overridePath := ""
 		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 {
 			mod.SectionPath = "super-secrets/Index/" + project + pluginPath.(string) + config.SubSectionValue + "/" + service
-			overridePath = "super-secrets/Index/" + project + pluginPath.(string) + "/overrides/" + hostName + "/" + service
 		} else {
 			mod.SectionPath = "super-secrets/Index/" + project + "/trcplugin/" + config.SubSectionValue + "/" + service
-			overridePath = "super-secrets/Index/" + project + "/trcplugin/overrides/" + hostName + "/" + config.SubSectionValue + "/" + service
 		}
 		ptc1, err = mod.ReadData(mod.SectionPath)
 		pluginToolConfig["pluginpath"] = mod.SectionPath
@@ -291,13 +288,20 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 			pluginToolConfig[k] = v
 		}
 
-		ptc2, err := mod.ReadData(overridePath)
-		if err != nil || ptc2 == nil {
-			config.Log.Println("No override found for plugin.")
-			continue
-		}
-		for k, v := range ptc2 {
-			pluginToolConfig[k] = v
+		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 && hostName != "" {
+			overridePath = "super-secrets/Index/" + project + "/trcplugin/overrides/" + hostName + "/" + config.SubSectionValue + "/" + service
+			mod.SectionPath = overridePath
+			ptc2, err := mod.ReadData(mod.SectionPath)
+			pluginToolConfig["overridepath"] = overridePath
+			if err != nil || ptc2 == nil {
+				pluginToolConfig["copied"] = false
+				pluginToolConfig["deployed"] = false
+				config.Log.Println("No override found for plugin.")
+				continue
+			}
+			for k, v := range ptc2 {
+				pluginToolConfig[k] = v
+			}
 		}
 
 		break
