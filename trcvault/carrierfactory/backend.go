@@ -311,8 +311,8 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 
 	ctoken, aOk := pluginEnvConfig["ctoken"]
 	if !aOk || ctoken.(string) == "" {
-		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing certify address.")
-		return errors.New("missing certify address")
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing certify token.")
+		return errors.New("missing certify token")
 	}
 
 	pubrole, pOk := pluginEnvConfig["pubrole"]
@@ -487,7 +487,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	if ctoken, addressOk := data.GetOk("ctoken"); addressOk {
 		tokenEnvMap["ctoken"] = ctoken.(string)
 	} else {
-		return nil, errors.New("vault Certify Url required")
+		return nil, errors.New("vault Certify token required")
 	}
 
 	tokenEnvMap["env"] = req.Path
