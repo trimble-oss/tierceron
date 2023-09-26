@@ -37,6 +37,12 @@ if [[ -z "${SECRET_VAULT_ENV_TOKEN}" ]]; then
 echo "Enter organization vault unrestricted environment token with write permissions: "
 read SECRET_VAULT_ENV_TOKEN
 fi
+
+if [[ -z "${SECRET_VAULT_PLUGIN_TOKEN}" ]]; then
+echo "Enter organization vault plugin token for certification: "
+read SECRET_VAULT_PLUGIN_TOKEN
+fi
+
 echo "Enter agent root token: "
 read VAULT_TOKEN
 
@@ -180,6 +186,6 @@ vault secrets enable \
 
 #Activates/starts the deployed plugin.
 # Note: plugin should update deployed flag for itself.
-vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR
+vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN
 
 vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME

@@ -99,10 +99,15 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	//Grabbing certification from vault
 	if pluginConfig["caddress"].(string) == "" { //if no certification address found, it will try to certify against itself.
-		pluginConfig["caddress"] = pluginConfig["vaddress"]
+		return errors.New("Could not find certification address.")
 	}
-	temp := pluginConfig["vaddress"]
+	if pluginConfig["ctoken"].(string) == "" { //if no certification address found, it will try to certify against itself.
+		return errors.New("Could not find certification token.")
+	}
+	tempAddr := pluginConfig["vaddress"]
+	tempToken := pluginConfig["token"]
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
+	pluginConfig["token"] = pluginConfig["ctoken"]
 	cConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if err != nil {
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
@@ -112,7 +117,8 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	if ptcErr != nil {
 		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
 	}
-	pluginConfig["vaddress"] = temp
+	pluginConfig["vaddress"] = tempAddr
+	pluginConfig["token"] = tempToken
 
 	//grabbing configs
 	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
