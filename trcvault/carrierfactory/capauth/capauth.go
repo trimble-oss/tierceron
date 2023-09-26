@@ -47,10 +47,17 @@ func CheckNotSudo() {
 
 func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) error {
 
+	//FINDTHIS
+	tempAddr := pluginConfig["vaddress"]
+	tempToken := pluginConfig["token"]
+	pluginConfig["vaddress"] = pluginConfig["caddress"]
+	pluginConfig["token"] = pluginConfig["ctoken"]
 	certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcsh/Certify")
 	if err != nil {
 		return err
 	}
+	pluginConfig["vaddress"] = tempAddr
+	pluginConfig["token"] = tempToken
 
 	if _, ok := certifyMap["trcsha256"]; ok {
 		logger.Println("Registering cap auth.")
