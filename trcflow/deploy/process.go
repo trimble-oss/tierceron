@@ -43,6 +43,10 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		var vault *sys.Vault
 
 		//Grabbing configs
+		tempAddr := pluginConfig["vaddress"]
+		tempToken := pluginConfig["token"]
+		pluginConfig["vaddress"] = pluginConfig["caddress"]
+		pluginConfig["token"] = pluginConfig["ctoken"]
 		config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 		if vault != nil {
 			defer vault.Close()
@@ -51,6 +55,8 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		if goMod != nil {
 			defer goMod.Release()
 		}
+		pluginConfig["vaddress"] = tempAddr
+		pluginConfig["token"] = tempToken
 
 		if err != nil {
 			eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
