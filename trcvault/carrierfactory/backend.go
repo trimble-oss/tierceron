@@ -563,7 +563,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			logger.Println("Creating modifier for env: " + req.Path)
 
 			// Plugins
-			mod, err := helperkv.NewModifier(true, tokenEnvMap["token"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
+			mod, err := helperkv.NewModifier(true, tokenEnvMap["ctoken"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
 			if mod != nil {
 				defer mod.Release()
 			}

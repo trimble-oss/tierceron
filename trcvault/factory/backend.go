@@ -464,7 +464,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		}
 		logger.Println("TrcUpdate begin setup for plugin settings init")
 
-		if token, tokenOk := data.GetOk("token"); tokenOk {
+		if _, tokenOk := data.GetOk("token"); tokenOk {
 			logger.Println("TrcUpdate stage 1")
 
 			if GetVaultPort() == "" {
@@ -499,13 +499,19 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				return nil, errors.New("Certification Vault Url required.")
 			}
 
+			if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
+				tokenEnvMap["ctoken"] = cToken
+			} else {
+				return nil, errors.New("Certification Vault token required.")
+			}
+
 			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
 				// Missing port.
 				vaultHost = vaultHost + ":" + GetVaultPort()
 			}
 
 			// Plugins
-			cMod, err := helperkv.NewModifier(true, token.(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
+			cMod, err := helperkv.NewModifier(true, tokenEnvMap["ctoken"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
 			if cMod != nil {
 				defer cMod.Release()
 			}
