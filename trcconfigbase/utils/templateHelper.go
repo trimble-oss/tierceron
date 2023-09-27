@@ -127,7 +127,12 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 
 	if !config.WantCerts {
 		relativeTemplatePathParts := strings.Split(emptyFilePath, coreopts.GetFolderPrefix(config.StartDir)+"_templates")
-		templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
+		if len(relativeTemplatePathParts) == 1 {
+			config.Log.Println("Unable to split relative template path:" + relativeTemplatePathParts[0])
+		} else if len(relativeTemplatePathParts) == 0 {
+			config.Log.Println("Unable to find any relative template path.")
+		}
+		templatePathParts := strings.Split(relativeTemplatePathParts[1], ".") //Windows debug here
 		modifier.TemplatePath = "templates" + templatePathParts[0]
 	} else {
 		config.Log.Println("Configuring cert")
