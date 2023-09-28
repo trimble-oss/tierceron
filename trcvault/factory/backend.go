@@ -191,10 +191,14 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	type tokenWrapper struct {
 		Token    string `json:"token,omitempty"`
 		VAddress string `json:"vaddress,omitempty"`
+		CAddress string `json:"caddress,omitempty"`
+		CToken   string `json:"ctoken,omitempty"`
 	}
 	tokenConfig := tokenWrapper{}
 	e.DecodeJSON(&tokenConfig)
 	tokenMap["token"] = tokenConfig.Token
+	tokenMap["caddress"] = tokenConfig.CAddress
+	tokenMap["ctoken"] = tokenConfig.CToken
 
 	vaultUrl, err := url.Parse(tokenConfig.VAddress)
 	if err == nil {
@@ -224,6 +228,18 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	address, aOk := pluginEnvConfig["vaddress"]
 	if !aOk || address.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing address.")
+		return errors.New("missing address")
+	}
+
+	ctoken, tOk := pluginEnvConfig["ctoken"]
+	if !tOk || ctoken.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing ctoken.")
+		return errors.New("missing token")
+	}
+
+	caddress, aOk := pluginEnvConfig["caddress"]
+	if !aOk || caddress.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing caddress.")
 		return errors.New("missing address")
 	}
 

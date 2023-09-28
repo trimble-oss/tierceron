@@ -84,7 +84,6 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
 	var config *eUtils.DriverConfig
-	var goMod *helperkv.Modifier
 	var vault *sys.Vault
 	var err error
 	var pluginName string
@@ -110,24 +109,27 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	if pluginConfig["ctoken"].(string) == "" { //if no certification address found, it will try to certify against itself.
 		return errors.New("Could not find certification token.")
 	}
+
 	tempAddr := pluginConfig["vaddress"]
 	tempToken := pluginConfig["token"]
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["token"] = pluginConfig["ctoken"]
 	cConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	cConfig.SubSectionValue = pluginName
 	if err != nil {
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
 	}
-	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig, hostNameErr.Error())
+
+	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig, hostName)
 	if ptcErr != nil {
 		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
 	}
 	pluginConfig["vaddress"] = tempAddr
 	pluginConfig["token"] = tempToken
-
 	//grabbing configs
-	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	config, _, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	config.SubSectionValue = pluginName
 	if vault != nil {
 		defer vault.Close()
 	}
@@ -320,7 +322,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			writeMap["trctype"] = "vault"
 		}
 
-		_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
+		_, err = cGoMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
 		if err != nil {
 			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
 		}
@@ -332,7 +334,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		}
 
 		overridePath := "super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + writeMap["trcplugin"].(string) + "/Certify"
-		_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+overridePath+"/Certify", writeMap, config.Log)
+		_, err = cGoMod.Write("super-secrets/Index/TrcVault/trcplugin/"+overridePath, writeMap, config.Log)
 		if err != nil {
 			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
 		}
