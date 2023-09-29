@@ -13,9 +13,9 @@ echo "Enter organization vault host base url including port (hit enter if just r
 read SECRET_VAULT_ADDR
 fi
 
-if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
+if [[ -z "${SECRET_ENV_TOKEN}" ]]; then
 echo "Enter organization vault *plugin* environment token with tightly confined write permissions: "
-read VAULT_ENV_TOKEN
+read SECRET_ENV_TOKEN
 fi
 
 echo "Enter organization vault host base url including port: "
@@ -35,5 +35,5 @@ export VAULT_ADDR
 export VAULT_TOKEN
 export VAULT_API_ADDR
 
-vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$VAULT_ENV_TOKEN
+vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_ENV_TOKEN
 
