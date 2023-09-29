@@ -715,6 +715,14 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 					Type:        framework.TypeString,
 					Description: "Vaurl Url for plugin reference purposes.",
 				},
+				"caddress": {
+					Type:        framework.TypeString,
+					Description: "Vault Url for plugin certification purposes.",
+				},
+				"ctoken": {
+					Type:        framework.TypeString,
+					Description: "Vault token for plugin certification purposes.",
+				},
 				"plugin": {
 					Type:        framework.TypeString,
 					Description: "Optional plugin name.",
