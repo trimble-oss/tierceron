@@ -388,6 +388,16 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 			return nil, mTokenErr
 		}
 		tokenEnvMap["token"] = vData["token"]
+		if cAddr, tokenOK := data.GetOk("caddr"); tokenOK {
+			tokenEnvMap["caddr"] = cAddr
+		} else {
+			return nil, errors.New("caddr required.")
+		}
+		if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
+			tokenEnvMap["ctoken"] = cToken
+		} else {
+			return nil, errors.New("ctoken required.")
+		}
 		logger.Println("Read Pushing env: " + tokenEnvMap["env"].(string))
 		PushEnv(tokenEnvMap)
 		//ctx.Done()
@@ -414,6 +424,17 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		tokenEnvMap["token"] = token
 	} else {
 		return nil, errors.New("Token required.")
+	}
+
+	if cAddr, tokenOK := data.GetOk("caddr"); tokenOK {
+		tokenEnvMap["caddr"] = cAddr
+	} else {
+		return nil, errors.New("caddr required.")
+	}
+	if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
+		tokenEnvMap["ctoken"] = cToken
+	} else {
+		return nil, errors.New("ctoken required.")
 	}
 
 	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
