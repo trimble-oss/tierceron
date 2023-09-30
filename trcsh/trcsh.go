@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -34,40 +36,200 @@ func main() {
 	}
 	eUtils.InitHeadless(true)
 	fmt.Println("trcsh Version: " + "1.11")
+	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
-	if os.Geteuid() == 0 {
-		fmt.Println("Trcsh cannot be run as root.")
-		os.Exit(-1)
+	if runtime.GOOS != "windows" {
+		if os.Geteuid() == 0 {
+			fmt.Println("Trcsh cannot be run as root.")
+			os.Exit(-1)
+		} else {
+			capauth.CheckNotSudo()
+		}
+		if len(os.Args) > 1 {
+			if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
+				// Running as shell.
+				os.Args[1] = "-c=" + os.Args[1]
+			}
+		}
+		envPtr = flag.String("env", "", "Environment to be processed")   //If this is blank -> use context otherwise override context.
+		regionPtr = flag.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
+		trcPathPtr = flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
+		appRoleIDPtr = flag.String("appRoleID", "", "Public app role ID")
+		secretIDPtr = flag.String("secretID", "", "App role secret")
+		flag.Parse()
+
+		if len(*appRoleIDPtr) == 0 {
+			*appRoleIDPtr = os.Getenv("DEPLOY_ROLE")
+		}
+
+		if len(*secretIDPtr) == 0 {
+			*secretIDPtr = os.Getenv("DEPLOY_SECRET")
+		}
+		memprotectopts.MemProtect(nil, secretIDPtr)
+		memprotectopts.MemProtect(nil, appRoleIDPtr)
+
+		//Open deploy script and parse it.
+		ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
 	} else {
-		capauth.CheckNotSudo()
+		// github.com/corvus-ch/shamir
+		// github.com/xtaci/kcp-go
+
+		agentPtr := flag.Bool("agent", false, "Run in agent mode")
+		appRoleIDPtr = flag.String("appRoleID", "", "Public app role ID")
+		flag.Parse()
+		if !*agentPtr {
+			fmt.Println("trcsh only runs on windows as an agent.")
+			os.Exit(-1)
+		}
+		if len(*appRoleIDPtr) == 0 {
+			fmt.Println("trcsh on windows requires deploy role.")
+			*appRoleIDPtr = os.Getenv("DEPLOY_ROLE")
+		}
+		memprotectopts.MemProtect(nil, appRoleIDPtr)
+		shutdown := make(chan bool)
+
+		for {
+			ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
+		}
+		<-shutdown
 	}
-	if len(os.Args) > 1 {
-		if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
-			// Running as shell.
-			os.Args[1] = "-c=" + os.Args[1]
+
+}
+
+func configCmd(env string,
+	trcshConfig *trcshauth.TrcShConfig,
+	region string,
+	config *eUtils.DriverConfig,
+	agentToken bool,
+	token string,
+	argsOrig []string,
+	deployArgLines []string,
+	configCount *int) {
+	*configCount -= 1
+	if *configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
+		config.EndDir = "deploy"
+	}
+	config.AppRoleConfig = "config.yml"
+	config.FileFilter = nil
+	config.EnvRaw = env
+	config.WantCerts = false
+	config.IsShellSubProcess = true
+
+	configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
+	tokenName := "config_token_" + env
+	tokenConfig := ""
+	configEnv := env
+
+	trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
+	ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+
+	if !agentToken {
+		token = ""
+		config.Token = token
+	}
+}
+
+func processPluginCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
+	onceKubeInit *sync.Once,
+	PipeOS billy.File,
+	env string,
+	trcshConfig *trcshauth.TrcShConfig,
+	region string,
+	config *eUtils.DriverConfig,
+	control string,
+	agentToken bool,
+	token string,
+	argsOrig []string,
+	deployArgLines []string,
+	configCount *int,
+	logger *log.Logger) {
+	switch control {
+	case "trcpub":
+		config.AppRoleConfig = "configpub.yml"
+		config.EnvRaw = env
+		config.IsShellSubProcess = true
+
+		pubRoleSlice := strings.Split(trcshConfig.PubRole, ":")
+		tokenName := "vault_pub_token_" + env
+		tokenPub := ""
+		pubEnv := env
+
+		trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
+		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+		if !agentToken {
+			token = ""
+			config.Token = token
+		}
+	case "trcconfig":
+		configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
+	case "trcpluginctl":
+	case "kubectl":
+		onceKubeInit.Do(func() {
+			var kubeInitErr error
+			trcKubeDeploymentConfig, kubeInitErr = kube.InitTrcKubeConfig(trcshConfig, config)
+			if kubeInitErr != nil {
+				fmt.Println(kubeInitErr)
+				return
+			}
+		})
+		trcKubeDeploymentConfig.PipeOS = PipeOS
+
+		kubectlErrChan := make(chan error, 1)
+
+		go func() {
+			kubectlErrChan <- kube.KubeCtl(trcKubeDeploymentConfig, config)
+		}()
+
+		select {
+		case <-time.After(15 * time.Second):
+			fmt.Println("Agent is not yet ready..")
+			logger.Println("Timed out waiting for KubeCtl.")
+			os.Exit(-1)
+		case kubeErr := <-kubectlErrChan:
+			if kubeErr != nil {
+				logger.Println(kubeErr)
+				os.Exit(-1)
+			}
 		}
 	}
-	envPtr := flag.String("env", "", "Environment to be processed")   //If this is blank -> use context otherwise override context.
-	regionPtr := flag.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
-	trcPathPtr := flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
-	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	secretIDPtr := flag.String("secretID", "", "App role secret")
+}
 
-	flag.Parse()
-
-	if len(*appRoleIDPtr) == 0 {
-		*appRoleIDPtr = os.Getenv("DEPLOY_ROLE")
+func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
+	onceKubeInit *sync.Once,
+	PipeOS billy.File,
+	env string,
+	trcshConfig *trcshauth.TrcShConfig,
+	region string,
+	config *eUtils.DriverConfig,
+	control string,
+	agentToken bool,
+	token string,
+	argsOrig []string,
+	deployArgLines []string,
+	configCount *int,
+	logger *log.Logger) {
+	switch control {
+	case "trcwinservicestart":
+		cmd := exec.Command("sc", "start", "TODO")
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	case "trcwinservicestop":
+		cmd := exec.Command("sc", "stop", "TODO")
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	case "trcserviceinstall":
+		// Bring it on Carrier....
+	case "trcconfig":
+		configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
 	}
-
-	if len(*secretIDPtr) == 0 {
-		*secretIDPtr = os.Getenv("DEPLOY_SECRET")
-	}
-
-	memprotectopts.MemProtect(nil, secretIDPtr)
-	memprotectopts.MemProtect(nil, appRoleIDPtr)
-
-	//Open deploy script and parse it.
-	ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
 }
 
 // ProcessDeploy
@@ -276,78 +438,39 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					os.Args = deployArgs
 				}
 			}
+			if runtime.GOOS != "windows" {
+				processPluginCmds(
+					trcKubeDeploymentConfig,
+					&onceKubeInit,
+					PipeOS,
+					env,
+					trcshConfig,
+					region,
+					config,
+					control,
+					agentToken,
+					token,
+					argsOrig,
+					deployArgLines,
+					&configCount,
+					logger)
+			} else {
+				processWindowsCmds(
+					trcKubeDeploymentConfig,
+					&onceKubeInit,
+					PipeOS,
+					env,
+					trcshConfig,
+					region,
+					config,
+					control,
+					agentToken,
+					token,
+					argsOrig,
+					deployArgLines,
+					&configCount,
+					logger)
 
-			switch control {
-			case "trcpub":
-				config.AppRoleConfig = "configpub.yml"
-				config.EnvRaw = env
-				config.IsShellSubProcess = true
-
-				pubRoleSlice := strings.Split(trcshConfig.PubRole, ":")
-				tokenName := "vault_pub_token_" + env
-				tokenPub := ""
-				pubEnv := env
-
-				trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
-				ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-				flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
-				if !agentToken {
-					token = ""
-					config.Token = token
-				}
-			case "trcconfig":
-				configCount -= 1
-				if configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
-					config.EndDir = "deploy"
-				}
-				config.AppRoleConfig = "config.yml"
-				config.FileFilter = nil
-				config.EnvRaw = env
-				config.WantCerts = false
-				config.IsShellSubProcess = true
-
-				configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
-				tokenName := "config_token_" + env
-				tokenConfig := ""
-				configEnv := env
-
-				trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
-				ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-				flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
-
-				if !agentToken {
-					token = ""
-					config.Token = token
-				}
-			case "trcpluginctl":
-			case "kubectl":
-				onceKubeInit.Do(func() {
-					var kubeInitErr error
-					trcKubeDeploymentConfig, kubeInitErr = kube.InitTrcKubeConfig(trcshConfig, config)
-					if kubeInitErr != nil {
-						fmt.Println(kubeInitErr)
-						return
-					}
-				})
-				trcKubeDeploymentConfig.PipeOS = PipeOS
-
-				kubectlErrChan := make(chan error, 1)
-
-				go func() {
-					kubectlErrChan <- kube.KubeCtl(trcKubeDeploymentConfig, config)
-				}()
-
-				select {
-				case <-time.After(15 * time.Second):
-					fmt.Println("Agent is not yet ready..")
-					logger.Println("Timed out waiting for KubeCtl.")
-					os.Exit(-1)
-				case kubeErr := <-kubectlErrChan:
-					if kubeErr != nil {
-						logger.Println(kubeErr)
-						os.Exit(-1)
-					}
-				}
 			}
 		}
 	}
