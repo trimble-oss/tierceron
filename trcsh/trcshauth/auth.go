@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"regexp"
@@ -22,6 +23,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 //go:embed tls/mashup.crt
@@ -231,4 +233,37 @@ func PenseQuery(pense string) (string, error) {
 	}
 
 	return r.GetPense(), nil
+}
+
+func PenseFeatherQuery(agentconfig *AgentConfigs, pense string) *string {
+	penseCode := randomString(7 + rand.Intn(7))
+	penseArray := sha256.Sum256([]byte(penseCode))
+	penseSum := hex.EncodeToString(penseArray[:])
+
+	_, featherErr := cap.FeatherWriter(agentconfig.EncryptPass, agentconfig.EncryptSalt, agentconfig.CarrierCtlHostPort, agentconfig.DeployRoleID, penseSum)
+	if featherErr != nil {
+		log.Fatalf("Failed to feather writer: %v", featherErr)
+	}
+
+	conn, err := grpc.Dial(agentconfig.CarrierHostPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	c := cap.NewCapClient(conn)
+
+	// Contact the server and print out its response.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	var penseProtect *string
+	rPense := r.GetPense()
+	penseProtect = &rPense
+	memprotectopts.MemProtect(nil, penseProtect)
+
+	return penseProtect
 }

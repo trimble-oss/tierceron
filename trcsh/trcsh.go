@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
+	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
@@ -35,10 +36,10 @@ func main() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.11")
+	fmt.Println("trcsh Version: " + "1.12")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
-	if runtime.GOOS != "windows" {
+	if false && runtime.GOOS != "windows" {
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
@@ -71,13 +72,11 @@ func main() {
 		//Open deploy script and parse it.
 		ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
 	} else {
-		// github.com/corvus-ch/shamir
-		// github.com/xtaci/kcp-go
-
-		agentPtr := flag.Bool("agent", false, "Run in agent mode")
+		agentPtr := flag.String("agent", "", "Provide service to run agent as")
+		envPtr = flag.String("env", "", "Environment to be processed") //If this is blank -> use context otherwise override context.
 		appRoleIDPtr = flag.String("appRoleID", "", "Public app role ID")
 		flag.Parse()
-		if !*agentPtr {
+		if *agentPtr == "" {
 			fmt.Println("trcsh only runs on windows as an agent.")
 			os.Exit(-1)
 		}
@@ -88,8 +87,19 @@ func main() {
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
 		shutdown := make(chan bool)
 
+		var agentConfig *trcshauth.AgentConfigs = &trcshauth.AgentConfigs{}
+		agentConfig.LoadConfigs()
+		trcshauth.PenseFeatherQuery(agentConfig, "configrole")
+		trcshauth.PenseFeatherQuery(agentConfig, "pubrole")
+
 		for {
-			ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
+			if featherMode, featherErr := cap.FeatherCtlEmit(agentConfig.EncryptPass,
+				agentConfig.EncryptSalt,
+				agentConfig.CarrierHost,
+				agentConfig.DeployRoleID,
+				cap.MODE_GLIDE, *agentPtr+"."+*envPtr); featherErr == nil && featherMode == cap.MODE_FEATHER {
+				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
+			}
 		}
 		<-shutdown
 	}
@@ -225,8 +235,10 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 			fmt.Println(err)
 			return
 		}
-	case "trcserviceinstall":
+	case "trcwinservicedeploy":
 		// Bring it on Carrier....
+	case "trcplgtool":
+		//
 	case "trcconfig":
 		configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
 	}
