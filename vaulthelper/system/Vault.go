@@ -3,7 +3,7 @@ package system
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -150,7 +150,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 	var tokenPath = dir
 	var tokenPolicies = []string{}
 
-	files, err := ioutil.ReadDir(tokenPath)
+	files, err := os.ReadDir(tokenPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -171,13 +171,10 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 			log.Fatal(err)
 		}
 
-		byteValue, _ := ioutil.ReadAll(file)
+		byteValue, _ := io.ReadAll(file)
 		token := api.TokenCreateRequest{}
 		yaml.Unmarshal(byteValue, &token)
-
-		for _, policy := range token.Policies {
-			tokenPolicies = append(tokenPolicies, policy)
-		}
+		tokenPolicies = append(tokenPolicies, token.Policies...)
 	}
 	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
 	response, err := v.client.RawRequest(r)
@@ -273,9 +270,9 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 						if response.StatusCode == 204 {
 							fmt.Println("Revoked token with policy: " + matchedPolicy)
 						} else {
-							fmt.Println(fmt.Sprintf("Failed with status: %s", response.Status))
-							fmt.Println(fmt.Sprintf("Failed with status code: %d", response.StatusCode))
-							return errors.New("Failure to revoke tokens")
+							fmt.Printf("Failed with status: %s\n", response.Status)
+							fmt.Printf("Failed with status code: %d\n", response.StatusCode)
+							return errors.New("failure to revoke tokens")
 						}
 					}
 				}
@@ -291,7 +288,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 					log.Fatal(err)
 				}
 
-				fmt.Println(fmt.Sprintf("Tidy success status: %s", response.Status))
+				fmt.Printf("Tidy success status: %s\n", response.Status)
 
 				if response.StatusCode == 202 {
 					var tidyResponseMap map[string]interface{}
@@ -304,8 +301,8 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 						}
 					}
 				} else {
-					fmt.Println(fmt.Sprintf("Non critical tidy success failure: %s", response.Status))
-					fmt.Println(fmt.Sprintf("Non critical tidy success failure: %d", response.StatusCode))
+					fmt.Printf("Non critical tidy success failure: %s\n", response.Status)
+					fmt.Printf("Non critical tidy success failure: %d\n", response.StatusCode)
 				}
 			}
 		}
@@ -355,7 +352,7 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 
 // GetExistsTokenRole - Gets the token role by token role name.
 func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
-	roleFile, err := ioutil.ReadFile(filename)
+	roleFile, err := os.ReadFile(filename)
 	if err != nil {
 		return false, err
 	}
@@ -387,7 +384,7 @@ func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
 		return true, nil
 	}
 
-	return false, fmt.Errorf("Error parsing resonse for key 'data'")
+	return false, fmt.Errorf("error parsing resonse for key 'data'")
 }
 
 // CreatePolicyFromFile Creates a policy with the given name and rules
@@ -407,7 +404,7 @@ func (v *Vault) GetExistsPolicyFromFileName(filename string) (bool, error) {
 
 // CreatePolicyFromFile Creates a policy with the given name and rules
 func (v *Vault) CreatePolicyFromFile(name string, filepath string) error {
-	data, err := ioutil.ReadFile(filepath)
+	data, err := os.ReadFile(filepath)
 	if err != nil {
 		return err
 	}
@@ -461,7 +458,7 @@ func (v *Vault) Unseal() (int, int, bool, error) {
 
 // CreateTokenCidrRoleFromFile Creates a new token cidr role from the given file and returns the name
 func (v *Vault) CreateTokenCidrRoleFromFile(filename string) error {
-	tokenfile, err := ioutil.ReadFile(filename)
+	tokenfile, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
@@ -476,7 +473,7 @@ func (v *Vault) CreateTokenCidrRoleFromFile(filename string) error {
 
 // CreateTokenFromFile Creates a new token from the given file and returns the name
 func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
-	tokenfile, err := ioutil.ReadFile(filename)
+	tokenfile, err := os.ReadFile(filename)
 	if err != nil {
 		return "", err
 	}

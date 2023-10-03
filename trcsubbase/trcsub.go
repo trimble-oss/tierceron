@@ -96,7 +96,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	} else {
 		fmt.Printf("Downloading templates from vault to %s\n", *dirPtr)
 		// The actual download templates goes here.
-		err, warn := il.DownloadTemplateDirectory(config, mod, *dirPtr, logger, filterTemplatePtr)
+		warn, err := il.DownloadTemplateDirectory(config, mod, *dirPtr, logger, filterTemplatePtr)
 		if err != nil {
 			fmt.Println(err)
 			if strings.Contains(err.Error(), "x509: certificate") {
