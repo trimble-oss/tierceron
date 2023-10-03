@@ -3,7 +3,6 @@ package xutil
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +22,7 @@ import (
 
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
-func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, error, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string, string) {
+func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string, string, error) {
 	var wg sync.WaitGroup
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -99,7 +98,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 		_, err := mod.ReadData("apiLogins/meta")
 		if err != nil {
 			eUtils.LogInfo(config, "Cannot genAuth with provided token.")
-			return nil, false, eUtils.LogAndSafeExit(config, "", 1), nil, nil, nil, ""
+			return nil, false, nil, nil, nil, "", eUtils.LogAndSafeExit(config, "", 1)
 		}
 	}
 
@@ -139,7 +138,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 		versionMetadataMap := eUtils.GetProjectVersionInfo(config, mod)
 
 		if versionMetadataMap == nil {
-			return nil, false, eUtils.LogAndSafeExit(config, fmt.Sprintf("No version data found - this filter was applied during search: %v\n", config.VersionFilter), 1), nil, nil, nil, ""
+			return nil, false, nil, nil, nil, "", eUtils.LogAndSafeExit(config, fmt.Sprintf("No version data found - this filter was applied during search: %v\n", config.VersionFilter), 1)
 		} else if version == "versionInfo" { //Version flag
 			var masterKey string
 			first := true
@@ -160,11 +159,11 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					if len(key) > 0 && len(masterKey) < 1 {
 						masterKey = key
 						config.VersionInfo(versionMetadataMap[masterKey], false, "", false)
-						return nil, false, eUtils.LogAndSafeExit(config, "Version info provided.", 1), nil, nil, nil, ""
+						return nil, false, nil, nil, nil, "", eUtils.LogAndSafeExit(config, "Version info provided.", 1)
 					}
 				}
 			}
-			return nil, false, eUtils.LogAndSafeExit(config, "Version info provided.", 1), nil, nil, nil, ""
+			return nil, false, nil, nil, nil, "", eUtils.LogAndSafeExit(config, "Version info provided.", 1)
 		} else { //Version bound check
 			if version != "0" {
 				versionNumbers := eUtils.GetProjectVersions(config, versionMetadataMap)
@@ -302,7 +301,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					errmsg = errors.New("No relevant services were found for this environment: " + mod.Env)
 				}
 				eUtils.LogErrorObject(config, errmsg, false)
-				return nil, false, errmsg, nil, nil, nil, ""
+				return nil, false, nil, nil, nil, "", errmsg
 			}
 
 			if len(acceptedTemplatePaths) > 0 {
@@ -391,19 +390,20 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					// TODO: Deprecated...
 					// 1-800-ROIT???  Not sure how certs play into this.
 					if goMod.SectionName != "" && (goMod.SubSectionValue != "" || goMod.SectionKey == "/Restricted/" || goMod.SectionKey == "/Protected/") {
-						if goMod.SectionKey == "/Index/" {
+						switch goMod.SectionKey {
+						case "/Index/":
 							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + config.SubSectionName
-						} else if goMod.SectionKey == "/Restricted/" {
+						case "/Restricted/":
 							if service != config.SectionName { //TODO: Revisit why we need this comparison
 								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
 							} else {
 								goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + config.SectionName
 							}
-						} else if goMod.SectionKey == "/Protected/" {
+						case "/Protected/":
 							if service != config.SectionName {
 								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + config.SectionName
 							}
-						} else {
+						default:
 							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
 						}
 					}
@@ -500,7 +500,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					eUtils.LogErrorObject(config, errA, false)
 				}
 			} else {
-				return nil, false, eUtils.LogAndSafeExit(config, "Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", 1), nil, nil, nil, ""
+				return nil, false, nil, nil, nil, "", eUtils.LogAndSafeExit(config, "Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", 1)
 			}
 		} else {
 			authConfigurations := map[string]interface{}{}
@@ -519,7 +519,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 			}
 		}
 	}
-	return authYaml, multiService, nil, templateCombinedSection, valueCombinedSection, secretCombinedSection, sectionPath
+	return authYaml, multiService, templateCombinedSection, valueCombinedSection, secretCombinedSection, sectionPath, nil
 }
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
@@ -529,7 +529,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 		projectSectionTemp = config.ProjectSections
 		config.ProjectSections = []string{}
 	}
-	authYaml, multiService, generateErr, templateCombinedSection, valueCombinedSection, secretCombinedSection, endPath := GenerateSeedSectionFromVaultRaw(config, fromVault, templatePaths)
+	authYaml, multiService, templateCombinedSection, valueCombinedSection, secretCombinedSection, endPath, generateErr := GenerateSeedSectionFromVaultRaw(config, fromVault, templatePaths)
 	if generateErr != nil {
 		eUtils.LogErrorObject(config, generateErr, false)
 		return "", false, "", nil
@@ -701,10 +701,13 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 			envBasePath, _, _, _ := helperkv.PreCheckEnvironment(config.EnvRaw)
 			sectionNamePath := "/"
 			subSectionValuePath := ""
-			if config.SectionKey == "/Index/" {
+			switch config.SectionKey {
+			case "/Index/":
 				sectionNamePath = "/" + config.SectionName + "/"
 				subSectionValuePath = config.SubSectionValue
-			} else if config.SectionKey == "/Restricted/" || config.SectionKey == "/Protected/" {
+			case "/Restricted/":
+				fallthrough
+			case "/Protected/":
 				sectionNamePath = "/" + config.SectionName + "/"
 				subSectionValuePath = config.Env
 			}
@@ -830,7 +833,7 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 }
 
 func GetDirFiles(dir string) []string {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	filePaths := []string{}
 	//endPaths := []string{}
 	if err != nil {

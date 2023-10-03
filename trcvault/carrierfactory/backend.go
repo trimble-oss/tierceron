@@ -185,7 +185,7 @@ func confirmInput(ctx context.Context, req *logical.Request, reqData *framework.
 		if req != nil {
 			tokenEnvMap["env"] = req.Path
 		} else {
-			return nil, errors.New("Unable to determine env")
+			return nil, errors.New("unable to determine env")
 		}
 	}
 	logger.Println("Input validation for env: " + tokenEnvMap["env"].(string))
@@ -212,7 +212,6 @@ func confirmInput(ctx context.Context, req *logical.Request, reqData *framework.
 	} else {
 		return nil, errors.New("Unconfirmed")
 	}
-	return nil, tokenConfirmationErr
 }
 
 func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData, tokenEnvMap map[string]interface{}) (map[string]interface{}, error) {
@@ -228,6 +227,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 			Token      string `json:"token,omitempty"`
 			VAddress   string `json:"vaddress,omitempty"`
 			CAddress   string `json:"caddress,omitempty"`
+			CToken     string `json:"ctoken,omitempty"`
 			Pubrole    string `json:"pubrole,omitempty"`
 			Configrole string `json:"configrole,omitempty"`
 			Kubeconfig string `json:"kubeconfig,omitempty"`
@@ -241,6 +241,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 		if memonly.IsMemonly() {
 			memprotectopts.MemProtect(nil, &tokenConfig.VAddress)
 			memprotectopts.MemProtect(nil, &tokenConfig.CAddress)
+			memprotectopts.MemProtect(nil, &tokenConfig.CToken)
 			memprotectopts.MemProtect(nil, &tokenConfig.Token)
 			memprotectopts.MemProtect(nil, &tokenConfig.Pubrole)
 			memprotectopts.MemProtect(nil, &tokenConfig.Configrole)
@@ -248,6 +249,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 		}
 		tokenMap["vaddress"] = tokenConfig.VAddress
 		tokenMap["caddress"] = tokenConfig.CAddress
+		tokenMap["ctoken"] = tokenConfig.CToken
 		tokenMap["token"] = tokenConfig.Token
 		tokenMap["pubrole"] = tokenConfig.Pubrole
 		tokenMap["configrole"] = tokenConfig.Configrole
@@ -257,7 +259,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 
 	// Update and lock each field that is provided...
 	if reqData != nil {
-		tokenNameSlice := []string{"vaddress", "caddress", "token", "pubrole", "configrole", "kubeconfig"}
+		tokenNameSlice := []string{"vaddress", "caddress", "ctoken", "token", "pubrole", "configrole", "kubeconfig"}
 		for _, tokenName := range tokenNameSlice {
 			if token, tokenOk := reqData.GetOk(tokenName); tokenOk && token.(string) != "" {
 				tokenStr := token.(string)
@@ -305,6 +307,12 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	if !aOk || caddress.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing certify address.")
 		return errors.New("missing certify address")
+	}
+
+	ctoken, aOk := pluginEnvConfig["ctoken"]
+	if !aOk || ctoken.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing certify token.")
+		return errors.New("missing certify token")
 	}
 
 	pubrole, pOk := pluginEnvConfig["pubrole"]
@@ -461,19 +469,25 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	if token, tokenOk := data.GetOk("token"); tokenOk {
 		tokenEnvMap["token"] = token
 	} else {
-		return nil, errors.New("Token required.")
+		return nil, errors.New("token required")
 	}
 
 	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
 		tokenEnvMap["vaddress"] = vaddr.(string)
 	} else {
-		return nil, errors.New("Vault Url required.")
+		return nil, errors.New("vault Url required")
 	}
 
 	if caddr, addressOk := data.GetOk("caddress"); addressOk {
 		tokenEnvMap["caddress"] = caddr.(string)
 	} else {
-		return nil, errors.New("Vault Certify Url required.")
+		return nil, errors.New("vault Certify Url required")
+	}
+
+	if ctoken, addressOk := data.GetOk("ctoken"); addressOk {
+		tokenEnvMap["ctoken"] = ctoken.(string)
+	} else {
+		return nil, errors.New("vault Certify token required")
 	}
 
 	tokenEnvMap["env"] = req.Path
@@ -549,7 +563,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			logger.Println("Creating modifier for env: " + req.Path)
 
 			// Plugins
-			mod, err := helperkv.NewModifier(true, tokenEnvMap["token"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
+			mod, err := helperkv.NewModifier(true, tokenEnvMap["ctoken"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
 			if mod != nil {
 				defer mod.Release()
 			}
@@ -602,7 +616,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 		// Path includes Env and token will only work if it has right permissions.
 		if tokenEnvMap, tokenParseDataErr = confirmInput(ctx, req, reqData, tokenEnvMap); tokenParseDataErr != nil {
 			// Bad or corrupt data in vault.
-			return nil, errors.New("Input data validation error.")
+			return nil, errors.New("input data validation error")
 		}
 
 		logger.Println("TrcCarrierUpdate merging tokens.")
