@@ -7,16 +7,17 @@ import (
 	"log"
 
 	"github.com/trimble-oss/tierceron/utils/mlock"
+	"golang.org/x/sys/unix"
 )
 
 func MemProtectInit(logger *log.Logger) error {
-	return mlock.Mlock(logger)
+	mlock.Mlock(logger)
 }
 
 func MemUnprotectAll(logger *log.Logger) error {
-	return mlock.MunlockAll(logger)
+	return unix.Munlockall()
 }
 
 func MemProtect(logger *log.Logger, sensitive *string) error {
-	return mlock.Mlock2(logger, sensitive)
+	return mlock.Mlock(logger*log.Logger, sensitive*string)
 }

@@ -1,7 +1,7 @@
 package initlib
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	eUtils "github.com/trimble-oss/tierceron/utils"
@@ -12,7 +12,7 @@ import (
 func UploadPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault, noPermissions bool) error {
 	config.Log.SetPrefix("[POLICY]")
 	config.Log.Printf("Writing policies from %s\n", dir)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func UploadPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault, noPer
 func GetExistsPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault) (bool, error) {
 	config.Log.SetPrefix("[POLICY]")
 	config.Log.Printf("Checking exists token policies from %s\n", dir)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return false, nil
 	}
