@@ -372,8 +372,7 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 		if err != nil {
 			return err
 		}
-		mod.SectionPath = "super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + pluginName + "/Certify"
-		pluginStatusData, statusErr := mod.ReadData(mod.SectionPath)
+		pluginStatusData, statusErr := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + pluginName + "/Certify")
 		if statusErr != nil {
 			return statusErr
 		}
