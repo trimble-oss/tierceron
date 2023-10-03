@@ -86,6 +86,9 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 		pluginToolConfig["azureClientId"].(string),
 		pluginToolConfig["azureClientSecret"].(string),
 		nil)
+	if err != nil {
+		return err
+	}
 
 	imageErr := getImageSHA(config, svc, pluginToolConfig)
 	if imageErr != nil {
@@ -113,11 +116,11 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 
 	pluginTarredData, gUnZipError := gUnZipData(layerData)
 	if gUnZipError != nil {
-		return errors.New("Gunzip failed.")
+		return errors.New("gunzip failed")
 	}
 	pluginImage, gUnTarError := untarData(pluginTarredData)
 	if gUnTarError != nil {
-		return errors.New("Untarring failed.")
+		return errors.New("untarring failed")
 	}
 	pluginSha := sha256.Sum256(pluginImage)
 	pluginToolConfig["rawImageFile"] = pluginImage

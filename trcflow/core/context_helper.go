@@ -145,10 +145,10 @@ func getStatisticChangedByIdQuery(databaseName string, changeTable string, idCol
 			}
 			return query, nil
 		} else {
-			return "", errors.New("Invalid index value data for statistic data")
+			return "", errors.New("invalid index value data for statistic data")
 		}
 	} else {
-		return "", errors.New("Invalid index name data for statistic data")
+		return "", errors.New("invalid index name data for statistic data")
 	}
 }
 

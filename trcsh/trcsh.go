@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -203,12 +202,12 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 	} else {
 		fmt.Println("Processing manual trcshell")
 		if env == "itdev" {
-			content, err = ioutil.ReadFile(pwd + "/deploy/buildtest.trc")
+			content, err = os.ReadFile(pwd + "/deploy/buildtest.trc")
 			if err != nil {
 				fmt.Println("Error could not find /deploy/buildtest.trc for deployment instructions")
 			}
 		} else {
-			content, err = ioutil.ReadFile(pwd + "/deploy/deploy.trc")
+			content, err = os.ReadFile(pwd + "/deploy/deploy.trc")
 			if err != nil {
 				fmt.Println("Error could not find " + pwd + " /deploy/deploy.trc for deployment instructions")
 			}
