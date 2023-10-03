@@ -490,18 +490,6 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, errors.New("vault Certify token required")
 	}
 
-	if caddr, addressOk := data.GetOk("caddress"); addressOk {
-		tokenEnvMap["caddress"] = caddr.(string)
-	} else {
-		return nil, errors.New("vault Certify Url required")
-	}
-
-	if ctoken, addressOk := data.GetOk("ctoken"); addressOk {
-		tokenEnvMap["ctoken"] = ctoken.(string)
-	} else {
-		return nil, errors.New("vault Certify token required")
-	}
-
 	tokenEnvMap["env"] = req.Path
 
 	// Check that some fields are given
