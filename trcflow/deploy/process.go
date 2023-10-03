@@ -327,6 +327,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
 		}
 
+		writeMap = make(map[string]interface{})
 		writeMap["copied"] = false
 		writeMap["deployed"] = false
 		if writeMap["trctype"].(string) == "agent" {
