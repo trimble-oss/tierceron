@@ -375,8 +375,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 	}
 	//Sort Diff Slice if env are the same
 	for i, env := range envDiffSlice { //Arranges keys for ordered output
-		var base []string
-		base = SplitEnv(env)
+		var base []string = SplitEnv(env)
 
 		if base[1] == "0" { //Special case for latest, so sort adds latest to the back of ordered slice
 			base[1] = "_999999"
@@ -393,8 +392,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 	}
 
 	for i, env := range envDiffSlice { //Changes latest back - special case
-		var base []string
-		base = SplitEnv(env)
+		var base []string = SplitEnv(env)
 		if base[1] == "999999" {
 			base[1] = "_0"
 			envDiffSlice[i] = base[0] + base[1]

@@ -122,13 +122,14 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		if logger.Prefix() != logPrefix {
 			logger.Println("Checking log permissions..")
 			logFile := fmt.Sprintf("/var/log/trcplugin%s-%s.log", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
+
 			f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 			if logErr != nil {
 				logFile = fmt.Sprintf("trcplugin%s-%s.log", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
-			}
-			f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-			if logErr != nil {
-				logger.Println("Log permissions failure.  Will exit.")
+				f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+				if logErr != nil {
+					logger.Println("Log permissions failure.  Will exit.")
+				}
 			}
 
 			trcdbEnvLogger = log.New(f, fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string)), log.LstdFlags)
