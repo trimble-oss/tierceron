@@ -27,6 +27,7 @@ func PluginMain() {
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
 	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
+	hostNamePtr := flag.String("hostName", "", "Used to find overrides for plugin certification.") //This is used for plugin copied/deploy status.
 	certifyInit := false
 
 	args := os.Args[1:]
@@ -84,7 +85,7 @@ func PluginMain() {
 	}
 	mod.Env = *envPtr
 	// Get existing configs if they exist...
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}), *hostNamePtr)
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		os.Exit(1)
@@ -122,13 +123,21 @@ func PluginMain() {
 				pluginToolConfig["instances"] = "0"
 			}
 			writeMap["instances"] = pluginToolConfig["instances"].(string)
-			writeMap["copied"] = false
-			writeMap["deployed"] = false
+
 			_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, config.Log)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
+			writeMap = make(map[string]interface{})
+			writeMap["copied"] = false
+			writeMap["deployed"] = false
+			_, err = mod.Write(pluginToolConfig["overridepath"].(string), writeMap, config.Log)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
 			fmt.Println("Image certified in vault and is ready for release.")
 
 		} else {

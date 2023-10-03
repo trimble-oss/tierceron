@@ -47,12 +47,26 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	//if not copied -> this plugin should fail to start up
 	//Update deployed status & return if
 	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok {
-		deployedUpdateErr := deploy.PluginDeployedUpdate(goMod, pluginNameList, logger)
+		tempAddr := pluginConfig["vaddress"]
+		tempToken := pluginConfig["token"]
+		pluginConfig["vaddress"] = pluginConfig["caddress"]
+		pluginConfig["token"] = pluginConfig["ctoken"]
+		pluginConfig["exitOnFailure"] = true
+
+		_, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+		if err != nil {
+			eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
+			return err
+		}
+		deployedUpdateErr := deploy.PluginDeployedUpdate(cGoMod, pluginNameList, logger)
 		if deployedUpdateErr != nil {
 			eUtils.LogErrorMessage(config, deployedUpdateErr.Error(), false)
 			eUtils.LogErrorMessage(config, "Could not update plugin deployed status in vault.", false)
 			return err
 		}
+		pluginConfig["vaddress"] = tempAddr
+		pluginConfig["token"] = tempToken
+		pluginConfig["exitOnFailure"] = false
 	}
 	logger.Println("Deployed status updated.")
 

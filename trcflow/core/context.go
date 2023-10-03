@@ -982,7 +982,8 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 			}
 
 			if err != nil {
-				eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.  Sync modes will fail.", false)
+				eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.  Sync modes will fail for "+sourceDatabaseConnectionMap["dbsourceregion"].(string)+".", false)
+				eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection: "+err.Error(), false)
 			} else {
 				defer dbsourceConn.Close()
 			}
