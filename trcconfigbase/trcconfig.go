@@ -3,7 +3,6 @@ package trcconfigbase
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -49,7 +48,7 @@ func messenger(inData *string, inPath string) {
 	//Read file from filesys once per new file
 	if fileSysIndex != -1 && !present {
 		path, err := os.Getwd()
-		fileData, err1 := ioutil.ReadFile(filepath.FromSlash(path + inPathSplit[1]))
+		fileData, err1 := os.ReadFile(filepath.FromSlash(path + inPathSplit[1]))
 		if err != nil || err1 != nil {
 			fmt.Println("Error reading file: " + inPathSplit[1])
 			return
