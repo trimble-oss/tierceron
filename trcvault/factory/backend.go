@@ -191,10 +191,14 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	type tokenWrapper struct {
 		Token    string `json:"token,omitempty"`
 		VAddress string `json:"vaddress,omitempty"`
+		CAddress string `json:"caddress,omitempty"`
+		CToken   string `json:"ctoken,omitempty"`
 	}
 	tokenConfig := tokenWrapper{}
 	e.DecodeJSON(&tokenConfig)
 	tokenMap["token"] = tokenConfig.Token
+	tokenMap["caddress"] = tokenConfig.CAddress
+	tokenMap["ctoken"] = tokenConfig.CToken
 
 	vaultUrl, err := url.Parse(tokenConfig.VAddress)
 	if err == nil {
@@ -224,6 +228,18 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	address, aOk := pluginEnvConfig["vaddress"]
 	if !aOk || address.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing address.")
+		return errors.New("missing address")
+	}
+
+	ctoken, tOk := pluginEnvConfig["ctoken"]
+	if !tOk || ctoken.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing ctoken.")
+		return errors.New("missing token")
+	}
+
+	caddress, aOk := pluginEnvConfig["caddress"]
+	if !aOk || caddress.(string) == "" {
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing caddress.")
 		return errors.New("missing address")
 	}
 
@@ -372,6 +388,16 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 			return nil, mTokenErr
 		}
 		tokenEnvMap["token"] = vData["token"]
+		if cAddr, tokenOK := data.GetOk("caddr"); tokenOK {
+			tokenEnvMap["caddr"] = cAddr
+		} else {
+			return nil, errors.New("caddr required.")
+		}
+		if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
+			tokenEnvMap["ctoken"] = cToken
+		} else {
+			return nil, errors.New("ctoken required.")
+		}
 		logger.Println("Read Pushing env: " + tokenEnvMap["env"].(string))
 		PushEnv(tokenEnvMap)
 		//ctx.Done()
@@ -398,6 +424,17 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		tokenEnvMap["token"] = token
 	} else {
 		return nil, errors.New("Token required.")
+	}
+
+	if cAddr, tokenOK := data.GetOk("caddr"); tokenOK {
+		tokenEnvMap["caddr"] = cAddr
+	} else {
+		return nil, errors.New("caddr required.")
+	}
+	if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
+		tokenEnvMap["ctoken"] = cToken
+	} else {
+		return nil, errors.New("ctoken required.")
 	}
 
 	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
@@ -464,7 +501,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		}
 		logger.Println("TrcUpdate begin setup for plugin settings init")
 
-		if token, tokenOk := data.GetOk("token"); tokenOk {
+		if _, tokenOk := data.GetOk("token"); tokenOk {
 			logger.Println("TrcUpdate stage 1")
 
 			if GetVaultPort() == "" {
@@ -499,13 +536,19 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				return nil, errors.New("Certification Vault Url required.")
 			}
 
+			if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
+				tokenEnvMap["ctoken"] = cToken
+			} else {
+				return nil, errors.New("Certification Vault token required.")
+			}
+
 			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
 				// Missing port.
 				vaultHost = vaultHost + ":" + GetVaultPort()
 			}
 
 			// Plugins
-			cMod, err := helperkv.NewModifier(true, token.(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
+			cMod, err := helperkv.NewModifier(true, tokenEnvMap["ctoken"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
 			if cMod != nil {
 				defer cMod.Release()
 			}
@@ -671,6 +714,14 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 				"vaddress": {
 					Type:        framework.TypeString,
 					Description: "Vaurl Url for plugin reference purposes.",
+				},
+				"caddress": {
+					Type:        framework.TypeString,
+					Description: "Vault Url for plugin certification purposes.",
+				},
+				"ctoken": {
+					Type:        framework.TypeString,
+					Description: "Vault token for plugin certification purposes.",
 				},
 				"plugin": {
 					Type:        framework.TypeString,

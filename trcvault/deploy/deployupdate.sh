@@ -20,6 +20,9 @@ FILESHAVAL=$(cat $FILESHA)
 echo "Enter vault host base url: "
 read VAULT_ADDR
 
+echo "Enter vault host name: "
+read VAULT_HOSTNAME
+
 echo "Enter root token: "
 read VAULT_TOKEN
 
@@ -42,7 +45,7 @@ else
 fi
 
 if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ]; then
-    trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+    trcplgtool -env=$VAULT_ENV -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256) -hostName=$VAULT_HOSTNAME
 fi
 
 if [ "$VAULT_PLUGIN_DIR" ]
@@ -51,7 +54,7 @@ then
 else
     echo "Checking plugin deploy status."
     echo "Certifying plugin for env $VAULT_ENV."
-    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+    trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$VAULT_ADDR -token=$VAULT_TOKEN -insecure -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256) -hostName=$VAULT_HOSTNAME
     status=$?
     echo "Plugin certified with result $status."
 
