@@ -334,7 +334,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			writeMap["deployed"] = true
 		}
 
-		overridePath := "super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + writeMap["trcplugin"].(string) + "/Certify"
+		overridePath := "overrides/" + hostName + "/" + writeMap["trcplugin"].(string) + "/Certify"
 		_, err = cGoMod.Write("super-secrets/Index/TrcVault/trcplugin/"+overridePath, writeMap, config.Log)
 		if err != nil {
 			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
@@ -372,8 +372,7 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 		if err != nil {
 			return err
 		}
-		mod.SectionPath = "super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + pluginName + "/Certify"
-		pluginStatusData, statusErr := mod.ReadData(mod.SectionPath)
+		pluginStatusData, statusErr := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + pluginName + "/Certify")
 		if statusErr != nil {
 			return statusErr
 		}
