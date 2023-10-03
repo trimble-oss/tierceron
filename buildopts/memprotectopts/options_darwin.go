@@ -19,5 +19,6 @@ func MemUnprotectAll(logger *log.Logger) error {
 }
 
 func MemProtect(logger *log.Logger, sensitive *string) error {
-	return mlock.Mlock(logger, sensitive)
+	// TODO: is this correct?
+	return mlock.Mlock(logger)
 }
