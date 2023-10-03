@@ -27,7 +27,6 @@ type GChatApp struct {
 }
 
 func (msdk *GoogleChatHandler) OnDisplayChange(displayHint *mashupsdk.MashupDisplayHint) {
-	return
 }
 
 func (msdk *GoogleChatHandler) GetElements() (*mashupsdk.MashupDetailedElementBundle, error) {
@@ -56,11 +55,9 @@ func (msdk *GoogleChatHandler) TweakStates(elementStateBundle *mashupsdk.MashupE
 }
 
 func (msdk *GoogleChatHandler) ResetStates() {
-	return
 }
 
 func (msdk *GoogleChatHandler) TweakStatesByMotiv(mashupsdk.Motiv) {
-	return
 }
 
 func (msdk *GoogleChatHandler) GetMashupElements() (*mashupsdk.MashupDetailedElementBundle, error) {
@@ -71,7 +68,6 @@ func (msdk *GoogleChatHandler) GetMashupElements() (*mashupsdk.MashupDetailedEle
 }
 
 func (msdk *GoogleChatHandler) OnResize(displayHint *mashupsdk.MashupDisplayHint) {
-	return
 }
 
 func (msdk *GoogleChatHandler) UpsertMashupElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
@@ -87,7 +83,6 @@ func (msdk *GoogleChatHandler) UpsertMashupElementsState(elementStateBundle *mas
 }
 
 func (msdk *GoogleChatHandler) ResetG3NDetailedElementStates() {
-	return
 }
 
 func (w *WorldClientInitHandler) RegisterContext(context *mashupsdk.MashupContext) {
