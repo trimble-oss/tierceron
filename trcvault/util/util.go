@@ -312,7 +312,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	if pluginToolConfig == nil {
 		config.Log.Println("No data found for plugin.")
 		if err == nil {
-			err = errors.New("No data and unexpected error.")
+			err = errors.New("no data and unexpected error")
 		}
 		return pluginToolConfig, err
 	} else if !indexFound {
