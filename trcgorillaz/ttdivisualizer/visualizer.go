@@ -64,7 +64,7 @@ func main() {
 		worldApp.MashupContext = client.BootstrapInitWithMessageExt("ttdiserver", worldApp.MSdkApiHandler, []string{"HOME=" + os.Getenv("HOME")}, nil, insecure, 500*10*1024) //=true
 	}
 	if *custos {
-		libraryElementBundle, upsertErr := worldApp.MashupContext.Client.GetMashupElements(
+		libraryElementBundle, upsertErr := worldApp.MashupContext.Client.GetElements(
 			worldApp.MashupContext, &mashupsdk.MashupEmpty{AuthToken: worldApp.GetAuthToken()},
 		)
 		if upsertErr != nil {
@@ -84,15 +84,15 @@ func main() {
 		for _, argosy := range ArgosyFleet.ChildNodes {
 			argosyBasis := argosy.MashupDetailedElement
 			argosyBasis.Alias = "Argosy"
-			DetailedElements = append(DetailedElements, &argosyBasis)
+			DetailedElements = append(DetailedElements, argosyBasis)
 			for i := 0; i < len(argosy.ChildNodes); i++ {
 				detailedElement := argosy.ChildNodes[i].MashupDetailedElement
 				detailedElement.Alias = "DataFlowGroup"
-				DetailedElements = append(DetailedElements, &detailedElement)
+				DetailedElements = append(DetailedElements, detailedElement)
 				for j := 0; j < len(argosy.ChildNodes[i].ChildNodes); j++ {
 					element := argosy.ChildNodes[i].ChildNodes[j].MashupDetailedElement
 					element.Alias = "DataFlow"
-					DetailedElements = append(DetailedElements, &element)
+					DetailedElements = append(DetailedElements, element)
 					if pointer < len(data)-1 {
 						pointer += 1
 					} else {
@@ -104,7 +104,7 @@ func main() {
 						el.Alias = "DataFlowStatistic"
 						timeSeconds := TimeData[data[pointer]][k]
 						dfstatData[el.Name] = timeSeconds
-						DetailedElements = append(DetailedElements, &el)
+						DetailedElements = append(DetailedElements, el)
 					}
 				}
 			}
@@ -117,7 +117,7 @@ func main() {
 		//
 		// Generate concrete elements from library elements.
 		//
-		generatedElementsBundle, genErr := worldApp.MSdkApiHandler.UpsertMashupElements(
+		generatedElementsBundle, genErr := worldApp.MSdkApiHandler.UpsertElements(
 			&mashupsdk.MashupDetailedElementBundle{
 				AuthToken:        "",
 				DetailedElements: DetailedElements,
@@ -127,7 +127,7 @@ func main() {
 			//
 			// Upsert concrete elements to custos
 			//
-			_, custosUpsertErr := worldApp.MashupContext.Client.UpsertMashupElements(
+			_, custosUpsertErr := worldApp.MashupContext.Client.UpsertElements(
 				worldApp.MashupContext,
 				&mashupsdk.MashupDetailedElementBundle{
 					AuthToken:        worldApp.GetAuthToken(),
@@ -153,9 +153,9 @@ func main() {
 				ElementStates: []*mashupsdk.MashupElementState{generatedElementsBundle.DetailedElements[3].State},
 			}
 
-			worldApp.MSdkApiHandler.UpsertMashupElementsState(&elementStateBundle)
+			worldApp.MSdkApiHandler.TweakStates(&elementStateBundle)
 		}
-		go worldApp.MSdkApiHandler.OnResize(&mashupsdk.MashupDisplayHint{Width: 1600, Height: 800})
+		go worldApp.MSdkApiHandler.OnDisplayChange(&mashupsdk.MashupDisplayHint{Width: 1600, Height: 800})
 	}
 
 	// Initialize the main window.
