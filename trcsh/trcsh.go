@@ -90,10 +90,8 @@ func main() {
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
 		shutdown := make(chan bool)
 
+		// Preload agent synchronization configs
 		gAgentConfig.LoadConfigs()
-		trcshauth.PenseFeatherQuery(gAgentConfig, "configrole")
-		trcshauth.PenseFeatherQuery(gAgentConfig, "pubrole")
-
 		for {
 			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 				*gAgentConfig.EncryptSalt,
