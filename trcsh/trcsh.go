@@ -29,6 +29,9 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
+var gAgentConfig *trcshauth.AgentConfigs = &trcshauth.AgentConfigs{}
+var gTrcshConfig *trcshauth.TrcShConfig
+
 // This is a controller program that can act as any command line utility.
 // The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
 func main() {
@@ -70,7 +73,7 @@ func main() {
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
 
 		//Open deploy script and parse it.
-		ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
+		ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
 		agentPtr := flag.String("agent", "", "Provide service to run agent as")
 		envPtr = flag.String("env", "", "Environment to be processed") //If this is blank -> use context otherwise override context.
@@ -87,18 +90,17 @@ func main() {
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
 		shutdown := make(chan bool)
 
-		var agentConfig *trcshauth.AgentConfigs = &trcshauth.AgentConfigs{}
-		agentConfig.LoadConfigs()
-		trcshauth.PenseFeatherQuery(agentConfig, "configrole")
-		trcshauth.PenseFeatherQuery(agentConfig, "pubrole")
+		gAgentConfig.LoadConfigs()
+		trcshauth.PenseFeatherQuery(gAgentConfig, "configrole")
+		trcshauth.PenseFeatherQuery(gAgentConfig, "pubrole")
 
 		for {
-			if featherMode, featherErr := cap.FeatherCtlEmit(agentConfig.EncryptPass,
-				agentConfig.EncryptSalt,
-				agentConfig.CarrierHost,
-				agentConfig.DeployRoleID,
+			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+				*gAgentConfig.EncryptSalt,
+				*gAgentConfig.CarrierCtlHostPort,
+				*gAgentConfig.DeployRoleID,
 				cap.MODE_GLIDE, *agentPtr+"."+*envPtr); featherErr == nil && featherMode == cap.MODE_FEATHER {
-				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr)
+				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
 			}
 		}
 		<-shutdown
@@ -125,7 +127,7 @@ func configCmd(env string,
 	config.WantCerts = false
 	config.IsShellSubProcess = true
 
-	configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
+	configRoleSlice := strings.Split(*trcshConfig.ConfigRole, ":")
 	tokenName := "config_token_" + env
 	tokenConfig := ""
 	configEnv := env
@@ -160,7 +162,7 @@ func processPluginCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 		config.EnvRaw = env
 		config.IsShellSubProcess = true
 
-		pubRoleSlice := strings.Split(trcshConfig.PubRole, ":")
+		pubRoleSlice := strings.Split(*gTrcshConfig.PubRole, ":")
 		tokenName := "vault_pub_token_" + env
 		tokenPub := ""
 		pubEnv := env
@@ -257,7 +259,7 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 // Returns:
 //
 //	Nothing.
-func ProcessDeploy(env string, region string, token string, trcPath string, secretId *string, approleId *string) {
+func ProcessDeploy(env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
 	var err error
 	agentToken := false
 	if token != "" {
@@ -302,7 +304,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 		Log:               logger,
 		IsShell:           true,
 		IsShellSubProcess: false,
-		OutputMemCache:    true,
+		OutputMemCache:    outputMemCache,
 		MemFs:             memfs.New(),
 		Regions:           regions,
 		ExitOnFailure:     true}
@@ -318,13 +320,15 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 	// 		ConfigRole: "",
 	// 		PubRole:    "",
 	// 	}
-	trcshConfig, err := trcshauth.TrcshAuth(config)
-	if err != nil {
-		fmt.Println("Tierceron bootstrap failure.")
-		logger.Println(err)
-		os.Exit(-1)
+	if gTrcshConfig == nil {
+		gTrcshConfig, err = trcshauth.TrcshAuth(gAgentConfig, config)
+		if err != nil {
+			fmt.Println("Tierceron bootstrap failure.")
+			logger.Println(err)
+			os.Exit(-1)
+		}
+		fmt.Println("Auth loaded" + env)
 	}
-	fmt.Println("Auth loaded" + env)
 
 	// Begin dbg comment
 	var auth string
@@ -342,13 +346,13 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 		// Generate .trc code...
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
-		configRoleSlice := strings.Split(trcshConfig.ConfigRole, ":")
+		configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
 		tokenName := "config_token_" + env
 		configEnv := env
 		config.EnvRaw = env
 		config.EndDir = "deploy"
 		config.OutputMemCache = true
-		trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &token, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
+		trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &token, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
 		var memFile billy.File
@@ -456,7 +460,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					&onceKubeInit,
 					PipeOS,
 					env,
-					trcshConfig,
+					gTrcshConfig,
 					region,
 					config,
 					control,
@@ -472,7 +476,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					&onceKubeInit,
 					PipeOS,
 					env,
-					trcshConfig,
+					gTrcshConfig,
 					region,
 					config,
 					control,
