@@ -32,7 +32,6 @@ type FlumeWorldApp struct {
 }
 
 func (msdk *FlumeHandler) OnDisplayChange(displayHint *mashupsdk.MashupDisplayHint) {
-	return
 }
 
 func (msdk *FlumeHandler) GetElements() (*mashupsdk.MashupDetailedElementBundle, error) {
@@ -56,11 +55,9 @@ func (msdk *FlumeHandler) TweakStates(elementStateBundle *mashupsdk.MashupElemen
 }
 
 func (msdk *FlumeHandler) ResetStates() {
-	return
 }
 
 func (msdk *FlumeHandler) TweakStatesByMotiv(mashupsdk.Motiv) {
-	return
 }
 
 func (msdk *FlumeHandler) GetMashupElements() (*mashupsdk.MashupDetailedElementBundle, error) {
@@ -71,7 +68,6 @@ func (msdk *FlumeHandler) GetMashupElements() (*mashupsdk.MashupDetailedElementB
 }
 
 func (msdk *FlumeHandler) OnResize(displayHint *mashupsdk.MashupDisplayHint) {
-	return
 }
 
 func (msdk *FlumeHandler) UpsertMashupElements(detailedElementBundle *mashupsdk.MashupDetailedElementBundle) (*mashupsdk.MashupDetailedElementBundle, error) {
@@ -87,7 +83,6 @@ func (msdk *FlumeHandler) UpsertMashupElementsState(elementStateBundle *mashupsd
 }
 
 func (msdk *FlumeHandler) ResetG3NDetailedElementStates() {
-	return
 }
 
 func (w *WorldClientInitHandler) RegisterContext(context *mashupsdk.MashupContext) {
