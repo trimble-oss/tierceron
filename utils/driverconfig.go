@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -100,8 +99,8 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 			config.StartDir[0] = pwd + string(os.PathSeparator) + config.StartDir[0]
 		}
 
-		projectFilesComplete, err := ioutil.ReadDir(config.StartDir[0])
-		projectFiles := []os.FileInfo{}
+		projectFilesComplete, err := os.ReadDir(config.StartDir[0])
+		projectFiles := []os.DirEntry{}
 		for _, projectFile := range projectFilesComplete {
 			if !strings.HasSuffix(projectFile.Name(), ".DS_Store") {
 				projectFiles = append(projectFiles, projectFile)
@@ -121,7 +120,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 					projectStartDir = projectStartDir + string(os.PathSeparator) + projectFile.Name()
 				} else if projectFile.IsDir() {
 					projectStartDir = projectStartDir + string(os.PathSeparator) + projectFile.Name()
-					serviceFiles, err := ioutil.ReadDir(projectStartDir)
+					serviceFiles, err := os.ReadDir(projectStartDir)
 					if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 						projectStartDir = projectStartDir + string(os.PathSeparator) + serviceFiles[0].Name()
 						config.VersionFilter = append(config.VersionFilter, serviceFiles[0].Name())
@@ -147,7 +146,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 		} else if len(projectFiles) > 1 {
 			multiProject = true
 		}
-		serviceFiles, err := ioutil.ReadDir(config.StartDir[0])
+		serviceFiles, err := os.ReadDir(config.StartDir[0])
 
 		if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 			config.StartDir[0] = config.StartDir[0] + string(os.PathSeparator) + serviceFiles[0].Name()

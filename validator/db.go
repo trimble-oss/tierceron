@@ -22,13 +22,14 @@ func Heartbeat(config *eUtils.DriverConfig, url string, username string, passwor
 	driver, server, port, dbname := ParseURL(config, url)
 	var err error
 	var conn *sql.DB
-	if driver == "mysql" {
+	switch driver {
+	case "mysql":
 		if len(port) == 0 {
 			conn, err = sql.Open(driver, (username + ":" + password + "@tcp(" + server + ")/" + dbname + "?tls=skip-verify"))
 		} else {
 			conn, err = sql.Open(driver, (username + ":" + password + "@tcp(" + server + ":" + port + ")/" + dbname + "?tls=skip-verify"))
 		}
-	} else if driver == "sqlserver" {
+	case "sqlserver":
 		if len(port) == 0 {
 			port = "1433"
 		}

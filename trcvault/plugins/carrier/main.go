@@ -52,6 +52,11 @@ func main() {
 			logger.Printf("%s: %s", e, debug.Stack())
 		}
 	}()
+
+	e := os.Remove("/tmp/trccarrier/trcsnap.sock")
+	if e != nil {
+		logger.Println("Unable to refresh socket")
+	}
 	carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}

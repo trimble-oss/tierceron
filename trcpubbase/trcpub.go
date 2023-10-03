@@ -80,7 +80,7 @@ func CommonMain(envPtr *string,
 	eUtils.CheckError(configBase, err, true)
 	mod.Env = *envPtr
 
-	err, warn := il.UploadTemplateDirectory(mod, *dirPtr, configBase.Log)
+	warn, err := il.UploadTemplateDirectory(mod, *dirPtr, configBase.Log)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)
