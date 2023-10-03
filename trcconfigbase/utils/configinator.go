@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -46,9 +45,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 
 		config.Env = envVersion[0]
 		version = envVersion[1]
-		if version == "versionInfo" {
+		switch version {
+		case "versionInfo":
 			versionInfo = true
-		} else if version == "templateInfo" {
+		case "templateInfo":
 			templateInfo = true
 		}
 	}
@@ -490,7 +490,7 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 }
 
 func getDirFiles(dir string, endDir string) ([]string, []string) {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	filePaths := []string{}
 	endPaths := []string{}
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"text/template"
 
@@ -151,16 +151,16 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 
 		template = string(templateBytes)
 	} else {
-		emptyTemplate, err := ioutil.ReadFile(emptyFilePath)
+		emptyTemplate, err := os.ReadFile(emptyFilePath)
 		eUtils.CheckError(config, err, true)
 		template = string(emptyTemplate)
 	}
 	// cert map
 	certData := make(map[int]string)
 	if cert && !strings.Contains(template, ".certData") {
-		return "", certData, false, errors.New("Missing .certData")
+		return "", certData, false, errors.New("missing .certData")
 	} else if !cert && strings.Contains(template, ".certData") {
-		return "", certData, false, errors.New("Template with cert provided, but cert not requested: " + emptyFilePath)
+		return "", certData, false, errors.New("template with cert provided, but cert not requested: " + emptyFilePath)
 	}
 
 	// Construct path for vault
@@ -219,9 +219,9 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 	if config.Token != "novault" {
 		cds.Init(config, modifier, secretMode, true, project, nil, service)
 	} else {
-		rawFile, err := ioutil.ReadFile(strings.Split(config.StartDir[0], coreopts.GetFolderPrefix(config.StartDir)+"_")[0] + coreopts.GetFolderPrefix(config.StartDir) + "_seeds/" + config.EnvRaw + "/" + config.Env + "_seed.yml")
+		rawFile, err := os.ReadFile(strings.Split(config.StartDir[0], coreopts.GetFolderPrefix(config.StartDir)+"_")[0] + coreopts.GetFolderPrefix(config.StartDir) + "_seeds/" + config.EnvRaw + "/" + config.Env + "_seed.yml")
 		if err != nil {
-			eUtils.LogErrorObject(config, errors.New("Unable to open seed file for -novault"), false)
+			eUtils.LogErrorObject(config, errors.New("unable to open seed file for -novault"), false)
 		}
 
 		var rawYaml interface{}
@@ -231,7 +231,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 		}
 
 		seed, seedOk := rawYaml.(map[interface{}]interface{})
-		if seedOk == false {
+		if !seedOk {
 			eUtils.LogAndSafeExit(config, "Invalid yaml file.  Refusing to continue.", 1)
 		}
 		tempMap := make(map[string]interface{}, 0)
@@ -275,8 +275,8 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 
 		//Check if filename exists in values map
 
-		_, data := values[filename]
-		if data == false && !config.WantCerts {
+		_, hasData := values[filename]
+		if !hasData && !config.WantCerts {
 			eUtils.LogInfo(config, filename+" does not exist in values. Please check seed files to verify that folder structures are correct.")
 		}
 
@@ -300,10 +300,10 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 		if cert {
 			if serviceValues, ok := values[serviceLookup]; ok {
 				valueData := serviceValues.(map[string]interface{})
-				certDestPath, hasCertDefinition := valueData["certDestPath"].(interface{})
-				certSourcePath, hasCertSourcePath := valueData["certSourcePath"].(interface{})
-				certPasswordVaultPath, hasCertPasswordVaultPath := valueData["certPasswordVaultPath"].(interface{})
-				certBundleJks, hasCertBundleJks := valueData["certBundleJks"].(interface{})
+				certDestPath, hasCertDefinition := valueData["certDestPath"]
+				certSourcePath, hasCertSourcePath := valueData["certSourcePath"]
+				certPasswordVaultPath, hasCertPasswordVaultPath := valueData["certPasswordVaultPath"]
+				certBundleJks, hasCertBundleJks := valueData["certBundleJks"]
 
 				if hasCertDefinition && hasCertSourcePath {
 					if !ok {
@@ -312,7 +312,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 						return "", nil, vaultCertErr
 					}
 					certData[0] = certDestPath.(string)
-					data, ok := valueData["certData"].(interface{})
+					data, ok := valueData["certData"]
 					if !ok {
 						vaultCertErr := errors.New("No certData in config template section of seed for this service. Unable to generate: " + certDestPath.(string))
 						eUtils.LogInfo(config, vaultCertErr.Error())
@@ -344,7 +344,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 							return "", nil, nil
 						}
 					} else {
-						certData[1] = fmt.Sprintf("%s", decoded)
+						certData[1] = string(decoded)
 					}
 
 					certData[2] = certSourcePath.(string)

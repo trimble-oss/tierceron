@@ -14,7 +14,7 @@ func main() {
 	// Supported build flags:
 	//    insecure harbinger tc testrunner ( mysql, testflow -- auto registration -- warning do not use!)
 	logFilePtr := flag.String("log", "./trcgorillaz.log", "Output path for log file")
-	tokenPtr := flag.String("token", "", "Vault access Token")
+	//tokenPtr := flag.String("token", "", "Vault access Token")
 	flag.Parse()
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)

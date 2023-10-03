@@ -2,7 +2,6 @@ package initlib
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,33 +12,33 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
-func UploadTemplateDirectory(mod *helperkv.Modifier, dirName string, logger *log.Logger) (error, []string) {
+func UploadTemplateDirectory(mod *helperkv.Modifier, dirName string, logger *log.Logger) ([]string, error) {
 
-	dirs, err := ioutil.ReadDir(dirName)
+	dirs, err := os.ReadDir(dirName)
 	if err != nil {
 		fmt.Println("Read directory couldn't be completed.")
-		return err, nil
+		return nil, err
 	}
 
 	// Parse each subdirectory as a service name
 	for _, subDir := range dirs {
 		if subDir.IsDir() {
 			pathName := dirName + "/" + subDir.Name()
-			err, warn := UploadTemplates(mod, pathName, logger)
+			warn, err := UploadTemplates(mod, pathName, logger)
 			if err != nil || len(warn) > 0 {
 				fmt.Printf("Upload templates couldn't be completed. %v", err)
-				return err, warn
+				return warn, err
 			}
 		}
 	}
 	return nil, nil
 }
 
-func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger) (error, []string) {
+func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger) ([]string, error) {
 	// Open directory
-	files, err := ioutil.ReadDir(dirName)
+	files, err := os.ReadDir(dirName)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	// Use name of containing directory as the template subdirectory
@@ -50,9 +49,9 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 	for _, file := range files {
 		// Extract extension and name
 		if file.IsDir() { // Recurse folders
-			err, warn := UploadTemplates(mod, dirName+"/"+file.Name(), logger)
+			warn, err := UploadTemplates(mod, dirName+"/"+file.Name(), logger)
 			if err != nil || len(warn) > 0 {
-				return err, warn
+				return warn, err
 			}
 			continue
 		}
@@ -62,7 +61,7 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 
 		if ext == ".tmpl" { // Only upload template files
 			fmt.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
-			logger.Println(fmt.Sprintf("Found template file %s for %s", file.Name(), mod.Env))
+			logger.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
 
 			// Seperate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
@@ -72,20 +71,25 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 			// Extract values
 			extractedValues, err := eUtils.Parse(dirName+"/"+file.Name(), subDir, name)
 			if err != nil {
-				return err, nil
+				return nil, err
 			}
 
 			// Open file
 			f, err := os.Open(dirName + "/" + file.Name())
 			if err != nil {
-				return err, nil
+				return nil, err
 			}
 
 			// Read the file
-			fileBytes := make([]byte, file.Size())
+			fileInfo, err := file.Info()
+			if err != nil {
+				return nil, err
+			}
+
+			fileBytes := make([]byte, fileInfo.Size())
 			_, err = f.Read(fileBytes)
 			if err != nil {
-				return err, nil
+				return nil, err
 			}
 
 			dirSplit := strings.Split(subDir, "/")
@@ -108,13 +112,13 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 			// Write templates to vault and output errors/warnings
 			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext}, logger)
 			if err != nil || len(warn) > 0 {
-				return err, warn
+				return warn, err
 			}
 
 			// Write values to vault and output any errors/warnings
 			warn, err = mod.Write(valuePath, extractedValues, logger)
 			if err != nil || len(warn) > 0 {
-				return err, warn
+				return warn, err
 			}
 		} else {
 			logger.Printf("\tSkippping template (templates must end in .tmpl):\t%s\n", file.Name())

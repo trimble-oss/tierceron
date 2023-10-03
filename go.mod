@@ -1,6 +1,8 @@
 module github.com/trimble-oss/tierceron
 
-go 1.20
+go 1.21
+
+toolchain go1.21.1
 
 require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
@@ -18,7 +20,7 @@ require (
 	github.com/sergi/go-diff v1.2.0
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	github.com/xo/dburl v0.9.0
-	golang.org/x/crypto v0.11.0
+	golang.org/x/crypto v0.13.0
 	golang.org/x/sys v0.12.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -96,7 +98,10 @@ require (
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
+	github.com/klauspost/reedsolomon v1.11.8 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
+	github.com/lafriks/go-shamir v1.1.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/lithammer/dedent v1.1.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -110,6 +115,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
+	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
@@ -119,7 +125,11 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/cobra v1.6.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/templexxx/cpu v0.1.0 // indirect
+	github.com/templexxx/xorsimd v0.4.2 // indirect
+	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
+	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/oauth2 v0.9.0 // indirect
@@ -226,10 +236,10 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/net v0.12.0 // indirect
+	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/term v0.10.0 // indirect
-	golang.org/x/text v0.11.0
+	golang.org/x/term v0.12.0
+	golang.org/x/text v0.13.0
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	google.golang.org/grpc v1.56.1

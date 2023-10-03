@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -44,6 +43,10 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		var vault *sys.Vault
 
 		//Grabbing configs
+		tempAddr := pluginConfig["vaddress"]
+		tempToken := pluginConfig["token"]
+		pluginConfig["vaddress"] = pluginConfig["caddress"]
+		pluginConfig["token"] = pluginConfig["ctoken"]
 		config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 		if vault != nil {
 			defer vault.Close()
@@ -52,6 +55,8 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		if goMod != nil {
 			defer goMod.Release()
 		}
+		pluginConfig["vaddress"] = tempAddr
+		pluginConfig["token"] = tempToken
 
 		if err != nil {
 			eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
@@ -79,7 +84,6 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
 	var config *eUtils.DriverConfig
-	var goMod *helperkv.Modifier
 	var vault *sys.Vault
 	var err error
 	var pluginName string
@@ -91,8 +95,41 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		return errors.New("missing plugin name")
 	}
 
-	//Grabbing configs
-	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	hostName, hostNameErr := os.Hostname()
+	if hostNameErr != nil {
+		return hostNameErr
+	} else if hostName == "" {
+		return errors.New("Could not find hostname.")
+	}
+
+	//Grabbing certification from vault
+	if pluginConfig["caddress"].(string) == "" { //if no certification address found, it will try to certify against itself.
+		return errors.New("Could not find certification address.")
+	}
+	if pluginConfig["ctoken"].(string) == "" { //if no certification address found, it will try to certify against itself.
+		return errors.New("Could not find certification token.")
+	}
+
+	tempAddr := pluginConfig["vaddress"]
+	tempToken := pluginConfig["token"]
+	pluginConfig["vaddress"] = pluginConfig["caddress"]
+	pluginConfig["token"] = pluginConfig["ctoken"]
+	cConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	cConfig.SubSectionValue = pluginName
+	if err != nil {
+		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
+		return err
+	}
+
+	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig, hostName)
+	if ptcErr != nil {
+		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
+	}
+	pluginConfig["vaddress"] = tempAddr
+	pluginConfig["token"] = tempToken
+	//grabbing configs
+	config, _, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	config.SubSectionValue = pluginName
 	if vault != nil {
 		defer vault.Close()
 	}
@@ -100,18 +137,12 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
 		return err
 	}
-
 	logger.Println("PluginDeployFlow begun for plugin: " + pluginName)
 	insecure := false
 	if ok, _ := pluginConfig["insecure"].(bool); ok {
 		insecure = pluginConfig["insecure"].(bool)
 	}
 	config = &eUtils.DriverConfig{Insecure: insecure, Log: logger, ExitOnFailure: false, StartDir: []string{}, SubSectionValue: pluginName}
-
-	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(config, goMod, pluginConfig)
-	if ptcErr != nil {
-		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
-	}
 
 	if _, ok := vaultPluginSignature["trcplugin"]; !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
@@ -177,9 +208,12 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		pluginExtension = "-prod"
 	}
 
-	if vaultPluginSignature["trctype"] == "agent" {
+	switch vaultPluginSignature["trctype"] {
+	case "agent":
 		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
-	} else {
+	case "service":
+		agentPath = vaultPluginSignature["trcpluginpath"].(string) + vaultPluginSignature["trcplugin"].(string)
+	default:
 		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string) + pluginExtension
 	}
 
@@ -221,7 +255,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			vaultPluginSignature["imagesha256"] = "invalidurl"
 		}
 		if vaultPluginSignature["imagesha256"] == vaultPluginSignature["trcsha256"] { //Sha256 from download matches in vault
-			err = ioutil.WriteFile(agentPath, vaultPluginSignature["rawImageFile"].([]byte), 0644)
+			err = os.WriteFile(agentPath, vaultPluginSignature["rawImageFile"].([]byte), 0644)
 			vaultPluginSignature["rawImageFile"] = nil
 
 			if err != nil {
@@ -231,11 +265,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			if vaultPluginSignature["trctype"] == "agent" {
 				azureDeployGroup, azureDeployGroupErr := user.LookupGroup("azuredeploy")
 				if azureDeployGroupErr != nil {
-					return errors.Join(errors.New("Group lookup failure"), azureDeployGroupErr)
+					return errors.Join(errors.New("group lookup failure"), azureDeployGroupErr)
 				}
 				azureDeployGID, azureGIDConvErr := strconv.Atoi(azureDeployGroup.Gid)
 				if azureGIDConvErr != nil {
-					return errors.Join(errors.New("Group ID lookup failure"), azureGIDConvErr)
+					return errors.Join(errors.New("group ID lookup failure"), azureGIDConvErr)
 				}
 				os.Chown(agentPath, -1, azureDeployGID)
 			}
@@ -287,15 +321,24 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		} else {
 			writeMap["trctype"] = "vault"
 		}
+
+		_, err = cGoMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
+		if err != nil {
+			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
+		}
+
 		writeMap["copied"] = false
 		writeMap["deployed"] = false
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
-		_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
+
+		overridePath := "super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + writeMap["trcplugin"].(string) + "/Certify"
+		_, err = cGoMod.Write("super-secrets/Index/TrcVault/trcplugin/"+overridePath, writeMap, config.Log)
 		if err != nil {
 			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
 		}
+
 		eUtils.LogInfo(config, pluginName+": Plugin image config in vault has been updated.")
 	} else {
 		if !pluginDownloadNeeded && pluginCopied {
@@ -316,11 +359,28 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logger *log.Logger) error {
 	logger.Println("PluginDeployedUpdate start.")
 
+	hostName, hostNameErr := os.Hostname()
+	if hostNameErr != nil {
+		return hostNameErr
+	} else if hostName == "" {
+		return errors.New("Could not find hostname.")
+	}
+
 	for _, pluginName := range pluginNameList {
 		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
 		if err != nil {
 			return err
 		}
+		mod.SectionPath = "super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + pluginName + "/Certify"
+		pluginStatusData, statusErr := mod.ReadData(mod.SectionPath)
+		if statusErr != nil {
+			return statusErr
+		}
+
+		for k, v := range pluginStatusData {
+			pluginData[k] = v
+		}
+
 		if pluginData == nil {
 			pluginData = make(map[string]interface{})
 			pluginData["trcplugin"] = pluginName
@@ -370,11 +430,17 @@ func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logge
 		writeMap["trcplugin"] = pluginData["trcplugin"]
 		writeMap["trctype"] = pluginData["trctype"]
 		writeMap["trcsha256"] = pluginData["trcsha256"]
-		writeMap["copied"] = pluginData["copied"]
 		writeMap["instances"] = pluginData["instances"]
-		writeMap["deployed"] = false
 
 		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap, logger)
+		if err != nil {
+			return err
+		}
+
+		writeMap = make(map[string]interface{})
+		writeMap["copied"] = pluginData["copied"]
+		writeMap["deployed"] = false
+		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/overrides/"+hostName+"/"+pluginName+"/Certify", writeMap, logger)
 		if err != nil {
 			return err
 		}

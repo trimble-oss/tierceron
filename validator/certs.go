@@ -5,8 +5,9 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
 	"runtime"
 	"time"
 )
@@ -57,7 +58,7 @@ func IsPfxRfc7292(byteCert []byte) (bool, error) {
 
 // ValidateCertificate validates certificate pointed to by the path
 func ValidateCertificate(certPath string, host string) (bool, error) {
-	byteCert, err := ioutil.ReadFile(certPath)
+	byteCert, err := os.ReadFile(certPath)
 	if err != nil {
 		return false, errors.New("failed to read file: " + err.Error())
 	}
@@ -90,7 +91,7 @@ func getCert(url string) (*x509.Certificate, error) {
 		return nil, err
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
