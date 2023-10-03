@@ -12,6 +12,7 @@ import (
 
 func MemProtectInit(logger *log.Logger) error {
 	mlock.Mlock(logger)
+	return nil
 }
 
 func MemUnprotectAll(logger *log.Logger) error {
