@@ -13,6 +13,7 @@ type AgentConfigs struct {
 	DeployRoleID       *string `yaml:"deployRoleID"`
 	EncryptPass        *string `yaml:"encryptPass"`
 	EncryptSalt        *string `yaml:"encryptSalt"`
+	Deployments        *string `yaml:"deployments"`
 }
 
 func (c *AgentConfigs) LoadConfigs() (*AgentConfigs, error) {
@@ -21,6 +22,7 @@ func (c *AgentConfigs) LoadConfigs() (*AgentConfigs, error) {
 	c.DeployRoleID = new(string)
 	c.EncryptPass = new(string)
 	c.EncryptSalt = new(string)
+	c.Deployments = new(string)
 
 	yamlFile, err := os.ReadFile("trcshagent.yaml")
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
@@ -13,10 +14,15 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
-func PluginMain() {
-	addrPtr := flag.String("addr", "", "API endpoint for the vault")
-	tokenPtr := flag.String("token", "", "Vault access token")
-	envPtr := flag.String("env", "dev", "Environement in vault")
+func CommonMain(envPtr *string,
+	addrPtr *string,
+	tokenPtr *string,
+	envCtxPtr *string,
+	secretIDPtr *string,
+	appRoleIDPtr *string,
+	tokenNamePtr *string,
+	regionPtr *string,
+	c *eUtils.DriverConfig) {
 	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
@@ -30,20 +36,24 @@ func PluginMain() {
 	hostNamePtr := flag.String("hostName", "", "Used to find overrides for plugin certification.") //This is used for plugin copied/deploy status.
 	certifyInit := false
 
-	args := os.Args[1:]
-	for i := 0; i < len(args); i++ {
-		s := args[i]
-		if s[0] != '-' {
-			fmt.Println("Wrong flag syntax: ", s)
+	if c == nil || !c.IsShellSubProcess {
+		args := os.Args[1:]
+		for i := 0; i < len(args); i++ {
+			s := args[i]
+			if s[0] != '-' {
+				fmt.Println("Wrong flag syntax: ", s)
+				os.Exit(1)
+			}
+		}
+		flag.Parse()
+
+		// Prints usage if no flags are specified
+		if flag.NFlag() == 0 {
+			flag.Usage()
 			os.Exit(1)
 		}
-	}
-	flag.Parse()
-
-	// Prints usage if no flags are specified
-	if flag.NFlag() == 0 {
-		flag.Usage()
-		os.Exit(1)
+	} else {
+		flag.CommandLine.Parse(nil)
 	}
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
@@ -64,28 +74,52 @@ func PluginMain() {
 		os.Exit(1)
 	}
 
-	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"plgtool.log" {
-		*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "plgtool.log"
+	var configBase *eUtils.DriverConfig
+	if c != nil {
+		configBase = c
+		*insecurePtr = configBase.Insecure
+	} else {
+		// If logging production directory does not exist and is selected log to local directory
+		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"plgtool.log" {
+			*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "plgtool.log"
+		}
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		logger := log.New(f, "[INIT]", log.LstdFlags)
+
+		configBase := &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
+		eUtils.CheckError(configBase, err, true)
 	}
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
-	logger := log.New(f, "[INIT]", log.LstdFlags)
-	config := &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
+	regions := []string{}
 
-	eUtils.CheckError(config, err, true)
+	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
+		supportedRegions := eUtils.GetSupportedProdRegions()
+		if *regionPtr != "" {
+			for _, supportedRegion := range supportedRegions {
+				if *regionPtr == supportedRegion {
+					regions = append(regions, *regionPtr)
+					break
+				}
+			}
+			if len(regions) == 0 {
+				fmt.Println("Unsupported region: " + *regionPtr)
+				os.Exit(1)
+			}
+		}
+		configBase.Regions = regions
+	}
 
 	//Grabbing configs
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, logger)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
 	if err != nil {
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(configBase, err, true)
 	}
 	mod.Env = *envPtr
 	// Get existing configs if they exist...
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(config, mod, coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}), *hostNamePtr)
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(configBase, mod, coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}), *hostNamePtr)
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		os.Exit(1)
@@ -103,7 +137,7 @@ func PluginMain() {
 	//Certify Image
 	if *certifyImagePtr {
 		if !certifyInit {
-			err := repository.GetImageAndShaFromDownload(config, pluginToolConfig)
+			err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 			if err != nil {
 				fmt.Println(err.Error())
 				os.Exit(1)
@@ -124,7 +158,7 @@ func PluginMain() {
 			}
 			writeMap["instances"] = pluginToolConfig["instances"].(string)
 
-			_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, config.Log)
+			_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -132,7 +166,7 @@ func PluginMain() {
 			writeMap = make(map[string]interface{})
 			writeMap["copied"] = false
 			writeMap["deployed"] = false
-			_, err = mod.Write(pluginToolConfig["overridepath"].(string), writeMap, config.Log)
+			_, err = mod.Write(pluginToolConfig["overridepath"].(string), writeMap, configBase.Log)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -155,7 +189,7 @@ func PluginMain() {
 			os.Exit(0)
 		}
 
-		err := repository.GetImageAndShaFromDownload(config, pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
@@ -178,7 +212,7 @@ func PluginMain() {
 			os.Exit(0)
 		}
 
-		err := repository.GetImageAndShaFromDownload(config, pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
