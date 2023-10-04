@@ -248,7 +248,7 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	return nil
 }
 
-func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, hostName string) (map[string]interface{}, error) {
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
 	config.Log.Println("GetPluginToolConfig begin processing plugins.")
 	//templatePaths
 	indexFound := false
@@ -268,11 +268,12 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	}
 
 	var ptc1 map[string]interface{}
+
 	for _, templatePath := range templatePaths {
 		project, service, _ := eUtils.GetProjectService(templatePath)
 		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
-		overridePath := ""
-		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 && pluginPath != "n/a" {
+
+		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 {
 			mod.SectionPath = "super-secrets/Index/" + project + pluginPath.(string) + config.SubSectionValue + "/" + service
 		} else {
 			mod.SectionPath = "super-secrets/Index/" + project + "/trcplugin/" + config.SubSectionValue + "/" + service
@@ -287,24 +288,6 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 		for k, v := range ptc1 {
 			pluginToolConfig[k] = v
 		}
-
-		//Override
-		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 && hostName != "" {
-			overridePath = "super-secrets/Index/" + project + "/trcplugin/overrides/" + hostName + "/" + config.SubSectionValue + "/" + service
-			mod.SectionPath = overridePath
-			ptc2, err := mod.ReadData(mod.SectionPath)
-			pluginToolConfig["overridepath"] = overridePath
-			if err != nil || ptc2 == nil {
-				pluginToolConfig["copied"] = false
-				pluginToolConfig["deployed"] = false
-				config.Log.Println("No override found for plugin.")
-				continue
-			}
-			for k, v := range ptc2 {
-				pluginToolConfig[k] = v
-			}
-		}
-
 		break
 	}
 	mod.SectionPath = ""
