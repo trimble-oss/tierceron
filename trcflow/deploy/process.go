@@ -95,8 +95,34 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		return errors.New("missing plugin name")
 	}
 
-	//Grabbing configs
-	config, goMod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	//Grabbing certification from vault
+	if pluginConfig["caddress"].(string) == "" { //if no certification address found, it will try to certify against itself.
+		return errors.New("Could not find certification address.")
+	}
+	if pluginConfig["ctoken"].(string) == "" { //if no certification address found, it will try to certify against itself.
+		return errors.New("Could not find certification token.")
+	}
+
+	tempAddr := pluginConfig["vaddress"]
+	tempToken := pluginConfig["token"]
+	pluginConfig["vaddress"] = pluginConfig["caddress"]
+	pluginConfig["token"] = pluginConfig["ctoken"]
+	cConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	cConfig.SubSectionValue = pluginName
+	if err != nil {
+		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
+		return err
+	}
+
+	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig)
+	if ptcErr != nil {
+		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
+	}
+	pluginConfig["vaddress"] = tempAddr
+	pluginConfig["token"] = tempToken
+	//grabbing configs
+	config, _, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	config.SubSectionValue = pluginName
 	if vault != nil {
 		defer vault.Close()
 	}
@@ -110,11 +136,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		insecure = pluginConfig["insecure"].(bool)
 	}
 	config = &eUtils.DriverConfig{Insecure: insecure, Log: logger, ExitOnFailure: false, StartDir: []string{}, SubSectionValue: pluginName}
-
-	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(config, goMod, pluginConfig)
-	if ptcErr != nil {
-		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
-	}
 
 	if _, ok := vaultPluginSignature["trcplugin"]; !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
@@ -302,7 +323,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
-		_, err = goMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
+		_, err = cGoMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
 		if err != nil {
 			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
 		}
