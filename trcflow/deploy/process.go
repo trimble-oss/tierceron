@@ -311,6 +311,10 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		}
 
 		eUtils.LogInfo(config, pluginName+": Updating plugin image to vault.")
+		if pluginSHA, pluginSHAOk := vaultPluginSignature["trcsha256"]; !pluginSHAOk || pluginSHA.(string) == "" {
+			eUtils.LogInfo(config, "Plugin is not registered with carrier: "+pluginName)
+			return nil
+		}
 		factory.PushPluginSha(config, pluginConfig, vaultPluginSignature)
 		writeMap := make(map[string]interface{})
 		writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
