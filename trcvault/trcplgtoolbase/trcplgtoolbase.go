@@ -17,10 +17,6 @@ import (
 func CommonMain(envPtr *string,
 	addrPtr *string,
 	tokenPtr *string,
-	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
-	tokenNamePtr *string,
 	regionPtr *string,
 	c *eUtils.DriverConfig) {
 	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
@@ -29,10 +25,13 @@ func CommonMain(envPtr *string,
 	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
 	pluginTypePtr := flag.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
-	pluginPathPtr := flag.String("pluginPathPtr", "", "Optional path for deploying services to.")
+	deployPathPtr := flag.String("deployPath", "", "Optional path for deploying services to.")
+	serviceNamePtr := flag.String("serviceName", "", "Optional name of service to use in managing service.")
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
 	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
+	trcshServiceDeployPtr := flag.Bool("trcshServiceDeploy", false, "Used to trigger a trcsh deploy")
+
 	certifyInit := false
 
 	if c == nil || !c.IsShellSubProcess {
@@ -65,9 +64,15 @@ func CommonMain(envPtr *string,
 		os.Exit(1)
 	}
 
+	if strings.Contains(*pluginNamePtr, ".") {
+		fmt.Println("-pluginName cannot contain reserved character '.'")
+		os.Exit(1)
+	}
+
 	switch *pluginTypePtr {
-	case "vault":
-	case "agent":
+	case "vault": // A vault plugin
+	case "agent": // A deployment agent tool.
+	case "trcshservice": // A trcshservice managed microservice
 	default:
 		fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
 		os.Exit(1)
@@ -126,13 +131,25 @@ func CommonMain(envPtr *string,
 
 	pluginToolConfig["trcsha256"] = *sha256Ptr
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
+	pluginToolConfig["deployPathPtr"] = *deployPathPtr
+	pluginToolConfig["serviceNamePtr"] = *serviceNamePtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
 		if *certifyImagePtr {
 			certifyInit = true
 		}
+
+		if _, ok := pluginToolConfig["deployPathPtr"].(string); !ok {
+			pluginToolConfig["trcdeployroot"] = pluginToolConfig["deployPathPtr"].(string)
+		}
+
+		if _, ok := pluginToolConfig["serviceNamePtr"].(string); !ok {
+			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
+		}
+
 	}
+
 	//Certify Image
 	if *certifyImagePtr {
 		if !certifyInit {
@@ -149,7 +166,12 @@ func CommonMain(envPtr *string,
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-			writeMap["trcpluginpath"] = *pluginPathPtr
+			if _, ok := pluginToolConfig["trcdeployroot"]; ok {
+				writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"]
+			}
+			if _, ok := pluginToolConfig["trcservicename"]; ok {
+				writeMap["trcservicename"] = pluginToolConfig["trcservicename"]
+			}
 			writeMap["trctype"] = *pluginTypePtr
 			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
 			if pluginToolConfig["instances"] == nil {
