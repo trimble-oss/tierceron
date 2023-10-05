@@ -204,17 +204,15 @@ func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShCo
 	}
 	memprotectopts.MemProtect(nil, trcshConfig.ConfigRole)
 
-	if agentConfig != nil {
-		trcshConfig.ConfigRole, err = PenseFeatherQuery(agentConfig, "pubrole")
-	} else {
+	if agentConfig == nil {
 		fmt.Println("Auth phase 4")
 		trcshConfig.ConfigRole, err = PenseQuery("pubrole")
+		if err != nil {
+			return trcshConfig, err
+		}
+		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
 	}
 
-	if err != nil {
-		return trcshConfig, err
-	}
-	memprotectopts.MemProtect(nil, trcshConfig.PubRole)
 	fmt.Println("Auth complete.")
 
 	return trcshConfig, err
