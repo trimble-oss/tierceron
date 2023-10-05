@@ -75,29 +75,38 @@ func main() {
 		//Open deploy script and parse it.
 		ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
-		agentPtr := flag.String("agent", "", "Provide service to run agent as")
-		envPtr = flag.String("env", "", "Environment to be processed") //If this is blank -> use context otherwise override context.
-		appRoleIDPtr = flag.String("appRoleID", "", "Public app role ID")
-		flag.Parse()
-		if *agentPtr == "" {
-			fmt.Println("trcsh only runs on windows as an agent.")
+		agentName := os.Getenv("AGENT_NAME")
+		agentToken := os.Getenv("AGENT_TOKEN")
+		agentEnv := os.Getenv("AGENT_ENV")
+		address := os.Getenv("VAULT_ADDR")
+
+		agentName = "spectrumrest"
+		agentToken = "s.9HXcIyg3kmxTQW0wZ5EMA10s"
+		agentEnv = "dev"
+		address = "https://atvc.dexchadev.com:8305"
+
+		if len(agentToken) == 0 {
+			fmt.Println("trcsh on windows requires agent token.")
 			os.Exit(-1)
 		}
-		if len(*appRoleIDPtr) == 0 {
-			fmt.Println("trcsh on windows requires deploy role.")
-			*appRoleIDPtr = os.Getenv("DEPLOY_ROLE")
+
+		if len(address) == 0 {
+			fmt.Println("trcsh on windows requires VAULT address.")
+			os.Exit(-1)
 		}
-		memprotectopts.MemProtect(nil, appRoleIDPtr)
+
+		memprotectopts.MemProtect(nil, &agentToken)
+		memprotectopts.MemProtect(nil, &address)
 		shutdown := make(chan bool)
 
 		// Preload agent synchronization configs
-		gAgentConfig.LoadConfigs()
+		gAgentConfig.LoadConfigs(address, agentToken, agentName, agentEnv)
 		for {
 			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.CarrierCtlHostPort,
 				*gAgentConfig.DeployRoleID,
-				cap.MODE_GLIDE, *agentPtr+"."+*envPtr); featherErr == nil && featherMode == cap.MODE_FEATHER {
+				cap.MODE_GLIDE, agentName+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FEATHER {
 				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
 			}
 		}
