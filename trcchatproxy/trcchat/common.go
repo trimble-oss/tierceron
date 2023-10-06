@@ -1,4 +1,4 @@
-package main
+package trcchat
 
 import (
 	"bufio"
@@ -12,7 +12,11 @@ import (
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/server"
+	"github.com/trimble-oss/tierceron/trcchatproxy/pubsub"
 )
+
+var gchatApp GChatApp
+var id int64
 
 //go:embed tls/mashup.crt
 var mashupCert embed.FS
@@ -20,22 +24,18 @@ var mashupCert embed.FS
 //go:embed tls/mashup.key
 var mashupKey embed.FS
 
-var gchatApp GChatApp
-var id int64
-
 func (w *GChatApp) InitServer(callerCreds string, insecure bool, maxMessageLength int) {
 	if callerCreds != "" {
 		server.InitServer(callerCreds, insecure, maxMessageLength, w.MashupSdkApiHandler, w.WClientInitHandler)
 	}
 }
 
-func main() {
+func CommonInit() {
 	gchatApp = GChatApp{
 		MashupSdkApiHandler: &GoogleChatHandler{},
 		GoogleChatContext:   &GoogleChatContext{},
 		WClientInitHandler:  &WorldClientInitHandler{},
 	}
-	shutdown := make(chan bool)
 
 	// Initialize local server.
 	mashupsdk.InitCertKeyPair(mashupCert, mashupKey)
@@ -54,8 +54,8 @@ func main() {
 	}
 
 	configs := mashupsdk.MashupConnectionConfigs{
-		AuthToken:   "",
-		CallerToken: "",
+		AuthToken:   "zxc90-2389-v89o102389v-z89a",
+		CallerToken: "1283-97z8-xbvy0a2389gsa7",
 		Server:      "",
 		Port:        configPort,
 	}
@@ -69,7 +69,6 @@ func main() {
 	id = 0
 	server.RemoteInitServer(*callerCreds, true, -2, gchatworld.MashupSdkApiHandler, gchatworld.WClientInitHandler)
 
-	<-shutdown
 }
 
 // Processes upserted query from client
@@ -106,12 +105,19 @@ func ProcessQuery(msg *mashupsdk.MashupDetailedElement) {
 // This is a stub version --> potentially shouldn't be needed if user can @askflume in google chat
 // However, maybe use this as a way to ask user if there is anything else they would like to ask
 func getUserInput() string {
-	fmt.Println("This is a simulation of the Flume Chat App. Please type your question below and press enter: ")
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
-	if err != nil {
-		log.Printf("Error reading input from user: %v", err)
-		return ""
+	var input string
+	var err error
+	if pubsub.IsManualInteractionEnabled() {
+		fmt.Println("This is a simulation of the Flume Chat App. Please type your question below and press enter: ")
+		reader := bufio.NewReader(os.Stdin)
+		input, err = reader.ReadString('\n')
+		if err != nil {
+			log.Printf("Error reading input from user: %v", err)
+			return ""
+		}
+	} else {
+		event := pubsub.SubEvent()
+		input = event.Message.Text
 	}
 	return input
 }
