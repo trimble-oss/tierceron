@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 	"github.com/trimble-oss/tierceron/trcchatproxy/pubsub"
 	"google.golang.org/api/chat/v1"
@@ -24,7 +23,6 @@ func ProcessGChatAnswer(msg *mashupsdk.MashupDetailedElement) {
 		log.Println("Error in decoding data in recursiveBuildArgosies")
 	}
 
-	spew.Dump(msg)
 	for _, info := range infos {
 		switch {
 		case msg.Alias == "Active":
