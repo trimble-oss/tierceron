@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 	"github.com/trimble-oss/tierceron/trcchatproxy/pubsub"
 	"google.golang.org/api/chat/v1"
@@ -16,21 +17,50 @@ import (
 // correct endpoint for google chat
 func ProcessGChatAnswer(msg *mashupsdk.MashupDetailedElement) {
 	log.Printf("Message is ready to send to Google Chat user")
-	var info [][]interface{}
+	var infos [][]interface{}
 
-	err := json.Unmarshal([]byte(msg.Data), &info)
+	err := json.Unmarshal([]byte(msg.Data), &infos)
 	if err != nil {
 		log.Println("Error in decoding data in recursiveBuildArgosies")
 	}
 
-	tenant := info[0][0]
-	enterpriseId := info[0][1]
-	error_msg := info[0][2]
-	err_time := info[0][3]
-	// Stack trace was empty, so skipping index of 4
-	snap_mode := info[0][5]
-	msg.Data = fmt.Sprintf("The tenant %v with enterprise ID %v is failing with error message %v at %v with snapshot mode %v", tenant, enterpriseId, error_msg, err_time, snap_mode)
-	pubsub.PubChatAnswerEvent(&chat.DeprecatedEvent{Message: &chat.Message{ClientAssignedMessageId: msg.Alias, Text: msg.Data}})
+	spew.Dump(msg)
+	for _, info := range infos {
+		switch {
+		case msg.Alias == "Active":
+			tenant := info[0]
+			enterpriseId := info[1]
+			error_msg := info[2]
+			err_time := info[3]
+			// Stack trace was empty, so skipping index of 4
+			snap_mode := info[5]
+			msg.Data = fmt.Sprintf("The pipeline tenant %v with enterprise ID %v is running with last error message %v at %v and snapshot mode %v", tenant, enterpriseId, error_msg, err_time, snap_mode)
+		case msg.Alias == "Error":
+			tenant := info[0]
+			enterpriseId := info[1]
+			error_msg := info[2]
+			err_time := info[3]
+			// Stack trace was empty, so skipping index of 4
+			snap_mode := info[5]
+			msg.Data = fmt.Sprintf("The pipeline tenant %v with enterprise ID %v is failing with error message %v at %v with snapshot mode %v", tenant, enterpriseId, error_msg, err_time, snap_mode)
+
+		case msg.Alias == "Tenant":
+		case msg.Alias == "DataFlowState":
+			tenant := info[0]
+			flowName := info[1]
+			//_ := info[2]
+			stateName := info[3]
+			lastTestedDate := info[4]
+			msg.Data = fmt.Sprintf("The pipeline tenant %v and flow name %v last failed with error: %v on %v", tenant, flowName, stateName, lastTestedDate)
+
+		}
+		if pubsub.IsManualInteractionEnabled() {
+			fmt.Println(msg.Data)
+		} else {
+			go pubsub.PubChatAnswerEvent(&chat.DeprecatedEvent{Message: &chat.Message{ClientAssignedMessageId: msg.Genre, Text: msg.Data}})
+			log.Printf("Message published to answer channel for delivery to Google Chat user")
+		}
+	}
 
 	element := mashupsdk.MashupDetailedElement{
 		Id:   msg.Id,

@@ -152,10 +152,12 @@ func handleGChatQuery(askFlumeContext *flowcore.AskFlumeContext) error {
 	if askFlumeContext.Query.Message != "" {
 		askFlumeContext.Queries = append(askFlumeContext.Queries, askFlumeContext.Query)
 		fmt.Println("Received query from google chat channel in Flume: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
-		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Name = "DialogFlow"
-		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Data = askFlumeContext.Query.Message
-		askFlumeContext.Upsert <- &mashupsdk.MashupDetailedElementBundle{
-			DetailedElements: Flumeworld.DetailedElements,
+		if Flumeworld.DetailedElements[askFlumeContext.Query.Id] != nil {
+			Flumeworld.DetailedElements[askFlumeContext.Query.Id].Name = "DialogFlow"
+			Flumeworld.DetailedElements[askFlumeContext.Query.Id].Data = askFlumeContext.Query.Message
+			askFlumeContext.Upsert <- &mashupsdk.MashupDetailedElementBundle{
+				DetailedElements: Flumeworld.DetailedElements,
+			}
 		}
 	}
 
@@ -176,6 +178,7 @@ func handleDFQuery(askFlumeContext *flowcore.AskFlumeContext) error {
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Alias = response.Type // Determines which category message belongs
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Name = "DialogFlowResponse"
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Data = response.Message
+		//		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Genre = response.Genre
 		askFlumeContext.Upsert <- &mashupsdk.MashupDetailedElementBundle{
 			DetailedElements: Flumeworld.DetailedElements,
 		}
@@ -225,7 +228,7 @@ func InitGoogleChat() error {
 	// Create client of known server running on cloud
 	var params []string
 	params = append(params, "flume")
-	params = append(params, "")
+	params = append(params, "zxc90-2389-v89o102389v-z89a")
 
 	var envParams []string
 	envParams = append(envParams, "localhost") // "Remote" server name
@@ -245,7 +248,7 @@ func InitGoogleChat() error {
 
 	for {
 		updated_elements, upsertErr := Flumeworld.FlumeWorldContext.Client.UpsertElements(Flumeworld.FlumeWorldContext, &mashupsdk.MashupDetailedElementBundle{
-			AuthToken:        "",
+			AuthToken:        "zxc90-2389-v89o102389v-z89a",
 			DetailedElements: Flumeworld.DetailedElements,
 		})
 		if upsertErr != nil {
