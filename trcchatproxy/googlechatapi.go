@@ -53,8 +53,9 @@ func main() {
 				}
 				fmt.Fprint(w, `{"text":"Google Chat App has been successfully removed from this space!"}`)
 			case "MESSAGE":
-				go pubsub.PubEvent(&event)
-				fmt.Fprintf(w, `{"text": "you said %s"}`, event.Message.Text)
+				go pubsub.PubChatEvent(&event)
+				responseEvent := pubsub.SubChatAnswerEvent()
+				fmt.Fprintf(w, `{"text": "%s"}`, responseEvent.Message.Text)
 			default:
 				fmt.Fprintf(w, `{"text": "you said %s"}`, event.Message.Text)
 			}

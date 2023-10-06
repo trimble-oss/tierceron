@@ -6,6 +6,8 @@ import (
 	"log"
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron/trcchatproxy/pubsub"
+	"google.golang.org/api/chat/v1"
 )
 
 // Prints out answer to google chat user and sets up google chat app
@@ -28,7 +30,8 @@ func ProcessGChatAnswer(msg *mashupsdk.MashupDetailedElement) {
 	// Stack trace was empty, so skipping index of 4
 	snap_mode := info[0][5]
 	msg.Data = fmt.Sprintf("The tenant %v with enterprise ID %v is failing with error message %v at %v with snapshot mode %v", tenant, enterpriseId, error_msg, err_time, snap_mode)
-	fmt.Println(msg.Data)
+	pubsub.PubChatAnswerEvent(&chat.DeprecatedEvent{Message: &chat.Message{ClientAssignedMessageId: msg.Alias, Text: msg.Data}})
+
 	element := mashupsdk.MashupDetailedElement{
 		Id:   msg.Id,
 		Name: "GChatAnswer",

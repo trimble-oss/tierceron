@@ -2,6 +2,7 @@ package trcchat
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -84,13 +85,15 @@ func ProcessQuery(msg *mashupsdk.MashupDetailedElement) {
 	case "Get Message":
 		gchatApp.DetailedElements = gchatApp.DetailedElements[:len(gchatApp.DetailedElements)-1]
 		input := ""
+		alias := ""
 		for input == "" {
-			input = getUserInput()
+			alias, input = getUserInput()
 			if input != "" {
 				gchatApp.DetailedElements = append(gchatApp.DetailedElements, &mashupsdk.MashupDetailedElement{
-					Name: "GChatQuery",
-					Id:   int64(len(gchatApp.DetailedElements)), // Make sure id matches index in elements
-					Data: input,
+					Name:  "GChatQuery",
+					Alias: alias,
+					Id:    int64(len(gchatApp.DetailedElements)), // Make sure id matches index in elements
+					Data:  input,
 				})
 			} else {
 				fmt.Println("An error occurred with reading the input. Please input your question in the command line and press enter!")
@@ -104,22 +107,26 @@ func ProcessQuery(msg *mashupsdk.MashupDetailedElement) {
 // Asks user input
 // This is a stub version --> potentially shouldn't be needed if user can @askflume in google chat
 // However, maybe use this as a way to ask user if there is anything else they would like to ask
-func getUserInput() string {
+func getUserInput() (string, string) {
+	var alias string
 	var input string
 	var err error
 	if pubsub.IsManualInteractionEnabled() {
 		fmt.Println("This is a simulation of the Flume Chat App. Please type your question below and press enter: ")
 		reader := bufio.NewReader(os.Stdin)
 		input, err = reader.ReadString('\n')
+		alias = fmt.Sprintf("%x", sha256.Sum256([]byte(input))) // Hacky alias...
+
 		if err != nil {
 			log.Printf("Error reading input from user: %v", err)
-			return ""
+			return "", ""
 		}
 	} else {
-		event := pubsub.SubEvent()
+		event := pubsub.SubChatEvent()
+		alias = event.Message.ClientAssignedMessageId
 		input = event.Message.Text
 	}
-	return input
+	return alias, input
 }
 
 // Updates ID and returns value
