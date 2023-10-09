@@ -47,7 +47,7 @@ func ProcessAskFlumeController(tfmContext *flowcore.TrcFlowMachineContext, trcFl
 
 	go askFlumeFlowReceiver(askFlumeContext, &askFlumeWg)
 	go askFlumeFlowSender(askFlumeContext)
-	go InitGoogleChat()
+	go InitGoogleChat("TODO_LOOKUP_AUTH_TOKEN")
 
 	askFlumeWg.Wait()
 	return err
@@ -224,11 +224,11 @@ func handleGchatAnswer(askFlumeContext *flowcore.AskFlumeContext) error {
 // Initializes client of server running in cloud
 // Sets up polling loop for upserting elements to cloud server
 // Processes returned and updated elements
-func InitGoogleChat() error {
+func InitGoogleChat(authToken string) error {
 	// Create client of known server running on cloud
 	var params []string
 	params = append(params, "flume")
-	params = append(params, "zxc90-2389-v89o102389v-z89a")
+	params = append(params, authToken)
 
 	var envParams []string
 	envParams = append(envParams, "localhost") // "Remote" server name
@@ -248,7 +248,7 @@ func InitGoogleChat() error {
 
 	for {
 		updated_elements, upsertErr := Flumeworld.FlumeWorldContext.Client.UpsertElements(Flumeworld.FlumeWorldContext, &mashupsdk.MashupDetailedElementBundle{
-			AuthToken:        "zxc90-2389-v89o102389v-z89a",
+			AuthToken:        authToken,
 			DetailedElements: Flumeworld.DetailedElements,
 		})
 		if upsertErr != nil {

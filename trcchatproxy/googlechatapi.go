@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -23,8 +24,12 @@ func get_port() string {
 // Will be the google chat api implementation --> Send messages from googlechat.go to the specified server and port
 // This is just an example of what the method should look like based on the above link
 func main() {
+	tokenPtr := flag.String("token", "", "Output path for log file")
+	callerTokenPtr := flag.String("callerToken", "", "Output path for log file")
+	flag.Parse()
+
 	pubsub.CommonInit(false)
-	trcchat.CommonInit()
+	trcchat.CommonInit(*tokenPtr, *callerTokenPtr)
 	f := func(w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {

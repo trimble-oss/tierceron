@@ -31,7 +31,7 @@ func (w *GChatApp) InitServer(callerCreds string, insecure bool, maxMessageLengt
 	}
 }
 
-func CommonInit() {
+func CommonInit(authToken string, callerToken string) {
 	gchatApp = GChatApp{
 		MashupSdkApiHandler: &GoogleChatHandler{},
 		GoogleChatContext:   &GoogleChatContext{},
@@ -55,8 +55,8 @@ func CommonInit() {
 	}
 
 	configs := mashupsdk.MashupConnectionConfigs{
-		AuthToken:   "zxc90-2389-v89o102389v-z89a",
-		CallerToken: "1283-97z8-xbvy0a2389gsa7",
+		AuthToken:   authToken,
+		CallerToken: callerToken,
 		Server:      "",
 		Port:        configPort,
 	}
