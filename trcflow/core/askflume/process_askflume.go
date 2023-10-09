@@ -47,7 +47,7 @@ func ProcessAskFlumeController(tfmContext *flowcore.TrcFlowMachineContext, trcFl
 
 	go askFlumeFlowReceiver(askFlumeContext, &askFlumeWg)
 	go askFlumeFlowSender(askFlumeContext)
-	go InitGoogleChat()
+	go InitGoogleChat("TODO_LOOKUP_AUTH_TOKEN")
 
 	askFlumeWg.Wait()
 	return err
@@ -152,10 +152,12 @@ func handleGChatQuery(askFlumeContext *flowcore.AskFlumeContext) error {
 	if askFlumeContext.Query.Message != "" {
 		askFlumeContext.Queries = append(askFlumeContext.Queries, askFlumeContext.Query)
 		fmt.Println("Received query from google chat channel in Flume: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
-		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Name = "DialogFlow"
-		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Data = askFlumeContext.Query.Message
-		askFlumeContext.Upsert <- &mashupsdk.MashupDetailedElementBundle{
-			DetailedElements: Flumeworld.DetailedElements,
+		if Flumeworld.DetailedElements[askFlumeContext.Query.Id] != nil {
+			Flumeworld.DetailedElements[askFlumeContext.Query.Id].Name = "DialogFlow"
+			Flumeworld.DetailedElements[askFlumeContext.Query.Id].Data = askFlumeContext.Query.Message
+			askFlumeContext.Upsert <- &mashupsdk.MashupDetailedElementBundle{
+				DetailedElements: Flumeworld.DetailedElements,
+			}
 		}
 	}
 
@@ -176,6 +178,7 @@ func handleDFQuery(askFlumeContext *flowcore.AskFlumeContext) error {
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Alias = response.Type // Determines which category message belongs
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Name = "DialogFlowResponse"
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Data = response.Message
+		//		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Genre = response.Genre
 		askFlumeContext.Upsert <- &mashupsdk.MashupDetailedElementBundle{
 			DetailedElements: Flumeworld.DetailedElements,
 		}
@@ -221,11 +224,11 @@ func handleGchatAnswer(askFlumeContext *flowcore.AskFlumeContext) error {
 // Initializes client of server running in cloud
 // Sets up polling loop for upserting elements to cloud server
 // Processes returned and updated elements
-func InitGoogleChat() error {
+func InitGoogleChat(authToken string) error {
 	// Create client of known server running on cloud
 	var params []string
 	params = append(params, "flume")
-	params = append(params, "")
+	params = append(params, authToken)
 
 	var envParams []string
 	envParams = append(envParams, "localhost") // "Remote" server name
@@ -245,7 +248,7 @@ func InitGoogleChat() error {
 
 	for {
 		updated_elements, upsertErr := Flumeworld.FlumeWorldContext.Client.UpsertElements(Flumeworld.FlumeWorldContext, &mashupsdk.MashupDetailedElementBundle{
-			AuthToken:        "",
+			AuthToken:        authToken,
 			DetailedElements: Flumeworld.DetailedElements,
 		})
 		if upsertErr != nil {
