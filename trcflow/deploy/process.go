@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/factory"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
@@ -95,12 +96,19 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		return errors.New("missing plugin name")
 	}
 
+	hostName, hostNameErr := os.Hostname()
+	if hostNameErr != nil {
+		return hostNameErr
+	} else if hostName == "" {
+		return errors.New("could not find hostname")
+	}
+
 	//Grabbing certification from vault
 	if pluginConfig["caddress"].(string) == "" { //if no certification address found, it will try to certify against itself.
-		return errors.New("Could not find certification address.")
+		return errors.New("could not find certification address")
 	}
 	if pluginConfig["ctoken"].(string) == "" { //if no certification address found, it will try to certify against itself.
-		return errors.New("Could not find certification token.")
+		return errors.New("could not find certification token")
 	}
 
 	tempAddr := pluginConfig["vaddress"]
@@ -344,8 +352,39 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 }
 
 // Updated deployed to true for any plugin
-func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logger *log.Logger) error {
+func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, vault *sys.Vault, pluginNameList []string, cPath []string, logger *log.Logger) error {
 	logger.Println("PluginDeployedUpdate start.")
+
+	hostName, hostNameErr := os.Hostname()
+	if hostNameErr != nil {
+		return hostNameErr
+	} else if hostName == "" {
+		return errors.New("Could not find hostname.")
+	}
+
+	hostRegion := coreopts.GetRegion(hostName)
+	//mod.Regions = append(mod.Regions, hostRegion)
+	projects, services, _ := eUtils.GetProjectServices(cPath)
+
+	hostRegion = "west"
+	mod.Regions = append(mod.Regions, hostRegion)
+	pluginNameList = append(pluginNameList, "trc-vault-plugin") //delete this line later
+
+	for _, pluginName := range pluginNameList {
+		for i := 0; i < len(projects); i++ {
+			if services[i] == "Certify" {
+				mod.SectionName = "trcplugin"
+				mod.SectionKey = "/Index/"
+				mod.SubSectionValue = pluginName
+
+			}
+			properties, err := trcvutils.NewProperties(config, vault, mod, config.Env, projects[i], services[i])
+			if err != nil {
+				return err
+			}
+			properties.GetConfigValues(services[i], "copied")
+		}
+	}
 
 	for _, pluginName := range pluginNameList {
 		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
