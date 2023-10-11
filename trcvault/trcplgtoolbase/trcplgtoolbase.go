@@ -25,12 +25,14 @@ func CommonMain(envPtr *string,
 	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
 	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
 	pluginTypePtr := flag.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
-	deployPathPtr := flag.String("deployPath", "", "Optional path for deploying services to.")
+	deployrootPtr := flag.String("deployroot", "", "Optional path for deploying services to.")
 	serviceNamePtr := flag.String("serviceName", "", "Optional name of service to use in managing service.")
+	codeBundlePtr := flag.String("codeBundle", "", "Code bundle to deploy.")
+	defineServicePtr := flag.Bool("defineService", false, "Service is defined.")
+
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
 	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
-	trcshServiceDeployPtr := flag.Bool("trcshServiceDeploy", false, "Used to trigger a trcsh deploy")
 
 	certifyInit := false
 
@@ -90,7 +92,7 @@ func CommonMain(envPtr *string,
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "[INIT]", log.LstdFlags)
 
-		configBase := &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
+		configBase = &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
 		eUtils.CheckError(configBase, err, true)
 	}
 
@@ -131,8 +133,9 @@ func CommonMain(envPtr *string,
 
 	pluginToolConfig["trcsha256"] = *sha256Ptr
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
-	pluginToolConfig["deployPathPtr"] = *deployPathPtr
+	pluginToolConfig["deployrootPtr"] = *deployrootPtr
 	pluginToolConfig["serviceNamePtr"] = *serviceNamePtr
+	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
@@ -140,14 +143,40 @@ func CommonMain(envPtr *string,
 			certifyInit = true
 		}
 
-		if _, ok := pluginToolConfig["deployPathPtr"].(string); !ok {
-			pluginToolConfig["trcdeployroot"] = pluginToolConfig["deployPathPtr"].(string)
+		if _, ok := pluginToolConfig["deployrootPtr"].(string); ok {
+			pluginToolConfig["trcdeployroot"] = pluginToolConfig["deployrootPtr"].(string)
 		}
 
-		if _, ok := pluginToolConfig["serviceNamePtr"].(string); !ok {
+		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
 			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
 		}
+		if _, ok := pluginToolConfig["codeBundlePtr"].(string); ok {
+			pluginToolConfig["trccodebundle"] = pluginToolConfig["codeBundlePtr"].(string)
+		}
 
+	}
+
+	//Define Service Image
+	if *defineServicePtr {
+		fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
+		writeMap := make(map[string]interface{})
+		writeMap["trctype"] = *pluginTypePtr
+
+		if _, ok := pluginToolConfig["trcdeployroot"]; ok {
+			writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"]
+		}
+		if _, ok := pluginToolConfig["trcservicename"]; ok {
+			writeMap["trcservicename"] = pluginToolConfig["trcservicename"]
+		}
+		if _, ok := pluginToolConfig["trccodebundle"]; ok {
+			writeMap["trccodebundle"] = pluginToolConfig["trccodebundle"]
+		}
+		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		fmt.Println("Deployment definition applied to vault and is ready for deployments.")
 	}
 
 	//Certify Image
@@ -166,12 +195,6 @@ func CommonMain(envPtr *string,
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			writeMap := make(map[string]interface{})
 			writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-			if _, ok := pluginToolConfig["trcdeployroot"]; ok {
-				writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"]
-			}
-			if _, ok := pluginToolConfig["trcservicename"]; ok {
-				writeMap["trcservicename"] = pluginToolConfig["trcservicename"]
-			}
 			writeMap["trctype"] = *pluginTypePtr
 			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
 			if pluginToolConfig["instances"] == nil {
