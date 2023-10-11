@@ -66,6 +66,11 @@ func CommonMain(envPtr *string,
 		os.Exit(1)
 	}
 
+	if *defineServicePtr && (len(*pluginNamePtr) == 0) {
+		fmt.Println("Must use -pluginName flag to use -defineService flag")
+		os.Exit(1)
+	}
+
 	if strings.Contains(*pluginNamePtr, ".") {
 		fmt.Println("-pluginName cannot contain reserved character '.'")
 		os.Exit(1)
