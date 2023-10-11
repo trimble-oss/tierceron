@@ -363,10 +363,8 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 	}
 
 	hostRegion := coreopts.GetRegion(hostName)
-	//mod.Regions = append(mod.Regions, hostRegion)
+	mod.Regions = append(mod.Regions, hostRegion)
 	projects, services, _ := eUtils.GetProjectServices(cPath)
-
-	hostRegion = "west"
 	mod.Regions = append(mod.Regions, hostRegion)
 	pluginNameList = append(pluginNameList, "trc-vault-plugin") //delete this line later
 
@@ -377,76 +375,70 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 				mod.SectionKey = "/Index/"
 				mod.SubSectionValue = pluginName
 
-			}
-			properties, err := trcvutils.NewProperties(config, vault, mod, config.Env, projects[i], services[i])
-			if err != nil {
-				return err
-			}
-			properties.GetConfigValues(services[i], "copied")
-		}
-	}
+				properties, err := trcvutils.NewProperties(config, vault, mod, config.Env, projects[i], services[i])
+				if err != nil {
+					return err
+				}
 
-	for _, pluginName := range pluginNameList {
-		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
-		if err != nil {
-			return err
-		}
-		if pluginData == nil {
-			pluginData = make(map[string]interface{})
-			pluginData["trcplugin"] = pluginName
+				pluginData := properties.GetPluginData(hostRegion, services[i], "config", config.Log)
+				if pluginData == nil {
+					pluginData = make(map[string]interface{})
+					pluginData["trcplugin"] = pluginName
 
-			var agentPath string
-			pluginExtension := ""
-			if prod.IsProd() {
-				pluginExtension = "-prod"
-			}
+					var agentPath string
+					pluginExtension := ""
+					if prod.IsProd() {
+						pluginExtension = "-prod"
+					}
 
-			if pluginData["trctype"] == "agent" {
-				agentPath = "/home/azuredeploy/bin/" + pluginName
-			} else {
-				agentPath = "/etc/opt/vault/plugins/" + pluginName + pluginExtension
-			}
+					if pluginData["trctype"] == "agent" {
+						agentPath = "/home/azuredeploy/bin/" + pluginName
+					} else {
+						agentPath = "/etc/opt/vault/plugins/" + pluginName + pluginExtension
+					}
 
-			logger.Println("Checking file.")
-			if imageFile, err := os.Open(agentPath); err == nil {
-				sha256 := sha256.New()
+					logger.Println("Checking file.")
+					if imageFile, err := os.Open(agentPath); err == nil {
+						sha256 := sha256.New()
 
-				defer imageFile.Close()
-				if _, err := io.Copy(sha256, imageFile); err != nil {
+						defer imageFile.Close()
+						if _, err := io.Copy(sha256, imageFile); err != nil {
+							continue
+						}
+
+						filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
+						pluginData["trcsha256"] = filesystemsha256
+						pluginData["copied"] = false
+						pluginData["instances"] = "0"
+
+						if pluginData["trctype"].(string) == "agent" {
+							pluginData["deployed"] = false
+						}
+					}
+				}
+
+				if copied, okCopied := pluginData["copied"]; !okCopied || !copied.(bool) {
+					logger.Println("Cannot certify plugin.  Plugin not copied: " + pluginName)
 					continue
 				}
 
-				filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
-				pluginData["trcsha256"] = filesystemsha256
-				pluginData["copied"] = false
-				pluginData["instances"] = "0"
+				if deployed, okDeployed := pluginData["deployed"]; !okDeployed || deployed.(bool) {
+					continue
+				}
 
-				if pluginData["trctype"].(string) == "agent" {
-					pluginData["deployed"] = false
+				writeMap := make(map[string]interface{})
+				writeMap["trcplugin"] = pluginData["trcplugin"]
+				writeMap["trctype"] = pluginData["trctype"]
+				writeMap["trcsha256"] = pluginData["trcsha256"]
+				writeMap["copied"] = pluginData["copied"]
+				writeMap["instances"] = pluginData["instances"]
+				writeMap["deployed"] = false
+
+				_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap, logger)
+				if err != nil {
+					return err
 				}
 			}
-		}
-
-		if copied, okCopied := pluginData["copied"]; !okCopied || !copied.(bool) {
-			logger.Println("Cannot certify plugin.  Plugin not copied: " + pluginName)
-			continue
-		}
-
-		if deployed, okDeployed := pluginData["deployed"]; !okDeployed || deployed.(bool) {
-			continue
-		}
-
-		writeMap := make(map[string]interface{})
-		writeMap["trcplugin"] = pluginData["trcplugin"]
-		writeMap["trctype"] = pluginData["trctype"]
-		writeMap["trcsha256"] = pluginData["trcsha256"]
-		writeMap["copied"] = pluginData["copied"]
-		writeMap["instances"] = pluginData["instances"]
-		writeMap["deployed"] = false
-
-		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap, logger)
-		if err != nil {
-			return err
 		}
 	}
 	logger.Println("PluginDeployedUpdate complete.")

@@ -1,6 +1,9 @@
 package util
 
 import (
+	"log"
+	"strings"
+
 	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
@@ -79,4 +82,42 @@ func ResolveTokenName(env string) string {
 		tokenNamePtr = "config_token_local"
 	}
 	return tokenNamePtr
+}
+
+func (p *Properties) GetPluginData(region string, service string, config string, log *log.Logger) map[string]interface{} {
+	valueMap, _ := p.GetConfigValues(service, config)
+	//Grabs region fields and replaces into base fields if region is available.
+	if region != "" {
+		region = "~" + region
+		regionFields := make(map[string]interface{})
+		for field, value := range valueMap {
+			if !strings.Contains(field, region) {
+				continue
+			} else {
+				regionFields[field] = value
+			}
+		}
+
+		if len(regionFields) == 0 {
+			log.Println("Region was found, but no regional data. Continuing with base data.")
+		} else {
+			for field, value := range regionFields {
+				valueMap[strings.TrimSuffix(field, region)] = value
+			}
+
+		}
+	}
+
+	cleanedUpFields := make(map[string]interface{})
+	//Cleans up regional fields
+	for field, value := range valueMap {
+		if strings.Contains(field, "~") {
+			continue
+		} else {
+			cleanedUpFields[field] = value
+		}
+	}
+	valueMap = cleanedUpFields
+
+	return valueMap
 }
