@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -22,17 +23,30 @@ func CommonMain(envPtr *string,
 	tokenPtr *string,
 	regionPtr *string,
 	c *eUtils.DriverConfig) {
+
+	// Main functions are as follows:
+	defineServicePtr := flag.Bool("defineService", false, "Service is defined.")
+	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
+	// These functions only valid for pluginType trcshservice
+	winservicestopPtr := flag.Bool("winservicestop", false, "To stop a windows service for a particular plugin.")
+	winservicestartPtr := flag.Bool("winservicestart", false, "To start a windows service for a particular plugin.")
+	codebundledeployPtr := flag.Bool("codebundledeploy", false, "To deploy a code bundle.")
+
+	// Common flags...
 	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
-	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
-	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
-	pluginTypePtr := flag.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
+
+	// defineService flags...
 	deployrootPtr := flag.String("deployroot", "", "Optional path for deploying services to.")
 	serviceNamePtr := flag.String("serviceName", "", "Optional name of service to use in managing service.")
 	codeBundlePtr := flag.String("codeBundle", "", "Code bundle to deploy.")
-	defineServicePtr := flag.Bool("defineService", false, "Service is defined.")
 
+	// Common plugin flags...
+	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
+	pluginTypePtr := flag.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
+
+	// Certify flags...
 	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
 	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
@@ -139,28 +153,30 @@ func CommonMain(envPtr *string,
 		os.Exit(1)
 	}
 
-	fileInfo, statErr := os.Stat(*sha256Ptr)
-	if statErr == nil {
-		if fileInfo.Mode().IsRegular() {
-			file, fileOpenErr := os.Open(*sha256Ptr)
-			if fileOpenErr != nil {
-				fmt.Println(fileOpenErr)
-				return
+	if len(*sha256Ptr) > 0 {
+		fileInfo, statErr := os.Stat(*sha256Ptr)
+		if statErr == nil {
+			if fileInfo.Mode().IsRegular() {
+				file, fileOpenErr := os.Open(*sha256Ptr)
+				if fileOpenErr != nil {
+					fmt.Println(fileOpenErr)
+					return
+				}
+
+				// Close the file when we're done.
+				defer file.Close()
+
+				// Create a reader to the file.
+				reader := bufio.NewReader(file)
+
+				pluginImage, imageErr := io.ReadAll(reader)
+				if imageErr != nil {
+					fmt.Println("Failed to read image:" + imageErr.Error())
+					return
+				}
+				sha256Bytes := sha256.Sum256(pluginImage)
+				*sha256Ptr = fmt.Sprintf("%x", sha256Bytes)
 			}
-
-			// Close the file when we're done.
-			defer file.Close()
-
-			// Create a reader to the file.
-			reader := bufio.NewReader(file)
-
-			pluginImage, imageErr := io.ReadAll(reader)
-			if imageErr != nil {
-				fmt.Println("Failed to read image:" + imageErr.Error())
-				return
-			}
-			sha256Bytes := sha256.Sum256(pluginImage)
-			*sha256Ptr = fmt.Sprintf("%x", sha256Bytes)
 		}
 	}
 
@@ -176,15 +192,21 @@ func CommonMain(envPtr *string,
 			certifyInit = true
 		}
 
-		if _, ok := pluginToolConfig["deployrootPtr"].(string); ok {
-			pluginToolConfig["trcdeployroot"] = pluginToolConfig["deployrootPtr"].(string)
-		}
+		if *defineServicePtr &&
+			!*winservicestopPtr &&
+			!*winservicestartPtr &&
+			!*codebundledeployPtr &&
+			!*certifyImagePtr {
+			if _, ok := pluginToolConfig["deployrootPtr"].(string); ok {
+				pluginToolConfig["trcdeployroot"] = pluginToolConfig["deployrootPtr"].(string)
+			}
 
-		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
-			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
-		}
-		if _, ok := pluginToolConfig["codeBundlePtr"].(string); ok {
-			pluginToolConfig["trccodebundle"] = pluginToolConfig["codeBundlePtr"].(string)
+			if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
+				pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
+			}
+			if _, ok := pluginToolConfig["codeBundlePtr"].(string); ok {
+				pluginToolConfig["trccodebundle"] = pluginToolConfig["codeBundlePtr"].(string)
+			}
 		}
 	}
 
@@ -210,10 +232,48 @@ func CommonMain(envPtr *string,
 			os.Exit(1)
 		}
 		fmt.Println("Deployment definition applied to vault and is ready for deployments.")
-	}
+	} else if *winservicestopPtr {
+		fmt.Printf("Stopping service %s\n", pluginToolConfig["trcservicename"].(string))
+		cmd := exec.Command("sc", "stop", pluginToolConfig["trcservicename"].(string))
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf("Service stopped: %s\n", pluginToolConfig["trcservicename"].(string))
 
-	//Certify Image
-	if *certifyImagePtr {
+	} else if *winservicestartPtr {
+		fmt.Printf("Starting service %s\n", pluginToolConfig["trcservicename"].(string))
+		cmd := exec.Command("sc", "start", pluginToolConfig["trcservicename"].(string))
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf("Service started: %s\n", pluginToolConfig["trcservicename"].(string))
+	} else if *codebundledeployPtr {
+		err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		if pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) {
+			// Write the image to the destination...
+			deployPath := fmt.Sprintf("%s\\%s", pluginToolConfig["trcdeployroot"].(string), pluginToolConfig["trccodebundle"].(string))
+			fmt.Printf("Deploying image to: %s\n", deployPath)
+
+			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
+			if err != nil {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
+			fmt.Println("Image deployed.")
+		} else {
+			fmt.Printf("Image not certified.  Cannot deploy image for %s\n", pluginToolConfig["trcplugin"])
+		}
+	} else if *certifyImagePtr {
+		//Certify Image
 		if !certifyInit {
 			err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 			if err != nil {
