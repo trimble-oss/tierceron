@@ -365,9 +365,6 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 	hostRegion := coreopts.GetRegion(hostName)
 	mod.Regions = append(mod.Regions, hostRegion)
 	projects, services, _ := eUtils.GetProjectServices(cPath)
-	mod.Regions = append(mod.Regions, hostRegion)
-	pluginNameList = append(pluginNameList, "trc-vault-plugin") //delete this line later
-
 	for _, pluginName := range pluginNameList {
 		for i := 0; i < len(projects); i++ {
 			if services[i] == "Certify" {
@@ -380,7 +377,7 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 					return err
 				}
 
-				pluginData := properties.GetPluginData(hostRegion, services[i], "config", config.Log)
+				pluginData, replacedFields := properties.GetPluginData(hostRegion, services[i], "config", config.Log)
 				if pluginData == nil {
 					pluginData = make(map[string]interface{})
 					pluginData["trcplugin"] = pluginName
@@ -426,18 +423,15 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 					continue
 				}
 
-				writeMap := make(map[string]interface{})
-				writeMap["trcplugin"] = pluginData["trcplugin"]
-				writeMap["trctype"] = pluginData["trctype"]
-				writeMap["trcsha256"] = pluginData["trcsha256"]
-				writeMap["copied"] = pluginData["copied"]
-				writeMap["instances"] = pluginData["instances"]
-				writeMap["deployed"] = false
-
-				_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap, logger)
-				if err != nil {
-					return err
+				if hostRegion != "" {
+					pluginData["deployed"] = true //Update deploy status if region exist otherwise this will block regionless deploys if set for regionless status
 				}
+
+				statusUpdateErr := properties.WritePluginData(pluginData, replacedFields, mod, config.Log, hostRegion, pluginName)
+				if err != nil {
+					return statusUpdateErr
+				}
+
 			}
 		}
 	}
