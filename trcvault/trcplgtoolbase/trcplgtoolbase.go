@@ -1,8 +1,11 @@
 package trcplgtoolbase
 
 import (
+	"bufio"
+	"crypto/sha256"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -136,6 +139,31 @@ func CommonMain(envPtr *string,
 		os.Exit(1)
 	}
 
+	fileInfo, statErr := os.Stat(*sha256Ptr)
+	if statErr == nil {
+		if fileInfo.Mode().IsRegular() {
+			file, fileOpenErr := os.Open(*sha256Ptr)
+			if fileOpenErr != nil {
+				fmt.Println(fileOpenErr)
+				return
+			}
+
+			// Close the file when we're done.
+			defer file.Close()
+
+			// Create a reader to the file.
+			reader := bufio.NewReader(file)
+
+			pluginImage, imageErr := io.ReadAll(reader)
+			if imageErr != nil {
+				fmt.Println("Failed to read image:" + imageErr.Error())
+				return
+			}
+			sha256Bytes := sha256.Sum256(pluginImage)
+			*sha256Ptr = fmt.Sprintf("%x", sha256Bytes)
+		}
+	}
+
 	pluginToolConfig["trcsha256"] = *sha256Ptr
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
 	pluginToolConfig["deployrootPtr"] = *deployrootPtr
@@ -158,13 +186,13 @@ func CommonMain(envPtr *string,
 		if _, ok := pluginToolConfig["codeBundlePtr"].(string); ok {
 			pluginToolConfig["trccodebundle"] = pluginToolConfig["codeBundlePtr"].(string)
 		}
-
 	}
 
 	//Define Service Image
 	if *defineServicePtr {
 		fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 		writeMap := make(map[string]interface{})
+		writeMap["trcplugin"] = *pluginNamePtr
 		writeMap["trctype"] = *pluginTypePtr
 
 		if _, ok := pluginToolConfig["trcdeployroot"]; ok {
