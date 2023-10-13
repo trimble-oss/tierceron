@@ -340,7 +340,6 @@ func CommonMain(envPtr *string,
 				writeMap, replacedFields := properties.GetPluginData(hostRegion, "Certify", "config", logger)
 
 				writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-				writeMap["trcpluginpath"] = pluginToolConfig["pluginpath"].(string)
 				writeMap["trctype"] = *pluginTypePtr
 				writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
 				if pluginToolConfig["instances"] == nil {

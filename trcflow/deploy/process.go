@@ -212,8 +212,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	switch vaultPluginSignature["trctype"] {
 	case "agent":
 		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
-	case "service":
-		agentPath = vaultPluginSignature["trcpluginpath"].(string) + vaultPluginSignature["trcplugin"].(string)
 	default:
 		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string) + pluginExtension
 	}
