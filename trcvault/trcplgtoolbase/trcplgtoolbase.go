@@ -70,7 +70,8 @@ func CommonMain(envPtr *string,
 			os.Exit(1)
 		}
 	} else {
-		flag.CommandLine.Parse(nil)
+		flag.CommandLine.Parse(os.Args)
+		flag.Parse()
 	}
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
@@ -95,7 +96,19 @@ func CommonMain(envPtr *string,
 
 	switch *pluginTypePtr {
 	case "vault": // A vault plugin
+		if c != nil {
+			// TODO: do we want to support Deployment certifications in the pipeline at some point?
+			// If so this is a config check to remove.
+			fmt.Println("Plugin type not supported in trcsh.")
+			os.Exit(-1)
+		}
 	case "agent": // A deployment agent tool.
+		if c != nil {
+			// TODO: do we want to support Deployment certifications in the pipeline at some point?
+			// If so this is a config check to remove.
+			fmt.Println("Plugin type not supported in trcsh.")
+			os.Exit(-1)
+		}
 	case "trcshservice": // A trcshservice managed microservice
 	default:
 		fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
@@ -105,6 +118,7 @@ func CommonMain(envPtr *string,
 	var configBase *eUtils.DriverConfig
 	if c != nil {
 		configBase = c
+		configBase.SubSectionValue = *pluginNamePtr
 		*insecurePtr = configBase.Insecure
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
@@ -197,6 +211,11 @@ func CommonMain(envPtr *string,
 			!*winservicestartPtr &&
 			!*codebundledeployPtr &&
 			!*certifyImagePtr {
+
+			if c != nil {
+				fmt.Println("Service definition not supported in trcsh.")
+				os.Exit(-1)
+			}
 			if _, ok := pluginToolConfig["deployrootPtr"].(string); ok {
 				pluginToolConfig["trcdeployroot"] = pluginToolConfig["deployrootPtr"].(string)
 			}
@@ -287,13 +306,23 @@ func CommonMain(envPtr *string,
 			//SHA MATCHES
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			writeMap := make(map[string]interface{})
-			writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-			writeMap["trctype"] = *pluginTypePtr
-			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
-			if pluginToolConfig["instances"] == nil {
-				pluginToolConfig["instances"] = "0"
+			if *pluginTypePtr == "trcshservice" {
+				var readErr error
+				writeMap, readErr = mod.ReadData(pluginToolConfig["pluginpath"].(string))
+				if readErr != nil {
+					fmt.Println(readErr)
+					os.Exit(1)
+				}
+			} else {
+				writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
+				writeMap["trctype"] = *pluginTypePtr
+				if pluginToolConfig["instances"] == nil {
+					pluginToolConfig["instances"] = "0"
+				}
+				writeMap["instances"] = pluginToolConfig["instances"].(string)
 			}
-			writeMap["instances"] = pluginToolConfig["instances"].(string)
+
+			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
 			writeMap["copied"] = false
 			writeMap["deployed"] = false
 			_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
