@@ -10,13 +10,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 
@@ -562,23 +562,53 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			}
 			logger.Println("Creating modifier for env: " + req.Path)
 
-			// Plugins
-			mod, err := helperkv.NewModifier(true, tokenEnvMap["ctoken"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
-			if mod != nil {
-				defer mod.Release()
+			pluginConfig := map[string]interface{}{}
+			pluginConfig = buildopts.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
+			if pluginConfig == nil {
+				logger.Println("Error: " + errors.New("Could not find plugin config").Error())
+				return logical.ErrorResponse("Failed to find config for TrcUpdate."), nil
 			}
+
+			hostName, hostNameErr := os.Hostname()
+			if hostNameErr != nil {
+				logger.Println("Error: " + hostNameErr.Error() + " - 1")
+				return logical.ErrorResponse("Failed to find hostname"), nil
+			} else if hostName == "" {
+				logger.Println("Error: " + errors.New("Found empty hostname").Error())
+				return logical.ErrorResponse("Found empty hostname"), nil
+			}
+			hostRegion := coreopts.GetRegion(hostName)
+
+			pluginConfig["env"] = req.Path
+			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)
+			pluginConfig["token"] = tokenEnvMap["ctoken"].(string)
+			pluginConfig["regions"] = []string{hostRegion}
+			cConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 			if err != nil {
+				logger.Println("Error: " + err.Error() + " - 1")
 				logger.Println("Failed to init mod for deploy update")
-				logger.Println("Error: " + err.Error())
-				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
+				return logical.ErrorResponse("Failed to create config for TrcUpdate."), nil
 			}
-			mod.Env = req.Path
+			if cMod != nil {
+				defer cMod.Release()
+			}
+			cMod.Env = req.Path
 			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + req.Path)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
 
-			writeMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
+			cMod.SectionName = "trcplugin"
+			cMod.SectionKey = "/Index/"
+			cMod.SubSectionValue = plugin.(string)
+
+			properties, err := trcvutils.NewProperties(cConfig, cVault, cMod, cMod.Env, "TrcVault", "Certify")
 			if err != nil {
+				logger.Println("Error: " + err.Error())
+				return logical.ErrorResponse("Failed to read previous plugin status from vault - 1"), nil
+			}
+
+			writeMap, _ := properties.GetPluginData(hostRegion, "Certify", "config", logger)
+			if writeMap == nil {
 				logger.Println("Failed to read previous plugin status from vault")
 				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to read previous plugin status from vault"), nil
