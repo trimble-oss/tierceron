@@ -76,7 +76,10 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 	for key, value := range memorizeFields {
 		switch key {
-		case "vaddress", "pubrole", "configrole", "kubeconfig":
+		case "vaddress", "configrole":
+			cap.TapFeather(key, value.(string))
+			break
+		case "pubrole", "kubeconfig", "ctoken", "caddress":
 			logger.Println("Memorizing: " + key)
 			cap.TapMemorize(key, value.(string))
 		default:
@@ -106,6 +109,15 @@ func Start(logger *log.Logger) error {
 	}
 	creds := credentials.NewServerTLSFromCert(&cert)
 	logger.Println("Tapping server.")
+
+	go cap.Feather("TODO",
+		"TODO",
+		"1832",
+		"ThisIsACode",
+		func(int, string) bool {
+			return true
+		},
+	)
 
 	// TODO: make port configured and stored in vault.
 	cap.TapServer("127.0.0.1:12384", grpc.Creds(creds))
