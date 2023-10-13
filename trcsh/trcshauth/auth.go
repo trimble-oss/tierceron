@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"regexp"
@@ -22,6 +23,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 //go:embed tls/mashup.crt
@@ -62,11 +64,13 @@ func randomString(n int) string {
 }
 
 type TrcShConfig struct {
-	Env        string
-	EnvContext string // Current env context...
-	ConfigRole string
-	PubRole    string
-	KubeConfig string
+	Env          string
+	EnvContext   string // Current env context...
+	VaultAddress *string
+	CToken       *string
+	ConfigRole   *string
+	PubRole      *string
+	KubeConfig   *string
 }
 
 const configDir = "/.tierceron/config.yml"
@@ -131,11 +135,10 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 }
 
 // Helper function for obtaining auth components.
-func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
+func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShConfig, error) {
 	trcshConfig := &TrcShConfig{}
 	var err error
 
-	fmt.Println("Auth phase 1")
 	if config.EnvRaw == "staging" || config.EnvRaw == "prod" || len(config.TrcShellRaw) > 0 {
 		dir, err := os.UserHomeDir()
 		if err != nil {
@@ -147,61 +150,87 @@ func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
 			fmt.Println("No local kube config found...")
 			os.Exit(1)
 		}
-		trcshConfig.KubeConfig = base64.StdEncoding.EncodeToString(fileBytes)
+		kc := base64.StdEncoding.EncodeToString(fileBytes)
+		trcshConfig.KubeConfig = &kc
 
 		if len(config.TrcShellRaw) > 0 {
 			return trcshConfig, nil
 		}
 	} else {
-		trcshConfig.KubeConfig, err = PenseQuery("kubeconfig")
+		if agentConfig == nil {
+			fmt.Println("Auth phase 1")
+			trcshConfig.KubeConfig, err = PenseQuery("kubeconfig")
+		}
 	}
 
 	if err != nil {
 		return trcshConfig, err
 	}
-	memprotectopts.MemProtect(nil, &trcshConfig.KubeConfig)
+	if trcshConfig.KubeConfig != nil {
+		memprotectopts.MemProtect(nil, trcshConfig.KubeConfig)
+	}
 
-	fmt.Println("Auth phase 2")
-	addr, vAddressErr := PenseQuery("vaddress")
-	if vAddressErr != nil {
+	if agentConfig != nil {
+		trcshConfig.VaultAddress, err = PenseFeatherQuery(agentConfig, "vaddress")
+	} else {
+		fmt.Println("Auth phase 2")
+		trcshConfig.VaultAddress, err = PenseQuery("vaddress")
+	}
+	memprotectopts.MemProtect(nil, trcshConfig.VaultAddress)
+
+	if err != nil {
 		var addrPort string
 		var env, envContext string
 
-		fmt.Println(vAddressErr)
+		fmt.Println(err)
 		//Env should come from command line - not context here. but addr port is needed.
 		trcshConfig.Env, trcshConfig.EnvContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
 		if err != nil {
 			fmt.Println(err)
 			return trcshConfig, err
 		}
-		addr = "https://127.0.0.1:" + addrPort
+		vAddr := "https://127.0.0.1:" + addrPort
+		trcshConfig.VaultAddress = &vAddr
 
 		config.Env = env
 		config.EnvRaw = env
 	}
 
-	config.VaultAddress = addr
+	config.VaultAddress = *trcshConfig.VaultAddress
 	memprotectopts.MemProtect(nil, &config.VaultAddress)
 
-	fmt.Println("Auth phase 3")
-	trcshConfig.ConfigRole, err = PenseQuery("configrole")
-	if err != nil {
-		return trcshConfig, err
+	if agentConfig != nil {
+		trcshConfig.ConfigRole, err = PenseFeatherQuery(agentConfig, "configrole")
+	} else {
+		fmt.Println("Auth phase 3")
+		trcshConfig.ConfigRole, err = PenseQuery("configrole")
 	}
-	memprotectopts.MemProtect(nil, &trcshConfig.ConfigRole)
+	memprotectopts.MemProtect(nil, trcshConfig.ConfigRole)
 
-	fmt.Println("Auth phase 4")
-	trcshConfig.PubRole, err = PenseQuery("pubrole")
-	if err != nil {
-		return trcshConfig, err
+	if agentConfig == nil {
+		fmt.Println("Auth phase 4")
+		trcshConfig.ConfigRole, err = PenseQuery("pubrole")
+		if err != nil {
+			return trcshConfig, err
+		}
+		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
 	}
-	memprotectopts.MemProtect(nil, &trcshConfig.PubRole)
+
+	if agentConfig == nil {
+		fmt.Println("Auth phase 5")
+		trcshConfig.CToken, err = PenseQuery("ctoken")
+		if err != nil {
+			return trcshConfig, err
+		}
+		memprotectopts.MemProtect(nil, trcshConfig.CToken)
+	}
+
 	fmt.Println("Auth complete.")
 
 	return trcshConfig, err
 }
 
-func PenseQuery(pense string) (string, error) {
+func PenseQuery(pense string) (*string, error) {
 	penseCode := randomString(7 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
@@ -211,12 +240,12 @@ func PenseQuery(pense string) (string, error) {
 		fmt.Println("Code 54 failure...")
 		// 2023-06-30T01:29:21.7020686Z read unix @->/tmp/trccarrier/trcsnap.sock: read: connection reset by peer
 		os.Exit(-1) // restarting carrier will rebuild necessary resources...
-		return "", errors.Join(errors.New("Tap writer error"), capWriteErr)
+		return new(string), errors.Join(errors.New("Tap writer error"), capWriteErr)
 	}
 
 	conn, err := grpc.Dial("127.0.0.1:12384", grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: "", RootCAs: mashupCertPool, InsecureSkipVerify: true})))
 	if err != nil {
-		return "", err
+		return new(string), err
 	}
 	defer conn.Close()
 	c := cap.NewCapClient(conn)
@@ -227,8 +256,49 @@ func PenseQuery(pense string) (string, error) {
 
 	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 	if penseErr != nil {
-		return "", errors.Join(errors.New("pense error"), penseErr)
+		return new(string), errors.Join(errors.New("pense error"), penseErr)
+	}
+	var penseProtect *string
+	rPense := r.GetPense()
+	penseProtect = &rPense
+	memprotectopts.MemProtect(nil, penseProtect)
+
+	return penseProtect, nil
+}
+
+func PenseFeatherQuery(agentconfig *AgentConfigs, pense string) (*string, error) {
+	penseCode := randomString(7 + rand.Intn(7))
+	penseArray := sha256.Sum256([]byte(penseCode))
+	penseSum := hex.EncodeToString(penseArray[:])
+
+	_, featherErr := cap.FeatherWriter(*agentconfig.EncryptPass,
+		*agentconfig.EncryptSalt,
+		*agentconfig.CarrierCtlHostPort,
+		*agentconfig.DeployRoleID,
+		penseSum)
+	if featherErr != nil {
+		return nil, featherErr
 	}
 
-	return r.GetPense(), nil
+	conn, err := grpc.Dial(*agentconfig.CarrierHostPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	c := cap.NewCapClient(conn)
+
+	// Contact the server and print out its response.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	var penseProtect *string
+	rPense := r.GetPense()
+	penseProtect = &rPense
+	memprotectopts.MemProtect(nil, penseProtect)
+
+	return penseProtect, nil
 }
