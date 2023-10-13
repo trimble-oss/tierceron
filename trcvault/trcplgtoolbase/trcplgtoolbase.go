@@ -115,6 +115,10 @@ func CommonMain(envPtr *string,
 		os.Exit(1)
 	}
 
+	if *pluginTypePtr != "vault" {
+		*regionPtr = ""
+	}
+
 	var configBase *eUtils.DriverConfig
 	var logger *log.Logger
 	if c != nil {
