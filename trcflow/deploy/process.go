@@ -357,7 +357,7 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 	if hostNameErr != nil {
 		return hostNameErr
 	} else if hostName == "" {
-		return errors.New("Could not find hostname.")
+		return errors.New("could not find hostname")
 	}
 
 	hostRegion := coreopts.GetRegion(hostName)
