@@ -356,19 +356,14 @@ func CommonMain(envPtr *string,
 					os.Exit(1)
 				}
 			} else { //Non region certify
-				if *pluginTypePtr == "trcshservice" { //This has to be done no matter what (###)
-					var readErr error
-					writeMap, readErr = mod.ReadData(pluginToolConfig["pluginpath"].(string))
-					if readErr != nil {
-						fmt.Println(readErr)
-						os.Exit(1)
-					}
-				} else {
-					writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
-					if readErr != nil {
-						fmt.Println(readErr)
-						os.Exit(1)
-					}
+				var readErr error
+				writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
+				if readErr != nil {
+					fmt.Println(readErr)
+					os.Exit(1)
+				}
+
+				if *pluginTypePtr != "trcshservice" { //This has to be done no matter what (###)
 					writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
 					writeMap["trctype"] = *pluginTypePtr
 					if pluginToolConfig["instances"] == nil {
