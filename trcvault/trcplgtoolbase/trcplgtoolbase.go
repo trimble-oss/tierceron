@@ -11,11 +11,11 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	"github.com/trimble-oss/tierceron/trcvault/util/repository"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 func CommonMain(envPtr *string,
@@ -52,6 +52,7 @@ func CommonMain(envPtr *string,
 	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
 
 	certifyInit := false
+	hostNamePtr := flag.String("hostName", "", "Used when certifiying a regioned plugin")
 
 	if c == nil || !c.IsShellSubProcess {
 		args := os.Args[1:]
@@ -116,6 +117,7 @@ func CommonMain(envPtr *string,
 	}
 
 	var configBase *eUtils.DriverConfig
+	var logger *log.Logger
 	if c != nil {
 		configBase = c
 		configBase.SubSectionValue = *pluginNamePtr
@@ -126,13 +128,36 @@ func CommonMain(envPtr *string,
 			*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "plgtool.log"
 		}
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-		logger := log.New(f, "[INIT]", log.LstdFlags)
+		logger = log.New(f, "[INIT]", log.LstdFlags)
 
 		configBase = &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
 		eUtils.CheckError(configBase, err, true)
 	}
 
 	regions := []string{}
+
+	pluginConfig := map[string]interface{}{}
+	pluginConfig = buildopts.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
+	if pluginConfig == nil {
+		fmt.Println("Error: Could not find plugin config")
+		os.Exit(1)
+	}
+	hostRegion := coreopts.GetRegion(*hostNamePtr)
+	pluginConfig["env"] = *envPtr
+	pluginConfig["vaddress"] = *addrPtr
+	pluginConfig["token"] = *tokenPtr
+	pluginConfig["ExitOnFailure"] = true
+	pluginConfig["regions"] = []string{hostRegion}
+	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	if err != nil {
+		logger.Println("Error: " + err.Error() + " - 1")
+		logger.Println("Failed to init mod for deploy update")
+		os.Exit(1)
+	}
+	config.StartDir = []string{*startDirPtr}
+	config.SubSectionValue = *pluginNamePtr
+	mod.Env = *envPtr
+	eUtils.CheckError(config, err, true)
 
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
@@ -151,15 +176,6 @@ func CommonMain(envPtr *string,
 		configBase.Regions = regions
 	}
 
-	//Grabbing configs
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
-	if mod != nil {
-		defer mod.Release()
-	}
-	if err != nil {
-		eUtils.CheckError(configBase, err, true)
-	}
-	mod.Env = *envPtr
 	// Get existing configs if they exist...
 	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(configBase, mod, coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}))
 	if plcErr != nil {
@@ -306,32 +322,69 @@ func CommonMain(envPtr *string,
 			//SHA MATCHES
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			writeMap := make(map[string]interface{})
-			if *pluginTypePtr == "trcshservice" {
-				var readErr error
-				writeMap, readErr = mod.ReadData(pluginToolConfig["pluginpath"].(string))
-				if readErr != nil {
-					fmt.Println(readErr)
+
+			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
+			// The following confirms that this version of carrier has been certified to run...
+			// It will bail if it hasn't.
+			if *hostNamePtr != "" { //If region is sete
+				mod.SectionName = "trcplugin"
+				mod.SectionKey = "/Index/"
+				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
+
+				properties, err := trcvutils.NewProperties(config, vault, mod, mod.Env, "TrcVault", "Certify")
+				if err != nil {
+					fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 					os.Exit(1)
 				}
-			} else {
+
+				writeMap, replacedFields := properties.GetPluginData(hostRegion, "Certify", "config", logger)
+
 				writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
+				writeMap["trcpluginpath"] = *pluginPathPtr
 				writeMap["trctype"] = *pluginTypePtr
+				writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
 				if pluginToolConfig["instances"] == nil {
 					pluginToolConfig["instances"] = "0"
 				}
 				writeMap["instances"] = pluginToolConfig["instances"].(string)
+				writeMap["copied"] = false
+				writeMap["deployed"] = false
+				writeErr := properties.WritePluginData(writeMap, replacedFields, mod, config.Log, hostRegion, pluginToolConfig["trcplugin"].(string))
+				if writeErr != nil {
+					fmt.Println(writeErr)
+					os.Exit(1)
+				}
+			} else { //Non region certify
+				if *pluginTypePtr == "trcshservice" { //This has to be done no matter what (###)
+					var readErr error
+					writeMap, readErr = mod.ReadData(pluginToolConfig["pluginpath"].(string))
+					if readErr != nil {
+						fmt.Println(readErr)
+						os.Exit(1)
+					}
+				} else {
+					writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
+					if readErr != nil {
+						fmt.Println(readErr)
+						os.Exit(1)
+					}
+					writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
+					writeMap["trctype"] = *pluginTypePtr
+					if pluginToolConfig["instances"] == nil {
+						pluginToolConfig["instances"] = "0"
+					}
+					writeMap["instances"] = pluginToolConfig["instances"].(string)
+				}
+				writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
+				writeMap["copied"] = false
+				writeMap["deployed"] = false
+				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				fmt.Println("Image certified in vault and is ready for release.")
 			}
-
-			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
-			writeMap["copied"] = false
-			writeMap["deployed"] = false
-			_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			fmt.Println("Image certified in vault and is ready for release.")
-
 		} else {
 			fmt.Println("Invalid or nonexistent image.")
 			os.Exit(1)
