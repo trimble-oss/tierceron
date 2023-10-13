@@ -323,8 +323,6 @@ func CommonMain(envPtr *string,
 			fmt.Println("Valid image found.")
 			//SHA MATCHES
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
-			writeMap := make(map[string]interface{})
-
 			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
@@ -356,7 +354,6 @@ func CommonMain(envPtr *string,
 					os.Exit(1)
 				}
 			} else { //Non region certify
-				var readErr error
 				writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
 				if readErr != nil {
 					fmt.Println(readErr)
