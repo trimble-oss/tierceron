@@ -166,7 +166,9 @@ func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShCo
 	if err != nil {
 		return trcshConfig, err
 	}
-	memprotectopts.MemProtect(nil, trcshConfig.KubeConfig)
+	if trcshConfig.KubeConfig != nil {
+		memprotectopts.MemProtect(nil, trcshConfig.KubeConfig)
+	}
 
 	if agentConfig != nil {
 		trcshConfig.VaultAddress, err = PenseFeatherQuery(agentConfig, "vaddress")
