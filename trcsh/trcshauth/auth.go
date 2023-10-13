@@ -67,6 +67,7 @@ type TrcShConfig struct {
 	Env          string
 	EnvContext   string // Current env context...
 	VaultAddress *string
+	CToken       *string
 	ConfigRole   *string
 	PubRole      *string
 	KubeConfig   *string
@@ -211,6 +212,15 @@ func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShCo
 			return trcshConfig, err
 		}
 		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
+	}
+
+	if agentConfig == nil {
+		fmt.Println("Auth phase 5")
+		trcshConfig.CToken, err = PenseQuery("ctoken")
+		if err != nil {
+			return trcshConfig, err
+		}
+		memprotectopts.MemProtect(nil, trcshConfig.CToken)
 	}
 
 	fmt.Println("Auth complete.")

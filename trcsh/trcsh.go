@@ -24,6 +24,7 @@ import (
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -79,11 +80,6 @@ func main() {
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
-
-		agentName = "spectrumrest"
-		agentToken = "s.9HXcIyg3kmxTQW0wZ5EMA10s"
-		agentEnv = "dev"
-		address = "https://atvc.dexchadev.com:8305"
 
 		if len(agentToken) == 0 {
 			fmt.Println("trcsh on windows requires agent token.")
@@ -183,7 +179,19 @@ func processPluginCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 		}
 	case "trcconfig":
 		configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
-	case "trcpluginctl":
+	case "trcplgtool":
+		config.AppRoleConfig = "configpub.yml"
+		config.EnvRaw = env
+		config.IsShellSubProcess = true
+
+		trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, config)
+		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+		if !agentToken {
+			token = ""
+			config.Token = token
+		}
+
 	case "kubectl":
 		onceKubeInit.Do(func() {
 			var kubeInitErr error
@@ -461,23 +469,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					os.Args = deployArgs
 				}
 			}
-			if runtime.GOOS != "windows" {
-				processPluginCmds(
-					trcKubeDeploymentConfig,
-					&onceKubeInit,
-					PipeOS,
-					env,
-					gTrcshConfig,
-					region,
-					config,
-					control,
-					agentToken,
-					token,
-					argsOrig,
-					deployArgLines,
-					&configCount,
-					logger)
-			} else {
+			if runtime.GOOS == "windows" {
 				processWindowsCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
@@ -493,7 +485,22 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					deployArgLines,
 					&configCount,
 					logger)
-
+			} else {
+				processPluginCmds(
+					trcKubeDeploymentConfig,
+					&onceKubeInit,
+					PipeOS,
+					env,
+					gTrcshConfig,
+					region,
+					config,
+					control,
+					agentToken,
+					token,
+					argsOrig,
+					deployArgLines,
+					&configCount,
+					logger)
 			}
 		}
 	}
