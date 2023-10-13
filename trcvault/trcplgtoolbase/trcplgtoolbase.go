@@ -52,7 +52,6 @@ func CommonMain(envPtr *string,
 	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
 
 	certifyInit := false
-	hostNamePtr := flag.String("hostName", "", "Used when certifiying a regioned plugin")
 
 	if c == nil || !c.IsShellSubProcess {
 		args := os.Args[1:]
@@ -142,12 +141,11 @@ func CommonMain(envPtr *string,
 		fmt.Println("Error: Could not find plugin config")
 		os.Exit(1)
 	}
-	hostRegion := coreopts.GetRegion(*hostNamePtr)
 	pluginConfig["env"] = *envPtr
 	pluginConfig["vaddress"] = *addrPtr
 	pluginConfig["token"] = *tokenPtr
 	pluginConfig["ExitOnFailure"] = true
-	pluginConfig["regions"] = []string{hostRegion}
+	pluginConfig["regions"] = []string{*regionPtr}
 	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if err != nil {
 		logger.Println("Error: " + err.Error() + " - 1")
@@ -326,7 +324,7 @@ func CommonMain(envPtr *string,
 			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
-			if *hostNamePtr != "" { //If region is sete
+			if *regionPtr != "" { //If region is sete
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
 				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
@@ -337,7 +335,7 @@ func CommonMain(envPtr *string,
 					os.Exit(1)
 				}
 
-				writeMap, replacedFields := properties.GetPluginData(hostRegion, "Certify", "config", logger)
+				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", logger)
 
 				writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
 				writeMap["trctype"] = *pluginTypePtr
@@ -348,7 +346,7 @@ func CommonMain(envPtr *string,
 				writeMap["instances"] = pluginToolConfig["instances"].(string)
 				writeMap["copied"] = false
 				writeMap["deployed"] = false
-				writeErr := properties.WritePluginData(writeMap, replacedFields, mod, config.Log, hostRegion, pluginToolConfig["trcplugin"].(string))
+				writeErr := properties.WritePluginData(writeMap, replacedFields, mod, config.Log, *regionPtr, pluginToolConfig["trcplugin"].(string))
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					os.Exit(1)
