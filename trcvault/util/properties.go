@@ -104,7 +104,23 @@ func (p *Properties) GetPluginData(region string, service string, config string,
 		}
 
 		if len(regionFields) == 0 {
-			log.Println("Region was found, but no regional data. Continuing with base data.")
+			log.Println("Region was provided, but no regional data. Continuing with base data.")
+			regionDefaultList := []string{"trcsha256", "copied", "deployed", "trcservicename"}
+			for _, field := range regionDefaultList { //Create regioned defaults
+				if _, valueOK := valueMap[field]; valueOK {
+					replacedDefaultFields[field] = valueMap[field]
+					valueMap[field+region] = valueMap[field]
+				} else {
+					if field == "copied" || field == "deployed" {
+						replacedDefaultFields[field] = "false"
+						valueMap[field+region] = "false"
+					} else {
+						replacedDefaultFields[field] = ""
+						valueMap[field+region] = ""
+					}
+				}
+			}
+
 		} else {
 			for field, value := range regionFields {
 				valueMap[strings.TrimSuffix(field, region)] = value

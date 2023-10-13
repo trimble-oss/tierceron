@@ -326,7 +326,7 @@ func CommonMain(envPtr *string,
 			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
-			if *regionPtr != "" { //If region is sete
+			if *regionPtr != "" { //If region is set
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
 				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
@@ -339,16 +339,7 @@ func CommonMain(envPtr *string,
 
 				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", logger)
 
-				writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-				writeMap["trctype"] = *pluginTypePtr
-				writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
-				if pluginToolConfig["instances"] == nil {
-					pluginToolConfig["instances"] = "0"
-				}
-				writeMap["instances"] = pluginToolConfig["instances"].(string)
-				writeMap["copied"] = false
-				writeMap["deployed"] = false
-				writeErr := properties.WritePluginData(writeMap, replacedFields, mod, config.Log, *regionPtr, pluginToolConfig["trcplugin"].(string))
+				writeErr := properties.WritePluginData(writeMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginToolConfig["trcplugin"].(string))
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					os.Exit(1)
@@ -360,18 +351,7 @@ func CommonMain(envPtr *string,
 					os.Exit(1)
 				}
 
-				if *pluginTypePtr != "trcshservice" { //This has to be done no matter what (###)
-					writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-					writeMap["trctype"] = *pluginTypePtr
-					if pluginToolConfig["instances"] == nil {
-						pluginToolConfig["instances"] = "0"
-					}
-					writeMap["instances"] = pluginToolConfig["instances"].(string)
-				}
-				writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
-				writeMap["copied"] = false
-				writeMap["deployed"] = false
-				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
+				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), configBase.Log)
 				if err != nil {
 					fmt.Println(err)
 					os.Exit(1)
@@ -432,4 +412,28 @@ func CommonMain(envPtr *string,
 		fmt.Println("Plugin has not been copied or deployed.")
 		os.Exit(2)
 	}
+}
+
+func writeMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string) map[string]interface{} {
+	if pluginTypePtr != "trcshservice" {
+		writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
+		writeMap["trctype"] = pluginTypePtr
+		if pluginToolConfig["instances"] == nil {
+			pluginToolConfig["instances"] = "0"
+		}
+		writeMap["instances"] = pluginToolConfig["instances"].(string)
+	}
+	if defineServicePtr {
+		writeMap["trccodebundle"] = pluginToolConfig["trccodebundle"].(string)
+		writeMap["trcservicename"] = pluginToolConfig["trcservicename"].(string)
+		writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"].(string)
+	} else {
+		writeMap["trccodebundle"] = ""
+		writeMap["trcservicename"] = ""
+		writeMap["trcdeployroot"] = ""
+	}
+	writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
+	writeMap["copied"] = false
+	writeMap["deployed"] = false
+	return writeMap
 }
