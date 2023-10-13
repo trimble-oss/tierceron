@@ -39,6 +39,10 @@ func GetLocalHost() string {
 	return ""
 }
 
+func GetRegion(hostName string) string {
+	return ""
+}
+
 func GetVaultHost() string {
 	return ""
 }
