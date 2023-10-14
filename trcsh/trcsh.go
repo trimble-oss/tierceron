@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"runtime"
 	"strings"
 	"sync"
@@ -181,7 +180,7 @@ func processPluginCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	case "trcconfig":
 		configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
 	case "trcplgtool":
-		config.AppRoleConfig = "configpub.yml"
+		config.AppRoleConfig = ""
 		config.EnvRaw = env
 		config.IsShellSubProcess = true
 
@@ -239,24 +238,18 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	configCount *int,
 	logger *log.Logger) {
 	switch control {
-	case "trcwinservicestart":
-		cmd := exec.Command("sc", "start", "TODO")
-		err := cmd.Run()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	case "trcwinservicestop":
-		cmd := exec.Command("sc", "stop", "TODO")
-		err := cmd.Run()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	case "trcwinservicedeploy":
-		// Bring it on Carrier....
 	case "trcplgtool":
-		//
+		config.AppRoleConfig = ""
+		config.EnvRaw = env
+		config.IsShellSubProcess = true
+
+		trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, config)
+		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+		if !agentToken {
+			token = ""
+			config.Token = token
+		}
 	case "trcconfig":
 		configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
 	}

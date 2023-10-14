@@ -475,7 +475,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	logger.Println("Create Pushing env: " + tokenEnvMap["env"].(string))
-	tokenEnvChan <- tokenEnvMap
+	PushEnv(tokenEnvMap)
 	//ctx.Done()
 	logger.Println("TrcCreateUpdate complete.")
 
@@ -658,7 +658,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 		// This will kick off the main flow for the plugin..
 		logger.Println("Update Pushing env: " + tokenEnvMap["env"].(string))
-		tokenEnvChan <- tokenEnvMap
+		PushEnv(tokenEnvMap)
 
 		if pluginOk {
 			// Listen on sha256 channel....
