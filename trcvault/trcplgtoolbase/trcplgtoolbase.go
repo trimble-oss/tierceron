@@ -339,7 +339,7 @@ func CommonMain(envPtr *string,
 
 				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", logger)
 
-				writeErr := properties.WritePluginData(writeMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginToolConfig["trcplugin"].(string))
+				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginToolConfig["trcplugin"].(string))
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					os.Exit(1)
@@ -351,7 +351,7 @@ func CommonMain(envPtr *string,
 					os.Exit(1)
 				}
 
-				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), configBase.Log)
+				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), configBase.Log)
 				if err != nil {
 					fmt.Println(err)
 					os.Exit(1)
@@ -414,7 +414,7 @@ func CommonMain(envPtr *string,
 	}
 }
 
-func writeMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string) map[string]interface{} {
+func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string) map[string]interface{} {
 	if pluginTypePtr != "trcshservice" {
 		writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
 		writeMap["trctype"] = pluginTypePtr
