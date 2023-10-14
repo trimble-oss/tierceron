@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/factory"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
+	trcplgtool "github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	"github.com/trimble-oss/tierceron/trcvault/util/repository"
 	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
@@ -315,17 +316,15 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			return nil
 		}
 		factory.PushPluginSha(config, pluginConfig, vaultPluginSignature)
+		_, err = cGoMod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + vaultPluginSignature["trcplugin"].(string) + "/Certify")
+
 		writeMap := make(map[string]interface{})
-		writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
-		writeMap["trcsha256"] = vaultPluginSignature["trcsha256"].(string)
-		writeMap["instances"] = vaultPluginSignature["instances"].(string)
 		if trcType, trcTypeOk := vaultPluginSignature["trctype"]; trcTypeOk {
 			writeMap["trctype"] = trcType.(string)
 		} else {
 			writeMap["trctype"] = "vault"
 		}
-		writeMap["copied"] = false
-		writeMap["deployed"] = false
+		writeMap = trcplgtool.WriteMapUpdate(writeMap, vaultPluginSignature, false, writeMap["trctype"].(string))
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
