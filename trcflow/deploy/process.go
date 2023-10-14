@@ -65,7 +65,8 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 			return
 		}
 
-		err = capauth.Init(goMod, pluginConfig, logger)
+		var featherAuth *capauth.FeatherAuth
+		featherAuth, err = capauth.Init(goMod, pluginConfig, logger)
 		if err != nil {
 			eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
 			return
@@ -74,7 +75,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		capauth.Memorize(pluginConfig, logger)
 
 		// TODO: Support variables for different environments...
-		go capauth.Start(logger)
+		go capauth.Start(featherAuth, logger)
 		logger.Println("Cap auth init complete.")
 	})
 
