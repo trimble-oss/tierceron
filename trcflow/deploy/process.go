@@ -14,9 +14,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/factory"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
+	trcplgtool "github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	"github.com/trimble-oss/tierceron/trcvault/util/repository"
 	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
@@ -63,7 +65,8 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 			return
 		}
 
-		err = capauth.Init(goMod, pluginConfig, logger)
+		var featherAuth *capauth.FeatherAuth
+		featherAuth, err = capauth.Init(goMod, pluginConfig, logger)
 		if err != nil {
 			eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
 			return
@@ -72,7 +75,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		capauth.Memorize(pluginConfig, logger)
 
 		// TODO: Support variables for different environments...
-		go capauth.Start(logger)
+		go capauth.Start(featherAuth, logger)
 		logger.Println("Cap auth init complete.")
 	})
 
@@ -99,15 +102,15 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	if hostNameErr != nil {
 		return hostNameErr
 	} else if hostName == "" {
-		return errors.New("Could not find hostname.")
+		return errors.New("could not find hostname")
 	}
 
 	//Grabbing certification from vault
 	if pluginConfig["caddress"].(string) == "" { //if no certification address found, it will try to certify against itself.
-		return errors.New("Could not find certification address.")
+		return errors.New("could not find certification address")
 	}
 	if pluginConfig["ctoken"].(string) == "" { //if no certification address found, it will try to certify against itself.
-		return errors.New("Could not find certification token.")
+		return errors.New("could not find certification token")
 	}
 
 	tempAddr := pluginConfig["vaddress"]
@@ -121,7 +124,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		return err
 	}
 
-	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig, hostName)
+	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig)
 	if ptcErr != nil {
 		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
 	}
@@ -211,8 +214,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	switch vaultPluginSignature["trctype"] {
 	case "agent":
 		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
-	case "service":
-		agentPath = vaultPluginSignature["trcpluginpath"].(string) + vaultPluginSignature["trcplugin"].(string)
 	default:
 		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string) + pluginExtension
 	}
@@ -316,34 +317,22 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			return nil
 		}
 		factory.PushPluginSha(config, pluginConfig, vaultPluginSignature)
+		_, err = cGoMod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + vaultPluginSignature["trcplugin"].(string) + "/Certify")
+
 		writeMap := make(map[string]interface{})
-		writeMap["trcplugin"] = vaultPluginSignature["trcplugin"].(string)
-		writeMap["trcsha256"] = vaultPluginSignature["trcsha256"].(string)
-		writeMap["instances"] = vaultPluginSignature["instances"].(string)
 		if trcType, trcTypeOk := vaultPluginSignature["trctype"]; trcTypeOk {
 			writeMap["trctype"] = trcType.(string)
 		} else {
 			writeMap["trctype"] = "vault"
 		}
-
+		writeMap = trcplgtool.WriteMapUpdate(writeMap, vaultPluginSignature, false, writeMap["trctype"].(string))
+		if writeMap["trctype"].(string) == "agent" {
+			writeMap["deployed"] = true
+		}
 		_, err = cGoMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, config.Log)
 		if err != nil {
 			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
 		}
-
-		writeMap = make(map[string]interface{})
-		writeMap["copied"] = false
-		writeMap["deployed"] = false
-		if writeMap["trctype"].(string) == "agent" {
-			writeMap["deployed"] = true
-		}
-
-		overridePath := "overrides/" + hostName + "/" + writeMap["trcplugin"].(string) + "/Certify"
-		_, err = cGoMod.Write("super-secrets/Index/TrcVault/trcplugin/"+overridePath, writeMap, config.Log)
-		if err != nil {
-			logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
-		}
-
 		eUtils.LogInfo(config, pluginName+": Plugin image config in vault has been updated.")
 	} else {
 		if !pluginDownloadNeeded && pluginCopied {
@@ -361,92 +350,87 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 }
 
 // Updated deployed to true for any plugin
-func PluginDeployedUpdate(mod *helperkv.Modifier, pluginNameList []string, logger *log.Logger) error {
+func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, vault *sys.Vault, pluginNameList []string, cPath []string, logger *log.Logger) error {
 	logger.Println("PluginDeployedUpdate start.")
 
 	hostName, hostNameErr := os.Hostname()
 	if hostNameErr != nil {
 		return hostNameErr
 	} else if hostName == "" {
-		return errors.New("Could not find hostname.")
+		return errors.New("could not find hostname")
 	}
 
+	hostRegion := coreopts.GetRegion(hostName)
+	mod.Regions = append(mod.Regions, hostRegion)
+	projects, services, _ := eUtils.GetProjectServices(cPath)
 	for _, pluginName := range pluginNameList {
-		pluginData, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
-		if err != nil {
-			return err
-		}
-		pluginStatusData, statusErr := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/overrides/" + hostName + "/" + pluginName + "/Certify")
-		if statusErr != nil {
-			return statusErr
-		}
+		for i := 0; i < len(projects); i++ {
+			if services[i] == "Certify" {
+				mod.SectionName = "trcplugin"
+				mod.SectionKey = "/Index/"
+				mod.SubSectionValue = pluginName
 
-		for k, v := range pluginStatusData {
-			pluginData[k] = v
-		}
+				properties, err := trcvutils.NewProperties(config, vault, mod, config.Env, projects[i], services[i])
+				if err != nil {
+					return err
+				}
 
-		if pluginData == nil {
-			pluginData = make(map[string]interface{})
-			pluginData["trcplugin"] = pluginName
+				pluginData, replacedFields := properties.GetPluginData(hostRegion, services[i], "config", config.Log)
+				if pluginData == nil {
+					pluginData = make(map[string]interface{})
+					pluginData["trcplugin"] = pluginName
 
-			var agentPath string
-			pluginExtension := ""
-			if prod.IsProd() {
-				pluginExtension = "-prod"
-			}
+					var agentPath string
+					pluginExtension := ""
+					if prod.IsProd() {
+						pluginExtension = "-prod"
+					}
 
-			if pluginData["trctype"] == "agent" {
-				agentPath = "/home/azuredeploy/bin/" + pluginName
-			} else {
-				agentPath = "/etc/opt/vault/plugins/" + pluginName + pluginExtension
-			}
+					if pluginData["trctype"] == "agent" {
+						agentPath = "/home/azuredeploy/bin/" + pluginName
+					} else {
+						agentPath = "/etc/opt/vault/plugins/" + pluginName + pluginExtension
+					}
 
-			logger.Println("Checking file.")
-			if imageFile, err := os.Open(agentPath); err == nil {
-				sha256 := sha256.New()
+					logger.Println("Checking file.")
+					if imageFile, err := os.Open(agentPath); err == nil {
+						sha256 := sha256.New()
 
-				defer imageFile.Close()
-				if _, err := io.Copy(sha256, imageFile); err != nil {
+						defer imageFile.Close()
+						if _, err := io.Copy(sha256, imageFile); err != nil {
+							continue
+						}
+
+						filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
+						pluginData["trcsha256"] = filesystemsha256
+						pluginData["copied"] = false
+						pluginData["instances"] = "0"
+
+						if pluginData["trctype"].(string) == "agent" {
+							pluginData["deployed"] = false
+						}
+					}
+				}
+
+				if copied, okCopied := pluginData["copied"]; !okCopied || !copied.(bool) {
+					logger.Println("Cannot certify plugin.  Plugin not copied: " + pluginName)
 					continue
 				}
 
-				filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
-				pluginData["trcsha256"] = filesystemsha256
-				pluginData["copied"] = false
-				pluginData["instances"] = "0"
-
-				if pluginData["trctype"].(string) == "agent" {
-					pluginData["deployed"] = false
+				if deployed, okDeployed := pluginData["deployed"]; !okDeployed || deployed.(bool) {
+					continue
 				}
+
+				if hostRegion != "" {
+					pluginData["deployed"] = true //Update deploy status if region exist otherwise this will block regionless deploys if set for regionless status
+				}
+
+				statusUpdateErr := properties.WritePluginData(pluginData, replacedFields, mod, config.Log, hostRegion, pluginName)
+				if err != nil {
+					return statusUpdateErr
+				}
+
 			}
-		}
-
-		if copied, okCopied := pluginData["copied"]; !okCopied || !copied.(bool) {
-			logger.Println("Cannot certify plugin.  Plugin not copied: " + pluginName)
-			continue
-		}
-
-		if deployed, okDeployed := pluginData["deployed"]; !okDeployed || deployed.(bool) {
-			continue
-		}
-
-		writeMap := make(map[string]interface{})
-		writeMap["trcplugin"] = pluginData["trcplugin"]
-		writeMap["trctype"] = pluginData["trctype"]
-		writeMap["trcsha256"] = pluginData["trcsha256"]
-		writeMap["instances"] = pluginData["instances"]
-
-		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap, logger)
-		if err != nil {
-			return err
-		}
-
-		writeMap = make(map[string]interface{})
-		writeMap["copied"] = pluginData["copied"]
-		writeMap["deployed"] = false
-		_, err = mod.Write("super-secrets/Index/TrcVault/trcplugin/overrides/"+hostName+"/"+pluginName+"/Certify", writeMap, logger)
-		if err != nil {
-			return err
 		}
 	}
 	logger.Println("PluginDeployedUpdate complete.")
