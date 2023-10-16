@@ -19,6 +19,13 @@ import (
 
 var onceMemo sync.Once
 
+type FeatherAuth struct {
+	EncryptPass   string
+	EncryptSalt   string
+	Port          string
+	HandshakeCode string
+}
+
 // CheckNotSudo -- checks if current user is sudoer and exits if they are.
 func CheckNotSudo() {
 	sudoer, sudoErr := user.LookupGroup("sudo")
@@ -45,11 +52,11 @@ func CheckNotSudo() {
 
 }
 
-func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) error {
+func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (*FeatherAuth, error) {
 
 	certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcsh/Certify")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if _, ok := certifyMap["trcsha256"]; ok {
@@ -70,13 +77,38 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 			logger.Println("Mad hat cap failure.")
 		}()
 	}
-	return nil
+	if pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod" {
+		// Feathering not supported in staging/prod at this time.
+		return nil, nil
+	}
+	featherMap, _ := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcshagent/Certify")
+	// TODO: enable error validation when secrets are stored...
+	// if err != nil {
+	// 	return nil, err
+	// }
+	if featherMap != nil {
+		if _, ok := featherMap["trcshencryptpass"]; ok {
+			if _, ok := featherMap["trcshencryptsalt"]; ok {
+				if _, ok := featherMap["trcshfeatherport"]; ok {
+					if _, ok := featherMap["trcshfeatherhcode"]; ok {
+						featherAuth := &FeatherAuth{EncryptPass: featherMap["trcshencryptpass"].(string), EncryptSalt: featherMap["trcshencryptsalt"].(string), Port: featherMap["trcshfeatherport"].(string), HandshakeCode: featherMap["trcshfeatherhcode"].(string)}
+						return featherAuth, nil
+					}
+				}
+			}
+		}
+	}
+
+	return nil, nil
 }
 
 func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 	for key, value := range memorizeFields {
 		switch key {
-		case "vaddress", "pubrole", "configrole", "kubeconfig":
+		case "vaddress", "configrole":
+			cap.TapFeather(key, value.(string))
+			break
+		case "pubrole", "kubeconfig", "ctoken", "caddress":
 			logger.Println("Memorizing: " + key)
 			cap.TapMemorize(key, value.(string))
 		default:
@@ -86,7 +118,7 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 }
 
 // Things to make available to trusted agent.
-func Start(logger *log.Logger) error {
+func Start(featherAuth *FeatherAuth, logger *log.Logger) error {
 	mashupCertBytes, err := trcshauth.MashupCert.ReadFile("tls/mashup.crt")
 	if err != nil {
 		logger.Printf("Couldn't load cert: %v\n", err)
@@ -106,6 +138,17 @@ func Start(logger *log.Logger) error {
 	}
 	creds := credentials.NewServerTLSFromCert(&cert)
 	logger.Println("Tapping server.")
+
+	if featherAuth != nil {
+		go cap.Feather(featherAuth.EncryptPass,
+			featherAuth.EncryptSalt,
+			featherAuth.Port,
+			featherAuth.HandshakeCode,
+			func(int, string) bool {
+				return true
+			},
+		)
+	}
 
 	// TODO: make port configured and stored in vault.
 	cap.TapServer("127.0.0.1:12384", grpc.Creds(creds))
