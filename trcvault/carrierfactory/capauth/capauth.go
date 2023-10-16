@@ -77,6 +77,10 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 			logger.Println("Mad hat cap failure.")
 		}()
 	}
+	if pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod" {
+		// Feathering not supported in staging/prod at this time.
+		return nil, nil
+	}
 	featherMap, _ := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcshagent/Certify")
 	// TODO: enable error validation when secrets are stored...
 	// if err != nil {
