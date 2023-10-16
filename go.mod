@@ -2,7 +2,7 @@ module github.com/trimble-oss/tierceron
 
 go 1.21
 
-toolchain go1.21.1
+toolchain go1.21.2
 
 require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
@@ -20,8 +20,8 @@ require (
 	github.com/sergi/go-diff v1.2.0
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	github.com/xo/dburl v0.9.0
-	golang.org/x/crypto v0.13.0
-	golang.org/x/sys v0.12.0
+	golang.org/x/crypto v0.14.0
+	golang.org/x/sys v0.13.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -46,7 +46,6 @@ require (
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-hat v0.0.0-00010101000000-000000000000
-	google.golang.org/api v0.130.0
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/cli-runtime v0.26.1
@@ -57,8 +56,6 @@ require (
 )
 
 require (
-	cloud.google.com/go/compute v1.19.3 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 // indirect
@@ -82,14 +79,10 @@ require (
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
-	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.2.5 // indirect
-	github.com/googleapis/gax-go/v2 v2.11.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -128,11 +121,10 @@ require (
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
-	go.opencensus.io v0.24.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
-	golang.org/x/oauth2 v0.9.0 // indirect
+	golang.org/x/oauth2 v0.12.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230629202037-9506855d4529 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230920204549-e6e6cdab5c13 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/component-helpers v0.0.0-20230215120307-78f7b9c080f0 // indirect
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect
@@ -201,7 +193,7 @@ require (
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang-sql/sqlexp v0.0.0-20170517235910-f1bb20e5a188 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/google/uuid v1.3.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/hashicorp/go-hclog v1.0.0
@@ -234,13 +226,13 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/term v0.12.0
+	golang.org/x/term v0.13.0
 	golang.org/x/text v0.13.0
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	golang.org/x/tools v0.6.0 // indirect
-	google.golang.org/grpc v1.56.1
+	google.golang.org/grpc v1.58.2
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
