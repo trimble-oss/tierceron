@@ -127,7 +127,9 @@ func NewModifier(insecure bool, token string, address string, env string, region
 		HttpClient: httpClient,
 	})
 	if err != nil {
-		logger.Println("vaultHost: "+modClient.Address(), logger)
+		if logger != nil {
+			logger.Println("vaultHost: "+modClient.Address(), logger)
+		}
 		return nil, err
 	}
 
