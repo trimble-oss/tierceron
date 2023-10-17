@@ -149,7 +149,9 @@ func CommonMain(envPtr *string,
 	pluginConfig["vaddress"] = *addrPtr
 	pluginConfig["token"] = *tokenPtr
 	pluginConfig["ExitOnFailure"] = true
-	pluginConfig["regions"] = []string{*regionPtr}
+	if *regionPtr != "" {
+		pluginConfig["regions"] = []string{*regionPtr}
+	}
 	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if err != nil {
 		logger.Println("Error: " + err.Error() + " - 1")
