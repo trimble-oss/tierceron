@@ -1,8 +1,12 @@
 package capauth
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/user"
@@ -25,6 +29,8 @@ type FeatherAuth struct {
 	Port          string
 	HandshakeCode string
 }
+
+var trcshaPath string = "/home/azuredeploy/bin/trcsh"
 
 // CheckNotSudo -- checks if current user is sudoer and exits if they are.
 func CheckNotSudo() {
@@ -50,6 +56,33 @@ func CheckNotSudo() {
 		}
 	}
 
+}
+
+func ValidatePathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
+
+	certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcsh/Certify")
+	if err != nil {
+		return false, err
+	}
+
+	if _, ok := certifyMap["trcsha256"]; ok {
+		h := sha256.New()
+
+		peerExe, err := os.Open(trcshaPath)
+		if err != nil {
+			return false, err
+		}
+		defer peerExe.Close()
+
+		if _, err := io.Copy(h, peerExe); err != nil {
+			return false, err
+		}
+
+		if certifyMap["trcsha256"].(string) == hex.EncodeToString(h.Sum(nil)) {
+			return true, nil
+		}
+	}
+	return false, errors.New("missing certification")
 }
 
 func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (*FeatherAuth, error) {
@@ -107,7 +140,7 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 		switch key {
 		case "vaddress", "configrole":
 			cap.TapFeather(key, value.(string))
-			break
+			fallthrough
 		case "pubrole", "kubeconfig", "ctoken", "caddress":
 			logger.Println("Memorizing: " + key)
 			cap.TapMemorize(key, value.(string))
