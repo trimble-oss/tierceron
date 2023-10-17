@@ -209,7 +209,7 @@ func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShCo
 
 	if agentConfig == nil {
 		fmt.Println("Auth phase 4")
-		trcshConfig.ConfigRole, err = PenseQuery("pubrole")
+		trcshConfig.PubRole, err = PenseQuery("pubrole")
 		if err != nil {
 			return trcshConfig, err
 		}
