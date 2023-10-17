@@ -9,6 +9,11 @@ echo "Enter organization vault host base url including port (hit enter if just r
 read SECRET_VAULT_ADDR
 fi
 
+if [[ -z "${SECRET_VAULT_PLUGIN_TOKEN}" ]]; then
+echo "Enter organization vault plugin token for certification: "
+read SECRET_VAULT_PLUGIN_TOKEN
+fi
+
 if [[ -z "${VAULT_TOKEN}" ]]; then
 echo "Enter agent vault root token: "
 read VAULT_TOKEN
@@ -20,7 +25,7 @@ read VAULT_ENV
 fi
 
 if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
-echo "Enter organization vault *plugin* environment token with tightly confined write permissions: "
+echo "Enter agent vault *plugin* environment token with tightly confined write permissions: "
 read VAULT_ENV_TOKEN
 fi
 
@@ -49,4 +54,4 @@ export VAULT_API_ADDR
 
 echo $VAULT_ADDR
 
-vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$VAULT_ENV_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
+vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG

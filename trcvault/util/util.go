@@ -254,12 +254,15 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	indexFound := false
 	templatePaths := pluginConfig["templatePath"].([]string)
 
+	config.Log.Println("GetPluginToolConfig reading base configurations.")
 	pluginToolConfig, err := mod.ReadData("super-secrets/Restricted/PluginTool/config")
 
 	if err != nil {
+		config.Log.Println("GetPluginToolConfig errored with missing base PluginTool configurations.")
 		return nil, err
 	} else {
 		if len(pluginToolConfig) == 0 {
+			config.Log.Println("GetPluginToolConfig empty base PluginTool configurations.")
 			return nil, errors.New("Tierceron plugin management presently not configured for env: " + mod.Env)
 		}
 	}
@@ -269,6 +272,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 
 	var ptc1 map[string]interface{}
 
+	config.Log.Println("GetPluginToolConfig loading plugin data.")
 	for _, templatePath := range templatePaths {
 		project, service, _ := eUtils.GetProjectService(templatePath)
 		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
@@ -281,7 +285,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 		ptc1, err = mod.ReadData(mod.SectionPath)
 		pluginToolConfig["pluginpath"] = mod.SectionPath
 		if err != nil || ptc1 == nil {
-			config.Log.Println("No data found.")
+			config.Log.Println("No data found for project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
 			continue
 		}
 		indexFound = true
@@ -291,6 +295,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 		break
 	}
 	mod.SectionPath = ""
+	config.Log.Println("GetPluginToolConfig plugin data load process complete.")
 
 	if pluginToolConfig == nil {
 		config.Log.Println("No data found for plugin.")
@@ -300,14 +305,15 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 		return pluginToolConfig, err
 	} else if !indexFound {
 		return pluginToolConfig, nil
-	}
-	config.Log.Println("GetPluginToolConfig end processing plugins.")
-	if _, ok := pluginToolConfig["trcplugin"]; ok {
-		if strings.ContainsAny(pluginToolConfig["trcplugin"].(string), "./") {
-			err = errors.New("Invalid plugin configuration: " + pluginToolConfig["trcplugin"].(string))
-			return nil, err
+	} else {
+		if _, ok := pluginToolConfig["trcplugin"]; ok {
+			if strings.ContainsAny(pluginToolConfig["trcplugin"].(string), "./") {
+				err = errors.New("Invalid plugin configuration: " + pluginToolConfig["trcplugin"].(string))
+				return nil, err
+			}
 		}
 	}
+	config.Log.Println("GetPluginToolConfig end processing plugins.")
 
 	return pluginToolConfig, nil
 }
