@@ -203,6 +203,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		pluginExtension = "-prod"
 	}
 
+	// trcsh is always type agent... even if it somehow ends up incorrect in vault...
+	if vaultPluginSignature["trcplugin"].(string) == "trcsh" {
+		vaultPluginSignature["trctype"] = "agent"
+	}
+
 	switch vaultPluginSignature["trctype"] {
 	case "agent":
 		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
