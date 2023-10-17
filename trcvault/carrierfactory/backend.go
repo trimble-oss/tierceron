@@ -357,7 +357,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			configCompleteChan <- true
 		}
 		if flowErr != nil {
-			l.Println("Flow had an error: " + flowErr.Error())
+			l.Printf("Flow %s had an error: %s\n", pec["trcplugin"].(string), flowErr.Error())
 		}
 	}(pluginEnvConfig, logger)
 
