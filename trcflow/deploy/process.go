@@ -120,13 +120,13 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	cConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	cConfig.SubSectionValue = pluginName
 	if err != nil {
-		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
+		eUtils.LogErrorMessage(cConfig, "Could not access vault.  Failure to start.", false)
 		return err
 	}
 
 	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig)
 	if ptcErr != nil {
-		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin load failure: "+ptcErr.Error(), false)
+		eUtils.LogErrorMessage(cConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin load failure: %s", cConfig.Env, ptcErr.Error()), false)
 	}
 	pluginConfig["vaddress"] = tempAddr
 	pluginConfig["token"] = tempToken
@@ -149,17 +149,19 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	if _, ok := vaultPluginSignature["trcplugin"]; !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
-		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure.", false)
+		eUtils.LogErrorMessage(cConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin status load failure.", cConfig.Env), false)
+		return nil
 	}
 
 	if _, ok := vaultPluginSignature["acrrepository"].(string); !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
-		eUtils.LogErrorMessage(config, "PluginDeployFlow failure: plugin status load failure - no certification entry found.", false)
+		eUtils.LogErrorMessage(cConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin status load failure - no certification entry found.", cConfig.Env), false)
+		return nil
 	}
 
 	//Checks if this instance of carrier is allowed to deploy that certain plugin.
 	if instanceList, ok := vaultPluginSignature["instances"].(string); !ok {
-		eUtils.LogErrorMessage(config, "Plugin has no valid instances: "+vaultPluginSignature["trcplugin"].(string), false)
+		eUtils.LogErrorMessage(cConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s Plugin has no valid instances: %s", cConfig.Env, vaultPluginSignature["trcplugin"].(string)), false)
 		return nil
 	} else {
 		hostName, hostNameErr := os.Hostname()
