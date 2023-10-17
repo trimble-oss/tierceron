@@ -37,47 +37,51 @@ var onceAuth sync.Once
 func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployInitFlow begun.")
 	var err error
+	var config *eUtils.DriverConfig
+	var goMod *helperkv.Modifier
+	var vault *sys.Vault
 
-	onceAuth.Do(func() {
-		logger.Println("Cap auth init. ")
-		var config *eUtils.DriverConfig
-		var goMod *helperkv.Modifier
-		var vault *sys.Vault
+	//Grabbing configs
+	tempAddr := pluginConfig["vaddress"]
+	tempToken := pluginConfig["token"]
+	pluginConfig["vaddress"] = pluginConfig["caddress"]
+	pluginConfig["token"] = pluginConfig["ctoken"]
+	config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	if vault != nil {
+		defer vault.Close()
+	}
 
-		//Grabbing configs
-		tempAddr := pluginConfig["vaddress"]
-		tempToken := pluginConfig["token"]
-		pluginConfig["vaddress"] = pluginConfig["caddress"]
-		pluginConfig["token"] = pluginConfig["ctoken"]
-		config, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
-		if vault != nil {
-			defer vault.Close()
-		}
+	if goMod != nil {
+		defer goMod.Release()
+	}
+	pluginConfig["vaddress"] = tempAddr
+	pluginConfig["token"] = tempToken
 
-		if goMod != nil {
-			defer goMod.Release()
-		}
-		pluginConfig["vaddress"] = tempAddr
-		pluginConfig["token"] = tempToken
+	if err != nil {
+		eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
+		return err
+	}
 
-		if err != nil {
-			eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
-			return
-		}
+	if ok, err := capauth.ValidatePathSha(goMod, pluginConfig, logger); ok {
+		onceAuth.Do(func() {
+			logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
+			var featherAuth *capauth.FeatherAuth
+			featherAuth, err = capauth.Init(goMod, pluginConfig, logger)
+			if err != nil {
+				eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
+				return
+			}
 
-		var featherAuth *capauth.FeatherAuth
-		featherAuth, err = capauth.Init(goMod, pluginConfig, logger)
-		if err != nil {
-			eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
-			return
-		}
+			capauth.Memorize(pluginConfig, logger)
 
-		capauth.Memorize(pluginConfig, logger)
-
-		// TODO: Support variables for different environments...
-		go capauth.Start(featherAuth, logger)
-		logger.Println("Cap auth init complete.")
-	})
+			// TODO: Support variables for different environments...
+			// Not really clear how cap auth would do this...
+			go capauth.Start(featherAuth, logger)
+			logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
+		})
+	} else {
+		eUtils.LogErrorMessage(config, fmt.Sprintf("Mismatched sha256 cap auth for env: %s.  Skipping.", pluginConfig["env"].(string)), false)
+	}
 
 	logger.Println("PluginDeployInitFlow complete.")
 
