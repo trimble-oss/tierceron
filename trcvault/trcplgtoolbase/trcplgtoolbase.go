@@ -123,6 +123,7 @@ func CommonMain(envPtr *string,
 	var logger *log.Logger
 	if c != nil {
 		configBase = c
+		logger = c.Log
 		configBase.SubSectionValue = *pluginNamePtr
 		*insecurePtr = configBase.Insecure
 	} else {
@@ -321,7 +322,10 @@ func CommonMain(envPtr *string,
 			}
 		}
 
-		if certifyInit || pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { //Comparing generated sha from image to sha from flag
+		if certifyInit ||
+			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { // Comparing generated sha from image to sha from flag
+			// ||
+			//(pluginToolConfig["imagesha256"].(string) != "" && pluginToolConfig["trctype"].(string) == "trcshservice") {
 			fmt.Println("Valid image found.")
 			//SHA MATCHES
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
@@ -429,12 +433,8 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 		writeMap["trccodebundle"] = pluginToolConfig["trccodebundle"].(string)
 		writeMap["trcservicename"] = pluginToolConfig["trcservicename"].(string)
 		writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"].(string)
-	} else {
-		writeMap["trccodebundle"] = ""
-		writeMap["trcservicename"] = ""
-		writeMap["trcdeployroot"] = ""
 	}
-	writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string)
+	writeMap["trcsha256"] = pluginToolConfig["imagesha256"].(string) // Pull image sha from registry...
 	writeMap["copied"] = false
 	writeMap["deployed"] = false
 	return writeMap
