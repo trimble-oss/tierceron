@@ -145,7 +145,7 @@ func configCmd(env string,
 	}
 }
 
-func processPluginCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
+func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	onceKubeInit *sync.Once,
 	PipeOS billy.File,
 	env string,
@@ -195,18 +195,22 @@ func processPluginCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	case "kubectl":
 		onceKubeInit.Do(func() {
 			var kubeInitErr error
-			trcKubeDeploymentConfig, kubeInitErr = kube.InitTrcKubeConfig(trcshConfig, config)
+			config.Log.Println("Setting up kube config")
+			*trcKubeDeploymentConfig, kubeInitErr = kube.InitTrcKubeConfig(trcshConfig, config)
 			if kubeInitErr != nil {
 				fmt.Println(kubeInitErr)
 				return
 			}
+			config.Log.Println("Setting kube config setup complete")
 		})
-		trcKubeDeploymentConfig.PipeOS = PipeOS
+		config.Log.Println("Preparing for kubectl")
+		(*(*trcKubeDeploymentConfig)).PipeOS = PipeOS
 
 		kubectlErrChan := make(chan error, 1)
 
 		go func() {
-			kubectlErrChan <- kube.KubeCtl(trcKubeDeploymentConfig, config)
+			config.Log.Println("Executing kubectl")
+			kubectlErrChan <- kube.KubeCtl(*trcKubeDeploymentConfig, config)
 		}()
 
 		select {
@@ -329,14 +333,17 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 	// cToken := ""
 	// configRole := ""
 	// pubRole := ""
+	// fileBytes, err := ioutil.ReadFile("")
+	// kc := base64.StdEncoding.EncodeToString(fileBytes)
 	// gTrcshConfig = &trcshauth.TrcShConfig{Env: "dev",
 	// 	EnvContext: "dev",
 	// 	CToken:     &cToken,
 	// 	ConfigRole: &configRole,
 	// 	PubRole:    &pubRole,
+	// 	KubeConfig: &kc,
 	// }
 	// config.VaultAddress = ""
-	//	config.Token =
+	// config.Token = ""
 	// Chewbacca: end scrub
 	if gTrcshConfig == nil {
 		gTrcshConfig, err = trcshauth.TrcshAuth(gAgentConfig, config)
@@ -490,7 +497,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					logger)
 			} else {
 				processPluginCmds(
-					trcKubeDeploymentConfig,
+					&trcKubeDeploymentConfig,
 					&onceKubeInit,
 					PipeOS,
 					env,
