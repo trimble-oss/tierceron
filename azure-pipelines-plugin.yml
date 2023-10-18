@@ -121,7 +121,7 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcsh
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc memonly azrcr azure" github.com/trimble-oss/tierceron/trcsh
     if [[ ! -f $GOBIN/trcsh ]] ; then
         echo File trcsh was not built, aborting.
         exit 1
