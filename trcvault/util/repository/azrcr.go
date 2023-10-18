@@ -76,13 +76,22 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 	}
 
 	for i := len(layers) - 1; i > 0; i-- {
-		layerD := layers[i].(map[string]any)["digest"].(string)
-		sha256, shaErr := GetImageShaFromLayer(blobClient, pluginToolConfig["trcplugin"].(string), layerD, pluginToolConfig)
-		if shaErr != nil {
-			return errors.New("Failed to load image sha from layer:" + shaErr.Error())
-		}
-		if pluginToolConfig["trcsha256"].(string) == sha256 {
-			break
+		if layer, layerOk := layers[i].(map[string]any)["digest"]; layerOk {
+			if layerD, ok := layer.(string); ok {
+				sha256, shaErr := GetImageShaFromLayer(blobClient, pluginToolConfig["trcplugin"].(string), layerD, pluginToolConfig)
+				if shaErr != nil {
+					return errors.New("Failed to load image sha from layer:" + shaErr.Error())
+				}
+				if _, ok := pluginToolConfig["trcsha256"]; !ok {
+					// Not looking for anything in particular so just grab the last image.
+					break
+				} else {
+					if pluginToolConfig["trcsha256"].(string) == sha256 {
+						pluginToolConfig["imagesha256"] = sha256
+						break
+					}
+				}
+			}
 		}
 	}
 
@@ -116,8 +125,15 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 	}
 	pluginSha := sha256.Sum256(pluginImage)
 	sha256 := fmt.Sprintf("%x", pluginSha)
-	if pluginToolConfig != nil && pluginToolConfig["trcsha256"].(string) == sha256 {
-		pluginToolConfig["rawImageFile"] = pluginImage
+	if pluginToolConfig != nil {
+		if _, ok := pluginToolConfig["trcsha256"]; !ok {
+			// Not looking for anything in particular so just grab the last image.
+			pluginToolConfig["rawImageFile"] = pluginImage
+		} else {
+			if pluginToolConfig["trcsha256"].(string) == sha256 {
+				pluginToolConfig["rawImageFile"] = pluginImage
+			}
+		}
 	}
 
 	return sha256, nil
