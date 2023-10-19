@@ -1,7 +1,7 @@
 #!/bin/bash
-if [[ -z "${VAULT_ADDR}" ]]; then
+if [[ -z "${AGENT_VAULT_ADDR}" ]]; then
 echo "Enter agent vault host base url including port: "
-read VAULT_ADDR
+read AGENT_VAULT_ADDR
 fi
 
 if [[ -z "${SECRET_VAULT_ADDR}" ]]; then
@@ -54,4 +54,4 @@ export VAULT_API_ADDR
 
 echo $VAULT_ADDR
 
-vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
+vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
