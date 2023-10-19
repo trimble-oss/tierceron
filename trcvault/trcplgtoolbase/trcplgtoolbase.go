@@ -31,6 +31,7 @@ func CommonMain(envPtr *string,
 	winservicestopPtr := flag.Bool("winservicestop", false, "To stop a windows service for a particular plugin.")
 	winservicestartPtr := flag.Bool("winservicestart", false, "To start a windows service for a particular plugin.")
 	codebundledeployPtr := flag.Bool("codebundledeploy", false, "To deploy a code bundle.")
+	agentdeployPtr := flag.Bool("agentdeploy", false, "To initiate deployment on agent.")
 
 	// Common flags...
 	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
@@ -111,8 +112,10 @@ func CommonMain(envPtr *string,
 		}
 	case "trcshservice": // A trcshservice managed microservice
 	default:
-		fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
-		os.Exit(1)
+		if !*agentdeployPtr {
+			fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
+			os.Exit(1)
+		}
 	}
 
 	if *pluginTypePtr != "vault" {
@@ -127,6 +130,11 @@ func CommonMain(envPtr *string,
 		configBase.SubSectionValue = *pluginNamePtr
 		*insecurePtr = configBase.Insecure
 	} else {
+		if *agentdeployPtr {
+			fmt.Println("Unsupported agentdeploy outside trcsh")
+			os.Exit(1)
+		}
+
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"plgtool.log" {
 			*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "plgtool.log"
@@ -366,6 +374,17 @@ func CommonMain(envPtr *string,
 			}
 		} else {
 			fmt.Println("Invalid or nonexistent image.")
+			os.Exit(1)
+		}
+	} else if *agentdeployPtr {
+		if config.FeatherCtlCb != nil {
+			err := config.FeatherCtlCb(*pluginNamePtr)
+			if err != nil {
+				fmt.Println("Incorrect installation")
+				os.Exit(1)
+			}
+		} else {
+			fmt.Println("Incorrect trcplg utilization")
 			os.Exit(1)
 		}
 	}

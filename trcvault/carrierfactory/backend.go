@@ -13,6 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
@@ -649,6 +650,11 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			return nil, errors.New("input data validation error")
 		}
 
+		if !deploy.IsCapInitted() {
+			// Keep trying to initialize capauth whenever there is a refresh...
+			deploy.PluginDeployEnvFlow(tokenEnvMap, logger)
+		}
+
 		logger.Println("TrcCarrierUpdate merging tokens.")
 		if key == "" {
 			return logical.ErrorResponse("missing path"), nil
@@ -751,6 +757,10 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 				"caddress": {
 					Type:        framework.TypeString,
 					Description: "Vault Url for plugin certification purposes.",
+				},
+				"ctoken": {
+					Type:        framework.TypeString,
+					Description: "Token for plugin certification purposes.",
 				},
 				"plugin": {
 					Type:        framework.TypeString,
