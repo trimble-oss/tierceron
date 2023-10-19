@@ -43,6 +43,7 @@ type DriverConfig struct {
 	EndDir         string
 	OutputMemCache bool
 	MemFs          billy.Filesystem
+	FeatherCtlCb   func(string) error
 
 	// Config modes....
 	WantCerts   bool

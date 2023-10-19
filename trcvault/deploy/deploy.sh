@@ -75,7 +75,7 @@ if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = 
            echo "No problems encountered."
            exit $certifystatus
         else
-           echo "Unexpected certifyication errorerror."
+           echo "Unexpected certification error."
            exit $certifystatus
         fi
     else
