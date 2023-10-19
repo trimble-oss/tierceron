@@ -33,6 +33,9 @@ func init() {
 }
 
 var onceAuth sync.Once
+var gCapInitted bool = false
+
+func IsCapInitted() bool { return gCapInitted }
 
 func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployInitFlow begun.")
@@ -71,6 +74,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 				eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
 				return
 			}
+			gCapInitted = true
 
 			capauth.Memorize(pluginConfig, logger)
 

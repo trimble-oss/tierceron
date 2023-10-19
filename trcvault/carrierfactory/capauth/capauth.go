@@ -114,17 +114,17 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 		// Feathering not supported in staging/prod at this time.
 		return nil, nil
 	}
-	featherMap, _ := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcshagent/Certify")
+	featherMap, _ := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
 	// TODO: enable error validation when secrets are stored...
 	// if err != nil {
 	// 	return nil, err
 	// }
 	if featherMap != nil {
-		if _, ok := featherMap["trcshencryptpass"]; ok {
-			if _, ok := featherMap["trcshencryptsalt"]; ok {
-				if _, ok := featherMap["trcshfeatherport"]; ok {
-					if _, ok := featherMap["trcshfeatherhcode"]; ok {
-						featherAuth := &FeatherAuth{EncryptPass: featherMap["trcshencryptpass"].(string), EncryptSalt: featherMap["trcshencryptsalt"].(string), Port: featherMap["trcshfeatherport"].(string), HandshakeCode: featherMap["trcshfeatherhcode"].(string)}
+		if _, ok := featherMap["trcHatEncryptPass"]; ok {
+			if _, ok := featherMap["trcHatEncryptSalt"]; ok {
+				if _, ok := featherMap["trcHatHandshakePort"]; ok {
+					if _, ok := featherMap["trcHatHandshakeCode"]; ok {
+						featherAuth := &FeatherAuth{EncryptPass: featherMap["trcHatEncryptPass"].(string), EncryptSalt: featherMap["trcHatEncryptSalt"].(string), Port: featherMap["trcHatHandshakePort"].(string), HandshakeCode: featherMap["trcHatHandshakeCode"].(string)}
 						return featherAuth, nil
 					}
 				}
