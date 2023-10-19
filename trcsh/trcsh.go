@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -111,6 +112,29 @@ func main() {
 
 }
 
+func featherCtlCb(agentName string) error {
+
+	if gAgentConfig == nil {
+		return errors.New("Incorrect agent initialization")
+	} else {
+		gAgentConfig.Deployments = &agentName
+	}
+	for {
+		if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+			*gAgentConfig.EncryptSalt,
+			*gAgentConfig.CarrierCtlHostPort,
+			*gAgentConfig.DeployRoleID,
+			cap.MODE_GLIDE, agentName+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FEATHER {
+			fmt.Printf("\nDeployment complete.\n")
+			os.Exit(0)
+		} else {
+			fmt.Print(".")
+			time.Sleep(time.Second * 3)
+		}
+	}
+
+}
+
 func configCmd(env string,
 	trcshConfig *trcshauth.TrcShConfig,
 	region string,
@@ -184,7 +208,15 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		config.EnvRaw = env
 		config.IsShellSubProcess = true
 
+		config.FeatherCtlCb = featherCtlCb
+		if gAgentConfig == nil {
+			gAgentConfig = &trcshauth.AgentConfigs{}
+			gAgentConfig.LoadConfigs(config.VaultAddress, *trcshConfig.CToken, "bootstrap", "dev") // Feathering always in dev environmnent.
+		}
+		gAgentConfig.Env = &env
+
 		trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, config)
+		config.FeatherCtlCb = nil
 		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 		if !agentToken {
@@ -352,7 +384,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 			logger.Println(err)
 			os.Exit(-1)
 		}
-		fmt.Println("Auth loaded" + env)
+		fmt.Printf("Auth loaded %s\n", env)
 	}
 
 	// Chewbacca: Begin dbg comment
