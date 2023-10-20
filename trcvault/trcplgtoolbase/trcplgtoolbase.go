@@ -453,7 +453,11 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 		writeMap["trcservicename"] = pluginToolConfig["trcservicename"].(string)
 		writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"].(string)
 	}
-	writeMap["trcsha256"] = pluginToolConfig["imagesha256"].(string) // Pull image sha from registry...
+	if _, imgShaOk := pluginToolConfig["imagesha256"].(string); imgShaOk {
+		writeMap["trcsha256"] = pluginToolConfig["imagesha256"].(string) // Pull image sha from registry...
+	} else {
+		writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string) // Pull image sha from registry...
+	}
 	writeMap["copied"] = false
 	writeMap["deployed"] = false
 	return writeMap
