@@ -170,9 +170,10 @@ func Start(featherAuth *FeatherAuth, logger *log.Logger) error {
 		return err
 	}
 	creds := credentials.NewServerTLSFromCert(&cert)
-	logger.Println("Tapping server.")
+	logger.Println("Cap server.")
 
 	if featherAuth != nil {
+		logger.Println("Feathering server.")
 		go cap.Feather(featherAuth.EncryptPass,
 			featherAuth.EncryptSalt,
 			featherAuth.Port,
@@ -181,9 +182,11 @@ func Start(featherAuth *FeatherAuth, logger *log.Logger) error {
 				return true
 			},
 		)
+		logger.Println("Feathered server.")
 	}
 
 	// TODO: make port configured and stored in vault.
+	logger.Println("Tapping server.")
 	cap.TapServer("127.0.0.1:12384", grpc.Creds(creds))
 	logger.Println("Server tapped.")
 
