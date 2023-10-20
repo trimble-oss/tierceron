@@ -137,6 +137,7 @@ func StartPluginSettingEater() {
 	}()
 }
 
+// Only push to sha256 chan if one is present.  Non blocking otherwise.
 func PushPluginSha(config *eUtils.DriverConfig, pluginConfig map[string]interface{}, vaultPluginSignature map[string]interface{}) {
 	if _, trcShaChanOk := pluginConfig["trcsha256chan"]; trcShaChanOk {
 		if vaultPluginSignature != nil {
@@ -232,14 +233,14 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		return errors.New("missing address")
 	}
 
-	ctoken, tOk := pluginEnvConfig["ctoken"]
-	if !tOk || ctoken.(string) == "" {
+	ctoken, cTOk := pluginEnvConfig["ctoken"]
+	if !cTOk || ctoken.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing ctoken.")
-		return errors.New("missing token")
+		return errors.New("missing ctoken")
 	}
 
-	caddress, aOk := pluginEnvConfig["caddress"]
-	if !aOk || caddress.(string) == "" {
+	caddress, caOk := pluginEnvConfig["caddress"]
+	if !caOk || caddress.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing caddress.")
 		return errors.New("missing address")
 	}
@@ -389,16 +390,9 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 			return nil, mTokenErr
 		}
 		tokenEnvMap["token"] = vData["token"]
-		if cAddr, tokenOK := data.GetOk("caddr"); tokenOK {
-			tokenEnvMap["caddr"] = cAddr
-		} else {
-			return nil, errors.New("caddr required.")
-		}
-		if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
-			tokenEnvMap["ctoken"] = cToken
-		} else {
-			return nil, errors.New("ctoken required.")
-		}
+		tokenEnvMap["caddr"] = vData["caddr"]
+		tokenEnvMap["ctoken"] = vData["ctoken"]
+
 		logger.Println("Read Pushing env: " + tokenEnvMap["env"].(string))
 		PushEnv(tokenEnvMap)
 		//ctx.Done()
