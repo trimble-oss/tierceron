@@ -131,14 +131,16 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	}
 
 	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig)
-	if ptcErr != nil {
-		eUtils.LogErrorMessage(cConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin load failure: %s", cConfig.Env, ptcErr.Error()), false)
-	}
 
 	defer func(vaddrPtr *string, tPtr *string) {
 		pluginConfig["vaddress"] = *vaddrPtr
 		pluginConfig["token"] = *tPtr
 	}(&addrPtr, &tokPtr)
+
+	if ptcErr != nil {
+		eUtils.LogErrorMessage(cConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin load failure: %s", cConfig.Env, ptcErr.Error()), false)
+		return nil
+	}
 
 	//grabbing configs
 	if _, ok := vaultPluginSignature["trcplugin"]; !ok {
@@ -302,7 +304,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			pluginCopied = true
 			eUtils.LogInfo(cConfig, fmt.Sprintf("Image has been copied for env: %s and plugin %s\n", cConfig.Env, pluginName))
 		} else {
-			eUtils.LogErrorMessage(cConfig, fmt.Sprintf("env: %s plugin: %s: PluginDeployFlow failure: Refusing to copy since vault certification does not match plugin sha256 signature.  Downloaded: %s, Expected: %s", cConfig.Env, pluginName, vaultPluginSignature["imagesha256"], vaultPluginSignature["trcsha256"]), false)
+			imgsha := "notlatest or notfound"
+			if _, okImg := vaultPluginSignature["imagesha256"]; okImg {
+				imgsha = vaultPluginSignature["imagesha256"].(string)
+			}
+			eUtils.LogErrorMessage(cConfig, fmt.Sprintf("env: %s plugin: %s: PluginDeployFlow failure: Refusing to copy since vault certification does not match plugin sha256 signature.  Downloaded: %s, Expected: %s", cConfig.Env, pluginName, imgsha, vaultPluginSignature["trcsha256"]), false)
 		}
 	}
 
@@ -316,10 +322,19 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			eUtils.LogInfo(cConfig, fmt.Sprintf("Plugin is not registered with carrier for env: %s and plugin: %s\n", cConfig.Env, pluginName))
 			return nil
 		}
+		eUtils.LogInfo(cConfig, pluginName+": Checkpush sha256")
 		factory.PushPluginSha(cConfig, pluginConfig, vaultPluginSignature)
-		_, err = cGoMod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + vaultPluginSignature["trcplugin"].(string) + "/Certify")
+		eUtils.LogInfo(cConfig, pluginName+": End checkpush sha256")
 
-		writeMap := make(map[string]interface{})
+		writeMap, err := cGoMod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
+
+		if err != nil {
+			eUtils.LogInfo(cConfig, pluginName+": Initializing certification")
+			writeMap = make(map[string]interface{})
+		} else {
+			eUtils.LogInfo(cConfig, pluginName+": Updating certification status")
+		}
+
 		if trcType, trcTypeOk := vaultPluginSignature["trctype"]; trcTypeOk {
 			writeMap["trctype"] = trcType.(string)
 		} else {

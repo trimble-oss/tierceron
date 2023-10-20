@@ -92,12 +92,22 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 							supportedPluginNames = pluginEnvConfig["pluginNameList"].([]string)
 						}
 					}
+
 					// Range over all plugins and init them... but only once!
 					for _, pluginName := range pluginEnvConfig["pluginNameList"].([]string) {
 						pluginEnvConfigClone := make(map[string]interface{})
+						logger.Printf("Cloning %d..\n", len(pluginEnvConfig))
 						for k, v := range pluginEnvConfig {
-							pluginEnvConfigClone[k] = v
+							if _, okStr := v.(string); okStr {
+								v2 := strings.Clone(v.(string))
+								memprotectopts.MemProtect(nil, &v2)
+								pluginEnvConfigClone[k] = v2
+							} else if _, okBool := v.(bool); okBool {
+								pluginEnvConfigClone[k] = v
+							}
 						}
+						logger.Printf("Cloned %d..\n", len(pluginEnvConfigClone))
+
 						pluginEnvConfigClone["trcplugin"] = pluginName
 						logger.Println("*****Env: " + pluginEnvConfig["env"].(string) + " plugin: " + pluginEnvConfigClone["trcplugin"].(string))
 						pecError := ProcessPluginEnvConfig(processFlowConfig, processFlow, pluginEnvConfigClone, configCompleteChan)
@@ -568,6 +578,11 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			if pluginConfig == nil {
 				logger.Println("Error: " + errors.New("Could not find plugin config").Error())
 				return logical.ErrorResponse("Failed to find config for TrcUpdate."), nil
+			}
+			if strings.HasPrefix(plugin.(string), "trc-") && strings.HasPrefix(plugin.(string), "-plugin") {
+				ns := strings.Replace(plugin.(string), "trc-", "", 1)
+				namespace := strings.Replace(ns, "-plugin", "", 1)
+				pluginConfig["logNamespace"] = namespace
 			}
 
 			hostName, hostNameErr := os.Hostname()
