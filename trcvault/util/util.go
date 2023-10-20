@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
@@ -266,8 +267,28 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 			return nil, errors.New("Tierceron plugin management presently not configured for env: " + mod.Env)
 		}
 	}
+	pluginEnvConfigClone := make(map[string]interface{})
+
+	for k, v := range pluginToolConfig {
+		if _, okStr := v.(string); okStr {
+			v2 := strings.Clone(v.(string))
+			memprotectopts.MemProtect(nil, &v2)
+			pluginEnvConfigClone[k] = v2
+		} else {
+			// Safe to share...
+			pluginEnvConfigClone[k] = v
+		}
+	}
+
 	for k, v := range pluginConfig {
-		pluginToolConfig[k] = v
+		if _, okStr := v.(string); okStr {
+			v2 := strings.Clone(v.(string))
+			memprotectopts.MemProtect(nil, &v2)
+			pluginEnvConfigClone[k] = v2
+		} else {
+			// Safe to share...
+			pluginEnvConfigClone[k] = v
+		}
 	}
 
 	var ptc1 map[string]interface{}
@@ -289,31 +310,40 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 			continue
 		}
 		indexFound = true
+
 		for k, v := range ptc1 {
-			pluginToolConfig[k] = v
+			if _, okStr := v.(string); okStr {
+				v2 := strings.Clone(v.(string))
+				memprotectopts.MemProtect(nil, &v2)
+				pluginEnvConfigClone[k] = v2
+			} else {
+				// Safe to share...
+				pluginEnvConfigClone[k] = v
+			}
 		}
+
 		break
 	}
 	mod.SectionPath = ""
 	config.Log.Println("GetPluginToolConfig plugin data load process complete.")
 
-	if pluginToolConfig == nil {
+	if pluginEnvConfigClone == nil {
 		config.Log.Println("No data found for plugin.")
 		if err == nil {
 			err = errors.New("no data and unexpected error")
 		}
-		return pluginToolConfig, err
+		return pluginEnvConfigClone, err
 	} else if !indexFound {
-		return pluginToolConfig, nil
+		return pluginEnvConfigClone, nil
 	} else {
-		if _, ok := pluginToolConfig["trcplugin"]; ok {
-			if strings.ContainsAny(pluginToolConfig["trcplugin"].(string), "./") {
-				err = errors.New("Invalid plugin configuration: " + pluginToolConfig["trcplugin"].(string))
+		if _, ok := pluginEnvConfigClone["trcplugin"]; ok {
+			if strings.ContainsAny(pluginEnvConfigClone["trcplugin"].(string), "./") {
+				err = errors.New("Invalid plugin configuration: " + pluginEnvConfigClone["trcplugin"].(string))
 				return nil, err
 			}
 		}
 	}
 	config.Log.Println("GetPluginToolConfig end processing plugins.")
 
-	return pluginToolConfig, nil
+	return pluginEnvConfigClone, nil
 }
