@@ -1,6 +1,8 @@
 module github.com/trimble-oss/tierceron
 
-go 1.21.3
+go 1.21
+
+toolchain go1.21.3
 
 require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
