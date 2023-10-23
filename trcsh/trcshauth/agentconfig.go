@@ -5,20 +5,23 @@ import (
 	"os"
 
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 type AgentConfigs struct {
-	CarrierCtlHostPort *string
-	CarrierHostPort    *string
-	DeployRoleID       *string
-	EncryptPass        *string
-	EncryptSalt        *string
-	Deployments        *string
-	Env                *string
+	HandshakeHostPort *string
+	FeatherHostPort   *string
+	HandshakeCode     *string
+	DeployRoleID      *string
+	EncryptPass       *string
+	EncryptSalt       *string
+	Deployments       *string
+	Env               *string
 }
 
-func (c *AgentConfigs) LoadConfigs(address string, agentToken string, deployments string, env string) (*AgentConfigs, error) {
+func (c *AgentConfigs) LoadConfigs(address string, agentToken string, deployments string, env string) (*TrcShConfig, error) {
+	var trcshConfig *TrcShConfig
 
 	mod, modErr := helperkv.NewModifier(false, agentToken, address, env, nil, true, nil)
 	if modErr != nil {
@@ -46,19 +49,43 @@ func (c *AgentConfigs) LoadConfigs(address string, agentToken string, deployment
 		memprotectopts.MemProtect(nil, &trcHatHost)
 		trcHatSecretsPort := data["trcHatSecretsPort"].(string)
 		memprotectopts.MemProtect(nil, &trcHatSecretsPort)
-		trcCarrierCtlHostPort := trcHatHost + ":" + trcHatHandshakePort
-		memprotectopts.MemProtect(nil, &trcCarrierCtlHostPort)
-		trcCarrierHostPort := trcHatHost + ":" + trcHatSecretsPort
-		memprotectopts.MemProtect(nil, &trcCarrierHostPort)
+		trcHandshakeHostPort := trcHatHost + ":" + trcHatHandshakePort
+		memprotectopts.MemProtect(nil, &trcHandshakeHostPort)
+		trcFeatherHostPort := trcHatHost + ":" + trcHatSecretsPort
+		memprotectopts.MemProtect(nil, &trcFeatherHostPort)
 
-		c.CarrierCtlHostPort = &trcCarrierCtlHostPort
-		c.CarrierHostPort = &trcCarrierHostPort
-		c.DeployRoleID = &trcHatHandshakeCode
+		c.HandshakeHostPort = &trcHandshakeHostPort
+		c.FeatherHostPort = &trcFeatherHostPort
+		c.HandshakeCode = &trcHatHandshakeCode
 		c.EncryptPass = &trcHatEncryptPass
 		c.EncryptSalt = &trcHatEncryptSalt
 		c.Deployments = &deployments
 		c.Env = &trcHatEnv
+
+		trcshConfig = &TrcShConfig{Env: trcHatEnv,
+			EnvContext: trcHatEnv,
+		}
+		trcShConfigRole, penseError := capauth.PenseQuery(*c.EncryptPass,
+			*c.EncryptSalt,
+			*c.HandshakeHostPort,
+			*c.HandshakeCode, *c.FeatherHostPort, "configrole")
+		if penseError != nil {
+			return nil, penseError
+		}
+		memprotectopts.MemProtect(nil, &trcShConfigRole)
+		trcshConfig.ConfigRole = &trcShConfigRole
+
+		trcShCToken, penseError := capauth.PenseQuery(*c.EncryptPass,
+			*c.EncryptSalt,
+			*c.HandshakeHostPort,
+			*c.HandshakeCode, *c.FeatherHostPort, "ctoken")
+		if penseError != nil {
+			return nil, penseError
+		}
+		memprotectopts.MemProtect(nil, &trcShCToken)
+		trcshConfig.CToken = &trcShCToken
+
 	}
 
-	return c, nil
+	return trcshConfig, nil
 }
