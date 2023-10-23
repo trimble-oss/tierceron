@@ -75,7 +75,7 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 		return errors.New("Failed to create blob client:" + err.Error())
 	}
 
-	for i := len(layers) - 1; i > 0; i-- {
+	for i := len(layers) - 1; i >= 0; i-- {
 		if layer, layerOk := layers[i].(map[string]any)["digest"]; layerOk {
 			if layerD, ok := layer.(string); ok {
 				sha256, shaErr := GetImageShaFromLayer(blobClient, pluginToolConfig["trcplugin"].(string), layerD, pluginToolConfig)
