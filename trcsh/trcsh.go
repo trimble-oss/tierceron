@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
@@ -22,9 +24,9 @@ import (
 	"github.com/trimble-oss/tierceron/trcpubbase"
 	kube "github.com/trimble-oss/tierceron/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
-	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
+	"github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -48,7 +50,7 @@ func main() {
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
 		} else {
-			capauth.CheckNotSudo()
+			util.CheckNotSudo()
 		}
 		if len(os.Args) > 1 {
 			if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
@@ -77,10 +79,17 @@ func main() {
 		ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
 		gAgentConfig = &trcshauth.AgentConfigs{}
-		agentName := os.Getenv("AGENT_NAME")
+		deployments := os.Getenv("DEPLOYMENTS")
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
+
+		envPtr = flag.String("env", "", "Environment to be processed")   //If this is blank -> use context otherwise override context.
+		regionPtr = flag.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
+		trcPathPtr = flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
+		appRoleIDPtr = flag.String("appRoleID", "", "Public app role ID")
+		secretIDPtr = flag.String("secretID", "", "App role secret")
+		flag.Parse()
 
 		if len(agentToken) == 0 {
 			fmt.Println("trcsh on windows requires agent token.")
@@ -97,13 +106,14 @@ func main() {
 		shutdown := make(chan bool)
 
 		// Preload agent synchronization configs
-		gAgentConfig.LoadConfigs(address, agentToken, agentName, agentEnv)
+		gAgentConfig.LoadConfigs(address, agentToken, deployments, agentEnv)
 		for {
 			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 				*gAgentConfig.EncryptSalt,
-				*gAgentConfig.CarrierCtlHostPort,
+				*gAgentConfig.HandshakeHostPort,
 				*gAgentConfig.DeployRoleID,
-				cap.MODE_GLIDE, agentName+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FEATHER {
+				cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FEATHER {
+
 				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
 			}
 		}
@@ -122,7 +132,7 @@ func featherCtlCb(agentName string) error {
 	for {
 		if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 			*gAgentConfig.EncryptSalt,
-			*gAgentConfig.CarrierCtlHostPort,
+			*gAgentConfig.HandshakeHostPort,
 			*gAgentConfig.DeployRoleID,
 			cap.MODE_GLIDE, agentName+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FEATHER {
 			fmt.Printf("\nDeployment complete.\n")
