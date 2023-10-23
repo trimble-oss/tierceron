@@ -4,11 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
-	"crypto/x509"
-	"embed"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"log"
@@ -20,38 +17,12 @@ import (
 
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
-
-//go:embed tls/mashup.crt
-var MashupCert embed.FS
-
-//go:embed tls/mashup.key
-var MashupKey embed.FS
-
-var mashupCertPool *x509.CertPool
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-	mashupCertBytes, err := MashupCert.ReadFile("tls/mashup.crt")
-	if err != nil {
-		fmt.Println("Cert read failure.")
-		return
-	}
-
-	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
-
-	mashupClientCert, parseErr := x509.ParseCertificate(mashupBlock.Bytes)
-	if parseErr != nil {
-		fmt.Println("Cert parse read failure.")
-		return
-	}
-	mashupCertPool = x509.NewCertPool()
-	mashupCertPool.AddCert(mashupClientCert)
-}
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
@@ -243,7 +214,7 @@ func PenseQuery(pense string) (*string, error) {
 		return new(string), errors.Join(errors.New("Tap writer error"), capWriteErr)
 	}
 
-	conn, err := grpc.Dial("127.0.0.1:12384", grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: "", RootCAs: mashupCertPool, InsecureSkipVerify: true})))
+	conn, err := grpc.Dial("127.0.0.1:12384", grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: "", RootCAs: capauth.MashupCertPool, InsecureSkipVerify: true})))
 	if err != nil {
 		return new(string), err
 	}
@@ -273,14 +244,14 @@ func PenseFeatherQuery(agentconfig *AgentConfigs, pense string) (*string, error)
 
 	_, featherErr := cap.FeatherWriter(*agentconfig.EncryptPass,
 		*agentconfig.EncryptSalt,
-		*agentconfig.CarrierCtlHostPort,
-		*agentconfig.DeployRoleID,
+		*agentconfig.HandshakeHostPort,
+		*agentconfig.HandshakeCode,
 		penseSum)
 	if featherErr != nil {
 		return nil, featherErr
 	}
 
-	conn, err := grpc.Dial(*agentconfig.CarrierHostPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(*agentconfig.FeatherHostPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

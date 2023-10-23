@@ -340,7 +340,7 @@ func CommonMain(envPtr *string,
 			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
-			if *regionPtr != "" { //If region is set
+			if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { //If region is set
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
 				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
