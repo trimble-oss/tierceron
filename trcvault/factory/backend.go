@@ -390,7 +390,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 			return nil, mTokenErr
 		}
 		tokenEnvMap["token"] = vData["token"]
-		tokenEnvMap["caddr"] = vData["caddr"]
+		tokenEnvMap["caddress"] = vData["caddress"]
 		tokenEnvMap["ctoken"] = vData["ctoken"]
 
 		logger.Println("Read Pushing env: " + tokenEnvMap["env"].(string))
@@ -421,10 +421,10 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, errors.New("Token required.")
 	}
 
-	if cAddr, tokenOK := data.GetOk("caddr"); tokenOK {
-		tokenEnvMap["caddr"] = cAddr
+	if cAddr, tokenOK := data.GetOk("caddress"); tokenOK {
+		tokenEnvMap["caddress"] = cAddr
 	} else {
-		return nil, errors.New("caddr required.")
+		return nil, errors.New("caddress required.")
 	}
 	if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
 		tokenEnvMap["ctoken"] = cToken
