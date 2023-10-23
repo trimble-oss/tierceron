@@ -1,24 +1,26 @@
 package capauth
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
-	"os/user"
-	"strconv"
 	"sync"
-
-	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
+	"time"
 
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var onceMemo sync.Once
@@ -32,30 +34,30 @@ type FeatherAuth struct {
 
 var trcshaPath string = "/home/azuredeploy/bin/trcsh"
 
-// CheckNotSudo -- checks if current user is sudoer and exits if they are.
-func CheckNotSudo() {
-	sudoer, sudoErr := user.LookupGroup("sudo")
-	if sudoErr != nil {
-		fmt.Println("Trcsh unable to definitively identify sudoers.")
-		os.Exit(-1)
-	}
-	sudoerGid, sudoConvErr := strconv.Atoi(sudoer.Gid)
-	if sudoConvErr != nil {
-		fmt.Println("Trcsh unable to definitively identify sudoers.  Conversion error.")
-		os.Exit(-1)
-	}
-	groups, groupErr := os.Getgroups()
-	if groupErr != nil {
-		fmt.Println("Trcsh unable to definitively identify sudoers.  Missing groups.")
-		os.Exit(-1)
-	}
-	for _, groupId := range groups {
-		if groupId == sudoerGid {
-			fmt.Println("Trcsh cannot be run with user having sudo privileges.")
-			os.Exit(-1)
-		}
+const (
+	ServCert = "/etc/opt/vault/certs/serv_cert.pem"
+	ServKey  = "/etc/opt/vault/certs/serv_key.pem"
+)
+
+var MashupCertPool *x509.CertPool
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+	mashupCertBytes, err := os.ReadFile(ServCert)
+	if err != nil {
+		fmt.Println("Cert read failure.")
+		return
 	}
 
+	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
+
+	mashupClientCert, parseErr := x509.ParseCertificate(mashupBlock.Bytes)
+	if parseErr != nil {
+		fmt.Println("Cert parse read failure.")
+		return
+	}
+	MashupCertPool = x509.NewCertPool()
+	MashupCertPool.AddCert(mashupClientCert)
 }
 
 func ValidatePathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
@@ -152,13 +154,13 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 
 // Things to make available to trusted agent.
 func Start(featherAuth *FeatherAuth, logger *log.Logger) error {
-	mashupCertBytes, err := trcshauth.MashupCert.ReadFile("tls/mashup.crt")
+	mashupCertBytes, err := os.ReadFile(ServCert)
 	if err != nil {
 		logger.Printf("Couldn't load cert: %v\n", err)
 		return err
 	}
 
-	mashupKeyBytes, err := trcshauth.MashupKey.ReadFile("tls/mashup.key")
+	mashupKeyBytes, err := os.ReadFile(ServKey)
 	if err != nil {
 		logger.Printf("Couldn't load key: %v\n", err)
 		return err
@@ -191,4 +193,43 @@ func Start(featherAuth *FeatherAuth, logger *log.Logger) error {
 	logger.Println("Server tapped.")
 
 	return nil
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+func randomString(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
+
+func PenseQuery(encryptPass string, encryptSalt string, handshakeHostPort string, handshakeCode string, penseHostPort string, pense string) (string, error) {
+	penseCode := randomString(7 + rand.Intn(7))
+	penseArray := sha256.Sum256([]byte(penseCode))
+	penseSum := hex.EncodeToString(penseArray[:])
+
+	_, featherErr := cap.FeatherWriter(encryptPass, encryptSalt, handshakeHostPort, handshakeCode, penseSum)
+	if featherErr != nil {
+		return "", featherErr
+	}
+
+	conn, err := grpc.Dial(penseHostPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+	c := cap.NewCapClient(conn)
+
+	// Contact the server and print out its response.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
+	if err != nil {
+		return "", err
+	}
+
+	return r.GetPense(), nil
 }
