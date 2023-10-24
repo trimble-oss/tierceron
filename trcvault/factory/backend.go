@@ -498,33 +498,19 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		if _, tokenOk := data.GetOk("token"); tokenOk {
 			logger.Println("TrcUpdate stage 1")
 
-			if GetVaultPort() == "" {
-				logger.Println("TrcUpdate stage 1.1")
-				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-					logger.Println("TrcUpdate stage 1.1.1")
-					vaultUrl, err := url.Parse(vaddr.(string))
+			if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
+				if _, err := url.Parse(vaddr.(string)); err == nil {
 					tokenEnvMap["vaddress"] = vaddr.(string)
-					if err == nil {
-						logger.Println("TrcUpdate stage 1.1.1.1")
-						vaultPort = vaultUrl.Port()
-					} else {
-						logger.Println("Bad address: " + vaddr.(string))
-					}
-				} else {
-					return nil, errors.New("Vault Update Url required.")
+					vaultHost = vaddr.(string)
 				}
-			}
-
-			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
-				// Missing port.
-				vaultHost = vaultHost + ":" + GetVaultPort()
+			} else {
+				return nil, errors.New("Certification Vault Url required.")
 			}
 
 			if caddr, addressOk := data.GetOk("caddress"); addressOk {
-				vaultUrl, err := url.Parse(caddr.(string))
-				if err == nil {
-					cVaultPort := vaultUrl.Port()
-					tokenEnvMap["caddress"] = vaultUrl.Host + cVaultPort
+
+				if _, err := url.Parse(caddr.(string)); err == nil {
+					tokenEnvMap["caddress"] = caddr
 				}
 			} else {
 				return nil, errors.New("Certification Vault Url required.")
@@ -534,11 +520,6 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				tokenEnvMap["ctoken"] = cToken
 			} else {
 				return nil, errors.New("Certification Vault token required.")
-			}
-
-			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
-				// Missing port.
-				vaultHost = vaultHost + ":" + GetVaultPort()
 			}
 
 			pluginConfig := map[string]interface{}{}
