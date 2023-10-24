@@ -18,11 +18,15 @@ echo "Enter organization vault *plugin* environment token with tightly confined 
 read SECRET_ENV_TOKEN
 fi
 
-echo "Enter organization vault host base url including port: "
+if [[ -z "${VAULT_ADDR}" ]]; then
+echo "Enter agent vault host base url including port: "
 read VAULT_ADDR
+fi
 
-echo "Enter organization vault root token: "
+if [[ -z "${VAULT_TOKEN}" ]]; then
+echo "Enter agent vault root token: "
 read VAULT_TOKEN
+fi
 
 echo "Enter environment: "
 read VAULT_ENV
@@ -31,9 +35,22 @@ echo "Enter organization vault unrestricted environment token with write permiss
 read VAULT_ENV_TOKEN
 
 VAULT_API_ADDR=VAULT_ADDR
+VAULT_API_TOKEN=$VAULT_TOKEN
 export VAULT_ADDR
 export VAULT_TOKEN
 export VAULT_API_ADDR
+export VAULT_API_TOKEN
 
-vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_ENV_TOKEN
+echo "Secret vault: " $SECRET_VAULT_ADDR
+echo "Agent vault: " $VAULT_ADDR
+
+echo "Agent and secrets stored in secrets vault only? (Y or N): "
+read SECRETS_ONLY
+
+if [ "$SECRETS_ONLY" = "Y" ] || [ "$SECRETS_ONLY" = "yes" ] || [ "$SECRETS_ONLY" = "y" ]; then
+    VAULT_API_ADDR=$SECRET_VAULT_ADDR
+    VAULT_API_TOKEN=$SECRET_ENV_TOKEN
+fi
+
+vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_API_TOKEN vaddress=$VAULT_API_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_ENV_TOKEN plugin=$TRC_PLUGIN_NAME
 
