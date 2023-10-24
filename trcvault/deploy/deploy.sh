@@ -22,8 +22,10 @@ fi
 
 FILESHAVAL=$(cat $FILESHA)
 
+if [[ -z "${VAULT_ADDR}" ]]; then
 echo "Enter agent vault host base url: "
 read VAULT_ADDR
+fi
 
 if [[ -z "${SECRET_VAULT_ADDR}" ]]; then
 echo "Enter organization vault host base url including port: "
@@ -52,13 +54,16 @@ read VAULT_AGENT
 if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then
     PRE_CERTIFY="Y"
 else
-    echo "Enter trc plugin runtime environment token with write permissions unrestricted: "
-    read VAULT_ENV_TOKEN
+    if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
+        echo "Enter trc plugin runtime environment token with write permissions unrestricted: "
+        read VAULT_ENV_TOKEN
+    fi
 
     if [ "$VAULT_PLUGIN_DIR" ]
     then
         echo "Deploying using local vault strategy."
-        PRE_CERTIFY="N"
+        echo "Precertify plugin (Y or N): "
+        read PRE_CERTIFY
     else
         echo "Precertify plugin (Y or N): "
         read PRE_CERTIFY
@@ -68,18 +73,26 @@ fi
 
 if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = "y" ]; then
     if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then 
-        echo "Deploying agent deploy tool"
+        echo "Certifying agent deployment tool plugin..."
         trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256) -pluginType=agent
         certifystatus=$?
         if [ $certifystatus -eq 0 ]; then       
-           echo "No problems encountered."
+           echo "No certification problems encountered."
            exit $certifystatus
         else
            echo "Unexpected certification error."
            exit $certifystatus
         fi
     else
+        echo "Certifying vault type plugin..."
         trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
+        certifystatus=$?
+        if [ $certifystatus -eq 0 ]; then       
+           echo "No certification problems encountered."
+        else
+           echo "Unexpected certification error."
+           exit $certifystatus
+        fi
     fi
 fi
 
@@ -89,7 +102,7 @@ fi
 
 if [ "$VAULT_PLUGIN_DIR" ]
 then
-    echo "Local plugin registration skipping certification."
+    echo "Local plugin registration skipping certified check."
 else
     echo "Checking plugin deploy status."
     echo "Certifying plugin for env $VAULT_ENV."
@@ -160,16 +173,10 @@ if [ "$SHAVAL" != "$FILESHAVAL" ]; then
     exit -1
 fi
 
-PROD_EXT=""
-for x in "staging" "prod"; do
-    if [ $x = $VAULT_ENV ]; then
-       PROD_EXT="-prod"
-    fi
-done
 
 echo "Registering new plugin."
 vault plugin register \
-        -command=$TRC_PLUGIN_NAME$PROD_EXT \
+        -command=$TRC_PLUGIN_NAME \
         -sha256=$(echo $SHAVAL) \
         -args=`backendUUID=789` \
         $TRC_PLUGIN_NAME
@@ -183,6 +190,10 @@ vault secrets enable \
 
 #Activates/starts the deployed plugin.
 # Note: plugin should update deployed flag for itself.
+
+echo "Activating plugin."
 vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN
 
+echo "Notifying carrier."
 vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME
+echo "Deployment complete."
