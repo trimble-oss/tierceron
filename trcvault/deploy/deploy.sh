@@ -105,10 +105,10 @@ then
     echo "Local plugin registration skipping certified check."
 else
     echo "Checking plugin deploy status."
-    echo "Certifying plugin for env $VAULT_ENV."
+    echo "Checking deployment status on plugin for env $VAULT_ENV."
     trcplgtool -env=$VAULT_ENV -checkDeployed -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
     status=$?
-    echo "Plugin certified with result $status."
+    echo "Plugin deployment had status result $status."
 
     if [ $status -eq 0 ]; then       
     echo "This version of the plugin has already been deployed - enabling for environment $VAULT_ENV."
