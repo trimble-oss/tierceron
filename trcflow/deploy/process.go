@@ -186,7 +186,9 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				vaultPluginSignature["deployed"] = false
 				vaultPluginSignature["copied"] = false //Resets copied & deployed in memory to reset deployment for this instance.
 			} else {
-				eUtils.LogErrorMessage(cConfig, fmt.Sprintf("Plugin not found for env: %s and this instance: %s\n", cConfig.Env, vaultPluginSignature["trcplugin"].(string)), false)
+				eUtils.LogErrorMessage(cConfig, fmt.Sprintf("Plugin %s not found for env: %s and this instance: %s\n", vaultPluginSignature["trcplugin"].(string), cConfig.Env, instanceIndex), false)
+				vaultPluginSignature["trcsha256"] = "notfound"
+				factory.PushPluginSha(cConfig, pluginConfig, vaultPluginSignature)
 				return nil
 			}
 		} else {
