@@ -323,9 +323,14 @@ func CommonMain(envPtr *string,
 	} else if *certifyImagePtr {
 		//Certify Image
 		if !certifyInit {
+			// Already certified...
+			fmt.Println("Checking for existing image.")
 			err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
-			if err != nil {
-				fmt.Println(err.Error())
+			if _, ok := pluginToolConfig["imagesha256"].(string); err != nil || !ok {
+				fmt.Println("Invalid or nonexistent image.")
+				if err != nil {
+					fmt.Println(err.Error())
+				}
 				os.Exit(1)
 			}
 		}
