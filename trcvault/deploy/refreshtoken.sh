@@ -34,7 +34,7 @@ read VAULT_ENV
 echo "Enter organization vault unrestricted environment token with write permissions: "
 read VAULT_ENV_TOKEN
 
-VAULT_API_ADDR=VAULT_ADDR
+VAULT_API_ADDR=$VAULT_ADDR
 VAULT_API_TOKEN=$VAULT_TOKEN
 export VAULT_ADDR
 export VAULT_TOKEN
