@@ -2,12 +2,10 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
