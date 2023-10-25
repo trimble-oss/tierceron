@@ -8,13 +8,16 @@ if [ "$TRC_PLUGIN_NAME" = 'trc-vault-carrier-plugin' ] ; then
     exit 1
 fi
 
+echo "Enter environment: "
+read VAULT_ENV
+
 if [[ -z "${SECRET_VAULT_ADDR}" ]]; then
 echo "Enter organization vault host base url including port (hit enter if just refreshing org tokens): "
 read SECRET_VAULT_ADDR
 fi
 
 if [[ -z "${SECRET_ENV_TOKEN}" ]]; then
-echo "Enter organization vault *plugin* environment token with tightly confined write permissions: "
+echo "Enter organization vault *plugin* environment token with tightly confined write permissions(config_token_plugin$VAULT_ENV): "
 read SECRET_ENV_TOKEN
 fi
 
@@ -28,10 +31,7 @@ echo "Enter agent vault root token: "
 read VAULT_TOKEN
 fi
 
-echo "Enter environment: "
-read VAULT_ENV
-
-echo "Enter organization vault unrestricted environment token with write permissions: "
+echo "Enter organization vault unrestricted environment token with write permissions(config_token_"$VAULT_ENV"_unrestricted): "
 read VAULT_ENV_TOKEN
 
 VAULT_API_ADDR=$VAULT_ADDR
