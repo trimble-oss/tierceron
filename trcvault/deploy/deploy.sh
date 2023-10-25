@@ -22,6 +22,9 @@ fi
 
 FILESHAVAL=$(cat $FILESHA)
 
+echo "Enter agent environment: "
+read VAULT_ENV
+
 if [[ -z "${VAULT_ADDR}" ]]; then
 echo "Enter agent vault host base url: "
 read VAULT_ADDR
@@ -33,20 +36,18 @@ read SECRET_VAULT_ADDR
 fi
 
 if [[ -z "${SECRET_VAULT_ENV_TOKEN}" ]]; then
-echo "Enter organization vault unrestricted environment token with write permissions: "
+echo "Enter organization vault unrestricted environment token with write permissions(config_token_"$VAULT_ENV"_unrestricted): " 
 read SECRET_VAULT_ENV_TOKEN
 fi
 
 if [[ -z "${SECRET_VAULT_PLUGIN_TOKEN}" ]]; then
-echo "Enter organization vault plugin token for certification: "
+echo "Enter organization vault plugin token for certification(config_token_plugin$VAULT_ENV): "  
 read SECRET_VAULT_PLUGIN_TOKEN
 fi
 
 echo "Enter agent root token: "
 read VAULT_TOKEN
 
-echo "Enter agent environment: "
-read VAULT_ENV
 
 echo "Is this plugin an agent deployment tool (Y or N): "
 read VAULT_AGENT
@@ -55,7 +56,7 @@ if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then
     PRE_CERTIFY="Y"
 else
     if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
-        echo "Enter trc plugin runtime environment token with write permissions unrestricted: "
+        echo "Enter trc plugin runtime environment token with write permissions unrestricted(config_token_"$VAULT_ENV"_unrestricted): "
         read VAULT_ENV_TOKEN
     fi
 

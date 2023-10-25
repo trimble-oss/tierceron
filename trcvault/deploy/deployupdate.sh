@@ -29,10 +29,10 @@ read VAULT_TOKEN
 echo "Enter environment: "
 read VAULT_ENV
 
-echo "Enter trc plugin runtime environment token with write permissions unrestricted: "
+echo "Enter trc plugin runtime environment token with write permissions unrestricted(config_token_"$VAULT_ENV"_unrestricted): "
 read VAULT_ENV_TOKEN
 
-echo "Enter carrier deployment runtime token pluginEnv: "
+echo "Enter carrier deployment runtime token pluginEnv(config_token_plugin$VAULT_ENV): "
 read VAULT_CARRIER_DEPLOY_TOKEN
 
 if [ "$VAULT_PLUGIN_DIR" ]
