@@ -76,6 +76,8 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 			}
 			gCapInitted = true
 
+			pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
+
 			capauth.Memorize(pluginConfig, logger)
 
 			// TODO: Support variables for different environments...

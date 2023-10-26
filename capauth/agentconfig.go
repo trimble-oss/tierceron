@@ -30,6 +30,8 @@ type AgentConfigs struct {
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
+var gTrcHatSecretsPort string = ""
+
 func randomString(n int) string {
 	b := make([]rune, n)
 	for i := range b {
@@ -149,8 +151,15 @@ func PenseQuery(env string, pense string) (*string, error) {
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
-	capWriteErr := cap.TapWriter(penseSum)
-	if capWriteErr != nil {
+	penseEye, capWriteErr := cap.TapWriter(penseSum)
+
+	if trcHtSp, trcHSPOk := penseEye["trcHatSecretsPort"]; trcHSPOk {
+		if gTrcHatSecretsPort != trcHtSp {
+			gTrcHatSecretsPort = trcHtSp
+		}
+	}
+
+	if capWriteErr != nil || gTrcHatSecretsPort == "" {
 		fmt.Println("Code 54 failure...")
 		// 2023-06-30T01:29:21.7020686Z read unix @->/tmp/trccarrier/trcsnap.sock: read: connection reset by peer
 		//		os.Exit(-1) // restarting carrier will rebuild necessary resources...
@@ -166,9 +175,7 @@ func PenseQuery(env string, pense string) (*string, error) {
 		return nil, err
 	}
 
-	port := ""
-
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localIP, port), grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localIP, gTrcHatSecretsPort), grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return new(string), err
 	}

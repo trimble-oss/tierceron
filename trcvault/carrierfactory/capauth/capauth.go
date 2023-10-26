@@ -110,6 +110,10 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 	for key, value := range memorizeFields {
 		switch key {
+		case "trcHatSecretsPort":
+			// Insecure things can be remembered here...
+			logger.Println("EyeRemember: " + key)
+			cap.TapEyeRemember(key, value.(string))
 		case "vaddress", "ctoken", "configrole":
 			cap.TapFeather(key, value.(string))
 			fallthrough
