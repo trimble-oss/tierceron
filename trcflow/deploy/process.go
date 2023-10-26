@@ -80,7 +80,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 
 			// TODO: Support variables for different environments...
 			// Not really clear how cap auth would do this...
-			go capauth.Start(featherAuth, logger)
+			go capauth.Start(featherAuth, pluginConfig["env"].(string), logger)
 			logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
 		})
 	} else {

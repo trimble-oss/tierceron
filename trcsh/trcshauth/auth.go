@@ -1,27 +1,17 @@
 package trcshauth
 
 import (
-	"context"
-	"crypto/sha256"
-	"crypto/tls"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
-	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
+	"github.com/trimble-oss/tierceron/capauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -32,16 +22,6 @@ func randomString(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
-}
-
-type TrcShConfig struct {
-	Env          string
-	EnvContext   string // Current env context...
-	VaultAddress *string
-	CToken       *string
-	ConfigRole   *string
-	PubRole      *string
-	KubeConfig   *string
 }
 
 const configDir = "/.tierceron/config.yml"
@@ -106,8 +86,8 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 }
 
 // Helper function for obtaining auth components.
-func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShConfig, error) {
-	trcshConfig := &TrcShConfig{}
+func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (*capauth.TrcShConfig, error) {
+	trcshConfig := &capauth.TrcShConfig{}
 	var err error
 
 	if config.EnvRaw == "staging" || config.EnvRaw == "prod" || len(config.TrcShellRaw) > 0 {
@@ -130,7 +110,7 @@ func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShCo
 	} else {
 		if agentConfig == nil {
 			fmt.Println("Auth phase 1")
-			trcshConfig.KubeConfig, err = PenseQuery("kubeconfig")
+			trcshConfig.KubeConfig, err = capauth.PenseQuery(config.EnvRaw, "kubeconfig")
 		}
 	}
 
@@ -142,10 +122,10 @@ func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShCo
 	}
 
 	if agentConfig != nil {
-		trcshConfig.VaultAddress, err = PenseFeatherQuery(agentConfig, "vaddress")
+		trcshConfig.VaultAddress, err = agentConfig.PenseFeatherQuery("vaddress")
 	} else {
 		fmt.Println("Auth phase 2")
-		trcshConfig.VaultAddress, err = PenseQuery("vaddress")
+		trcshConfig.VaultAddress, err = capauth.PenseQuery(config.EnvRaw, "vaddress")
 	}
 	memprotectopts.MemProtect(nil, trcshConfig.VaultAddress)
 
@@ -171,16 +151,16 @@ func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShCo
 	memprotectopts.MemProtect(nil, &config.VaultAddress)
 
 	if agentConfig != nil {
-		trcshConfig.ConfigRole, err = PenseFeatherQuery(agentConfig, "configrole")
+		trcshConfig.ConfigRole, err = agentConfig.PenseFeatherQuery("configrole")
 	} else {
 		fmt.Println("Auth phase 3")
-		trcshConfig.ConfigRole, err = PenseQuery("configrole")
+		trcshConfig.ConfigRole, err = capauth.PenseQuery(config.EnvRaw, "configrole")
 	}
 	memprotectopts.MemProtect(nil, trcshConfig.ConfigRole)
 
 	if agentConfig == nil {
 		fmt.Println("Auth phase 4")
-		trcshConfig.PubRole, err = PenseQuery("pubrole")
+		trcshConfig.PubRole, err = capauth.PenseQuery(config.EnvRaw, "pubrole")
 		if err != nil {
 			return trcshConfig, err
 		}
@@ -189,7 +169,7 @@ func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShCo
 
 	if agentConfig == nil {
 		fmt.Println("Auth phase 5")
-		trcshConfig.CToken, err = PenseQuery("ctoken")
+		trcshConfig.CToken, err = capauth.PenseQuery(config.EnvRaw, "ctoken")
 		if err != nil {
 			return trcshConfig, err
 		}
@@ -199,77 +179,4 @@ func TrcshAuth(agentConfig *AgentConfigs, config *eUtils.DriverConfig) (*TrcShCo
 	fmt.Println("Auth complete.")
 
 	return trcshConfig, err
-}
-
-func PenseQuery(pense string) (*string, error) {
-	penseCode := randomString(7 + rand.Intn(7))
-	penseArray := sha256.Sum256([]byte(penseCode))
-	penseSum := hex.EncodeToString(penseArray[:])
-
-	capWriteErr := cap.TapWriter(penseSum)
-	if capWriteErr != nil {
-		fmt.Println("Code 54 failure...")
-		// 2023-06-30T01:29:21.7020686Z read unix @->/tmp/trccarrier/trcsnap.sock: read: connection reset by peer
-		//		os.Exit(-1) // restarting carrier will rebuild necessary resources...
-		return new(string), errors.Join(errors.New("Tap writer error"), capWriteErr)
-	}
-
-	conn, err := grpc.Dial("127.0.0.1:12384", grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: "", RootCAs: capauth.MashupCertPool, InsecureSkipVerify: true})))
-	if err != nil {
-		return new(string), err
-	}
-	defer conn.Close()
-	c := cap.NewCapClient(conn)
-
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
-	if penseErr != nil {
-		return new(string), errors.Join(errors.New("pense error"), penseErr)
-	}
-	var penseProtect *string
-	rPense := r.GetPense()
-	penseProtect = &rPense
-	memprotectopts.MemProtect(nil, penseProtect)
-
-	return penseProtect, nil
-}
-
-func PenseFeatherQuery(agentconfig *AgentConfigs, pense string) (*string, error) {
-	penseCode := randomString(7 + rand.Intn(7))
-	penseArray := sha256.Sum256([]byte(penseCode))
-	penseSum := hex.EncodeToString(penseArray[:])
-
-	_, featherErr := cap.FeatherWriter(*agentconfig.EncryptPass,
-		*agentconfig.EncryptSalt,
-		*agentconfig.HandshakeHostPort,
-		*agentconfig.HandshakeCode,
-		penseSum)
-	if featherErr != nil {
-		return nil, featherErr
-	}
-
-	conn, err := grpc.Dial(*agentconfig.FeatherHostPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-	c := cap.NewCapClient(conn)
-
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	var penseProtect *string
-	rPense := r.GetPense()
-	penseProtect = &rPense
-	memprotectopts.MemProtect(nil, penseProtect)
-
-	return penseProtect, nil
 }

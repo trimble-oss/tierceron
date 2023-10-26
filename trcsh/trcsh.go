@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/capauth"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	"github.com/trimble-oss/tierceron/trcpubbase"
 	kube "github.com/trimble-oss/tierceron/trcsh/kube/native"
@@ -30,8 +31,8 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
-var gAgentConfig *trcshauth.AgentConfigs = nil
-var gTrcshConfig *trcshauth.TrcShConfig
+var gAgentConfig *capauth.AgentConfigs = nil
+var gTrcshConfig *capauth.TrcShConfig
 
 // This is a controller program that can act as any command line utility.
 // The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
@@ -76,7 +77,7 @@ func main() {
 		//Open deploy script and parse it.
 		ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
-		gAgentConfig = &trcshauth.AgentConfigs{}
+		gAgentConfig = &capauth.AgentConfigs{}
 		deployments := os.Getenv("DEPLOYMENTS")
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
@@ -110,7 +111,7 @@ func main() {
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
 				*gAgentConfig.DeployRoleID,
-				cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FEATHER {
+				cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FLAP {
 
 				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
 			}
@@ -127,16 +128,21 @@ func featherCtlCb(agentName string) error {
 	} else {
 		gAgentConfig.Deployments = &agentName
 	}
+	callFlap := cap.MODE_GLIDE
 	for {
-		if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+		if ctlFlapMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 			*gAgentConfig.EncryptSalt,
 			*gAgentConfig.HandshakeHostPort,
 			*gAgentConfig.DeployRoleID,
-			cap.MODE_GLIDE, agentName+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FEATHER {
+			callFlap, agentName+"."+*gAgentConfig.Env); featherErr == nil && ctlFlapMode == cap.MODE_PERCH {
 			fmt.Printf("\nDeployment complete.\n")
 			os.Exit(0)
 		} else {
-			fmt.Print(".")
+			if strings.HasPrefix(ctlFlapMode, cap.MODE_FLAP) {
+				ctl := strings.Split(ctlFlapMode, "_")
+				fmt.Println(ctl)
+				callFlap = cap.MODE_GLIDE
+			}
 			time.Sleep(time.Second * 3)
 		}
 	}
@@ -144,7 +150,7 @@ func featherCtlCb(agentName string) error {
 }
 
 func configCmd(env string,
-	trcshConfig *trcshauth.TrcShConfig,
+	trcshConfig *capauth.TrcShConfig,
 	region string,
 	config *eUtils.DriverConfig,
 	agentToken bool,
@@ -181,7 +187,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	onceKubeInit *sync.Once,
 	PipeOS billy.File,
 	env string,
-	trcshConfig *trcshauth.TrcShConfig,
+	trcshConfig *capauth.TrcShConfig,
 	region string,
 	config *eUtils.DriverConfig,
 	control string,
@@ -218,7 +224,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 
 		config.FeatherCtlCb = featherCtlCb
 		if gAgentConfig == nil {
-			gAgentConfig = &trcshauth.AgentConfigs{}
+			gAgentConfig = &capauth.AgentConfigs{}
 			gAgentConfig.LoadConfigs(config.VaultAddress, *trcshConfig.CToken, "bootstrap", "dev") // Feathering always in dev environmnent.
 		}
 		gAgentConfig.Env = &env
@@ -271,7 +277,7 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	onceKubeInit *sync.Once,
 	PipeOS billy.File,
 	env string,
-	trcshConfig *trcshauth.TrcShConfig,
+	trcshConfig *capauth.TrcShConfig,
 	region string,
 	config *eUtils.DriverConfig,
 	control string,
