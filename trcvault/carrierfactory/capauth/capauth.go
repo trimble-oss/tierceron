@@ -1,26 +1,19 @@
 package capauth
 
 import (
-	"context"
 	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/hex"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"log"
-	"math/rand"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/trimble-oss/tierceron-hat/cap"
+	"github.com/trimble-oss/tierceron/capauth"
 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var onceMemo sync.Once
@@ -28,37 +21,12 @@ var onceMemo sync.Once
 type FeatherAuth struct {
 	EncryptPass   string
 	EncryptSalt   string
-	Port          string
+	HandshakePort string
+	SecretsPort   string
 	HandshakeCode string
 }
 
 var trcshaPath string = "/home/azuredeploy/bin/trcsh"
-
-const (
-	ServCert = "/etc/opt/vault/certs/serv_cert.pem"
-	ServKey  = "/etc/opt/vault/certs/serv_key.pem"
-)
-
-var MashupCertPool *x509.CertPool
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-	mashupCertBytes, err := os.ReadFile(ServCert)
-	if err != nil {
-		fmt.Println("Cert read failure.")
-		return
-	}
-
-	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
-
-	mashupClientCert, parseErr := x509.ParseCertificate(mashupBlock.Bytes)
-	if parseErr != nil {
-		fmt.Println("Cert parse read failure.")
-		return
-	}
-	MashupCertPool = x509.NewCertPool()
-	MashupCertPool.AddCert(mashupClientCert)
-}
 
 func ValidatePathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
 
@@ -126,8 +94,10 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 			if _, ok := featherMap["trcHatEncryptSalt"]; ok {
 				if _, ok := featherMap["trcHatHandshakePort"]; ok {
 					if _, ok := featherMap["trcHatHandshakeCode"]; ok {
-						featherAuth := &FeatherAuth{EncryptPass: featherMap["trcHatEncryptPass"].(string), EncryptSalt: featherMap["trcHatEncryptSalt"].(string), Port: featherMap["trcHatHandshakePort"].(string), HandshakeCode: featherMap["trcHatHandshakeCode"].(string)}
-						return featherAuth, nil
+						if _, ok := featherMap["trcHatSecretsPort"]; ok {
+							featherAuth := &FeatherAuth{EncryptPass: featherMap["trcHatEncryptPass"].(string), EncryptSalt: featherMap["trcHatEncryptSalt"].(string), HandshakePort: featherMap["trcHatHandshakePort"].(string), SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: featherMap["trcHatHandshakeCode"].(string)}
+							return featherAuth, nil
+						}
 					}
 				}
 			}
@@ -140,10 +110,10 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 	for key, value := range memorizeFields {
 		switch key {
-		case "vaddress", "configrole":
+		case "vaddress", "ctoken", "configrole":
 			cap.TapFeather(key, value.(string))
 			fallthrough
-		case "pubrole", "kubeconfig", "ctoken", "caddress":
+		case "pubrole", "kubeconfig", "caddress":
 			logger.Println("Memorizing: " + key)
 			cap.TapMemorize(key, value.(string))
 		default:
@@ -153,32 +123,28 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 }
 
 // Things to make available to trusted agent.
-func Start(featherAuth *FeatherAuth, logger *log.Logger) error {
-	mashupCertBytes, err := os.ReadFile(ServCert)
-	if err != nil {
-		logger.Printf("Couldn't load cert: %v\n", err)
-		return err
-	}
-
-	mashupKeyBytes, err := os.ReadFile(ServKey)
-	if err != nil {
-		logger.Printf("Couldn't load key: %v\n", err)
-		return err
-	}
-
-	cert, err := tls.X509KeyPair(mashupCertBytes, mashupKeyBytes)
-	if err != nil {
-		logger.Printf("Couldn't load cert: %v\n", err)
-		return err
-	}
-	creds := credentials.NewServerTLSFromCert(&cert)
+func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 	logger.Println("Cap server.")
+
+	creds, credErr := capauth.GetServerCredentials(logger)
+	if credErr != nil {
+		logger.Printf("Couldn't server creds: %v\n", creds)
+		return credErr
+	}
+
+	logger.Println("Cap creds.")
+
+	localip, err := capauth.LocalIp(env)
+	if err != nil {
+		logger.Printf("Couldn't load ip: %v\n", err)
+		return err
+	}
 
 	if featherAuth != nil {
 		logger.Println("Feathering server.")
 		go cap.Feather(featherAuth.EncryptPass,
 			featherAuth.EncryptSalt,
-			featherAuth.Port,
+			fmt.Sprintf("%s:%s", localip, featherAuth.HandshakePort),
 			featherAuth.HandshakeCode,
 			func(int, string) bool {
 				return true
@@ -187,49 +153,9 @@ func Start(featherAuth *FeatherAuth, logger *log.Logger) error {
 		logger.Println("Feathered server.")
 	}
 
-	// TODO: make port configured and stored in vault.
 	logger.Println("Tapping server.")
-	cap.TapServer("127.0.0.1:12384", grpc.Creds(creds))
+	cap.TapServer(fmt.Sprintf("%s:%s", localip, featherAuth.SecretsPort), grpc.Creds(creds))
 	logger.Println("Server tapped.")
 
 	return nil
-}
-
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-
-func randomString(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
-
-func PenseQuery(encryptPass string, encryptSalt string, handshakeHostPort string, handshakeCode string, penseHostPort string, pense string) (string, error) {
-	penseCode := randomString(7 + rand.Intn(7))
-	penseArray := sha256.Sum256([]byte(penseCode))
-	penseSum := hex.EncodeToString(penseArray[:])
-
-	_, featherErr := cap.FeatherWriter(encryptPass, encryptSalt, handshakeHostPort, handshakeCode, penseSum)
-	if featherErr != nil {
-		return "", featherErr
-	}
-
-	conn, err := grpc.Dial(penseHostPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	c := cap.NewCapClient(conn)
-
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
-	if err != nil {
-		return "", err
-	}
-
-	return r.GetPense(), nil
 }
