@@ -124,6 +124,8 @@ func main() {
 				cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FLAP {
 
 				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
+			} else {
+				time.Sleep(500 * time.Millisecond)
 			}
 		}
 		<-shutdown
