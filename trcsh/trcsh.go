@@ -90,13 +90,23 @@ func main() {
 		secretIDPtr = flag.String("secretID", "", "App role secret")
 		flag.Parse()
 
+		if len(deployments) == 0 {
+			fmt.Println("trcsh on windows requires a DEPLOYMENTS.")
+			os.Exit(-1)
+		}
+
 		if len(agentToken) == 0 {
-			fmt.Println("trcsh on windows requires agent token.")
+			fmt.Println("trcsh on windows requires AGENT_TOKEN.")
+			os.Exit(-1)
+		}
+
+		if len(agentEnv) == 0 {
+			fmt.Println("trcsh on windows requires AGENT_ENV.")
 			os.Exit(-1)
 		}
 
 		if len(address) == 0 {
-			fmt.Println("trcsh on windows requires VAULT address.")
+			fmt.Println("trcsh on windows requires VAULT_ADDR address.")
 			os.Exit(-1)
 		}
 
@@ -110,7 +120,7 @@ func main() {
 			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
-				*gAgentConfig.DeployRoleID,
+				*gAgentConfig.HandshakeCode,
 				cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FLAP {
 
 				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
