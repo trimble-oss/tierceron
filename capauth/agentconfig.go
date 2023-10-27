@@ -108,7 +108,7 @@ func (agentconfig *AgentConfigs) LoadConfigs(address string, agentToken string, 
 		memprotectopts.MemProtect(nil, &trcHatHandshakeCode)
 		trcHatHandshakePort := data["trcHatHandshakePort"].(string)
 		memprotectopts.MemProtect(nil, &trcHatHandshakePort)
-		trcHatHost := "jrieke.dexchadev.com" //data["trcHatHost"].(string)
+		trcHatHost := data["trcHatHost"].(string)
 		memprotectopts.MemProtect(nil, &trcHatHost)
 		trcHatSecretsPort := data["trcHatSecretsPort"].(string)
 		memprotectopts.MemProtect(nil, &trcHatSecretsPort)
