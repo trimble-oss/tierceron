@@ -8,11 +8,14 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 	"google.golang.org/grpc"
 )
@@ -146,7 +149,7 @@ func (agentconfig *AgentConfigs) LoadConfigs(address string, agentToken string, 
 	return trcshConfig, nil
 }
 
-func PenseQuery(env string, pense string) (*string, error) {
+func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	penseCode := randomString(7 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
@@ -165,9 +168,14 @@ func PenseQuery(env string, pense string) (*string, error) {
 		//		os.Exit(-1) // restarting carrier will rebuild necessary resources...
 		return new(string), errors.Join(errors.New("Tap writer error"), capWriteErr)
 	}
-	localIP, err := LocalIp(env)
+
+	localIP, err := LocalIp(config.EnvRaw)
 	if err != nil {
 		return nil, err
+	}
+	addrs, hostErr := net.LookupAddr(localIP)
+	if hostErr != nil {
+		return nil, hostErr
 	}
 
 	creds, err := GetTransportCredentials()
@@ -175,7 +183,7 @@ func PenseQuery(env string, pense string) (*string, error) {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localIP, gTrcHatSecretsPort), grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", strings.TrimRight(addrs[0], "."), gTrcHatSecretsPort), grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return new(string), err
 	}
