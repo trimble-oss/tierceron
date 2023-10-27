@@ -110,7 +110,7 @@ func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (
 	} else {
 		if agentConfig == nil {
 			fmt.Println("Auth phase 1")
-			trcshConfig.KubeConfig, err = capauth.PenseQuery(config.EnvRaw, "kubeconfig")
+			trcshConfig.KubeConfig, err = capauth.PenseQuery(config, "kubeconfig")
 		}
 	}
 
@@ -125,7 +125,7 @@ func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (
 		trcshConfig.VaultAddress, err = agentConfig.PenseFeatherQuery("vaddress")
 	} else {
 		fmt.Println("Auth phase 2")
-		trcshConfig.VaultAddress, err = capauth.PenseQuery(config.EnvRaw, "vaddress")
+		trcshConfig.VaultAddress, err = capauth.PenseQuery(config, "caddress")
 	}
 	memprotectopts.MemProtect(nil, trcshConfig.VaultAddress)
 
@@ -154,13 +154,13 @@ func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (
 		trcshConfig.ConfigRole, err = agentConfig.PenseFeatherQuery("configrole")
 	} else {
 		fmt.Println("Auth phase 3")
-		trcshConfig.ConfigRole, err = capauth.PenseQuery(config.EnvRaw, "configrole")
+		trcshConfig.ConfigRole, err = capauth.PenseQuery(config, "configrole")
 	}
 	memprotectopts.MemProtect(nil, trcshConfig.ConfigRole)
 
 	if agentConfig == nil {
 		fmt.Println("Auth phase 4")
-		trcshConfig.PubRole, err = capauth.PenseQuery(config.EnvRaw, "pubrole")
+		trcshConfig.PubRole, err = capauth.PenseQuery(config, "pubrole")
 		if err != nil {
 			return trcshConfig, err
 		}
@@ -169,7 +169,7 @@ func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (
 
 	if agentConfig == nil {
 		fmt.Println("Auth phase 5")
-		trcshConfig.CToken, err = capauth.PenseQuery(config.EnvRaw, "ctoken")
+		trcshConfig.CToken, err = capauth.PenseQuery(config, "ctoken")
 		if err != nil {
 			return trcshConfig, err
 		}
