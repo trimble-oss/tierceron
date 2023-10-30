@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron-hat/cap"
+	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	"github.com/trimble-oss/tierceron/capauth"
 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	"google.golang.org/grpc"
@@ -68,8 +69,8 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 			retryCap := 0
 			for retryCap < 5 {
 				//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/trcvault/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
-				//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
-				err := cap.Tap("/home/azuredeploy/bin/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", false)
+				//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
+				err := tap.Tap("/home/azuredeploy/bin/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", false)
 				if err != nil {
 					logger.Println("Cap failure with error: " + err.Error())
 					retryCap++
@@ -113,7 +114,7 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 		case "trcHatSecretsPort":
 			// Insecure things can be remembered here...
 			logger.Println("EyeRemember: " + key)
-			cap.TapEyeRemember(key, value.(string))
+			tap.TapEyeRemember(key, value.(string))
 		case "vaddress", "ctoken", "configrole":
 			cap.TapFeather(key, value.(string))
 			fallthrough

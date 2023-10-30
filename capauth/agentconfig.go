@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron-hat/cap"
+	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -154,7 +155,7 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
-	penseEye, capWriteErr := cap.TapWriter(penseSum)
+	penseEye, capWriteErr := tap.TapWriter(penseSum)
 
 	if trcHtSp, trcHSPOk := penseEye["trcHatSecretsPort"]; trcHSPOk {
 		if gTrcHatSecretsPort != trcHtSp {
