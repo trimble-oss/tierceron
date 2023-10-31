@@ -145,7 +145,7 @@ func featherCtlCb(agentName string) error {
 		if ctlFlapMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 			*gAgentConfig.EncryptSalt,
 			*gAgentConfig.HandshakeHostPort,
-			*gAgentConfig.DeployRoleID,
+			*gAgentConfig.HandshakeCode,
 			callFlap, agentName+"."+*gAgentConfig.Env); featherErr == nil && ctlFlapMode == cap.MODE_PERCH {
 			fmt.Printf("\nDeployment complete.\n")
 			os.Exit(0)
