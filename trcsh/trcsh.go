@@ -25,7 +25,6 @@ import (
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
-	"github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -121,7 +120,7 @@ func main() {
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
 				*gAgentConfig.HandshakeCode,
-				cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FLAP {
+				cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FLAP {
 
 				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
 			} else {
