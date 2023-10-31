@@ -115,10 +115,10 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 			// Insecure things can be remembered here...
 			logger.Println("EyeRemember: " + key)
 			tap.TapEyeRemember(key, value.(string))
-		case "vaddress", "ctoken", "configrole":
+		case "vaddress", "caddress", "ctoken", "configrole":
 			cap.TapFeather(key, value.(string))
 			fallthrough
-		case "pubrole", "kubeconfig", "caddress":
+		case "pubrole", "kubeconfig":
 			logger.Println("Memorizing: " + key)
 			cap.TapMemorize(key, value.(string))
 		default:
