@@ -372,6 +372,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
 	config := &eUtils.DriverConfig{Insecure: true,
+		EnvRaw:            env,
 		Log:               logger,
 		IsShell:           true,
 		IsShellSubProcess: false,
@@ -407,6 +408,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 		gTrcshConfig, err = trcshauth.TrcshAuth(gAgentConfig, config)
 		if err != nil {
 			fmt.Println("Tierceron bootstrap failure.")
+			fmt.Println(err.Error())
 			logger.Println(err)
 			os.Exit(-1)
 		}
