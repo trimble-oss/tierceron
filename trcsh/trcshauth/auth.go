@@ -122,7 +122,7 @@ func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (
 	}
 
 	if agentConfig != nil {
-		trcshConfig.VaultAddress, err = agentConfig.PenseFeatherQuery("vaddress")
+		trcshConfig.VaultAddress, err = agentConfig.PenseFeatherQuery("caddress")
 	} else {
 		fmt.Println("Auth phase 2")
 		trcshConfig.VaultAddress, err = capauth.PenseQuery(config, "caddress")
@@ -167,14 +167,16 @@ func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (
 		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
 	}
 
-	if agentConfig == nil {
+	if agentConfig != nil {
+		trcshConfig.CToken, err = agentConfig.PenseFeatherQuery("ctoken")
+	} else {
 		fmt.Println("Auth phase 5")
 		trcshConfig.CToken, err = capauth.PenseQuery(config, "ctoken")
 		if err != nil {
 			return trcshConfig, err
 		}
-		memprotectopts.MemProtect(nil, trcshConfig.CToken)
 	}
+	memprotectopts.MemProtect(nil, trcshConfig.CToken)
 
 	fmt.Println("Auth complete.")
 

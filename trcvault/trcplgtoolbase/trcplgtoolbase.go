@@ -95,7 +95,7 @@ func CommonMain(envPtr *string,
 		os.Exit(1)
 	}
 
-	if *agentdeployPtr {
+	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr {
 		*pluginTypePtr = "trcshservice"
 	}
 
@@ -160,7 +160,9 @@ func CommonMain(envPtr *string,
 	}
 	pluginConfig["env"] = *envPtr
 	pluginConfig["vaddress"] = *addrPtr
-	pluginConfig["token"] = *tokenPtr
+	if tokenPtr != nil {
+		pluginConfig["token"] = *tokenPtr
+	}
 	pluginConfig["ExitOnFailure"] = true
 	if *regionPtr != "" {
 		pluginConfig["regions"] = []string{*regionPtr}
