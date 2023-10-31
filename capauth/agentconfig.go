@@ -15,6 +15,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -42,6 +43,16 @@ func randomString(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+func ValidateVhost(host string) error {
+	protocolHost := "https://" + host
+	for _, endpoint := range coreopts.GetSupportedEndpoints() {
+		if strings.HasPrefix(endpoint, protocolHost) {
+			return nil
+		}
+	}
+	return errors.New("Bad host: " + host)
 }
 
 func (agentconfig *AgentConfigs) PenseFeatherQuery(pense string) (*string, error) {
@@ -178,13 +189,25 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	if hostErr != nil {
 		return nil, hostErr
 	}
+	localHost := ""
+	if len(addrs) > 0 {
+		localHost = strings.TrimRight(addrs[0], ".")
+		if validErr := ValidateVhost(localHost); validErr != nil {
+			return nil, validErr
+		}
+	} else {
+		return nil, errors.New("Invalid host")
+	}
+
+	// TODO: add domain if it's missing because that might actually happen...  Pull the domain from
+	// vaddress in config..  that should always be the same...
 
 	creds, err := GetTransportCredentials()
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", strings.TrimRight(addrs[0], "."), gTrcHatSecretsPort), grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localHost, gTrcHatSecretsPort), grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return new(string), err
 	}
