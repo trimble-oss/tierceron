@@ -127,6 +127,13 @@ steps:
         exit 1
     fi
 
+    echo "Compile Windows"
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "tc memonly azrcr windows" -ldflags '-w' -tags "tc" github.com/trimble-oss/tierceron/trcsh
+    if [[ ! -f $GOBIN/windows_amd64/trcsh.exe ]] ; then
+        echo File trcsh.exe was not built, aborting.
+        exit 1
+    fi
+
     echo "Compile Agent plugin trc-vault-carrier-plugin"
     GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc memonly azrcr insecure" github.com/trimble-oss/tierceron/trcvault/plugins/carrier
     mv $GOBIN/carrier $GOBIN/trc-vault-carrier-plugin 
@@ -152,6 +159,7 @@ steps:
     echo "Compile Complete"
     cp $GOBIN/trcsh $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trcsh.sha256 $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
 
     cp $GOBIN/trc-vault-carrier-plugin $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-carrier-plugin.sha256 $(Build.ArtifactStagingDirectory)
