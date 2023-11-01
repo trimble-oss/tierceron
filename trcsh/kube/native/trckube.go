@@ -26,9 +26,9 @@ import (
 	kubectlutil "k8s.io/kubectl/pkg/util"
 
 	"github.com/go-git/go-billy/v5"
+	"github.com/trimble-oss/tierceron/capauth"
 	"github.com/trimble-oss/tierceron/trcsh/kube/native/path"
 	"github.com/trimble-oss/tierceron/trcsh/kube/native/trccreate"
-	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
@@ -108,7 +108,7 @@ func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*TrcKube
 	return trcConfig, nil
 }
 
-func InitTrcKubeConfig(trcshConfig *trcshauth.TrcShConfig, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
+func InitTrcKubeConfig(trcshConfig *capauth.TrcShConfig, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
 	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(*trcshConfig.KubeConfig)
 	if decodeErr != nil {
 		fmt.Println("Decoding error")
