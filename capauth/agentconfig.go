@@ -22,6 +22,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+var TrcCtlComplete string = "trcctlcomplete"
+
 type AgentConfigs struct {
 	HandshakeHostPort *string
 	FeatherHostPort   *string
@@ -31,6 +33,7 @@ type AgentConfigs struct {
 	EncryptSalt       *string
 	Deployments       *string
 	Env               *string
+	CtlMessage        chan string
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
