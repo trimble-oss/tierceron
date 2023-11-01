@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	ServCert = "/etc/opt/vault/certs/serv_cert.pem"
-	ServKey  = "/etc/opt/vault/certs/serv_key.pem"
+	ServCert      = "/etc/opt/vault/certs/serv_cert.pem"
+	ServCertLocal = "./serv_cert.pem"
+	ServKey       = "/etc/opt/vault/certs/serv_key.pem"
 )
 
 var MashupCertPool *x509.CertPool
@@ -26,8 +27,11 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 	mashupCertBytes, err := os.ReadFile(ServCert)
 	if err != nil {
-		fmt.Println("Cert read failure.")
-		return
+		mashupCertBytes, err = os.ReadFile(ServCertLocal)
+		if err != nil {
+			fmt.Println("Cert read failure.")
+			return
+		}
 	}
 
 	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
