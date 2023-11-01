@@ -25,6 +25,7 @@ import (
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
+	"github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
