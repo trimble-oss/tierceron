@@ -76,7 +76,7 @@ func main() {
 		//Open deploy script and parse it.
 		ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
-		gAgentConfig = &capauth.AgentConfigs{}
+		gAgentConfig = &capauth.AgentConfigs{CtlMessage: make(chan string, 1)}
 		deployments := os.Getenv("DEPLOYMENTS")
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
@@ -116,13 +116,45 @@ func main() {
 		// Preload agent synchronization configs
 		gAgentConfig.LoadConfigs(address, agentToken, deployments, agentEnv)
 		for {
-			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+			if agentFlapMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
 				*gAgentConfig.HandshakeCode,
-				cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env); featherErr == nil && featherMode == cap.MODE_FLAP {
+				cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env); featherErr == nil && agentFlapMode == cap.MODE_FLAP {
+				go func() {
+					continueMsg := true
+					for continueMsg {
+						select {
+						case <-time.After(120 * time.Second):
+							ctlMsg := "Deployment timed out after 120 seconds"
+							cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+								*gAgentConfig.EncryptSalt,
+								*gAgentConfig.HandshakeHostPort,
+								*gAgentConfig.HandshakeCode,
+								cap.MODE_GLIDE+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env)
+							gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
+							continueMsg = false
+						case ctlMsg := <-gAgentConfig.CtlMessage:
+							if ctlMsg != capauth.TrcCtlComplete {
+								cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+									*gAgentConfig.EncryptSalt,
+									*gAgentConfig.HandshakeHostPort,
+									*gAgentConfig.HandshakeCode,
+									cap.MODE_GLIDE+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env)
+							} else {
+								cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+									*gAgentConfig.EncryptSalt,
+									*gAgentConfig.HandshakeHostPort,
+									*gAgentConfig.HandshakeCode,
+									cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env)
+								continueMsg = false
+							}
+						}
+					}
+				}()
 
 				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
+
 			} else {
 				time.Sleep(500 * time.Millisecond)
 			}
@@ -235,7 +267,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 
 		config.FeatherCtlCb = featherCtlCb
 		if gAgentConfig == nil {
-			gAgentConfig = &capauth.AgentConfigs{}
+			gAgentConfig = &capauth.AgentConfigs{CtlMessage: make(chan string, 1)}
 			gAgentConfig.LoadConfigs(config.VaultAddress, *trcshConfig.CToken, "bootstrap", "dev") // Feathering always in dev environmnent.
 		}
 		gAgentConfig.Env = &env
@@ -554,6 +586,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					deployArgLines,
 					&configCount,
 					logger)
+				gAgentConfig.CtlMessage <- deployLine
 			} else {
 				processPluginCmds(
 					&trcKubeDeploymentConfig,
@@ -571,6 +604,9 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					&configCount,
 					logger)
 			}
+		}
+		if runtime.GOOS == "windows" {
+			gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 		}
 	}
 	//Make the arguments in the script -> os.args.
