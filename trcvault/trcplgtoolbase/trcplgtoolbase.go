@@ -95,19 +95,23 @@ func CommonMain(envPtr *string,
 		os.Exit(1)
 	}
 
+	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr {
+		*pluginTypePtr = "trcshservice"
+	}
+
 	switch *pluginTypePtr {
 	case "vault": // A vault plugin
 		if c != nil {
 			// TODO: do we want to support Deployment certifications in the pipeline at some point?
 			// If so this is a config check to remove.
-			fmt.Println("Plugin type not supported in trcsh.")
+			fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
 			os.Exit(-1)
 		}
 	case "agent": // A deployment agent tool.
 		if c != nil {
 			// TODO: do we want to support Deployment certifications in the pipeline at some point?
 			// If so this is a config check to remove.
-			fmt.Println("Plugin type not supported in trcsh.")
+			fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
 			os.Exit(-1)
 		}
 	case "trcshservice": // A trcshservice managed microservice
@@ -156,12 +160,15 @@ func CommonMain(envPtr *string,
 	}
 	pluginConfig["env"] = *envPtr
 	pluginConfig["vaddress"] = *addrPtr
-	pluginConfig["token"] = *tokenPtr
+	if tokenPtr != nil {
+		pluginConfig["token"] = *tokenPtr
+	}
 	pluginConfig["ExitOnFailure"] = true
 	if *regionPtr != "" {
 		pluginConfig["regions"] = []string{*regionPtr}
 	}
 	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	config.FeatherCtlCb = configBase.FeatherCtlCb
 	if err != nil {
 		logger.Println("Error: " + err.Error() + " - 1")
 		logger.Println("Failed to init mod for deploy update")
@@ -389,7 +396,7 @@ func CommonMain(envPtr *string,
 				os.Exit(1)
 			}
 		} else {
-			fmt.Println("Incorrect trcplg utilization")
+			fmt.Println("Incorrect trcplgtool utilization")
 			os.Exit(1)
 		}
 	}
