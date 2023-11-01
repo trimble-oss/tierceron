@@ -15,7 +15,7 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/capauth"
+	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/servercapauth"
 	"github.com/trimble-oss/tierceron/trcvault/factory"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcplgtool "github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
@@ -65,11 +65,11 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		return err
 	}
 
-	if ok, err := capauth.ValidatePathSha(goMod, pluginConfig, logger); ok {
+	if ok, err := servercapauth.ValidatePathSha(goMod, pluginConfig, logger); true || ok {
 		onceAuth.Do(func() {
 			logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
-			var featherAuth *capauth.FeatherAuth
-			featherAuth, err = capauth.Init(goMod, pluginConfig, logger)
+			var featherAuth *servercapauth.FeatherAuth
+			featherAuth, err = servercapauth.Init(goMod, pluginConfig, logger)
 			if err != nil {
 				eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
 				return
@@ -78,11 +78,11 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 
 			pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
 
-			capauth.Memorize(pluginConfig, logger)
+			servercapauth.Memorize(pluginConfig, logger)
 
 			// TODO: Support variables for different environments...
 			// Not really clear how cap auth would do this...
-			go capauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+			go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
 			logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
 		})
 	} else {

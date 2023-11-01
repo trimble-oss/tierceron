@@ -1,4 +1,4 @@
-package capauth
+package servercapauth
 
 import (
 	"crypto/sha256"
