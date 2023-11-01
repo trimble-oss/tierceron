@@ -62,7 +62,7 @@ func LocalIp(env string) (string, error) {
 
 func GetTransportCredentials() (credentials.TransportCredentials, error) {
 
-	mashupKeyBytes, err := os.ReadFile(ServKey)
+	mashupKeyBytes, err := os.ReadFile(ServCert)
 	if err != nil {
 		return nil, err
 	}
