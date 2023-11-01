@@ -171,8 +171,9 @@ func featherCtlCb(agentName string) error {
 	} else {
 		gAgentConfig.Deployments = &agentName
 	}
-	callFlap := cap.MODE_GLIDE
+	callFlap := cap.MODE_FLAP
 	for {
+		// Azure deployment agent kicks off a deploy with a flap command...
 		if ctlFlapMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 			*gAgentConfig.EncryptSalt,
 			*gAgentConfig.HandshakeHostPort,
@@ -181,9 +182,11 @@ func featherCtlCb(agentName string) error {
 			fmt.Printf("\nDeployment complete.\n")
 			os.Exit(0)
 		} else {
-			if strings.HasPrefix(ctlFlapMode, cap.MODE_FLAP) {
-				ctl := strings.Split(ctlFlapMode, "_")
-				fmt.Println(ctl)
+			if strings.HasPrefix(ctlFlapMode, cap.MODE_GLIDE) {
+				if strings.Contains(ctlFlapMode, "_") {
+					ctl := strings.Split(ctlFlapMode, "_")
+					fmt.Println(ctl)
+				}
 				callFlap = cap.MODE_GLIDE
 			}
 			time.Sleep(time.Second * 3)
