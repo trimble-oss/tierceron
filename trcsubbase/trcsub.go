@@ -36,10 +36,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
 	projectInfoPtr := flag.Bool("projectInfo", false, "Lists all project info")
 	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
+	templatePathsPtr := flag.String("templatePaths", "", "Specifies which specific templates to download.")
 
 	flag.Parse()
 
-	if len(*filterTemplatePtr) == 0 && !*projectInfoPtr {
+	if len(*filterTemplatePtr) == 0 && !*projectInfoPtr && *templatePathsPtr == "" {
 		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")
 		os.Exit(1)
 	}
@@ -80,7 +81,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 	eUtils.CheckError(config, err, true)
 	mod.Env = *envPtr
 
-	if *projectInfoPtr {
+	if *templatePathsPtr != "" {
+		fmt.Printf("Downloading templates from vault to %s\n", *dirPtr)
+		// The actual download templates goes here.
+		il.DownloadTemplates(config, mod, *dirPtr, logger, templatePathsPtr)
+	} else if *projectInfoPtr {
 		templateList, err := mod.List("templates/", logger)
 		if err != nil {
 			eUtils.CheckError(config, err, true)
