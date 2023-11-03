@@ -25,7 +25,6 @@ import (
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
-	"github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -44,12 +43,12 @@ func main() {
 	fmt.Println("trcsh Version: " + "1.12")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
-	if runtime.GOOS != "windows" {
+	if false && runtime.GOOS != "windows" {
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
 		} else {
-			util.CheckNotSudo()
+			//util.CheckNotSudo()
 		}
 		if len(os.Args) > 1 {
 			if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
@@ -123,8 +122,7 @@ func main() {
 				*gAgentConfig.HandshakeCode,
 				cap.MODE_FLAP, deployments+"."+*gAgentConfig.Env); deployEmitErr == nil && strings.HasPrefix(deployFlapMode, cap.MODE_GAZE) {
 				go func() {
-					continueMsg := true
-					for continueMsg {
+					for {
 						select {
 						case <-time.After(120 * time.Second):
 							ctlMsg := "Deployment timed out after 120 seconds"
@@ -134,7 +132,6 @@ func main() {
 								*gAgentConfig.HandshakeCode,
 								cap.MODE_PERCH+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env)
 							gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
-							continueMsg = false
 						case ctlMsg := <-gAgentConfig.CtlMessage:
 							if ctlMsg != capauth.TrcCtlComplete {
 								deployLineFlapMode := cap.MODE_FLAP + "_" + ctlMsg
@@ -167,13 +164,12 @@ func main() {
 									*gAgentConfig.HandshakeHostPort,
 									*gAgentConfig.HandshakeCode,
 									cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env)
-								continueMsg = false
 							}
 						}
 					}
 				}()
 
-				ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
+				ProcessDeploy(*gAgentConfig.Env, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
 
 			} else {
 				time.Sleep(500 * time.Millisecond)
@@ -366,7 +362,8 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 		config.IsShellSubProcess = true
 
 		trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, config)
-		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+		ResetModifier(config)
+		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 		if !agentToken {
 			token = ""
@@ -374,6 +371,13 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 		}
 	case "trcconfig":
 		configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
+		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+		if !agentToken {
+			token = ""
+			config.Token = token
+		}
 	}
 }
 
@@ -477,9 +481,33 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 
 	// Chewbacca: Begin dbg comment
 	var auth string
+	mergedVaultAddress := config.VaultAddress
+	mergedEnvRaw := config.EnvRaw
+
+	if (approleId != nil && len(*approleId) == 0) || (secretId != nil && len(*secretId) == 0) {
+		// If in context of trcsh, utilize CToken to auth...
+		if gTrcshConfig != nil && gTrcshConfig.CToken != nil {
+			auth = *gTrcshConfig.CToken
+		}
+	}
+
+	if len(mergedVaultAddress) == 0 {
+		// If in context of trcsh, utilize CToken to auth...
+		if gTrcshConfig != nil && gTrcshConfig.VaultAddress != nil {
+			mergedVaultAddress = *gTrcshConfig.VaultAddress
+		}
+	}
+
+	if len(mergedEnvRaw) == 0 {
+		// If in context of trcsh, utilize CToken to auth...
+		if gTrcshConfig != nil {
+			mergedEnvRaw = gTrcshConfig.EnvContext
+		}
+	}
+
 	authTokenName := "vault_token_azuredeploy"
 	authTokenEnv := "azuredeploy"
-	autoErr := eUtils.AutoAuth(config, secretId, approleId, &auth, &authTokenName, &authTokenEnv, &config.VaultAddress, &config.EnvRaw, "deployauth", false)
+	autoErr := eUtils.AutoAuth(config, secretId, approleId, &auth, &authTokenName, &authTokenEnv, &mergedVaultAddress, &mergedEnvRaw, "deployauth", false)
 	if autoErr != nil || auth == "" {
 		fmt.Println("Unable to auth.")
 		fmt.Println(autoErr)
@@ -497,7 +525,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 		config.EnvRaw = env
 		config.EndDir = "deploy"
 		config.OutputMemCache = true
-		trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &token, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
+		trcconfigbase.CommonMain(&configEnv, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
 		var memFile billy.File
@@ -599,7 +627,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					os.Args = deployArgs
 				}
 			}
-			if runtime.GOOS == "windows" {
+			if true { //&& runtime.GOOS == "windows" {
 				processWindowsCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
@@ -634,9 +662,9 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					logger)
 			}
 		}
-		if runtime.GOOS == "windows" {
-			gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
-		}
+	}
+	if true { // runtime.GOOS == "windows" {
+		gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 	}
 	//Make the arguments in the script -> os.args.
 
