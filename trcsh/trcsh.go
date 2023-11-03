@@ -25,6 +25,7 @@ import (
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
+	"github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -43,12 +44,12 @@ func main() {
 	fmt.Println("trcsh Version: " + "1.12")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
-	if false && runtime.GOOS != "windows" {
+	if runtime.GOOS != "windows" {
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
 		} else {
-			//util.CheckNotSudo()
+			util.CheckNotSudo()
 		}
 		if len(os.Args) > 1 {
 			if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
@@ -627,7 +628,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					os.Args = deployArgs
 				}
 			}
-			if true { //&& runtime.GOOS == "windows" {
+			if runtime.GOOS == "windows" {
 				processWindowsCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
@@ -663,7 +664,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 			}
 		}
 	}
-	if true { // runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" {
 		gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 	}
 	//Make the arguments in the script -> os.args.
