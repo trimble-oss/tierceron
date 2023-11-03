@@ -117,11 +117,11 @@ func main() {
 		// Preload agent synchronization configs
 		gAgentConfig.LoadConfigs(address, agentToken, deployments, agentEnv)
 		for {
-			if agentFlapMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+			if deployFlapMode, deployEmitErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
 				*gAgentConfig.HandshakeCode,
-				cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env); featherErr == nil && agentFlapMode == cap.MODE_FLAP {
+				cap.MODE_FLAP, deployments+"."+*gAgentConfig.Env); deployEmitErr == nil && strings.HasPrefix(deployFlapMode, cap.MODE_GAZE) {
 				go func() {
 					continueMsg := true
 					for continueMsg {
@@ -132,16 +132,35 @@ func main() {
 								*gAgentConfig.EncryptSalt,
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
-								cap.MODE_GLIDE+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env)
+								cap.MODE_PERCH+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env)
 							gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 							continueMsg = false
 						case ctlMsg := <-gAgentConfig.CtlMessage:
 							if ctlMsg != capauth.TrcCtlComplete {
-								cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-									*gAgentConfig.EncryptSalt,
-									*gAgentConfig.HandshakeHostPort,
-									*gAgentConfig.HandshakeCode,
-									cap.MODE_GLIDE+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env)
+								deployLineFlapMode := cap.MODE_FLAP + "_" + ctlMsg
+								ctlFlapMode := deployLineFlapMode
+								var err error
+								for {
+									// Notify deployer of command run and wait for confirmation of msg received.
+									if err == nil && deployLineFlapMode != ctlFlapMode {
+										// Glide, etc...
+										break
+									} else {
+										callFlap := deployLineFlapMode
+										if err == nil {
+											time.Sleep(200 * time.Millisecond)
+										} else {
+											if err.Error() != "init" {
+												time.Sleep(1 * time.Second)
+											}
+										}
+										deployLineFlapMode, err = cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+											*gAgentConfig.EncryptSalt,
+											*gAgentConfig.HandshakeHostPort,
+											*gAgentConfig.HandshakeCode,
+											callFlap, deployments+"."+*gAgentConfig.Env)
+									}
+								}
 							} else {
 								cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 									*gAgentConfig.EncryptSalt,
@@ -179,17 +198,23 @@ func featherCtlCb(agentName string) error {
 			*gAgentConfig.EncryptSalt,
 			*gAgentConfig.HandshakeHostPort,
 			*gAgentConfig.HandshakeCode,
-			callFlap, agentName+"."+*gAgentConfig.Env); featherErr == nil && ctlFlapMode == cap.MODE_PERCH {
-			fmt.Printf("\nDeployment complete.\n")
+			callFlap, agentName+"."+*gAgentConfig.Env); featherErr != nil || ctlFlapMode == cap.MODE_PERCH {
+			if featherErr != nil {
+				fmt.Printf("\nDeployment error.\n")
+			} else {
+				fmt.Printf("\nDeployment complete.\n")
+			}
 			os.Exit(0)
 		} else {
-			if strings.HasPrefix(ctlFlapMode, cap.MODE_GLIDE) {
+			if strings.HasPrefix(ctlFlapMode, cap.MODE_FLAP) {
 				if strings.Contains(ctlFlapMode, "_") {
-					ctl := strings.Split(ctlFlapMode, "_")
-					fmt.Println(ctl)
+					ctlMessage := strings.Split(ctlFlapMode, "_")
+					if len(ctlMessage) > 1 {
+						fmt.Printf("%s\n", ctlMessage[1])
+					}
 				}
-				callFlap = cap.MODE_GLIDE
 			}
+			callFlap = cap.MODE_GAZE
 			time.Sleep(time.Second * 3)
 		}
 	}
