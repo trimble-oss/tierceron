@@ -307,13 +307,17 @@ func CommonMain(envPtr *string,
 		}
 		fmt.Printf("Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
-		err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+		if pluginToolConfig["trcsha256"] != nil && len(pluginToolConfig["trcsha256"].(string)) > 0 {
+			err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
+			if err != nil {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
 		}
 
-		if pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) {
+		if pluginToolConfig["trcsha256"] != nil &&
+			pluginToolConfig["imagesha256"] != nil &&
+			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) {
 			// Write the image to the destination...
 			deployPath := fmt.Sprintf("%s\\%s", pluginToolConfig["trcdeployroot"].(string), pluginToolConfig["trccodebundle"].(string))
 			fmt.Printf("Deploying image to: %s\n", deployPath)
