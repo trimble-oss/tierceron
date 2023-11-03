@@ -70,6 +70,9 @@ pub:
 sub:
 	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go install   -tags "memonly" github.com/trimble-oss/tierceron/trcsub
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcsub
+# Warning! windows not as secure....
+subwin:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "tc windows memonly" -o $(GOBIN)/trcsub.exe trcsub/trcsub.go
 certify:
 	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "tc azrcr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcplgtool
