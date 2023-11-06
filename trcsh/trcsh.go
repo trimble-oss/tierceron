@@ -8,9 +8,11 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/signal"
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-git/go-billy/v5"
@@ -25,7 +27,6 @@ import (
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
-	"github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -55,6 +56,13 @@ func main() {
 			if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
 				// Running as shell.
 				os.Args[1] = "-c=" + os.Args[1]
+				// Initiate signal handling.
+				var ic chan os.Signal = make(chan os.Signal)
+				signal.Notify(ic, os.Interrupt, syscall.SIGTERM)
+				go func() {
+					x := <-ic
+					interruptChan <- x
+				}()
 			}
 		}
 		envPtr = flag.String("env", "", "Environment to be processed")   //If this is blank -> use context otherwise override context.
@@ -181,6 +189,23 @@ func main() {
 
 }
 
+var interruptChan chan os.Signal = make(chan os.Signal)
+var twoHundredMilliInterruptTicker *time.Ticker = time.NewTicker(200 * time.Millisecond)
+var multiSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second)
+
+func interruptFun(tickerInterrupt *time.Ticker) {
+	select {
+	case <-interruptChan:
+		cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+			*gAgentConfig.EncryptSalt,
+			*gAgentConfig.HandshakeHostPort,
+			*gAgentConfig.HandshakeCode,
+			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env)
+		os.Exit(1)
+	case <-tickerInterrupt.C:
+	}
+}
+
 func featherCtlCb(agentName string) error {
 
 	if gAgentConfig == nil {
@@ -188,14 +213,14 @@ func featherCtlCb(agentName string) error {
 	} else {
 		gAgentConfig.Deployments = &agentName
 	}
-	callFlap := cap.MODE_FLAP
+	callFlap := cap.MODE_GAZE
 	for {
 		// Azure deployment agent kicks off a deploy with a flap command...
 		if ctlFlapMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 			*gAgentConfig.EncryptSalt,
 			*gAgentConfig.HandshakeHostPort,
 			*gAgentConfig.HandshakeCode,
-			callFlap, agentName+"."+*gAgentConfig.Env); featherErr != nil || ctlFlapMode == cap.MODE_PERCH {
+			callFlap, agentName+"."+*gAgentConfig.Env); featherErr != nil || ctlFlapMode == cap.MODE_GLIDE {
 			if featherErr != nil {
 				fmt.Printf("\nDeployment error.\n")
 			} else {
@@ -212,7 +237,7 @@ func featherCtlCb(agentName string) error {
 				}
 			}
 			callFlap = cap.MODE_GAZE
-			time.Sleep(time.Second * 3)
+			interruptFun(multiSecondInterruptTicker)
 		}
 	}
 
