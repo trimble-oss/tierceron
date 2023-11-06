@@ -42,7 +42,7 @@ func main() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.12")
+	fmt.Println("trcsh Version: " + "1.20")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
 	if runtime.GOOS != "windows" {
@@ -132,6 +132,7 @@ func main() {
 				cap.MODE_FLAP, deployments+"."+*gAgentConfig.Env); deployEmitErr == nil && strings.HasPrefix(deployFlapMode, cap.MODE_GAZE) {
 				go func() {
 					for {
+					perching:
 						select {
 						case <-time.After(120 * time.Second):
 							ctlMsg := "Deployment timed out after 120 seconds"
@@ -147,9 +148,20 @@ func main() {
 								ctlFlapMode := deployLineFlapMode
 								var err error
 								for {
+									if err == nil && ctlFlapMode == cap.MODE_PERCH {
+										// Acknowledge perching...
+										cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+											*gAgentConfig.EncryptSalt,
+											*gAgentConfig.HandshakeHostPort,
+											*gAgentConfig.HandshakeCode,
+											cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env)
+										ctlFlapMode = cap.MODE_PERCH
+										goto perching
+									}
+
 									// Notify deployer of command run and wait for confirmation of msg received.
 									if err == nil && deployLineFlapMode != ctlFlapMode {
-										// Glide, etc...
+										// Flap, Gaze, etc...
 										break
 									} else {
 										callFlap := deployLineFlapMode
@@ -172,12 +184,11 @@ func main() {
 									*gAgentConfig.EncryptSalt,
 									*gAgentConfig.HandshakeHostPort,
 									*gAgentConfig.HandshakeCode,
-									cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env)
+									cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env)
 							}
 						}
 					}
 				}()
-
 				ProcessDeploy(*gAgentConfig.Env, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
 
 			} else {
@@ -220,7 +231,7 @@ func featherCtlCb(agentName string) error {
 			*gAgentConfig.EncryptSalt,
 			*gAgentConfig.HandshakeHostPort,
 			*gAgentConfig.HandshakeCode,
-			callFlap, agentName+"."+*gAgentConfig.Env); featherErr != nil || ctlFlapMode == cap.MODE_GLIDE {
+			callFlap, agentName+"."+*gAgentConfig.Env); featherErr != nil || ctlFlapMode == cap.MODE_PERCH || ctlFlapMode == cap.MODE_GLIDE {
 			if featherErr != nil {
 				fmt.Printf("\nDeployment error.\n")
 			} else {
