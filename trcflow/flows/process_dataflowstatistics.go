@@ -319,8 +319,10 @@ func KickOffTimedRefresh(tfContext *flowcore.TrcFlowContext, stateUpdateChannel 
 			for {
 				select {
 				case <-endRefreshChan:
+					tfContext.Log.Println("Daily Refresh Ended - no longer refreshing DFS")
 					return
 				case <-time.After(refreshTime):
+					tfContext.Log.Println("Daily Refresh Triggered - refreshing DFS")
 					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfc.Flow.TableName(), StateUpdate: "3", SyncFilter: tfc.FlowState.SyncFilter, SyncMode: "refreshingDaily", FlowAlias: tfc.FlowState.FlowAlias}
 					refreshTime = time.Duration(time.Hour * 24)
 				}
