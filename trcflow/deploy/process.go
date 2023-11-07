@@ -132,7 +132,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		return err
 	}
 
-	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig)
+	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(cConfig, cGoMod, pluginConfig, false)
 
 	defer func(vaddrPtr *string, tPtr *string) {
 		pluginConfig["vaddress"] = *vaddrPtr
