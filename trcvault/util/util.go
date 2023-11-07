@@ -249,7 +249,7 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	return nil
 }
 
-func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, defineService bool) (map[string]interface{}, error) {
 	config.Log.Println("GetPluginToolConfig begin processing plugins.")
 	//templatePaths
 	indexFound := false
@@ -334,6 +334,9 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 		}
 		return pluginEnvConfigClone, err
 	} else if !indexFound {
+		if defineService {
+			pluginEnvConfigClone["pluginpath"] = pluginToolConfig["pluginpath"]
+		}
 		return pluginEnvConfigClone, nil
 	} else {
 		if _, ok := pluginEnvConfigClone["trcplugin"]; ok {
