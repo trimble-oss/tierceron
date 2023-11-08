@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
@@ -248,31 +249,56 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	return nil
 }
 
-func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, hostName string) (map[string]interface{}, error) {
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, defineService bool) (map[string]interface{}, error) {
 	config.Log.Println("GetPluginToolConfig begin processing plugins.")
 	//templatePaths
 	indexFound := false
 	templatePaths := pluginConfig["templatePath"].([]string)
 
+	config.Log.Println("GetPluginToolConfig reading base configurations.")
 	pluginToolConfig, err := mod.ReadData("super-secrets/Restricted/PluginTool/config")
 
 	if err != nil {
+		config.Log.Println("GetPluginToolConfig errored with missing base PluginTool configurations.")
 		return nil, err
 	} else {
 		if len(pluginToolConfig) == 0 {
+			config.Log.Println("GetPluginToolConfig empty base PluginTool configurations.")
 			return nil, errors.New("Tierceron plugin management presently not configured for env: " + mod.Env)
 		}
 	}
+	pluginEnvConfigClone := make(map[string]interface{})
+
+	for k, v := range pluginToolConfig {
+		if _, okStr := v.(string); okStr {
+			v2 := strings.Clone(v.(string))
+			memprotectopts.MemProtect(nil, &v2)
+			pluginEnvConfigClone[k] = v2
+		} else {
+			// Safe to share...
+			pluginEnvConfigClone[k] = v
+		}
+	}
+
 	for k, v := range pluginConfig {
-		pluginToolConfig[k] = v
+		if _, okStr := v.(string); okStr {
+			v2 := strings.Clone(v.(string))
+			memprotectopts.MemProtect(nil, &v2)
+			pluginEnvConfigClone[k] = v2
+		} else {
+			// Safe to share...
+			pluginEnvConfigClone[k] = v
+		}
 	}
 
 	var ptc1 map[string]interface{}
+
+	config.Log.Println("GetPluginToolConfig loading plugin data.")
 	for _, templatePath := range templatePaths {
 		project, service, _ := eUtils.GetProjectService(templatePath)
 		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
-		overridePath := ""
-		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 && pluginPath != "n/a" {
+
+		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 {
 			mod.SectionPath = "super-secrets/Index/" + project + pluginPath.(string) + config.SubSectionValue + "/" + service
 		} else {
 			mod.SectionPath = "super-secrets/Index/" + project + "/trcplugin/" + config.SubSectionValue + "/" + service
@@ -280,49 +306,47 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 		ptc1, err = mod.ReadData(mod.SectionPath)
 		pluginToolConfig["pluginpath"] = mod.SectionPath
 		if err != nil || ptc1 == nil {
-			config.Log.Println("No data found.")
+			config.Log.Println("No data found for project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
 			continue
 		}
 		indexFound = true
-		for k, v := range ptc1 {
-			pluginToolConfig[k] = v
-		}
 
-		//Override
-		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 && hostName != "" {
-			overridePath = "super-secrets/Index/" + project + "/trcplugin/overrides/" + hostName + "/" + config.SubSectionValue + "/" + service
-			mod.SectionPath = overridePath
-			ptc2, err := mod.ReadData(mod.SectionPath)
-			pluginToolConfig["overridepath"] = overridePath
-			if err != nil || ptc2 == nil {
-				pluginToolConfig["copied"] = false
-				pluginToolConfig["deployed"] = false
-				config.Log.Println("No override found for plugin.")
-				continue
-			}
-			for k, v := range ptc2 {
-				pluginToolConfig[k] = v
+		for k, v := range ptc1 {
+			if _, okStr := v.(string); okStr {
+				v2 := strings.Clone(v.(string))
+				memprotectopts.MemProtect(nil, &v2)
+				pluginEnvConfigClone[k] = v2
+			} else {
+				// Safe to share...
+				pluginEnvConfigClone[k] = v
 			}
 		}
 
 		break
 	}
 	mod.SectionPath = ""
+	config.Log.Println("GetPluginToolConfig plugin data load process complete.")
 
-	if pluginToolConfig == nil {
+	if pluginEnvConfigClone == nil {
 		config.Log.Println("No data found for plugin.")
 		if err == nil {
-			err = errors.New("No data and unexpected error.")
+			err = errors.New("no data and unexpected error")
 		}
-		return pluginToolConfig, err
+		return pluginEnvConfigClone, err
 	} else if !indexFound {
-		return pluginToolConfig, nil
+		if defineService {
+			pluginEnvConfigClone["pluginpath"] = pluginToolConfig["pluginpath"]
+		}
+		return pluginEnvConfigClone, nil
+	} else {
+		if _, ok := pluginEnvConfigClone["trcplugin"]; ok {
+			if strings.ContainsAny(pluginEnvConfigClone["trcplugin"].(string), "./") {
+				err = errors.New("Invalid plugin configuration: " + pluginEnvConfigClone["trcplugin"].(string))
+				return nil, err
+			}
+		}
 	}
 	config.Log.Println("GetPluginToolConfig end processing plugins.")
-	if strings.ContainsAny(pluginToolConfig["trcplugin"].(string), "./") {
-		err = errors.New("Invalid plugin configuration: " + pluginToolConfig["trcplugin"].(string))
-		return nil, err
-	}
 
-	return pluginToolConfig, nil
+	return pluginEnvConfigClone, nil
 }

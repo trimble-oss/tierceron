@@ -37,7 +37,6 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 		if err != nil {
 			config.Log.Printf("Failed to advance page for tags: %v", err)
 			return err
-
 		}
 		for _, v := range page.Tags {
 			latestTag = *v.Name //Always only returns 1 tag due to MaxNum being set
@@ -50,6 +49,7 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 		config.Log.Printf("failed to get manifest: %v", err)
 		return err
 	}
+
 	reader, err := azcontainerregistry.NewDigestValidationReader(*manifestRes.DockerContentDigest, manifestRes.ManifestData)
 	if err != nil {
 		config.Log.Printf("failed to create validation reader: %v", err)
@@ -69,14 +69,74 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 		return err
 	}
 	// Get layers
-	var layerDigest string
 	layers := manifestJSON["layers"].([]any)
-	for _, layer := range layers {
-		layerDigest = layer.(map[string]any)["digest"].(string)
+	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), svc, nil)
+	if err != nil {
+		return errors.New("Failed to create blob client:" + err.Error())
 	}
 
-	pluginToolConfig["layerDigest"] = layerDigest
+	for i := len(layers) - 1; i >= 0; i-- {
+		if layer, layerOk := layers[i].(map[string]any)["digest"]; layerOk {
+			if layerD, ok := layer.(string); ok {
+				sha256, shaErr := GetImageShaFromLayer(blobClient, pluginToolConfig["trcplugin"].(string), layerD, pluginToolConfig)
+				if shaErr != nil {
+					return errors.New("Failed to load image sha from layer:" + shaErr.Error())
+				}
+				if _, ok := pluginToolConfig["trcsha256"]; !ok {
+					// Not looking for anything in particular so just grab the last image.
+					break
+				} else {
+					if pluginToolConfig["trcsha256"].(string) == sha256 {
+						pluginToolConfig["imagesha256"] = sha256
+						break
+					}
+				}
+			}
+		}
+	}
+
 	return nil
+}
+
+func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name string, digest string, pluginToolConfig map[string]interface{}) (string, error) {
+
+	configRes, err := blobClient.GetBlob(context.Background(), name, digest, nil)
+	if err != nil {
+		return "", errors.New("Failed to get config:" + err.Error())
+	}
+
+	reader, readErr := azcontainerregistry.NewDigestValidationReader(digest, configRes.BlobData)
+	if readErr != nil {
+		return "", errors.New("Failed to create validation reader" + readErr.Error())
+	}
+
+	layerData, configErr := io.ReadAll(reader)
+	if configErr != nil {
+		return "", errors.New("Failed to read config data:" + configErr.Error())
+	}
+
+	pluginTarredData, gUnZipError := gUnZipData(layerData)
+	if gUnZipError != nil {
+		return "", errors.New("gunzip failed")
+	}
+	pluginImage, gUnTarError := untarData(pluginTarredData)
+	if gUnTarError != nil {
+		return "", errors.New("untarring failed")
+	}
+	pluginSha := sha256.Sum256(pluginImage)
+	sha256 := fmt.Sprintf("%x", pluginSha)
+	if pluginToolConfig != nil {
+		if _, ok := pluginToolConfig["trcsha256"]; !ok {
+			// Not looking for anything in particular so just grab the last image.
+			pluginToolConfig["rawImageFile"] = pluginImage
+		} else {
+			if pluginToolConfig["trcsha256"].(string) == sha256 {
+				pluginToolConfig["rawImageFile"] = pluginImage
+			}
+		}
+	}
+
+	return sha256, nil
 }
 
 // Return url to the image to be used for download.
@@ -94,36 +154,6 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 	if imageErr != nil {
 		return imageErr
 	}
-	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), svc, nil)
-	if err != nil {
-		return errors.New("Failed to create blob client:" + err.Error())
-	}
 
-	configRes, err := blobClient.GetBlob(context.Background(), pluginToolConfig["trcplugin"].(string), pluginToolConfig["layerDigest"].(string), nil)
-	if err != nil {
-		return errors.New("Failed to get config:" + err.Error())
-	}
-
-	reader, readErr := azcontainerregistry.NewDigestValidationReader(pluginToolConfig["layerDigest"].(string), configRes.BlobData)
-	if readErr != nil {
-		return errors.New("Failed to create validation reader" + readErr.Error())
-	}
-
-	layerData, configErr := io.ReadAll(reader)
-	if configErr != nil {
-		return errors.New("Failed to read config data:" + configErr.Error())
-	}
-
-	pluginTarredData, gUnZipError := gUnZipData(layerData)
-	if gUnZipError != nil {
-		return errors.New("gunzip failed")
-	}
-	pluginImage, gUnTarError := untarData(pluginTarredData)
-	if gUnTarError != nil {
-		return errors.New("untarring failed")
-	}
-	pluginSha := sha256.Sum256(pluginImage)
-	pluginToolConfig["rawImageFile"] = pluginImage
-	pluginToolConfig["imagesha256"] = fmt.Sprintf("%x", pluginSha)
 	return nil
 }

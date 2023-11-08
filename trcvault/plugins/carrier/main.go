@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"runtime/debug"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -47,15 +46,11 @@ func main() {
 	}
 
 	buildopts.SetLogger(logger.Writer())
-	defer func() {
-		if e := recover(); e != nil {
-			logger.Printf("%s: %s", e, debug.Stack())
-		}
-	}()
+	carrierfactory.InitLogger(logger)
 
 	e := os.Remove("/tmp/trccarrier/trcsnap.sock")
 	if e != nil {
-		logger.Println("Unable to refresh socket")
+		logger.Println("Unable to refresh socket.  Uneccessary.")
 	}
 	carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 

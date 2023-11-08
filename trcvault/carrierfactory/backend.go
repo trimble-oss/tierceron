@@ -10,13 +10,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 
@@ -91,12 +92,22 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 							supportedPluginNames = pluginEnvConfig["pluginNameList"].([]string)
 						}
 					}
+
 					// Range over all plugins and init them... but only once!
 					for _, pluginName := range pluginEnvConfig["pluginNameList"].([]string) {
 						pluginEnvConfigClone := make(map[string]interface{})
+						logger.Printf("Cloning %d..\n", len(pluginEnvConfig))
 						for k, v := range pluginEnvConfig {
-							pluginEnvConfigClone[k] = v
+							if _, okStr := v.(string); okStr {
+								v2 := strings.Clone(v.(string))
+								memprotectopts.MemProtect(nil, &v2)
+								pluginEnvConfigClone[k] = v2
+							} else if _, okBool := v.(bool); okBool {
+								pluginEnvConfigClone[k] = v
+							}
 						}
+						logger.Printf("Cloned %d..\n", len(pluginEnvConfigClone))
+
 						pluginEnvConfigClone["trcplugin"] = pluginName
 						logger.Println("*****Env: " + pluginEnvConfig["env"].(string) + " plugin: " + pluginEnvConfigClone["trcplugin"].(string))
 						pecError := ProcessPluginEnvConfig(processFlowConfig, processFlow, pluginEnvConfigClone, configCompleteChan)
@@ -357,7 +368,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			configCompleteChan <- true
 		}
 		if flowErr != nil {
-			l.Println("Flow had an error: " + flowErr.Error())
+			l.Printf("Flow %s had an error: %s\n", pec["trcplugin"].(string), flowErr.Error())
 		}
 	}(pluginEnvConfig, logger)
 
@@ -490,12 +501,6 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, errors.New("vault Certify token required")
 	}
 
-	if caddr, addressOk := data.GetOk("caddress"); addressOk {
-		tokenEnvMap["caddress"] = caddr.(string)
-	} else {
-		return nil, errors.New("Vault Certify Url required.")
-	}
-
 	tokenEnvMap["env"] = req.Path
 
 	// Check that some fields are given
@@ -568,23 +573,58 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			}
 			logger.Println("Creating modifier for env: " + req.Path)
 
-			// Plugins
-			mod, err := helperkv.NewModifier(true, tokenEnvMap["ctoken"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
-			if mod != nil {
-				defer mod.Release()
+			pluginConfig := map[string]interface{}{}
+			pluginConfig = buildopts.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
+			if pluginConfig == nil {
+				logger.Println("Error: " + errors.New("Could not find plugin config").Error())
+				return logical.ErrorResponse("Failed to find config for TrcUpdate."), nil
 			}
+			if strings.HasPrefix(plugin.(string), "trc-") && strings.HasPrefix(plugin.(string), "-plugin") {
+				ns := strings.Replace(plugin.(string), "trc-", "", 1)
+				namespace := strings.Replace(ns, "-plugin", "", 1)
+				pluginConfig["logNamespace"] = namespace
+			}
+
+			hostName, hostNameErr := os.Hostname()
+			if hostNameErr != nil {
+				logger.Println("Error: " + hostNameErr.Error() + " - 1")
+				return logical.ErrorResponse("Failed to find hostname"), nil
+			} else if hostName == "" {
+				logger.Println("Error: " + errors.New("Found empty hostname").Error())
+				return logical.ErrorResponse("Found empty hostname"), nil
+			}
+			hostRegion := coreopts.GetRegion(hostName)
+
+			pluginConfig["env"] = req.Path
+			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)
+			pluginConfig["token"] = tokenEnvMap["ctoken"].(string)
+			pluginConfig["regions"] = []string{hostRegion}
+			cConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 			if err != nil {
+				logger.Println("Error: " + err.Error() + " - 1")
 				logger.Println("Failed to init mod for deploy update")
-				logger.Println("Error: " + err.Error())
-				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
+				return logical.ErrorResponse("Failed to create config for TrcUpdate."), nil
 			}
-			mod.Env = req.Path
+			if cMod != nil {
+				defer cMod.Release()
+			}
+			cMod.Env = req.Path
 			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + req.Path)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
 
-			writeMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
+			cMod.SectionName = "trcplugin"
+			cMod.SectionKey = "/Index/"
+			cMod.SubSectionValue = plugin.(string)
+
+			properties, err := trcvutils.NewProperties(cConfig, cVault, cMod, cMod.Env, "TrcVault", "Certify")
 			if err != nil {
+				logger.Println("Error: " + err.Error())
+				return logical.ErrorResponse("Failed to read previous plugin status from vault - 1"), nil
+			}
+
+			writeMap, _ := properties.GetPluginData(hostRegion, "Certify", "config", logger)
+			if writeMap == nil {
 				logger.Println("Failed to read previous plugin status from vault")
 				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to read previous plugin status from vault"), nil
@@ -623,6 +663,11 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 		if tokenEnvMap, tokenParseDataErr = confirmInput(ctx, req, reqData, tokenEnvMap); tokenParseDataErr != nil {
 			// Bad or corrupt data in vault.
 			return nil, errors.New("input data validation error")
+		}
+
+		if !deploy.IsCapInitted() {
+			// Keep trying to initialize capauth whenever there is a refresh...
+			deploy.PluginDeployEnvFlow(tokenEnvMap, logger)
 		}
 
 		logger.Println("TrcCarrierUpdate merging tokens.")
@@ -727,6 +772,10 @@ func TrcFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 				"caddress": {
 					Type:        framework.TypeString,
 					Description: "Vault Url for plugin certification purposes.",
+				},
+				"ctoken": {
+					Type:        framework.TypeString,
+					Description: "Token for plugin certification purposes.",
 				},
 				"plugin": {
 					Type:        framework.TypeString,

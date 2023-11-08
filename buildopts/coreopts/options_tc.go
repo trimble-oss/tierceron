@@ -4,11 +4,12 @@
 package coreopts
 
 import (
+	"strings"
+
 	bcore "VaultConfig.Bootstrap/configcore"
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
 	trcprefix "VaultConfig.TenantConfig/util/buildopts/trcprefix"
 	tccore "VaultConfig.TenantConfig/util/core"
-	"strings"
 
 	"database/sql"
 )
@@ -37,6 +38,10 @@ func GetSupportedTemplates(custom []string) []string {
 
 func GetSupportedEndpoints() []string {
 	return bcore.GetSupportedEndpoints()
+}
+
+func GetRegion(hostName string) string {
+	return tccore.GetRegion(hostName)
 }
 
 func GetLocalHost() string {
