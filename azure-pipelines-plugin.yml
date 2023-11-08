@@ -78,7 +78,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.21.1'
+    version: '1.21.3'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -121,9 +121,16 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcsh
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc memonly azrcr azure" github.com/trimble-oss/tierceron/trcsh
     if [[ ! -f $GOBIN/trcsh ]] ; then
         echo File trcsh was not built, aborting.
+        exit 1
+    fi
+
+    echo "Compile Windows"
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "tc memonly azrcr windows" -ldflags '-w' -tags "tc" github.com/trimble-oss/tierceron/trcsh
+    if [[ ! -f $GOBIN/windows_amd64/trcsh.exe ]] ; then
+        echo File trcsh.exe was not built, aborting.
         exit 1
     fi
 
@@ -152,6 +159,7 @@ steps:
     echo "Compile Complete"
     cp $GOBIN/trcsh $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trcsh.sha256 $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
 
     cp $GOBIN/trc-vault-carrier-plugin $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-carrier-plugin.sha256 $(Build.ArtifactStagingDirectory)
