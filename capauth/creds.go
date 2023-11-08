@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -27,8 +28,14 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 	mashupCertBytes, err := os.ReadFile(ServCert)
 	if err != nil {
-		mashupCertBytes, err = os.ReadFile(ServCertLocal)
-		if err != nil {
+		if runtime.GOOS == "windows" {
+			// But only on windows.
+			mashupCertBytes, err = os.ReadFile(ServCertLocal)
+			if err != nil {
+				fmt.Println("Cert read failure.")
+				return
+			}
+		} else {
 			fmt.Println("Cert read failure.")
 			return
 		}
