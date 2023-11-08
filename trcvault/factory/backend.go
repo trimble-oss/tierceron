@@ -11,12 +11,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 
@@ -136,6 +137,7 @@ func StartPluginSettingEater() {
 	}()
 }
 
+// Only push to sha256 chan if one is present.  Non blocking otherwise.
 func PushPluginSha(config *eUtils.DriverConfig, pluginConfig map[string]interface{}, vaultPluginSignature map[string]interface{}) {
 	if _, trcShaChanOk := pluginConfig["trcsha256chan"]; trcShaChanOk {
 		if vaultPluginSignature != nil {
@@ -231,14 +233,14 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		return errors.New("missing address")
 	}
 
-	ctoken, tOk := pluginEnvConfig["ctoken"]
-	if !tOk || ctoken.(string) == "" {
+	ctoken, cTOk := pluginEnvConfig["ctoken"]
+	if !cTOk || ctoken.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing ctoken.")
-		return errors.New("missing token")
+		return errors.New("missing ctoken")
 	}
 
-	caddress, aOk := pluginEnvConfig["caddress"]
-	if !aOk || caddress.(string) == "" {
+	caddress, caOk := pluginEnvConfig["caddress"]
+	if !caOk || caddress.(string) == "" {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing caddress.")
 		return errors.New("missing address")
 	}
@@ -388,16 +390,9 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 			return nil, mTokenErr
 		}
 		tokenEnvMap["token"] = vData["token"]
-		if cAddr, tokenOK := data.GetOk("caddr"); tokenOK {
-			tokenEnvMap["caddr"] = cAddr
-		} else {
-			return nil, errors.New("caddr required.")
-		}
-		if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
-			tokenEnvMap["ctoken"] = cToken
-		} else {
-			return nil, errors.New("ctoken required.")
-		}
+		tokenEnvMap["caddress"] = vData["caddress"]
+		tokenEnvMap["ctoken"] = vData["ctoken"]
+
 		logger.Println("Read Pushing env: " + tokenEnvMap["env"].(string))
 		PushEnv(tokenEnvMap)
 		//ctx.Done()
@@ -426,10 +421,10 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, errors.New("Token required.")
 	}
 
-	if cAddr, tokenOK := data.GetOk("caddr"); tokenOK {
-		tokenEnvMap["caddr"] = cAddr
+	if cAddr, tokenOK := data.GetOk("caddress"); tokenOK {
+		tokenEnvMap["caddress"] = cAddr
 	} else {
-		return nil, errors.New("caddr required.")
+		return nil, errors.New("caddress required.")
 	}
 	if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
 		tokenEnvMap["ctoken"] = cToken
@@ -474,7 +469,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 
 	logger.Println("Create Pushing env: " + tokenEnvMap["env"].(string))
-	tokenEnvChan <- tokenEnvMap
+	PushEnv(tokenEnvMap)
 	//ctx.Done()
 	logger.Println("TrcCreateUpdate complete.")
 
@@ -488,7 +483,6 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcUpdate")
 	tokenEnvMap := map[string]interface{}{}
-
 	var plugin interface{}
 	pluginOk := false
 	if plugin, pluginOk = data.GetOk("plugin"); pluginOk {
@@ -504,33 +498,19 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		if _, tokenOk := data.GetOk("token"); tokenOk {
 			logger.Println("TrcUpdate stage 1")
 
-			if GetVaultPort() == "" {
-				logger.Println("TrcUpdate stage 1.1")
-				if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-					logger.Println("TrcUpdate stage 1.1.1")
-					vaultUrl, err := url.Parse(vaddr.(string))
+			if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
+				if _, err := url.Parse(vaddr.(string)); err == nil {
 					tokenEnvMap["vaddress"] = vaddr.(string)
-					if err == nil {
-						logger.Println("TrcUpdate stage 1.1.1.1")
-						vaultPort = vaultUrl.Port()
-					} else {
-						logger.Println("Bad address: " + vaddr.(string))
-					}
-				} else {
-					return nil, errors.New("Vault Update Url required.")
+					vaultHost = vaddr.(string)
 				}
-			}
-
-			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
-				// Missing port.
-				vaultHost = vaultHost + ":" + GetVaultPort()
+			} else {
+				return nil, errors.New("Certification Vault Url required.")
 			}
 
 			if caddr, addressOk := data.GetOk("caddress"); addressOk {
-				vaultUrl, err := url.Parse(caddr.(string))
-				if err == nil {
-					cVaultPort := vaultUrl.Port()
-					tokenEnvMap["caddress"] = vaultUrl.Host + cVaultPort
+
+				if _, err := url.Parse(caddr.(string)); err == nil {
+					tokenEnvMap["caddress"] = caddr
 				}
 			} else {
 				return nil, errors.New("Certification Vault Url required.")
@@ -542,29 +522,54 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				return nil, errors.New("Certification Vault token required.")
 			}
 
-			if !strings.HasSuffix(vaultHost, GetVaultPort()) {
-				// Missing port.
-				vaultHost = vaultHost + ":" + GetVaultPort()
+			pluginConfig := map[string]interface{}{}
+			pluginConfig = buildopts.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
+			if pluginConfig == nil {
+				logger.Println("Error: " + errors.New("Could not find plugin config").Error())
+				return logical.ErrorResponse("Failed to find config for TrcUpdate."), nil
 			}
 
-			// Plugins
-			cMod, err := helperkv.NewModifier(true, tokenEnvMap["ctoken"].(string), tokenEnvMap["caddress"].(string), req.Path, nil, true, logger)
+			hostName, hostNameErr := os.Hostname()
+			if hostNameErr != nil {
+				logger.Println("Error: " + hostNameErr.Error() + " - 1")
+				return logical.ErrorResponse("Failed to find hostname"), nil
+			} else if hostName == "" {
+				logger.Println("Error: " + errors.New("Found empty hostname").Error())
+				return logical.ErrorResponse("Found empty hostname"), nil
+			}
+			hostRegion := coreopts.GetRegion(hostName)
+
+			pluginConfig["env"] = req.Path
+			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)
+			pluginConfig["token"] = tokenEnvMap["ctoken"].(string)
+			pluginConfig["regions"] = []string{hostRegion}
+			cConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+			if err != nil {
+				logger.Println("Error: " + err.Error() + " - 1")
+				logger.Println("Failed to init mod for deploy update")
+				return logical.ErrorResponse("Failed to create config for TrcUpdate."), nil
+			}
 			if cMod != nil {
 				defer cMod.Release()
 			}
-			if err != nil {
-				logger.Println("Failed to init mod for deploy update")
-				//ctx.Done()
-				logger.Println("Error: " + err.Error())
-				return logical.ErrorResponse("Failed to init mod for deploy update"), nil
-			}
 			cMod.Env = req.Path
 			logger.Println("TrcUpdate getting plugin settings for env: " + req.Path)
-			writeMap, err := cMod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + tokenEnvMap["trcplugin"].(string) + "/Certify")
+
+			cMod.SectionName = "trcplugin"
+			cMod.SectionKey = "/Index/"
+			cMod.SubSectionValue = plugin.(string)
+
+			properties, err := trcvutils.NewProperties(cConfig, cVault, cMod, cMod.Env, "TrcVault", "Certify")
 			if err != nil {
+				logger.Println("Error: " + err.Error())
+				return logical.ErrorResponse("Failed to read previous plugin status from vault - 1"), nil
+			}
+
+			writeMap, _ := properties.GetPluginData(hostRegion, "Certify", "config", logger)
+			if writeMap == nil {
 				logger.Println("Failed to read previous plugin status from vault")
 				logger.Println("Error: " + err.Error())
-				return logical.ErrorResponse("Failed to read previous plugin status from vault"), nil
+				return logical.ErrorResponse("Failed to read previous plugin status from vault - 2"), nil
 			}
 			logger.Println("TrcUpdate Checking sha")
 
@@ -574,90 +579,87 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			}
 			cMod.Close()
 		}
-	}
+		// TODO: Verify token and env...
+		// Path includes Env and token will only work if it has right permissions.
+		tokenEnvMap["env"] = req.Path
 
-	// TODO: Verify token and env...
-	// Path includes Env and token will only work if it has right permissions.
-	tokenEnvMap["env"] = req.Path
-
-	if token, tokenOk := data.GetOk("token"); tokenOk {
-		tokenEnvMap["token"] = token
-	} else {
-		//ctx.Done()
-		return nil, errors.New("Token required.")
-	}
-
-	if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
-		vaultUrl, err := url.Parse(vaddr.(string))
-		tokenEnvMap["vaddress"] = vaddr.(string)
-		if err == nil {
-			vaultPort = vaultUrl.Port()
+		if token, tokenOk := data.GetOk("token"); tokenOk {
+			tokenEnvMap["token"] = token
+		} else {
+			//ctx.Done()
+			return nil, errors.New("Token required.")
 		}
-	} else {
-		return nil, errors.New("Vault Create Url required.")
-	}
 
-	tokenEnvMap["vaddress"] = vaultHost
-
-	key := req.Path
-	if key == "" {
-		//ctx.Done()
-		return logical.ErrorResponse("missing path"), nil
-	}
-
-	// Check that some fields are given
-	if len(req.Data) == 0 {
-		//ctx.Done()
-		return logical.ErrorResponse("missing data fields"), nil
-	}
-
-	// JSON encode the data
-	buf, err := json.Marshal(req.Data)
-	if err != nil {
-		//ctx.Done()
-		return nil, fmt.Errorf("json encoding failed: %v", err)
-	}
-
-	// Write out a new key
-	entry := &logical.StorageEntry{
-		Key:   key,
-		Value: buf,
-	}
-	if err := req.Storage.Put(ctx, entry); err != nil {
-		//ctx.Done()
-		return nil, fmt.Errorf("failed to write: %v", err)
-	}
-
-	// This will kick off the main flow for the plugin..
-	logger.Println("Update Pushing env: " + tokenEnvMap["env"].(string))
-	tokenEnvChan <- tokenEnvMap
-
-	if pluginOk {
-		// Listen on sha256 channel....
-		var sha256 string
-		sha256, shaOk := pluginShaMap[tokenEnvMap["trcplugin"].(string)]
-
-		select {
-		case <-pluginSettingsChan[tokenEnvMap["trcplugin"].(string)]:
-			sha256 = pluginShaMap[tokenEnvMap["trcplugin"].(string)]
-		case <-time.After(time.Second * 7):
-			if !shaOk {
-				sha256 = "Failure to copy plugin."
+		if vaddr, addressOk := data.GetOk("vaddress"); addressOk {
+			vaultUrl, err := url.Parse(vaddr.(string))
+			tokenEnvMap["vaddress"] = vaddr.(string)
+			if err == nil {
+				vaultPort = vaultUrl.Port()
 			}
+		} else {
+			return nil, errors.New("Vault Create Url required.")
+		}
+
+		tokenEnvMap["vaddress"] = vaultHost
+
+		key := req.Path
+		if key == "" {
+			//ctx.Done()
+			return logical.ErrorResponse("missing path"), nil
+		}
+
+		// Check that some fields are given
+		if len(req.Data) == 0 {
+			//ctx.Done()
+			return logical.ErrorResponse("missing data fields"), nil
+		}
+
+		// JSON encode the data
+		buf, err := json.Marshal(req.Data)
+		if err != nil {
+			//ctx.Done()
+			return nil, fmt.Errorf("json encoding failed: %v", err)
+		}
+
+		// Write out a new key
+		entry := &logical.StorageEntry{
+			Key:   key,
+			Value: buf,
+		}
+		if err := req.Storage.Put(ctx, entry); err != nil {
+			//ctx.Done()
+			return nil, fmt.Errorf("failed to write: %v", err)
+		}
+
+		// This will kick off the main flow for the plugin..
+		logger.Println("Update Pushing env: " + tokenEnvMap["env"].(string))
+		PushEnv(tokenEnvMap)
+
+		if pluginOk {
+			// Listen on sha256 channel....
+			var sha256 string
+			sha256, shaOk := pluginShaMap[tokenEnvMap["trcplugin"].(string)]
+
+			select {
+			case <-pluginSettingsChan[tokenEnvMap["trcplugin"].(string)]:
+				sha256 = pluginShaMap[tokenEnvMap["trcplugin"].(string)]
+			case <-time.After(time.Second * 7):
+				if !shaOk {
+					sha256 = "Failure to copy plugin."
+				}
+			}
+			//ctx.Done()
+
+			return &logical.Response{
+				Data: map[string]interface{}{
+					"message": sha256,
+				},
+			}, nil
 		}
 		//ctx.Done()
-
-		return &logical.Response{
-			Data: map[string]interface{}{
-				"message": sha256,
-			},
-		}, nil
 	}
-
-	//ctx.Done()
 
 	logger.Println("TrcUpdate complete.")
-
 	return &logical.Response{
 		Data: map[string]interface{}{
 			"message": "Token updated.",

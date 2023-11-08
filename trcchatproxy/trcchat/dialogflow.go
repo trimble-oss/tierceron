@@ -1,4 +1,4 @@
-package main
+package trcchat
 
 import (
 	"log"
@@ -23,6 +23,9 @@ func ProcessDFQuery(msg *mashupsdk.MashupDetailedElement) {
 	} else if strings.Contains(strings.ToLower(msg.Data), "active") {
 		msg.Data = "Active"
 		msg.Alias = "2"
+	} else if strings.Contains(strings.ToLower(msg.Data), "ninja") || strings.Contains(strings.ToLower(msg.Data), "tests") {
+		msg.Data = "DataFlowState"
+		msg.Alias = "3"
 	}
 
 	// Change message type
@@ -49,6 +52,9 @@ func ProcessDFResponse(msg *mashupsdk.MashupDetailedElement) {
 	case response_type == "Active":
 		// Report activitiy status
 		gchatApp.DetailedElements[msg.Id].Data = "Activity report message response"
+	case response_type == "DataFlowState":
+		// Report activitiy status
+		gchatApp.DetailedElements[msg.Id].Data = "Ninja Test status"
 	default:
 		// Unable to process response... please try asking your question again error
 		gchatApp.DetailedElements[msg.Id].Data = "Unable to process question"
