@@ -249,7 +249,7 @@ func featherCtlCb(agentName string) error {
 			if err == nil {
 				if strings.HasPrefix(ctlFlapMode, cap.MODE_FLAP) {
 					ctl := strings.Split(ctlFlapMode, "_")
-					if len(ctl) > 1 {
+					if len(ctl) > 1 && ctl[1] != "trcctlcomplete" {
 						fmt.Printf("%s\n", ctl[1])
 					}
 					callFlap = cap.MODE_GAZE
@@ -532,7 +532,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 			logger.Println(err)
 			os.Exit(-1)
 		}
-		fmt.Printf("Auth loaded %s\n", env)
+		config.Log.Printf("Auth loaded %s\n", env)
 	}
 
 	// Chewbacca: Begin dbg comment
@@ -570,7 +570,12 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 		os.Exit(-1)
 	}
 	// End dbg comment
-	fmt.Println("Session Authorized")
+	if config.IsShell {
+		config.Log.Println("Session Authorized")
+	} else {
+		fmt.Println("Session Authorized")
+	}
+
 	if len(os.Args) > 1 || len(trcPath) > 0 {
 		// Generate .trc code...
 		trcPathParts := strings.Split(trcPath, "/")
@@ -604,8 +609,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 			config.OutputMemCache = false
 		}
 		os.Args = []string{os.Args[0]}
-		fmt.Println("Processing trcshell")
-
+		config.Log.Println("Processing trcshell")
 	} else {
 		fmt.Println("Processing manual trcshell")
 		if env == "itdev" {
