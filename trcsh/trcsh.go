@@ -128,9 +128,8 @@ func main() {
 
 		go func() {
 			// Timeout and CtlMessage subscriber
-			for {
-				select {
-				case <-time.After(120 * time.Second):
+			go func() {
+				for range time.After(120 * time.Second) {
 					ctlMsg := "Deployment timed out after 120 seconds"
 					cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 						*gAgentConfig.EncryptSalt,
@@ -138,67 +137,69 @@ func main() {
 						*gAgentConfig.HandshakeCode,
 						cap.MODE_PERCH+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env)
 					gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
-				case mctl := <-gAgentConfig.CtlMessage:
-					modeCtlTrail := []string{mctl}
-					for {
-					perching:
-						if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-							*gAgentConfig.EncryptSalt,
-							*gAgentConfig.HandshakeHostPort,
-							*gAgentConfig.HandshakeCode,
-							cap.MODE_FLAP, deployments+"."+*gAgentConfig.Env); featherErr == nil && strings.HasPrefix(featherMode, cap.MODE_GAZE) {
-							for _, modeCtl := range modeCtlTrail {
-								flapMode := cap.MODE_FLAP + "_" + modeCtl
-								ctlFlapMode := flapMode
-								var err error = errors.New("init")
+					break
+				}
+			}()
 
-								for {
-									if err == nil && ctlFlapMode == cap.MODE_PERCH {
-										// Acknowledge perching...
-										cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-											*gAgentConfig.EncryptSalt,
-											*gAgentConfig.HandshakeHostPort,
-											*gAgentConfig.HandshakeCode,
-											cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env)
-										ctlFlapMode = cap.MODE_PERCH
-										goto perching
-									}
+			for {
+			perching:
+				if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+					*gAgentConfig.EncryptSalt,
+					*gAgentConfig.HandshakeHostPort,
+					*gAgentConfig.HandshakeCode,
+					cap.MODE_FLAP, deployments+"."+*gAgentConfig.Env); featherErr == nil && strings.HasPrefix(featherMode, cap.MODE_GAZE) {
+					for modeCtl := range gAgentConfig.CtlMessage {
+						flapMode := cap.MODE_FLAP + "_" + modeCtl
+						ctlFlapMode := flapMode
+						var err error = errors.New("init")
 
-									if err == nil && flapMode != ctlFlapMode {
-										// Flap, Gaze, etc...
-										interruptFun(twoHundredMilliInterruptTicker)
-										break
-									} else {
-										callFlap := flapMode
-										if err == nil {
-											interruptFun(twoHundredMilliInterruptTicker)
-										} else {
-											if err.Error() != "init" {
-												interruptFun(multiSecondInterruptTicker)
-											}
-										}
-										ctlFlapMode, err = cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-											*gAgentConfig.EncryptSalt,
-											*gAgentConfig.HandshakeHostPort,
-											*gAgentConfig.HandshakeCode,
-											callFlap, deployments+"."+*gAgentConfig.Env)
-									}
-								}
-							}
-							if mctl == capauth.TrcCtlComplete {
-								// Only exit with TrcCtlComplete.
+						for {
+							if err == nil && ctlFlapMode == cap.MODE_PERCH {
+								// Acknowledge perching...
 								cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 									*gAgentConfig.EncryptSalt,
 									*gAgentConfig.HandshakeHostPort,
 									*gAgentConfig.HandshakeCode,
-									cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env)
+									cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env)
+								ctlFlapMode = cap.MODE_PERCH
+								goto perching
 							}
-						} else {
-							time.Sleep(1 * time.Second)
+
+							if err == nil && flapMode != ctlFlapMode {
+								// Flap, Gaze, etc...
+								interruptFun(twoHundredMilliInterruptTicker)
+								break
+							} else {
+								callFlap := flapMode
+								if err == nil {
+									interruptFun(twoHundredMilliInterruptTicker)
+								} else {
+									if err.Error() != "init" {
+										interruptFun(multiSecondInterruptTicker)
+									}
+								}
+								ctlFlapMode, err = cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+									*gAgentConfig.EncryptSalt,
+									*gAgentConfig.HandshakeHostPort,
+									*gAgentConfig.HandshakeCode,
+									callFlap, deployments+"."+*gAgentConfig.Env)
+							}
+						}
+						if modeCtl == capauth.TrcCtlComplete {
+							// Only exit with TrcCtlComplete.
+							cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+								*gAgentConfig.EncryptSalt,
+								*gAgentConfig.HandshakeHostPort,
+								*gAgentConfig.HandshakeCode,
+								cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env)
+							goto deploycomplete
 						}
 					}
+				} else {
+					time.Sleep(1 * time.Second)
 				}
 			}
+		deploycomplete:
 		}()
 		// Process the script....
 		// This will feed CtlMessages into the Timeout and CtlMessage subscriber
