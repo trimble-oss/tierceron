@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -24,21 +25,24 @@ const (
 
 var MashupCertPool *x509.CertPool
 
+func ReadServerCert() ([]byte, error) {
+	if _, err := os.Stat(ServCert); err == nil {
+		return os.ReadFile(ServCert)
+	} else {
+		if runtime.GOOS == "windows" {
+			return os.ReadFile(ServCertLocal)
+		} else {
+			return nil, errors.New("file not found")
+		}
+	}
+}
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
-	mashupCertBytes, err := os.ReadFile(ServCert)
+	mashupCertBytes, err := ReadServerCert()
 	if err != nil {
-		if runtime.GOOS == "windows" {
-			// But only on windows.
-			mashupCertBytes, err = os.ReadFile(ServCertLocal)
-			if err != nil {
-				fmt.Println("Cert read failure.")
-				return
-			}
-		} else {
-			fmt.Println("Cert read failure.")
-			return
-		}
+		fmt.Println("Cert read failure.")
+		return
 	}
 
 	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
@@ -73,7 +77,7 @@ func LocalIp(env string) (string, error) {
 
 func GetTransportCredentials() (credentials.TransportCredentials, error) {
 
-	mashupKeyBytes, err := os.ReadFile(ServCert)
+	mashupKeyBytes, err := ReadServerCert()
 	if err != nil {
 		return nil, err
 	}
