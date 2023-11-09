@@ -138,8 +138,8 @@ func main() {
 						*gAgentConfig.HandshakeCode,
 						cap.MODE_PERCH+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env)
 					gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
-				case modeCtl := <-gAgentConfig.CtlMessage:
-					modeCtlTrail := []string{modeCtl}
+				case mctl := <-gAgentConfig.CtlMessage:
+					modeCtlTrail := []string{mctl}
 					for {
 					perching:
 						if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
@@ -185,11 +185,14 @@ func main() {
 									}
 								}
 							}
-							cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-								*gAgentConfig.EncryptSalt,
-								*gAgentConfig.HandshakeHostPort,
-								*gAgentConfig.HandshakeCode,
-								cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env)
+							if mctl == capauth.TrcCtlComplete {
+								// Only exit with TrcCtlComplete.
+								cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+									*gAgentConfig.EncryptSalt,
+									*gAgentConfig.HandshakeHostPort,
+									*gAgentConfig.HandshakeCode,
+									cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env)
+							}
 						} else {
 							time.Sleep(1 * time.Second)
 						}
