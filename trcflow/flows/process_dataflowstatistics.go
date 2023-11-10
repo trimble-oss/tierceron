@@ -310,8 +310,8 @@ func KickOffTimedRefresh(tfContext *flowcore.TrcFlowContext, stateUpdateChannel 
 		stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "refreshingDaily", FlowAlias: tfContext.FlowState.FlowAlias}
 		loc, _ := time.LoadLocation("America/Los_Angeles")
 		now := time.Now().In(loc)
-		//midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, loc)
-		midnight := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+3, 0, loc)
+		midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, loc)
+		//midnight := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+3, 0, loc)
 		timeTilMidnight := midnight.Sub(now)
 		go func(tfc *flowcore.TrcFlowContext, tilMidnight time.Duration) {
 			refresh = true
