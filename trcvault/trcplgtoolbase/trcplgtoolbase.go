@@ -3,6 +3,7 @@ package trcplgtoolbase
 import (
 	"bufio"
 	"crypto/sha256"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -22,7 +23,7 @@ func CommonMain(envPtr *string,
 	addrPtr *string,
 	tokenPtr *string,
 	regionPtr *string,
-	c *eUtils.DriverConfig) {
+	c *eUtils.DriverConfig) error {
 
 	// Main functions are as follows:
 	defineServicePtr := flag.Bool("defineService", false, "Service is defined.")
@@ -60,7 +61,7 @@ func CommonMain(envPtr *string,
 			s := args[i]
 			if s[0] != '-' {
 				fmt.Println("Wrong flag syntax: ", s)
-				os.Exit(1)
+				return fmt.Errorf("wrong flag syntax: %s", s)
 			}
 		}
 		flag.Parse()
@@ -68,7 +69,7 @@ func CommonMain(envPtr *string,
 		// Prints usage if no flags are specified
 		if flag.NFlag() == 0 {
 			flag.Usage()
-			os.Exit(1)
+			return errors.New("invalid input parameters")
 		}
 	} else {
 		flag.CommandLine.Parse(os.Args)
@@ -77,22 +78,22 @@ func CommonMain(envPtr *string,
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
 		fmt.Println("Must use -pluginName && -sha256 flags to use -certify flag")
-		os.Exit(1)
+		return errors.New("must use -pluginName && -sha256 flags to use -certify flag")
 	}
 
 	if *checkDeployedPtr && (len(*pluginNamePtr) == 0) {
 		fmt.Println("Must use -pluginName flag to use -checkDeployed flag")
-		os.Exit(1)
+		return errors.New("must use -pluginName flag to use -checkDeployed flag")
 	}
 
 	if *defineServicePtr && (len(*pluginNamePtr) == 0) {
 		fmt.Println("Must use -pluginName flag to use -defineService flag")
-		os.Exit(1)
+		return errors.New("must use -pluginName flag to use -defineService flag")
 	}
 
 	if strings.Contains(*pluginNamePtr, ".") {
 		fmt.Println("-pluginName cannot contain reserved character '.'")
-		os.Exit(1)
+		return errors.New("-pluginName cannot contain reserved character '.'")
 	}
 
 	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr {
@@ -105,20 +106,20 @@ func CommonMain(envPtr *string,
 			// TODO: do we want to support Deployment certifications in the pipeline at some point?
 			// If so this is a config check to remove.
 			fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
-			os.Exit(-1)
+			return fmt.Errorf("plugin type %s not supported in trcsh", *pluginTypePtr)
 		}
 	case "agent": // A deployment agent tool.
 		if c != nil {
 			// TODO: do we want to support Deployment certifications in the pipeline at some point?
 			// If so this is a config check to remove.
 			fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
-			os.Exit(-1)
+			return fmt.Errorf("plugin type %s not supported in trcsh", *pluginTypePtr)
 		}
 	case "trcshservice": // A trcshservice managed microservice
 	default:
 		if !*agentdeployPtr {
 			fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
-			os.Exit(1)
+			return fmt.Errorf("unsupported plugin type: %s", *pluginTypePtr)
 		} else {
 			fmt.Printf("\nBeginning agent deployment for %s..\n", *pluginNamePtr)
 		}
@@ -138,7 +139,7 @@ func CommonMain(envPtr *string,
 	} else {
 		if *agentdeployPtr {
 			fmt.Println("Unsupported agentdeploy outside trcsh")
-			os.Exit(1)
+			return errors.New("unsupported agentdeploy outside trcsh")
 		}
 
 		// If logging production directory does not exist and is selected log to local directory
@@ -149,7 +150,9 @@ func CommonMain(envPtr *string,
 		logger = log.New(f, "[INIT]", log.LstdFlags)
 
 		configBase = &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
-		eUtils.CheckError(configBase, err, true)
+		if err != nil {
+			return err
+		}
 	}
 
 	regions := []string{}
@@ -158,7 +161,7 @@ func CommonMain(envPtr *string,
 	pluginConfig = buildopts.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
 	if pluginConfig == nil {
 		fmt.Println("Error: Could not find plugin config")
-		os.Exit(1)
+		return errors.New("could not find plugin config")
 	}
 	pluginConfig["env"] = *envPtr
 	pluginConfig["vaddress"] = *addrPtr
@@ -174,7 +177,7 @@ func CommonMain(envPtr *string,
 	if err != nil {
 		logger.Println("Error: " + err.Error() + " - 1")
 		logger.Println("Failed to init mod for deploy update")
-		os.Exit(1)
+		return err
 	}
 	config.StartDir = []string{*startDirPtr}
 	config.SubSectionValue = *pluginNamePtr
@@ -192,7 +195,7 @@ func CommonMain(envPtr *string,
 			}
 			if len(regions) == 0 {
 				fmt.Println("Unsupported region: " + *regionPtr)
-				os.Exit(1)
+				return fmt.Errorf("unsupported region: %s", *regionPtr)
 			}
 		}
 		configBase.Regions = regions
@@ -202,7 +205,7 @@ func CommonMain(envPtr *string,
 	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(configBase, mod, coreopts.ProcessDeployPluginEnvConfig(map[string]interface{}{}), *defineServicePtr)
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
-		os.Exit(1)
+		return plcErr
 	}
 
 	if len(*sha256Ptr) > 0 {
@@ -211,8 +214,8 @@ func CommonMain(envPtr *string,
 			if fileInfo.Mode().IsRegular() {
 				file, fileOpenErr := os.Open(*sha256Ptr)
 				if fileOpenErr != nil {
-					fmt.Println(fileOpenErr)
-					return
+					fmt.Println(fileOpenErr.Error())
+					return fileOpenErr
 				}
 
 				// Close the file when we're done.
@@ -224,7 +227,7 @@ func CommonMain(envPtr *string,
 				pluginImage, imageErr := io.ReadAll(reader)
 				if imageErr != nil {
 					fmt.Println("Failed to read image:" + imageErr.Error())
-					return
+					return imageErr
 				}
 				sha256Bytes := sha256.Sum256(pluginImage)
 				*sha256Ptr = fmt.Sprintf("%x", sha256Bytes)
@@ -286,7 +289,7 @@ func CommonMain(envPtr *string,
 		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
 		if err != nil {
 			fmt.Println(err)
-			os.Exit(1)
+			return err
 		}
 		fmt.Println("Deployment definition applied to vault and is ready for deployments.")
 	} else if *winservicestopPtr {
@@ -295,7 +298,7 @@ func CommonMain(envPtr *string,
 		err := cmd.Run()
 		if err != nil {
 			fmt.Println(err)
-			return
+			return err
 		}
 		fmt.Printf("Service stopped: %s\n", pluginToolConfig["trcservicename"].(string))
 
@@ -305,15 +308,16 @@ func CommonMain(envPtr *string,
 		err := cmd.Run()
 		if err != nil {
 			fmt.Println(err)
-			return
+			return err
 		}
 		fmt.Printf("Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
 		if pluginToolConfig["trcsha256"] != nil && len(pluginToolConfig["trcsha256"].(string)) > 0 {
 			err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 			if err != nil {
+				fmt.Println("Image download failure.")
 				fmt.Println(err.Error())
-				os.Exit(1)
+				return err
 			}
 		}
 
@@ -327,7 +331,8 @@ func CommonMain(envPtr *string,
 			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
 			if err != nil {
 				fmt.Println(err.Error())
-				os.Exit(1)
+				fmt.Println("Image write failure.")
+				return err
 			}
 			fmt.Println("Image deployed.")
 		} else {
@@ -344,7 +349,7 @@ func CommonMain(envPtr *string,
 				if err != nil {
 					fmt.Println(err.Error())
 				}
-				os.Exit(1)
+				return err
 			}
 		}
 
@@ -366,7 +371,7 @@ func CommonMain(envPtr *string,
 				properties, err := trcvutils.NewProperties(config, vault, mod, mod.Env, "TrcVault", "Certify")
 				if err != nil {
 					fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
-					os.Exit(1)
+					return err
 				}
 
 				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", logger)
@@ -374,36 +379,36 @@ func CommonMain(envPtr *string,
 				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginToolConfig["trcplugin"].(string))
 				if writeErr != nil {
 					fmt.Println(writeErr)
-					os.Exit(1)
+					return err
 				}
 			} else { //Non region certify
 				writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
 				if readErr != nil {
 					fmt.Println(readErr)
-					os.Exit(1)
+					return err
 				}
 
 				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), configBase.Log)
 				if err != nil {
 					fmt.Println(err)
-					os.Exit(1)
+					return err
 				}
 				fmt.Println("Image certified in vault and is ready for release.")
 			}
 		} else {
 			fmt.Println("Invalid or nonexistent image.")
-			os.Exit(1)
+			return err
 		}
 	} else if *agentdeployPtr {
 		if config.FeatherCtlCb != nil {
 			err := config.FeatherCtlCb(*pluginNamePtr)
 			if err != nil {
 				fmt.Println("Incorrect installation")
-				os.Exit(1)
+				return err
 			}
 		} else {
 			fmt.Println("Incorrect trcplgtool utilization")
-			os.Exit(1)
+			return err
 		}
 	}
 
@@ -413,48 +418,49 @@ func CommonMain(envPtr *string,
 			(pluginToolConfig["deployed"] != nil && pluginToolConfig["deployed"].(bool)) &&
 			(pluginToolConfig["trcsha256"] != nil && pluginToolConfig["trcsha256"].(string) == *sha256Ptr) { //Compare vault sha with provided sha
 			fmt.Println("Plugin has been copied, deployed & certified.")
-			os.Exit(0)
+			return nil
 		}
 
 		err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
-			os.Exit(1)
+			return err
 		}
 
 		if *sha256Ptr == pluginToolConfig["imagesha256"].(string) { //Compare repo image sha with provided sha
 			fmt.Println("Latest plugin image sha matches provided plugin sha.  It has been certified.")
 		} else {
 			fmt.Println("Provided plugin sha is not deployable.")
-			os.Exit(1)
+			return errors.New("provided plugin sha is not deployable")
 		}
 
 		fmt.Println("Plugin has not been copied or deployed.")
-		os.Exit(2)
+		return nil
 	}
 
 	if *checkCopiedPtr {
 		if pluginToolConfig["copied"].(bool) && pluginToolConfig["trcsha256"].(string) == *sha256Ptr { //Compare vault sha with provided sha
 			fmt.Println("Plugin has been copied & certified.")
-			os.Exit(0)
+			return nil
 		}
 
 		err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
-			os.Exit(1)
+			return err
 		}
 
 		if *sha256Ptr == pluginToolConfig["imagesha256"].(string) { //Compare repo image sha with provided sha
 			fmt.Println("Latest plugin image sha matches provided plugin sha.  It has been certified.")
 		} else {
 			fmt.Println("Provided plugin sha is not certified.")
-			os.Exit(1)
+			return errors.New("provided plugin sha is not certified")
 		}
 
 		fmt.Println("Plugin has not been copied or deployed.")
-		os.Exit(2)
+		return nil
 	}
+	return nil
 }
 
 func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string) map[string]interface{} {
