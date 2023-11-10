@@ -196,7 +196,11 @@ func AutoAuth(config *DriverConfig,
 				return err
 			}
 		}
-		fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
+		if config.IsShell {
+			config.Log.Printf("Auth connecting to vault @ %s\n", *addrPtr)
+		} else {
+			fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
+		}
 		v, err = sys.NewVault(config.Insecure, *addrPtr, *envPtr, false, ping, false, config.Log)
 		if v != nil {
 			defer v.Close()
