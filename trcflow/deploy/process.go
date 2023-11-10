@@ -330,7 +330,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		factory.PushPluginSha(cConfig, pluginConfig, vaultPluginSignature)
 		eUtils.LogInfo(cConfig, pluginName+": End checkpush sha256")
 
-		writeMap, err := cGoMod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
+		writeMap, err := cGoMod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName))
 
 		if err != nil {
 			eUtils.LogInfo(cConfig, pluginName+": Initializing certification")
@@ -348,7 +348,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
-		_, err = cGoMod.Write("super-secrets/Index/TrcVault/trcplugin/"+writeMap["trcplugin"].(string)+"/Certify", writeMap, cConfig.Log)
+		_, err = cGoMod.Write(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", writeMap["trcplugin"].(string)), writeMap, cConfig.Log)
 		if err != nil {
 			logger.Printf(fmt.Sprintf("PluginDeployFlow failure: Failed to write plugin state for env: %s and plugin: %s error: %s\n", cConfig.Env, pluginName, err.Error()))
 		}
