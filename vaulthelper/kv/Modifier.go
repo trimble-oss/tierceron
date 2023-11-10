@@ -105,7 +105,8 @@ func NewModifier(insecure bool, token string, address string, env string, region
 			case checkoutModifier := <-modifierCache[env].modifierChan:
 				return checkoutModifier, nil
 			case <-time.After(time.Millisecond * 200):
-				if atomic.LoadUint64(&modifierCache[env].modCount) < 20 {
+ 			// Someone leaking in trcconfig... this is getting high...
+				if atomic.LoadUint64(&modifierCache[env].modCount) < 30 {
 					goto modbuild
 				}
 			}
