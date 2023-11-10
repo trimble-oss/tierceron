@@ -135,7 +135,7 @@ func main() {
 						*gAgentConfig.EncryptSalt,
 						*gAgentConfig.HandshakeHostPort,
 						*gAgentConfig.HandshakeCode,
-						cap.MODE_PERCH+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env)
+						cap.MODE_PERCH+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env, true)
 					gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 					break
 				}
@@ -147,7 +147,7 @@ func main() {
 					*gAgentConfig.EncryptSalt,
 					*gAgentConfig.HandshakeHostPort,
 					*gAgentConfig.HandshakeCode,
-					cap.MODE_FLAP, deployments+"."+*gAgentConfig.Env); featherErr == nil && strings.HasPrefix(featherMode, cap.MODE_GAZE) {
+					cap.MODE_FLAP, deployments+"."+*gAgentConfig.Env, false); featherErr == nil && strings.HasPrefix(featherMode, cap.MODE_GAZE) {
 					for modeCtl := range gAgentConfig.CtlMessage {
 						flapMode := cap.MODE_FLAP + "_" + modeCtl
 						ctlFlapMode := flapMode
@@ -160,7 +160,7 @@ func main() {
 									*gAgentConfig.EncryptSalt,
 									*gAgentConfig.HandshakeHostPort,
 									*gAgentConfig.HandshakeCode,
-									cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env)
+									cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env, true)
 								ctlFlapMode = cap.MODE_PERCH
 								goto perching
 							}
@@ -182,7 +182,7 @@ func main() {
 									*gAgentConfig.EncryptSalt,
 									*gAgentConfig.HandshakeHostPort,
 									*gAgentConfig.HandshakeCode,
-									callFlap, deployments+"."+*gAgentConfig.Env)
+									callFlap, deployments+"."+*gAgentConfig.Env, true)
 							}
 						}
 						if modeCtl == capauth.TrcCtlComplete {
@@ -191,12 +191,12 @@ func main() {
 								*gAgentConfig.EncryptSalt,
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
-								cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env)
+								cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env, true)
 							goto deploycomplete
 						}
 					}
 				} else {
-					time.Sleep(1 * time.Second)
+					interruptFun(multiSecondInterruptTicker)
 				}
 			}
 		deploycomplete:
@@ -219,7 +219,7 @@ func interruptFun(tickerInterrupt *time.Ticker) {
 			*gAgentConfig.EncryptSalt,
 			*gAgentConfig.HandshakeHostPort,
 			*gAgentConfig.HandshakeCode,
-			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env)
+			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true)
 		os.Exit(1)
 	case <-tickerInterrupt.C:
 	}
@@ -267,7 +267,7 @@ func featherCtlCb(agentName string) error {
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
 				*gAgentConfig.HandshakeCode,
-				callFlap, agentName+"."+*gAgentConfig.Env)
+				callFlap, agentName+"."+*gAgentConfig.Env, true)
 		}
 	}
 
