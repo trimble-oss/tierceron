@@ -63,7 +63,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 
 				// Process the script....
 				// This will feed CtlMessages into the Timeout and CtlMessage subscriber
-				ProcessDeploy(*gAgentConfig.Env, region, "", "", trcPath, secretId, approleId, false)
+				go ProcessDeploy(*gAgentConfig.Env, region, "", "", trcPath, secretId, approleId, false)
 
 				for modeCtl := range gAgentConfig.CtlMessage {
 					flapMode := cap.MODE_FLAP + "_" + modeCtl
