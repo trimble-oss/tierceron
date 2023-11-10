@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -165,7 +166,7 @@ func (p *Properties) WritePluginData(pluginData map[string]interface{}, replaced
 		}
 	}
 
-	writeMap, readErr := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify") //This read is need to avoid overwritting un-used region data.
+	writeMap, readErr := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName)) //This read is need to avoid overwritting un-used region data.
 	if readErr != nil {
 		return readErr
 	}
@@ -174,7 +175,7 @@ func (p *Properties) WritePluginData(pluginData map[string]interface{}, replaced
 		writeMap[field] = value
 	}
 
-	_, writeErr := mod.Write("super-secrets/Index/TrcVault/trcplugin/"+pluginName+"/Certify", writeMap, log)
+	_, writeErr := mod.Write(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName), writeMap, log)
 	if writeErr != nil {
 		return writeErr
 	}

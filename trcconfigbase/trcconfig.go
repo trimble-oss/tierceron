@@ -1,6 +1,7 @@
 package trcconfigbase
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -62,16 +63,15 @@ skipSwitch:
 }
 
 func reciever() {
-	for {
-		select {
-		case data := <-resultChannel:
-			if data != nil && data.inData != nil && data.inPath != "" {
-				mutex.Lock()
-				resultMap[data.inPath] = data.inData
-				mutex.Unlock()
-			}
+
+	for data := range resultChannel {
+		if data != nil && data.inData != nil && data.inPath != "" {
+			mutex.Lock()
+			resultMap[data.inPath] = data.inData
+			mutex.Unlock()
 		}
 	}
+
 }
 
 func CommonMain(envPtr *string,
@@ -82,7 +82,7 @@ func CommonMain(envPtr *string,
 	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	regionPtr *string,
-	c *eUtils.DriverConfig) {
+	c *eUtils.DriverConfig) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
@@ -102,14 +102,19 @@ func CommonMain(envPtr *string,
 	versionInfoPtr := flag.Bool("versions", false, "Version information about values")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
+	isShellSubprocess := false
 
-	if c == nil || !c.IsShellSubProcess {
+	if c != nil {
+		isShellSubprocess = c.IsShellSubProcess
+	}
+
+	if c == nil || !isShellSubprocess {
 		args := os.Args[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
 			if s[0] != '-' {
 				fmt.Println("Wrong flag syntax: ", s)
-				os.Exit(1)
+				return fmt.Errorf("wrong flag syntax: %s", s)
 			}
 		}
 		flag.Parse()
@@ -135,10 +140,11 @@ func CommonMain(envPtr *string,
 			*wantCertsPtr = true
 		}
 	}
-
-	if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-		fmt.Println("Missing required template folder: " + *startDirPtr)
-		os.Exit(1)
+	if !isShellSubprocess {
+		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
+			fmt.Println("Missing required template folder: " + *startDirPtr)
+			return fmt.Errorf("missing required template folder: %s", *startDirPtr)
+		}
 	}
 
 	if *zcPtr {
@@ -147,7 +153,7 @@ func CommonMain(envPtr *string,
 
 	if strings.Contains(*envPtr, "*") {
 		fmt.Println("* is not available as an environment suffix.")
-		os.Exit(1)
+		return errors.New("* is not available as an environment suffix")
 	}
 
 	var appRoleConfigPtr *string
@@ -170,13 +176,13 @@ func CommonMain(envPtr *string,
 	//Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
 		fmt.Println("Cannot use -diff flag and -templateInfo flag together")
-		os.Exit(1)
+		return errors.New("cannot use -diff flag and -templateInfo flag together")
 	} else if *versionInfoPtr && *diffPtr {
 		fmt.Println("Cannot use -diff flag and -versionInfo flag together")
-		os.Exit(1)
+		return errors.New("cannot use -diff flag and -versionInfo flag together")
 	} else if *versionInfoPtr && *templateInfoPtr {
 		fmt.Println("Cannot use -templateInfo flag and -versionInfo flag together")
-		os.Exit(1)
+		return errors.New("cannot use -templateInfo flag and -versionInfo flag together")
 	} else if *diffPtr {
 		if strings.ContainsAny(*envPtr, ",") { //Multiple environments
 			*envPtr = strings.ReplaceAll(*envPtr, "latest", "0")
@@ -184,12 +190,12 @@ func CommonMain(envPtr *string,
 			envLength = len(envDiffSlice)
 			if len(envDiffSlice) > 4 {
 				fmt.Println("Unsupported number of environments - Maximum: 4")
-				os.Exit(1)
+				return errors.New("unsupported number of environments - Maximum: 4")
 			}
 			for i, env := range envDiffSlice {
 				if env == "local" {
 					fmt.Println("Unsupported env: local not available with diff flag")
-					os.Exit(1)
+					return errors.New("unsupported env: local not available with diff flag")
 				}
 				if !strings.Contains(env, "_") && env != "filesys" {
 					envDiffSlice[i] = env + "_0"
@@ -203,16 +209,16 @@ func CommonMain(envPtr *string,
 			}
 		} else {
 			fmt.Println("Incorrect format for diff: -env=env1,env2,...")
-			os.Exit(1)
+			return errors.New("incorrect format for diff: -env=env1,env2")
 		}
 	} else {
 		if strings.ContainsAny(*envPtr, ",") {
 			fmt.Println("-diff flag is required for multiple environments - env: -env=env1,env2,...")
-			os.Exit(1)
+			return errors.New("-diff flag is required for multiple environments - env: -env=env1,env2")
 		}
 		if strings.Contains(*envPtr, "filesys") {
 			fmt.Println("Unsupported env: filesys only available with diff flag")
-			os.Exit(1)
+			return errors.New("unsupported env: filesys only available with diff flag")
 		}
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
@@ -221,10 +227,10 @@ func CommonMain(envPtr *string,
 			autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
-				os.Exit(1)
+				return errors.New("missing auth components")
 			}
 			if *pingPtr {
-				os.Exit(0)
+				return nil
 			}
 		} else {
 			*tokenPtr = "novault"
@@ -234,7 +240,7 @@ func CommonMain(envPtr *string,
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
 				fmt.Println("Must declare desired version number after '_' : -env=env1_ver1")
-				os.Exit(1)
+				return errors.New("must declare desired version number after '_' : -env=env1_ver1")
 			}
 		} else {
 			*envPtr = envVersion[0] + "_0"
@@ -259,16 +265,18 @@ func CommonMain(envPtr *string,
 		removeDuplicateValuesSlice := eUtils.RemoveDuplicateValues(envDiffSlice)
 		if !cmp.Equal(envDiffSlice, removeDuplicateValuesSlice) {
 			fmt.Println("There is a duplicate environment in the -env flag")
-			os.Exit(1)
+			return errors.New("there is a duplicate environment in the -env flag")
 		}
 	}
 
-	if !*diffPtr {
+	if !*diffPtr && !c.IsShell {
 		if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 			var err error
 			*envPtr, err = eUtils.LoginToLocal()
 			fmt.Println(*envPtr)
-			eUtils.CheckError(configBase, err, true)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -294,7 +302,7 @@ func CommonMain(envPtr *string,
 			}
 			if len(regions) == 0 {
 				fmt.Println("Unsupported region: " + *regionPtr)
-				os.Exit(1)
+				return fmt.Errorf("unsupported region: %s", *regionPtr)
 			}
 		}
 	}
@@ -319,10 +327,10 @@ func CommonMain(envPtr *string,
 				autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
-					os.Exit(1)
+					return errors.New("missing auth components")
 				}
 				if *pingPtr {
-					os.Exit(0)
+					return nil
 				}
 			} else {
 				*tokenPtr = "novault"
@@ -331,7 +339,7 @@ func CommonMain(envPtr *string,
 				*envPtr = envVersion[0] + "_" + envVersion[1]
 				if envVersion[1] == "" {
 					fmt.Println("Must declare desired version number after '_' : -env=env1_ver1,env2_ver2")
-					os.Exit(1)
+					return errors.New("must declare desired version number after '_' : -env=env1_ver1,env2_ver2")
 				}
 			} else {
 				*envPtr = envVersion[0] + "_0"
@@ -342,27 +350,28 @@ func CommonMain(envPtr *string,
 			}
 
 			config := eUtils.DriverConfig{
-				Insecure:       *insecurePtr,
-				Token:          *tokenPtr,
-				VaultAddress:   *addrPtr,
-				Env:            *envPtr,
-				EnvRaw:         eUtils.GetRawEnv(*envPtr),
-				Regions:        regions,
-				SecretMode:     *secretMode,
-				ServicesWanted: services,
-				StartDir:       append([]string{}, *startDirPtr),
-				EndDir:         *endDirPtr,
-				WantCerts:      *wantCertsPtr,
-				WantKeystore:   *keyStorePtr,
-				ZeroConfig:     *zcPtr,
-				GenAuth:        false,
-				OutputMemCache: configBase.OutputMemCache,
-				MemFs:          configBase.MemFs,
-				Log:            configBase.Log,
-				ExitOnFailure:  configBase.ExitOnFailure,
-				Diff:           *diffPtr,
-				Update:         messenger,
-				FileFilter:     fileFilterSlice,
+				IsShellSubProcess: isShellSubprocess,
+				Insecure:          *insecurePtr,
+				Token:             *tokenPtr,
+				VaultAddress:      *addrPtr,
+				Env:               *envPtr,
+				EnvRaw:            eUtils.GetRawEnv(*envPtr),
+				Regions:           regions,
+				SecretMode:        *secretMode,
+				ServicesWanted:    services,
+				StartDir:          append([]string{}, *startDirPtr),
+				EndDir:            *endDirPtr,
+				WantCerts:         *wantCertsPtr,
+				WantKeystore:      *keyStorePtr,
+				ZeroConfig:        *zcPtr,
+				GenAuth:           false,
+				OutputMemCache:    configBase.OutputMemCache,
+				MemFs:             configBase.MemFs,
+				Log:               configBase.Log,
+				ExitOnFailure:     configBase.ExitOnFailure,
+				Diff:              *diffPtr,
+				Update:            messenger,
+				FileFilter:        fileFilterSlice,
 			}
 			configSlice = append(configSlice, config)
 			wg.Add(1)
@@ -392,27 +401,28 @@ func CommonMain(envPtr *string,
 			*envPtr = envVersion[0] + "_0"
 		}
 		config := eUtils.DriverConfig{
-			Insecure:       *insecurePtr,
-			Token:          *tokenPtr,
-			VaultAddress:   *addrPtr,
-			Env:            *envPtr,
-			EnvRaw:         eUtils.GetRawEnv(*envPtr),
-			Regions:        regions,
-			SecretMode:     *secretMode,
-			ServicesWanted: services,
-			StartDir:       append([]string{}, *startDirPtr),
-			EndDir:         *endDirPtr,
-			WantCerts:      *wantCertsPtr,
-			WantKeystore:   *keyStorePtr,
-			ZeroConfig:     *zcPtr,
-			GenAuth:        false,
-			OutputMemCache: configBase.OutputMemCache,
-			MemFs:          configBase.MemFs,
-			ExitOnFailure:  configBase.ExitOnFailure,
-			Log:            configBase.Log,
-			Diff:           *diffPtr,
-			FileFilter:     fileFilterSlice,
-			VersionInfo:    eUtils.VersionHelper,
+			IsShellSubProcess: isShellSubprocess,
+			Insecure:          *insecurePtr,
+			Token:             *tokenPtr,
+			VaultAddress:      *addrPtr,
+			Env:               *envPtr,
+			EnvRaw:            eUtils.GetRawEnv(*envPtr),
+			Regions:           regions,
+			SecretMode:        *secretMode,
+			ServicesWanted:    services,
+			StartDir:          append([]string{}, *startDirPtr),
+			EndDir:            *endDirPtr,
+			WantCerts:         *wantCertsPtr,
+			WantKeystore:      *keyStorePtr,
+			ZeroConfig:        *zcPtr,
+			GenAuth:           false,
+			OutputMemCache:    configBase.OutputMemCache,
+			MemFs:             configBase.MemFs,
+			ExitOnFailure:     configBase.ExitOnFailure,
+			Log:               configBase.Log,
+			Diff:              *diffPtr,
+			FileFilter:        fileFilterSlice,
+			VersionInfo:       eUtils.VersionHelper,
 		}
 		wg.Add(1)
 		go func(c *eUtils.DriverConfig) {
@@ -438,4 +448,5 @@ func CommonMain(envPtr *string,
 		}()
 	}
 	wg.Wait() //Wait for diff
+	return nil
 }
