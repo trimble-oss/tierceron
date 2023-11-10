@@ -104,7 +104,7 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 	}
 
 	if response.StatusCode == http.StatusUnauthorized {
-		return nil, response.StatusCode, errors.New(fmt.Sprintf("http auth failure: %d", response.StatusCode))
+		return nil, response.StatusCode, fmt.Errorf("http auth failure: %d", response.StatusCode)
 	} else if response.StatusCode == http.StatusOK {
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
@@ -120,7 +120,7 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 
 		return jsonData, response.StatusCode, nil
 	}
-	return nil, response.StatusCode, errors.New(fmt.Sprintf("http status failure: %d", response.StatusCode))
+	return nil, response.StatusCode, fmt.Errorf("http status failure: %d", response.StatusCode)
 }
 
 func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
