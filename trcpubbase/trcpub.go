@@ -70,8 +70,13 @@ func CommonMain(envPtr *string,
 		eUtils.CheckError(configBase, err, true)
 	}
 
-	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
-	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
+	if c != nil && c.IsShell {
+		c.Log.Printf("Connecting to vault @ %s\n", *addrPtr)
+		c.Log.Printf("Uploading templates in %s to vault\n", *dirPtr)
+	} else {
+		fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
+		fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
+	}
 
 	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
 	if mod != nil {
@@ -80,7 +85,7 @@ func CommonMain(envPtr *string,
 	eUtils.CheckError(configBase, err, true)
 	mod.Env = *envPtr
 
-	warn, err := il.UploadTemplateDirectory(mod, *dirPtr, configBase.Log)
+	warn, err := il.UploadTemplateDirectory(configBase, mod, *dirPtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)
