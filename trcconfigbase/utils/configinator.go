@@ -34,7 +34,19 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	version := ""
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
+		return nil, err
 	}
+	if config.IsShellSubProcess && len(config.Deployment) > 0 {
+		certifyMap, err := modCheck.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", config.Deployment))
+		if err != nil {
+			return nil, err
+		}
+		if trcDeployRoot, ok := certifyMap["trcdeployroot"]; ok {
+			config.StartDir = []string{trcDeployRoot.(string)}
+			config.EndDir = trcDeployRoot.(string)
+		}
+	}
+
 	modCheck.VersionFilter = config.VersionFilter
 
 	//Check if templateInfo is selected for template or values

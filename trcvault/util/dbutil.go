@@ -19,19 +19,21 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 	var conn *sql.DB
 	var err error
 
-	if driver == "mysql" || driver == "mariadb" {
+	switch driver {
+	case "mysql", "mariadb":
 		if len(port) == 0 {
 			// protocol+transport://user:pass@host/dbname?option1=a&option2=b
 			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + "/" + dbname + "?tls=skip-verify&parseTime=true")
 		} else {
 			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify&parseTime=true")
 		}
-	} else if driver == "sqlserver" {
+	case "sqlserver":
 		if len(port) == 0 {
 			port = "1433"
 		}
 		conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify")
 	}
+
 	if err != nil {
 		if conn != nil {
 			defer conn.Close()
