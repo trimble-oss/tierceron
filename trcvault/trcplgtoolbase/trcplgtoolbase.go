@@ -119,6 +119,8 @@ func CommonMain(envPtr *string,
 		if !*agentdeployPtr {
 			fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
 			os.Exit(1)
+		} else {
+			fmt.Printf("\nBeginning agent deployment for %s..\n", *pluginNamePtr)
 		}
 	}
 

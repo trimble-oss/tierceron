@@ -2,7 +2,6 @@ package initlib
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +11,7 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
-func UploadTemplateDirectory(mod *helperkv.Modifier, dirName string, logger *log.Logger) ([]string, error) {
+func UploadTemplateDirectory(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string) ([]string, error) {
 
 	dirs, err := os.ReadDir(dirName)
 	if err != nil {
@@ -24,7 +23,7 @@ func UploadTemplateDirectory(mod *helperkv.Modifier, dirName string, logger *log
 	for _, subDir := range dirs {
 		if subDir.IsDir() {
 			pathName := dirName + "/" + subDir.Name()
-			warn, err := UploadTemplates(mod, pathName, logger)
+			warn, err := UploadTemplates(c, mod, pathName)
 			if err != nil || len(warn) > 0 {
 				fmt.Printf("Upload templates couldn't be completed. %v", err)
 				return warn, err
@@ -34,7 +33,7 @@ func UploadTemplateDirectory(mod *helperkv.Modifier, dirName string, logger *log
 	return nil, nil
 }
 
-func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger) ([]string, error) {
+func UploadTemplates(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string) ([]string, error) {
 	// Open directory
 	files, err := os.ReadDir(dirName)
 	if err != nil {
@@ -49,7 +48,7 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 	for _, file := range files {
 		// Extract extension and name
 		if file.IsDir() { // Recurse folders
-			warn, err := UploadTemplates(mod, dirName+"/"+file.Name(), logger)
+			warn, err := UploadTemplates(c, mod, dirName+"/"+file.Name())
 			if err != nil || len(warn) > 0 {
 				return warn, err
 			}
@@ -60,14 +59,20 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 		name = name[0 : len(name)-len(ext)] // Truncate extension
 
 		if ext == ".tmpl" { // Only upload template files
-			fmt.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
-			logger.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
+			if c != nil && c.IsShell {
+				c.Log.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
+			} else {
+				fmt.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
+				if c != nil {
+					c.Log.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
+				}
+			}
 
 			// Seperate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
 			name = name[0 : len(name)-len(ext)]
-			logger.Printf("dirName: %s\n", dirName)
-			logger.Printf("file name: %s\n", file.Name())
+			c.Log.Printf("dirName: %s\n", dirName)
+			c.Log.Printf("file name: %s\n", file.Name())
 			// Extract values
 			extractedValues, err := eUtils.Parse(dirName+"/"+file.Name(), subDir, name)
 			if err != nil {
@@ -103,25 +108,25 @@ func UploadTemplates(mod *helperkv.Modifier, dirName string, logger *log.Logger)
 
 			// Construct template path for vault
 			templatePath := "templates/" + subDir + "/" + name + "/template-file"
-			logger.Printf("\tUploading template to path:\t%s\n", templatePath)
+			c.Log.Printf("\tUploading template to path:\t%s\n", templatePath)
 
 			// Construct value path for vault
 			valuePath := "values/" + subDir + "/" + name
-			logger.Printf("\tUploading values to path:\t%s\n", valuePath)
+			c.Log.Printf("\tUploading values to path:\t%s\n", valuePath)
 
 			// Write templates to vault and output errors/warnings
-			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext}, logger)
+			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext}, c.Log)
 			if err != nil || len(warn) > 0 {
 				return warn, err
 			}
 
 			// Write values to vault and output any errors/warnings
-			warn, err = mod.Write(valuePath, extractedValues, logger)
+			warn, err = mod.Write(valuePath, extractedValues, c.Log)
 			if err != nil || len(warn) > 0 {
 				return warn, err
 			}
 		} else {
-			logger.Printf("\tSkippping template (templates must end in .tmpl):\t%s\n", file.Name())
+			c.Log.Printf("\tSkippping template (templates must end in .tmpl):\t%s\n", file.Name())
 		}
 	}
 	return nil, nil
