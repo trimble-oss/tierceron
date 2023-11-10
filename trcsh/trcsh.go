@@ -36,6 +36,90 @@ import (
 var gAgentConfig *capauth.AgentConfigs = nil
 var gTrcshConfig *capauth.TrcShConfig
 
+func ProcessDeployment(env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string) {
+	go func() {
+		// Timeout and CtlMessage subscriber
+		go func() {
+			for range time.After(120 * time.Second) {
+				ctlMsg := "Deployment timed out after 120 seconds"
+				cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+					*gAgentConfig.EncryptSalt,
+					*gAgentConfig.HandshakeHostPort,
+					*gAgentConfig.HandshakeCode,
+					cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true)
+				gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
+				break
+			}
+		}()
+
+		for {
+		perching:
+			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+				*gAgentConfig.EncryptSalt,
+				*gAgentConfig.HandshakeHostPort,
+				*gAgentConfig.HandshakeCode,
+				cap.MODE_FLAP, deployment+"."+*gAgentConfig.Env, false); featherErr == nil && strings.HasPrefix(featherMode, cap.MODE_GAZE) {
+				// Lookup trcPath from deployment
+
+				// Process the script....
+				// This will feed CtlMessages into the Timeout and CtlMessage subscriber
+				ProcessDeploy(*gAgentConfig.Env, region, "", "", trcPath, secretId, approleId, false)
+
+				for modeCtl := range gAgentConfig.CtlMessage {
+					flapMode := cap.MODE_FLAP + "_" + modeCtl
+					ctlFlapMode := flapMode
+					var err error = errors.New("init")
+
+					for {
+						if err == nil && ctlFlapMode == cap.MODE_PERCH {
+							// Acknowledge perching...
+							cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+								*gAgentConfig.EncryptSalt,
+								*gAgentConfig.HandshakeHostPort,
+								*gAgentConfig.HandshakeCode,
+								cap.MODE_PERCH, deployment+"."+*gAgentConfig.Env, true)
+							ctlFlapMode = cap.MODE_PERCH
+							goto perching
+						}
+
+						if err == nil && flapMode != ctlFlapMode {
+							// Flap, Gaze, etc...
+							interruptFun(twoHundredMilliInterruptTicker)
+							break
+						} else {
+							callFlap := flapMode
+							if err == nil {
+								interruptFun(twoHundredMilliInterruptTicker)
+							} else {
+								if err.Error() != "init" {
+									interruptFun(multiSecondInterruptTicker)
+								}
+							}
+							ctlFlapMode, err = cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+								*gAgentConfig.EncryptSalt,
+								*gAgentConfig.HandshakeHostPort,
+								*gAgentConfig.HandshakeCode,
+								callFlap, deployment+"."+*gAgentConfig.Env, true)
+						}
+					}
+					if modeCtl == capauth.TrcCtlComplete {
+						// Only exit with TrcCtlComplete.
+						cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+							*gAgentConfig.EncryptSalt,
+							*gAgentConfig.HandshakeHostPort,
+							*gAgentConfig.HandshakeCode,
+							cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true)
+						goto deploycomplete
+					}
+				}
+			} else {
+				interruptFun(multiSecondInterruptTicker)
+			}
+		}
+	deploycomplete:
+	}()
+}
+
 // This is a controller program that can act as any command line utility.
 // The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
 func main() {
@@ -43,7 +127,7 @@ func main() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.20")
+	fmt.Println("trcsh Version: " + "1.21")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
 	if runtime.GOOS != "windows" {
@@ -58,7 +142,7 @@ func main() {
 				// Running as shell.
 				os.Args[1] = "-c=" + os.Args[1]
 				// Initiate signal handling.
-				var ic chan os.Signal = make(chan os.Signal)
+				var ic chan os.Signal = make(chan os.Signal, 3)
 				signal.Notify(ic, os.Interrupt, syscall.SIGTERM)
 				go func() {
 					x := <-ic
@@ -84,7 +168,7 @@ func main() {
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
 
 		//Open deploy script and parse it.
-		ProcessDeploy(*envPtr, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
+		ProcessDeploy(*envPtr, *regionPtr, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
 		gAgentConfig = &capauth.AgentConfigs{CtlMessage: make(chan string, 1)}
 		deployments := os.Getenv("DEPLOYMENTS")
@@ -92,7 +176,6 @@ func main() {
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
 
-		envPtr = flag.String("env", "", "Environment to be processed")   //If this is blank -> use context otherwise override context.
 		regionPtr = flag.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 		trcPathPtr = flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 		appRoleIDPtr = flag.String("appRoleID", "", "Public app role ID")
@@ -126,84 +209,11 @@ func main() {
 		// Preload agent synchronization configs
 		gAgentConfig.LoadConfigs(address, agentToken, deployments, agentEnv)
 
-		go func() {
-			// Timeout and CtlMessage subscriber
-			go func() {
-				for range time.After(120 * time.Second) {
-					ctlMsg := "Deployment timed out after 120 seconds"
-					cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-						*gAgentConfig.EncryptSalt,
-						*gAgentConfig.HandshakeHostPort,
-						*gAgentConfig.HandshakeCode,
-						cap.MODE_PERCH+"_"+ctlMsg, deployments+"."+*gAgentConfig.Env, true)
-					gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
-					break
-				}
-			}()
+		deploymentsSlice := strings.Split(deployments, ",")
+		for _, deployment := range deploymentsSlice {
+			ProcessDeployment(*gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, false, deployment)
+		}
 
-			for {
-			perching:
-				if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-					*gAgentConfig.EncryptSalt,
-					*gAgentConfig.HandshakeHostPort,
-					*gAgentConfig.HandshakeCode,
-					cap.MODE_FLAP, deployments+"."+*gAgentConfig.Env, false); featherErr == nil && strings.HasPrefix(featherMode, cap.MODE_GAZE) {
-					for modeCtl := range gAgentConfig.CtlMessage {
-						flapMode := cap.MODE_FLAP + "_" + modeCtl
-						ctlFlapMode := flapMode
-						var err error = errors.New("init")
-
-						for {
-							if err == nil && ctlFlapMode == cap.MODE_PERCH {
-								// Acknowledge perching...
-								cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-									*gAgentConfig.EncryptSalt,
-									*gAgentConfig.HandshakeHostPort,
-									*gAgentConfig.HandshakeCode,
-									cap.MODE_PERCH, deployments+"."+*gAgentConfig.Env, true)
-								ctlFlapMode = cap.MODE_PERCH
-								goto perching
-							}
-
-							if err == nil && flapMode != ctlFlapMode {
-								// Flap, Gaze, etc...
-								interruptFun(twoHundredMilliInterruptTicker)
-								break
-							} else {
-								callFlap := flapMode
-								if err == nil {
-									interruptFun(twoHundredMilliInterruptTicker)
-								} else {
-									if err.Error() != "init" {
-										interruptFun(multiSecondInterruptTicker)
-									}
-								}
-								ctlFlapMode, err = cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-									*gAgentConfig.EncryptSalt,
-									*gAgentConfig.HandshakeHostPort,
-									*gAgentConfig.HandshakeCode,
-									callFlap, deployments+"."+*gAgentConfig.Env, true)
-							}
-						}
-						if modeCtl == capauth.TrcCtlComplete {
-							// Only exit with TrcCtlComplete.
-							cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-								*gAgentConfig.EncryptSalt,
-								*gAgentConfig.HandshakeHostPort,
-								*gAgentConfig.HandshakeCode,
-								cap.MODE_GLIDE, deployments+"."+*gAgentConfig.Env, true)
-							goto deploycomplete
-						}
-					}
-				} else {
-					interruptFun(multiSecondInterruptTicker)
-				}
-			}
-		deploycomplete:
-		}()
-		// Process the script....
-		// This will feed CtlMessages into the Timeout and CtlMessage subscriber
-		ProcessDeploy(*gAgentConfig.Env, *regionPtr, "", *trcPathPtr, secretIDPtr, appRoleIDPtr, false)
 		<-shutdown
 	}
 }
@@ -228,7 +238,7 @@ func interruptFun(tickerInterrupt *time.Ticker) {
 func featherCtlCb(agentName string) error {
 
 	if gAgentConfig == nil {
-		return errors.New("Incorrect agent initialization")
+		return errors.New("incorrect agent initialization")
 	} else {
 		gAgentConfig.Deployments = &agentName
 	}
@@ -281,7 +291,7 @@ func configCmd(env string,
 	token string,
 	argsOrig []string,
 	deployArgLines []string,
-	configCount *int) {
+	configCount *int) error {
 	*configCount -= 1
 	if *configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
 		config.EndDir = "deploy"
@@ -297,7 +307,7 @@ func configCmd(env string,
 	tokenConfig := ""
 	configEnv := env
 
-	trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
+	err := trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
 	ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 
@@ -305,6 +315,7 @@ func configCmd(env string,
 		token = ""
 		config.Token = token
 	}
+	return err
 }
 
 func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
@@ -410,14 +421,14 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	argsOrig []string,
 	deployArgLines []string,
 	configCount *int,
-	logger *log.Logger) {
+	logger *log.Logger) error {
 	switch control {
 	case "trcplgtool":
 		config.AppRoleConfig = ""
 		config.EnvRaw = env
 		config.IsShellSubProcess = true
 
-		trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, config)
+		err := trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, config)
 		ResetModifier(config)
 		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
@@ -425,8 +436,10 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 			token = ""
 			config.Token = token
 		}
+		return err
+
 	case "trcconfig":
-		configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
+		err := configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
 		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
@@ -434,7 +447,9 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 			token = ""
 			config.Token = token
 		}
+		return err
 	}
+	return errors.New("unsupported control error")
 }
 
 // ProcessDeploy
@@ -442,15 +457,17 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 // Parameters:
 //
 //   - env: Current environment context
+//   - region: a region
 //   - token: An environment token
-//   - trcPath: Path to the current executable
+//   - deployment: name of deployment
+//   - trcPath: Path to the current deployment script...
 //   - secretId: trcsh secret.
 //   - approleId: trcsh app role.
 //
 // Returns:
 //
 //	Nothing.
-func ProcessDeploy(env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
+func ProcessDeploy(env string, region string, token string, deployment string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
 	var err error
 	agentToken := false
 	if token != "" {
@@ -577,7 +594,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 	}
 
 	if len(os.Args) > 1 || len(trcPath) > 0 {
-		// Generate .trc code...
+		// Generate trc code...
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 		configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
@@ -688,7 +705,7 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 				}
 			}
 			if runtime.GOOS == "windows" {
-				processWindowsCmds(
+				err := processWindowsCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
 					PipeOS,
@@ -703,7 +720,11 @@ func ProcessDeploy(env string, region string, token string, trcPath string, secr
 					deployArgLines,
 					&configCount,
 					logger)
-				gAgentConfig.CtlMessage <- deployLine
+				if err != nil {
+					gAgentConfig.CtlMessage <- fmt.Sprintf("%s\nEncountered errors: %s\n", deployLine, err.Error())
+				} else {
+					gAgentConfig.CtlMessage <- deployLine
+				}
 			} else {
 				processPluginCmds(
 					&trcKubeDeploymentConfig,

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
@@ -17,7 +18,7 @@ func main() {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
-	fmt.Println("Version: " + "1.26")
+	fmt.Println("Version: " + "1.27")
 	envPtr := flag.String("env", "dev", "Environment to configure")
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
@@ -26,5 +27,8 @@ func main() {
 	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this"+coreopts.GetFolderPrefix(nil)+"config to access the vault")
 
-	trcconfigbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, nil)
+	err := trcconfigbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, nil)
+	if err != nil {
+		os.Exit(1)
+	}
 }
