@@ -269,7 +269,7 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	if !*diffPtr && !c.IsShell {
+	if !*diffPtr && (c == nil || !c.IsShell) {
 		if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 			var err error
 			*envPtr, err = eUtils.LoginToLocal()
