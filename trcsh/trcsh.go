@@ -38,20 +38,6 @@ var gTrcshConfig *capauth.TrcShConfig
 
 func ProcessDeployment(env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string) {
 	go func() {
-		// Timeout and CtlMessage subscriber
-		go func() {
-			for range time.After(120 * time.Second) {
-				ctlMsg := "Deployment timed out after 120 seconds"
-				cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-					*gAgentConfig.EncryptSalt,
-					*gAgentConfig.HandshakeHostPort,
-					*gAgentConfig.HandshakeCode,
-					cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true)
-				gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
-				break
-			}
-		}()
-
 		for {
 		perching:
 			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
@@ -63,7 +49,23 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 
 				// Process the script....
 				// This will feed CtlMessages into the Timeout and CtlMessage subscriber
-				go ProcessDeploy(*gAgentConfig.Env, region, "", "", trcPath, secretId, approleId, false)
+				go func() {
+					go func() {
+						// Timeout and CtlMessage subscriber
+						for range time.After(120 * time.Second) {
+							ctlMsg := "Deployment timed out after 120 seconds"
+							cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+								*gAgentConfig.EncryptSalt,
+								*gAgentConfig.HandshakeHostPort,
+								*gAgentConfig.HandshakeCode,
+								cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true)
+							gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
+							break
+						}
+					}()
+
+					ProcessDeploy(*gAgentConfig.Env, region, "", "", trcPath, secretId, approleId, false)
+				}()
 
 				for modeCtl := range gAgentConfig.CtlMessage {
 					flapMode := cap.MODE_FLAP + "_" + modeCtl
@@ -170,7 +172,7 @@ func main() {
 		//Open deploy script and parse it.
 		ProcessDeploy(*envPtr, *regionPtr, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
-		gAgentConfig = &capauth.AgentConfigs{CtlMessage: make(chan string, 1)}
+		gAgentConfig = &capauth.AgentConfigs{CtlMessage: make(chan string, 5)}
 		deployments := os.Getenv("DEPLOYMENTS")
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
@@ -362,7 +364,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 
 		config.FeatherCtlCb = featherCtlCb
 		if gAgentConfig == nil {
-			gAgentConfig = &capauth.AgentConfigs{CtlMessage: make(chan string, 1)}
+			gAgentConfig = &capauth.AgentConfigs{CtlMessage: make(chan string, 5)}
 			gAgentConfig.LoadConfigs(config.VaultAddress, *trcshConfig.CToken, "bootstrap", "dev") // Feathering always in dev environmnent.
 		}
 		gAgentConfig.Env = &env
