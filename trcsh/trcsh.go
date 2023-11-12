@@ -351,7 +351,10 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			config.Token = token
 		}
 	case "trcconfig":
-		configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
+		err := configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
+		if err != nil {
+			os.Exit(1)
+		}
 	case "trcplgtool":
 		config.AppRoleConfig = ""
 		config.EnvRaw = env
@@ -364,13 +367,16 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		}
 		gAgentConfig.Env = &env
 
-		trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, config)
+		err := trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, config)
 		config.FeatherCtlCb = nil
 		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 		if !agentToken {
 			token = ""
 			config.Token = token
+		}
+		if err != nil {
+			os.Exit(1)
 		}
 
 	case "kubectl":
