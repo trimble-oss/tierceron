@@ -653,7 +653,6 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 			}
 			if trcDeployRoot, ok := certifyMap["trcdeployroot"]; ok {
 				pwd = trcDeployRoot.(string)
-				trcPath = trcDeployRoot.(string)
 			}
 		}
 		fmt.Println("Processing manual trcshell")
