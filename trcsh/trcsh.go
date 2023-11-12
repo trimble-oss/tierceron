@@ -115,8 +115,8 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 			} else {
 				interruptFun(multiSecondInterruptTicker)
 			}
+		deploycomplete:
 		}
-	deploycomplete:
 	}()
 }
 
