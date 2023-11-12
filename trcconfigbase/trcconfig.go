@@ -424,6 +424,16 @@ func CommonMain(envPtr *string,
 			FileFilter:        fileFilterSlice,
 			VersionInfo:       eUtils.VersionHelper,
 		}
+
+		if len(configBase.StartDir) > 0 {
+			config.StartDir = configBase.StartDir
+		}
+		if len(configBase.EndDir) > 0 {
+			config.EndDir = configBase.EndDir
+		}
+		if len(configBase.DeploymentConfig) > 0 {
+			config.DeploymentConfig = configBase.DeploymentConfig
+		}
 		wg.Add(1)
 		go func(c *eUtils.DriverConfig) {
 			defer wg.Done()
