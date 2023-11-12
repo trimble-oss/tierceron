@@ -64,7 +64,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 						}
 					}()
 
-					ProcessDeploy(*gAgentConfig.Env, region, "", "", trcPath, secretId, approleId, false)
+					ProcessDeploy(*gAgentConfig.Env, region, "", deployment, trcPath, secretId, approleId, false)
 				}()
 
 				for modeCtl := range gAgentConfig.CtlMessage {
@@ -261,7 +261,7 @@ func featherCtlCb(agentName string) error {
 			if err == nil {
 				if strings.HasPrefix(ctlFlapMode, cap.MODE_FLAP) {
 					ctl := strings.Split(ctlFlapMode, "_")
-					if len(ctl) > 1 && ctl[1] != "trcctlcomplete" {
+					if len(ctl) > 1 && ctl[1] != capauth.TrcCtlComplete {
 						fmt.Printf("%s\n", ctl[1])
 					}
 					callFlap = cap.MODE_GAZE
@@ -521,6 +521,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		Log:               logger,
 		IsShell:           true,
 		IsShellSubProcess: false,
+		Deployment:        deployment,
 		OutputMemCache:    outputMemCache,
 		MemFs:             memfs.New(),
 		Regions:           regions,
@@ -636,6 +637,25 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		os.Args = []string{os.Args[0]}
 		config.Log.Println("Processing trcshell")
 	} else {
+		if strings.Contains(pwd, "TrcDeploy") {
+			// Swapping in project root...
+			mod, err := helperkv.NewModifier(config.Insecure, *gTrcshConfig.CToken, *gTrcshConfig.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
+			if err != nil {
+				fmt.Println("Unable to obtain resources for deployment")
+				os.Exit(-1)
+			}
+			mod.Env = config.EnvRaw
+
+			certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", config.Deployment))
+			if err != nil {
+				fmt.Println("Unable to find deployment")
+				os.Exit(-1)
+			}
+			if trcDeployRoot, ok := certifyMap["trcdeployroot"]; ok {
+				pwd = trcDeployRoot.(string)
+				trcPath = trcDeployRoot.(string)
+			}
+		}
 		fmt.Println("Processing manual trcshell")
 		if env == "itdev" {
 			content, err = os.ReadFile(pwd + "/deploy/buildtest.trc")
