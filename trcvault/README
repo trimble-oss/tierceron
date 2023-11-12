@@ -13,7 +13,10 @@ trcx -env=QA -token=$VAULT_TOKEN -insecure -indexed=TrcVault -indexFilter=region
 trcx -env=QA -token=$VAULT_TOKEN -restricted=Identity -serviceFilter=config -indexFilter=config
 trcx -env=QA -token=$VAULT_TOKEN -restricted=PluginTool -serviceFilter=config -indexFilter=config
 trcx -env=QA -token=$VAULT_TOKEN -restricted=VaultDatabase -serviceFilter=config -indexFilter=config
+trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcDeploy -serviceFilter=setup -indexFilter=setup
+trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcshAgent -serviceFilter=config -indexFilter=config
 
 # Initialize
 trcinit -env=QA -token=$VAULT_TOKEN -restricted=VaultDatabase -serviceFilter=config -indexFilter=config
 trcinit -env=dev -token=$VAULT_TOKEN_DEV -dynamicPath=Restricted/VaultDatabase/config
+trcinit -env=dev -token=$VAULT_TOKEN_DEV -dynamicPath=Restricted/TrcshAgent/config
