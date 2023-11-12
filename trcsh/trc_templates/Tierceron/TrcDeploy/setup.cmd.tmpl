@@ -3,5 +3,5 @@ setx /M AGENT_TOKEN "{{.trcDeployAgentToken}}"
 setx /M DEPLOYMENTS "{{.trcDeployDeployments}}"
 setx /M VAULT_ADDR "{{.trcDeployVaultAddr}}"
 
-.\nssm.exe install TrcDeploy "{{.trcDeployDirectory}}"
+.\nssm.exe install TrcDeploy "{{.trcDeployExecutable}}"
 .\nssm.exe set TrcDeploy AppDirectory "{{.trcDeployStartDirectory}}"
