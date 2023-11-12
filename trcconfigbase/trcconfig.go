@@ -168,7 +168,12 @@ func CommonMain(envPtr *string,
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "["+coreopts.GetFolderPrefix(nil)+"config]", log.LstdFlags)
-		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+		configBase = &eUtils.DriverConfig{Insecure: true,
+			StartDir:      append([]string{}, *startDirPtr),
+			EndDir:        *endDirPtr,
+			Log:           logger,
+			ExitOnFailure: true}
+
 		appRoleConfigPtr = new(string)
 		eUtils.CheckError(configBase, err, true)
 	}
@@ -359,8 +364,8 @@ func CommonMain(envPtr *string,
 				Regions:           regions,
 				SecretMode:        *secretMode,
 				ServicesWanted:    services,
-				StartDir:          append([]string{}, *startDirPtr),
-				EndDir:            *endDirPtr,
+				StartDir:          configBase.StartDir,
+				EndDir:            configBase.EndDir,
 				WantCerts:         *wantCertsPtr,
 				WantKeystore:      *keyStorePtr,
 				ZeroConfig:        *zcPtr,
@@ -400,6 +405,7 @@ func CommonMain(envPtr *string,
 		if len(envVersion) < 2 {
 			*envPtr = envVersion[0] + "_0"
 		}
+		fmt.Printf("Aiming for: %s\n", configBase.EndDir)
 		config := eUtils.DriverConfig{
 			IsShellSubProcess: isShellSubprocess,
 			Insecure:          *insecurePtr,
@@ -410,8 +416,8 @@ func CommonMain(envPtr *string,
 			Regions:           regions,
 			SecretMode:        *secretMode,
 			ServicesWanted:    services,
-			StartDir:          append([]string{}, *startDirPtr),
-			EndDir:            *endDirPtr,
+			StartDir:          configBase.StartDir,
+			EndDir:            configBase.EndDir,
 			WantCerts:         *wantCertsPtr,
 			WantKeystore:      *keyStorePtr,
 			ZeroConfig:        *zcPtr,
@@ -425,12 +431,6 @@ func CommonMain(envPtr *string,
 			VersionInfo:       eUtils.VersionHelper,
 		}
 
-		if len(configBase.StartDir) > 0 {
-			config.StartDir = configBase.StartDir
-		}
-		if len(configBase.EndDir) > 0 {
-			config.EndDir = configBase.EndDir
-		}
 		if len(configBase.DeploymentConfig) > 0 {
 			config.DeploymentConfig = configBase.DeploymentConfig
 		}
@@ -443,7 +443,7 @@ func CommonMain(envPtr *string,
 	wg.Wait() //Wait for templates
 	if c == nil {
 		close(resultChannel)
-	} else if c.EndDir != "deploy" {
+	} else if c.EndDir != "deploy" && !c.IsShellSubProcess {
 		close(resultChannel)
 	}
 	if *diffPtr { //Diff if needed
