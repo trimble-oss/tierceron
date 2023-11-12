@@ -25,7 +25,6 @@ import (
 	"github.com/trimble-oss/tierceron/trcpubbase"
 	kube "github.com/trimble-oss/tierceron/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
-	"github.com/trimble-oss/tierceron/trcsubbase"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/trcvault/util"
@@ -305,7 +304,10 @@ func roleBasedRunner(env string,
 	config.EnvRaw = env
 	config.WantCerts = false
 	config.IsShellSubProcess = true
-
+	if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
+		config.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
+		config.EndDir = trcDeployRoot.(string)
+	}
 	configRoleSlice := strings.Split(*trcshConfig.ConfigRole, ":")
 	tokenName := "config_token_" + env
 	tokenConfig := ""
@@ -315,8 +317,8 @@ func roleBasedRunner(env string,
 	switch control {
 	case "trcconfig":
 		err = trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
-	case "trcsub":
-		err = trcsubbase.CommonMain(&configEnv, &config.VaultAddress, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], config)
+		//	case "trcsub":
+		//		err = trcsubbase.CommonMain(&configEnv, &config.VaultAddress, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], config)
 	}
 	ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
@@ -676,8 +678,6 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 				}
 				config.DeploymentConfig = deploymentConfig
 				if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
-					config.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
-					config.EndDir = trcDeployRoot.(string)
 					pwd = trcDeployRoot.(string)
 				}
 			}
