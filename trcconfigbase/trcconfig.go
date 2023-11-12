@@ -62,7 +62,7 @@ skipSwitch:
 	resultChannel <- &data
 }
 
-func reciever() {
+func receiver() {
 
 	for data := range resultChannel {
 		if data != nil && data.inData != nil && data.inPath != "" {
@@ -314,8 +314,8 @@ func CommonMain(envPtr *string,
 		fileFilterSlice[0] = *fileFilterPtr
 	}
 
-	//channel reciever
-	go reciever()
+	//channel receiver
+	go receiver()
 	var diffFileCount int
 	if *diffPtr {
 		configSlice := make([]eUtils.DriverConfig, 0, len(envDiffSlice)-1)

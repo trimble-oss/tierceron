@@ -318,11 +318,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(flowcore.FlowNameType(table), &tfContext, config)
 
 			controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
-			if initReciever, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
+			if initReceiver, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
 			initAlert: //This waits for flow states to be loaded before starting all non-controller flows
 				for {
 					select {
-					case _, ok := <-initReciever:
+					case _, ok := <-initReceiver:
 						if ok {
 							break initAlert
 						}
@@ -331,9 +331,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					}
 				}
 			} else {
-				initRecieverErr := errors.New("Failed to retrieve channel alert for controller init")
-				eUtils.LogErrorMessage(config, initRecieverErr.Error(), false)
-				return initRecieverErr
+				initReceiverErr := errors.New("Failed to retrieve channel alert for controller init")
+				eUtils.LogErrorMessage(config, initReceiverErr.Error(), false)
+				return initReceiverErr
 			}
 		}
 
