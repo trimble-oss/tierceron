@@ -634,7 +634,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		fmt.Println("Session Authorized")
 	}
 
-	if len(os.Args) > 1 || len(trcPath) > 0 {
+	if (len(os.Args) > 1 || len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
 		// Generate trc code...
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
@@ -646,7 +646,13 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		config.StartDir = []string{"trc_templates"}
 		config.EndDir = "."
 		trcconfigbase.CommonMain(&configEnv, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
-		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
+		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+		if !agentToken {
+			token = ""
+			config.Token = token
+		}
 
 		var memFile billy.File
 		var memFileErr error
@@ -692,7 +698,9 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 
 				if trcProjectService, ok := config.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
 					trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
-					contentArray, _, _, err := vcutils.ConfigTemplate(config, mod, "/deploy/deploy.trc", true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
+					config.ZeroConfig = true
+					contentArray, _, _, err := vcutils.ConfigTemplate(config, mod, fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string)), true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
+					config.ZeroConfig = false
 					if err != nil {
 						eUtils.LogErrorObject(config, err, false)
 						return
