@@ -463,6 +463,11 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 		var memFile billy.File
 		memCacheLock.Lock()
 		if _, err := config.MemFs.Stat(path); errors.Is(err, os.ErrNotExist) {
+			config.Log.Printf("Writing to path: %s\n", path)
+			if strings.HasPrefix(path, "./") {
+				path = strings.TrimLeft(path, "./")
+			}
+			config.Log.Printf("Writing to scrubbed path: %s\n", path)
 			memFile, err = config.MemFs.Create(path)
 			if err != nil {
 				eUtils.CheckError(config, err, true)
