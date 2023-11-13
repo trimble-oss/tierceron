@@ -22,9 +22,11 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/capauth"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
+	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/trcpubbase"
 	kube "github.com/trimble-oss/tierceron/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
+	"github.com/trimble-oss/tierceron/trcsubbase"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/trcvault/util"
@@ -64,7 +66,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 						}
 					}()
 
-					ProcessDeploy(*gAgentConfig.Env, region, "", "", trcPath, secretId, approleId, false)
+					ProcessDeploy(*gAgentConfig.Env, region, "", deployment, trcPath, secretId, approleId, false)
 				}()
 
 				for modeCtl := range gAgentConfig.CtlMessage {
@@ -261,7 +263,7 @@ func featherCtlCb(agentName string) error {
 			if err == nil {
 				if strings.HasPrefix(ctlFlapMode, cap.MODE_FLAP) {
 					ctl := strings.Split(ctlFlapMode, "_")
-					if len(ctl) > 1 && ctl[1] != "trcctlcomplete" {
+					if len(ctl) > 1 && ctl[1] != capauth.TrcCtlComplete {
 						fmt.Printf("%s\n", ctl[1])
 					}
 					callFlap = cap.MODE_GAZE
@@ -285,10 +287,11 @@ func featherCtlCb(agentName string) error {
 
 }
 
-func configCmd(env string,
+func roleBasedRunner(env string,
 	trcshConfig *capauth.TrcShConfig,
 	region string,
 	config *eUtils.DriverConfig,
+	control string,
 	agentToken bool,
 	token string,
 	argsOrig []string,
@@ -303,13 +306,22 @@ func configCmd(env string,
 	config.EnvRaw = env
 	config.WantCerts = false
 	config.IsShellSubProcess = true
-
+	if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
+		config.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
+		config.EndDir = trcDeployRoot.(string)
+	}
 	configRoleSlice := strings.Split(*trcshConfig.ConfigRole, ":")
 	tokenName := "config_token_" + env
 	tokenConfig := ""
 	configEnv := env
+	var err error
 
-	err := trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
+	switch control {
+	case "trcconfig":
+		err = trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
+	case "trcsub":
+		err = trcsubbase.CommonMain(&configEnv, &config.VaultAddress, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], config)
+	}
 	ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 
@@ -353,7 +365,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			config.Token = token
 		}
 	case "trcconfig":
-		err := configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
+		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, token, argsOrig, deployArgLines, configCount)
 		if err != nil {
 			os.Exit(1)
 		}
@@ -445,9 +457,21 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 			config.Token = token
 		}
 		return err
+	case "trcsub":
+		// This maybe isn't needed for windows deploys...  Since config can
+		// pull templates directly from vault..
+		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, token, argsOrig, deployArgLines, configCount)
+		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
+		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+		if !agentToken {
+			token = ""
+			config.Token = token
+		}
+		return err
 
 	case "trcconfig":
-		err := configCmd(env, trcshConfig, region, config, agentToken, token, argsOrig, deployArgLines, configCount)
+		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, token, argsOrig, deployArgLines, configCount)
 		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
@@ -525,6 +549,10 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		MemFs:             memfs.New(),
 		Regions:           regions,
 		ExitOnFailure:     true}
+
+	if len(deployment) > 0 {
+		config.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
+	}
 
 	if env == "itdev" {
 		config.OutputMemCache = false
@@ -611,6 +639,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		config.EnvRaw = env
 		config.EndDir = "deploy"
 		config.OutputMemCache = true
+		config.StartDir = []string{"trc_templates"}
 		trcconfigbase.CommonMain(&configEnv, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
@@ -636,16 +665,52 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		os.Args = []string{os.Args[0]}
 		config.Log.Println("Processing trcshell")
 	} else {
-		fmt.Println("Processing manual trcshell")
-		if env == "itdev" {
-			content, err = os.ReadFile(pwd + "/deploy/buildtest.trc")
-			if err != nil {
-				fmt.Println("Error could not find /deploy/buildtest.trc for deployment instructions")
+		if strings.Contains(pwd, "TrcDeploy") && len(config.DeploymentConfig) > 0 {
+			if deployment, ok := config.DeploymentConfig["trcplugin"]; ok {
+				// Swapping in project root...
+				mod, err := helperkv.NewModifier(config.Insecure, *gTrcshConfig.CToken, *gTrcshConfig.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
+				if err != nil {
+					fmt.Println("Unable to obtain resources for deployment")
+					return
+				}
+				mod.Env = config.EnvRaw
+				deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
+				if err != nil {
+					fmt.Println("Unable to obtain config for deployment")
+					return
+				}
+				config.DeploymentConfig = deploymentConfig
+				if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
+					config.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
+					config.EndDir = trcDeployRoot.(string)
+				}
+
+				if trcProjectService, ok := config.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
+					trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
+					contentArray, _, _, err := vcutils.ConfigTemplate(config, mod, "/deploy/deploy.trc", true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
+					if err != nil {
+						eUtils.LogErrorObject(config, err, false)
+						return
+					}
+					content = []byte(contentArray)
+				} else {
+					fmt.Println("Project not configured and ready for deployment.  Missing projectservice")
+					return
+				}
 			}
 		} else {
-			content, err = os.ReadFile(pwd + "/deploy/deploy.trc")
-			if err != nil {
-				fmt.Println("Error could not find " + pwd + " /deploy/deploy.trc for deployment instructions")
+			fmt.Println("Processing manual trcshell")
+			if env == "itdev" {
+				content, err = os.ReadFile(pwd + "/deploy/buildtest.trc")
+				if err != nil {
+					fmt.Println("Error could not find /deploy/buildtest.trc for deployment instructions")
+				}
+			} else {
+				content, err = os.ReadFile(pwd + "/deploy/deploy.trc")
+				if err != nil {
+					fmt.Println("Error could not find " + pwd + "/deploy/deploy.trc for deployment instructions")
+					config.Log.Printf("Error could not find %s/deploy/deploy.trc for deployment instructions", pwd)
+				}
 			}
 		}
 	}
