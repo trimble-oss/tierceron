@@ -65,6 +65,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		logger := log.New(f, "[INIT]", log.LstdFlags)
 		config = &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}
+		appRoleConfigPtr = new(string)
 	}
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {

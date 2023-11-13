@@ -405,7 +405,6 @@ func CommonMain(envPtr *string,
 		if len(envVersion) < 2 {
 			*envPtr = envVersion[0] + "_0"
 		}
-		fmt.Printf("Aiming for: %s\n", configBase.EndDir)
 		config := eUtils.DriverConfig{
 			IsShellSubProcess: isShellSubprocess,
 			Insecure:          *insecurePtr,
