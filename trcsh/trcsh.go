@@ -639,7 +639,6 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		config.EnvRaw = env
 		config.EndDir = "deploy"
 		config.OutputMemCache = true
-		config.StartDir = []string{"trc_templates"}
 		trcconfigbase.CommonMain(&configEnv, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
