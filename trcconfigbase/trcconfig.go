@@ -102,13 +102,13 @@ func CommonMain(envPtr *string,
 	versionInfoPtr := flag.Bool("versions", false, "Version information about values")
 	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
-	isShellSubprocess := false
+	isShell := false
 
 	if c != nil {
-		isShellSubprocess = c.IsShellSubProcess
+		isShell = c.IsShell
 	}
 
-	if c == nil || !isShellSubprocess {
+	if c == nil || !isShell {
 		args := os.Args[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
@@ -140,7 +140,7 @@ func CommonMain(envPtr *string,
 			*wantCertsPtr = true
 		}
 	}
-	if !isShellSubprocess {
+	if !isShell {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 			fmt.Println("Missing required template folder: " + *startDirPtr)
 			return fmt.Errorf("missing required template folder: %s", *startDirPtr)
@@ -363,7 +363,8 @@ func CommonMain(envPtr *string,
 			}
 
 			config := eUtils.DriverConfig{
-				IsShellSubProcess: isShellSubprocess,
+				IsShell:           isShell,
+				IsShellSubProcess: configBase.IsShellSubProcess,
 				Insecure:          *insecurePtr,
 				Token:             *tokenPtr,
 				VaultAddress:      *addrPtr,
@@ -414,7 +415,8 @@ func CommonMain(envPtr *string,
 			*envPtr = envVersion[0] + "_0"
 		}
 		config := eUtils.DriverConfig{
-			IsShellSubProcess: isShellSubprocess,
+			IsShell:           isShell,
+			IsShellSubProcess: configBase.IsShellSubProcess,
 			Insecure:          *insecurePtr,
 			Token:             *tokenPtr,
 			VaultAddress:      *addrPtr,
