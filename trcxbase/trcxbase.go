@@ -40,7 +40,7 @@ func messenger(inData *string, inPath string) {
 	resultChannel <- &data
 }
 
-func reciever() {
+func receiver() {
 	for {
 		select {
 		case data := <-resultChannel:
@@ -373,7 +373,7 @@ skipDiff:
 	var serviceFilterSlice []string
 
 	if len(*dynamicPathPtr) > 0 {
-		go reciever() //Channel reciever
+		go receiver() //Channel receiver
 
 		dynamicPathParts := strings.Split(*dynamicPathPtr, "/")
 
@@ -645,7 +645,7 @@ skipDiff:
 		}
 	}
 
-	go reciever() //Channel reciever
+	go receiver() //Channel receiver
 	if len(*dynamicPathPtr) == 0 {
 		for _, env := range envSlice {
 			envVersion := eUtils.SplitEnv(env)

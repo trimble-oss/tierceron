@@ -79,7 +79,7 @@ type DriverConfig struct {
 	ServiceFilter     []string // Which tables to use.
 	DynamicPathFilter string   // Seeds from a specific path.
 
-	Deployment string // For trcsh to indicate which deployment to work on
+	DeploymentConfig map[string]interface{} // For trcsh to indicate which deployment to work on
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
