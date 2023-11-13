@@ -33,6 +33,7 @@ func CommonMain(envPtr *string,
 	winservicestartPtr := flag.Bool("winservicestart", false, "To start a windows service for a particular plugin.")
 	codebundledeployPtr := flag.Bool("codebundledeploy", false, "To deploy a code bundle.")
 	agentdeployPtr := flag.Bool("agentdeploy", false, "To initiate deployment on agent.")
+	projectservicePtr := flag.String("projectservice", "", "Provide template root path in form project/service")
 
 	// Common flags...
 	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
@@ -239,6 +240,7 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
 	pluginToolConfig["deployrootPtr"] = *deployrootPtr
 	pluginToolConfig["serviceNamePtr"] = *serviceNamePtr
+	pluginToolConfig["projectservicePtr"] = *projectservicePtr
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
@@ -267,6 +269,9 @@ func CommonMain(envPtr *string,
 			if _, ok := pluginToolConfig["codeBundlePtr"].(string); ok {
 				pluginToolConfig["trccodebundle"] = pluginToolConfig["codeBundlePtr"].(string)
 			}
+			if _, ok := pluginToolConfig["projectServicePtr"].(string); ok {
+				pluginToolConfig["trcprojectservice"] = pluginToolConfig["projectServicePtr"].(string)
+			}
 		}
 	}
 
@@ -276,6 +281,7 @@ func CommonMain(envPtr *string,
 		writeMap := make(map[string]interface{})
 		writeMap["trcplugin"] = *pluginNamePtr
 		writeMap["trctype"] = *pluginTypePtr
+		writeMap["trcprojectservice"] = *projectservicePtr
 
 		if _, ok := pluginToolConfig["trcdeployroot"]; ok {
 			writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"]
@@ -285,6 +291,9 @@ func CommonMain(envPtr *string,
 		}
 		if _, ok := pluginToolConfig["trccodebundle"]; ok {
 			writeMap["trccodebundle"] = pluginToolConfig["trccodebundle"]
+		}
+		if _, ok := pluginToolConfig["trcprojectservice"]; ok {
+			writeMap["trcprojectservice"] = pluginToolConfig["trcprojectservice"]
 		}
 		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
 		if err != nil {
@@ -475,6 +484,7 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 	if defineServicePtr {
 		writeMap["trccodebundle"] = pluginToolConfig["trccodebundle"].(string)
 		writeMap["trcservicename"] = pluginToolConfig["trcservicename"].(string)
+		writeMap["trcprojectservice"] = pluginToolConfig["trcprojectservice"].(string)
 		writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"].(string)
 	}
 	if _, imgShaOk := pluginToolConfig["imagesha256"].(string); imgShaOk {
