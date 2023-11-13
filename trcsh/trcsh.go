@@ -299,6 +299,8 @@ func roleBasedRunner(env string,
 	configCount *int) error {
 	*configCount -= 1
 	if *configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
+		config.IsShellConfigComplete = false
+	} else {
 		config.IsShellConfigComplete = true
 	}
 	config.AppRoleConfig = "config.yml"
@@ -637,7 +639,6 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		tokenName := "config_token_" + env
 		configEnv := env
 		config.EnvRaw = env
-		config.EndDir = "deploy"
 		config.OutputMemCache = true
 		config.StartDir = []string{"trc_templates"}
 		config.EndDir = "."
