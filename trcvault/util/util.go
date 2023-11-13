@@ -345,6 +345,9 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 				return nil, err
 			}
 		}
+		if defineService {
+			pluginEnvConfigClone["pluginpath"] = pluginToolConfig["pluginpath"]
+		}
 	}
 	config.Log.Println("GetPluginToolConfig end processing plugins.")
 
