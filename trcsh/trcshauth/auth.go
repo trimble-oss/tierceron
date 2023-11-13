@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/capauth"
@@ -85,8 +86,23 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 	return env, envContext, addrPort, nil
 }
 
+func retryingPenseFeatherQuery(agentConfigs *capauth.AgentConfigs, pense string) (*string, error) {
+	retry := 0
+	for retry < 5 {
+		result, err := agentConfigs.PenseFeatherQuery(pense)
+
+		if err != nil || result == nil || *result == "...." {
+			time.Sleep(time.Second)
+			retry = retry + 1
+		} else {
+			return result, err
+		}
+	}
+	return nil, errors.New("unavailable secrets")
+}
+
 // Helper function for obtaining auth components.
-func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (*capauth.TrcShConfig, error) {
+func TrcshAuth(agentConfigs *capauth.AgentConfigs, config *eUtils.DriverConfig) (*capauth.TrcShConfig, error) {
 	trcshConfig := &capauth.TrcShConfig{}
 	var err error
 
@@ -108,7 +124,7 @@ func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (
 			return trcshConfig, nil
 		}
 	} else {
-		if agentConfig == nil {
+		if agentConfigs == nil {
 			config.Log.Println("Auth phase 1")
 			trcshConfig.KubeConfig, err = capauth.PenseQuery(config, "kubeconfig")
 		}
@@ -121,8 +137,8 @@ func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (
 		memprotectopts.MemProtect(nil, trcshConfig.KubeConfig)
 	}
 
-	if agentConfig != nil {
-		trcshConfig.VaultAddress, err = agentConfig.PenseFeatherQuery("caddress")
+	if agentConfigs != nil {
+		trcshConfig.VaultAddress, err = retryingPenseFeatherQuery(agentConfigs, "caddress")
 	} else {
 		config.Log.Println("Auth phase 2")
 		trcshConfig.VaultAddress, err = capauth.PenseQuery(config, "caddress")
@@ -154,8 +170,8 @@ func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (
 	config.VaultAddress = *trcshConfig.VaultAddress
 	memprotectopts.MemProtect(nil, &config.VaultAddress)
 
-	if agentConfig != nil {
-		trcshConfig.ConfigRole, err = agentConfig.PenseFeatherQuery("configrole")
+	if agentConfigs != nil {
+		trcshConfig.ConfigRole, err = retryingPenseFeatherQuery(agentConfigs, "configrole")
 	} else {
 		config.Log.Println("Auth phase 3")
 		trcshConfig.ConfigRole, err = capauth.PenseQuery(config, "configrole")
@@ -166,17 +182,17 @@ func TrcshAuth(agentConfig *capauth.AgentConfigs, config *eUtils.DriverConfig) (
 
 	memprotectopts.MemProtect(nil, trcshConfig.ConfigRole)
 
-	if agentConfig == nil {
+	if agentConfigs == nil {
 		config.Log.Println("Auth phase 4")
-		trcshConfig.PubRole, err = capauth.PenseQuery(config, "pubrole")
+		trcshConfig.PubRole, err = retryingPenseFeatherQuery(agentConfigs, "pubrole")
 		if err != nil {
 			return trcshConfig, err
 		}
 		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
 	}
 
-	if agentConfig != nil {
-		trcshConfig.CToken, err = agentConfig.PenseFeatherQuery("ctoken")
+	if agentConfigs != nil {
+		trcshConfig.CToken, err = retryingPenseFeatherQuery(agentConfigs, "ctoken")
 	} else {
 		config.Log.Println("Auth phase 5")
 		trcshConfig.CToken, err = capauth.PenseQuery(config, "ctoken")
