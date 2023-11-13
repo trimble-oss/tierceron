@@ -62,7 +62,7 @@ skipSwitch:
 	resultChannel <- &data
 }
 
-func reciever() {
+func receiver() {
 
 	for data := range resultChannel {
 		if data != nil && data.inData != nil && data.inPath != "" {
@@ -168,7 +168,12 @@ func CommonMain(envPtr *string,
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "["+coreopts.GetFolderPrefix(nil)+"config]", log.LstdFlags)
-		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
+		configBase = &eUtils.DriverConfig{Insecure: true,
+			StartDir:      append([]string{}, *startDirPtr),
+			EndDir:        *endDirPtr,
+			Log:           logger,
+			ExitOnFailure: true}
+
 		appRoleConfigPtr = new(string)
 		eUtils.CheckError(configBase, err, true)
 	}
@@ -314,8 +319,8 @@ func CommonMain(envPtr *string,
 		fileFilterSlice[0] = *fileFilterPtr
 	}
 
-	//channel reciever
-	go reciever()
+	//channel receiver
+	go receiver()
 	var diffFileCount int
 	if *diffPtr {
 		configSlice := make([]eUtils.DriverConfig, 0, len(envDiffSlice)-1)
@@ -359,8 +364,8 @@ func CommonMain(envPtr *string,
 				Regions:           regions,
 				SecretMode:        *secretMode,
 				ServicesWanted:    services,
-				StartDir:          append([]string{}, *startDirPtr),
-				EndDir:            *endDirPtr,
+				StartDir:          configBase.StartDir,
+				EndDir:            configBase.EndDir,
 				WantCerts:         *wantCertsPtr,
 				WantKeystore:      *keyStorePtr,
 				ZeroConfig:        *zcPtr,
@@ -410,8 +415,8 @@ func CommonMain(envPtr *string,
 			Regions:           regions,
 			SecretMode:        *secretMode,
 			ServicesWanted:    services,
-			StartDir:          append([]string{}, *startDirPtr),
-			EndDir:            *endDirPtr,
+			StartDir:          configBase.StartDir,
+			EndDir:            configBase.EndDir,
 			WantCerts:         *wantCertsPtr,
 			WantKeystore:      *keyStorePtr,
 			ZeroConfig:        *zcPtr,
@@ -424,6 +429,10 @@ func CommonMain(envPtr *string,
 			FileFilter:        fileFilterSlice,
 			VersionInfo:       eUtils.VersionHelper,
 		}
+
+		if len(configBase.DeploymentConfig) > 0 {
+			config.DeploymentConfig = configBase.DeploymentConfig
+		}
 		wg.Add(1)
 		go func(c *eUtils.DriverConfig) {
 			defer wg.Done()
@@ -433,7 +442,7 @@ func CommonMain(envPtr *string,
 	wg.Wait() //Wait for templates
 	if c == nil {
 		close(resultChannel)
-	} else if c.EndDir != "deploy" {
+	} else if c.EndDir != "deploy" && !c.IsShellSubProcess {
 		close(resultChannel)
 	}
 	if *diffPtr { //Diff if needed
