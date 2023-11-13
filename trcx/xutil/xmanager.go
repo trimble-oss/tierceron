@@ -172,7 +172,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 		}
 	}
 
-	//Reciever for configs
+	//Receiver for configs
 	go func(c *eUtils.DriverConfig) {
 		for {
 			select {
