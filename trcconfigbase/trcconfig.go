@@ -450,7 +450,7 @@ func CommonMain(envPtr *string,
 	wg.Wait() //Wait for templates
 	if c == nil {
 		close(resultChannel)
-	} else if c.IsShellConfigComplete {
+	} else if c.IsShellConfigComplete && !c.IsShellSubProcess {
 		close(resultChannel)
 	}
 	if *diffPtr { //Diff if needed
