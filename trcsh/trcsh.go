@@ -299,7 +299,7 @@ func roleBasedRunner(env string,
 	configCount *int) error {
 	*configCount -= 1
 	if *configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
-		config.EndDir = "deploy"
+		config.IsShellConfigComplete = true
 	}
 	config.AppRoleConfig = "config.yml"
 	config.FileFilter = nil
