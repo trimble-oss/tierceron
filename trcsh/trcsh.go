@@ -311,6 +311,9 @@ func roleBasedRunner(env string,
 	if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
 		config.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
 		config.EndDir = trcDeployRoot.(string)
+	} else {
+		config.StartDir = []string{"trc_templates"}
+		config.EndDir = "."
 	}
 	configRoleSlice := strings.Split(*trcshConfig.ConfigRole, ":")
 	tokenName := "config_token_" + env
