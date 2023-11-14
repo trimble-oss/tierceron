@@ -119,7 +119,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 							*gAgentConfig.HandshakeHostPort,
 							*gAgentConfig.HandshakeCode,
 							cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
-						deployDoneChan <- true
+						go func() { deployDoneChan <- true }()
 						goto deploycomplete
 					}
 				}
