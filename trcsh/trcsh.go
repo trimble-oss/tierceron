@@ -96,7 +96,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								interruptFun(twoHundredMilliInterruptTicker)
 							} else {
 								if err.Error() != "init" {
-									interruptFun(multiSecondInterruptTicker)
+									interruptFun(secondInterruptTicker)
 								}
 							}
 							ctlFlapMode, err = cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
@@ -117,7 +117,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 					}
 				}
 			} else {
-				interruptFun(multiSecondInterruptTicker)
+				interruptFun(fiveSecondInterruptTicker)
 			}
 		deploycomplete:
 		}
@@ -224,7 +224,9 @@ func main() {
 
 var interruptChan chan os.Signal = make(chan os.Signal)
 var twoHundredMilliInterruptTicker *time.Ticker = time.NewTicker(200 * time.Millisecond)
-var multiSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second)
+var secondInterruptTicker *time.Ticker = time.NewTicker(time.Second)
+var multiSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 3)
+var fiveSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
 
 func interruptFun(tickerInterrupt *time.Ticker) {
 	select {
