@@ -60,11 +60,6 @@ func DownloadTemplates(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirN
 			eUtils.LogErrorMessage(config, "Couldn't make directory: "+dirName+filePath, false)
 			continue
 		}
-		if trcProjectService, ok := config.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
-			file = strings.Replace(file, trcProjectService.(string), "/", 1)
-			projectService := strings.Replace(trcProjectService.(string), "/", "\\", 1)
-			file = strings.Replace(file, projectService, "\\", 1)
-		}
 		//create new file
 		templateFile := fmt.Sprintf("%s/%s%s.tmpl", dirPath, file, ext)
 		newFile, err := os.Create(templateFile)
@@ -185,13 +180,15 @@ func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifi
 				filePath = filePath[strings.Index(filePath, "/"):]
 				file := filePath[strings.LastIndex(filePath, "/"):]
 				dirPath := filepath.Dir(dirName + filePath)
-				err = os.MkdirAll(dirPath, os.ModePerm)
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Couldn't make directory: "+dirName+filePath, false)
 					continue
 				}
+				err = os.MkdirAll(dirPath, os.ModePerm)
+				templateFile := fmt.Sprintf("%s%s%s.tmpl", dirPath, file, ext)
 				//create new file
-				newFile, err := os.Create(dirPath + file + ext + ".tmpl")
+				newFile, err := os.Create(templateFile)
+
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Couldn't create file: "+dirPath+file+ext+".tmpl", false)
 					continue
