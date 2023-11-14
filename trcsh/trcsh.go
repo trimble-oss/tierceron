@@ -42,6 +42,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 	go func() {
 		for {
 		perching:
+			var deployDoneChan chan bool
 			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
@@ -54,7 +55,10 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 				go func() {
 					go func() {
 						// Timeout and CtlMessage subscriber
-						for range time.After(120 * time.Second) {
+						select {
+						case <-deployDoneChan:
+							break
+						case <-time.After(120 * time.Second):
 							ctlMsg := "Deployment timed out after 120 seconds"
 							cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 								*gAgentConfig.EncryptSalt,
@@ -63,6 +67,8 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 							gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 							break
+						}
+						for range time.After(120 * time.Second) {
 						}
 					}()
 
@@ -113,6 +119,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 							*gAgentConfig.HandshakeHostPort,
 							*gAgentConfig.HandshakeCode,
 							cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
+						go func() { deployDoneChan <- true }()
 						goto deploycomplete
 					}
 				}
@@ -131,7 +138,7 @@ func main() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.22")
+	fmt.Println("trcsh Version: " + "1.23")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
 	if !utils.IsWindows() {
@@ -458,6 +465,7 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	deployArgLines []string,
 	configCount *int,
 	logger *log.Logger) error {
+
 	switch control {
 	case "trcplgtool":
 		config.AppRoleConfig = ""
@@ -802,6 +810,8 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 				}
 			}
 			if utils.IsWindows() {
+				// Log for traceability.
+				logger.Println(deployLine)
 				err := processWindowsCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
