@@ -74,6 +74,11 @@ func receiver() {
 
 }
 
+var (
+	ENDDIR_DEFAULT   = "."
+	STARTDIR_DEFAULT = coreopts.GetFolderPrefix(nil) + "_templates"
+)
+
 func CommonMain(envPtr *string,
 	addrPtr *string,
 	tokenPtr *string,
@@ -87,8 +92,8 @@ func CommonMain(envPtr *string,
 		memprotectopts.MemProtectInit(nil)
 	}
 
-	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
-	endDirPtr := flag.String("endDir", ".", "Directory to put configured templates into")
+	startDirPtr := flag.String("startDir", STARTDIR_DEFAULT, "Template directory")
+	endDirPtr := flag.String("endDir", ENDDIR_DEFAULT, "Directory to put configured templates into")
 	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flag.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
@@ -160,11 +165,11 @@ func CommonMain(envPtr *string,
 	var configBase *eUtils.DriverConfig
 	if c != nil {
 		configBase = c
-		if len(configBase.EndDir) == 0 || len(*endDirPtr) > len(configBase.EndDir) {
+		if len(configBase.EndDir) == 0 || *endDirPtr != ENDDIR_DEFAULT {
 			// Honor inputs if provided...
 			configBase.EndDir = *endDirPtr
 		}
-		if len(configBase.StartDir) == 0 || len(configBase.StartDir[0]) == 0 || (len(*startDirPtr) > len(configBase.StartDir[0])) {
+		if len(configBase.StartDir) == 0 || len(configBase.StartDir[0]) == 0 || *startDirPtr != STARTDIR_DEFAULT {
 			// Bad inputs... use default.
 			configBase.StartDir = append([]string{}, *startDirPtr)
 		}
