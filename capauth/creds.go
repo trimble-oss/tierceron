@@ -10,10 +10,10 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"runtime"
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/utils"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -29,7 +29,7 @@ func ReadServerCert() ([]byte, error) {
 	if _, err := os.Stat(ServCert); err == nil {
 		return os.ReadFile(ServCert)
 	} else {
-		if runtime.GOOS == "windows" {
+		if utils.IsWindows() {
 			return os.ReadFile(ServCertLocal)
 		} else {
 			return nil, errors.New("file not found")

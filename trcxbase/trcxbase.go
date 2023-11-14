@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/utils"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -121,7 +121,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 
 	Yellow := "\033[33m"
 	Reset := "\033[0m"
-	if runtime.GOOS == "windows" {
+	if utils.IsWindows() {
 		Reset = ""
 		Yellow = ""
 	}
