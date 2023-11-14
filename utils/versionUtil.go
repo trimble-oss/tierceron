@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -128,7 +127,7 @@ func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[
 func BoundCheck(config *DriverConfig, versionNumbers []int, version string) {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
-	if runtime.GOOS == "windows" {
+	if IsWindows() {
 		Reset = ""
 		Cyan = ""
 	}

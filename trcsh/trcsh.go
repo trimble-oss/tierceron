@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -30,6 +29,7 @@ import (
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/trcvault/util"
+	"github.com/trimble-oss/tierceron/utils"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -134,7 +134,7 @@ func main() {
 	fmt.Println("trcsh Version: " + "1.21")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
-	if runtime.GOOS != "windows" {
+	if !utils.IsWindows() {
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
@@ -801,7 +801,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 					os.Args = deployArgs
 				}
 			}
-			if runtime.GOOS == "windows" {
+			if utils.IsWindows() {
 				err := processWindowsCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
@@ -841,7 +841,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 			}
 		}
 	}
-	if runtime.GOOS == "windows" {
+	if utils.IsWindows() {
 		gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 	}
 	//Make the arguments in the script -> os.args.
