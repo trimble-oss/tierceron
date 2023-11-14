@@ -8,12 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/go-git/go-billy/v5"
 
+	"github.com/trimble-oss/tierceron/utils"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/validator"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -25,7 +25,7 @@ var mutex = &sync.Mutex{}
 func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig) (interface{}, error) {
 	/*Cyan := "\033[36m"
 	Reset := "\033[0m"
-	if runtime.GOOS == "windows" {
+	if utils.IsWindows() {
 		Reset = ""
 		Cyan = ""
 	}*/
@@ -413,7 +413,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				if config.OutputMemCache {
 					messageBase = "template configured and pre-processed for "
 				}
-				if runtime.GOOS == "windows" {
+				if utils.IsWindows() {
 					eUtils.LogInfo(config, messageBase+endPaths[i])
 				} else {
 					eUtils.LogInfo(config, "\033[0;33m"+messageBase+endPaths[i]+"\033[0m")

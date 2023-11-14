@@ -8,8 +8,9 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"runtime"
 	"time"
+
+	"github.com/trimble-oss/tierceron/utils"
 )
 
 // Definition here: https://tools.ietf.org/html/rfc5280
@@ -106,7 +107,7 @@ func VerifyCertificate(cert *x509.Certificate, host string) (bool, error) {
 		CurrentTime: time.Now(),
 	}
 
-	if runtime.GOOS != "windows" {
+	if !utils.IsWindows() {
 		rootCAs, err := x509.SystemCertPool()
 		if err != nil {
 			return false, err
@@ -116,7 +117,7 @@ func VerifyCertificate(cert *x509.Certificate, host string) (bool, error) {
 	}
 
 	if _, err := cert.Verify(opts); err != nil {
-		if runtime.GOOS != "windows" {
+		if !utils.IsWindows() {
 			if _, ok := err.(x509.UnknownAuthorityError); ok {
 				issuer, issuerErr := getCert("http://r3.i.lencr.org/")
 				if issuerErr != nil {
