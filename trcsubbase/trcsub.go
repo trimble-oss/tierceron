@@ -29,7 +29,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtectInit(nil)
 	}
 	fmt.Println("Version: " + "1.5")
-	dirPtr := flag.String("dir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
+	endDirPtr := flag.String("endDir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"pub to access the vault")
 	pingPtr := flag.Bool("ping", false, "Ping vault.")
@@ -45,11 +45,15 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")
 		os.Exit(1)
 	}
-	var config *eUtils.DriverConfig
+	var configBase *eUtils.DriverConfig
 	var appRoleConfigPtr *string
 
 	if c != nil {
-		config = c
+		configBase = c
+		if len(configBase.EndDir) == 0 && len(*endDirPtr) != 0 {
+			// Bad inputs... use default.
+			configBase.EndDir = *endDirPtr
+		}
 		appRoleConfigPtr = &c.AppRoleConfig
 
 	} else {
@@ -64,7 +68,10 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		logger := log.New(f, "[INIT]", log.LstdFlags)
-		config = &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}
+		configBase = &eUtils.DriverConfig{Insecure: *insecurePtr,
+			EndDir:        *endDirPtr,
+			Log:           logger,
+			ExitOnFailure: true}
 		appRoleConfigPtr = new(string)
 	}
 
@@ -72,13 +79,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(config, err, false)
+		eUtils.CheckError(configBase, err, false)
 		return err
 	}
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 
-	autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return autoErr
@@ -88,26 +95,26 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtect(nil, tokenPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, config.Log)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
 	if err != nil {
 		fmt.Println("Failure to init to vault")
-		config.Log.Println("Failure to init to vault")
+		configBase.Log.Println("Failure to init to vault")
 		return err
 	}
 	mod.Env = *envPtr
 
 	if *templatePathsPtr != "" {
-		fmt.Printf("Downloading templates from vault to %s\n", *dirPtr)
+		fmt.Printf("Downloading templates from vault to %s\n", configBase.EndDir)
 		// The actual download templates goes here.
-		il.DownloadTemplates(config, mod, *dirPtr, config.Log, templatePathsPtr)
+		il.DownloadTemplates(configBase, mod, configBase.EndDir, configBase.Log, templatePathsPtr)
 	} else if *projectInfoPtr {
-		templateList, err := mod.List("templates/", config.Log)
+		templateList, err := mod.List("templates/", configBase.Log)
 		if err != nil {
 			fmt.Println("Failure read templates")
-			config.Log.Println("Failure read templates")
+			configBase.Log.Println("Failure read templates")
 			return err
 		}
 		fmt.Printf("\nProjects available:\n")
@@ -119,18 +126,18 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 		return nil
 	} else {
-		fmt.Printf("Downloading templates from vault to %s\n", *dirPtr)
+		fmt.Printf("Downloading templates from vault to %s\n", configBase.EndDir)
 		// The actual download templates goes here.
-		warn, err := il.DownloadTemplateDirectory(config, mod, *dirPtr, config.Log, filterTemplatePtr)
+		warn, err := il.DownloadTemplateDirectory(configBase, mod, configBase.EndDir, configBase.Log, filterTemplatePtr)
 		if err != nil {
 			fmt.Println(err)
-			config.Log.Printf("Failure to download: %s", err.Error())
+			configBase.Log.Printf("Failure to download: %s", err.Error())
 			if strings.Contains(err.Error(), "x509: certificate") {
 				return err
 			}
 		}
-		eUtils.CheckError(config, err, false)
-		eUtils.CheckWarnings(config, warn, false)
+		eUtils.CheckError(configBase, err, false)
+		eUtils.CheckWarnings(configBase, warn, false)
 	}
 	return nil
 }
