@@ -325,6 +325,7 @@ func roleBasedRunner(env string,
 	case "trcconfig":
 		err = trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
 	case "trcsub":
+		config.EndDir = config.EndDir + "/trc_templates"
 		err = trcsubbase.CommonMain(&configEnv, &config.VaultAddress, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], config)
 	}
 	ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
