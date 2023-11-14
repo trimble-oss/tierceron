@@ -46,7 +46,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
 				*gAgentConfig.HandshakeCode,
-				cap.MODE_FLAP, deployment+"."+*gAgentConfig.Env, false); featherErr == nil && strings.HasPrefix(featherMode, cap.MODE_GAZE) {
+				cap.MODE_FLAP, deployment+"."+*gAgentConfig.Env, false, acceptRemote); featherErr == nil && strings.HasPrefix(featherMode, cap.MODE_GAZE) {
 				// Lookup trcPath from deployment
 
 				// Process the script....
@@ -60,7 +60,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								*gAgentConfig.EncryptSalt,
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
-								cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true)
+								cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 							gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 							break
 						}
@@ -81,7 +81,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								*gAgentConfig.EncryptSalt,
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
-								cap.MODE_PERCH, deployment+"."+*gAgentConfig.Env, true)
+								cap.MODE_PERCH, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 							ctlFlapMode = cap.MODE_PERCH
 							goto perching
 						}
@@ -103,7 +103,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								*gAgentConfig.EncryptSalt,
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
-								callFlap, deployment+"."+*gAgentConfig.Env, true)
+								callFlap, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 						}
 					}
 					if modeCtl == capauth.TrcCtlComplete {
@@ -112,7 +112,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 							*gAgentConfig.EncryptSalt,
 							*gAgentConfig.HandshakeHostPort,
 							*gAgentConfig.HandshakeCode,
-							cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true)
+							cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 						goto deploycomplete
 					}
 				}
@@ -233,10 +233,18 @@ func interruptFun(tickerInterrupt *time.Ticker) {
 			*gAgentConfig.EncryptSalt,
 			*gAgentConfig.HandshakeHostPort,
 			*gAgentConfig.HandshakeCode,
-			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true)
+			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true, nil)
 		os.Exit(1)
 	case <-tickerInterrupt.C:
 	}
+}
+
+// acceptRemote - hook for instrumenting
+func acceptRemote(mode int, remote string) bool {
+	if mode == cap.FEATHER_CTL {
+		interruptFun(multiSecondInterruptTicker)
+	}
+	return true
 }
 
 func featherCtlCb(agentName string) error {
@@ -281,7 +289,7 @@ func featherCtlCb(agentName string) error {
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
 				*gAgentConfig.HandshakeCode,
-				callFlap, agentName+"."+*gAgentConfig.Env, true)
+				callFlap, agentName+"."+*gAgentConfig.Env, true, acceptRemote)
 		}
 	}
 
