@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -30,6 +29,7 @@ import (
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/trcvault/util"
+	"github.com/trimble-oss/tierceron/utils"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -46,7 +46,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
 				*gAgentConfig.HandshakeCode,
-				cap.MODE_FLAP, deployment+"."+*gAgentConfig.Env, false); featherErr == nil && strings.HasPrefix(featherMode, cap.MODE_GAZE) {
+				cap.MODE_FLAP, deployment+"."+*gAgentConfig.Env, false, acceptRemote); featherErr == nil && strings.HasPrefix(featherMode, cap.MODE_GAZE) {
 				// Lookup trcPath from deployment
 
 				// Process the script....
@@ -60,7 +60,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								*gAgentConfig.EncryptSalt,
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
-								cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true)
+								cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 							gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 							break
 						}
@@ -81,7 +81,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								*gAgentConfig.EncryptSalt,
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
-								cap.MODE_PERCH, deployment+"."+*gAgentConfig.Env, true)
+								cap.MODE_PERCH, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 							ctlFlapMode = cap.MODE_PERCH
 							goto perching
 						}
@@ -96,14 +96,14 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								interruptFun(twoHundredMilliInterruptTicker)
 							} else {
 								if err.Error() != "init" {
-									interruptFun(multiSecondInterruptTicker)
+									interruptFun(secondInterruptTicker)
 								}
 							}
 							ctlFlapMode, err = cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 								*gAgentConfig.EncryptSalt,
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
-								callFlap, deployment+"."+*gAgentConfig.Env, true)
+								callFlap, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 						}
 					}
 					if modeCtl == capauth.TrcCtlComplete {
@@ -112,12 +112,12 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 							*gAgentConfig.EncryptSalt,
 							*gAgentConfig.HandshakeHostPort,
 							*gAgentConfig.HandshakeCode,
-							cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true)
+							cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 						goto deploycomplete
 					}
 				}
 			} else {
-				interruptFun(multiSecondInterruptTicker)
+				interruptFun(fiveSecondInterruptTicker)
 			}
 		deploycomplete:
 		}
@@ -131,10 +131,10 @@ func main() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.21")
+	fmt.Println("trcsh Version: " + "1.22")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
-	if runtime.GOOS != "windows" {
+	if !utils.IsWindows() {
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
@@ -224,7 +224,9 @@ func main() {
 
 var interruptChan chan os.Signal = make(chan os.Signal)
 var twoHundredMilliInterruptTicker *time.Ticker = time.NewTicker(200 * time.Millisecond)
-var multiSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second)
+var secondInterruptTicker *time.Ticker = time.NewTicker(time.Second)
+var multiSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 3)
+var fiveSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
 
 func interruptFun(tickerInterrupt *time.Ticker) {
 	select {
@@ -233,10 +235,18 @@ func interruptFun(tickerInterrupt *time.Ticker) {
 			*gAgentConfig.EncryptSalt,
 			*gAgentConfig.HandshakeHostPort,
 			*gAgentConfig.HandshakeCode,
-			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true)
+			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true, nil)
 		os.Exit(1)
 	case <-tickerInterrupt.C:
 	}
+}
+
+// acceptRemote - hook for instrumenting
+func acceptRemote(mode int, remote string) bool {
+	if mode == cap.FEATHER_CTL {
+		interruptFun(multiSecondInterruptTicker)
+	}
+	return true
 }
 
 func featherCtlCb(agentName string) error {
@@ -281,7 +291,7 @@ func featherCtlCb(agentName string) error {
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
 				*gAgentConfig.HandshakeCode,
-				callFlap, agentName+"."+*gAgentConfig.Env, true)
+				callFlap, agentName+"."+*gAgentConfig.Env, true, acceptRemote)
 		}
 	}
 
@@ -791,7 +801,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 					os.Args = deployArgs
 				}
 			}
-			if runtime.GOOS == "windows" {
+			if utils.IsWindows() {
 				err := processWindowsCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
@@ -831,7 +841,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 			}
 		}
 	}
-	if runtime.GOOS == "windows" {
+	if utils.IsWindows() {
 		gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 	}
 	//Make the arguments in the script -> os.args.
