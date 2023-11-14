@@ -60,6 +60,11 @@ func DownloadTemplates(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirN
 			eUtils.LogErrorMessage(config, "Couldn't make directory: "+dirName+filePath, false)
 			continue
 		}
+		if trcProjectService, ok := config.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
+			file = strings.Replace(file, trcProjectService.(string), "/", 1)
+			projectService := strings.Replace(trcProjectService.(string), "/", "\\", 1)
+			file = strings.Replace(file, projectService, "\\", 1)
+		}
 		//create new file
 		templateFile := fmt.Sprintf("%s/%s%s.tmpl", dirPath, file, ext)
 		newFile, err := os.Create(templateFile)
