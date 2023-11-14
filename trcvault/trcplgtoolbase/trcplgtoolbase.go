@@ -321,6 +321,11 @@ func CommonMain(envPtr *string,
 		}
 		fmt.Printf("Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
+		if pluginToolConfig["trcsha256"] == nil || len(pluginToolConfig["trcsha256"].(string)) == 0 {
+			if configBase.DeploymentConfig != nil && configBase.DeploymentConfig["trcsha256"] != nil && len(configBase.DeploymentConfig["trcsha256"].(string)) > 0 {
+				pluginToolConfig["trcsha256"] = configBase.DeploymentConfig["trcsha256"]
+			}
+		}
 		if pluginToolConfig["trcsha256"] != nil && len(pluginToolConfig["trcsha256"].(string)) > 0 {
 			err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 			if err != nil {
