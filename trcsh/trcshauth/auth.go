@@ -184,7 +184,7 @@ func TrcshAuth(agentConfigs *capauth.AgentConfigs, config *eUtils.DriverConfig) 
 
 	if agentConfigs == nil {
 		config.Log.Println("Auth phase 4")
-		trcshConfig.PubRole, err = retryingPenseFeatherQuery(agentConfigs, "pubrole")
+		trcshConfig.PubRole, err = capauth.PenseQuery(config, "pubrole")
 		if err != nil {
 			return trcshConfig, err
 		}
