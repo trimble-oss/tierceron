@@ -160,11 +160,11 @@ func CommonMain(envPtr *string,
 	var configBase *eUtils.DriverConfig
 	if c != nil {
 		configBase = c
-		if len(configBase.EndDir) == 0 && len(*endDirPtr) != 0 {
-			// Bad inputs... use default.
+		if len(configBase.EndDir) == 0 || len(*endDirPtr) > len(configBase.EndDir) {
+			// Honor inputs if provided...
 			configBase.EndDir = *endDirPtr
 		}
-		if len(configBase.StartDir) == 0 || len(configBase.StartDir[0]) == 0 {
+		if len(configBase.StartDir) == 0 || len(configBase.StartDir[0]) == 0 || (len(*startDirPtr) > len(configBase.StartDir[0])) {
 			// Bad inputs... use default.
 			configBase.StartDir = append([]string{}, *startDirPtr)
 		}
