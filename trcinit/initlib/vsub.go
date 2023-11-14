@@ -180,13 +180,15 @@ func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifi
 				filePath = filePath[strings.Index(filePath, "/"):]
 				file := filePath[strings.LastIndex(filePath, "/"):]
 				dirPath := filepath.Dir(dirName + filePath)
-				err = os.MkdirAll(dirPath, os.ModePerm)
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Couldn't make directory: "+dirName+filePath, false)
 					continue
 				}
+				err = os.MkdirAll(dirPath, os.ModePerm)
+				templateFile := fmt.Sprintf("%s%s%s.tmpl", dirPath, file, ext)
 				//create new file
-				newFile, err := os.Create(dirPath + file + ext + ".tmpl")
+				newFile, err := os.Create(templateFile)
+
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Couldn't create file: "+dirPath+file+ext+".tmpl", false)
 					continue
