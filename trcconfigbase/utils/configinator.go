@@ -78,6 +78,18 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	for _, startDir := range config.StartDir {
 		//get files from directory
 		tp, ep := getDirFiles(startDir, config.EndDir)
+		if trcProjectService, ok := config.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
+			epScrubbed := []string{}
+			// Do some scrubbing...
+			for _, e := range ep {
+				e = strings.Replace(e, trcProjectService.(string), "/", 1)
+				projectService := strings.Replace(trcProjectService.(string), "/", "\\", 1)
+				e = strings.Replace(e, projectService, "\\", 1)
+				epScrubbed = append(epScrubbed, e)
+			}
+			ep = epScrubbed
+		}
+
 		templatePaths = append(templatePaths, tp...)
 		endPaths = append(endPaths, ep...)
 	}
