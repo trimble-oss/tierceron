@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/utils"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	"github.com/google/go-cmp/cmp"
@@ -266,7 +266,7 @@ func CommonMain(envPtr *string,
 		if len(envVersion) > 1 && envVersion[1] != "" && envVersion[1] != "0" {
 			Yellow := "\033[33m"
 			Reset := "\033[0m"
-			if runtime.GOOS == "windows" {
+			if utils.IsWindows() {
 				Reset = ""
 				Yellow = ""
 			}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,7 +35,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	var Cyan = "\033[36m"
 	var result string
 
-	if runtime.GOOS == "windows" {
+	if IsWindows() {
 		Reset = "\x1b[0m"
 		Red = "\x1b[31m"
 		Green = "\x1b[32m"
@@ -208,13 +207,13 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	//Diff vs no Diff output
 	if len(strings.TrimSpace(result)) == 0 && patchData {
 		if diffTimeout {
-			if runtime.GOOS == "windows" {
+			if IsWindows() {
 				return "@@ Diff Timed Out @@"
 			}
 			return Cyan + "@@ Diff Timed Out @@" + Reset
 		}
 
-		if runtime.GOOS == "windows" {
+		if IsWindows() {
 			return "@@ No Differences @@"
 		}
 		return Cyan + "@@ No Differences @@" + Reset
@@ -225,7 +224,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 		result = strings.TrimSuffix(result, "\n")
 	}
 
-	if runtime.GOOS == "windows" {
+	if IsWindows() {
 		result = strings.ReplaceAll(result, Reset, "")
 		result = strings.ReplaceAll(result, Green, "")
 		result = strings.ReplaceAll(result, Cyan, "")
@@ -239,7 +238,7 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 	Reset := "\033[0m"
 	Cyan := "\033[36m"
 	Red := "\033[31m"
-	if runtime.GOOS == "windows" {
+	if IsWindows() {
 		Reset = ""
 		Cyan = ""
 		Red = ""
@@ -461,7 +460,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		Green := "\033[32m"
 		Yellow := "\033[0;33m"
 
-		if runtime.GOOS == "windows" {
+		if IsWindows() {
 			Reset = ""
 			Red = ""
 			Green = ""
@@ -576,7 +575,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		}
 
 		//Seperator
-		if runtime.GOOS == "windows" {
+		if IsWindows() {
 			fmt.Printf("======================================================================================\n")
 		} else {
 			fmt.Printf("\033[1;35m======================================================================================\033[0m\n")
