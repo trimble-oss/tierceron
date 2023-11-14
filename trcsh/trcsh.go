@@ -138,7 +138,7 @@ func main() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.22")
+	fmt.Println("trcsh Version: " + "1.23")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
 	if !utils.IsWindows() {
