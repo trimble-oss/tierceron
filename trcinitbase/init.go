@@ -23,36 +23,50 @@ import (
 // This assumes that the vault is completely new, and should only be run for the purpose
 // of automating setup and initial seeding
 
-func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
-	devPtr := flag.Bool("dev", false, "Vault server running in dev mode (does not need to be unsealed)")
-	newPtr := flag.Bool("new", false, "New vault being initialized. Creates engines and requests first-time initialization")
-	addrPtr := flag.String("addr", "", "API endpoint for the vault")
+func CommonMain(envPtr *string,
+	addrPtrIn *string,
+	envCtxPtr *string,
+	flagset *flag.FlagSet,
+	argLines []string) {
+
+	if flagset == nil {
+		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		flagset.Usage = func() {
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			flagset.PrintDefaults()
+		}
+		flagset.String("env", "dev", "Environment to configure")
+	}
+
+	devPtr := flagset.Bool("dev", false, "Vault server running in dev mode (does not need to be unsealed)")
+	newPtr := flagset.Bool("new", false, "New vault being initialized. Creates engines and requests first-time initialization")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	if addrPtrIn != nil && *addrPtrIn != "" {
 		addrPtr = addrPtrIn
 	}
-	seedPtr := flag.String("seeds", coreopts.GetFolderPrefix(nil)+"_seeds", "Directory that contains vault seeds")
-	tokenPtr := flag.String("token", "", "Vault access token, only use if in dev mode or reseeding")
-	shardPtr := flag.String("shard", "", "Key shard used to unseal a vault that has been initialized but restarted")
+	seedPtr := flagset.String("seeds", coreopts.GetFolderPrefix(nil)+"_seeds", "Directory that contains vault seeds")
+	tokenPtr := flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
+	shardPtr := flagset.String("shard", "", "Key shard used to unseal a vault that has been initialized but restarted")
 
-	namespaceVariable := flag.String("namespace", "vault", "name of the namespace")
+	namespaceVariable := flagset.String("namespace", "vault", "name of the namespace")
 
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"init.log", "Output path for log files")
-	servicePtr := flag.String("service", "", "Seeding vault with a single service")
-	prodPtr := flag.Bool("prod", false, "Prod only seeds vault with staging environment")
-	uploadCertPtr := flag.Bool("certs", false, "Upload certs if provided")
-	rotateTokens := flag.Bool("rotateTokens", false, "rotate tokens")
-	tokenExpiration := flag.Bool("tokenExpiration", false, "Look up Token expiration dates")
-	pingPtr := flag.Bool("ping", false, "Ping vault.")
-	updateRole := flag.Bool("updateRole", false, "Update security role")
-	updatePolicy := flag.Bool("updatePolicy", false, "Update security policy")
-	initNamespace := flag.Bool("initns", false, "Init namespace (tokens, policy, and role)")
-	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
-	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
-	tokenFileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
-	roleFileFilterPtr := flag.String("approle", "", "Filter files for approle rotation.")
-	dynamicPathPtr := flag.String("dynamicPath", "", "Seed a specific directory in vault.")
-	nestPtr := flag.Bool("nest", false, "Seed a specific directory in vault.")
+	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"init.log", "Output path for log files")
+	servicePtr := flagset.String("service", "", "Seeding vault with a single service")
+	prodPtr := flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
+	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
+	rotateTokens := flagset.Bool("rotateTokens", false, "rotate tokens")
+	tokenExpiration := flagset.Bool("tokenExpiration", false, "Look up Token expiration dates")
+	pingPtr := flagset.Bool("ping", false, "Ping vault.")
+	updateRole := flagset.Bool("updateRole", false, "Update security role")
+	updatePolicy := flagset.Bool("updatePolicy", false, "Update security policy")
+	initNamespace := flagset.Bool("initns", false, "Init namespace (tokens, policy, and role)")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	keyShardPtr := flagset.String("totalKeys", "5", "Total number of key shards to make")
+	unsealShardPtr := flagset.String("unsealKeys", "3", "Number of key shards needed to unseal")
+	tokenFileFilterPtr := flagset.String("filter", "", "Filter files for token rotation.")
+	roleFileFilterPtr := flagset.String("approle", "", "Filter files for approle rotation.")
+	dynamicPathPtr := flagset.String("dynamicPath", "", "Seed a specific directory in vault.")
+	nestPtr := flagset.Bool("nest", false, "Seed a specific directory in vault.")
 
 	// indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
 	// indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // Table names
@@ -61,7 +75,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 
 	allowNonLocal := false
 
-	args := os.Args[1:]
+	args := argLines[1:]
 	for i := 0; i < len(args); i++ {
 		s := args[i]
 		if s[0] != '-' {
@@ -69,16 +83,16 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			os.Exit(1)
 		}
 	}
-	flag.Parse()
-	eUtils.CheckInitFlags()
+	eUtils.CheckInitFlags(flagset)
+	flagset.Parse(argLines[1:])
 	if memonly.IsMemonly() {
 		memprotectopts.MemUnprotectAll(nil)
 		memprotectopts.MemProtect(nil, tokenPtr)
 	}
 
 	// Prints usage if no flags are specified
-	if flag.NFlag() == 0 {
-		flag.Usage()
+	if flagset.NFlag() == 0 {
+		flagset.Usage()
 		os.Exit(1)
 	}
 

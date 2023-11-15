@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
@@ -19,5 +20,5 @@ func main() {
 	fmt.Println("Version: " + "1.5")
 	env := "local"
 	addr := coreopts.GetVaultHostPort()
-	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, &env, &addr, nil, nil)
+	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, &env, &addr, nil, nil, nil, os.Args)
 }
