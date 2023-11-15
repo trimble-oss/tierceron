@@ -325,6 +325,9 @@ func roleBasedRunner(env string,
 	config.EnvRaw = env
 	config.WantCerts = false
 	config.IsShellSubProcess = true
+	if config.VaultAddress == "" {
+		config.VaultAddress = *gTrcshConfig.VaultAddress
+	}
 	if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
 		config.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
 		config.EndDir = trcDeployRoot.(string)
@@ -601,17 +604,21 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 	// config.VaultAddress = ""
 	// config.Token = ""
 	// Chewbacca: end scrub
-	if gTrcshConfig == nil {
-		gTrcshConfig, err = trcshauth.TrcshAuth(gAgentConfig, config)
-		if err != nil {
-			fmt.Println("Tierceron bootstrap failure.")
-			fmt.Println(err.Error())
-			logger.Println(err)
-			os.Exit(-1)
+	config.Log.Printf("Bootstrap..")
+	for {
+		if gTrcshConfig == nil || gTrcshConfig.CToken == nil || gTrcshConfig.ConfigRole == nil || gTrcshConfig.VaultAddress == nil ||
+			*gTrcshConfig.CToken == "" || *gTrcshConfig.ConfigRole == "" || *gTrcshConfig.VaultAddress == "" {
+			gTrcshConfig, err = trcshauth.TrcshAuth(gAgentConfig, config)
+			if err != nil {
+				config.Log.Printf(".")
+				time.Sleep(time.Second)
+				continue
+			}
+			config.Log.Printf("Auth re-loaded %s\n", env)
+		} else {
+			break
 		}
-		config.Log.Printf("Auth loaded %s\n", env)
 	}
-
 	// Chewbacca: Begin dbg comment
 	var auth string
 	mergedVaultAddress := config.VaultAddress
@@ -711,6 +718,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 				}
 				config.DeploymentConfig = deploymentConfig
 				if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
+					config.DeploymentConfig["trcdeployroot"] = "/home/jrieke/SpectrumRestServices"
 					config.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
 					config.EndDir = trcDeployRoot.(string)
 				}
