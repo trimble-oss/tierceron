@@ -86,7 +86,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(pense string) (*string, error
 	c := cap.NewCapClient(conn)
 
 	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
 	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
