@@ -12,12 +12,14 @@ import (
 func main() {
 	fmt.Println("Version: " + "1.02")
 
-	envPtr := flag.String("env", "dev", "Environment to configure")
-	addrPtr := flag.String("addr", "", "API endpoint for the vault")
-	tokenPtr := flag.String("token", "", "Vault access token")
-	regionPtr := flag.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
+	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flagset.Usage = flag.Usage
+	envPtr := flagset.String("env", "dev", "Environment to configure")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
+	tokenPtr := flagset.String("token", "", "Vault access token")
+	regionPtr := flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
 
-	err := plgtbase.CommonMain(envPtr, addrPtr, tokenPtr, regionPtr, nil)
+	err := plgtbase.CommonMain(envPtr, addrPtr, tokenPtr, regionPtr, flagset, os.Args, nil)
 	if err != nil {
 		os.Exit(1)
 	}
