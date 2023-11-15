@@ -39,7 +39,10 @@ func CommonMain(envPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
-		flagset.Usage = flag.Usage
+		flagset.Usage = func() {
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			flagset.PrintDefaults()
+		}
 	}
 	defineServicePtr := flagset.Bool("defineService", false, "Service is defined.")
 	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
