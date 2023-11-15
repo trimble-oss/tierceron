@@ -229,11 +229,35 @@ func main() {
 	}
 }
 
-var interruptChan chan os.Signal = make(chan os.Signal)
+var interruptChan chan os.Signal = make(chan os.Signal, 5)
 var twoHundredMilliInterruptTicker *time.Ticker = time.NewTicker(200 * time.Millisecond)
 var secondInterruptTicker *time.Ticker = time.NewTicker(time.Second)
 var multiSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 3)
 var fiveSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
+var fifteenSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
+var thirtySecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
+
+func acceptInterruptFun(tickerContinue *time.Ticker, tickerBreak *time.Ticker, tickerInterrupt *time.Ticker) (bool, error) {
+	select {
+	case <-interruptChan:
+		cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+			*gAgentConfig.EncryptSalt,
+			*gAgentConfig.HandshakeHostPort,
+			*gAgentConfig.HandshakeCode,
+			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true, nil)
+		os.Exit(1)
+	case <-tickerContinue.C:
+		// don't break... continue...
+		return false, nil
+	case <-tickerBreak.C:
+		// break and continue
+		return true, nil
+	case <-tickerInterrupt.C:
+		// full stop
+		return true, errors.New("you shall not pass")
+	}
+	return true, errors.New("not possible")
+}
 
 func interruptFun(tickerInterrupt *time.Ticker) {
 	select {
@@ -249,11 +273,11 @@ func interruptFun(tickerInterrupt *time.Ticker) {
 }
 
 // acceptRemote - hook for instrumenting
-func acceptRemote(mode int, remote string) bool {
+func acceptRemote(mode int, remote string) (bool, error) {
 	if mode == cap.FEATHER_CTL {
-		interruptFun(multiSecondInterruptTicker)
+		return acceptInterruptFun(multiSecondInterruptTicker, fifteenSecondInterruptTicker, thirtySecondInterruptTicker)
 	}
-	return true
+	return true, nil
 }
 
 func featherCtlCb(agentName string) error {
@@ -342,6 +366,9 @@ func roleBasedRunner(env string,
 	var err error
 
 	switch control {
+	case "trcplgtool":
+		tokenConfig := token
+		err = trcplgtoolbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, config)
 	case "trcconfig":
 		err = trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, config)
 	case "trcsub":
@@ -382,9 +409,8 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		tokenPub := ""
 		pubEnv := env
 
-		trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
-		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+		trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, nil, deployArgLines, config)
+		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		if !agentToken {
 			token = ""
 			config.Token = token
@@ -395,25 +421,8 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			os.Exit(1)
 		}
 	case "trcplgtool":
-		config.AppRoleConfig = ""
-		config.EnvRaw = env
-		config.IsShellSubProcess = true
-
-		config.FeatherCtlCb = featherCtlCb
-		if gAgentConfig == nil {
-			gAgentConfig = &capauth.AgentConfigs{CtlMessage: make(chan string, 5)}
-			gAgentConfig.LoadConfigs(config.VaultAddress, *trcshConfig.CToken, "bootstrap", "dev") // Feathering always in dev environmnent.
-		}
-		gAgentConfig.Env = &env
-
-		err := trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, nil, deployArgLines, config)
-		config.FeatherCtlCb = nil
-		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
-		if !agentToken {
-			token = ""
-			config.Token = token
-		}
+		// Utilize elevated CToken to perform certifications if asked.
+		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, *trcshConfig.CToken, argsOrig, deployArgLines, configCount)
 		if err != nil {
 			os.Exit(1)
 		}
@@ -468,38 +477,8 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	configCount *int,
 	logger *log.Logger) error {
 
-	switch control {
-	case "trcplgtool":
-		config.AppRoleConfig = ""
-		config.EnvRaw = env
-		config.IsShellSubProcess = true
-
-		err := trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, nil, deployArgLines, config)
-		ResetModifier(config)
-		if !agentToken {
-			token = ""
-			config.Token = token
-		}
-		return err
-	case "trcsub":
-		// This maybe isn't needed for windows deploys...  Since config can
-		// pull templates directly from vault..
-		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, token, argsOrig, deployArgLines, configCount)
-		if !agentToken {
-			token = ""
-			config.Token = token
-		}
-		return err
-
-	case "trcconfig":
-		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, token, argsOrig, deployArgLines, configCount)
-		if !agentToken {
-			token = ""
-			config.Token = token
-		}
-		return err
-	}
-	return errors.New("unsupported control error")
+	err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, token, argsOrig, deployArgLines, configCount)
+	return err
 }
 
 // ProcessDeploy
