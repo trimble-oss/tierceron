@@ -38,6 +38,7 @@ func main() {
 	secretIDPtr := flagset.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this"+coreopts.GetFolderPrefix(nil)+"config to access the vault")
+	flagset.Bool("diff", false, "Diff files")
 	var envContext string
 
 	var ctl string
