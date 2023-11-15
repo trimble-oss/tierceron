@@ -51,7 +51,7 @@ func CommonMain(envPtr *string,
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
-	appRolePtr := flagset.String("approle", "config.yml", "Name of auth config file - example.yml (optional)")
+	appRolePtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
 
 	if c == nil || !c.IsShellSubProcess {
 		flagset.Parse(argLines[1:])
