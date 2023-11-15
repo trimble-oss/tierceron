@@ -62,8 +62,8 @@ type DriverConfig struct {
 	// Vault Configurations...
 	Token         string
 	VaultAddress  string
-	EnvRaw        string
-	Env           string
+	EnvRaw        string // May change depending on tool running...
+	Env           string // Immutable...
 	Regions       []string
 	FileFilter    []string // Which systems to operate on.
 	SubPathFilter []string // Which subpaths to operate on.
