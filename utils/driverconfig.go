@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
@@ -12,7 +13,23 @@ import (
 
 type ProcessContext interface{}
 
-type ConfigDriver func(ctx ProcessContext, config *DriverConfig) (interface{}, error)
+type ConfigDriver func(ctx ProcessContext, configCtx *ConfigContext, config *DriverConfig) (interface{}, error)
+
+type ResultData struct {
+	InData *string
+	InPath string
+}
+
+type ConfigContext struct {
+	ResultMap            map[string]*string
+	EnvSlice             []string
+	ProjectSectionsSlice []string
+	ResultChannel        chan *ResultData
+	FileSysIndex         int
+	EnvLength            int
+	ConfigWg             sync.WaitGroup
+	Mutex                *sync.Mutex
+}
 
 // DriverConfig -- contains many structures necessary for Tierceron tool functionality.
 type DriverConfig struct {
@@ -55,7 +72,7 @@ type DriverConfig struct {
 	Trcxr       bool     //Used for TRCXR
 
 	Clean  bool
-	Update func(*string, string)
+	Update func(*ConfigContext, *string, string)
 
 	// KeyStore Output tooling
 	KeyStore         *keystore.KeyStore
@@ -84,7 +101,7 @@ type DriverConfig struct {
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
-func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver) {
+func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, config *DriverConfig, drive ConfigDriver) {
 	multiProject := false
 
 	config.EndDir = strings.Replace(config.EndDir, "\\", "/", -1)
@@ -140,7 +157,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 
 			config.StartDir = startDirs
 			// Drive this set of configurations.
-			drive(ctx, config)
+			drive(ctx, configCtx, config)
 
 			return
 		}
@@ -175,5 +192,5 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 	}
 
 	// Drive this set of configurations.
-	drive(ctx, config)
+	drive(ctx, configCtx, config)
 }
