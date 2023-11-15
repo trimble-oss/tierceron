@@ -31,7 +31,10 @@ func CommonMain(envPtr *string,
 
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
-		flagset.Usage = flag.Usage
+		flagset.Usage = func() {
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			flagset.PrintDefaults()
+		}
 		flagset.String("env", "dev", "Environment to configure")
 	}
 
