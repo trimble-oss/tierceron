@@ -483,6 +483,10 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	case "trcplgtool":
 		// Utilize elevated CToken to perform certifications if asked.
 		config.FeatherCtlCb = featherCtlCb
+		if gAgentConfig == nil {
+			gAgentConfig = &capauth.AgentConfigs{}
+			gAgentConfig.LoadConfigs(config.VaultAddress, *trcshConfig.CToken, "bootstrap", "dev") // Feathering always in dev environmnent.
+		}
 		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, *trcshConfig.CToken, argsOrig, deployArgLines, configCount)
 		if err != nil {
 			os.Exit(1)
