@@ -20,7 +20,10 @@ func main() {
 	}
 	fmt.Println("Version: " + "1.27")
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	flagset.Usage = flag.Usage
+	flagset.Usage = func() {
+		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
+		flagset.PrintDefaults()
+	}
 	envPtr := flagset.String("env", "dev", "Environment to configure")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flagset.String("token", "", "Vault access token")

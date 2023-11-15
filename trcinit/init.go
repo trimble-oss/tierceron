@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	trcinitbase "github.com/trimble-oss/tierceron/trcinitbase"
@@ -17,6 +18,12 @@ func main() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	fmt.Println("Version: " + "1.34")
-	envPtr := flag.String("env", "dev", "Environment to be seeded")
-	trcinitbase.CommonMain(envPtr, nil, nil)
+	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flagset.Usage = func() {
+		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
+		flagset.PrintDefaults()
+	}
+
+	envPtr := flagset.String("env", "dev", "Environment to be seeded")
+	trcinitbase.CommonMain(envPtr, nil, nil, flagset, os.Args)
 }
