@@ -191,20 +191,17 @@ func TrcshAuth(agentConfigs *capauth.AgentConfigs, config *eUtils.DriverConfig) 
 		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
 	}
 
-	if agentConfigs != nil {
-		trcshConfig.CToken, err = retryingPenseFeatherQuery(agentConfigs, "ctoken")
-	} else {
+	if agentConfigs == nil {
 		config.Log.Println("Auth phase 5")
 		trcshConfig.CToken, err = capauth.PenseQuery(config, "ctoken")
 		if err != nil {
 			return trcshConfig, err
 		}
+		memprotectopts.MemProtect(nil, trcshConfig.CToken)
 	}
 	if err != nil {
 		return trcshConfig, err
 	}
-
-	memprotectopts.MemProtect(nil, trcshConfig.CToken)
 
 	config.Log.Println("Auth complete.")
 

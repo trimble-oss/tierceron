@@ -152,13 +152,6 @@ func (agentconfig *AgentConfigs) LoadConfigs(address string, agentToken string, 
 		}
 		memprotectopts.MemProtect(nil, trcShConfigRole)
 		trcshConfig.ConfigRole = trcShConfigRole
-
-		trcShCToken, penseError := agentconfig.PenseFeatherQuery("ctoken")
-		if penseError != nil {
-			return nil, penseError
-		}
-		memprotectopts.MemProtect(nil, trcShCToken)
-		trcshConfig.CToken = trcShCToken
 	}
 
 	return trcshConfig, nil
