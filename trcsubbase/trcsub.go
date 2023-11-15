@@ -24,22 +24,33 @@ import (
 func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
+	flagset *flag.FlagSet,
+	argLines []string,
 	c *eUtils.DriverConfig) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
-	fmt.Println("Version: " + "1.5")
-	endDirPtr := flag.String("endDir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
-	tokenPtr := flag.String("token", "", "Vault access token")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"pub to access the vault")
-	pingPtr := flag.Bool("ping", false, "Ping vault.")
-	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
-	projectInfoPtr := flag.Bool("projectInfo", false, "Lists all project info")
-	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
-	templatePathsPtr := flag.String("templatePaths", "", "Specifies which specific templates to download.")
+	fmt.Println("Version: " + "1.6")
 
-	flag.Parse()
+	if flagset == nil {
+		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		flagset.Usage = flag.Usage
+		flagset.String("env", "dev", "Environment to configure")
+		flagset.String("addr", "", "API endpoint for the vault")
+		flagset.String("secretID", "", "Public app role ID")
+		flagset.String("appRoleID", "", "Secret app role ID")
+	}
+	endDirPtr := flagset.String("endDir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
+	tokenPtr := flagset.String("token", "", "Vault access token")
+	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"pub to access the vault")
+	pingPtr := flagset.Bool("ping", false, "Ping vault.")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
+	projectInfoPtr := flagset.Bool("projectInfo", false, "Lists all project info")
+	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
+	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
+
+	flagset.Parse(argLines[1:])
 
 	if len(*filterTemplatePtr) == 0 && !*projectInfoPtr && *templatePathsPtr == "" {
 		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")
