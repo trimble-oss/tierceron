@@ -33,7 +33,6 @@ type AgentConfigs struct {
 	EncryptSalt       *string
 	Deployments       *string
 	Env               *string
-	CtlMessage        chan string
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
