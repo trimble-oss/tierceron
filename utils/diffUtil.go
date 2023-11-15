@@ -405,7 +405,7 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 		for {
 			time.Sleep(time.Second)
 			sleepCount++
-			if sleepCount >= 20 {
+			if sleepCount >= 5 {
 				fmt.Println("Timeout: Attempted to wait for remaining configs to come in. Attempting incomplete diff.")
 				break
 			} else if len(configCtx.ResultMap) == int(configCtx.DiffFileCount)*configCtx.EnvLength {
