@@ -21,12 +21,14 @@ func main() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	fmt.Println("Version: " + "1.26")
-	envPtr := flag.String("env", "dev", "Environment to configure")
-	addrPtr := flag.String("addr", "", "API endpoint for the vault")
-	secretIDPtr := flag.String("secretID", "", "Public app role ID")
-	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
+	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flagset.Usage = flag.Usage
+	envPtr := flagset.String("env", "dev", "Environment to configure")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
+	secretIDPtr := flagset.String("secretID", "", "Public app role ID")
+	appRoleIDPtr := flagset.String("appRoleID", "", "Secret app role ID")
 
-	err := trcsubbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, nil)
+	err := trcsubbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, nil)
 	if err != nil {
 		os.Exit(1)
 	}

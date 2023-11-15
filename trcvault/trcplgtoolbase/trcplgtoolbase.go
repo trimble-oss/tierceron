@@ -23,41 +23,52 @@ func CommonMain(envPtr *string,
 	addrPtr *string,
 	tokenPtr *string,
 	regionPtr *string,
+	flagset *flag.FlagSet,
+	argLines []string,
 	c *eUtils.DriverConfig) error {
 
 	// Main functions are as follows:
-	defineServicePtr := flag.Bool("defineService", false, "Service is defined.")
-	certifyImagePtr := flag.Bool("certify", false, "Used to certifies vault plugin.")
+	if flagset == nil {
+		flagset = flag.NewFlagSet(argLines[0], flag.ContinueOnError)
+		// set and ignore..
+		flagset.String("env", "dev", "Environment to configure")
+		flagset.String("addr", "", "API endpoint for the vault")
+		flagset.String("token", "", "Vault access token")
+		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
+		flagset.Usage = flag.Usage
+	}
+	defineServicePtr := flagset.Bool("defineService", false, "Service is defined.")
+	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
 	// These functions only valid for pluginType trcshservice
-	winservicestopPtr := flag.Bool("winservicestop", false, "To stop a windows service for a particular plugin.")
-	winservicestartPtr := flag.Bool("winservicestart", false, "To start a windows service for a particular plugin.")
-	codebundledeployPtr := flag.Bool("codebundledeploy", false, "To deploy a code bundle.")
-	agentdeployPtr := flag.Bool("agentdeploy", false, "To initiate deployment on agent.")
-	projectservicePtr := flag.String("projectservice", "", "Provide template root path in form project/service")
+	winservicestopPtr := flagset.Bool("winservicestop", false, "To stop a windows service for a particular plugin.")
+	winservicestartPtr := flagset.Bool("winservicestart", false, "To start a windows service for a particular plugin.")
+	codebundledeployPtr := flagset.Bool("codebundledeploy", false, "To deploy a code bundle.")
+	agentdeployPtr := flagset.Bool("agentdeploy", false, "To initiate deployment on agent.")
+	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
 
 	// Common flags...
-	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
-	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
+	startDirPtr := flagset.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
 
 	// defineService flags...
-	deployrootPtr := flag.String("deployroot", "", "Optional path for deploying services to.")
-	serviceNamePtr := flag.String("serviceName", "", "Optional name of service to use in managing service.")
-	codeBundlePtr := flag.String("codeBundle", "", "Code bundle to deploy.")
+	deployrootPtr := flagset.String("deployroot", "", "Optional path for deploying services to.")
+	serviceNamePtr := flagset.String("serviceName", "", "Optional name of service to use in managing service.")
+	codeBundlePtr := flagset.String("codeBundle", "", "Code bundle to deploy.")
 
 	// Common plugin flags...
-	pluginNamePtr := flag.String("pluginName", "", "Used to certify vault plugin")
-	pluginTypePtr := flag.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
+	pluginNamePtr := flagset.String("pluginName", "", "Used to certify vault plugin")
+	pluginTypePtr := flagset.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
 
 	// Certify flags...
-	sha256Ptr := flag.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
-	checkDeployedPtr := flag.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
-	checkCopiedPtr := flag.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
+	sha256Ptr := flagset.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
+	checkDeployedPtr := flagset.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
+	checkCopiedPtr := flagset.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
 
 	certifyInit := false
 
 	if c == nil || !c.IsShellSubProcess {
-		args := os.Args[1:]
+		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
 			if s[0] != '-' {
@@ -65,16 +76,25 @@ func CommonMain(envPtr *string,
 				return fmt.Errorf("wrong flag syntax: %s", s)
 			}
 		}
-		flag.Parse()
+		err := flagset.Parse(argLines[1:])
+		if err != nil {
+			return err
+		}
 
 		// Prints usage if no flags are specified
-		if flag.NFlag() == 0 {
-			flag.Usage()
+		if flagset.NFlag() == 0 {
+			flagset.Usage()
 			return errors.New("invalid input parameters")
 		}
 	} else {
-		flag.CommandLine.Parse(os.Args)
-		flag.Parse()
+		err := flagset.Parse(argLines)
+		if err != nil {
+			return err
+		}
+		err = flagset.Parse(argLines[1:])
+		if err != nil {
+			return err
+		}
 	}
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
