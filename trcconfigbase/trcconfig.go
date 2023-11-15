@@ -93,7 +93,11 @@ func CommonMain(envPtr *string,
 
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
-		flagset.Usage = flag.Usage
+		flagset.Usage = func() {
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			flagset.PrintDefaults()
+		}
+
 		flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
@@ -321,7 +325,7 @@ func CommonMain(envPtr *string,
 
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
-		if *regionPtr != "" {
+		if regionPtr != nil && *regionPtr != "" {
 			for _, supportedRegion := range supportedRegions {
 				if *regionPtr == supportedRegion {
 					regions = append(regions, *regionPtr)
@@ -344,7 +348,6 @@ func CommonMain(envPtr *string,
 
 	//channel receiver
 	go receiver(configCtx)
-	var diffFileCount int
 	if *diffPtr {
 		configSlice := make([]eUtils.DriverConfig, 0, len(configCtx.EnvSlice)-1)
 		for _, env := range configCtx.EnvSlice {
@@ -407,8 +410,8 @@ func CommonMain(envPtr *string,
 			go func() {
 				defer configCtx.ConfigWg.Done()
 				eUtils.ConfigControl(nil, configCtx, &configSlice[len(configSlice)-1], vcutils.GenerateConfigsFromVault)
-				if diffFileCount < configSlice[len(configSlice)-1].DiffCounter { //Without this, resultMap may be missing data when diffing.
-					diffFileCount = configSlice[len(configSlice)-1].DiffCounter //This counter helps the diff wait for results
+				if int(configCtx.GetDiffFileCount()) < configSlice[len(configSlice)-1].DiffCounter { //Without this, resultMap may be missing data when diffing.
+					configCtx.SetDiffFileCount(configSlice[len(configSlice)-1].DiffCounter) //This counter helps the diff wait for results
 				}
 			}()
 		}
@@ -486,7 +489,7 @@ func CommonMain(envPtr *string,
 		configCtx.ConfigWg.Add(1)
 		go func() {
 			defer configCtx.ConfigWg.Done()
-			eUtils.DiffHelper(configCtx, true, diffFileCount)
+			eUtils.DiffHelper(configCtx, true)
 		}()
 	}
 	configCtx.ConfigWg.Wait() //Wait for diff
