@@ -22,7 +22,7 @@ import (
 var mutex = &sync.Mutex{}
 
 // GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig) (interface{}, error) {
+func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigContext, config *eUtils.DriverConfig) (interface{}, error) {
 	/*Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if utils.IsWindows() {
@@ -341,9 +341,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				} else {
 					if config.Diff {
 						if version != "" {
-							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
+							config.Update(configCtx, &configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
 						} else {
-							config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+							config.Update(configCtx, &configuredTemplate, config.Env+"||"+endPaths[i])
 						}
 					} else {
 						writeToFile(config, configuredTemplate, endPaths[i])
@@ -397,9 +397,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				} else {
 					if config.Diff {
 						if version != "" {
-							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
+							config.Update(configCtx, &configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
 						} else {
-							config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+							config.Update(configCtx, &configuredTemplate, config.Env+"||"+endPaths[i])
 						}
 					} else {
 						writeToFile(config, configuredTemplate, endPaths[i])
