@@ -22,6 +22,10 @@ import (
 func CommonMain(envPtr *string,
 	addrPtr *string,
 	tokenPtr *string,
+	envCtxPtr *string,
+	secretIDPtr *string,
+	appRoleIDPtr *string,
+	tokenNamePtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
@@ -35,7 +39,10 @@ func CommonMain(envPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
-		flagset.Usage = flag.Usage
+		flagset.Usage = func() {
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			flagset.PrintDefaults()
+		}
 	}
 	defineServicePtr := flagset.Bool("defineService", false, "Service is defined.")
 	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
@@ -129,12 +136,21 @@ func CommonMain(envPtr *string,
 			fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
 			return fmt.Errorf("plugin type %s not supported in trcsh", *pluginTypePtr)
 		}
+		if *codebundledeployPtr {
+			fmt.Printf("codebundledeploy not supported for plugin type %s in trcsh\n", *pluginTypePtr)
+			return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
+		}
+
 	case "agent": // A deployment agent tool.
 		if c != nil {
 			// TODO: do we want to support Deployment certifications in the pipeline at some point?
 			// If so this is a config check to remove.
 			fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
 			return fmt.Errorf("plugin type %s not supported in trcsh", *pluginTypePtr)
+		}
+		if *codebundledeployPtr {
+			fmt.Printf("codebundledeploy not supported for plugin type %s in trcsh\n", *pluginTypePtr)
+			return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
 		}
 	case "trcshservice": // A trcshservice managed microservice
 	default:
@@ -150,12 +166,14 @@ func CommonMain(envPtr *string,
 		*regionPtr = ""
 	}
 
+	var appRoleConfigPtr *string
 	var configBase *eUtils.DriverConfig
 	var logger *log.Logger
 	if c != nil {
 		configBase = c
 		logger = c.Log
 		configBase.SubSectionValue = *pluginNamePtr
+		appRoleConfigPtr = &(configBase.AppRoleConfig)
 		*insecurePtr = configBase.Insecure
 	} else {
 		if *agentdeployPtr {
@@ -171,8 +189,18 @@ func CommonMain(envPtr *string,
 		logger = log.New(f, "[INIT]", log.LstdFlags)
 
 		configBase = &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
+		appRoleConfigPtr = new(string)
 		if err != nil {
 			return err
+		}
+	}
+
+	//
+	if tokenNamePtr == nil || *tokenNamePtr == "" {
+		autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
+		if autoErr != nil {
+			eUtils.LogErrorMessage(configBase, "Auth failure: "+autoErr.Error(), false)
+			return errors.New("auth failure")
 		}
 	}
 
