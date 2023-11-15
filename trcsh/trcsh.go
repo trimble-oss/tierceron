@@ -229,11 +229,35 @@ func main() {
 	}
 }
 
-var interruptChan chan os.Signal = make(chan os.Signal)
+var interruptChan chan os.Signal = make(chan os.Signal, 5)
 var twoHundredMilliInterruptTicker *time.Ticker = time.NewTicker(200 * time.Millisecond)
 var secondInterruptTicker *time.Ticker = time.NewTicker(time.Second)
 var multiSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 3)
 var fiveSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
+var fifteenSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
+var thirtySecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
+
+func acceptInterruptFun(tickerContinue *time.Ticker, tickerBreak *time.Ticker, tickerInterrupt *time.Ticker) (bool, error) {
+	select {
+	case <-interruptChan:
+		cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+			*gAgentConfig.EncryptSalt,
+			*gAgentConfig.HandshakeHostPort,
+			*gAgentConfig.HandshakeCode,
+			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true, nil)
+		os.Exit(1)
+	case <-tickerContinue.C:
+		// don't break... continue...
+		return false, nil
+	case <-tickerBreak.C:
+		// break and continue
+		return true, nil
+	case <-tickerInterrupt.C:
+		// full stop
+		return true, errors.New("you shall not pass")
+	}
+	return true, errors.New("not possible")
+}
 
 func interruptFun(tickerInterrupt *time.Ticker) {
 	select {
@@ -249,11 +273,11 @@ func interruptFun(tickerInterrupt *time.Ticker) {
 }
 
 // acceptRemote - hook for instrumenting
-func acceptRemote(mode int, remote string) bool {
+func acceptRemote(mode int, remote string) (bool, error) {
 	if mode == cap.FEATHER_CTL {
-		interruptFun(multiSecondInterruptTicker)
+		return acceptInterruptFun(multiSecondInterruptTicker, fifteenSecondInterruptTicker, thirtySecondInterruptTicker)
 	}
-	return true
+	return true, nil
 }
 
 func featherCtlCb(agentName string) error {
