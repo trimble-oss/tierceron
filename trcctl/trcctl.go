@@ -101,7 +101,7 @@ func main() {
 		case "config":
 			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil, flagset, os.Args, nil)
 		case "x":
-			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil)
+			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil, flagset, os.Args)
 		}
 	}
 }

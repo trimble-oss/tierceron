@@ -344,7 +344,6 @@ func CommonMain(envPtr *string,
 
 	//channel receiver
 	go receiver(configCtx)
-	var diffFileCount int
 	if *diffPtr {
 		configSlice := make([]eUtils.DriverConfig, 0, len(configCtx.EnvSlice)-1)
 		for _, env := range configCtx.EnvSlice {
@@ -407,8 +406,8 @@ func CommonMain(envPtr *string,
 			go func() {
 				defer configCtx.ConfigWg.Done()
 				eUtils.ConfigControl(nil, configCtx, &configSlice[len(configSlice)-1], vcutils.GenerateConfigsFromVault)
-				if diffFileCount < configSlice[len(configSlice)-1].DiffCounter { //Without this, resultMap may be missing data when diffing.
-					diffFileCount = configSlice[len(configSlice)-1].DiffCounter //This counter helps the diff wait for results
+				if int(configCtx.GetDiffFileCount()) < configSlice[len(configSlice)-1].DiffCounter { //Without this, resultMap may be missing data when diffing.
+					configCtx.SetDiffFileCount(configSlice[len(configSlice)-1].DiffCounter) //This counter helps the diff wait for results
 				}
 			}()
 		}
@@ -486,7 +485,7 @@ func CommonMain(envPtr *string,
 		configCtx.ConfigWg.Add(1)
 		go func() {
 			defer configCtx.ConfigWg.Done()
-			eUtils.DiffHelper(configCtx, true, diffFileCount)
+			eUtils.DiffHelper(configCtx, true)
 		}()
 	}
 	configCtx.ConfigWg.Wait() //Wait for diff

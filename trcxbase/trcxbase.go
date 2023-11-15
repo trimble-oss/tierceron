@@ -43,46 +43,61 @@ func receiver(configCtx *utils.ConfigContext) {
 
 // CommonMain This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
-func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, envPtr *string, addrPtrIn *string, envCtxPtr *string, insecurePtrIn *bool) {
+func CommonMain(ctx eUtils.ProcessContext,
+	configDriver eUtils.ConfigDriver,
+	envPtr *string,
+	addrPtrIn *string,
+	envCtxPtr *string,
+	insecurePtrIn *bool,
+	flagset *flag.FlagSet,
+	argLines []string) {
 	// Executable input arguments(flags)
 	addrPtr := flag.String("addr", "", "API endpoint for the vault")
 	if addrPtrIn != nil && *addrPtrIn != "" {
 		addrPtr = addrPtrIn
 	}
-	startDirPtr := flag.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Pull templates from this directory")
-	endDirPtr := flag.String("endDir", "./"+coreopts.GetFolderPrefix(nil)+"_seeds/", "Write generated seed files to this directory")
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"x.log", "Output path for log file")
-	helpPtr := flag.Bool("h", false, "Provide options for "+coreopts.GetFolderPrefix(nil)+"x")
-	tokenPtr := flag.String("token", "", "Vault access token")
-	secretMode := flag.Bool("secretMode", true, "Only override secret values in templates?")
-	genAuth := flag.Bool("genAuth", false, "Generate auth section of seed data?")
-	cleanPtr := flag.Bool("clean", false, "Cleans seed files locally")
-	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
-	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"x to access the vault")
-	noVaultPtr := flag.Bool("novault", false, "Don't pull configuration data from vault.")
-	pingPtr := flag.Bool("ping", false, "Ping vault.")
+	if flagset == nil {
+		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		flagset.Usage = flag.Usage
+		flagset.String("env", "dev", "Environment to configure")
+	}
 
-	fileAddrPtr := flag.String("seedpath", "", "Path for seed file")
-	fieldsPtr := flag.String("fields", "", "Fields to enter")
-	encryptedPtr := flag.String("encrypted", "", "Fields to encrypt")
+	startDirPtr := flagset.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Pull templates from this directory")
+	endDirPtr := flagset.String("endDir", "./"+coreopts.GetFolderPrefix(nil)+"_seeds/", "Write generated seed files to this directory")
+	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"x.log", "Output path for log file")
+	helpPtr := flagset.Bool("h", false, "Provide options for "+coreopts.GetFolderPrefix(nil)+"x")
+	tokenPtr := flagset.String("token", "", "Vault access token")
+	secretMode := flagset.Bool("secretMode", true, "Only override secret values in templates?")
+	genAuth := flagset.Bool("genAuth", false, "Generate auth section of seed data?")
+	cleanPtr := flagset.Bool("clean", false, "Cleans seed files locally")
+	secretIDPtr := flagset.String("secretID", "", "Secret app role ID")
+	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
+	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"x to access the vault")
+	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
+	pingPtr := flagset.Bool("ping", false, "Ping vault.")
+
+	fileAddrPtr := flagset.String("seedpath", "", "Path for seed file")
+	fieldsPtr := flagset.String("fields", "", "Fields to enter")
+	encryptedPtr := flagset.String("encrypted", "", "Fields to encrypt")
 	readOnlyPtr := flag.Bool("readonly", false, "Fields to encrypt")
-	dynamicPathPtr := flag.String("dynamicPath", "", "Generate seeds for a dynamic path in vault.")
+	dynamicPathPtr := flagset.String("dynamicPath", "", "Generate seeds for a dynamic path in vault.")
 
 	var insecurePtr *bool
 	if insecurePtrIn == nil {
-		insecurePtr = flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+		insecurePtr = flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	} else {
 		insecurePtr = insecurePtrIn
 	}
 
-	diffPtr := flag.Bool("diff", false, "Diff files")
-	versionPtr := flag.Bool("versions", false, "Gets version metadata information")
-	wantCertsPtr := flag.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
-	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter") // -templateFilter=config.yml
+	diffPtr := flagset.Bool("diff", false, "Diff files")
+	versionPtr := flagset.Bool("versions", false, "Gets version metadata information")
+	wantCertsPtr := flagset.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
+	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter") // -templateFilter=config.yml
+
+	eUtils.CheckInitFlags(flagset)
 
 	// Checks for proper flag input
-	args := os.Args[1:]
+	args := argLines[1:]
 	for i := 0; i < len(args); i++ {
 		s := args[i]
 		if s[0] != '-' {
@@ -91,7 +106,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 		}
 	}
 
-	flag.Parse()
+	flagset.Parse(argLines[1:])
 	configCtx := &utils.ConfigContext{
 		ResultMap:            make(map[string]*string),
 		EnvSlice:             make([]string, 0),
@@ -739,7 +754,8 @@ skipDiff:
 				retry++
 			}
 			configCtx.FileSysIndex = -1
-			eUtils.DiffHelper(cctx, false, len(configCtx.ResultMap)/configCtx.EnvLength)
+			cctx.SetDiffFileCount(len(configCtx.ResultMap) / configCtx.EnvLength)
+			eUtils.DiffHelper(cctx, false)
 		}(configCtx)
 	}
 	waitg.Wait() //Wait for diff
