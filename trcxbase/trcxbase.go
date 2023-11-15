@@ -21,33 +21,21 @@ import (
 	"github.com/hashicorp/vault/api"
 )
 
-type ResultData struct {
-	inData *string
-	inPath string
+func messenger(configCtx *utils.ConfigContext, inData *string, inPath string) {
+	var data utils.ResultData
+	data.InData = inData
+	data.InPath = inPath
+	configCtx.ResultChannel <- &data
 }
 
-var resultMap = make(map[string]*string)
-var envSlice = make([]string, 0)
-var projectSectionsSlice = make([]string, 0)
-var resultChannel = make(chan *ResultData, 5)
-var envLength int
-var resultMapLock = &sync.Mutex{}
-
-func messenger(inData *string, inPath string) {
-	var data ResultData
-	data.inData = inData
-	data.inPath = inPath
-	resultChannel <- &data
-}
-
-func receiver() {
+func receiver(configCtx *utils.ConfigContext) {
 	for {
 		select {
-		case data := <-resultChannel:
-			if data != nil && data.inData != nil && data.inPath != "" {
-				resultMapLock.Lock()
-				resultMap[data.inPath] = data.inData
-				resultMapLock.Unlock()
+		case data := <-configCtx.ResultChannel:
+			if data != nil && data.InData != nil && data.InPath != "" {
+				configCtx.Mutex.Lock()
+				configCtx.ResultMap[data.InPath] = data.InData
+				configCtx.Mutex.Unlock()
 			}
 		}
 	}
@@ -104,6 +92,15 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	}
 
 	flag.Parse()
+	configCtx := &utils.ConfigContext{
+		ResultMap:            make(map[string]*string),
+		EnvSlice:             make([]string, 0),
+		ProjectSectionsSlice: make([]string, 0),
+		ResultChannel:        make(chan *utils.ResultData, 5),
+		FileSysIndex:         -1,
+		ConfigWg:             sync.WaitGroup{},
+		Mutex:                &sync.Mutex{},
+	}
 
 	config := &eUtils.DriverConfig{ExitOnFailure: true, Insecure: *insecurePtr}
 
@@ -231,7 +228,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 			fmt.Println(Yellow + "Specified versioning not available, using " + envVersion[0] + " as environment" + Reset)
 			*envPtr = strings.Split(*envPtr, "_")[0]
 		}
-		envSlice = append(envSlice, *envPtr+"_versionInfo")
+		configCtx.EnvSlice = append(configCtx.EnvSlice, *envPtr+"_versionInfo")
 		goto skipDiff
 	}
 
@@ -239,19 +236,19 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	if *diffPtr {
 		if strings.ContainsAny(*envPtr, ",") { //Multiple environments
 			*envPtr = strings.ReplaceAll(*envPtr, "latest", "0")
-			envSlice = strings.Split(*envPtr, ",")
-			envLength = len(envSlice)
-			if len(envSlice) > 4 {
+			configCtx.EnvSlice = strings.Split(*envPtr, ",")
+			configCtx.EnvLength = len(configCtx.EnvSlice)
+			if len(configCtx.EnvSlice) > 4 {
 				fmt.Println("Unsupported number of environments - Maximum: 4")
 				os.Exit(1)
 			}
-			for i, env := range envSlice {
+			for i, env := range configCtx.EnvSlice {
 				if env == "local" {
 					fmt.Println("Unsupported env: local not available with diff flag")
 					os.Exit(1)
 				}
 				if !strings.Contains(env, "_") {
-					envSlice[i] = env + "_0"
+					configCtx.EnvSlice[i] = env + "_0"
 				}
 			}
 		} else {
@@ -263,7 +260,7 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 			fmt.Println("-diff flag is required for multiple environments - env: -env=env1,env2,...")
 			os.Exit(1)
 		}
-		envSlice = append(envSlice, (*envPtr))
+		configCtx.EnvSlice = append(configCtx.EnvSlice, (*envPtr))
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
 		if !*noVaultPtr {
@@ -294,14 +291,14 @@ func CommonMain(ctx eUtils.ProcessContext, configDriver eUtils.ConfigDriver, env
 	}
 
 	//Duplicate env check
-	for _, entry := range envSlice {
+	for _, entry := range configCtx.EnvSlice {
 		if _, value := keysCheck[entry]; !value {
 			keysCheck[entry] = true
 			listCheck = append(listCheck, entry)
 		}
 	}
 
-	if len(listCheck) != len(envSlice) {
+	if len(listCheck) != len(configCtx.EnvSlice) {
 		fmt.Printf("Cannot diff an environment against itself.\n")
 		os.Exit(1)
 	}
@@ -330,7 +327,7 @@ skipDiff:
 
 	regions := []string{}
 
-	if len(envSlice) == 1 && !*noVaultPtr {
+	if len(configCtx.EnvSlice) == 1 && !*noVaultPtr {
 		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") {
 			secretIDPtr = nil
 			appRoleIDPtr = nil
@@ -345,7 +342,7 @@ skipDiff:
 		}
 	}
 
-	if (tokenPtr == nil || *tokenPtr == "") && !*noVaultPtr && len(envSlice) == 1 {
+	if (tokenPtr == nil || *tokenPtr == "") && !*noVaultPtr && len(configCtx.EnvSlice) == 1 {
 		fmt.Println("Missing required auth token.")
 		os.Exit(1)
 	}
@@ -373,11 +370,11 @@ skipDiff:
 	var serviceFilterSlice []string
 
 	if len(*dynamicPathPtr) > 0 {
-		go receiver() //Channel receiver
+		go receiver(configCtx) //Channel receiver
 
 		dynamicPathParts := strings.Split(*dynamicPathPtr, "/")
 
-		for _, env := range envSlice {
+		for _, env := range configCtx.EnvSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 			if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
@@ -387,10 +384,10 @@ skipDiff:
 			var baseEnv string
 
 			if strings.Contains(*dynamicPathPtr, "%s") {
-				if strings.Contains(envSlice[0], "_") {
-					baseEnv = strings.Split(envSlice[0], "_")[0]
+				if strings.Contains(configCtx.EnvSlice[0], "_") {
+					baseEnv = strings.Split(configCtx.EnvSlice[0], "_")[0]
 				} else {
-					baseEnv = envSlice[0]
+					baseEnv = configCtx.EnvSlice[0]
 				}
 				if !*noVaultPtr && *tokenPtr == "" {
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
@@ -452,7 +449,7 @@ skipDiff:
 					waitg.Add(1)
 					go func() {
 						defer waitg.Done()
-						eUtils.ConfigControl(ctx, &config, configDriver)
+						eUtils.ConfigControl(ctx, configCtx, &config, configDriver)
 					}()
 					return
 				}
@@ -514,8 +511,8 @@ skipDiff:
 
 		// TODO: Deprecated...
 		// 1-800-ROIT
-		if len(envSlice) == 1 || (len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0) {
-			if strings.Contains(envSlice[0], "*") || len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 || len(*eUtils.ProtectedPtr) > 0 {
+		if len(configCtx.EnvSlice) == 1 || (len(*eUtils.IndexValueFilterPtr) > 0 && len(*eUtils.IndexedPtr) > 0) {
+			if strings.Contains(configCtx.EnvSlice[0], "*") || len(*eUtils.IndexedPtr) > 0 || len(*eUtils.RestrictedPtr) > 0 || len(*eUtils.ProtectedPtr) > 0 {
 				if len(*eUtils.IndexedPtr) > 0 {
 					sectionKey = "/Index/"
 				} else if len(*eUtils.RestrictedPtr) > 0 {
@@ -527,10 +524,10 @@ skipDiff:
 				newSectionSlice := make([]string, 0)
 				if !*noVaultPtr && !trcxe {
 					var baseEnv string
-					if strings.Contains(envSlice[0], "_") {
-						baseEnv = strings.Split(envSlice[0], "_")[0]
+					if strings.Contains(configCtx.EnvSlice[0], "_") {
+						baseEnv = strings.Split(configCtx.EnvSlice[0], "_")[0]
 					} else {
-						baseEnv = envSlice[0]
+						baseEnv = configCtx.EnvSlice[0]
 					}
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, envCtxPtr, "", *pingPtr)
@@ -545,20 +542,20 @@ skipDiff:
 					// Only look at index values....
 					//Checks for indexed projects
 					if len(*eUtils.IndexedPtr) > 0 {
-						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+						configCtx.ProjectSectionsSlice = append(configCtx.ProjectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
 					}
 
 					if len(*eUtils.RestrictedPtr) > 0 {
-						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
+						configCtx.ProjectSectionsSlice = append(configCtx.ProjectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
 					}
 
 					if len(*eUtils.ProtectedPtr) > 0 {
-						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
+						configCtx.ProjectSectionsSlice = append(configCtx.ProjectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
 					}
 
 					var listValues *api.Secret
-					if len(projectSectionsSlice) > 0 { //If eid -> look inside Index and grab all environments
-						subSectionPath := projectSectionsSlice[0] + "/"
+					if len(configCtx.ProjectSectionsSlice) > 0 { //If eid -> look inside Index and grab all environments
+						subSectionPath := configCtx.ProjectSectionsSlice[0] + "/"
 						listValues, err = testMod.ListEnv("super-secrets/"+testMod.Env+sectionKey+subSectionPath, config.Log)
 						if err != nil {
 							if strings.Contains(err.Error(), "permission denied") {
@@ -607,15 +604,15 @@ skipDiff:
 					}
 				} else { //novault takes this path
 					if len(*eUtils.IndexedPtr) > 0 {
-						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+						configCtx.ProjectSectionsSlice = append(configCtx.ProjectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
 					}
 
 					if len(*eUtils.RestrictedPtr) > 0 {
-						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
+						configCtx.ProjectSectionsSlice = append(configCtx.ProjectSectionsSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
 					}
 
 					if len(*eUtils.ProtectedPtr) > 0 {
-						projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
+						configCtx.ProjectSectionsSlice = append(configCtx.ProjectSectionsSlice, strings.Split(*eUtils.ProtectedPtr, ",")...)
 					}
 				}
 			}
@@ -645,9 +642,9 @@ skipDiff:
 		}
 	}
 
-	go receiver() //Channel receiver
+	go receiver(configCtx) //Channel receiver
 	if len(*dynamicPathPtr) == 0 {
-		for _, env := range envSlice {
+		for _, env := range configCtx.EnvSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 			if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
@@ -675,7 +672,7 @@ skipDiff:
 
 				var trcxeList []string
 				if trcxe {
-					projectSectionsSlice = append(projectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
+					configCtx.ProjectSectionsSlice = append(configCtx.ProjectSectionsSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
 
 					trcxeList = append(trcxeList, *fieldsPtr)
 					trcxeList = append(trcxeList, *encryptedPtr)
@@ -709,7 +706,7 @@ skipDiff:
 					DynamicPathFilter: *dynamicPathPtr,
 					FileFilter:        fileFilter,
 					SubPathFilter:     strings.Split(*eUtils.SubPathFilter, ","),
-					ProjectSections:   projectSectionsSlice,
+					ProjectSections:   configCtx.ProjectSectionsSlice,
 					ServiceFilter:     serviceFilterSlice,
 					ExitOnFailure:     true,
 					Trcxe:             trcxeList,
@@ -718,31 +715,32 @@ skipDiff:
 				waitg.Add(1)
 				go func() {
 					defer waitg.Done()
-					eUtils.ConfigControl(ctx, &config, configDriver)
+					eUtils.ConfigControl(ctx, configCtx, &config, configDriver)
 				}()
 			}
 		}
 	}
 
 	waitg.Wait()
-	close(resultChannel)
+	close(configCtx.ResultChannel)
 	if *diffPtr { //Diff if needed
 		waitg.Add(1)
-		go func() {
+		go func(cctx *eUtils.ConfigContext) {
 			defer waitg.Done()
 			retry := 0
 			for {
-				resultMapLock.Lock()
-				if len(resultMap) == len(envSlice)*len(sectionSlice) || retry == 3 {
-					resultMapLock.Unlock()
+				cctx.Mutex.Lock()
+				if len(cctx.ResultMap) == len(cctx.EnvSlice)*len(sectionSlice) || retry == 3 {
+					cctx.Mutex.Unlock()
 					break
 				}
-				resultMapLock.Unlock()
+				cctx.Mutex.Unlock()
 				time.Sleep(time.Duration(time.Second))
 				retry++
 			}
-			eUtils.DiffHelper(resultMap, envLength, envSlice, -1, false, resultMapLock, len(resultMap)/envLength)
-		}()
+			configCtx.FileSysIndex = -1
+			eUtils.DiffHelper(cctx, false, len(configCtx.ResultMap)/configCtx.EnvLength)
+		}(configCtx)
 	}
 	waitg.Wait() //Wait for diff
 

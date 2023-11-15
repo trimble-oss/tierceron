@@ -42,6 +42,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 	go func() {
 		for {
 		perching:
+			var deployDoneChan chan bool
 			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
@@ -54,7 +55,10 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 				go func() {
 					go func() {
 						// Timeout and CtlMessage subscriber
-						for range time.After(120 * time.Second) {
+						select {
+						case <-deployDoneChan:
+							break
+						case <-time.After(120 * time.Second):
 							ctlMsg := "Deployment timed out after 120 seconds"
 							cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 								*gAgentConfig.EncryptSalt,
@@ -63,6 +67,8 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 							gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
 							break
+						}
+						for range time.After(120 * time.Second) {
 						}
 					}()
 
@@ -113,6 +119,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 							*gAgentConfig.HandshakeHostPort,
 							*gAgentConfig.HandshakeCode,
 							cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
+						go func() { deployDoneChan <- true }()
 						goto deploycomplete
 					}
 				}
@@ -131,7 +138,7 @@ func main() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.22")
+	fmt.Println("trcsh Version: " + "1.23")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
 	if !utils.IsWindows() {
@@ -318,6 +325,9 @@ func roleBasedRunner(env string,
 	config.EnvRaw = env
 	config.WantCerts = false
 	config.IsShellSubProcess = true
+	if config.VaultAddress == "" {
+		config.VaultAddress = *gTrcshConfig.VaultAddress
+	}
 	if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
 		config.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
 		config.EndDir = trcDeployRoot.(string)
@@ -333,13 +343,12 @@ func roleBasedRunner(env string,
 
 	switch control {
 	case "trcconfig":
-		err = trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
+		err = trcconfigbase.CommonMain(&configEnv, &config.VaultAddress, &tokenConfig, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, config)
 	case "trcsub":
 		config.EndDir = config.EndDir + "/trc_templates"
-		err = trcsubbase.CommonMain(&configEnv, &config.VaultAddress, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], config)
+		err = trcsubbase.CommonMain(&configEnv, &config.VaultAddress, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], nil, deployArgLines, config)
 	}
-	ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+	ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
 	if !agentToken {
 		token = ""
@@ -397,7 +406,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		}
 		gAgentConfig.Env = &env
 
-		err := trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, config)
+		err := trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, nil, deployArgLines, config)
 		config.FeatherCtlCb = nil
 		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
@@ -458,16 +467,15 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	deployArgLines []string,
 	configCount *int,
 	logger *log.Logger) error {
+
 	switch control {
 	case "trcplgtool":
 		config.AppRoleConfig = ""
 		config.EnvRaw = env
 		config.IsShellSubProcess = true
 
-		err := trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, config)
+		err := trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, nil, deployArgLines, config)
 		ResetModifier(config)
-		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 		if !agentToken {
 			token = ""
 			config.Token = token
@@ -477,9 +485,6 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 		// This maybe isn't needed for windows deploys...  Since config can
 		// pull templates directly from vault..
 		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, token, argsOrig, deployArgLines, configCount)
-		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 		if !agentToken {
 			token = ""
 			config.Token = token
@@ -488,9 +493,6 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 
 	case "trcconfig":
 		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, token, argsOrig, deployArgLines, configCount)
-		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 		if !agentToken {
 			token = ""
 			config.Token = token
@@ -593,17 +595,21 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 	// config.VaultAddress = ""
 	// config.Token = ""
 	// Chewbacca: end scrub
-	if gTrcshConfig == nil {
-		gTrcshConfig, err = trcshauth.TrcshAuth(gAgentConfig, config)
-		if err != nil {
-			fmt.Println("Tierceron bootstrap failure.")
-			fmt.Println(err.Error())
-			logger.Println(err)
-			os.Exit(-1)
+	config.Log.Printf("Bootstrap..")
+	for {
+		if gTrcshConfig == nil || gTrcshConfig.CToken == nil || gTrcshConfig.ConfigRole == nil || gTrcshConfig.VaultAddress == nil ||
+			*gTrcshConfig.CToken == "" || *gTrcshConfig.ConfigRole == "" || *gTrcshConfig.VaultAddress == "" {
+			gTrcshConfig, err = trcshauth.TrcshAuth(gAgentConfig, config)
+			if err != nil {
+				config.Log.Printf(".")
+				time.Sleep(time.Second)
+				continue
+			}
+			config.Log.Printf("Auth re-loaded %s\n", env)
+		} else {
+			break
 		}
-		config.Log.Printf("Auth loaded %s\n", env)
 	}
-
 	// Chewbacca: Begin dbg comment
 	var auth string
 	mergedVaultAddress := config.VaultAddress
@@ -656,10 +662,8 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		config.OutputMemCache = true
 		config.StartDir = []string{"trc_templates"}
 		config.EndDir = "."
-		trcconfigbase.CommonMain(&configEnv, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, config)
-		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-		os.Args = []string{os.Args[0]}                                   //Resetting modifier cache to avoid token conflicts.
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+		trcconfigbase.CommonMain(&configEnv, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, config)
+		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		if !agentToken {
 			token = ""
 			config.Token = token
@@ -684,7 +688,6 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		if env == "itdev" || env == "staging" || env == "prod" {
 			config.OutputMemCache = false
 		}
-		os.Args = []string{os.Args[0]}
 		config.Log.Println("Processing trcshell")
 	} else {
 		if strings.Contains(pwd, "TrcDeploy") && len(config.DeploymentConfig) > 0 {
@@ -802,6 +805,8 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 				}
 			}
 			if utils.IsWindows() {
+				// Log for traceability.
+				logger.Println(deployLine)
 				err := processWindowsCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
@@ -814,7 +819,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 					agentToken,
 					token,
 					argsOrig,
-					deployArgLines,
+					strings.Split(deployLine, " "),
 					&configCount,
 					logger)
 				if err != nil {
@@ -835,7 +840,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 					agentToken,
 					token,
 					argsOrig,
-					deployArgLines,
+					strings.Split(deployLine, " "),
 					&configCount,
 					logger)
 			}

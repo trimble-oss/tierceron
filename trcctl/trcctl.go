@@ -28,11 +28,14 @@ func main() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	fmt.Println("Version: " + "1.34")
-	envPtr := flag.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
-	tokenPtr := flag.String("token", "", "Vault access token")
-	secretIDPtr := flag.String("secretID", "", "Secret app role ID")
-	appRoleIDPtr := flag.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this"+coreopts.GetFolderPrefix(nil)+"config to access the vault")
+	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flagset.Usage = flag.Usage
+
+	envPtr := flagset.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
+	tokenPtr := flagset.String("token", "", "Vault access token")
+	secretIDPtr := flagset.String("secretID", "", "Secret app role ID")
+	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
+	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this"+coreopts.GetFolderPrefix(nil)+"config to access the vault")
 	var envContext string
 
 	var ctl string
@@ -48,7 +51,7 @@ func main() {
 			os.Args = os.Args[1:]
 		}
 	}
-	flag.Parse()
+	flagset.Parse(os.Args)
 
 	if ctl != "" {
 		var err error
@@ -85,11 +88,11 @@ func main() {
 		case "pub":
 			trcpubbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil)
 		case "sub":
-			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, secretIDPtr, appRoleIDPtr, nil)
+			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, secretIDPtr, appRoleIDPtr, flagset, os.Args, nil)
 		case "init":
 			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext)
 		case "config":
-			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil, nil)
+			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil, flagset, os.Args, nil)
 		case "x":
 			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil)
 		}
