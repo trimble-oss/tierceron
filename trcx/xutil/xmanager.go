@@ -596,7 +596,7 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig) (interface{}, error) {
+func GenerateSeedsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigContext, config *eUtils.DriverConfig) (interface{}, error) {
 	if config.Clean { //Clean flag in trcx
 		if strings.HasSuffix(config.Env, "_0") {
 			envVersion := eUtils.SplitEnv(config.Env)
@@ -801,7 +801,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConf
 		if !strings.Contains(config.Env, "_") {
 			config.Env = config.Env + "_0"
 		}
-		config.Update(&seedData, config.Env+"||"+config.Env+"_seed.yml")
+		config.Update(configCtx, &seedData, config.Env+"||"+config.Env+"_seed.yml")
 	} else {
 		writeToFile(config, seedData, endPath)
 		// Print that we're done
