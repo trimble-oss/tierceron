@@ -599,8 +599,8 @@ func ProcessDeploy(config *eUtils.DriverConfig, region string, token string, dep
 	var err error
 	config.Log.Printf("Bootstrap..")
 	for {
-		if gTrcshConfig == nil || gTrcshConfig.CToken == nil || gTrcshConfig.ConfigRole == nil || gTrcshConfig.VaultAddress == nil ||
-			*gTrcshConfig.CToken == "" || *gTrcshConfig.ConfigRole == "" || *gTrcshConfig.VaultAddress == "" {
+		if gTrcshConfig == nil || !gTrcshConfig.IsValid(gAgentConfig) {
+			// Loop until we have something usable...
 			gTrcshConfig, err = trcshauth.TrcshAuth(gAgentConfig, config)
 			if err != nil {
 				config.Log.Printf(".")
