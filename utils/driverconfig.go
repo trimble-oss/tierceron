@@ -2,9 +2,11 @@ package utils
 
 import (
 	"log"
+	"math"
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
@@ -26,9 +28,20 @@ type ConfigContext struct {
 	ProjectSectionsSlice []string
 	ResultChannel        chan *ResultData
 	FileSysIndex         int
+	DiffFileCount        int32
 	EnvLength            int
 	ConfigWg             sync.WaitGroup
 	Mutex                *sync.Mutex
+}
+
+func (cfgContext *ConfigContext) SetDiffFileCount(cnt int) {
+	if cnt < math.MaxInt32 {
+		atomic.StoreInt32(&cfgContext.DiffFileCount, int32(cnt))
+	}
+}
+
+func (cfgContext *ConfigContext) GetDiffFileCount() int32 {
+	return cfgContext.DiffFileCount
 }
 
 // DriverConfig -- contains many structures necessary for Tierceron tool functionality.

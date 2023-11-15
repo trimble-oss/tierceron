@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
@@ -19,5 +20,5 @@ func main() {
 	fmt.Println("Version: " + "1.6")
 	env := "local"
 	addr := coreopts.GetVaultHostPort()
-	trcinitbase.CommonMain(&env, &addr, nil)
+	trcinitbase.CommonMain(&env, &addr, nil, nil, os.Args)
 }
