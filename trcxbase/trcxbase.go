@@ -58,7 +58,10 @@ func CommonMain(ctx eUtils.ProcessContext,
 	}
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
-		flagset.Usage = flag.Usage
+		flagset.Usage = func() {
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			flagset.PrintDefaults()
+		}
 		flagset.String("env", "dev", "Environment to configure")
 	}
 
@@ -79,7 +82,7 @@ func CommonMain(ctx eUtils.ProcessContext,
 	fileAddrPtr := flagset.String("seedpath", "", "Path for seed file")
 	fieldsPtr := flagset.String("fields", "", "Fields to enter")
 	encryptedPtr := flagset.String("encrypted", "", "Fields to encrypt")
-	readOnlyPtr := flag.Bool("readonly", false, "Fields to encrypt")
+	readOnlyPtr := flagset.Bool("readonly", false, "Fields to encrypt")
 	dynamicPathPtr := flagset.String("dynamicPath", "", "Generate seeds for a dynamic path in vault.")
 
 	var insecurePtr *bool
@@ -321,7 +324,7 @@ func CommonMain(ctx eUtils.ProcessContext,
 skipDiff:
 	// Prints usage if no flags are specified
 	if *helpPtr {
-		flag.Usage()
+		flagset.Usage()
 		os.Exit(1)
 	}
 	if ctx == nil {
