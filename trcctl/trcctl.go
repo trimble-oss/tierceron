@@ -56,7 +56,6 @@ func main() {
 	}
 	flagset.Parse(os.Args[1:])
 	if flagset.NFlag() == 0 {
-		fmt.Printf("Foo")
 		flagset.Usage()
 		os.Exit(0)
 	}
@@ -100,9 +99,9 @@ func main() {
 		case "init":
 			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext, flagset, os.Args)
 		case "config":
-			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil, flagset, os.Args, nil)
+			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil, nil, os.Args, nil)
 		case "x":
-			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil, flagset, os.Args)
+			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil, nil, os.Args)
 		}
 	}
 }
