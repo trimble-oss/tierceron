@@ -38,8 +38,63 @@ import (
 var gAgentConfig *capauth.AgentConfigs = nil
 var gTrcshConfig *capauth.TrcShConfig
 
+func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.DriverConfig, error) {
+	if len(env) == 0 {
+		env = os.Getenv("TRC_ENV")
+	}
+	if len(region) == 0 {
+		region = os.Getenv("TRC_REGION")
+	}
+
+	regions := []string{}
+	if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
+		supportedRegions := eUtils.GetSupportedProdRegions()
+		if region != "" {
+			for _, supportedRegion := range supportedRegions {
+				if region == supportedRegion {
+					regions = append(regions, region)
+					break
+				}
+			}
+			if len(regions) == 0 {
+				fmt.Println("Unsupported region: " + region)
+				return nil, errors.New("Unsupported region: " + region)
+			}
+		}
+	}
+
+	fmt.Println("trcsh env: " + env)
+	fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
+
+	logFile := "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix(nil)+"deploy.log" {
+		logFile = "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
+	}
+	f, errOpenFile := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	if errOpenFile != nil {
+		return nil, errOpenFile
+	}
+	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
+	config := &eUtils.DriverConfig{Insecure: true,
+		Env:               env,
+		EnvRaw:            env,
+		Log:               logger,
+		IsShell:           true,
+		IsShellSubProcess: false,
+		OutputMemCache:    outputMemCache,
+		MemFs:             memfs.New(),
+		Regions:           regions,
+		ExitOnFailure:     true}
+	return config, nil
+}
+
 func ProcessDeployment(env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string) {
-	go func() {
+	config, err := TrcshInitConfig(env, region, outputMemCache)
+	if err != nil {
+		fmt.Printf("Initialization setup error: %s\n", err.Error())
+	}
+
+	go func(c0 *eUtils.DriverConfig) {
 		for {
 		perching:
 			var deployDoneChan chan bool
@@ -52,8 +107,8 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 
 				// Process the script....
 				// This will feed CtlMessages into the Timeout and CtlMessage subscriber
-				go func() {
-					go func() {
+				go func(c1 *eUtils.DriverConfig) {
+					go func(c2 *eUtils.DriverConfig) {
 						// Timeout and CtlMessage subscriber
 						select {
 						case <-deployDoneChan:
@@ -65,17 +120,17 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
 								cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
-							gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
+							c2.DeploymentCtlMessage <- capauth.TrcCtlComplete
 							break
 						}
 						for range time.After(120 * time.Second) {
 						}
-					}()
+					}(c1)
 
-					ProcessDeploy(*gAgentConfig.Env, region, "", deployment, trcPath, secretId, approleId, false)
-				}()
+					ProcessDeploy(c1, region, "", deployment, trcPath, secretId, approleId, false)
+				}(c0)
 
-				for modeCtl := range gAgentConfig.CtlMessage {
+				for modeCtl := range c0.DeploymentCtlMessage {
 					flapMode := cap.MODE_FLAP + "_" + modeCtl
 					ctlFlapMode := flapMode
 					var err error = errors.New("init")
@@ -128,7 +183,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 			}
 		deploycomplete:
 		}
-	}()
+	}(config)
 }
 
 // This is a controller program that can act as any command line utility.
@@ -178,10 +233,16 @@ func main() {
 		memprotectopts.MemProtect(nil, secretIDPtr)
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
 
+		config, err := TrcshInitConfig(*envPtr, *regionPtr, true)
+		if err != nil {
+			fmt.Printf("trcsh config setup failure: %s\n", err.Error())
+			os.Exit(-1)
+		}
+
 		//Open deploy script and parse it.
-		ProcessDeploy(*envPtr, *regionPtr, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
+		ProcessDeploy(config, *regionPtr, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
-		gAgentConfig = &capauth.AgentConfigs{CtlMessage: make(chan string, 5)}
+		gAgentConfig = &capauth.AgentConfigs{}
 		deployments := os.Getenv("DEPLOYMENTS")
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
@@ -396,8 +457,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	token string,
 	argsOrig []string,
 	deployArgLines []string,
-	configCount *int,
-	logger *log.Logger) {
+	configCount *int) {
 	switch control {
 	case "trcpub":
 		config.AppRoleConfig = "configpub.yml"
@@ -443,19 +503,19 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 
 		kubectlErrChan := make(chan error, 1)
 
-		go func() {
-			config.Log.Println("Executing kubectl")
-			kubectlErrChan <- kube.KubeCtl(*trcKubeDeploymentConfig, config)
-		}()
+		go func(c *eUtils.DriverConfig) {
+			c.Log.Println("Executing kubectl")
+			kubectlErrChan <- kube.KubeCtl(*trcKubeDeploymentConfig, c)
+		}(config)
 
 		select {
 		case <-time.After(15 * time.Second):
 			fmt.Println("Agent is not yet ready..")
-			logger.Println("Timed out waiting for KubeCtl.")
+			config.Log.Println("Timed out waiting for KubeCtl.")
 			os.Exit(-1)
 		case kubeErr := <-kubectlErrChan:
 			if kubeErr != nil {
-				logger.Println(kubeErr)
+				config.Log.Println(kubeErr)
 				os.Exit(-1)
 			}
 		}
@@ -474,8 +534,7 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	token string,
 	argsOrig []string,
 	deployArgLines []string,
-	configCount *int,
-	logger *log.Logger) error {
+	configCount *int) error {
 
 	err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, token, argsOrig, deployArgLines, configCount)
 	return err
@@ -496,66 +555,24 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 // Returns:
 //
 //	Nothing.
-func ProcessDeploy(env string, region string, token string, deployment string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
-	var err error
+func ProcessDeploy(config *eUtils.DriverConfig, region string, token string, deployment string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
 	agentToken := false
 	if token != "" {
 		agentToken = true
 	}
 	pwd, _ := os.Getwd()
 	var content []byte
-	if len(env) == 0 {
-		env = os.Getenv("TRC_ENV")
-	}
-	if len(region) == 0 {
-		region = os.Getenv("TRC_REGION")
-	}
-
-	regions := []string{}
-	if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
-		supportedRegions := eUtils.GetSupportedProdRegions()
-		if region != "" {
-			for _, supportedRegion := range supportedRegions {
-				if region == supportedRegion {
-					regions = append(regions, region)
-					break
-				}
-			}
-			if len(regions) == 0 {
-				fmt.Println("Unsupported region: " + region)
-				os.Exit(1)
-			}
-		}
-	}
-
-	fmt.Println("trcsh env: " + env)
-	fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
-
-	logFile := "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix(nil)+"deploy.log" {
-		logFile = "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
-	}
-	f, _ := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
-	config := &eUtils.DriverConfig{Insecure: true,
-		EnvRaw:            env,
-		Log:               logger,
-		IsShell:           true,
-		IsShellSubProcess: false,
-		OutputMemCache:    outputMemCache,
-		MemFs:             memfs.New(),
-		Regions:           regions,
-		ExitOnFailure:     true}
 
 	if len(deployment) > 0 {
 		config.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
+		config.DeploymentCtlMessage = make(chan string, 5)
 	}
 
-	if env == "itdev" {
+	if config.EnvRaw == "itdev" {
 		config.OutputMemCache = false
 	}
 	fmt.Println("Logging initialized.")
-	logger.Printf("Logging initialized for env:%s\n", env)
+	config.Log.Printf("Logging initialized for env:%s\n", config.EnvRaw)
 
 	// Chewbacca: scrub before checkin
 	// This data is generated by TrcshAuth
@@ -574,6 +591,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 	// config.VaultAddress = ""
 	// config.Token = ""
 	// Chewbacca: end scrub
+	var err error
 	config.Log.Printf("Bootstrap..")
 	for {
 		if gTrcshConfig == nil || gTrcshConfig.CToken == nil || gTrcshConfig.ConfigRole == nil || gTrcshConfig.VaultAddress == nil ||
@@ -584,7 +602,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 				time.Sleep(time.Second)
 				continue
 			}
-			config.Log.Printf("Auth re-loaded %s\n", env)
+			config.Log.Printf("Auth re-loaded %s\n", config.EnvRaw)
 		} else {
 			break
 		}
@@ -635,13 +653,11 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 		configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
-		tokenName := "config_token_" + env
-		configEnv := env
-		config.EnvRaw = env
+		tokenName := "config_token_" + config.EnvRaw
 		config.OutputMemCache = true
 		config.StartDir = []string{"trc_templates"}
 		config.EndDir = "."
-		trcconfigbase.CommonMain(&configEnv, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, config)
+		trcconfigbase.CommonMain(&config.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, config)
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		if !agentToken {
 			token = ""
@@ -664,7 +680,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 			token = ""
 			config.Token = token
 		}
-		if env == "itdev" || env == "staging" || env == "prod" {
+		if config.EnvRaw == "itdev" || config.EnvRaw == "staging" || config.EnvRaw == "prod" {
 			config.OutputMemCache = false
 		}
 		config.Log.Println("Processing trcshell")
@@ -706,7 +722,7 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 			}
 		} else {
 			fmt.Println("Processing manual trcshell")
-			if env == "itdev" {
+			if config.EnvRaw == "itdev" {
 				content, err = os.ReadFile(pwd + "/deploy/buildtest.trc")
 				if err != nil {
 					fmt.Println("Error could not find /deploy/buildtest.trc for deployment instructions")
@@ -785,12 +801,12 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 			}
 			if utils.IsWindows() {
 				// Log for traceability.
-				logger.Println(deployLine)
+				config.Log.Println(deployLine)
 				err := processWindowsCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
 					PipeOS,
-					env,
+					config.EnvRaw,
 					gTrcshConfig,
 					region,
 					config,
@@ -799,19 +815,18 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 					token,
 					argsOrig,
 					strings.Split(deployLine, " "),
-					&configCount,
-					logger)
+					&configCount)
 				if err != nil {
-					gAgentConfig.CtlMessage <- fmt.Sprintf("%s\nEncountered errors: %s\n", deployLine, err.Error())
+					config.DeploymentCtlMessage <- fmt.Sprintf("%s\nEncountered errors: %s\n", deployLine, err.Error())
 				} else {
-					gAgentConfig.CtlMessage <- deployLine
+					config.DeploymentCtlMessage <- deployLine
 				}
 			} else {
 				processPluginCmds(
 					&trcKubeDeploymentConfig,
 					&onceKubeInit,
 					PipeOS,
-					env,
+					config.EnvRaw,
 					gTrcshConfig,
 					region,
 					config,
@@ -820,13 +835,12 @@ func ProcessDeploy(env string, region string, token string, deployment string, t
 					token,
 					argsOrig,
 					strings.Split(deployLine, " "),
-					&configCount,
-					logger)
+					&configCount)
 			}
 		}
 	}
 	if utils.IsWindows() {
-		gAgentConfig.CtlMessage <- capauth.TrcCtlComplete
+		config.DeploymentCtlMessage <- capauth.TrcCtlComplete
 	}
 	//Make the arguments in the script -> os.args.
 
