@@ -406,9 +406,8 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		tokenPub := ""
 		pubEnv := env
 
-		trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, config)
-		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+		trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, nil, deployArgLines, config)
+		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		if !agentToken {
 			token = ""
 			config.Token = token
@@ -432,8 +431,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 
 		err := trcplgtoolbase.CommonMain(&env, &config.VaultAddress, trcshConfig.CToken, &region, nil, deployArgLines, config)
 		config.FeatherCtlCb = nil
-		ResetModifier(config)                                            //Resetting modifier cache to avoid token conflicts.
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		if !agentToken {
 			token = ""
 			config.Token = token

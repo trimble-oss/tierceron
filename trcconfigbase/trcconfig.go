@@ -321,7 +321,7 @@ func CommonMain(envPtr *string,
 
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
-		if *regionPtr != "" {
+		if regionPtr != nil && *regionPtr != "" {
 			for _, supportedRegion := range supportedRegions {
 				if *regionPtr == supportedRegion {
 					regions = append(regions, *regionPtr)
