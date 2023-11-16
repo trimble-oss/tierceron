@@ -286,8 +286,12 @@ func main() {
 		memprotectopts.MemProtect(nil, &address)
 		shutdown := make(chan bool)
 
-		// Preload agent synchronization configs
-		gAgentConfig.LoadConfigs(address, agentToken, deployments, agentEnv)
+		// Preload agent synchronization configs...
+		_, errAgentLoad := gAgentConfig.LoadConfigs(address, agentToken, deployments, agentEnv)
+		if errAgentLoad != nil {
+			fmt.Println("trcsh agent bootstrap failure.")
+			os.Exit(-1)
+		}
 
 		deploymentsSlice := strings.Split(deployments, ",")
 		for _, deployment := range deploymentsSlice {
@@ -353,8 +357,6 @@ func featherCtlCb(agentName string) error {
 
 	if gAgentConfig == nil {
 		return errors.New("incorrect agent initialization")
-	} else {
-		gAgentConfig.Deployments = &agentName
 	}
 	flapMode := cap.MODE_GAZE
 	ctlFlapMode := flapMode
@@ -491,9 +493,12 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		// Utilize elevated CToken to perform certifications if asked.
 		config.FeatherCtlCb = featherCtlCb
 		if gAgentConfig == nil {
+			// Prepare the configuration triggering mechanism.
+			// Bootstrap deployment is replaced during callback with the agent name.
 			gAgentConfig = &capauth.AgentConfigs{}
-			gAgentConfig.LoadConfigs(config.VaultAddress, *trcshConfig.CToken, "bootstrap", "dev") // Feathering always in dev environmnent.
+			gAgentConfig.LoadConfigs(config.VaultAddress, *trcshConfig.CToken, "bootstrap", config.Env) // Feathering always in dev environmnent.
 		}
+
 		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, *trcshConfig.CToken, argsOrig, deployArgLines, configCount)
 		if err != nil {
 			os.Exit(1)
