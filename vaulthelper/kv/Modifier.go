@@ -183,7 +183,8 @@ func cleanCacheHelper(env string, limit uint64) {
 	emptied:
 		for i := uint64(0); i < limit; i++ {
 			select {
-			case <-modifierCache[env].modifierChan:
+			case mod := <-modifierCache[env].modifierChan:
+				mod.Close()
 				atomic.AddUint64(&modifierCache[env].modCount, ^uint64(0))
 			default:
 				break emptied
