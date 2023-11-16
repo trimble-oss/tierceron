@@ -443,6 +443,7 @@ func roleBasedRunner(env string,
 		config.EndDir = config.EndDir + "/trc_templates"
 		err = trcsubbase.CommonMain(&configEnv, &config.VaultAddress, &trcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], nil, deployArgLines, config)
 	}
+	ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 
 	if !agentToken {
 		token = ""
@@ -476,6 +477,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		pubEnv := env
 
 		trcpubbase.CommonMain(&pubEnv, &config.VaultAddress, &tokenPub, &trcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, nil, deployArgLines, config)
+		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		if !agentToken {
 			token = ""
 			config.Token = token
@@ -665,6 +667,7 @@ func ProcessDeploy(config *eUtils.DriverConfig, region string, token string, dep
 		config.StartDir = []string{"trc_templates"}
 		config.EndDir = "."
 		trcconfigbase.CommonMain(&config.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, config)
+		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		if !agentToken {
 			token = ""
 			config.Token = token
