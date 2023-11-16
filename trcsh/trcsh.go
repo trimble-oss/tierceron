@@ -107,8 +107,8 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 
 				// Process the script....
 				// This will feed CtlMessages into the Timeout and CtlMessage subscriber
-				go func(c1 *eUtils.DriverConfig) {
-					go func(c2 *eUtils.DriverConfig) {
+				go func() {
+					go func() {
 						// Timeout and CtlMessage subscriber
 						select {
 						case <-deployDoneChan:
@@ -120,62 +120,64 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
 								cap.MODE_PERCH+"_"+ctlMsg, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
-							c2.DeploymentCtlMessage <- capauth.TrcCtlComplete
+							go func() { config.DeploymentCtlMessage <- capauth.TrcCtlComplete }()
 							break
 						}
-						for range time.After(120 * time.Second) {
+					}()
+
+					ProcessDeploy(config, region, "", deployment, trcPath, secretId, approleId, false)
+				}()
+
+				for {
+					select {
+					case modeCtl := <-config.DeploymentCtlMessage:
+						flapMode := cap.MODE_FLAP + "_" + modeCtl
+						ctlFlapMode := flapMode
+						var err error = errors.New("init")
+
+						for {
+							if err == nil && ctlFlapMode == cap.MODE_PERCH {
+								// Acknowledge perching...
+								cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+									*gAgentConfig.EncryptSalt,
+									*gAgentConfig.HandshakeHostPort,
+									*gAgentConfig.HandshakeCode,
+									cap.MODE_PERCH, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
+								ctlFlapMode = cap.MODE_PERCH
+								go func() { deployDoneChan <- true }()
+								goto perching
+							}
+
+							if err == nil && flapMode != ctlFlapMode && ctlFlapMode != " " {
+								// Flap, Gaze, etc...
+								interruptFun(twoHundredMilliInterruptTicker)
+								break
+							} else {
+								callFlap := strings.ReplaceAll(flapMode, ":", "#")
+								if err == nil {
+									interruptFun(twoHundredMilliInterruptTicker)
+								} else {
+									if err.Error() != "init" {
+										interruptFun(secondInterruptTicker)
+									}
+								}
+								ctlFlapMode, err = cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
+									*gAgentConfig.EncryptSalt,
+									*gAgentConfig.HandshakeHostPort,
+									*gAgentConfig.HandshakeCode,
+									callFlap, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
+							}
 						}
-					}(c1)
-
-					ProcessDeploy(c1, region, "", deployment, trcPath, secretId, approleId, false)
-				}(c0)
-
-				for modeCtl := range c0.DeploymentCtlMessage {
-					flapMode := cap.MODE_FLAP + "_" + modeCtl
-					ctlFlapMode := flapMode
-					var err error = errors.New("init")
-
-					for {
-						if err == nil && ctlFlapMode == cap.MODE_PERCH {
-							// Acknowledge perching...
+						if modeCtl == capauth.TrcCtlComplete {
+							// Only exit with TrcCtlComplete.
 							cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 								*gAgentConfig.EncryptSalt,
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
-								cap.MODE_PERCH, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
-							ctlFlapMode = cap.MODE_PERCH
-							goto perching
+								cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
+							go func() { deployDoneChan <- true }()
+							goto deploycomplete
 						}
-
-						if err == nil && flapMode != ctlFlapMode {
-							// Flap, Gaze, etc...
-							interruptFun(twoHundredMilliInterruptTicker)
-							break
-						} else {
-							callFlap := flapMode
-							if err == nil {
-								interruptFun(twoHundredMilliInterruptTicker)
-							} else {
-								if err.Error() != "init" {
-									interruptFun(secondInterruptTicker)
-								}
-							}
-							ctlFlapMode, err = cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-								*gAgentConfig.EncryptSalt,
-								*gAgentConfig.HandshakeHostPort,
-								*gAgentConfig.HandshakeCode,
-								callFlap, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
-						}
-					}
-					if modeCtl == capauth.TrcCtlComplete {
-						// Only exit with TrcCtlComplete.
-						cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
-							*gAgentConfig.EncryptSalt,
-							*gAgentConfig.HandshakeHostPort,
-							*gAgentConfig.HandshakeCode,
-							cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
-						go func() { deployDoneChan <- true }()
-						goto deploycomplete
 					}
 				}
 			} else {
@@ -242,7 +244,6 @@ func main() {
 		//Open deploy script and parse it.
 		ProcessDeploy(config, *regionPtr, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
-		gAgentConfig = &capauth.AgentConfigs{}
 		deployments := os.Getenv("DEPLOYMENTS")
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
@@ -273,6 +274,7 @@ func main() {
 			fmt.Println("trcsh on windows requires VAULT_ADDR address.")
 			os.Exit(-1)
 		}
+		gAgentConfig = &capauth.AgentConfigs{AgentToken: &agentToken}
 
 		memprotectopts.MemProtect(nil, &agentToken)
 		memprotectopts.MemProtect(nil, &address)
@@ -400,11 +402,6 @@ func roleBasedRunner(env string,
 	deployArgLines []string,
 	configCount *int) error {
 	*configCount -= 1
-	if *configCount != 0 { //This is to keep result channel open - closes on the final config call of the script.
-		config.IsShellConfigComplete = false
-	} else {
-		config.IsShellConfigComplete = true
-	}
 	config.AppRoleConfig = "config.yml"
 	config.FileFilter = nil
 	config.EnvRaw = env
@@ -621,6 +618,8 @@ func ProcessDeploy(config *eUtils.DriverConfig, region string, token string, dep
 		// If in context of trcsh, utilize CToken to auth...
 		if gTrcshConfig != nil && gTrcshConfig.CToken != nil {
 			auth = *gTrcshConfig.CToken
+		} else if gAgentConfig.AgentToken != nil {
+			auth = *gAgentConfig.AgentToken
 		}
 	}
 
@@ -693,7 +692,16 @@ func ProcessDeploy(config *eUtils.DriverConfig, region string, token string, dep
 		if strings.Contains(pwd, "TrcDeploy") && len(config.DeploymentConfig) > 0 {
 			if deployment, ok := config.DeploymentConfig["trcplugin"]; ok {
 				// Swapping in project root...
-				mod, err := helperkv.NewModifier(config.Insecure, *gTrcshConfig.CToken, *gTrcshConfig.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
+				configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
+				tokenName := "config_token_" + config.EnvRaw
+				readToken := ""
+				autoErr := eUtils.AutoAuth(config, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &config.Env, &config.VaultAddress, &mergedEnvRaw, "config.yml", false)
+				if autoErr != nil {
+					fmt.Println("Missing auth components.")
+					return
+				}
+
+				mod, err := helperkv.NewModifier(config.Insecure, readToken, *gTrcshConfig.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
 				if err != nil {
 					fmt.Println("Unable to obtain resources for deployment")
 					return
