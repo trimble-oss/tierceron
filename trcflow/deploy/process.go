@@ -67,23 +67,27 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 
 	if ok, err := servercapauth.ValidatePathSha(goMod, pluginConfig, logger); true || ok {
 		onceAuth.Do(func() {
-			logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
-			var featherAuth *servercapauth.FeatherAuth
-			featherAuth, err = servercapauth.Init(goMod, pluginConfig, logger)
-			if err != nil {
-				eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
-				return
+			if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
+				// Ensure only dev is the cap auth...
+				logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
+				var featherAuth *servercapauth.FeatherAuth = nil
+				if pluginConfig["env"].(string) == "dev" {
+					featherAuth, err = servercapauth.Init(goMod, pluginConfig, logger)
+					if err != nil {
+						eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
+						return
+					}
+					pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
+				}
+
+				servercapauth.Memorize(pluginConfig, logger)
+
+				// TODO: Support variables for different environments...
+				// Not really clear how cap auth would do this...
+				go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+				logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
+				gCapInitted = true
 			}
-			gCapInitted = true
-
-			pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
-
-			servercapauth.Memorize(pluginConfig, logger)
-
-			// TODO: Support variables for different environments...
-			// Not really clear how cap auth would do this...
-			go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
-			logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
 		})
 	} else {
 		eUtils.LogErrorMessage(config, fmt.Sprintf("Mismatched sha256 cap auth for env: %s.  Skipping.", pluginConfig["env"].(string)), false)
