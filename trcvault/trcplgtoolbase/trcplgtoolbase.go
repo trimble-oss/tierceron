@@ -196,7 +196,7 @@ func CommonMain(envPtr *string,
 	}
 
 	//
-	if tokenNamePtr == nil || *tokenNamePtr == "" {
+	if tokenNamePtr == nil || *tokenNamePtr == "" || tokenPtr == nil || *tokenPtr == "" {
 		autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
 		if autoErr != nil {
 			eUtils.LogErrorMessage(configBase, "Auth failure: "+autoErr.Error(), false)

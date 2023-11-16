@@ -53,6 +53,9 @@ skipSwitch:
 func receiver(configCtx *utils.ConfigContext) {
 
 	for data := range configCtx.ResultChannel {
+		if data != nil && data.Done {
+			return
+		}
 		if data != nil && data.InData != nil && data.InPath != "" {
 			configCtx.Mutex.Lock()
 			configCtx.ResultMap[data.InPath] = data.InData
@@ -469,8 +472,11 @@ func CommonMain(envPtr *string,
 	}
 	configCtx.ConfigWg.Wait() //Wait for templates
 	if c == nil {
+		configCtx.ResultChannel <- &eUtils.ResultData{Done: true}
 		close(configCtx.ResultChannel)
-	} else if c.IsShellConfigComplete {
+	} else if c.IsShell {
+		// Just shut down result channel since not really used in shell..
+		configCtx.ResultChannel <- &eUtils.ResultData{Done: true}
 		select {
 		case _, ok := <-configCtx.ResultChannel:
 			if ok {
