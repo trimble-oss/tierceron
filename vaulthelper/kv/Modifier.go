@@ -214,12 +214,12 @@ func (m *Modifier) CleanCache(limit uint64) {
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
-func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuffix string, logger *log.Logger) (bool, error) {
+func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuffix string, logger *log.Logger) (bool, string, error) {
 	env, sub, _, envErr := PreCheckEnvironment(environment)
 
 	if envErr != nil {
 		logger.Printf("Environment format error: %v\n", envErr)
-		return false, envErr
+		return false, "", envErr
 	} else {
 		if sub != "" {
 			environment = env
@@ -241,10 +241,10 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 		logger.Printf("LookupSelf Auth failure: %v\n", err)
 		if urlErr, urlErrOk := err.(*url.Error); urlErrOk {
 			if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
-				return false, err
+				return false, desiredPolicy, err
 			}
 		} else if strings.Contains(err.Error(), "x509: certificate") {
-			return false, err
+			return false, desiredPolicy, err
 		}
 	}
 
@@ -265,7 +265,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 
 	}
 
-	return valid, nil
+	return valid, desiredPolicy, nil
 }
 
 // Writes the key,value pairs in data to the vault

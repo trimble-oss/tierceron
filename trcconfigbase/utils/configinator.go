@@ -55,7 +55,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 	}
 	versionData := make(map[string]interface{})
 	if config.Token != "novault" {
-		if valid, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "", config.Log); errValidateEnvironment != nil || !valid {
+		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "", config.Log); errValidateEnvironment != nil || !valid {
 			if errValidateEnvironment != nil {
 				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
 					if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
@@ -64,8 +64,8 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 				}
 			}
 
-			if unrestrictedValid, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-				return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
+			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+				return nil, eUtils.LogAndSafeExit(config, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", config.Env, baseDesiredPolicy, desiredPolicy), 1)
 			}
 		}
 	}
