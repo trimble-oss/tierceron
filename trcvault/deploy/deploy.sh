@@ -41,7 +41,11 @@ read SECRET_VAULT_ENV_TOKEN
 fi
 
 if [[ -z "${SECRET_VAULT_PLUGIN_TOKEN}" ]]; then
+if [ "$VAULT_ENV" = "staging" ] || [ "$VAULT_ENV" = "prod" ]; then
 echo "Enter organization vault plugin token for certification(config_token_plugin$VAULT_ENV): "  
+else
+echo "Enter organization vault plugin token for certification(config_token_pluginany): "  
+fi
 read SECRET_VAULT_PLUGIN_TOKEN
 fi
 
