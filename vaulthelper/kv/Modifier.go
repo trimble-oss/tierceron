@@ -94,25 +94,10 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 //	Any errors generated in creating the client
 func NewModifier(insecure bool, token string, address string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
 	if useCache {
-		if _, ok := modifierCache[env]; !ok {
-			modifierCachLock.Lock()
-			modifierCache[env] = &modCache{modCount: 0, modifierChan: make(chan *Modifier, 20)}
-			modifierCachLock.Unlock()
+		checkoutModifier, err := cachedModifierHelper(env)
+		if err == nil && checkoutModifier != nil {
+			return checkoutModifier, nil
 		}
-
-		for {
-			select {
-			case checkoutModifier := <-modifierCache[env].modifierChan:
-				return checkoutModifier, nil
-			case <-time.After(time.Millisecond * 200):
- 			// Someone leaking in trcconfig... this is getting high...
-				if atomic.LoadUint64(&modifierCache[env].modCount) < 30 {
-					goto modbuild
-				}
-			}
-		}
-	modbuild:
-		atomic.AddUint64(&modifierCache[env].modCount, 1)
 	}
 
 	if len(address) == 0 {
@@ -142,37 +127,78 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	return newModifier, nil
 }
 
-func (m *Modifier) Release() {
-	if _, ok := modifierCache[m.RawEnv]; !ok {
+func checkInitModCache(env string) {
+	if _, ok := modifierCache[env]; !ok {
 		modifierCachLock.Lock()
-		modifierCache[m.RawEnv] = &modCache{modCount: 0, modifierChan: make(chan *Modifier, 20)}
+		modifierCache[env] = &modCache{modCount: 0, modifierChan: make(chan *Modifier, 20)}
 		modifierCachLock.Unlock()
 	}
+}
 
-	// TODO: Perform some maintenance???
+func cachedModifierHelper(env string) (*Modifier, error) {
+	checkInitModCache(env)
+
+	for {
+		select {
+		case checkoutModifier := <-modifierCache[env].modifierChan:
+			atomic.AddUint64(&modifierCache[env].modCount, ^uint64(0))
+			return checkoutModifier, nil
+		case <-time.After(time.Millisecond * 200):
+			// Nothing here...
+			return nil, errors.New("no cached modifier")
+		}
+	}
+}
+func (m *Modifier) Release() {
+	if _, ok := modifierCache[m.Env]; ok {
+		m.releaseHelper(m.Env)
+	} else {
+		m.releaseHelper(m.RawEnv)
+	}
+
+}
+
+func (m *Modifier) releaseHelper(env string) {
+	checkInitModCache(env)
+
 	// Since modifiers are re-used now, this may not be necessary or even desired for that
 	// matter.
 	//	m.httpClient.CloseIdleConnections()
+	if modifierCache[env].modCount > 10 {
+		m.CleanCache(10)
+	}
 
-	modifierCache[m.RawEnv].modifierChan <- m
+	atomic.AddUint64(&modifierCache[env].modCount, 1)
+	modifierCache[env].modifierChan <- m
 }
 
 func (m *Modifier) RemoveFromCache() {
-	m.Close()
+	m.CleanCache(20)
+}
 
+func cleanCacheHelper(env string, limit int) {
 	modifierCachLock.Lock()
-	if modifierCache[m.RawEnv].modCount > 1 {
+	if modifierCache[env].modCount > 1 {
 	emptied:
-		for i := 0; i < 20; i++ {
+		for i := 0; i < limit; i++ {
 			select {
-			case <-modifierCache[m.RawEnv].modifierChan:
+			case <-modifierCache[env].modifierChan:
+				modifierCache[env].modCount = modifierCache[env].modCount - 1
 			default:
 				break emptied
 			}
 		}
 	}
-	modifierCache[m.RawEnv].modCount = 0
 	modifierCachLock.Unlock()
+}
+
+func (m *Modifier) CleanCache(limit int) {
+	m.Close()
+	if _, ok := modifierCache[m.Env]; ok {
+		cleanCacheHelper(m.Env, limit)
+	} else {
+		cleanCacheHelper(m.RawEnv, limit)
+	}
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
