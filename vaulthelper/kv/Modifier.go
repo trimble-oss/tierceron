@@ -94,6 +94,7 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 //	Any errors generated in creating the client
 func NewModifier(insecure bool, token string, address string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
 	if useCache {
+		PruneCache(env, 10)
 		checkoutModifier, err := cachedModifierHelper(env)
 		if err == nil && checkoutModifier != nil {
 			return checkoutModifier, nil
@@ -176,14 +177,15 @@ func (m *Modifier) RemoveFromCache() {
 	m.CleanCache(20)
 }
 
-func cleanCacheHelper(env string, limit int) {
+func cleanCacheHelper(env string, limit uint64) {
 	modifierCachLock.Lock()
 	if modifierCache[env].modCount > 1 {
 	emptied:
-		for i := 0; i < limit; i++ {
+		for i := uint64(0); i < limit; i++ {
 			select {
-			case <-modifierCache[env].modifierChan:
-				modifierCache[env].modCount = modifierCache[env].modCount - 1
+			case mod := <-modifierCache[env].modifierChan:
+				mod.Close()
+				atomic.AddUint64(&modifierCache[env].modCount, ^uint64(0))
 			default:
 				break emptied
 			}
@@ -192,7 +194,17 @@ func cleanCacheHelper(env string, limit int) {
 	modifierCachLock.Unlock()
 }
 
-func (m *Modifier) CleanCache(limit int) {
+func PruneCache(env string, limit uint64) {
+	if modifierCache != nil && modifierCache[env] != nil {
+		if modifierCache[env].modCount > limit {
+			if _, ok := modifierCache[env]; ok {
+				cleanCacheHelper(env, limit)
+			}
+		}
+	}
+}
+
+func (m *Modifier) CleanCache(limit uint64) {
 	m.Close()
 	if _, ok := modifierCache[m.Env]; ok {
 		cleanCacheHelper(m.Env, limit)
