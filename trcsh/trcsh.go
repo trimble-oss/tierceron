@@ -357,8 +357,6 @@ func featherCtlCb(agentName string) error {
 
 	if gAgentConfig == nil {
 		return errors.New("incorrect agent initialization")
-	} else {
-		gAgentConfig.Deployments = &agentName
 	}
 	flapMode := cap.MODE_GAZE
 	ctlFlapMode := flapMode
@@ -494,6 +492,13 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	case "trcplgtool":
 		// Utilize elevated CToken to perform certifications if asked.
 		config.FeatherCtlCb = featherCtlCb
+		if gAgentConfig == nil {
+			// Prepare the configuration triggering mechanism.
+			// Bootstrap deployment is replaced during callback with the agent name.
+			gAgentConfig = &capauth.AgentConfigs{}
+			gAgentConfig.LoadConfigs(config.VaultAddress, *trcshConfig.CToken, "bootstrap", config.Env) // Feathering always in dev environmnent.
+		}
+
 		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, *trcshConfig.CToken, argsOrig, deployArgLines, configCount)
 		if err != nil {
 			os.Exit(1)
