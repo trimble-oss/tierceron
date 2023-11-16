@@ -18,6 +18,7 @@ type ProcessContext interface{}
 type ConfigDriver func(ctx ProcessContext, configCtx *ConfigContext, config *DriverConfig) (interface{}, error)
 
 type ResultData struct {
+	Done   bool
 	InData *string
 	InPath string
 }
@@ -52,12 +53,11 @@ type DriverConfig struct {
 	Context ProcessContext
 
 	// Internal systems...
-	ExitOnFailure         bool // Exit on a failure or try to continue
-	Insecure              bool
-	IsShell               bool // If tool running in shell.
-	IsShellSubProcess     bool // If subshell
-	IsShellConfigComplete bool // If all shell trcconfig calls are complete
-	Log                   *log.Logger
+	ExitOnFailure     bool // Exit on a failure or try to continue
+	Insecure          bool
+	IsShell           bool // If tool running in shell.
+	IsShellSubProcess bool // If subshell
+	Log               *log.Logger
 
 	// Vault Configurations...
 	Token         string
