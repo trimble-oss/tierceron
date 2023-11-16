@@ -25,6 +25,7 @@ import (
 var TrcCtlComplete string = "trcctlcomplete"
 
 type AgentConfigs struct {
+	AgentToken        *string
 	HandshakeHostPort *string
 	FeatherHostPort   *string
 	HandshakeCode     *string
