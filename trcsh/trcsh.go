@@ -93,11 +93,16 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 	if err != nil {
 		fmt.Printf("Initialization setup error: %s\n", err.Error())
 	}
+	if len(deployment) > 0 {
+		config.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
+		config.DeploymentCtlMessage = make(chan string, 5)
+	}
 
-	go func(c0 *eUtils.DriverConfig) {
+	go func() {
 		for {
 		perching:
-			var deployDoneChan chan bool
+			endTimerChan := make(chan bool, 5)   // Anticipate a few of these.
+			deployDoneChan := make(chan bool, 5) // Could be a few...
 			if featherMode, featherErr := cap.FeatherCtlEmit(*gAgentConfig.EncryptPass,
 				*gAgentConfig.EncryptSalt,
 				*gAgentConfig.HandshakeHostPort,
@@ -111,7 +116,7 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 					go func() {
 						// Timeout and CtlMessage subscriber
 						select {
-						case <-deployDoneChan:
+						case <-endTimerChan:
 							break
 						case <-time.After(120 * time.Second):
 							ctlMsg := "Deployment timed out after 120 seconds"
@@ -144,8 +149,8 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 									*gAgentConfig.HandshakeCode,
 									cap.MODE_PERCH, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
 								ctlFlapMode = cap.MODE_PERCH
-								go func() { deployDoneChan <- true }()
-								goto perching
+								deployDoneChan <- true
+								break
 							}
 
 							if err == nil && flapMode != ctlFlapMode && ctlFlapMode != " " {
@@ -175,17 +180,18 @@ func ProcessDeployment(env string, region string, token string, trcPath string, 
 								*gAgentConfig.HandshakeHostPort,
 								*gAgentConfig.HandshakeCode,
 								cap.MODE_GLIDE, deployment+"."+*gAgentConfig.Env, true, acceptRemote)
-							go func() { deployDoneChan <- true }()
-							goto deploycomplete
+							deployDoneChan <- true
 						}
+					case <-deployDoneChan:
+						go func() { endTimerChan <- true }()
+						goto perching
 					}
 				}
 			} else {
 				interruptFun(fiveSecondInterruptTicker)
 			}
-		deploycomplete:
 		}
-	}(config)
+	}()
 }
 
 // This is a controller program that can act as any command line utility.
@@ -564,11 +570,6 @@ func ProcessDeploy(config *eUtils.DriverConfig, region string, token string, dep
 	}
 	pwd, _ := os.Getwd()
 	var content []byte
-
-	if len(deployment) > 0 {
-		config.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
-		config.DeploymentCtlMessage = make(chan string, 5)
-	}
 
 	if config.EnvRaw == "itdev" {
 		config.OutputMemCache = false
