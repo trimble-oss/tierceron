@@ -128,7 +128,7 @@ steps:
     fi
 
     echo "Compile Windows"
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "tc memonly azrcr windows" -ldflags '-w' -tags "tc" github.com/trimble-oss/tierceron/trcsh
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "tc memonly azrcr azure windows" -ldflags '-w' github.com/trimble-oss/tierceron/trcsh
     if [[ ! -f $GOBIN/windows_amd64/trcsh.exe ]] ; then
         echo File trcsh.exe was not built, aborting.
         exit 1
