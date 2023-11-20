@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -52,6 +53,7 @@ func CommonMain(envPtr *string,
 	codebundledeployPtr := flagset.Bool("codebundledeploy", false, "To deploy a code bundle.")
 	agentdeployPtr := flagset.Bool("agentdeploy", false, "To initiate deployment on agent.")
 	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
+	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
 
 	// Common flags...
 	startDirPtr := flagset.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
@@ -286,9 +288,10 @@ func CommonMain(envPtr *string,
 
 	pluginToolConfig["trcsha256"] = *sha256Ptr
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
-	pluginToolConfig["deployrootPtr"] = *deployrootPtr
 	pluginToolConfig["serviceNamePtr"] = *serviceNamePtr
 	pluginToolConfig["projectservicePtr"] = *projectservicePtr
+	pluginToolConfig["deployrootPtr"] = *deployrootPtr
+	pluginToolConfig["deploysubpathPtr"] = *deploysubpathPtr
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
@@ -310,7 +313,9 @@ func CommonMain(envPtr *string,
 			if _, ok := pluginToolConfig["deployrootPtr"].(string); ok {
 				pluginToolConfig["trcdeployroot"] = pluginToolConfig["deployrootPtr"].(string)
 			}
-
+			if _, ok := pluginToolConfig["deploysubpathPtr"]; ok {
+				pluginToolConfig["trcdeploysubpath"] = pluginToolConfig["deploysubpathPtr"]
+			}
 			if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
 				pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
 			}
@@ -330,9 +335,11 @@ func CommonMain(envPtr *string,
 		writeMap["trcplugin"] = *pluginNamePtr
 		writeMap["trctype"] = *pluginTypePtr
 		writeMap["trcprojectservice"] = *projectservicePtr
-
 		if _, ok := pluginToolConfig["trcdeployroot"]; ok {
 			writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"]
+		}
+		if _, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+			writeMap["trcdeploysubpath"] = pluginToolConfig["trcdeploysubpath"]
 		}
 		if _, ok := pluginToolConfig["trcservicename"]; ok {
 			writeMap["trcservicename"] = pluginToolConfig["trcservicename"]
@@ -387,7 +394,12 @@ func CommonMain(envPtr *string,
 			pluginToolConfig["imagesha256"] != nil &&
 			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) {
 			// Write the image to the destination...
-			deployPath := fmt.Sprintf("%s\\%s", pluginToolConfig["trcdeployroot"].(string), pluginToolConfig["trccodebundle"].(string))
+			var deployPath string
+			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+				deployPath = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), pluginToolConfig["trccodebundle"].(string))
+			} else {
+				deployPath = filepath.Join(pluginToolConfig["trcdeployroot"].(string), pluginToolConfig["trccodebundle"].(string))
+			}
 			fmt.Printf("Deploying image to: %s\n", deployPath)
 
 			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
