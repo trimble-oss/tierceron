@@ -1,6 +1,7 @@
 package trcsubbase
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -57,7 +58,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 	if len(*filterTemplatePtr) == 0 && !*projectInfoPtr && *templatePathsPtr == "" {
 		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")
-		os.Exit(1)
+		return errors.New("must specify either -projectInfo or -templateFilter flag")
 	}
 	var configBase *eUtils.DriverConfig
 	var appRoleConfigPtr *string
