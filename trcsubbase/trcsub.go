@@ -33,6 +33,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	}
 	fmt.Println("Version: " + "1.6")
 
+	exitOnFailure := false
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
@@ -43,6 +44,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("secretID", "", "Public app role ID")
 		flagset.String("appRoleID", "", "Secret app role ID")
+		exitOnFailure = true
 	}
 	endDirPtr := flagset.String("endDir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
 	tokenPtr := flagset.String("token", "", "Vault access token")
@@ -86,7 +88,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		configBase = &eUtils.DriverConfig{Insecure: *insecurePtr,
 			EndDir:        *endDirPtr,
 			Log:           logger,
-			ExitOnFailure: true}
+			ExitOnFailure: exitOnFailure}
 		appRoleConfigPtr = new(string)
 	}
 
