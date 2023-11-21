@@ -360,7 +360,7 @@ func CommonMain(envPtr *string,
 		fmt.Printf("Stopping service %s\n", pluginToolConfig["trcservicename"].(string))
 		cmd := exec.Command("sc", "stop", pluginToolConfig["trcservicename"].(string))
 		err := cmd.Run()
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "1062") && !strings.Contains(err.Error(), "1052") {
 			fmt.Println(err)
 			return err
 		}
@@ -370,7 +370,7 @@ func CommonMain(envPtr *string,
 		fmt.Printf("Starting service %s\n", pluginToolConfig["trcservicename"].(string))
 		cmd := exec.Command("sc", "start", pluginToolConfig["trcservicename"].(string))
 		err := cmd.Run()
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "1056") {
 			fmt.Println(err)
 			return err
 		}
