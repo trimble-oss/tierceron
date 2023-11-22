@@ -93,14 +93,15 @@ func emote(msg string) {
 	// TODO: emote msg somewhere somehow?
 }
 
-func interrupted(featherCtx *cap.FeatherContext) error {
+// deployCtl -- is the deployment controller or manager if you will.
+func deployCtlInterrupted(featherCtx *cap.FeatherContext) error {
 	os.Exit(-1)
 	return nil
 }
 
-func deployManagerInterrupted(featherCtx *cap.FeatherContext) error {
+// deployer -- does the work of deploying..
+func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 	cap.FeatherCtlEmit(featherCtx, cap.MODE_PERCH, featherCtx.SessionIdentifier, true)
-	os.Exit(-1)
 	return nil
 }
 
@@ -126,7 +127,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 		gAgentConfig.HandshakeCode,
 		deployment+"."+*gAgentConfig.Env, /*Session identifier */
 		captiplib.AcceptRemote,
-		interrupted)
+		deployerInterrupted)
 
 	go captiplib.FeatherCtlEmitter(config.FeatherCtx, config.DeploymentCtlMessageChan, emote, nil)
 
@@ -396,6 +397,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
 			gAgentConfig, _, errAgentLoad := capauth.NewAgentConfig(config.VaultAddress, *trcshConfig.CToken, "bootstrap", config.Env)
+			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 			if errAgentLoad != nil {
 				os.Exit(1)
 			}
