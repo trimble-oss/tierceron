@@ -475,7 +475,7 @@ func CommonMain(envPtr *string,
 		}
 	} else if *agentdeployPtr {
 		if config.FeatherCtlCb != nil {
-			err := config.FeatherCtlCb(*pluginNamePtr)
+			err := config.FeatherCtlCb(config.FeatherCtx, *pluginNamePtr)
 			if err != nil {
 				fmt.Println("Incorrect installation")
 				return err
