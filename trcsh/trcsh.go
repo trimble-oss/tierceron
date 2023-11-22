@@ -230,7 +230,8 @@ func main() {
 		shutdown := make(chan bool)
 
 		// Preload agent synchronization configs...
-		gAgentConfig, _, errAgentLoad := capauth.NewAgentConfig(address, agentToken, deployments, agentEnv)
+		var errAgentLoad error
+		gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(address, agentToken, deployments, agentEnv)
 		if errAgentLoad != nil {
 			fmt.Println("trcsh agent bootstrap failure.")
 			os.Exit(-1)
@@ -755,13 +756,14 @@ rerun:
 					strings.Split(deployLine, " "),
 					&configCount)
 				if err != nil {
-					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s\nEncountered errors: %s\n", deployLine, err.Error())
+					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s\nEncountered errors--%s\n", deployLine, err.Error())
 					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
 					goto rerun
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
 				}
 				if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
+					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
 					goto rerun
 				}
 			} else {

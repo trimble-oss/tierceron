@@ -125,7 +125,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			return trcshConfig, nil
 		}
 	} else {
-		if agentConfigs == nil {
+		if featherCtx == nil {
 			config.Log.Println("Auth phase 1")
 			trcshConfig.KubeConfig, err = capauth.PenseQuery(config, "kubeconfig")
 		}
@@ -138,7 +138,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		memprotectopts.MemProtect(nil, trcshConfig.KubeConfig)
 	}
 
-	if agentConfigs != nil {
+	if featherCtx != nil {
 		trcshConfig.VaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
 	} else {
 		config.Log.Println("Auth phase 2")
@@ -171,7 +171,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	config.VaultAddress = *trcshConfig.VaultAddress
 	memprotectopts.MemProtect(nil, &config.VaultAddress)
 
-	if agentConfigs != nil {
+	if featherCtx != nil {
 		trcshConfig.ConfigRole, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
 	} else {
 		config.Log.Println("Auth phase 3")
@@ -183,7 +183,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 	memprotectopts.MemProtect(nil, trcshConfig.ConfigRole)
 
-	if agentConfigs == nil {
+	if featherCtx == nil {
 		config.Log.Println("Auth phase 4")
 		trcshConfig.PubRole, err = capauth.PenseQuery(config, "pubrole")
 		if err != nil {
@@ -192,7 +192,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
 	}
 
-	if agentConfigs == nil {
+	if featherCtx == nil {
 		config.Log.Println("Auth phase 5")
 		trcshConfig.CToken, err = capauth.PenseQuery(config, "ctoken")
 		if err != nil {
