@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -674,10 +675,16 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 	var onceKubeInit sync.Once
 	var PipeOS billy.File
 
-	featherCtx.RunState = cap.RUN_STARTED
+	atomic.StoreInt64(&featherCtx.RunState, cap.RUN_STARTED)
 rerun:
+	for {
+		if atomic.LoadInt64(&featherCtx.RunState) == cap.RUN_STARTED || atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
+			break
+		} else {
+			time.Sleep(time.Second * 3)
+		}
+	}
 	for _, deployPipeline := range deployArgLines {
-		featherCtx.RunState = cap.RUNNING
 		deployPipeline = strings.TrimLeft(deployPipeline, " ")
 		if strings.HasPrefix(deployPipeline, "#") || deployPipeline == "" {
 			continue
@@ -754,7 +761,7 @@ rerun:
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
 				}
-				if featherCtx.RunState == cap.RESETTING {
+				if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
 					goto rerun
 				}
 			} else {
