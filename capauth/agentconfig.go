@@ -46,7 +46,10 @@ func randomString(n int) string {
 }
 
 func ValidateVhost(host string) error {
-	protocolHost := "https://" + host
+	protocolHost := host
+	if !strings.HasPrefix(host, "https://") {
+		protocolHost = fmt.Sprintf("https://%s", host)
+	}
 	for _, endpoint := range coreopts.GetSupportedEndpoints() {
 		if strings.HasPrefix(endpoint, protocolHost) {
 			return nil
