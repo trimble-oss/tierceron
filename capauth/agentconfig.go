@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -74,7 +73,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 
 	conn, err := grpc.Dial(*agentconfig.FeatherHostPort, grpc.WithTransportCredentials(creds))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		return nil, err
 	}
 	defer conn.Close()
 	c := cap.NewCapClient(conn)
@@ -85,7 +84,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 
 	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		return nil, err
 	}
 	var penseProtect *string
 	rPense := r.GetPense()
