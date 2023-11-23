@@ -110,15 +110,27 @@ func NewAgentConfig(address string, agentToken string, deployments string, env s
 	if readErr != nil {
 		return nil, nil, readErr
 	} else {
-		featherCtx := captiplib.FeatherCtlInit(nil,
-			"",
-			data["trcHatEncryptPass"].(string),
-			data["trcHatEncryptSalt"].(string),
-			fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatHandshakePort"].(string)),
-			data["trcHatHandshakeCode"].(string),
-			"sessionIdDynamicFill", captiplib.AcceptRemote, nil)
+		trcHatHostLocal := new(string)
+		trcHatEncryptPass := data["trcHatEncryptPass"].(string)
+		memprotectopts.MemProtect(nil, &trcHatEncryptPass)
+		trcHatEncryptSalt := data["trcHatEncryptSalt"].(string)
+		memprotectopts.MemProtect(nil, &trcHatEncryptSalt)
+		hatHandshakeHostAddr := fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatHandshakePort"].(string))
+		memprotectopts.MemProtect(nil, &hatHandshakeHostAddr)
+		trcHatHandshakeCode := data["trcHatHandshakeCode"].(string)
+		memprotectopts.MemProtect(nil, &trcHatHandshakeCode)
+		sessionIdentifier := "sessionIdDynamicFill"
 
-		featherHostPort := fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatSecretsPort"].(string))
+		featherCtx := captiplib.FeatherCtlInit(nil,
+			trcHatHostLocal,
+			&trcHatEncryptPass,
+			&trcHatEncryptSalt,
+			&hatHandshakeHostAddr,
+			&trcHatHandshakeCode,
+			&sessionIdentifier, captiplib.AcceptRemote, nil)
+
+		hatFeatherHostAddr := fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatSecretsPort"].(string))
+		memprotectopts.MemProtect(nil, &hatFeatherHostAddr)
 		trcHatEnv := data["trcHatEnv"].(string)
 		// TODO: Figure out....
 		// memprotectopts.MemProtect(nil, &featherCtx.EncryptPass)
@@ -129,7 +141,7 @@ func NewAgentConfig(address string, agentToken string, deployments string, env s
 		agentconfig := &AgentConfigs{
 			*featherCtx,
 			&agentToken,
-			&featherHostPort,
+			&hatFeatherHostAddr,
 			new(string),
 			&deployments,
 			&trcHatEnv,
