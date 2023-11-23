@@ -90,8 +90,14 @@ func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.Dr
 	return config, nil
 }
 
-func emote(msg string) {
-	// TODO: emote msg somewhere somehow?
+func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
+	if strings.HasPrefix(ctlFlapMode, cap.MODE_FLAP) {
+		fmt.Printf(msg)
+	}
+}
+
+func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
+	featherCtx.Log.Printf(msg)
 }
 
 // deployCtl -- is the deployment controller or manager if you will.
@@ -102,7 +108,7 @@ func deployCtlInterrupted(featherCtx *cap.FeatherContext) error {
 
 // deployer -- does the work of deploying..
 func deployerInterrupted(featherCtx *cap.FeatherContext) error {
-	cap.FeatherCtlEmit(featherCtx, cap.MODE_PERCH, featherCtx.SessionIdentifier, true)
+	cap.FeatherCtlEmit(featherCtx, cap.MODE_PERCH, *featherCtx.SessionIdentifier, true)
 	return nil
 }
 
@@ -120,17 +126,20 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	//
 	// Each deployer needs it's own context.
 	//
+	localHostAddr := ""
+	sessionIdentifier := deployment + "." + *gAgentConfig.Env
 	config.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
-		"",
+		&localHostAddr,
 		gAgentConfig.EncryptPass,
 		gAgentConfig.EncryptSalt,
 		gAgentConfig.HostAddr,
 		gAgentConfig.HandshakeCode,
-		deployment+"."+*gAgentConfig.Env, /*Session identifier */
+		&sessionIdentifier, /*Session identifier */
 		captiplib.AcceptRemote,
 		deployerInterrupted)
+	config.FeatherCtx.Log = *config.Log
 
-	go captiplib.FeatherCtlEmitter(config.FeatherCtx, config.DeploymentCtlMessageChan, emote, nil)
+	go captiplib.FeatherCtlEmitter(config.FeatherCtx, config.DeploymentCtlMessageChan, deployerEmote, nil)
 
 	go ProcessDeploy(config.FeatherCtx, config, region, "", deployment, trcPath, secretId, approleId, false)
 }
@@ -258,7 +267,7 @@ func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Tic
 	select {
 	case <-interruptChan:
 		cap.FeatherCtlEmit(featherCtx,
-			cap.MODE_PERCH, featherCtx.SessionIdentifier, true)
+			cap.MODE_PERCH, *featherCtx.SessionIdentifier, true)
 		os.Exit(1)
 	case <-tickerContinue.C:
 		// don't break... continue...
@@ -297,8 +306,9 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		return errors.New("incorrect agent initialization")
 	}
 
-	featherCtx.SessionIdentifier = agentName + "." + *gAgentConfig.Env
-	captiplib.FeatherCtl(featherCtx, featherCtx.SessionIdentifier)
+	sessionIdentifier := agentName + "." + *gAgentConfig.Env
+	featherCtx.SessionIdentifier = &sessionIdentifier
+	captiplib.FeatherCtl(featherCtx, *featherCtx.SessionIdentifier, deployerCtlEmote)
 	return nil
 }
 
