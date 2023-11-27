@@ -688,13 +688,19 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 	var onceKubeInit sync.Once
 	var PipeOS billy.File
 
-	atomic.StoreInt64(&featherCtx.RunState, cap.RUN_STARTED)
-rerun:
-	for {
-		if atomic.LoadInt64(&featherCtx.RunState) == cap.RUN_STARTED || atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
-			break
-		} else {
-			time.Sleep(time.Second * 3)
+	if featherCtx != nil {
+		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
+		atomic.StoreInt64(&featherCtx.RunState, cap.RUN_STARTED)
+	}
+
+collaboratorReRun:
+	if featherCtx != nil {
+		for {
+			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUN_STARTED || atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
+				break
+			} else {
+				time.Sleep(time.Second * 3)
+			}
 		}
 	}
 	for _, deployPipeline := range deployArgLines {
@@ -770,13 +776,13 @@ rerun:
 				if err != nil {
 					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s\nEncountered errors--%s\n", deployLine, err.Error())
 					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
-					goto rerun
+					goto collaboratorReRun
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
 				}
 				if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
 					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
-					goto rerun
+					goto collaboratorReRun
 				}
 			} else {
 				config.FeatherCtx = featherCtx
