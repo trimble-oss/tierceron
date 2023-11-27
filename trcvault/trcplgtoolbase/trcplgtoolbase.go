@@ -479,7 +479,7 @@ func CommonMain(envPtr *string,
 		if config.FeatherCtlCb != nil {
 			err := config.FeatherCtlCb(config.FeatherCtx, *pluginNamePtr)
 			if err != nil {
-				fmt.Println("Incorrect installation")
+				fmt.Printf("Incorrect installation: %s\n", err.Error())
 				return err
 			}
 		} else {
