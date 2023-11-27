@@ -408,7 +408,7 @@ func CommonMain(envPtr *string,
 				fmt.Println("Image write failure.")
 				return err
 			}
-			fmt.Println("Image deployed.")
+			fmt.Printf("Image deployed to: %s\n", deployPath)
 		} else {
 			fmt.Printf("Image not certified.  Cannot deploy image for %s\n", pluginToolConfig["trcplugin"])
 		}
