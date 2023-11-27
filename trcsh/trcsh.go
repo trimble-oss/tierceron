@@ -308,6 +308,10 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		return errors.New("incorrect agent initialization")
 	}
 
+	if featherCtx == nil {
+		return errors.New("incorrect feathering")
+	}
+
 	sessionIdentifier := agentName + "." + *gAgentConfig.Env
 	featherCtx.SessionIdentifier = &sessionIdentifier
 	captiplib.FeatherCtl(featherCtx, *featherCtx.SessionIdentifier, deployerCtlEmote)

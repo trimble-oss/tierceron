@@ -225,6 +225,8 @@ func CommonMain(envPtr *string,
 	}
 	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	config.FeatherCtlCb = configBase.FeatherCtlCb
+	config.FeatherCtx = configBase.FeatherCtx
+
 	if err != nil {
 		logger.Println("Error: " + err.Error() + " - 1")
 		logger.Println("Failed to init mod for deploy update")
