@@ -420,6 +420,9 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 				fmt.Printf("Permissions failure.  Incorrect deployment")
 				os.Exit(1)
 			}
+			if gAgentConfig.FeatherContext == nil {
+				fmt.Printf("Warning!  Permissions failure.  Incorrect feathering")
+			}
 			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 			config.FeatherCtx = gAgentConfig.FeatherContext
 		}
