@@ -25,7 +25,7 @@ import (
 var TrcCtlComplete string = "trcctlcomplete"
 
 type AgentConfigs struct {
-	cap.FeatherContext
+	*cap.FeatherContext
 	AgentToken      *string
 	FeatherHostPort *string
 	DeployRoleID    *string
@@ -139,7 +139,7 @@ func NewAgentConfig(address string, agentToken string, deployments string, env s
 		// memprotectopts.MemProtect(nil, &featherCtx.HandshakeCode)
 
 		agentconfig := &AgentConfigs{
-			*featherCtx,
+			featherCtx,
 			&agentToken,
 			&hatFeatherHostAddr,
 			new(string),
