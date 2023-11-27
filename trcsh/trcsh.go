@@ -40,6 +40,10 @@ import (
 var gAgentConfig *capauth.AgentConfigs = nil
 var gTrcshConfig *capauth.TrcShConfig
 
+var (
+	MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
+)
+
 func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.DriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
@@ -90,8 +94,14 @@ func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.Dr
 	return config, nil
 }
 
-func emote(msg string) {
-	// TODO: emote msg somewhere somehow?
+func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
+	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
+		fmt.Printf(msg)
+	}
+}
+
+func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg string) {
+	featherCtx.Log.Printf(msg)
 }
 
 // deployCtl -- is the deployment controller or manager if you will.
@@ -102,7 +112,7 @@ func deployCtlInterrupted(featherCtx *cap.FeatherContext) error {
 
 // deployer -- does the work of deploying..
 func deployerInterrupted(featherCtx *cap.FeatherContext) error {
-	cap.FeatherCtlEmit(featherCtx, cap.MODE_PERCH, featherCtx.SessionIdentifier, true)
+	cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 	return nil
 }
 
@@ -120,17 +130,20 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	//
 	// Each deployer needs it's own context.
 	//
+	localHostAddr := ""
+	sessionIdentifier := deployment + "." + *gAgentConfig.Env
 	config.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
-		"",
+		&localHostAddr,
 		gAgentConfig.EncryptPass,
 		gAgentConfig.EncryptSalt,
 		gAgentConfig.HostAddr,
 		gAgentConfig.HandshakeCode,
-		deployment+"."+*gAgentConfig.Env, /*Session identifier */
+		&sessionIdentifier, /*Session identifier */
 		captiplib.AcceptRemote,
 		deployerInterrupted)
+	config.FeatherCtx.Log = *config.Log
 
-	go captiplib.FeatherCtlEmitter(config.FeatherCtx, config.DeploymentCtlMessageChan, emote, nil)
+	go captiplib.FeatherCtlEmitter(config.FeatherCtx, config.DeploymentCtlMessageChan, deployerEmote, nil)
 
 	go ProcessDeploy(config.FeatherCtx, config, region, "", deployment, trcPath, secretId, approleId, false)
 }
@@ -230,7 +243,8 @@ func main() {
 		shutdown := make(chan bool)
 
 		// Preload agent synchronization configs...
-		gAgentConfig, _, errAgentLoad := capauth.NewAgentConfig(address, agentToken, deployments, agentEnv)
+		var errAgentLoad error
+		gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(address, agentToken, deployments, agentEnv)
 		if errAgentLoad != nil {
 			fmt.Println("trcsh agent bootstrap failure.")
 			os.Exit(-1)
@@ -256,8 +270,7 @@ var thirtySecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
 func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Ticker, tickerBreak *time.Ticker, tickerInterrupt *time.Ticker) (bool, error) {
 	select {
 	case <-interruptChan:
-		cap.FeatherCtlEmit(featherCtx,
-			cap.MODE_PERCH, featherCtx.SessionIdentifier, true)
+		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		os.Exit(1)
 	case <-tickerContinue.C:
 		// don't break... continue...
@@ -275,8 +288,7 @@ func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Tic
 func interruptFun(featherCtx *cap.FeatherContext, tickerInterrupt *time.Ticker) {
 	select {
 	case <-interruptChan:
-		cap.FeatherCtlEmit(featherCtx,
-			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true)
+		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		os.Exit(1)
 	case <-tickerInterrupt.C:
 	}
@@ -296,8 +308,9 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		return errors.New("incorrect agent initialization")
 	}
 
-	featherCtx.SessionIdentifier = agentName + "." + *gAgentConfig.Env
-	captiplib.FeatherCtl(featherCtx, featherCtx.SessionIdentifier)
+	sessionIdentifier := agentName + "." + *gAgentConfig.Env
+	featherCtx.SessionIdentifier = &sessionIdentifier
+	captiplib.FeatherCtl(featherCtx, *featherCtx.SessionIdentifier, deployerCtlEmote)
 	return nil
 }
 
@@ -755,13 +768,14 @@ rerun:
 					strings.Split(deployLine, " "),
 					&configCount)
 				if err != nil {
-					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s\nEncountered errors: %s\n", deployLine, err.Error())
+					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s\nEncountered errors--%s\n", deployLine, err.Error())
 					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
 					goto rerun
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
 				}
 				if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
+					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
 					goto rerun
 				}
 			} else {
