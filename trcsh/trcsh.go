@@ -424,8 +424,14 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 				fmt.Printf("Warning!  Permissions failure.  Incorrect feathering")
 			}
 			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
-			config.FeatherCtx = gAgentConfig.FeatherContext
 		}
+		config.FeatherCtx = captiplib.FeatherCtlInit(nil,
+			gAgentConfig.LocalHostAddr,
+			gAgentConfig.EncryptPass,
+			gAgentConfig.EncryptSalt,
+			gAgentConfig.HostAddr,
+			gAgentConfig.HandshakeCode,
+			new(string), gAgentConfig.AcceptRemoteFunc, nil)
 
 		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, *trcshConfig.CToken, argsOrig, deployArgLines, configCount)
 		if err != nil {
