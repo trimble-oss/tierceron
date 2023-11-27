@@ -132,11 +132,6 @@ func NewAgentConfig(address string, agentToken string, deployments string, env s
 		hatFeatherHostAddr := fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatSecretsPort"].(string))
 		memprotectopts.MemProtect(nil, &hatFeatherHostAddr)
 		trcHatEnv := data["trcHatEnv"].(string)
-		// TODO: Figure out....
-		// memprotectopts.MemProtect(nil, &featherCtx.EncryptPass)
-		// memprotectopts.MemProtect(nil, &featherCtx.EncryptSalt)
-		// memprotectopts.MemProtect(nil, &featherCtx.HostAddr)
-		// memprotectopts.MemProtect(nil, &featherCtx.HandshakeCode)
 
 		agentconfig := &AgentConfigs{
 			featherCtx,
