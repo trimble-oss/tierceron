@@ -288,7 +288,7 @@ func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Tic
 func interruptFun(featherCtx *cap.FeatherContext, tickerInterrupt *time.Ticker) {
 	select {
 	case <-interruptChan:
-		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true)
+		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		os.Exit(1)
 	case <-tickerInterrupt.C:
 	}
