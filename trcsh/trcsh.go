@@ -412,11 +412,12 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
 			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(config.VaultAddress, *trcshConfig.CToken, "bootstrap", config.Env)
-			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 			if errAgentLoad != nil {
+				fmt.Printf("Permissions failure.  Incorrect deployment")
 				os.Exit(1)
 			}
-			config.FeatherCtx = &gAgentConfig.FeatherContext
+			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
+			config.FeatherCtx = gAgentConfig.FeatherContext
 		}
 
 		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, *trcshConfig.CToken, argsOrig, deployArgLines, configCount)
