@@ -40,6 +40,10 @@ import (
 var gAgentConfig *capauth.AgentConfigs = nil
 var gTrcshConfig *capauth.TrcShConfig
 
+var (
+	MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
+)
+
 func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.DriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
@@ -91,12 +95,12 @@ func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.Dr
 }
 
 func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
-	if strings.HasPrefix(ctlFlapMode, cap.MODE_FLAP) {
+	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
 		fmt.Printf(msg)
 	}
 }
 
-func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
+func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg string) {
 	featherCtx.Log.Printf(msg)
 }
 
@@ -108,7 +112,7 @@ func deployCtlInterrupted(featherCtx *cap.FeatherContext) error {
 
 // deployer -- does the work of deploying..
 func deployerInterrupted(featherCtx *cap.FeatherContext) error {
-	cap.FeatherCtlEmit(featherCtx, cap.MODE_PERCH, *featherCtx.SessionIdentifier, true)
+	cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 	return nil
 }
 
@@ -266,8 +270,7 @@ var thirtySecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
 func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Ticker, tickerBreak *time.Ticker, tickerInterrupt *time.Ticker) (bool, error) {
 	select {
 	case <-interruptChan:
-		cap.FeatherCtlEmit(featherCtx,
-			cap.MODE_PERCH, *featherCtx.SessionIdentifier, true)
+		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		os.Exit(1)
 	case <-tickerContinue.C:
 		// don't break... continue...
@@ -285,8 +288,7 @@ func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Tic
 func interruptFun(featherCtx *cap.FeatherContext, tickerInterrupt *time.Ticker) {
 	select {
 	case <-interruptChan:
-		cap.FeatherCtlEmit(featherCtx,
-			cap.MODE_PERCH, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true)
+		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *gAgentConfig.Deployments+"."+*gAgentConfig.Env, true)
 		os.Exit(1)
 	case <-tickerInterrupt.C:
 	}
