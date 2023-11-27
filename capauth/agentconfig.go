@@ -121,31 +121,30 @@ func NewAgentConfig(address string, agentToken string, deployments string, env s
 		memprotectopts.MemProtect(nil, &trcHatHandshakeCode)
 		sessionIdentifier := "sessionIdDynamicFill"
 
-		featherCtx := captiplib.FeatherCtlInit(nil,
-			trcHatHostLocal,
-			&trcHatEncryptPass,
-			&trcHatEncryptSalt,
-			&hatHandshakeHostAddr,
-			&trcHatHandshakeCode,
-			&sessionIdentifier, captiplib.AcceptRemote, nil)
-
 		hatFeatherHostAddr := fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatSecretsPort"].(string))
 		memprotectopts.MemProtect(nil, &hatFeatherHostAddr)
 		trcHatEnv := data["trcHatEnv"].(string)
 
 		agentconfig := &AgentConfigs{
-			featherCtx,
+			captiplib.FeatherCtlInit(nil,
+				trcHatHostLocal,
+				&trcHatEncryptPass,
+				&trcHatEncryptSalt,
+				&hatHandshakeHostAddr,
+				&trcHatHandshakeCode,
+				&sessionIdentifier, captiplib.AcceptRemote, nil),
 			&agentToken,
 			&hatFeatherHostAddr,
 			new(string),
 			&deployments,
 			&trcHatEnv,
 		}
+
 		trcshConfig := &TrcShConfig{Env: trcHatEnv,
 			EnvContext: trcHatEnv,
 		}
 
-		trcShConfigRole, penseError := agentconfig.PenseFeatherQuery(featherCtx, "configrole")
+		trcShConfigRole, penseError := agentconfig.PenseFeatherQuery(agentconfig.FeatherContext, "configrole")
 		if penseError != nil {
 			return nil, nil, penseError
 		}
