@@ -408,9 +408,10 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		// Utilize elevated CToken to perform certifications if asked.
 		config.FeatherCtlCb = featherCtlCb
 		if gAgentConfig == nil {
+			var errAgentLoad error
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
-			gAgentConfig, _, errAgentLoad := capauth.NewAgentConfig(config.VaultAddress, *trcshConfig.CToken, "bootstrap", config.Env)
+			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(config.VaultAddress, *trcshConfig.CToken, "bootstrap", config.Env)
 			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 			if errAgentLoad != nil {
 				os.Exit(1)
