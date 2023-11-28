@@ -99,7 +99,7 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 		os.Exit(0)
 	}
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
-		fmt.Printf("%s", msg)
+		fmt.Printf("%s\n", msg)
 	}
 	featherCtx.Log.Printf("ctl: %s  msg: %s\n", ctlFlapMode, strings.Trim(msg, "\n"))
 }
@@ -718,13 +718,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 
 collaboratorReRun:
 	if featherCtx != nil {
-		for {
-			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUN_STARTED || atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
-				break
-			} else {
-				time.Sleep(time.Second * 3)
-			}
-		}
+		atomic.StoreInt64(&featherCtx.RunState, cap.RUN_STARTED)
 	}
 	for _, deployPipeline := range deployArgLines {
 		deployPipeline = strings.TrimLeft(deployPipeline, " ")
@@ -802,13 +796,11 @@ collaboratorReRun:
 						os.Exit(-1)
 					}
 					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s encountered errors\n", deployLine)
-					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
 					goto collaboratorReRun
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
 				}
 				if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
-					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
 					goto collaboratorReRun
 				}
 			} else {
@@ -831,7 +823,15 @@ collaboratorReRun:
 		}
 	}
 	if eUtils.IsWindows() {
-		config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
+		config.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
+		for {
+			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
+				time.Sleep(time.Second)
+			} else {
+				break
+			}
+		}
+		goto collaboratorReRun
 	}
 	//Make the arguments in the script -> os.args.
 
