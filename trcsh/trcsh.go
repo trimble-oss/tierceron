@@ -31,7 +31,6 @@ import (
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/trcvault/util"
-	"github.com/trimble-oss/tierceron/utils"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -95,9 +94,14 @@ func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.Dr
 }
 
 func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
-	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
-		fmt.Printf(msg)
+	if ctlFlapMode == "p_trcctlcomplete" {
+		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
+		os.Exit(0)
 	}
+	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
+		fmt.Printf("%s", msg)
+	}
+	featherCtx.Log.Printf("ctl: %s  msg: %s\n", ctlFlapMode, strings.Trim(msg, "\n"))
 }
 
 func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg string) {
@@ -158,7 +162,7 @@ func main() {
 	fmt.Println("trcsh Version: " + "1.23")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 
-	if !utils.IsWindows() {
+	if !eUtils.IsWindows() {
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
@@ -314,7 +318,7 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 
 	sessionIdentifier := agentName + "." + *gAgentConfig.Env
 	featherCtx.SessionIdentifier = &sessionIdentifier
-	captiplib.FeatherCtl(featherCtx, *featherCtx.SessionIdentifier, deployerCtlEmote)
+	captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
 	return nil
 }
 
@@ -431,7 +435,10 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			gAgentConfig.EncryptSalt,
 			gAgentConfig.HostAddr,
 			gAgentConfig.HandshakeCode,
-			new(string), gAgentConfig.AcceptRemoteFunc, nil)
+			new(string), gAgentConfig.AcceptRemoteFunc, gAgentConfig.InterruptHandlerFunc)
+		if config.Log != nil {
+			config.FeatherCtx.Log = *config.Log
+		}
 
 		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, *trcshConfig.CToken, argsOrig, deployArgLines, configCount)
 		if err != nil {
@@ -525,9 +532,9 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 	// cToken := ""
 	// configRole := ""
 	// pubRole := ""
-	// fileBytes, err := ioutil.ReadFile("")
+	// fileBytes, _ := os.ReadFile("")
 	// kc := base64.StdEncoding.EncodeToString(fileBytes)
-	// gTrcshConfig = &trcshauth.TrcShConfig{Env: "dev",
+	// gTrcshConfig = &capauth.TrcShConfig{Env: "dev",
 	// 	EnvContext: "dev",
 	// 	CToken:     &cToken,
 	// 	ConfigRole: &configRole,
@@ -535,6 +542,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 	// 	KubeConfig: &kc,
 	// }
 	// config.VaultAddress = ""
+	// gTrcshConfig.VaultAddress = &config.VaultAddress
 	// config.Token = ""
 	// Chewbacca: end scrub
 	var err error
@@ -771,7 +779,7 @@ collaboratorReRun:
 					os.Args = deployArgs
 				}
 			}
-			if utils.IsWindows() {
+			if eUtils.IsWindows() {
 				// Log for traceability.
 				config.Log.Println(deployLine)
 				err := processWindowsCmds(
@@ -789,7 +797,11 @@ collaboratorReRun:
 					strings.Split(deployLine, " "),
 					&configCount)
 				if err != nil {
-					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s\nEncountered errors--%s\n", deployLine, err.Error())
+					if strings.Contains(err.Error(), "Forbidden") {
+						// Critical agent setup error.
+						os.Exit(-1)
+					}
+					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s encountered errors\n", deployLine)
 					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
 					goto collaboratorReRun
 				} else {
@@ -818,7 +830,7 @@ collaboratorReRun:
 			}
 		}
 	}
-	if utils.IsWindows() {
+	if eUtils.IsWindows() {
 		config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
 	}
 	//Make the arguments in the script -> os.args.

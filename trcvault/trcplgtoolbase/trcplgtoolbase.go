@@ -387,7 +387,11 @@ func CommonMain(envPtr *string,
 			err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 			if err != nil {
 				fmt.Println("Image download failure.")
-				fmt.Println(err.Error())
+				if configBase.FeatherCtx != nil {
+					configBase.FeatherCtx.Log.Printf("%s", err.Error())
+				} else {
+					fmt.Println(err.Error())
+				}
 				return err
 			}
 		}
