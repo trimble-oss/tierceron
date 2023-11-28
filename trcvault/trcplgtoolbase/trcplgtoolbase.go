@@ -225,6 +225,8 @@ func CommonMain(envPtr *string,
 	}
 	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	config.FeatherCtlCb = configBase.FeatherCtlCb
+	config.FeatherCtx = configBase.FeatherCtx
+
 	if err != nil {
 		logger.Println("Error: " + err.Error() + " - 1")
 		logger.Println("Failed to init mod for deploy update")
@@ -408,7 +410,7 @@ func CommonMain(envPtr *string,
 				fmt.Println("Image write failure.")
 				return err
 			}
-			fmt.Println("Image deployed.")
+			fmt.Printf("Image deployed to: %s\n", deployPath)
 		} else {
 			fmt.Printf("Image not certified.  Cannot deploy image for %s\n", pluginToolConfig["trcplugin"])
 		}
@@ -477,7 +479,7 @@ func CommonMain(envPtr *string,
 		if config.FeatherCtlCb != nil {
 			err := config.FeatherCtlCb(config.FeatherCtx, *pluginNamePtr)
 			if err != nil {
-				fmt.Println("Incorrect installation")
+				fmt.Printf("Incorrect installation: %s\n", err.Error())
 				return err
 			}
 		} else {

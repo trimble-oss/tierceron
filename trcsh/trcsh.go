@@ -308,6 +308,10 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		return errors.New("incorrect agent initialization")
 	}
 
+	if featherCtx == nil {
+		return errors.New("incorrect feathering")
+	}
+
 	sessionIdentifier := agentName + "." + *gAgentConfig.Env
 	featherCtx.SessionIdentifier = &sessionIdentifier
 	captiplib.FeatherCtl(featherCtx, *featherCtx.SessionIdentifier, deployerCtlEmote)
@@ -408,15 +412,26 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		// Utilize elevated CToken to perform certifications if asked.
 		config.FeatherCtlCb = featherCtlCb
 		if gAgentConfig == nil {
+			var errAgentLoad error
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
-			gAgentConfig, _, errAgentLoad := capauth.NewAgentConfig(config.VaultAddress, *trcshConfig.CToken, "bootstrap", config.Env)
-			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
+			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(config.VaultAddress, *trcshConfig.CToken, "bootstrap", config.Env)
 			if errAgentLoad != nil {
+				fmt.Printf("Permissions failure.  Incorrect deployment")
 				os.Exit(1)
 			}
-			config.FeatherCtx = &gAgentConfig.FeatherContext
+			if gAgentConfig.FeatherContext == nil {
+				fmt.Printf("Warning!  Permissions failure.  Incorrect feathering")
+			}
+			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 		}
+		config.FeatherCtx = captiplib.FeatherCtlInit(nil,
+			gAgentConfig.LocalHostAddr,
+			gAgentConfig.EncryptPass,
+			gAgentConfig.EncryptSalt,
+			gAgentConfig.HostAddr,
+			gAgentConfig.HandshakeCode,
+			new(string), gAgentConfig.AcceptRemoteFunc, nil)
 
 		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, *trcshConfig.CToken, argsOrig, deployArgLines, configCount)
 		if err != nil {
@@ -688,13 +703,19 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 	var onceKubeInit sync.Once
 	var PipeOS billy.File
 
-	atomic.StoreInt64(&featherCtx.RunState, cap.RUN_STARTED)
-rerun:
-	for {
-		if atomic.LoadInt64(&featherCtx.RunState) == cap.RUN_STARTED || atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
-			break
-		} else {
-			time.Sleep(time.Second * 3)
+	if featherCtx != nil {
+		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
+		atomic.StoreInt64(&featherCtx.RunState, cap.RUN_STARTED)
+	}
+
+collaboratorReRun:
+	if featherCtx != nil {
+		for {
+			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUN_STARTED || atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
+				break
+			} else {
+				time.Sleep(time.Second * 3)
+			}
 		}
 	}
 	for _, deployPipeline := range deployArgLines {
@@ -770,13 +791,13 @@ rerun:
 				if err != nil {
 					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s\nEncountered errors--%s\n", deployLine, err.Error())
 					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
-					goto rerun
+					goto collaboratorReRun
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
 				}
 				if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
 					config.DeploymentCtlMessageChan <- capauth.TrcCtlComplete
-					goto rerun
+					goto collaboratorReRun
 				}
 			} else {
 				config.FeatherCtx = featherCtx
