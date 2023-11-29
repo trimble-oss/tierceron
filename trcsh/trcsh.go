@@ -93,17 +93,24 @@ func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.Dr
 	return config, nil
 }
 
+// Logging of deployer controller activities..
 func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
-	if ctlFlapMode == "p_trcctlcomplete" {
+	if strings.HasSuffix(ctlFlapMode, cap.CTL_COMPLETE) {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		os.Exit(0)
 	}
+
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
 		fmt.Printf("%s\n", msg)
 	}
 	featherCtx.Log.Printf("ctl: %s  msg: %s\n", ctlFlapMode, strings.Trim(msg, "\n"))
+	if strings.Contains(msg, "encountered errors") {
+		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
+		os.Exit(0)
+	}
 }
 
+// Logging of deployer activities..
 func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg string) {
 	featherCtx.Log.Printf(msg)
 }
@@ -146,6 +153,8 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 		captiplib.AcceptRemote,
 		deployerInterrupted)
 	config.FeatherCtx.Log = *config.Log
+	// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
+	atomic.StoreInt64(&config.FeatherCtx.RunState, cap.RUN_STARTED)
 
 	go captiplib.FeatherCtlEmitter(config.FeatherCtx, config.DeploymentCtlMessageChan, deployerEmote, nil)
 
@@ -711,14 +720,17 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 	var onceKubeInit sync.Once
 	var PipeOS billy.File
 
-	if featherCtx != nil {
-		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
-		atomic.StoreInt64(&featherCtx.RunState, cap.RUN_STARTED)
-	}
-
 collaboratorReRun:
 	if featherCtx != nil {
-		atomic.StoreInt64(&featherCtx.RunState, cap.RUN_STARTED)
+		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
+		for {
+			if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
+				break
+			} else {
+				time.Sleep(time.Second * 3)
+			}
+		}
+
 	}
 	for _, deployPipeline := range deployArgLines {
 		deployPipeline = strings.TrimLeft(deployPipeline, " ")
@@ -799,9 +811,6 @@ collaboratorReRun:
 					goto collaboratorReRun
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
-				}
-				if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
-					goto collaboratorReRun
 				}
 			} else {
 				config.FeatherCtx = featherCtx
