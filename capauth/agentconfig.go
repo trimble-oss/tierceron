@@ -22,8 +22,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-var TrcCtlComplete string = "trcctlcomplete"
-
 type AgentConfigs struct {
 	*cap.FeatherContext
 	AgentToken      *string
