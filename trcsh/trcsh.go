@@ -112,7 +112,9 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 
 // Logging of deployer activities..
 func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg string) {
-	featherCtx.Log.Printf(msg)
+	if len(ctlFlapMode) > 0 && ctlFlapMode[0] != cap.MODE_PERCH {
+		featherCtx.Log.Printf(msg)
+	}
 }
 
 // deployCtl -- is the deployment controller or manager if you will.
