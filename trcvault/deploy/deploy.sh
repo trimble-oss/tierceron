@@ -42,9 +42,9 @@ fi
 
 if [[ -z "${SECRET_VAULT_PLUGIN_TOKEN}" ]]; then
 if [ "$VAULT_ENV" = "staging" ] || [ "$VAULT_ENV" = "prod" ]; then
-echo "Enter organization vault plugin token for certification(config_token_plugin$VAULT_ENV): "  
+echo "Enter organization vault plugin token for certification(config_token_plugin$VAULT_ENV): "
 else
-echo "Enter organization vault plugin token for certification(config_token_pluginany): "  
+echo "Enter organization vault plugin token for certification(config_token_pluginany): "
 fi
 read SECRET_VAULT_PLUGIN_TOKEN
 fi
@@ -77,11 +77,11 @@ fi
 
 
 if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = "y" ]; then
-    if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then 
+    if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then
         echo "Certifying agent deployment tool plugin..."
         trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256) -pluginType=agent
         certifystatus=$?
-        if [ $certifystatus -eq 0 ]; then       
+        if [ $certifystatus -eq 0 ]; then
            echo "No certification problems encountered."
            exit $certifystatus
         else
@@ -92,7 +92,7 @@ if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = 
         echo "Certifying vault type plugin..."
         trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=$(cat target/$TRC_PLUGIN_NAME.sha256)
         certifystatus=$?
-        if [ $certifystatus -eq 0 ]; then       
+        if [ $certifystatus -eq 0 ]; then
            echo "No certification problems encountered."
         else
            echo "Unexpected certification error."
@@ -115,15 +115,36 @@ else
     status=$?
     echo "Plugin deployment had status result $status."
 
-    if [ $status -eq 0 ]; then       
-    echo "This version of the plugin has already been deployed - enabling for environment $VAULT_ENV."
-    vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR
-    exit $status
+    if [ $status -eq 0 ]; then
+        echo "This version of the plugin has already been deployed - enabling for environment $VAULT_ENV."
+
+        echo "Agent and secrets stored in secrets vault only? (Y or N): "
+        read SECRETS_ONLY
+
+        if [ "$SECRETS_ONLY" = "Y" ] || [ "$SECRETS_ONLY" = "yes" ] || [ "$SECRETS_ONLY" = "y" ]; then
+            VAULT_ADDR=$SECRET_VAULT_ADDR
+            SECRET_VAULT_PLUGIN_TOKEN=$VAULT_ENV_TOKEN
+        fi
+
+        vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN
+        vaultUpdateStatus=$?
+        if [ $vaultUpdateStatus -eq 0 ]; then
+            exit $status
+        else
+            echo "But it's not deployed to vault for $VAULT_ENV.  Continuing..."
+        fi
     elif [ $status -eq 1 ]; then
     echo "Existing plugin does not match repository plugin - cannot continue."
     exit $status
     elif [ $status -eq 2 ]; then
-    echo "This version of the plugin has not been deployed for environment $VAULT_ENV.  Beginning installation process."
+        echo "This version of the plugin has not been deployed for environment $VAULT_ENV.  Beginning installation process."
+        echo "Agent and secrets stored in secrets vault only? (Y or N): "
+        read SECRETS_ONLY
+
+        if [ "$SECRETS_ONLY" = "Y" ] || [ "$SECRETS_ONLY" = "yes" ] || [ "$SECRETS_ONLY" = "y" ]; then
+            VAULT_ADDR=$SECRET_VAULT_ADDR
+            SECRET_VAULT_PLUGIN_TOKEN=$VAULT_ENV_TOKEN
+        fi
     else
     echo "Unexpected error response."
     exit $status
