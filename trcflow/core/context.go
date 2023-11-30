@@ -976,9 +976,11 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		retryConnectionAccess:
 			dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
-			if retryCount < 3 && err != nil && dbsourceConn == nil {
-				retryCount = retryCount + 1
-				goto retryConnectionAccess
+			if err.Error() != "incorrect URL format" {
+				if retryCount < 3 && err != nil && dbsourceConn == nil {
+					retryCount = retryCount + 1
+					goto retryConnectionAccess
+				}
 			}
 
 			if err != nil {
