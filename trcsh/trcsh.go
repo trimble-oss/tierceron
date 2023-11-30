@@ -138,6 +138,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	if len(deployment) > 0 {
 		config.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
 		config.DeploymentCtlMessageChan = make(chan string, 5)
+		config.Log.Printf("Starting deployer: %s\n", deployment)
 	}
 
 	//
@@ -267,7 +268,6 @@ func main() {
 
 		deploymentsSlice := strings.Split(deployments, ",")
 		for _, deployment := range deploymentsSlice {
-			fmt.Printf("Starting deployment: %s\n", deployment)
 			EnableDeployer(*gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, false, deployment)
 		}
 
