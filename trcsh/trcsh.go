@@ -112,7 +112,9 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 
 // Logging of deployer activities..
 func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg string) {
-	featherCtx.Log.Printf(msg)
+	if len(ctlFlapMode) > 0 && ctlFlapMode[0] != cap.MODE_PERCH {
+		featherCtx.Log.Printf(msg)
+	}
 }
 
 // deployCtl -- is the deployment controller or manager if you will.
@@ -136,6 +138,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	if len(deployment) > 0 {
 		config.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
 		config.DeploymentCtlMessageChan = make(chan string, 5)
+		config.Log.Printf("Starting deployer: %s\n", deployment)
 	}
 
 	//
@@ -615,6 +618,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 
 	if (len(os.Args) > 1 || len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
 		// Generate trc code...
+		config.Log.Println("Preload setup")
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 		configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
@@ -622,7 +626,13 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		config.OutputMemCache = true
 		config.StartDir = []string{"trc_templates"}
 		config.EndDir = "."
-		trcconfigbase.CommonMain(&config.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, config)
+		config.Log.Println("Preloading")
+		configErr := trcconfigbase.CommonMain(&config.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, config)
+		if configErr != nil {
+			fmt.Println("Preload failed.  Couldn't find required resource.")
+			config.Log.Printf("Preload Error %s\n", configErr.Error())
+			os.Exit(-1)
+		}
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		if !agentToken {
 			token = ""
