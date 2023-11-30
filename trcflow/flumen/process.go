@@ -49,8 +49,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok || true {
 		tempAddr := pluginConfig["vaddress"]
 		tempToken := pluginConfig["token"]
-		pluginConfig["vaddress"] = pluginConfig["caddress"]
-		pluginConfig["token"] = pluginConfig["ctoken"]
+		if caddress, cOk := pluginConfig["caddress"]; cOk {
+			pluginConfig["vaddress"] = caddress
+		}
+		if cToken, cOk := pluginConfig["ctoken"]; cOk {
+			pluginConfig["token"] = cToken
+		}
 		pluginConfig["exitOnFailure"] = true
 
 		cConfig, cGoMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
