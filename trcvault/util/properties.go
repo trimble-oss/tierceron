@@ -154,6 +154,8 @@ func (p *Properties) GetPluginData(region string, service string, config string,
 
 func (p *Properties) WritePluginData(pluginData map[string]interface{}, replacedFields map[string]interface{}, mod *helperkv.Modifier, log *log.Logger, hostRegion string, pluginName string) error {
 	//writeMap := make(map[string]interface{})
+	// If SectionPath is set like
+	mod.SectionPath = ""
 	regionSuffix := ""
 	if hostRegion != "" {
 		regionSuffix = "~" + hostRegion
@@ -175,6 +177,7 @@ func (p *Properties) WritePluginData(pluginData map[string]interface{}, replaced
 		writeMap[field] = value
 	}
 
+	mod.SectionPath = ""
 	_, writeErr := mod.Write(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName), writeMap, log)
 	if writeErr != nil {
 		return writeErr

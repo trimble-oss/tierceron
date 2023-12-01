@@ -67,6 +67,7 @@ func CommonMain(envPtr *string,
 
 	// Common plugin flags...
 	pluginNamePtr := flagset.String("pluginName", "", "Used to certify vault plugin")
+	pluginNameAliasPtr := flagset.String("pluginNameAlias", "", "Name used to define an alias for a plugin")
 	pluginTypePtr := flagset.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
 
 	// Certify flags...
@@ -104,6 +105,11 @@ func CommonMain(envPtr *string,
 		if err != nil {
 			return err
 		}
+	}
+
+	if c != nil && c.DeploymentConfig["trcpluginalias"] != nil {
+		// Prefer internal definition of alias
+		*pluginNameAliasPtr = c.DeploymentConfig["trcpluginalias"].(string)
 	}
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
@@ -174,7 +180,11 @@ func CommonMain(envPtr *string,
 	if c != nil {
 		configBase = c
 		logger = c.Log
-		configBase.SubSectionValue = *pluginNamePtr
+		if *pluginNameAliasPtr != "" {
+			configBase.SubSectionValue = *pluginNameAliasPtr
+		} else {
+			configBase.SubSectionValue = *pluginNamePtr
+		}
 		appRoleConfigPtr = &(configBase.AppRoleConfig)
 		*insecurePtr = configBase.Insecure
 	} else {
@@ -233,7 +243,11 @@ func CommonMain(envPtr *string,
 		return err
 	}
 	config.StartDir = []string{*startDirPtr}
-	config.SubSectionValue = *pluginNamePtr
+	if *pluginNameAliasPtr != "" {
+		configBase.SubSectionValue = *pluginNameAliasPtr
+	} else {
+		configBase.SubSectionValue = *pluginNamePtr
+	}
 	mod.Env = *envPtr
 	eUtils.CheckError(config, err, true)
 
@@ -360,9 +374,9 @@ func CommonMain(envPtr *string,
 		fmt.Println("Deployment definition applied to vault and is ready for deployments.")
 	} else if *winservicestopPtr {
 		fmt.Printf("Stopping service %s\n", pluginToolConfig["trcservicename"].(string))
-		cmd := exec.Command("sc", "stop", pluginToolConfig["trcservicename"].(string))
+		cmd := exec.Command("taskkill", "/F", "/T", "/FI", fmt.Sprintf("\"SERVICES eq %s\"", pluginToolConfig["trcservicename"].(string)))
 		err := cmd.Run()
-		if err != nil && !strings.Contains(err.Error(), "1062") && !strings.Contains(err.Error(), "1052") {
+		if err != nil && !strings.Contains(err.Error(), "1") && !strings.Contains(err.Error(), "5") {
 			fmt.Println(err)
 			return err
 		}
@@ -462,7 +476,11 @@ func CommonMain(envPtr *string,
 
 				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", logger)
 
-				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginToolConfig["trcplugin"].(string))
+				pluginTarget := pluginToolConfig["trcplugin"].(string)
+				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {
+					pluginTarget = *pluginNamePtr
+				}
+				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginTarget)
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					return err
