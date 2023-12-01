@@ -480,7 +480,6 @@ func CommonMain(envPtr *string,
 				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {
 					pluginTarget = *pluginNamePtr
 				}
-				mod.SectionPath = ""
 				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginTarget)
 				if writeErr != nil {
 					fmt.Println(writeErr)
