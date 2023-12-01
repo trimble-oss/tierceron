@@ -39,7 +39,7 @@ type Modifier struct {
 	httpClient       *http.Client // Handle to http client.
 	client           *api.Client  // Client connected to vault
 	logical          *api.Logical // Logical used for read/write options
-	SecretDictionary *api.Secret  // Current Secret Dictionary Cache.
+	SecretDictionary *api.Secret  // Current Secret Dictionary Cache -- populated by mod.List("templates"
 
 	Env             string // Environment (local/dev/QA; Initialized to secrets)
 	RawEnv          string
