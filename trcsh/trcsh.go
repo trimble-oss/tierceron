@@ -176,6 +176,13 @@ func main() {
 	eUtils.InitHeadless(true)
 	fmt.Println("trcsh Version: " + "1.23")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
+	// Initiate signal handling.
+	var ic chan os.Signal = make(chan os.Signal, 3)
+	signal.Notify(ic, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		x := <-ic
+		interruptChan <- x
+	}()
 
 	if !eUtils.IsWindows() {
 		if os.Geteuid() == 0 {
@@ -188,13 +195,6 @@ func main() {
 			if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
 				// Running as shell.
 				os.Args[1] = "-c=" + os.Args[1]
-				// Initiate signal handling.
-				var ic chan os.Signal = make(chan os.Signal, 3)
-				signal.Notify(ic, os.Interrupt, syscall.SIGTERM)
-				go func() {
-					x := <-ic
-					interruptChan <- x
-				}()
 			}
 		}
 		envPtr = flag.String("env", "", "Environment to be processed")   //If this is blank -> use context otherwise override context.
@@ -446,7 +446,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			}
 			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 		}
-		config.FeatherCtx = captiplib.FeatherCtlInit(nil,
+		config.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
 			gAgentConfig.LocalHostAddr,
 			gAgentConfig.EncryptPass,
 			gAgentConfig.EncryptSalt,
@@ -825,7 +825,13 @@ collaboratorReRun:
 					}
 					errMessage := err.Error()
 					errMessageFiltered := strings.ReplaceAll(errMessage, ":", "-")
-					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s encountered errors - %s\n", deployLine, errMessageFiltered)
+					deliverableMsg := fmt.Sprintf("%s encountered errors - %s\n", deployLine, errMessageFiltered)
+					go func(dMesg string) {
+						config.DeploymentCtlMessageChan <- dMesg
+						config.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
+					}(deliverableMsg)
+
+					atomic.StoreInt64(&config.FeatherCtx.RunState, cap.RUN_STARTED)
 					goto collaboratorReRun
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
@@ -850,9 +856,15 @@ collaboratorReRun:
 		}
 	}
 	if eUtils.IsWindows() {
-		config.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
 		for {
+			completeOnce := false
 			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
+				if !completeOnce {
+					go func() {
+						config.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
+					}()
+					completeOnce = true
+				}
 				time.Sleep(time.Second)
 			} else {
 				break
