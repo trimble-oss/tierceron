@@ -318,7 +318,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 					} else {
 						tfContext.FlowLock.Unlock()
 					}
-				case <-time.After(7 * time.Second):
+				case <-time.After(15 * time.Second):
 					{
 						tfContext.FlowState = flowcorehelper.CurrentFlowState{State: 0, SyncMode: "nosync", SyncFilter: ""}
 						tfmContext.Log("Flow ready for use (but inactive due to invalid setup): "+tfContext.Flow.TableName(), nil)
@@ -976,9 +976,11 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		retryConnectionAccess:
 			dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
-			if retryCount < 3 && err != nil && dbsourceConn == nil {
-				retryCount = retryCount + 1
-				goto retryConnectionAccess
+			if err.Error() != "incorrect URL format" {
+				if retryCount < 3 && err != nil && dbsourceConn == nil {
+					retryCount = retryCount + 1
+					goto retryConnectionAccess
+				}
 			}
 
 			if err != nil {

@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -52,6 +53,7 @@ func CommonMain(envPtr *string,
 	codebundledeployPtr := flagset.Bool("codebundledeploy", false, "To deploy a code bundle.")
 	agentdeployPtr := flagset.Bool("agentdeploy", false, "To initiate deployment on agent.")
 	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
+	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
 
 	// Common flags...
 	startDirPtr := flagset.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Template directory")
@@ -65,6 +67,7 @@ func CommonMain(envPtr *string,
 
 	// Common plugin flags...
 	pluginNamePtr := flagset.String("pluginName", "", "Used to certify vault plugin")
+	pluginNameAliasPtr := flagset.String("pluginNameAlias", "", "Name used to define an alias for a plugin")
 	pluginTypePtr := flagset.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
 
 	// Certify flags...
@@ -102,6 +105,11 @@ func CommonMain(envPtr *string,
 		if err != nil {
 			return err
 		}
+	}
+
+	if c != nil && c.DeploymentConfig["trcpluginalias"] != nil {
+		// Prefer internal definition of alias
+		*pluginNameAliasPtr = c.DeploymentConfig["trcpluginalias"].(string)
 	}
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
@@ -172,7 +180,11 @@ func CommonMain(envPtr *string,
 	if c != nil {
 		configBase = c
 		logger = c.Log
-		configBase.SubSectionValue = *pluginNamePtr
+		if *pluginNameAliasPtr != "" {
+			configBase.SubSectionValue = *pluginNameAliasPtr
+		} else {
+			configBase.SubSectionValue = *pluginNamePtr
+		}
 		appRoleConfigPtr = &(configBase.AppRoleConfig)
 		*insecurePtr = configBase.Insecure
 	} else {
@@ -223,13 +235,19 @@ func CommonMain(envPtr *string,
 	}
 	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	config.FeatherCtlCb = configBase.FeatherCtlCb
+	config.FeatherCtx = configBase.FeatherCtx
+
 	if err != nil {
 		logger.Println("Error: " + err.Error() + " - 1")
 		logger.Println("Failed to init mod for deploy update")
 		return err
 	}
 	config.StartDir = []string{*startDirPtr}
-	config.SubSectionValue = *pluginNamePtr
+	if *pluginNameAliasPtr != "" {
+		configBase.SubSectionValue = *pluginNameAliasPtr
+	} else {
+		configBase.SubSectionValue = *pluginNamePtr
+	}
 	mod.Env = *envPtr
 	eUtils.CheckError(config, err, true)
 
@@ -286,9 +304,10 @@ func CommonMain(envPtr *string,
 
 	pluginToolConfig["trcsha256"] = *sha256Ptr
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
-	pluginToolConfig["deployrootPtr"] = *deployrootPtr
 	pluginToolConfig["serviceNamePtr"] = *serviceNamePtr
 	pluginToolConfig["projectservicePtr"] = *projectservicePtr
+	pluginToolConfig["deployrootPtr"] = *deployrootPtr
+	pluginToolConfig["deploysubpathPtr"] = *deploysubpathPtr
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
@@ -310,7 +329,9 @@ func CommonMain(envPtr *string,
 			if _, ok := pluginToolConfig["deployrootPtr"].(string); ok {
 				pluginToolConfig["trcdeployroot"] = pluginToolConfig["deployrootPtr"].(string)
 			}
-
+			if _, ok := pluginToolConfig["deploysubpathPtr"]; ok {
+				pluginToolConfig["trcdeploysubpath"] = pluginToolConfig["deploysubpathPtr"]
+			}
 			if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
 				pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
 			}
@@ -330,9 +351,11 @@ func CommonMain(envPtr *string,
 		writeMap["trcplugin"] = *pluginNamePtr
 		writeMap["trctype"] = *pluginTypePtr
 		writeMap["trcprojectservice"] = *projectservicePtr
-
 		if _, ok := pluginToolConfig["trcdeployroot"]; ok {
 			writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"]
+		}
+		if _, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+			writeMap["trcdeploysubpath"] = pluginToolConfig["trcdeploysubpath"]
 		}
 		if _, ok := pluginToolConfig["trcservicename"]; ok {
 			writeMap["trcservicename"] = pluginToolConfig["trcservicename"]
@@ -351,9 +374,9 @@ func CommonMain(envPtr *string,
 		fmt.Println("Deployment definition applied to vault and is ready for deployments.")
 	} else if *winservicestopPtr {
 		fmt.Printf("Stopping service %s\n", pluginToolConfig["trcservicename"].(string))
-		cmd := exec.Command("sc", "stop", pluginToolConfig["trcservicename"].(string))
+		cmd := exec.Command("taskkill", "/F", "/T", "/FI", fmt.Sprintf("\"SERVICES eq %s\"", pluginToolConfig["trcservicename"].(string)))
 		err := cmd.Run()
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "1") && !strings.Contains(err.Error(), "5") {
 			fmt.Println(err)
 			return err
 		}
@@ -363,7 +386,7 @@ func CommonMain(envPtr *string,
 		fmt.Printf("Starting service %s\n", pluginToolConfig["trcservicename"].(string))
 		cmd := exec.Command("sc", "start", pluginToolConfig["trcservicename"].(string))
 		err := cmd.Run()
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "1056") {
 			fmt.Println(err)
 			return err
 		}
@@ -378,7 +401,11 @@ func CommonMain(envPtr *string,
 			err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 			if err != nil {
 				fmt.Println("Image download failure.")
-				fmt.Println(err.Error())
+				if configBase.FeatherCtx != nil {
+					configBase.FeatherCtx.Log.Printf("Image download failure: %s", err.Error())
+				} else {
+					fmt.Println(err.Error())
+				}
 				return err
 			}
 		}
@@ -387,7 +414,12 @@ func CommonMain(envPtr *string,
 			pluginToolConfig["imagesha256"] != nil &&
 			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) {
 			// Write the image to the destination...
-			deployPath := fmt.Sprintf("%s\\%s", pluginToolConfig["trcdeployroot"].(string), pluginToolConfig["trccodebundle"].(string))
+			var deployPath string
+			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+				deployPath = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), pluginToolConfig["trccodebundle"].(string))
+			} else {
+				deployPath = filepath.Join(pluginToolConfig["trcdeployroot"].(string), pluginToolConfig["trccodebundle"].(string))
+			}
 			fmt.Printf("Deploying image to: %s\n", deployPath)
 
 			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
@@ -396,9 +428,15 @@ func CommonMain(envPtr *string,
 				fmt.Println("Image write failure.")
 				return err
 			}
-			fmt.Println("Image deployed.")
+			fmt.Printf("Image deployed to: %s\n", deployPath)
 		} else {
-			fmt.Printf("Image not certified.  Cannot deploy image for %s\n", pluginToolConfig["trcplugin"])
+			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
+			if configBase.FeatherCtx != nil {
+				configBase.FeatherCtx.Log.Printf(errMessage)
+			} else {
+				fmt.Printf("%s\n", errMessage)
+			}
+			return errors.New(errMessage)
 		}
 	} else if *certifyImagePtr {
 		//Certify Image
@@ -438,7 +476,11 @@ func CommonMain(envPtr *string,
 
 				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", logger)
 
-				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginToolConfig["trcplugin"].(string))
+				pluginTarget := pluginToolConfig["trcplugin"].(string)
+				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {
+					pluginTarget = *pluginNamePtr
+				}
+				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginTarget)
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					return err
@@ -463,9 +505,9 @@ func CommonMain(envPtr *string,
 		}
 	} else if *agentdeployPtr {
 		if config.FeatherCtlCb != nil {
-			err := config.FeatherCtlCb(*pluginNamePtr)
+			err := config.FeatherCtlCb(config.FeatherCtx, *pluginNamePtr)
 			if err != nil {
-				fmt.Println("Incorrect installation")
+				fmt.Printf("Incorrect installation: %s\n", err.Error())
 				return err
 			}
 		} else {
