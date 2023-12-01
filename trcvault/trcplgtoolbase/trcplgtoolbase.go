@@ -476,7 +476,12 @@ func CommonMain(envPtr *string,
 
 				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", logger)
 
-				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginToolConfig["trcplugin"].(string))
+				pluginTarget := pluginToolConfig["trcplugin"].(string)
+				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {
+					pluginTarget = *pluginNamePtr
+				}
+				mod.SectionPath = ""
+				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginTarget)
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					return err
