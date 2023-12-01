@@ -551,6 +551,7 @@ func (dfs *TTDINode) FinishStatistic(tfmContext *TrcFlowMachineContext, tfContex
 
 		mod.SectionPath = ""
 		if vaultWriteBack {
+			mod.SectionPath = ""
 			_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+decodedStatData["FlowGroup"].(string)+"/dataFlowName/"+decodedStatData["FlowName"].(string)+"/"+decodedStatData["StateCode"].(string), statMap, logger)
 			if writeErr != nil && decodedData["LogFunc"] != nil {
 				logFunc := decodedData["LogFunc"].(func(string, error))
