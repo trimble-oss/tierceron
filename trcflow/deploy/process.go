@@ -352,6 +352,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
+		cGoMod.SectionPath = ""
 		_, err = cGoMod.Write(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", writeMap["trcplugin"].(string)), writeMap, cConfig.Log)
 		if err != nil {
 			logger.Printf(fmt.Sprintf("PluginDeployFlow failure: Failed to write plugin state for env: %s and plugin: %s error: %s\n", cConfig.Env, pluginName, err.Error()))
@@ -447,7 +448,6 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 				if hostRegion != "" {
 					pluginData["deployed"] = true //Update deploy status if region exist otherwise this will block regionless deploys if set for regionless status
 				}
-
 				statusUpdateErr := properties.WritePluginData(pluginData, replacedFields, mod, config.Log, hostRegion, pluginName)
 				if err != nil {
 					return statusUpdateErr
