@@ -155,7 +155,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 		&sessionIdentifier, /*Session identifier */
 		captiplib.AcceptRemote,
 		deployerInterrupted)
-	config.FeatherCtx.Log = *config.Log
+	config.FeatherCtx.Log = config.Log
 	// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 	atomic.StoreInt64(&config.FeatherCtx.RunState, cap.RUN_STARTED)
 
@@ -449,7 +449,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			gAgentConfig.HandshakeCode,
 			new(string), gAgentConfig.AcceptRemoteFunc, gAgentConfig.InterruptHandlerFunc)
 		if config.Log != nil {
-			config.FeatherCtx.Log = *config.Log
+			config.FeatherCtx.Log = config.Log
 		}
 
 		err := roleBasedRunner(env, trcshConfig, region, config, control, agentToken, *trcshConfig.CToken, argsOrig, deployArgLines, configCount)
