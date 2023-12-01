@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
+	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 )
 
@@ -74,7 +75,8 @@ type DriverConfig struct {
 	EndDir         string
 	OutputMemCache bool
 	MemFs          billy.Filesystem
-	FeatherCtlCb   func(string) error
+	FeatherCtx     *cap.FeatherContext
+	FeatherCtlCb   func(*cap.FeatherContext, string) error
 
 	// Config modes....
 	WantCerts   bool
@@ -110,8 +112,8 @@ type DriverConfig struct {
 	ServiceFilter     []string // Which tables to use.
 	DynamicPathFilter string   // Seeds from a specific path.
 
-	DeploymentConfig     map[string]interface{} // For trcsh to indicate which deployment to work on
-	DeploymentCtlMessage chan string
+	DeploymentConfig         map[string]interface{} // For trcsh to indicate which deployment to work on
+	DeploymentCtlMessageChan chan string
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.

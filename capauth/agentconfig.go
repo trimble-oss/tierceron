@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
+	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/utils"
@@ -22,18 +22,13 @@ import (
 	"google.golang.org/grpc"
 )
 
-var TrcCtlComplete string = "trcctlcomplete"
-
 type AgentConfigs struct {
-	AgentToken        *string
-	HandshakeHostPort *string
-	FeatherHostPort   *string
-	HandshakeCode     *string
-	DeployRoleID      *string
-	EncryptPass       *string
-	EncryptSalt       *string
-	Deployments       *string
-	Env               *string
+	*cap.FeatherContext
+	AgentToken      *string
+	FeatherHostPort *string
+	DeployRoleID    *string
+	Deployments     *string
+	Env             *string
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -49,7 +44,10 @@ func randomString(n int) string {
 }
 
 func ValidateVhost(host string) error {
-	protocolHost := "https://" + host
+	protocolHost := host
+	if !strings.HasPrefix(host, "https://") {
+		protocolHost = fmt.Sprintf("https://%s", host)
+	}
 	for _, endpoint := range coreopts.GetSupportedEndpoints() {
 		if strings.HasPrefix(endpoint, protocolHost) {
 			return nil
@@ -58,16 +56,12 @@ func ValidateVhost(host string) error {
 	return errors.New("Bad host: " + host)
 }
 
-func (agentconfig *AgentConfigs) PenseFeatherQuery(pense string) (*string, error) {
+func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
 	penseCode := randomString(7 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
-	_, featherErr := cap.FeatherWriter(*agentconfig.EncryptPass,
-		*agentconfig.EncryptSalt,
-		*agentconfig.HandshakeHostPort,
-		*agentconfig.HandshakeCode,
-		penseSum)
+	_, featherErr := cap.FeatherWriter(featherCtx, penseSum)
 	if featherErr != nil {
 		return nil, featherErr
 	}
@@ -80,7 +74,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(pense string) (*string, error
 
 	conn, err := grpc.Dial(*agentconfig.FeatherHostPort, grpc.WithTransportCredentials(creds))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		return nil, err
 	}
 	defer conn.Close()
 	c := cap.NewCapClient(conn)
@@ -91,7 +85,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(pense string) (*string, error
 
 	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		return nil, err
 	}
 	var penseProtect *string
 	rPense := r.GetPense()
@@ -101,9 +95,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(pense string) (*string, error
 	return penseProtect, nil
 }
 
-func (agentconfig *AgentConfigs) LoadConfigs(address string, agentToken string, deployments string, env string) (*TrcShConfig, error) {
-	var trcshConfig *TrcShConfig
-
+func NewAgentConfig(address string, agentToken string, deployments string, env string) (*AgentConfigs, *TrcShConfig, error) {
 	mod, modErr := helperkv.NewModifier(false, agentToken, address, env, nil, true, nil)
 	if modErr != nil {
 		fmt.Println("trcsh Failed to bootstrap")
@@ -114,47 +106,51 @@ func (agentconfig *AgentConfigs) LoadConfigs(address string, agentToken string, 
 
 	data, readErr := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
 	if readErr != nil {
-		return nil, readErr
+		return nil, nil, readErr
 	} else {
+		trcHatHostLocal := new(string)
 		trcHatEncryptPass := data["trcHatEncryptPass"].(string)
 		memprotectopts.MemProtect(nil, &trcHatEncryptPass)
 		trcHatEncryptSalt := data["trcHatEncryptSalt"].(string)
 		memprotectopts.MemProtect(nil, &trcHatEncryptSalt)
-		trcHatEnv := data["trcHatEnv"].(string)
-		memprotectopts.MemProtect(nil, &trcHatEnv)
+		hatHandshakeHostAddr := fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatHandshakePort"].(string))
+		memprotectopts.MemProtect(nil, &hatHandshakeHostAddr)
 		trcHatHandshakeCode := data["trcHatHandshakeCode"].(string)
 		memprotectopts.MemProtect(nil, &trcHatHandshakeCode)
-		trcHatHandshakePort := data["trcHatHandshakePort"].(string)
-		memprotectopts.MemProtect(nil, &trcHatHandshakePort)
-		trcHatHost := data["trcHatHost"].(string)
-		memprotectopts.MemProtect(nil, &trcHatHost)
-		trcHatSecretsPort := data["trcHatSecretsPort"].(string)
-		memprotectopts.MemProtect(nil, &trcHatSecretsPort)
-		trcHandshakeHostPort := trcHatHost + ":" + trcHatHandshakePort
-		memprotectopts.MemProtect(nil, &trcHandshakeHostPort)
-		trcFeatherHostPort := trcHatHost + ":" + trcHatSecretsPort
-		memprotectopts.MemProtect(nil, &trcFeatherHostPort)
+		sessionIdentifier := "sessionIdDynamicFill"
 
-		agentconfig.HandshakeHostPort = &trcHandshakeHostPort
-		agentconfig.FeatherHostPort = &trcFeatherHostPort
-		agentconfig.HandshakeCode = &trcHatHandshakeCode
-		agentconfig.EncryptPass = &trcHatEncryptPass
-		agentconfig.EncryptSalt = &trcHatEncryptSalt
-		agentconfig.Deployments = &deployments
-		agentconfig.Env = &trcHatEnv
+		hatFeatherHostAddr := fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatSecretsPort"].(string))
+		memprotectopts.MemProtect(nil, &hatFeatherHostAddr)
+		trcHatEnv := data["trcHatEnv"].(string)
 
-		trcshConfig = &TrcShConfig{Env: trcHatEnv,
+		agentconfig := &AgentConfigs{
+			captiplib.FeatherCtlInit(nil,
+				trcHatHostLocal,
+				&trcHatEncryptPass,
+				&trcHatEncryptSalt,
+				&hatHandshakeHostAddr,
+				&trcHatHandshakeCode,
+				&sessionIdentifier, captiplib.AcceptRemote, nil),
+			&agentToken,
+			&hatFeatherHostAddr,
+			new(string),
+			&deployments,
+			&trcHatEnv,
+		}
+
+		trcshConfig := &TrcShConfig{Env: trcHatEnv,
 			EnvContext: trcHatEnv,
 		}
-		trcShConfigRole, penseError := agentconfig.PenseFeatherQuery("configrole")
+
+		trcShConfigRole, penseError := agentconfig.PenseFeatherQuery(agentconfig.FeatherContext, "configrole")
 		if penseError != nil {
-			return nil, penseError
+			return nil, nil, penseError
 		}
 		memprotectopts.MemProtect(nil, trcShConfigRole)
 		trcshConfig.ConfigRole = trcShConfigRole
-	}
 
-	return trcshConfig, nil
+		return agentconfig, trcshConfig, nil
+	}
 }
 
 func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
