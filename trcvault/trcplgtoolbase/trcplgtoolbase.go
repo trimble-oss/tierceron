@@ -388,7 +388,7 @@ func CommonMain(envPtr *string,
 			if err != nil {
 				fmt.Println("Image download failure.")
 				if configBase.FeatherCtx != nil {
-					configBase.FeatherCtx.Log.Printf("%s", err.Error())
+					configBase.FeatherCtx.Log.Printf("Image download failure: %s", err.Error())
 				} else {
 					fmt.Println(err.Error())
 				}
@@ -416,7 +416,13 @@ func CommonMain(envPtr *string,
 			}
 			fmt.Printf("Image deployed to: %s\n", deployPath)
 		} else {
-			fmt.Printf("Image not certified.  Cannot deploy image for %s\n", pluginToolConfig["trcplugin"])
+			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
+			if configBase.FeatherCtx != nil {
+				configBase.FeatherCtx.Log.Printf(errMessage)
+			} else {
+				fmt.Printf("%s\n", errMessage)
+			}
+			return errors.New(errMessage)
 		}
 	} else if *certifyImagePtr {
 		//Certify Image

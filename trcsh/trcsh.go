@@ -817,7 +817,9 @@ collaboratorReRun:
 						// Critical agent setup error.
 						os.Exit(-1)
 					}
-					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s encountered errors\n", deployLine)
+					errMessage := err.Error()
+					errMessageFiltered := strings.ReplaceAll(errMessage, ":", "-")
+					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s encountered errors - %s\n", deployLine, errMessageFiltered)
 					goto collaboratorReRun
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
