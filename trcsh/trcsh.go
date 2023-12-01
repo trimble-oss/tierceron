@@ -138,6 +138,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	if len(deployment) > 0 {
 		config.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
 		config.DeploymentCtlMessageChan = make(chan string, 5)
+		fmt.Printf("Starting deployer: %s\n", deployment)
 		config.Log.Printf("Starting deployer: %s\n", deployment)
 	}
 
@@ -158,6 +159,8 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	config.FeatherCtx.Log = config.Log
 	// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 	atomic.StoreInt64(&config.FeatherCtx.RunState, cap.RUN_STARTED)
+
+	config.Log.Printf("Starting deployer session: %s\n", sessionIdentifier)
 
 	go captiplib.FeatherCtlEmitter(config.FeatherCtx, config.DeploymentCtlMessageChan, deployerEmote, nil)
 
@@ -330,6 +333,8 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 
 	sessionIdentifier := agentName + "." + *gAgentConfig.Env
 	featherCtx.SessionIdentifier = &sessionIdentifier
+
+	featherCtx.Log.Printf("Starting deploy ctl session: %s\n", sessionIdentifier)
 	captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
 	return nil
 }
