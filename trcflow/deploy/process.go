@@ -67,23 +67,27 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 
 	if ok, err := servercapauth.ValidatePathSha(goMod, pluginConfig, logger); true || ok {
 		onceAuth.Do(func() {
-			logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
-			var featherAuth *servercapauth.FeatherAuth
-			featherAuth, err = servercapauth.Init(goMod, pluginConfig, logger)
-			if err != nil {
-				eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
-				return
+			if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
+				// Ensure only dev is the cap auth...
+				logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
+				var featherAuth *servercapauth.FeatherAuth = nil
+				if pluginConfig["env"].(string) == "dev" {
+					featherAuth, err = servercapauth.Init(goMod, pluginConfig, logger)
+					if err != nil {
+						eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
+						return
+					}
+					pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
+				}
+
+				servercapauth.Memorize(pluginConfig, logger)
+
+				// TODO: Support variables for different environments...
+				// Not really clear how cap auth would do this...
+				go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+				logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
+				gCapInitted = true
 			}
-			gCapInitted = true
-
-			pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
-
-			servercapauth.Memorize(pluginConfig, logger)
-
-			// TODO: Support variables for different environments...
-			// Not really clear how cap auth would do this...
-			go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
-			logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
 		})
 	} else {
 		eUtils.LogErrorMessage(config, fmt.Sprintf("Mismatched sha256 cap auth for env: %s.  Skipping.", pluginConfig["env"].(string)), false)
@@ -348,6 +352,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
+		cGoMod.SectionPath = ""
 		_, err = cGoMod.Write(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", writeMap["trcplugin"].(string)), writeMap, cConfig.Log)
 		if err != nil {
 			logger.Printf(fmt.Sprintf("PluginDeployFlow failure: Failed to write plugin state for env: %s and plugin: %s error: %s\n", cConfig.Env, pluginName, err.Error()))
@@ -443,7 +448,6 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 				if hostRegion != "" {
 					pluginData["deployed"] = true //Update deploy status if region exist otherwise this will block regionless deploys if set for regionless status
 				}
-
 				statusUpdateErr := properties.WritePluginData(pluginData, replacedFields, mod, config.Log, hostRegion, pluginName)
 				if err != nil {
 					return statusUpdateErr

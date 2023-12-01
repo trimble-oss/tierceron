@@ -39,19 +39,20 @@ type Modifier struct {
 	httpClient       *http.Client // Handle to http client.
 	client           *api.Client  // Client connected to vault
 	logical          *api.Logical // Logical used for read/write options
-	Env              string       // Environment (local/dev/QA; Initialized to secrets)
-	Regions          []string     // Supported regions
-	SecretDictionary *api.Secret  // Current Secret Dictionary Cache.
-	Version          string       // Version for data
-	VersionFilter    []string     // Used to filter vault paths
-	RawEnv           string
-	TemplatePath     string   // Path to template we are processing.
-	ProjectIndex     []string // Which projects are indexed.
-	SectionKey       string   // The section key: Index or Restricted.
-	SectionName      string   // The name of the actual section.
-	SubSectionName   string   // The name of the actual subsection.
-	SubSectionValue  string   // The actual value for the sub section.
-	SectionPath      string   // The path to the Index (both seed and vault)
+	SecretDictionary *api.Secret  // Current Secret Dictionary Cache -- populated by mod.List("templates"
+
+	Env             string // Environment (local/dev/QA; Initialized to secrets)
+	RawEnv          string
+	Regions         []string // Supported regions
+	Version         string   // Version for data
+	VersionFilter   []string // Used to filter vault paths
+	TemplatePath    string   // Path to template we are processing.
+	ProjectIndex    []string // Which projects are indexed.
+	SectionKey      string   // The section key: Index or Restricted.
+	SectionName     string   // The name of the actual section.
+	SubSectionName  string   // The name of the actual subsection.
+	SubSectionValue string   // The actual value for the sub section.
+	SectionPath     string   // The path to the Index (both seed and vault)
 }
 
 type modCache struct {
@@ -97,6 +98,19 @@ func NewModifier(insecure bool, token string, address string, env string, region
 		PruneCache(env, 10)
 		checkoutModifier, err := cachedModifierHelper(env)
 		if err == nil && checkoutModifier != nil {
+			checkoutModifier.Insecure = insecure
+			checkoutModifier.RawEnv = env
+			checkoutModifier.Regions = regions
+			checkoutModifier.Version = ""               // Version for data
+			checkoutModifier.VersionFilter = []string{} // Used to filter vault paths
+			checkoutModifier.TemplatePath = ""          // Path to template we are processing.
+			checkoutModifier.ProjectIndex = []string{}  // Which projects are indexed.
+			checkoutModifier.SectionKey = ""            // The section key: Index or Restricted.
+			checkoutModifier.SectionName = ""           // The name of the actual section.
+			checkoutModifier.SubSectionName = ""        // The name of the actual subsection.
+			checkoutModifier.SubSectionValue = ""       // The actual value for the sub section.
+			checkoutModifier.SectionPath = ""           // The path to the Index (both seed and vault)
+
 			return checkoutModifier, nil
 		}
 	}
@@ -214,12 +228,12 @@ func (m *Modifier) CleanCache(limit uint64) {
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
-func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuffix string, logger *log.Logger) (bool, error) {
+func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuffix string, logger *log.Logger) (bool, string, error) {
 	env, sub, _, envErr := PreCheckEnvironment(environment)
 
 	if envErr != nil {
 		logger.Printf("Environment format error: %v\n", envErr)
-		return false, envErr
+		return false, "", envErr
 	} else {
 		if sub != "" {
 			environment = env
@@ -241,10 +255,10 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 		logger.Printf("LookupSelf Auth failure: %v\n", err)
 		if urlErr, urlErrOk := err.(*url.Error); urlErrOk {
 			if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
-				return false, err
+				return false, desiredPolicy, err
 			}
 		} else if strings.Contains(err.Error(), "x509: certificate") {
-			return false, err
+			return false, desiredPolicy, err
 		}
 	}
 
@@ -265,7 +279,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 
 	}
 
-	return valid, nil
+	return valid, desiredPolicy, nil
 }
 
 // Writes the key,value pairs in data to the vault
