@@ -683,6 +683,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 					fmt.Println("Unable to obtain config for deployment")
 					return
 				}
+				deploymentConfig["trcpluginalias"] = deployment
 				config.DeploymentConfig = deploymentConfig
 				if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
 					config.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
