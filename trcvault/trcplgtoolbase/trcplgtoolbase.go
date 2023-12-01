@@ -67,6 +67,7 @@ func CommonMain(envPtr *string,
 
 	// Common plugin flags...
 	pluginNamePtr := flagset.String("pluginName", "", "Used to certify vault plugin")
+	pluginNameAliasPtr := flagset.String("pluginNameAlias", "", "Name used to define an alias for a plugin")
 	pluginTypePtr := flagset.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
 
 	// Certify flags...
@@ -104,6 +105,11 @@ func CommonMain(envPtr *string,
 		if err != nil {
 			return err
 		}
+	}
+
+	if c != nil && c.DeploymentConfig["trcpluginalias"] != nil {
+		// Prefer internal definition of alias
+		*pluginNameAliasPtr = c.DeploymentConfig["trcpluginalias"].(string)
 	}
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
@@ -174,7 +180,11 @@ func CommonMain(envPtr *string,
 	if c != nil {
 		configBase = c
 		logger = c.Log
-		configBase.SubSectionValue = *pluginNamePtr
+		if *pluginNameAliasPtr != "" {
+			configBase.SubSectionValue = *pluginNameAliasPtr
+		} else {
+			configBase.SubSectionValue = *pluginNamePtr
+		}
 		appRoleConfigPtr = &(configBase.AppRoleConfig)
 		*insecurePtr = configBase.Insecure
 	} else {
@@ -233,7 +243,11 @@ func CommonMain(envPtr *string,
 		return err
 	}
 	config.StartDir = []string{*startDirPtr}
-	config.SubSectionValue = *pluginNamePtr
+	if *pluginNameAliasPtr != "" {
+		configBase.SubSectionValue = *pluginNameAliasPtr
+	} else {
+		configBase.SubSectionValue = *pluginNamePtr
+	}
 	mod.Env = *envPtr
 	eUtils.CheckError(config, err, true)
 
