@@ -114,14 +114,8 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 
 // Logging of deployer activities..
 func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg string) {
-	if len(ctlFlapMode) > 0 && ctlFlapMode[0] != cap.MODE_PERCH {
+	if len(ctlFlapMode) > 0 && ctlFlapMode[0] != cap.MODE_PERCH && msg != captiplib.MSG_PERCH_AND_GAZE {
 		featherCtx.Log.Printf(msg)
-	}
-	deployerId, _ := deployers.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
-
-	if *featherCtx.SessionIdentifier == "spectrumformssub.dev" {
-		fmt.Printf("deployer: %s %s", deployerId, msg)
-		featherCtx.Log.Printf("%s %s", *featherCtx.SessionIdentifier, msg)
 	}
 }
 
@@ -181,8 +175,6 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	config.FeatherCtx.Log = config.Log
 	// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 	atomic.StoreInt64(&config.FeatherCtx.RunState, cap.RUN_STARTED)
-
-	config.Log.Printf("Starting deployer session: %s\n", sessionIdentifier)
 
 	go captiplib.FeatherCtlEmitter(config.FeatherCtx, config.DeploymentCtlMessageChan, deployerEmote, nil)
 
