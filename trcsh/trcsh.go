@@ -177,8 +177,14 @@ func main() {
 	fmt.Println("trcsh Version: " + "1.23")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 	// Initiate signal handling.
-	var ic chan os.Signal = make(chan os.Signal, 3)
-	signal.Notify(ic, os.Interrupt, syscall.SIGTERM)
+	var ic chan os.Signal = make(chan os.Signal, 5)
+
+	if !eUtils.IsWindows() {
+		signal.Notify(ic, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGABRT)
+	} else {
+		signal.Notify(ic, os.Interrupt)
+	}
+
 	go func() {
 		x := <-ic
 		interruptChan <- x
