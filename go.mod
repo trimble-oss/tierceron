@@ -1,8 +1,6 @@
 module github.com/trimble-oss/tierceron
 
-go 1.21
-
-toolchain go1.21.4
+go 1.21.4
 
 require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
@@ -38,6 +36,8 @@ require (
 )
 
 require github.com/trimble-oss/tierceron-nute v0.0.0-20230128181737-65043c9e434b
+
+require github.com/trimble-oss/tierceron-succinctly v0.0.0-00010101000000-000000000000 // indirect
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.6.0
@@ -245,6 +245,8 @@ replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 replace VaultConfig.Test => ../VaultConfig.Test
 
 replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
+
+replace github.com/trimble-oss/tierceron-succinctly => ../../Github/tierceron-succinctly
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.6
 
