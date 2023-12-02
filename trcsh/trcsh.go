@@ -115,12 +115,24 @@ func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg strin
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] != cap.MODE_PERCH {
 		featherCtx.Log.Printf(msg)
 	}
+	if *featherCtx.SessionIdentifier == "spectrumformssub.dev" {
+		fmt.Printf("%s %s", *featherCtx.SessionIdentifier, msg)
+		featherCtx.Log.Printf("%s %s", *featherCtx.SessionIdentifier, msg)
+	}
+}
+
+func deployCtlAcceptRemote(featherCtx *cap.FeatherContext, x int, y string) (bool, error) {
+	return acceptInterruptFun(featherCtx, featherCtx.MultiSecondInterruptTicker, featherCtx.FifteenSecondInterruptTicker, featherCtx.ThirtySecondInterruptTicker)
 }
 
 // deployCtl -- is the deployment controller or manager if you will.
 func deployCtlInterrupted(featherCtx *cap.FeatherContext) error {
 	os.Exit(-1)
 	return nil
+}
+
+func deployerAcceptRemote(featherCtx *cap.FeatherContext, x int, y string) (bool, error) {
+	return acceptInterruptFun(featherCtx, featherCtx.MultiSecondInterruptTicker, featherCtx.FifteenSecondInterruptTicker, featherCtx.ThirtySecondInterruptTicker)
 }
 
 // deployer -- does the work of deploying..
@@ -154,7 +166,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 		gAgentConfig.HostAddr,
 		gAgentConfig.HandshakeCode,
 		&sessionIdentifier, /*Session identifier */
-		captiplib.AcceptRemote,
+		deployerAcceptRemote,
 		deployerInterrupted)
 	config.FeatherCtx.Log = config.Log
 	// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
@@ -184,7 +196,6 @@ func main() {
 	} else {
 		signal.Notify(ic, os.Interrupt)
 	}
-
 	go func() {
 		x := <-ic
 		interruptChan <- x
@@ -269,7 +280,10 @@ func main() {
 
 		// Preload agent synchronization configs...
 		var errAgentLoad error
-		gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(address, agentToken, deployments, agentEnv)
+		gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(address,
+			agentToken,
+			deployments,
+			agentEnv, nil, nil)
 		if errAgentLoad != nil {
 			fmt.Println("trcsh agent bootstrap failure.")
 			os.Exit(-1)
@@ -293,29 +307,36 @@ var fifteenSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
 var thirtySecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
 
 func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Ticker, tickerBreak *time.Ticker, tickerInterrupt *time.Ticker) (bool, error) {
+	result := false
+	var resultError error = nil
 	select {
-	case <-interruptChan:
-		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		os.Exit(1)
 	case <-tickerContinue.C:
 		// don't break... continue...
-		return false, nil
+		result = false
+		resultError = nil
 	case <-tickerBreak.C:
 		// break and continue
-		return true, nil
+		result = true
+		resultError = nil
 	case <-tickerInterrupt.C:
 		// full stop
-		return true, errors.New("you shall not pass")
+		result = true
+		resultError = errors.New("you shall not pass")
 	}
-	return true, errors.New("not possible")
+	if len(featherCtx.InterruptChan) > 0 {
+		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
+		os.Exit(1)
+	}
+	return result, resultError
 }
 
 func interruptFun(featherCtx *cap.FeatherContext, tickerInterrupt *time.Ticker) {
 	select {
-	case <-interruptChan:
-		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		os.Exit(1)
 	case <-tickerInterrupt.C:
+		if len(featherCtx.InterruptChan) > 0 {
+			cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -442,7 +463,12 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			var errAgentLoad error
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
-			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(config.VaultAddress, *trcshConfig.CToken, "bootstrap", config.Env)
+			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(config.VaultAddress,
+				*trcshConfig.CToken,
+				"bootstrap",
+				config.Env,
+				deployCtlAcceptRemote,
+				deployCtlInterrupted)
 			if errAgentLoad != nil {
 				fmt.Printf("Permissions failure.  Incorrect deployment")
 				os.Exit(1)
