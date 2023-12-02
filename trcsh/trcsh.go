@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"VaultConfig.TenantConfig/util/buildopts/deployers"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
@@ -103,7 +104,8 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
 		fmt.Printf("%s\n", msg)
 	}
-	featherCtx.Log.Printf("ctl: %s  msg: %s\n", ctlFlapMode, strings.Trim(msg, "\n"))
+	deployerId, _ := deployers.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
+	featherCtx.Log.Printf("deployer: %s ctl: %s  msg: %s\n", deployerId, ctlFlapMode, strings.Trim(msg, "\n"))
 	if strings.Contains(msg, "encountered errors") {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		os.Exit(0)
@@ -115,12 +117,26 @@ func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg strin
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] != cap.MODE_PERCH {
 		featherCtx.Log.Printf(msg)
 	}
+	deployerId, _ := deployers.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
+
+	if *featherCtx.SessionIdentifier == "spectrumformssub.dev" {
+		fmt.Printf("deployer: %s %s", deployerId, msg)
+		featherCtx.Log.Printf("%s %s", *featherCtx.SessionIdentifier, msg)
+	}
+}
+
+func deployCtlAcceptRemote(featherCtx *cap.FeatherContext, x int, y string) (bool, error) {
+	return acceptInterruptFun(featherCtx, featherCtx.MultiSecondInterruptTicker, featherCtx.FifteenSecondInterruptTicker, featherCtx.ThirtySecondInterruptTicker)
 }
 
 // deployCtl -- is the deployment controller or manager if you will.
 func deployCtlInterrupted(featherCtx *cap.FeatherContext) error {
 	os.Exit(-1)
 	return nil
+}
+
+func deployerAcceptRemote(featherCtx *cap.FeatherContext, x int, y string) (bool, error) {
+	return acceptInterruptFun(featherCtx, featherCtx.MultiSecondInterruptTicker, featherCtx.FifteenSecondInterruptTicker, featherCtx.ThirtySecondInterruptTicker)
 }
 
 // deployer -- does the work of deploying..
@@ -138,6 +154,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	if len(deployment) > 0 {
 		config.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
 		config.DeploymentCtlMessageChan = make(chan string, 5)
+		fmt.Printf("Starting deployer: %s\n", deployment)
 		config.Log.Printf("Starting deployer: %s\n", deployment)
 	}
 
@@ -145,7 +162,13 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	// Each deployer needs it's own context.
 	//
 	localHostAddr := ""
-	sessionIdentifier := deployment + "." + *gAgentConfig.Env
+	var sessionIdentifier string
+	if sessionId, ok := deployers.GetEncodedDeployerId(deployment, *gAgentConfig.Env); ok {
+		sessionIdentifier = sessionId
+	} else {
+		fmt.Printf("Unsupported deployer: %s\n", deployment)
+		os.Exit(-1)
+	}
 	config.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
 		&localHostAddr,
 		gAgentConfig.EncryptPass,
@@ -153,11 +176,13 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 		gAgentConfig.HostAddr,
 		gAgentConfig.HandshakeCode,
 		&sessionIdentifier, /*Session identifier */
-		captiplib.AcceptRemote,
+		deployerAcceptRemote,
 		deployerInterrupted)
 	config.FeatherCtx.Log = config.Log
 	// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 	atomic.StoreInt64(&config.FeatherCtx.RunState, cap.RUN_STARTED)
+
+	config.Log.Printf("Starting deployer session: %s\n", sessionIdentifier)
 
 	go captiplib.FeatherCtlEmitter(config.FeatherCtx, config.DeploymentCtlMessageChan, deployerEmote, nil)
 
@@ -173,6 +198,21 @@ func main() {
 	eUtils.InitHeadless(true)
 	fmt.Println("trcsh Version: " + "1.23")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
+	// Initiate signal handling.
+	var ic chan os.Signal = make(chan os.Signal, 5)
+
+	if !eUtils.IsWindows() {
+		signal.Notify(ic, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGABRT)
+	} else {
+		signal.Notify(ic, os.Interrupt)
+	}
+	go func() {
+		x := <-ic
+		interruptChan <- x
+	}()
+
+	// Initialize the supported
+	deployers.InitSupportedDeployers()
 
 	if !eUtils.IsWindows() {
 		if os.Geteuid() == 0 {
@@ -185,13 +225,6 @@ func main() {
 			if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
 				// Running as shell.
 				os.Args[1] = "-c=" + os.Args[1]
-				// Initiate signal handling.
-				var ic chan os.Signal = make(chan os.Signal, 3)
-				signal.Notify(ic, os.Interrupt, syscall.SIGTERM)
-				go func() {
-					x := <-ic
-					interruptChan <- x
-				}()
 			}
 		}
 		envPtr = flag.String("env", "", "Environment to be processed")   //If this is blank -> use context otherwise override context.
@@ -260,7 +293,10 @@ func main() {
 
 		// Preload agent synchronization configs...
 		var errAgentLoad error
-		gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(address, agentToken, deployments, agentEnv)
+		gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(address,
+			agentToken,
+			deployments,
+			agentEnv, nil, nil)
 		if errAgentLoad != nil {
 			fmt.Println("trcsh agent bootstrap failure.")
 			os.Exit(-1)
@@ -284,29 +320,36 @@ var fifteenSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
 var thirtySecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
 
 func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Ticker, tickerBreak *time.Ticker, tickerInterrupt *time.Ticker) (bool, error) {
+	result := false
+	var resultError error = nil
 	select {
-	case <-interruptChan:
-		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		os.Exit(1)
 	case <-tickerContinue.C:
 		// don't break... continue...
-		return false, nil
+		result = false
+		resultError = nil
 	case <-tickerBreak.C:
 		// break and continue
-		return true, nil
+		result = true
+		resultError = nil
 	case <-tickerInterrupt.C:
 		// full stop
-		return true, errors.New("you shall not pass")
+		result = true
+		resultError = errors.New("you shall not pass")
 	}
-	return true, errors.New("not possible")
+	if len(featherCtx.InterruptChan) > 0 {
+		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
+		os.Exit(1)
+	}
+	return result, resultError
 }
 
 func interruptFun(featherCtx *cap.FeatherContext, tickerInterrupt *time.Ticker) {
 	select {
-	case <-interruptChan:
-		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		os.Exit(1)
 	case <-tickerInterrupt.C:
+		if len(featherCtx.InterruptChan) > 0 {
+			cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -328,9 +371,15 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		return errors.New("incorrect feathering")
 	}
 
-	sessionIdentifier := agentName + "." + *gAgentConfig.Env
-	featherCtx.SessionIdentifier = &sessionIdentifier
-	captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
+	if sessionIdentifier, ok := deployers.GetEncodedDeployerId(agentName, *gAgentConfig.Env); ok {
+		featherCtx.SessionIdentifier = &sessionIdentifier
+		featherCtx.Log.Printf("Starting deploy ctl session: %s\n", sessionIdentifier)
+		captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
+	} else {
+		fmt.Println(fmt.Sprintf("Unsupported agent: %s", agentName))
+		os.Exit(-1)
+	}
+
 	return nil
 }
 
@@ -431,7 +480,12 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			var errAgentLoad error
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
-			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(config.VaultAddress, *trcshConfig.CToken, "bootstrap", config.Env)
+			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(config.VaultAddress,
+				*trcshConfig.CToken,
+				"bootstrap",
+				config.Env,
+				deployCtlAcceptRemote,
+				deployCtlInterrupted)
 			if errAgentLoad != nil {
 				fmt.Printf("Permissions failure.  Incorrect deployment")
 				os.Exit(1)
@@ -441,7 +495,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			}
 			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 		}
-		config.FeatherCtx = captiplib.FeatherCtlInit(nil,
+		config.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
 			gAgentConfig.LocalHostAddr,
 			gAgentConfig.EncryptPass,
 			gAgentConfig.EncryptSalt,
@@ -820,7 +874,13 @@ collaboratorReRun:
 					}
 					errMessage := err.Error()
 					errMessageFiltered := strings.ReplaceAll(errMessage, ":", "-")
-					config.DeploymentCtlMessageChan <- fmt.Sprintf("%s encountered errors - %s\n", deployLine, errMessageFiltered)
+					deliverableMsg := fmt.Sprintf("%s encountered errors - %s\n", deployLine, errMessageFiltered)
+					go func(dMesg string) {
+						config.DeploymentCtlMessageChan <- dMesg
+						config.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
+					}(deliverableMsg)
+
+					atomic.StoreInt64(&config.FeatherCtx.RunState, cap.RUN_STARTED)
 					goto collaboratorReRun
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
@@ -845,9 +905,15 @@ collaboratorReRun:
 		}
 	}
 	if eUtils.IsWindows() {
-		config.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
 		for {
+			completeOnce := false
 			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
+				if !completeOnce {
+					go func() {
+						config.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
+					}()
+					completeOnce = true
+				}
 				time.Sleep(time.Second)
 			} else {
 				break
