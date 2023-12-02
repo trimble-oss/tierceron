@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"VaultConfig.TenantConfig/util/buildopts/deployers"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
@@ -103,7 +104,8 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
 		fmt.Printf("%s\n", msg)
 	}
-	featherCtx.Log.Printf("ctl: %s  msg: %s\n", ctlFlapMode, strings.Trim(msg, "\n"))
+	deployerId, _ := deployers.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
+	featherCtx.Log.Printf("deployer: %s ctl: %s  msg: %s\n", deployerId, ctlFlapMode, strings.Trim(msg, "\n"))
 	if strings.Contains(msg, "encountered errors") {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		os.Exit(0)
@@ -115,8 +117,10 @@ func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg strin
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] != cap.MODE_PERCH {
 		featherCtx.Log.Printf(msg)
 	}
+	deployerId, _ := deployers.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
+
 	if *featherCtx.SessionIdentifier == "spectrumformssub.dev" {
-		fmt.Printf("%s %s", *featherCtx.SessionIdentifier, msg)
+		fmt.Printf("deployer: %s %s", deployerId, msg)
 		featherCtx.Log.Printf("%s %s", *featherCtx.SessionIdentifier, msg)
 	}
 }
@@ -158,7 +162,13 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	// Each deployer needs it's own context.
 	//
 	localHostAddr := ""
-	sessionIdentifier := deployment + "." + *gAgentConfig.Env
+	var sessionIdentifier string
+	if sessionId, ok := deployers.GetEncodedDeployerId(deployment, *gAgentConfig.Env); ok {
+		sessionIdentifier = sessionId
+	} else {
+		fmt.Printf("Unsupported deployer: %s\n", deployment)
+		os.Exit(-1)
+	}
 	config.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
 		&localHostAddr,
 		gAgentConfig.EncryptPass,
@@ -200,6 +210,9 @@ func main() {
 		x := <-ic
 		interruptChan <- x
 	}()
+
+	// Initialize the supported
+	deployers.InitSupportedDeployers()
 
 	if !eUtils.IsWindows() {
 		if os.Geteuid() == 0 {
@@ -358,11 +371,15 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		return errors.New("incorrect feathering")
 	}
 
-	sessionIdentifier := agentName + "." + *gAgentConfig.Env
-	featherCtx.SessionIdentifier = &sessionIdentifier
+	if sessionIdentifier, ok := deployers.GetEncodedDeployerId(agentName, *gAgentConfig.Env); ok {
+		featherCtx.SessionIdentifier = &sessionIdentifier
+		featherCtx.Log.Printf("Starting deploy ctl session: %s\n", sessionIdentifier)
+		captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
+	} else {
+		fmt.Println(fmt.Sprintf("Unsupported agent: %s", agentName))
+		os.Exit(-1)
+	}
 
-	featherCtx.Log.Printf("Starting deploy ctl session: %s\n", sessionIdentifier)
-	captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
 	return nil
 }
 

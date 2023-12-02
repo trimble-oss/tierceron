@@ -44,6 +44,11 @@ resources:
     endpoint: trimble-oss
     name: trimble-oss/tierceron-hat
     ref: main
+  - repository: tierceron-succinctly
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-succinctly
+    ref: main
   - repository: tierceron-nute
     type: github
     endpoint: trimble-oss
@@ -92,6 +97,8 @@ steps:
 - checkout: VaultConfig.Test
   clean: false
 - checkout: tierceron-hat
+  clean: false
+- checkout: tierceron-succinctly
   clean: false
 - checkout: tierceron-nute
   clean: false
