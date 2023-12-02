@@ -95,7 +95,12 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	return penseProtect, nil
 }
 
-func NewAgentConfig(address string, agentToken string, deployments string, env string) (*AgentConfigs, *TrcShConfig, error) {
+func NewAgentConfig(address string,
+	agentToken string,
+	deployments string,
+	env string,
+	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
+	interruptedFunc func(*cap.FeatherContext) error) (*AgentConfigs, *TrcShConfig, error) {
 	mod, modErr := helperkv.NewModifier(false, agentToken, address, env, nil, true, nil)
 	if modErr != nil {
 		fmt.Println("trcsh Failed to bootstrap")
