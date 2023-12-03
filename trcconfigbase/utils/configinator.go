@@ -107,34 +107,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 	}
 
 	//File filter
-	fileFound := true
-	fileFilterIndex := make([]int, len(config.FileFilter))
-	fileFilterCounter := 0
-	if len(config.FileFilter) != 0 && config.FileFilter[0] != "" {
-		for _, FileFilter := range config.FileFilter {
-			for i, templatePath := range templatePaths {
-				if strings.Contains(templatePath, FileFilter) {
-					fileFilterIndex[fileFilterCounter] = i
-					fileFilterCounter++
-					fileFound = true
-					break
-				}
-			}
-		}
-		if !fileFound {
-			return nil, eUtils.LogAndSafeExit(config, "Could not find specified file in templates", 1)
-		}
+	templatePaths, endPaths = FilterPaths(templatePaths, endPaths, config.FileFilter, false)
 
-		fileTemplatePaths := []string{}
-		fileEndPaths := []string{}
-		for _, index := range fileFilterIndex {
-			fileTemplatePaths = append(fileTemplatePaths, templatePaths[index])
-			fileEndPaths = append(fileEndPaths, endPaths[index])
-		}
-
-		templatePaths = fileTemplatePaths
-		endPaths = fileEndPaths
-	}
+	templatePaths, endPaths = FilterPaths(templatePaths, endPaths, config.ServicesWanted, false)
 
 	for _, templatePath := range templatePaths {
 		if !config.WantCerts && strings.Contains(templatePath, "Common") {
