@@ -252,6 +252,7 @@ func main() {
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
 
+		envPtr := flag.String("env", "", "Environment to configure")
 		regionPtr = flag.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 		trcPathPtr = flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 		appRoleIDPtr = flag.String("appRoleID", "", "Public app role ID")
@@ -271,6 +272,10 @@ func main() {
 		if len(agentEnv) == 0 {
 			fmt.Println("trcsh on windows requires AGENT_ENV.")
 			os.Exit(-1)
+		}
+
+		if len(*envPtr) > 0 {
+			agentEnv = *envPtr
 		}
 
 		if len(address) == 0 {
