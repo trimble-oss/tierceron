@@ -24,8 +24,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/capauth"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
-	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/trcpubbase"
+	"github.com/trimble-oss/tierceron/trcsh/deployutil"
 	kube "github.com/trimble-oss/tierceron/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/trcsubbase"
@@ -146,6 +146,8 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 		fmt.Printf("Initialization setup error: %s\n", err.Error())
 	}
 	if len(deployment) > 0 {
+		// Set the name of the plugin to deploy in "trcplugin"
+		// Used later by codedeploy
 		config.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
 		config.DeploymentCtlMessageChan = make(chan string, 5)
 		fmt.Printf("Starting deployer: %s\n", deployment)
@@ -493,7 +495,8 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			gAgentConfig.EncryptSalt,
 			gAgentConfig.HostAddr,
 			gAgentConfig.HandshakeCode,
-			new(string), gAgentConfig.AcceptRemoteFunc, gAgentConfig.InterruptHandlerFunc)
+			new(string), deployCtlAcceptRemote,
+			deployCtlInterrupted)
 		if config.Log != nil {
 			config.FeatherCtx.Log = config.Log
 		}
@@ -706,52 +709,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		}
 		config.Log.Println("Processing trcshell")
 	} else {
-		if strings.Contains(pwd, "TrcDeploy") && len(config.DeploymentConfig) > 0 {
-			if deployment, ok := config.DeploymentConfig["trcplugin"]; ok {
-				// Swapping in project root...
-				configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
-				tokenName := "config_token_" + config.EnvRaw
-				readToken := ""
-				autoErr := eUtils.AutoAuth(config, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &config.Env, &config.VaultAddress, &mergedEnvRaw, "config.yml", false)
-				if autoErr != nil {
-					fmt.Println("Missing auth components.")
-					return
-				}
-
-				mod, err := helperkv.NewModifier(config.Insecure, readToken, *gTrcshConfig.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
-				if err != nil {
-					fmt.Println("Unable to obtain resources for deployment")
-					return
-				}
-				mod.Env = config.EnvRaw
-				deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
-				if err != nil {
-					fmt.Println("Unable to obtain config for deployment")
-					return
-				}
-				deploymentConfig["trcpluginalias"] = deployment
-				config.DeploymentConfig = deploymentConfig
-				if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
-					config.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
-					config.EndDir = trcDeployRoot.(string)
-				}
-
-				if trcProjectService, ok := config.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
-					trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
-					config.ZeroConfig = true
-					contentArray, _, _, err := vcutils.ConfigTemplate(config, mod, fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string)), true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
-					config.ZeroConfig = false
-					if err != nil {
-						eUtils.LogErrorObject(config, err, false)
-						return
-					}
-					content = []byte(contentArray)
-				} else {
-					fmt.Println("Project not configured and ready for deployment.  Missing projectservice")
-					return
-				}
-			}
-		} else {
+		if !strings.Contains(pwd, "TrcDeploy") || len(config.DeploymentConfig) == 0 {
 			fmt.Println("Processing manual trcshell")
 			if config.EnvRaw == "itdev" {
 				content, err = os.ReadFile(pwd + "/deploy/buildtest.trc")
@@ -768,6 +726,27 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		}
 	}
 
+collaboratorReRun:
+	if featherCtx != nil {
+		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
+		for {
+			if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
+				break
+			} else {
+				acceptRemote(featherCtx, cap.FEATHER_CTL, "")
+			}
+		}
+
+		if content == nil {
+			content, err = deployutil.LoadPluginDeploymentScript(config, gTrcshConfig, pwd)
+			if err != nil {
+				config.Log.Printf("Failure to load deployment: %s\n", config.DeploymentConfig["trcplugin"])
+				time.Sleep(time.Minute)
+				goto collaboratorReRun
+			}
+		}
+	}
+
 	deployArgLines := strings.Split(string(content), "\n")
 	configCount := strings.Count(string(content), "trcconfig") //Uses this to close result channel on last run.
 
@@ -777,18 +756,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 	var onceKubeInit sync.Once
 	var PipeOS billy.File
 
-collaboratorReRun:
-	if featherCtx != nil {
-		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
-		for {
-			if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
-				break
-			} else {
-				time.Sleep(time.Second * 3)
-			}
-		}
-
-	}
 	for _, deployPipeline := range deployArgLines {
 		deployPipeline = strings.TrimLeft(deployPipeline, " ")
 		if strings.HasPrefix(deployPipeline, "#") || deployPipeline == "" {
@@ -873,6 +840,7 @@ collaboratorReRun:
 					}(deliverableMsg)
 
 					atomic.StoreInt64(&config.FeatherCtx.RunState, cap.RUN_STARTED)
+					content = nil
 					goto collaboratorReRun
 				} else {
 					config.DeploymentCtlMessageChan <- deployLine
@@ -911,6 +879,7 @@ collaboratorReRun:
 				break
 			}
 		}
+		content = nil
 		goto collaboratorReRun
 	}
 	//Make the arguments in the script -> os.args.
