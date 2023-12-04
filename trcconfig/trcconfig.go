@@ -18,7 +18,7 @@ func main() {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
-	fmt.Println("Version: " + "1.27")
+	fmt.Println("Version: " + "1.28")
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])

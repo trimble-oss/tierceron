@@ -6,6 +6,7 @@ package coreopts
 import (
 	"database/sql"
 	"errors"
+	"os"
 	"strings"
 )
 
@@ -17,7 +18,7 @@ func GetFolderPrefix(custom []string) string {
 		endTi = 0
 
 		for endTi = ti; endTi > 0; endTi-- {
-			if custom[0][endTi] == '/' {
+			if custom[0][endTi] == '/' || custom[0][endTi] == os.PathSeparator {
 				endTi = endTi + 1
 				break
 			}
