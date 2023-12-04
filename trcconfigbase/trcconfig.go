@@ -320,10 +320,6 @@ func CommonMain(envPtr *string,
 		services = strings.Split(*servicesWanted, ",")
 	}
 
-	// TODO: This wasn't doing anything useful...  possibly remove?
-	//	for _, service := range services {
-	//		service = strings.TrimSpace(service)
-	//	}
 	regions := []string{}
 
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
@@ -408,6 +404,7 @@ func CommonMain(envPtr *string,
 				Update:            messenger,
 				FileFilter:        fileFilterSlice,
 			}
+
 			configSlice = append(configSlice, config)
 			configCtx.ConfigWg.Add(1)
 			go func() {
