@@ -312,6 +312,9 @@ func CommonMain(envPtr *string,
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
+		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
+			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
+		}
 		if *certifyImagePtr {
 			certifyInit = true
 		}
@@ -331,9 +334,6 @@ func CommonMain(envPtr *string,
 			}
 			if _, ok := pluginToolConfig["deploysubpathPtr"]; ok {
 				pluginToolConfig["trcdeploysubpath"] = pluginToolConfig["deploysubpathPtr"]
-			}
-			if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
-				pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
 			}
 			if _, ok := pluginToolConfig["codeBundlePtr"].(string); ok {
 				pluginToolConfig["trccodebundle"] = pluginToolConfig["codeBundlePtr"].(string)
