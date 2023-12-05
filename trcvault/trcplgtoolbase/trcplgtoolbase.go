@@ -374,9 +374,12 @@ func CommonMain(envPtr *string,
 		fmt.Println("Deployment definition applied to vault and is ready for deployments.")
 	} else if *winservicestopPtr {
 		fmt.Printf("Stopping service %s\n", pluginToolConfig["trcservicename"].(string))
-		cmd := exec.Command("taskkill", "/F", "/T", "/FI", fmt.Sprintf("\"SERVICES eq %s\"", pluginToolConfig["trcservicename"].(string)))
+		//cmd := exec.Command("taskkill", "/F", "/T", "/FI", fmt.Sprintf("\"SERVICES eq %s\"", pluginToolConfig["trcservicename"].(string)))
+		cmd := exec.Command("net", "stop", pluginToolConfig["trcservicename"].(string))
 		err := cmd.Run()
-		if err != nil && !strings.Contains(err.Error(), "1") && !strings.Contains(err.Error(), "5") {
+		if err != nil && !strings.Contains(err.Error(), "3521") {
+			// 3521 means service isn't running...
+			// Everything else treated as error.
 			fmt.Println(err)
 			return err
 		}
@@ -384,7 +387,7 @@ func CommonMain(envPtr *string,
 
 	} else if *winservicestartPtr {
 		fmt.Printf("Starting service %s\n", pluginToolConfig["trcservicename"].(string))
-		cmd := exec.Command("sc", "start", pluginToolConfig["trcservicename"].(string))
+		cmd := exec.Command("net", "start", pluginToolConfig["trcservicename"].(string))
 		err := cmd.Run()
 		if err != nil && !strings.Contains(err.Error(), "1056") {
 			fmt.Println(err)
