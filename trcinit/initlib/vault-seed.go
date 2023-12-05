@@ -792,8 +792,13 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 		}
 	}
 
+	config.Log.Println("Writeback for " + path + " initiated.")
 	warn, err := mod.Write(path, data, config.Log)
-
+	if err != nil {
+		config.Log.Println("Encountered error while writing to vault...")
+	} else {
+		config.Log.Println("Writeback for " + path + " occured.")
+	}
 	eUtils.LogWarningsObject(config, warn, false)
 	eUtils.LogErrorObject(config, err, false)
 	// Update value metrics to reflect credential use
