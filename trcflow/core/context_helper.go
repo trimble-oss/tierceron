@@ -221,10 +221,6 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 	}
 
-	if matrixChangedEntries != nil {
-		tfmContext.Config.Log.Println("Changes found for writeback for" + tfContext.Flow.TableName())
-	}
-
 	for _, changedEntry := range matrixChangedEntries {
 		var changedTableQuery string
 		var changedId interface{}
