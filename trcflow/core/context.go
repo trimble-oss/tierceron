@@ -975,7 +975,6 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 			eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
 		retryConnectionAccess:
 			dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
-
 			if err.Error() != "incorrect URL format" {
 				if retryCount < 3 && err != nil && dbsourceConn == nil {
 					retryCount = retryCount + 1
