@@ -488,7 +488,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 					}
 				}
 			}
-			tfmContext.Config.Log.Println("Signal recieved for writeback for" + tfContext.Flow.TableName())
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
