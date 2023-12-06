@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/trcchatproxy
 
-go 1.21.4
+go 1.21.5
 
 require google.golang.org/api v0.145.0
 
