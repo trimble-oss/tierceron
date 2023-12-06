@@ -791,7 +791,6 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 			return
 		}
 	}
-
 	warn, err := mod.Write(path, data, config.Log)
 
 	eUtils.LogWarningsObject(config, warn, false)

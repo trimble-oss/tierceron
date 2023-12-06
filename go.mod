@@ -1,10 +1,9 @@
 module github.com/trimble-oss/tierceron
 
-go 1.21.4
+go 1.21.5
 
 require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
-	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dolthub/go-mysql-server v0.12.0
 	github.com/go-sql-driver/mysql v1.6.0
@@ -24,7 +23,6 @@ require (
 )
 
 require (
-	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	//github.com/trimble-oss/tierceron-nute v0.0.0-20221220150022-370bea61eb44
@@ -56,6 +54,7 @@ require (
 )
 
 require (
+	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 // indirect
