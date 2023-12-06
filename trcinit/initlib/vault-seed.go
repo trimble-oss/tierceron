@@ -791,8 +791,8 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 			return
 		}
 	}
- warn, err := mod.Write(path, data, config.Log)
-	}
+	warn, err := mod.Write(path, data, config.Log)
+
 	eUtils.LogWarningsObject(config, warn, false)
 	eUtils.LogErrorObject(config, err, false)
 	// Update value metrics to reflect credential use
