@@ -312,6 +312,9 @@ func CommonMain(envPtr *string,
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
+		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
+			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
+		}
 		if *certifyImagePtr {
 			certifyInit = true
 		}
@@ -331,9 +334,6 @@ func CommonMain(envPtr *string,
 			}
 			if _, ok := pluginToolConfig["deploysubpathPtr"]; ok {
 				pluginToolConfig["trcdeploysubpath"] = pluginToolConfig["deploysubpathPtr"]
-			}
-			if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
-				pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
 			}
 			if _, ok := pluginToolConfig["codeBundlePtr"].(string); ok {
 				pluginToolConfig["trccodebundle"] = pluginToolConfig["codeBundlePtr"].(string)
@@ -374,12 +374,15 @@ func CommonMain(envPtr *string,
 		fmt.Println("Deployment definition applied to vault and is ready for deployments.")
 	} else if *winservicestopPtr {
 		fmt.Printf("Stopping service %s\n", pluginToolConfig["trcservicename"].(string))
-		cmd := exec.Command("taskkill", "/F", "/T", "/FI", fmt.Sprintf("\"SERVICES eq %s\"", pluginToolConfig["trcservicename"].(string)))
+		cmd := exec.Command("net", "stop", pluginToolConfig["trcservicename"].(string))
 		err := cmd.Run()
-		if err != nil && !strings.Contains(err.Error(), "1") && !strings.Contains(err.Error(), "5") {
+		if err != nil && strings.Contains(err.Error(), "2185") {
+			// Only break if service isn't defined...
 			fmt.Println(err)
 			return err
 		}
+		cmdKill := exec.Command("taskkill", "/F", "/T", "/FI", fmt.Sprintf("\"SERVICES eq %s\"", pluginToolConfig["trcservicename"].(string)))
+		cmdKill.Run()
 		fmt.Printf("Service stopped: %s\n", pluginToolConfig["trcservicename"].(string))
 
 	} else if *winservicestartPtr {
