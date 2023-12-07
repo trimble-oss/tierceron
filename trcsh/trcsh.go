@@ -172,6 +172,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 		gAgentConfig.HostAddr,
 		gAgentConfig.HandshakeCode,
 		&sessionIdentifier, /*Session identifier */
+		&env,
 		deployerAcceptRemote,
 		deployerInterrupted)
 	config.FeatherCtx.Log = config.Log
@@ -370,7 +371,7 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		return errors.New("incorrect feathering")
 	}
 
-	if sessionIdentifier, ok := deployers.GetEncodedDeployerId(agentName, *gAgentConfig.Env); ok {
+	if sessionIdentifier, ok := deployers.GetEncodedDeployerId(agentName, *featherCtx.Env); ok {
 		featherCtx.SessionIdentifier = &sessionIdentifier
 		featherCtx.Log.Printf("Starting deploy ctl session: %s\n", sessionIdentifier)
 		captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
@@ -500,7 +501,9 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			gAgentConfig.EncryptSalt,
 			gAgentConfig.HostAddr,
 			gAgentConfig.HandshakeCode,
-			new(string), deployCtlAcceptRemote,
+			new(string),
+			&env,
+			deployCtlAcceptRemote,
 			deployCtlInterrupted)
 		if config.Log != nil {
 			config.FeatherCtx.Log = config.Log
@@ -670,7 +673,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		fmt.Println("Session Authorized")
 	}
 
-	if (len(os.Args) > 1 || len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
+	if (len(os.Args) > 1 && len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
 		// Generate trc code...
 		config.Log.Println("Preload setup")
 		trcPathParts := strings.Split(trcPath, "/")
@@ -680,7 +683,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		config.OutputMemCache = true
 		config.StartDir = []string{"trc_templates"}
 		config.EndDir = "."
-		config.Log.Println("Preloading")
+		config.Log.Printf("Preloading path %s env %s\n", trcPath, config.EnvRaw)
 		configErr := trcconfigbase.CommonMain(&config.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, config)
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")
