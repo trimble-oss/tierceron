@@ -32,11 +32,12 @@ func CommonMain(envPtr *string,
 	argLines []string,
 	c *eUtils.DriverConfig) error {
 
+	var flagEnvPtr *string
 	// Main functions are as follows:
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ContinueOnError)
 		// set and ignore..
-		flagset.String("env", "dev", "Environment to configure")
+		flagEnvPtr = flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
@@ -236,6 +237,10 @@ func CommonMain(envPtr *string,
 	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	config.FeatherCtlCb = configBase.FeatherCtlCb
 	config.FeatherCtx = configBase.FeatherCtx
+	if config.FeatherCtx != nil && flagEnvPtr != nil && strings.HasPrefix(*flagEnvPtr, *config.FeatherCtx.Env) {
+		// take on the environment context of the provided flag... like dev-1
+		config.FeatherCtx.Env = flagEnvPtr
+	}
 
 	if err != nil {
 		logger.Println("Error: " + err.Error() + " - 1")
