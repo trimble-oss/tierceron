@@ -90,16 +90,6 @@ func (fnt FlowNameType) ServiceName() string {
 func TriggerChangeChannel(table string) {
 	for _, tfmContext := range tfmContextMap {
 		if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
-			if len(notificationFlowChannel) == 5 {
-			emptied:
-				for i := 0; i < 3; i++ {
-					select {
-					case <-notificationFlowChannel:
-					default:
-						break emptied
-					}
-				}
-			}
 			go func(nfc chan bool) {
 				nfc <- true
 			}(notificationFlowChannel)
@@ -156,7 +146,7 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 		}
 
 		for _, notificationFlowChannel := range tfmContext.ChannelMap {
-			if len(notificationFlowChannel) < 3 {
+			if len(notificationFlowChannel) < 10 {
 				go func(nfc chan bool) {
 					nfc <- true
 				}(notificationFlowChannel)
@@ -775,7 +765,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 5 {
+						if len(notificationFlowChannel) < 10 {
 							go func(nfc chan bool) {
 								nfc <- true
 							}(notificationFlowChannel)
@@ -788,7 +778,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 5 {
+						if len(notificationFlowChannel) < 10 {
 							go func(nfc chan bool) {
 								nfc <- true
 							}(notificationFlowChannel)
@@ -869,7 +859,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 5 {
+						if len(notificationFlowChannel) < 10 {
 							go func(nfc chan bool) {
 								nfc <- true
 							}(notificationFlowChannel)
@@ -882,7 +872,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 5 {
+						if len(notificationFlowChannel) < 10 {
 							go func(nfc chan bool) {
 								nfc <- true
 							}(notificationFlowChannel)
