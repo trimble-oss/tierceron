@@ -199,7 +199,7 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-kms-wrapping/entropy v0.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-plugin v1.4.3 // indirect
+	github.com/hashicorp/go-plugin v1.6.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.6 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
@@ -207,7 +207,7 @@ require (
 	github.com/hashicorp/go-version v1.2.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d // indirect
+	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/jmoiron/sqlx v1.3.4 // indirect
 	github.com/lestrrat-go/strftime v1.0.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
