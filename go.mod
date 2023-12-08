@@ -5,7 +5,7 @@ go 1.21.5
 require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
 	github.com/denisenkom/go-mssqldb v0.12.0
-	github.com/dolthub/go-mysql-server v0.12.0
+	github.com/dolthub/go-mysql-server v0.17.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/protobuf v1.5.3
 	github.com/google/go-cmp v0.5.9
@@ -173,7 +173,7 @@ require (
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564 // indirect
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9 // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/yuin/goldmark v1.4.13 // indirect
 	golang.org/x/image v0.14.0 // indirect
 	golang.org/x/mobile v0.0.0-20220307220422-55113b94f09c // indirect
@@ -185,7 +185,7 @@ require (
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/aws/aws-sdk-go v1.43.30
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/dolthub/vitess v0.0.0-20220930181015-759b1acd9188
+	github.com/dolthub/vitess v0.0.0-20221128235342-e80b37ceed86
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/frankban/quicktest v1.14.4 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
@@ -223,10 +223,10 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.18.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
+	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/term v0.14.0
 	golang.org/x/text v0.14.0
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
@@ -247,7 +247,7 @@ replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
 replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.6
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.7
 
 replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 
