@@ -256,6 +256,9 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	templatePaths := pluginConfig["templatePath"].([]string)
 
 	config.Log.Println("GetPluginToolConfig reading base configurations.")
+	tempEnv := mod.Env
+	envParts := strings.Split(mod.Env, "-")
+	mod.Env = envParts[0]
 	pluginToolConfig, err := mod.ReadData("super-secrets/Restricted/PluginTool/config")
 
 	if err != nil {
@@ -304,6 +307,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 			mod.SectionPath = "super-secrets/Index/" + project + "/trcplugin/" + config.SubSectionValue + "/" + service
 		}
 		ptc1, err = mod.ReadData(mod.SectionPath)
+
 		pluginToolConfig["pluginpath"] = mod.SectionPath
 		if err != nil || ptc1 == nil {
 			config.Log.Println("No data found for project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
@@ -326,6 +330,7 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	}
 	mod.SectionPath = ""
 	config.Log.Println("GetPluginToolConfig plugin data load process complete.")
+	mod.Env = tempEnv
 
 	if pluginEnvConfigClone == nil {
 		config.Log.Println("No data found for plugin.")
