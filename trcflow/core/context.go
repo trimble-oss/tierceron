@@ -51,6 +51,7 @@ var AskFlumeFlow FlowNameType = "AskFlumeFlow"
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]interface{}
 var tfmContextMap = make(map[string]*TrcFlowMachineContext, 5)
+var cleanerInit = false
 
 const (
 	TableSyncFlow FlowType = iota
@@ -108,8 +109,30 @@ func TriggerChangeChannel(table string) {
 }
 
 func TriggerAllChangeChannel(table string, changeIds map[string]string) {
-	for _, tfmContext := range tfmContextMap {
+	if !cleanerInit { //Kicks off cleaner goroutine if not already active.
+		cleanerInit = true
+		for _, tfmContext := range tfmContextMap {
+			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
+				go func(nFC chan bool) {
+					for {
+						if len(nFC) >= 8 {
+						emptied:
+							for i := 0; i < 4; i++ {
+								select {
+								case <-nFC:
+								default:
+									nFC <- true
+									break emptied
+								}
+							}
+						}
+					}
+				}(notificationFlowChannel)
+			}
+		}
+	}
 
+	for _, tfmContext := range tfmContextMap {
 		// If changIds identified, manually trigger a change.
 		if table != "" {
 			for changeIdKey, changeIdValue := range changeIds {
@@ -125,16 +148,6 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 				}
 			}
 			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
-				if len(notificationFlowChannel) == 5 {
-				emptied:
-					for i := 0; i < 3; i++ {
-						select {
-						case <-notificationFlowChannel:
-						default:
-							break emptied
-						}
-					}
-				}
 				go func(nfc chan bool) {
 					nfc <- true
 				}(notificationFlowChannel)
@@ -143,16 +156,6 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 		}
 
 		for _, notificationFlowChannel := range tfmContext.ChannelMap {
-			if len(notificationFlowChannel) == 5 {
-			emptied1:
-				for i := 0; i < 3; i++ {
-					select {
-					case <-notificationFlowChannel:
-					default:
-						break emptied1
-					}
-				}
-			}
 			if len(notificationFlowChannel) < 3 {
 				go func(nfc chan bool) {
 					nfc <- true
@@ -277,7 +280,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 	tfmContext.ChannelMap = make(map[FlowNameType]chan bool)
 
 	for _, table := range tableNames {
-		tfmContext.ChannelMap[FlowNameType(table)] = make(chan bool, 5)
+		tfmContext.ChannelMap[FlowNameType(table)] = make(chan bool, 10)
 	}
 
 	for _, f := range additionalFlowNames {
@@ -478,16 +481,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)
 		case <-flowChangedChannel:
-			if len(flowChangedChannel) == 5 {
-			emptied:
-				for i := 0; i < 3; i++ {
-					select {
-					case <-flowChangedChannel:
-					default:
-						break emptied
-					}
-				}
-			}
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
