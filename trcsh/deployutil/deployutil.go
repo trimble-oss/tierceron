@@ -36,11 +36,11 @@ func LoadPluginDeploymentScript(config *eUtils.DriverConfig, trcshConfig *capaut
 			mod.Env = envParts[0]
 			fmt.Printf("Loading deployment details for %s and env %s", deployment, mod.Env)
 			deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
+			mod.Env = tempEnv
 			if err != nil {
 				fmt.Println("Unable to obtain config for deployment")
 				return nil, err
 			}
-			mod.Env = tempEnv
 			deploymentConfig["trcpluginalias"] = deployment
 			config.DeploymentConfig = deploymentConfig
 			if trcDeployRoot, ok := config.DeploymentConfig["trcdeployroot"]; ok {
