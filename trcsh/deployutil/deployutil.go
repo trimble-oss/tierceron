@@ -15,6 +15,9 @@ import (
 func LoadPluginDeploymentScript(config *eUtils.DriverConfig, trcshConfig *capauth.TrcShConfig, pwd string) ([]byte, error) {
 	if strings.Contains(pwd, "TrcDeploy") && len(config.DeploymentConfig) > 0 {
 		if deployment, ok := config.DeploymentConfig["trcplugin"]; ok {
+			if deploymentAlias, deployAliasOk := config.DeploymentConfig["trcpluginalias"]; deployAliasOk {
+				deployment = deploymentAlias
+			}
 			mergedEnvRaw := config.EnvRaw
 			// Swapping in project root...
 			configRoleSlice := strings.Split(*trcshConfig.ConfigRole, ":")
