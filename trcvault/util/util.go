@@ -260,6 +260,9 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	envParts := strings.Split(mod.Env, "-")
 	mod.Env = envParts[0]
 	pluginToolConfig, err := mod.ReadData("super-secrets/Restricted/PluginTool/config")
+	defer func(m *helperkv.Modifier, e string) {
+		m.Env = e
+	}(mod, tempEnv)
 
 	if err != nil {
 		config.Log.Println("GetPluginToolConfig errored with missing base PluginTool configurations.")
