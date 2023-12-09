@@ -108,10 +108,13 @@ func NewAgentConfig(address string,
 	}
 	mod.Direct = true
 	envParts := strings.Split(env, "-")
-
 	mod.Env = envParts[0]
 
 	data, readErr := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
+	defer func(m *helperkv.Modifier, e string) {
+		m.Env = e
+	}(mod, env)
+
 	if readErr != nil {
 		return nil, nil, readErr
 	} else {
