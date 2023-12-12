@@ -392,9 +392,11 @@ func CommonMain(envPtr *string,
 
 	} else if *winservicestartPtr {
 		fmt.Printf("Starting service %s\n", pluginToolConfig["trcservicename"].(string))
-		cmd := exec.Command("sc", "start", pluginToolConfig["trcservicename"].(string))
+		//		cmd := exec.Command("sc", "start", pluginToolConfig["trcservicename"].(string))
+		cmd := exec.Command("net", "start", pluginToolConfig["trcservicename"].(string))
 		err := cmd.Run()
-		if err != nil && !strings.Contains(err.Error(), "1056") {
+		if err != nil && strings.Contains(err.Error(), "2185") {
+			// Only break if service isn't defined...
 			fmt.Println(err)
 			return err
 		}
