@@ -501,6 +501,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		}
 	}
 	tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
+
 	tfContext.Inserter = nil
 
 	return nil
