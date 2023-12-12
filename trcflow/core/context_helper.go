@@ -500,9 +500,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			continue
 		}
 	}
-	changesLock.Lock()
 	tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
-	changesLock.Unlock()
 
 	tfContext.Inserter = nil
 
