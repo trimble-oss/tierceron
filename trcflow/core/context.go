@@ -105,16 +105,12 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
 				go func(nFC chan bool) {
 					for {
+						time.Sleep(time.Second * 3)
 						if len(nFC) >= 8 {
-						emptied:
 							for i := 0; i < 4; i++ {
-								select {
-								case <-nFC:
-								default:
-									nFC <- true
-									break emptied
-								}
+								<-nFC
 							}
+							nFC <- true
 						}
 					}
 				}(notificationFlowChannel)
@@ -654,8 +650,8 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 
 	// Second row here
 	// Not sure if necessary to copy entire ReportStatistics method
-	tenantIndexPath, tenantDFSIdPath := utilcore.GetDFSPathName()
-	df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.Config.Log, false)
+	//tenantIndexPath, tenantDFSIdPath := utilcore.GetDFSPathName()
+	//df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.Config.Log, false)
 
 	//df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, ...)
 	tfmContext.FlowControllerLock.Lock()
