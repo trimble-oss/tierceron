@@ -38,6 +38,8 @@ require github.com/trimble-oss/tierceron-nute v0.0.0-20230128181737-65043c9e434b
 require github.com/trimble-oss/tierceron-succinctly v0.0.0-00010101000000-000000000000 // indirect
 
 require (
+	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000
+	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
@@ -54,7 +56,6 @@ require (
 )
 
 require (
-	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 // indirect
@@ -247,7 +248,7 @@ replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
 replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.7
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.10
 
 replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 
