@@ -317,8 +317,13 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 
 		keys := make([]int, 0, len(versionData))
 		for versionNumber := range versionData {
-			versionNo, _ := strconv.ParseInt(versionNumber, 10, 64)
-			keys = append(keys, int(versionNo))
+			versionNo, err := strconv.ParseInt(versionNumber, 10, 64)
+			if err == nil {
+				keys = append(keys, int(versionNo))
+			} else {
+				fmt.Printf("Version limit exceeded: %s\n", versionNumber)
+				return
+			}
 		}
 		sort.Ints(keys)
 		for _, key := range keys {
