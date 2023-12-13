@@ -39,7 +39,8 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 	// Simply route
 	noauth := func(w http.ResponseWriter, r *http.Request, ps rtr.Params) {
 		s.Log.SetPrefix("[INFO]")
-		s.Log.Printf("Incoming request %s %s\n \tfrom %s\n", r.Method, r.URL.String(), r.RemoteAddr)
+		errMsg := eUtils.SanitizeForLogging(fmt.Sprintf("Incoming request %s %s From %s", r.Method, r.URL.String(), r.RemoteAddr))
+		s.Log.Print(errMsg)
 		s.Log.Println("Handling with no auth")
 		restHandler.ServeHTTP(w, r)
 	}
@@ -53,7 +54,8 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 		var errMsg string
 
 		s.Log.SetPrefix("[INFO]")
-		s.Log.Printf("Incoming request %s %s\n \tFrom %s\n", r.Method, r.URL.String(), r.RemoteAddr)
+		errMsg = eUtils.SanitizeForLogging(fmt.Sprintf("Incoming request %s %s From %s", r.Method, r.URL.String(), r.RemoteAddr))
+		s.Log.Print(errMsg)
 		s.Log.SetPrefix("[ERROR]")
 		authString := r.Header.Get("Authorization")
 
@@ -98,6 +100,8 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 					// Token claims not in json format
 					errMsg = "Format error with auth token claims"
 					http.Error(w, errMsg, 401)
+
+					errMsg = eUtils.SanitizeForLogging(errMsg)
 					s.Log.Printf("%d: %s", 401, errMsg)
 					return
 				}
