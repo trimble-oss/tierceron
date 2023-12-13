@@ -165,7 +165,7 @@ Will not run if you don't have appRoleID and secretID tokens.
 **CLI Syntax:**
 
 *	`trcconfig` 
-    Executes trcconfig. If the cert file exists trcconfig will use appRoleID and secretID tokens from the file. If no cert file exists trcconfig will prompt for appRoleID and secretID then create a cert file and save those tokens to it for future use.
+    Executes trcconfig. If the cert file exists trcconfig will use appRoleID and secretID tokens from the file. If no approle file exists trcconfig will prompt for appRoleID and secretID then create a cert file and save those tokens to it for future use.
 
 *	`trcconfig -appRoleID=foo -secretID=bar`
      Overrides the tokens in the cert file. The new tokens will be saved for future use.
@@ -212,8 +212,14 @@ of global variables at build time_
 
 ### Project structure ❏
 
-The repository was created using the MEP Service template and it adopts the default microservice architecture.
-For any additions, the same structure should be followed.
+Until this project becomes Open source, in order to build Tierceron, you will need to do the following:
+
+$ git config --global url."git@github.com:trimble-oss/".insteadOf "https://github.com/trimble-oss/"
+$ eval `ssh-agent`
+# go get needs the following to function seemlessly with Private/Protected Trimble repositories.
+# id_rsa should be the private key that has previously been given access to Trimble-oss.
+$ ssh-add ~/.ssh/id_rsa_git
+
 
 
 ### Automated tests ⚙

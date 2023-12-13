@@ -1,0 +1,48 @@
+variable "resource_group_location" {
+  default     = "{{.resource_group_location}}"
+  description = "Location of the resource group."
+}
+
+variable "org_name" {
+  type = string
+  default = "{{.org_name}}"
+}
+
+variable "vm_size" {
+  type = string
+  default = "{{.vault_vm_size}}"
+}
+
+variable "environment" {
+  type = string
+  default = "{{.env}}"
+}
+
+variable "algorithm" {
+  type = string
+  default = "{{.algorithm}}"
+}
+
+ variable "rsa_bits" {
+  type = number
+  default = {{.rsa_bits}}
+}
+
+variable "billing_env" {
+  type = string
+  default = "{{.billing_env}}"
+}
+
+variable "service_cidrs" {
+  type = string
+  default = "{{.service_cidrs}}"
+}
+
+variable "docker_bridge_cidr" {
+  type = string
+  default = "{{.docker_bridge_cidr}}"
+}
+
+variable "dns_service_ip" {
+    default = "{{.dns_service_ip}}"
+}

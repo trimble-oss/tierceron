@@ -7,11 +7,12 @@ import (
 	"strings"
 	"syscall"
 
-	"tierceron/buildopts/coreopts"
-	helperkv "tierceron/vaulthelper/kv"
-	//pb "tierceron/webapi/rpc/apinator"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	tm "golang.org/x/crypto/ssh/terminal"
+	//pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
+
+	tm "golang.org/x/term"
 )
 
 // LoginToLocal prompts the user to enter credentials from the terminal and resolves granular local environment

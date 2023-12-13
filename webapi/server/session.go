@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"tierceron/buildopts"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	"tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
@@ -21,19 +21,22 @@ import (
 
 func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
 	connInfo, err := mod.ReadData("apiLogins/meta")
+	if err != nil {
+		return false, "", err
+	}
 
 	var url, username, password string
 	url, ok := connInfo["sessionDB"].(string)
 	if !ok {
-		return false, "", fmt.Errorf("Database connection not a string or not found")
+		return false, "", fmt.Errorf("database connection not a string or not found")
 	}
 	username, ok = connInfo["user"].(string)
 	if !ok {
-		return false, "", fmt.Errorf("Username connection not a string or not found")
+		return false, "", fmt.Errorf("username connection not a string or not found")
 	}
 	password, ok = connInfo["pass"].(string)
 	if !ok {
-		return false, "", fmt.Errorf("Password connection not a string or not found")
+		return false, "", fmt.Errorf("password connection not a string or not found")
 	}
 
 	driver, server, port, dbname, parseError := parseURL(config, url)
@@ -45,7 +48,9 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 		port = "1433"
 	}
 	db, err := sql.Open(driver, ("server=" + server + ";user id=" + username + ";password=" + password + ";port=" + port + ";database=" + dbname + ";encrypt=true;TrustServerCertificate=true"))
-	defer db.Close()
+	if db != nil {
+		defer db.Close()
+	}
 	if err != nil {
 		return false, "", err
 	}
@@ -54,7 +59,7 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 }
 
 func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]map[string]interface{}, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
 	}
@@ -64,15 +69,15 @@ func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]m
 	var url, username, password string
 	url, ok := connInfo["sessionDB"].(string)
 	if !ok {
-		return nil, fmt.Errorf("Database connection not a string or not found")
+		return nil, fmt.Errorf("database connection not a string or not found")
 	}
 	username, ok = connInfo["user"].(string)
 	if !ok {
-		return nil, fmt.Errorf("Username connection not a string or not found")
+		return nil, fmt.Errorf("username connection not a string or not found")
 	}
 	password, ok = connInfo["pass"].(string)
 	if !ok {
-		return nil, fmt.Errorf("Password connection not a string or not found")
+		return nil, fmt.Errorf("password connection not a string or not found")
 	}
 
 	driver, server, port, dbname, parseError := parseURL(config, url)
@@ -83,7 +88,9 @@ func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]m
 		port = "1433"
 	}
 	db, err := sql.Open(driver, ("server=" + server + ";user id=" + username + ";password=" + password + ";port=" + port + ";database=" + dbname + ";encrypt=true;TrustServerCertificate=true"))
-	defer db.Close()
+	if db != nil {
+		defer db.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +111,7 @@ func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, 
 }
 
 func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
 	}

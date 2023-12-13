@@ -5,67 +5,45 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 	"time"
 
-	"tierceron/trcvault/opts/insecure"
-	"tierceron/trcvault/opts/prod"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
 
-	vcutils "tierceron/trcconfig/utils"
-	"tierceron/trcx/extract"
-	"tierceron/trcx/xutil"
+	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
+	"github.com/trimble-oss/tierceron/trcx/extract"
+	"github.com/trimble-oss/tierceron/trcx/xutil"
 
-	il "tierceron/trcinit/initlib"
+	il "github.com/trimble-oss/tierceron/trcinit/initlib"
 
 	"log"
 )
 
 type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
+type ProcessFlowInitConfig func(pluginConfig map[string]interface{}, logger *log.Logger) error
 type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
 
+// Unused/deprecated
 func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
 	vaultHost := "https://"
 	vaultErr := errors.New("no usable local vault found")
-	if !prod.IsProd() && insecure.IsInsecure() {
-		// Dev machines.
-		vaultHost = vaultHost + "127.0.0.1"
-		vaultHostChan <- vaultHost
-		logger.Println("Init stage 1 success.")
-		vaultErr = nil
-		goto hostfound
-	} else {
-		// Hosted machines and prod.
-		addrs, err := net.InterfaceAddrs()
-		if err == nil {
-			for _, address := range addrs {
-				// check the address type and if it is not a loopback the display it
-				if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-					if ipnet.IP.To4() != nil {
-						vaultHost = vaultHost + ipnet.IP.String()
-						vaultHostChan <- vaultHost
-						logger.Println("Init stage 1 success.")
-						vaultErr = nil
-						goto hostfound
-					}
-				}
-			}
-		}
-	}
-
-hostfound:
+	// Dev machines.
+	vaultHost = vaultHost + "127.0.0.1"
+	vaultHostChan <- vaultHost
+	logger.Println("Init stage 1 success.")
+	vaultErr = nil
 
 	if vaultErr != nil {
 		vaultLookupErrChan <- vaultErr
 	}
 }
 
-func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
+func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, int, error) {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("GET", address, body)
 	if err != nil {
@@ -79,15 +57,17 @@ func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client
 	response, err := httpClient.Do(request)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
-		return nil, err
+		return nil, response.StatusCode, err
 	}
-	defer response.Body.Close()
+	if response.Body != nil {
+		defer response.Body.Close()
+	}
 
 	if response.StatusCode == http.StatusOK {
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
-			return nil, err
+			return nil, response.StatusCode, err
 		}
 
 		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
@@ -96,15 +76,15 @@ func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client
 			eUtils.LogErrorObject(config, err, false)
 		}
 
-		return jsonData, nil
+		return jsonData, response.StatusCode, nil
 	} else if response.StatusCode == http.StatusNoContent {
-		return jsonData, nil
+		return jsonData, response.StatusCode, nil
 	}
 
-	return nil, errors.New("http status failure")
+	return nil, response.StatusCode, errors.New("http status failure")
 }
 
-func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, error) {
+func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, int, error) {
 	var jsonData map[string]interface{}
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {
@@ -117,11 +97,15 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 	// request.Header.Set("Content-Type", "application/json")
 	response, err := httpClient.Do(request)
 	if err != nil {
-		return nil, err
+		return nil, response.StatusCode, err
 	}
-	defer response.Body.Close()
+	if response.Body != nil {
+		defer response.Body.Close()
+	}
 
-	if response.StatusCode == http.StatusOK {
+	if response.StatusCode == http.StatusUnauthorized {
+		return nil, response.StatusCode, fmt.Errorf("http auth failure: %d", response.StatusCode)
+	} else if response.StatusCode == http.StatusOK {
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
@@ -134,9 +118,9 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 			eUtils.LogErrorObject(config, err, false)
 		}
 
-		return jsonData, nil
+		return jsonData, response.StatusCode, nil
 	}
-	return nil, errors.New(fmt.Sprintf("http status failure: %d", response.StatusCode))
+	return nil, response.StatusCode, fmt.Errorf("http status failure: %d", response.StatusCode)
 }
 
 func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
@@ -265,59 +249,115 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	return nil
 }
 
-func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
+func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, defineService bool) (map[string]interface{}, error) {
 	config.Log.Println("GetPluginToolConfig begin processing plugins.")
 	//templatePaths
 	indexFound := false
 	templatePaths := pluginConfig["templatePath"].([]string)
 
+	config.Log.Println("GetPluginToolConfig reading base configurations.")
+	tempEnv := mod.Env
+	envParts := strings.Split(mod.Env, "-")
+	mod.Env = envParts[0]
 	pluginToolConfig, err := mod.ReadData("super-secrets/Restricted/PluginTool/config")
+	defer func(m *helperkv.Modifier, e string) {
+		m.Env = e
+	}(mod, tempEnv)
 
 	if err != nil {
+		config.Log.Println("GetPluginToolConfig errored with missing base PluginTool configurations.")
 		return nil, err
 	} else {
 		if len(pluginToolConfig) == 0 {
+			config.Log.Println("GetPluginToolConfig empty base PluginTool configurations.")
 			return nil, errors.New("Tierceron plugin management presently not configured for env: " + mod.Env)
 		}
 	}
+	pluginEnvConfigClone := make(map[string]interface{})
+
+	for k, v := range pluginToolConfig {
+		if _, okStr := v.(string); okStr {
+			v2 := strings.Clone(v.(string))
+			memprotectopts.MemProtect(nil, &v2)
+			pluginEnvConfigClone[k] = v2
+		} else {
+			// Safe to share...
+			pluginEnvConfigClone[k] = v
+		}
+	}
+
 	for k, v := range pluginConfig {
-		pluginToolConfig[k] = v
+		if _, okStr := v.(string); okStr {
+			v2 := strings.Clone(v.(string))
+			memprotectopts.MemProtect(nil, &v2)
+			pluginEnvConfigClone[k] = v2
+		} else {
+			// Safe to share...
+			pluginEnvConfigClone[k] = v
+		}
 	}
 
 	var ptc1 map[string]interface{}
 
+	config.Log.Println("GetPluginToolConfig loading plugin data.")
 	for _, templatePath := range templatePaths {
 		project, service, _ := eUtils.GetProjectService(templatePath)
 		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
-		mod.SectionPath = "super-secrets/Index/" + project + "/" + "trcplugin" + "/" + config.SubSectionValue + "/" + service
+
+		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 {
+			mod.SectionPath = "super-secrets/Index/" + project + pluginPath.(string) + config.SubSectionValue + "/" + service
+		} else {
+			mod.SectionPath = "super-secrets/Index/" + project + "/trcplugin/" + config.SubSectionValue + "/" + service
+		}
 		ptc1, err = mod.ReadData(mod.SectionPath)
+
 		pluginToolConfig["pluginpath"] = mod.SectionPath
 		if err != nil || ptc1 == nil {
-			config.Log.Println("No data found.")
+			config.Log.Println("No data found for project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
 			continue
 		}
 		indexFound = true
+
 		for k, v := range ptc1 {
-			pluginToolConfig[k] = v
+			if _, okStr := v.(string); okStr {
+				v2 := strings.Clone(v.(string))
+				memprotectopts.MemProtect(nil, &v2)
+				pluginEnvConfigClone[k] = v2
+			} else {
+				// Safe to share...
+				pluginEnvConfigClone[k] = v
+			}
 		}
+
 		break
 	}
 	mod.SectionPath = ""
+	config.Log.Println("GetPluginToolConfig plugin data load process complete.")
+	mod.Env = tempEnv
 
-	if pluginToolConfig == nil {
+	if pluginEnvConfigClone == nil {
 		config.Log.Println("No data found for plugin.")
 		if err == nil {
-			err = errors.New("No data and unexpected error.")
+			err = errors.New("no data and unexpected error")
 		}
-		return pluginToolConfig, err
+		return pluginEnvConfigClone, err
 	} else if !indexFound {
-		return pluginToolConfig, nil
+		if defineService {
+			pluginEnvConfigClone["pluginpath"] = pluginToolConfig["pluginpath"]
+		}
+		return pluginEnvConfigClone, nil
+	} else {
+		if _, ok := pluginEnvConfigClone["trcplugin"]; ok {
+			if strings.ContainsAny(pluginEnvConfigClone["trcplugin"].(string), "./") {
+				err = errors.New("Invalid plugin configuration: " + pluginEnvConfigClone["trcplugin"].(string))
+				return nil, err
+			}
+		}
+		if defineService {
+			pluginEnvConfigClone["pluginpath"] = pluginToolConfig["pluginpath"]
+		}
 	}
 	config.Log.Println("GetPluginToolConfig end processing plugins.")
-	if strings.ContainsAny(pluginToolConfig["trcplugin"].(string), "./") {
-		err = errors.New("Invalid plugin configuration: " + pluginToolConfig["trcplugin"].(string))
-		return nil, err
-	}
 
-	return pluginToolConfig, nil
+	return pluginEnvConfigClone, nil
 }

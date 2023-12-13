@@ -1,0 +1,175 @@
+variable "created_by" {
+  type = string
+  default = "{{.created_by}}"
+}
+
+variable "created_on" {
+  type = string
+  default = "{{.created_on}}"
+}
+
+variable "host" {
+  type = string
+  default = {{.host}}
+}
+
+variable "vaultip" {
+  type = string
+  default = "{{.vault_ip}}"
+}
+
+variable "hostport" {
+  type = string
+  default= "{{.hostport}}"
+}
+
+variable "controllera_port" {
+  type = string
+  default= {{.controllera_port}}
+}
+
+variable "controllerb_port" {
+  type = string
+  default= {{.controllerb_port}}
+}
+
+variable "trcdba_port" {
+  type = string
+  default= {{.trcdba_port}}
+}
+
+variable "trcdbb_port" {
+  type = string
+  default= {{.trcdbb_port}}
+}
+
+variable "allowed_ip_ranges" {
+  type    = list(string)
+  default = [ 
+    {{.local_cidr_block}}, 
+    {{.onsite_cidr_block}},
+  ]
+}
+
+variable "allowed_vpn_ip_ranges" {
+  type    = list(string)
+  default = [ 
+    {{.vpn_cidr_block}}, 
+  ]
+}
+
+variable "dest_port_ranges" {
+  type    = list(string)
+  default = [ "{{.hostport}}", {{.controllera_port}}, {{.controllerb_port}}, {{.trcdba_port}}, {{.trcdbb_port}} ]
+}
+
+variable "security_software_script_path"{
+  type = string
+  default = {{.security_software_script_path}}
+}
+
+variable "security_software_name"{
+  type = string
+  default = {{.security_software_name}}
+}
+
+variable "script_cidr_block" {
+  type    = string
+  default = {{.script_cidr_block}}
+}
+
+variable "onsite_cidr_block" {
+  type    = string
+  default = {{.onsite_cidr_block}}
+}
+
+variable "ssh_port" {
+  type    = string
+  default = {{.ssh_port}}
+}
+
+variable "mysql_admin" {
+  type    = string
+  default = "{{.mysql_admin}}"
+}
+
+variable "mysql_admin_password" {
+  type    = string
+  default = "{{.mysql_admin_password}}"
+}
+
+variable "dbaddress" {
+  type    = string
+  default = "{{.dbaddress}}"
+}
+
+variable "dbzone" {
+  type    = string
+  default = "{{.dbzone}}"
+}
+
+variable "tierceronzone" {
+  type    = string
+  default = "{{.tierceronzone}}"
+}
+
+variable "tierceronname" {
+  type    = string
+  default = "{{.tierceronname}}"
+}
+
+variable "vm_db_VN" {
+  type    = string
+  default = "{{.vm_db_VN}}"
+}
+
+variable "VN_rg_name" {
+  type    = string
+  default = "{{.VN_rg_name}}"
+}
+
+
+variable "DB_subnet_name" {
+  type    = string
+  default = "{{.DB_subnet_name}}"
+}
+
+variable "VM_subnet_name" {
+  type    = string
+ default = "{{.VM_subnet_name}}"
+}
+
+variable "subresource_group_name" {
+  type = string
+ default = "{{.subresource_group_name}}"
+}
+
+variable "make_flexible_server" {
+  type = string
+  default = "{{.make_flexible_server}}"
+}
+
+variable "vm_private_ip" {
+  type = string
+  default = "{{.vm_private_ip}}"
+}
+
+variable "private_key_directory" {
+  type = string
+  default = "{{.private_key_directory}}"
+}
+
+variable "public_key_directory" {
+  type = string
+  default = "{{.public_key_directory}}"
+}
+
+variable "mysql_availability_zone" {
+  type = string
+  default = "{{.mysql_availability_zone}}"
+}
+
+variable "mysql_server_size" {
+  type = string
+  default = "{{.mysql_server_size}}"
+}

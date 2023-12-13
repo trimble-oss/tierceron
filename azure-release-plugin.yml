@@ -1,0 +1,65 @@
+
+steps:
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trcsh
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcsh/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trc-vault-carrier-plugin
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcvaultplugincarrier/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trc-vault-plugin
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcvaultplugin/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
+
+- task: Docker@1
+  displayName: 'Tag TrcSh'
+  inputs:
+    azureSubscriptionEndpoint: '{{.release_endpoint}}'
+    azureContainerRegistry: {{.release_acr}}
+    command: 'Tag image'
+    imageName: 'trcsh:$(Build.SourceVersion)'
+
+- task: Docker@1
+  displayName: 'Push TrcSh'
+  inputs:
+    azureSubscriptionEndpoint: '{{.release_endpoint}}'
+    azureContainerRegistry: {{.release_acr}}
+    command: 'Push an image'
+    imageName: 'trcsh:$(Build.SourceVersion)'
+
+- task: Docker@1
+  displayName: 'Tag TrcVaultPlugin'
+  inputs:
+    azureSubscriptionEndpoint: '{{.release_endpoint}}'
+    azureContainerRegistry: {{.release_acr}}
+    command: 'Tag image'
+    imageName: 'trcvaultplugin:$(Build.SourceVersion)'
+
+- task: Docker@1
+  displayName: 'Push TrcVaultPlugin'
+  inputs:
+    azureSubscriptionEndpoint: '{{.release_endpoint}}'
+    azureContainerRegistry: {{.release_acr}}
+    command: 'Push an image'
+    imageName: 'trcvaultplugin:$(Build.SourceVersion)'
+

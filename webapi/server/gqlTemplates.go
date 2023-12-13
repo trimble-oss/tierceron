@@ -7,16 +7,16 @@ import (
 	"strings"
 	"time"
 
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
-	pb "tierceron/webapi/rpc/apinator"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 )
 
 // getTemplateData Fetches all keys listed under 'templates' substituting private values with verification
 // Secret values will only be populated for environments with values for that secret group
 // All template keys that reference public values will be populated with those values
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
 
 	if err != nil {
@@ -84,6 +84,9 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 						}
 						//Get metadata of versions for each filePath
 						versions, err := mod.ReadVersionMetadata(filePath, s.Log)
+						if err != nil {
+							return nil, err
+						}
 						var dates []time.Time
 						for _, v := range versions {
 							if val, ok := v.(map[string]interface{}); ok {
@@ -104,7 +107,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 							creationHour := strconv.Itoa(hour) + ":" + strconv.Itoa(min) + ":" + strconv.Itoa(sec)
 							s := []string{creationDate, creationHour}
 							creationTime := strings.Join(s, " ")
-							secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: string(i), Value: creationTime, Source: "versions"})
+							secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: fmt.Sprint(i), Value: creationTime, Source: "versions"})
 						}
 						// Find secrets groups in this environment
 						vSecret, err := mod.List("super-secrets", s.Log)
@@ -127,10 +130,10 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 										}
 									}
 								} else {
-									return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
+									return nil, fmt.Errorf("unable to retrieve accessible secret groups for %s", env)
 								}
 							} else {
-								return nil, fmt.Errorf("Unable to retrieve accessible secret groups for %s", env)
+								return nil, fmt.Errorf("unable to retrieve accessible secret groups for %s", env)
 							}
 						}
 

@@ -2,6 +2,7 @@ package kv
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,9 +12,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"tierceron/buildopts"
-	"tierceron/trcvault/opts/memonly"
-	"tierceron/utils/mlock"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -34,20 +39,29 @@ type Modifier struct {
 	httpClient       *http.Client // Handle to http client.
 	client           *api.Client  // Client connected to vault
 	logical          *api.Logical // Logical used for read/write options
-	Env              string       // Environment (local/dev/QA; Initialized to secrets)
-	Regions          []string     // Supported regions
-	SecretDictionary *api.Secret  // Current Secret Dictionary Cache.
-	Version          string       // Version for data
-	VersionFilter    []string     // Used to filter vault paths
-	RawEnv           string
-	TemplatePath     string   // Path to template we are processing.
-	ProjectIndex     []string // Which projects are indexed.
-	SectionKey       string   // The section key: Index or Restricted.
-	SectionName      string   // The name of the actual section.
-	SubSectionName   string   // The name of the actual subsection.
-	SubSectionValue  string   // The actual value for the sub section.
-	SectionPath      string   // The path to the Index (both seed and vault)
+	SecretDictionary *api.Secret  // Current Secret Dictionary Cache -- populated by mod.List("templates"
+
+	Env             string // Environment (local/dev/QA; Initialized to secrets)
+	RawEnv          string
+	Regions         []string // Supported regions
+	Version         string   // Version for data
+	VersionFilter   []string // Used to filter vault paths
+	TemplatePath    string   // Path to template we are processing.
+	ProjectIndex    []string // Which projects are indexed.
+	SectionKey      string   // The section key: Index or Restricted.
+	SectionName     string   // The name of the actual section.
+	SubSectionName  string   // The name of the actual subsection.
+	SubSectionValue string   // The actual value for the sub section.
+	SectionPath     string   // The path to the Index (both seed and vault)
 }
+
+type modCache struct {
+	modCount     uint64
+	modifierChan chan *Modifier
+}
+
+var modifierCache map[string]*modCache = map[string]*modCache{}
+var modifierCachLock sync.Mutex
 
 // PreCheckEnvironment
 // Returns: env, parts, true if parts is path, false if part of file name, error
@@ -74,10 +88,33 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 // @param token 	The access token needed to connect to the vault
 // @param address	The address of the API endpoint for the server
 // @param env   	The environment currently connecting to.
+// @param regions   Regions we want
+// @param useCache Whether to use the modcache or not.
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 //
 //	Any errors generated in creating the client
-func NewModifier(insecure bool, token string, address string, env string, regions []string, logger *log.Logger) (*Modifier, error) {
+func NewModifier(insecure bool, token string, address string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
+	if useCache {
+		PruneCache(env, 10)
+		checkoutModifier, err := cachedModifierHelper(env)
+		if err == nil && checkoutModifier != nil {
+			checkoutModifier.Insecure = insecure
+			checkoutModifier.RawEnv = env
+			checkoutModifier.Regions = regions
+			checkoutModifier.Version = ""               // Version for data
+			checkoutModifier.VersionFilter = []string{} // Used to filter vault paths
+			checkoutModifier.TemplatePath = ""          // Path to template we are processing.
+			checkoutModifier.ProjectIndex = []string{}  // Which projects are indexed.
+			checkoutModifier.SectionKey = ""            // The section key: Index or Restricted.
+			checkoutModifier.SectionName = ""           // The name of the actual section.
+			checkoutModifier.SubSectionName = ""        // The name of the actual subsection.
+			checkoutModifier.SubSectionValue = ""       // The actual value for the sub section.
+			checkoutModifier.SectionPath = ""           // The path to the Index (both seed and vault)
+
+			return checkoutModifier, nil
+		}
+	}
+
 	if len(address) == 0 {
 		address = "http://127.0.0.1:8020" // Default address
 	}
@@ -91,7 +128,9 @@ func NewModifier(insecure bool, token string, address string, env string, region
 		HttpClient: httpClient,
 	})
 	if err != nil {
-		logger.Println("vaultHost: "+modClient.Address(), logger)
+		if logger != nil {
+			logger.Println("vaultHost: "+modClient.Address(), logger)
+		}
 		return nil, err
 	}
 
@@ -99,16 +138,102 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	modClient.SetToken(token)
 
 	// Return the modifier
-	return &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", Regions: regions, Version: "", Insecure: insecure}, nil
+	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", RawEnv: env, Regions: regions, Version: "", Insecure: insecure}
+	return newModifier, nil
+}
+
+func checkInitModCache(env string) {
+	if _, ok := modifierCache[env]; !ok {
+		modifierCachLock.Lock()
+		modifierCache[env] = &modCache{modCount: 0, modifierChan: make(chan *Modifier, 20)}
+		modifierCachLock.Unlock()
+	}
+}
+
+func cachedModifierHelper(env string) (*Modifier, error) {
+	checkInitModCache(env)
+
+	for {
+		select {
+		case checkoutModifier := <-modifierCache[env].modifierChan:
+			atomic.AddUint64(&modifierCache[env].modCount, ^uint64(0))
+			return checkoutModifier, nil
+		case <-time.After(time.Millisecond * 200):
+			// Nothing here...
+			return nil, errors.New("no cached modifier")
+		}
+	}
+}
+func (m *Modifier) Release() {
+	if _, ok := modifierCache[m.Env]; ok {
+		m.releaseHelper(m.Env)
+	} else {
+		m.releaseHelper(m.RawEnv)
+	}
+
+}
+
+func (m *Modifier) releaseHelper(env string) {
+	checkInitModCache(env)
+
+	// Since modifiers are re-used now, this may not be necessary or even desired for that
+	// matter.
+	//	m.httpClient.CloseIdleConnections()
+	if modifierCache[env].modCount > 10 {
+		m.CleanCache(10)
+	}
+
+	atomic.AddUint64(&modifierCache[env].modCount, 1)
+	modifierCache[env].modifierChan <- m
+}
+
+func (m *Modifier) RemoveFromCache() {
+	m.CleanCache(20)
+}
+
+func cleanCacheHelper(env string, limit uint64) {
+	modifierCachLock.Lock()
+	if modifierCache[env].modCount > 1 {
+	emptied:
+		for i := uint64(0); i < limit; i++ {
+			select {
+			case mod := <-modifierCache[env].modifierChan:
+				mod.Close()
+				atomic.AddUint64(&modifierCache[env].modCount, ^uint64(0))
+			default:
+				break emptied
+			}
+		}
+	}
+	modifierCachLock.Unlock()
+}
+
+func PruneCache(env string, limit uint64) {
+	if modifierCache != nil && modifierCache[env] != nil {
+		if modifierCache[env].modCount > limit {
+			if _, ok := modifierCache[env]; ok {
+				cleanCacheHelper(env, limit)
+			}
+		}
+	}
+}
+
+func (m *Modifier) CleanCache(limit uint64) {
+	m.Close()
+	if _, ok := modifierCache[m.Env]; ok {
+		cleanCacheHelper(m.Env, limit)
+	} else {
+		cleanCacheHelper(m.RawEnv, limit)
+	}
 }
 
 // ValidateEnvironment Ensures token has access to requested data.
-func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuffix string, logger *log.Logger) (bool, error) {
+func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuffix string, logger *log.Logger) (bool, string, error) {
 	env, sub, _, envErr := PreCheckEnvironment(environment)
 
 	if envErr != nil {
-		logger.Println(fmt.Sprintf("Environment format error: %v\n", envErr))
-		return false, envErr
+		logger.Printf("Environment format error: %v\n", envErr)
+		return false, "", envErr
 	} else {
 		if sub != "" {
 			environment = env
@@ -127,9 +252,13 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 	secret, err := m.client.Auth().Token().LookupSelf()
 
 	if err != nil {
-		logger.Println(fmt.Sprintf("LookupSelf Auth failure: %v\n", err))
-		if strings.Contains(err.Error(), "x509: certificate") {
-			return false, err
+		logger.Printf("LookupSelf Auth failure: %v\n", err)
+		if urlErr, urlErrOk := err.(*url.Error); urlErrOk {
+			if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
+				return false, desiredPolicy, err
+			}
+		} else if strings.Contains(err.Error(), "x509: certificate") {
+			return false, desiredPolicy, err
 		}
 	}
 
@@ -150,7 +279,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 
 	}
 
-	return valid, nil
+	return valid, desiredPolicy, nil
 }
 
 // Writes the key,value pairs in data to the vault
@@ -271,6 +400,30 @@ retryVaultAccess:
 		return nil, err
 	}
 	if data, ok := secret.Data["data"].(map[string]interface{}); ok {
+		//
+		// TODO: Bad data cleanup.
+		// TODO: Hacking around missing lastTestedDate data.
+		//
+		if testedDate, testedDateOk := data["lastTestedDate"]; testedDateOk {
+			if testedDate == "" {
+				if metadata, ok := secret.Data["metadata"].(map[string]interface{}); ok {
+					data["lastTestedDate"] = metadata["created_time"]
+				}
+			}
+		}
+		// TODO: Bad data cleanup.
+		if strings.Contains(fullPath, "argosId") {
+			if _, argosIdOk := data["argosId"]; !argosIdOk {
+				pathParts := strings.Split(fullPath, "/")
+				for i := 0; i < len(pathParts); i++ {
+					if pathParts[i] == "argosId" {
+						data["argosId"] = pathParts[i+1]
+						break
+					}
+				}
+
+			}
+		}
 		if memonly.IsMemonly() && !strings.HasPrefix(path, "templates") { // Don't lock templates
 			for dataKey, dataValues := range data {
 				if !buildopts.CheckMemLock(bucket, dataKey) {
@@ -279,45 +432,45 @@ retryVaultAccess:
 				if dataValuesSlice, isSlice := dataValues.([]interface{}); isSlice {
 					for _, dataValues := range dataValuesSlice {
 						if dataValueString, isString := dataValues.(string); isString {
-							mlock.Mlock2(nil, &dataValueString)
+							memprotectopts.MemProtect(nil, &dataValueString)
 						} else if _, isBool := dataValues.(bool); isBool {
-							//mlock.Mlock2(nil, &dataValueString)
+							//memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept bools.
 						} else if _, isInt64 := dataValues.(int64); isInt64 {
-							//mlock.Mlock2(nil, &dataValueString)
+							//memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept int64.
 						} else if _, isInt := dataValues.(int); isInt {
-							//mlock.Mlock2(nil, &dataValueString)
+							//memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept int.
 						} else if _, isNumber := dataValues.(json.Number); isNumber {
-							//mlock.Mlock2(nil, &dataValueString)
+							//memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept json.Number.
 						} else {
-							return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. Nested. %T", dataValues))
+							return nil, fmt.Errorf("unexpected datatype. Refusing to read what we cannot lock. Nested. %T", dataValues)
 						}
 					}
 				} else if dataValueString, isString := dataValues.(string); isString {
-					mlock.Mlock2(nil, &dataValueString)
+					memprotectopts.MemProtect(nil, &dataValueString)
 				} else if _, isBool := dataValues.(bool); isBool {
-					//mlock.Mlock2(nil, &dataValueString)
+					//memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept bools.
 				} else if _, isInt64 := dataValues.(int64); isInt64 {
-					//mlock.Mlock2(nil, &dataValueString)
+					//memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept int64.
 				} else if _, isInt := dataValues.(int); isInt {
-					//mlock.Mlock2(nil, &dataValueString)
+					//memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept int.
 				} else if _, isNumber := dataValues.(json.Number); isNumber {
-					//mlock.Mlock2(nil, &dataValueString)
+					//memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept json.Number.
 				} else {
-					return nil, errors.New(fmt.Sprintf("Unexpected datatype. Refusing to read what we cannot lock. %T", dataValues))
+					return nil, fmt.Errorf("unexpected datatype. Refusing to read what we cannot lock. %T", dataValues)
 				}
 			}
 		}
 		return data, err
 	}
-	return nil, errors.New("Could not get data from vault response")
+	return nil, errors.New("could not get data from vault response")
 }
 
 // ReadMapValue takes a valueMap, path, and a key and returns the corresponding value from the vault
@@ -328,11 +481,13 @@ func (m *Modifier) ReadMapValue(valueMap map[string]interface{}, path string, ke
 			return value, nil
 		} else if stringer, ok := valueMap[key].(fmt.GoStringer); ok {
 			return stringer.GoString(), nil
+		} else if stringer, ok := valueMap[key].((json.Number)); ok {
+			return stringer.String(), nil
 		} else {
-			return "", fmt.Errorf("Cannot convert value at %s to string", key)
+			return "", fmt.Errorf("cannot convert value at %s to string", key)
 		}
 	}
-	return "", fmt.Errorf("Key '%s' not found in '%s'", key, path)
+	return "", fmt.Errorf("key '%s' not found in '%s' with env '%s'", key, path, m.Env)
 }
 
 // ReadValue takes a path and a key and returns the corresponding value from the vault
@@ -370,13 +525,13 @@ retryQuery:
 		}
 	}
 	if err != nil {
-		logger.Printf("Modifier failing after %d retries.\n", retries)
+		logger.Printf("modifier failing after %d retries.\n", retries)
 	}
 
 	if data, ok := secret.Data["metadata"].(map[string]interface{}); ok {
 		return data, err
 	}
-	return nil, errors.New("Could not get metadata from vault response")
+	return nil, errors.New("could not get metadata from vault response")
 }
 
 // ReadVersionMetadata Reads the Metadata of all versions from the path referenced by this Modifier
@@ -405,7 +560,7 @@ retryQuery:
 			goto retryQuery
 		}
 	} else if secret == nil || secret.Data["versions"] == nil {
-		return nil, errors.New("No version data.")
+		return nil, errors.New("no version data")
 	}
 
 	if err != nil {
@@ -415,7 +570,7 @@ retryQuery:
 	if versionsData, ok := secret.Data["versions"].(map[string]interface{}); ok {
 		return versionsData, err
 	}
-	return nil, errors.New("Could not get metadata of versions from vault response")
+	return nil, errors.New("could not get metadata of versions from vault response")
 }
 
 // List lists the paths underneath this one
@@ -453,6 +608,7 @@ retryQuery:
 	}
 	if err != nil {
 		logger.Printf("Modifier failing after %d retries.\n", retries)
+		logger.Printf(err.Error())
 	}
 	return result, err
 }
@@ -627,7 +783,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 			if _, ok := versionDataMap[certPath]; !ok {
 				metadataValue, err := mod.ReadVersionMetadata(certPath, logger)
 				if err != nil {
-					err := fmt.Errorf("Unable to fetch data from %s", certPath)
+					err := fmt.Errorf("unable to fetch data from %s", certPath)
 					return nil, err
 				}
 				if len(metadataValue) != 0 {
@@ -655,9 +811,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 					path = enginePath + "/" + path
 					if mod.SubSectionName != "" {
 						subSectionName := mod.SubSectionName
-						if strings.HasPrefix(subSectionName, "/") {
-							subSectionName = subSectionName[1:]
-						}
+						subSectionName = strings.TrimPrefix(subSectionName, "/")
 						path = path + subSectionName
 					}
 
@@ -678,7 +832,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 
 	mod.Env = realEnv
 	if len(versionDataMap) < 1 {
-		return nil, fmt.Errorf("No version data available for this env")
+		return nil, fmt.Errorf("no version data available for this env")
 	}
 	return versionDataMap, nil
 }
@@ -707,6 +861,9 @@ func (m *Modifier) recursivePathFinder(filePaths []string, versionDataMap map[st
 		}
 
 		metadataValue, err := m.ReadVersionMetadata(filePath, logger)
+		if err != nil {
+			logger.Println(err.Error())
+		}
 		if len(metadataValue) == 0 {
 			continue
 		}
@@ -720,7 +877,7 @@ func (m *Modifier) getPaths(pathName string, logger *log.Logger) ([]string, erro
 	//logger.Println(secrets)
 	pathList := []string{}
 	if err != nil {
-		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, m.Env)
+		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, m.Env)
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
@@ -744,7 +901,7 @@ func (m *Modifier) GetTemplateFilePaths(pathName string, logger *log.Logger) ([]
 	secrets, err := m.List(pathName, logger)
 	pathList := []string{}
 	if err != nil {
-		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, m.Env)
+		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, m.Env)
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
@@ -758,10 +915,7 @@ func (m *Modifier) GetTemplateFilePaths(pathName string, logger *log.Logger) ([]
 		subPathList := []string{}
 		for _, path := range pathList {
 			subsubList, _ := m.templateFileRecurse(path, logger)
-			for _, subsub := range subsubList {
-				//List is returning both pathEnd and pathEnd/
-				subPathList = append(subPathList, subsub)
-			}
+			subPathList = append(subPathList, subsubList...)
 		}
 		if len(subPathList) != 0 {
 			return subPathList, nil
@@ -780,12 +934,10 @@ func (m *Modifier) templateFileRecurse(pathName string, logger *log.Logger) ([]s
 			for _, pathEnd := range subslice {
 				//List is returning both pathEnd and pathEnd/
 				subpath := pathName + pathEnd.(string)
-				subsublist, _ := m.templateFileRecurse(subpath, logger)
-				if len(subsublist) != 0 {
-					for _, subsub := range subsublist {
-						//List is returning both pathEnd and pathEnd/
-						subPathList = append(subPathList, subsub)
-					}
+				subsubList, _ := m.templateFileRecurse(subpath, logger)
+				if len(subsubList) != 0 {
+					//List is returning both pathEnd and pathEnd/
+					subPathList = append(subPathList, subsubList...)
 				}
 				subPathList = append(subPathList, subpath)
 			}
@@ -854,4 +1006,100 @@ func (m *Modifier) FindIndexForService(project string, service string, logger *l
 indexFound:
 
 	return index, nil
+}
+
+func (m *Modifier) SoftDelete(path string, logger *log.Logger) (map[string]interface{}, error) {
+
+	if !strings.HasPrefix(path, "super-secrets") && !strings.HasPrefix(path, "values") {
+		path = "super-secrets/" + path
+	}
+
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullDataPath := pathBlocks[0] + "data/"
+	if !noEnvironments[pathBlocks[0]] {
+		fullDataPath += m.Env + "/"
+	}
+	fullDataPath += pathBlocks[1]
+	retries := 0
+retryQuery:
+	secret, err := m.logical.Delete(fullDataPath)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	}
+	if err != nil {
+		logger.Printf("Modifier failing after %d retries.\n", retries)
+	}
+
+	if secret == nil && err == nil {
+		return nil, nil
+	}
+	return nil, errors.New("could not get metadata from vault response")
+}
+
+func (m *Modifier) HardDelete(path string, logger *log.Logger) (map[string]interface{}, error) {
+	if !strings.HasPrefix(path, "super-secrets") && !strings.HasPrefix(path, "values") {
+		path = "super-secrets/" + path
+	}
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullDataPath := pathBlocks[0] + "data/"
+	fullMetadataPath := pathBlocks[0] + "metadata/"
+	if !noEnvironments[pathBlocks[0]] {
+		fullDataPath += m.Env + "/"
+	}
+	if !noEnvironments[pathBlocks[0]] {
+		fullMetadataPath += m.Env + "/"
+	}
+	fullDataPath += pathBlocks[1]
+	fullMetadataPath += pathBlocks[1]
+	retries := 0
+retryQuery:
+	secret, err := m.logical.Delete(fullDataPath)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	}
+	if err != nil {
+		logger.Printf("Modifier failing after %d retries.\n", retries)
+	}
+
+	if secret == nil && err == nil {
+		metadataSecret, err := m.logical.Delete(fullMetadataPath)
+		if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+			if retries < 3 {
+				retries = retries + 1
+				goto retryQuery
+			}
+		} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+			if retries < 3 {
+				retries = retries + 1
+				goto retryQuery
+			}
+		}
+		if err != nil {
+			logger.Printf("Modifier failing after %d retries.\n", retries)
+		}
+
+		if metadataSecret == nil && err == nil {
+			return nil, err
+		} else {
+			logger.Printf("Unable to delete metadata %d retries.\n", retries)
+			return nil, err
+		}
+	}
+	return nil, errors.New("could not get metadata from vault response")
 }

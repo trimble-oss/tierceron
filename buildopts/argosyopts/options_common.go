@@ -5,8 +5,9 @@ package argosyopts
 
 import (
 	"log"
-	"tierceron/trcvault/util"
-	"tierceron/vaulthelper/kv"
+
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
@@ -14,10 +15,10 @@ func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
 	return nil, nil
 }
 
-func BuildFleet(mod *kv.Modifier, logger *log.Logger) (util.TTDINode, error) {
-	return util.TTDINode{}, nil
+func BuildFleet(mod *kv.Modifier, logger *log.Logger) (*flowcore.TTDINode, error) {
+	return &flowcore.TTDINode{}, nil
 }
 
-func GetDataFlowGroups(mod *kv.Modifier, argosy *util.TTDINode) []util.TTDINode {
+func GetDataFlowGroups(mod *kv.Modifier, argosy *flowcore.TTDINode) []flowcore.TTDINode {
 	return nil
 }

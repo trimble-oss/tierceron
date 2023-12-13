@@ -21,7 +21,7 @@ pr:
     - develop
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'ubuntu-22.04'
 resources:
   repositories:
   - repository: VaultConfig.Bootstrap
@@ -39,40 +39,93 @@ resources:
     endpoint: AzureBuilderConnection
     name: Spectrum/_git/VaultConfig.TenantConfig
     ref: develop
+  - repository: tierceron-hat
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-hat
+    ref: main
+  - repository: tierceron-succinctly
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-succinctly
+    ref: main
+  - repository: tierceron-nute
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-nute
+    ref: main
+  - repository: client-go
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/client-go
+    ref: refs/tags/v0.0.3
+  - repository: cli-runtime
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/cli-runtime
+    ref: refs/tags/v0.0.7
+  - repository: kubectl
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/kubectl
+    ref: refs/tags/v0.0.5
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
   GOPATH: '$(system.defaultWorkingDirectory)' # Go workspace path
+  GOCACHE: '$(Pipeline.Workspace)/.cache/go-build/'
+  GO_CACHE_DIR: $(Pipeline.Workspace)/.cache/go-build/
   modulePath: 'tierceron' # Path to the module's code
 
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.19.1'
+    version: '1.21.5'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
     mkdir -p '$(modulePath)'
     shopt -s extglob
     shopt -s dotglob
-    mv !(gopath) '$(modulePath)'
     echo '##vso[task.prependpath]$(GOBIN)'
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
 - checkout: VaultConfig.Bootstrap
+  clean: false
 - checkout: VaultConfig.TenantConfig
+  clean: false
 - checkout: VaultConfig.Test
+  clean: false
+- checkout: tierceron-hat
+  clean: false
+- checkout: tierceron-succinctly
+  clean: false
+- checkout: tierceron-nute
+  clean: false
+- checkout: client-go
+  clean: false
+- checkout: cli-runtime
+  clean: false
+- checkout: kubectl
+  clean: false
 - checkout: self
+  clean: false
+# Possibly enable for multi agent, but not convinced worth it...
+#- task: Cache@2
+#  inputs:
+#    key: 'go | "$(Agent.OS)" | $(system.defaultWorkingDirectory)/$(modulePath)/go.mod'
+#    restoreKeys: | 
+#      go | "$(Agent.OS)"
+#    path: $(GO_CACHE_DIR)
+#  displayName: Cache GO packages
 - script: |
     go version
     pwd
     echo $GOBIN
-    echo "Mod download"
-    go mod download
     echo "Compile start"
 
     echo "Compile Linux"
-    GOOS=linux GOARCH=amd64 go install  -tags "memonly tc vaultname" -a -ldflags '-w' tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
+    GOOS=linux CGO_ENABLED=0 GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "azure memonly linux tc vaultname" -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcinitp,trcx,trcxp,trcsub}
     for p in trcconfig trcpub trcinit trcinitp trcx trcxp trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then
@@ -82,7 +135,7 @@ steps:
     done
 
     echo "Compile Windows"
-    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go install  -tags "tc vaultname" -a -ldflags '-w' tierceron/{trcconfig,trcpub,trcinit,trcx,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "tc memonly windows vaultname" -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcinit,trcx,trcsub}
     for p in trcconfig trcpub trcinit trcx trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/windows_amd64/$p.exe ]] ; then
@@ -92,7 +145,7 @@ steps:
     done
 
     echo "Compile Mac"
-    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go install  -tags "memonly tc vaultname" -a -ldflags '-w' tierceron/{trcconfig,trcpub,trcx,trcsub}
+    GOBIN= CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "azure tc vaultname" -ldflags '-w' github.com/trimble-oss/tierceron/{trcconfig,trcpub,trcx,trcsub}
     for p in trcconfig trcpub trcx trcsub; do
       echo Compiling $p
       if [[ ! -f $GOBIN/darwin_amd64/$p ]] ; then
@@ -102,7 +155,7 @@ steps:
     done
 
     echo Compiling conflib
-    GOOS=linux GOARCH=amd64 go build  -buildmode=c-shared -tags "memonly tc vaultname" -o $GOBIN/nc.so tierceron/configlib
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go build -buildmode=c-shared -tags "azure memonly tc vaultname" -o $GOBIN/nc.so github.com/trimble-oss/tierceron/configlib
     if [[ ! -f $GOBIN/nc.so ]] ; then
         echo File nc.so was not built, aborting.
         exit 1
@@ -122,8 +175,18 @@ steps:
     cp $GOBIN/windows_amd64/trcpub.exe $(Build.ArtifactStagingDirectory)/vaultpub.exe
     cp $GOBIN/darwin_amd64/trcconfig $(Build.ArtifactStagingDirectory)/vaultconfig.mac
   workingDirectory: '$(modulePath)'
-  displayName: 'Get dependencies, then build'
-
+  displayName: 'Build - get dependencies when needed.'
+- task: SnykSecurityScan@1
+  inputs:
+    serviceConnectionEndpoint: 'Spectrum Snyk'
+    testType: 'app'
+    monitorWhen: 'always'
+    failOnIssues: false
+    testDirectory: '$(modulePath)'
+    targetFile: go.mod
+    projectName: 'Tierceron'
+    organization: '3e7f6c88-f6ec-4436-8042-85455c5b39e8'
+    additionalArguments: '-d'
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
@@ -149,41 +212,3 @@ steps:
     dockerfile: '**/docker/legacy/vaultpub/Dockerfile'
     tags: |
       $(Build.SourceVersion)
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'vaultconfig'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultconfig'
-    pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'vaultconfig'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultconfig'
-    pushTag: 'latest'
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'vaultpub'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultpub'
-    pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'vaultpub'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'vaultpub'
-    pushTag: 'latest'

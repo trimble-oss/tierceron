@@ -3,19 +3,20 @@ package system
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-	helperkv "tierceron/vaulthelper/kv"
 	"time"
+
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
 )
 
-//Vault Represents a vault connection for managing the vault's properties
+// Vault Represents a vault connection for managing the vault's properties
 type Vault struct {
 	httpClient *http.Client // Handle to http client.
 	client     *api.Client  // Client connected to vault
@@ -36,7 +37,7 @@ func NewVault(insecure bool, address string, env string, newVault bool, pingVaul
 		newVault,
 		pingVault,
 		scanVault,
-		false, // allowInsecure - false
+		false, // allowNonLocal - false
 		logger)
 }
 
@@ -67,6 +68,7 @@ func NewVaultWithNonlocal(insecure bool, address string, env string, newVault bo
 	}
 
 	if pingVault {
+		fmt.Println("Ping success!")
 		logger.Println("Ping success!")
 		return nil, nil
 	}
@@ -144,11 +146,11 @@ func (v *Vault) RenewSelf(increment int) error {
 }
 
 // GetOrRevokeTokensInScope()
-func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logger *log.Logger) error {
+func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenExpiration bool, logger *log.Logger) error {
 	var tokenPath = dir
 	var tokenPolicies = []string{}
 
-	files, err := ioutil.ReadDir(tokenPath)
+	files, err := os.ReadDir(tokenPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -157,32 +159,37 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 		if f.IsDir() {
 			continue
 		}
+		if tokenFilter != "" && !strings.HasPrefix(f.Name(), tokenFilter) {
+			// Token doesn't match filter...  Skipping.
+			continue
+		}
 		var file, err = os.OpenFile(tokenPath+string(os.PathSeparator)+f.Name(), os.O_RDWR, 0644)
+		if file != nil {
+			defer file.Close()
+		}
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		defer file.Close()
-		byteValue, _ := ioutil.ReadAll(file)
+		byteValue, _ := io.ReadAll(file)
 		token := api.TokenCreateRequest{}
 		yaml.Unmarshal(byteValue, &token)
-
-		for _, policy := range token.Policies {
-			tokenPolicies = append(tokenPolicies, policy)
-		}
+		tokenPolicies = append(tokenPolicies, token.Policies...)
 	}
 	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
-	resp, err := v.client.RawRequest(r)
+	response, err := v.client.RawRequest(r)
+
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer resp.Body.Close()
-
 	var jsonData map[string]interface{}
 
-	if err = resp.DecodeJSON(&jsonData); err != nil {
+	if err = response.DecodeJSON(&jsonData); err != nil {
 		return err
 	}
 
@@ -199,6 +206,10 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 					return err
 				}
 				response, err := v.client.RawRequest(b)
+				if response != nil && response.Body != nil {
+					defer response.Body.Close()
+				}
+
 				if err != nil {
 					if response.StatusCode == 403 {
 						// Some accessors we don't have access to, but we don't care about those.
@@ -208,7 +219,6 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 						return err
 					}
 				}
-				defer response.Body.Close()
 				var accessorDataMap map[string]interface{}
 				if err = response.DecodeJSON(&accessorDataMap); err != nil {
 					return err
@@ -249,17 +259,20 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 							return err
 						}
 						response, err := v.client.RawRequest(b)
+						if response != nil && response.Body != nil {
+							defer response.Body.Close()
+						}
+
 						if err != nil {
 							log.Fatal(err)
 						}
-						defer response.Body.Close()
 
 						if response.StatusCode == 204 {
 							fmt.Println("Revoked token with policy: " + matchedPolicy)
 						} else {
-							fmt.Println(fmt.Sprintf("Failed with status: %s", response.Status))
-							fmt.Println(fmt.Sprintf("Failed with status code: %d", response.StatusCode))
-							return errors.New("Failure to revoke tokens")
+							fmt.Printf("Failed with status: %s\n", response.Status)
+							fmt.Printf("Failed with status code: %d\n", response.StatusCode)
+							return errors.New("failure to revoke tokens")
 						}
 					}
 				}
@@ -268,12 +281,14 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 			if !tokenExpiration {
 				b := v.client.NewRequest("POST", "/v1/auth/token/tidy")
 				response, err := v.client.RawRequest(b)
+				if response != nil && response.Body != nil {
+					defer response.Body.Close()
+				}
 				if err != nil {
 					log.Fatal(err)
 				}
-				defer response.Body.Close()
 
-				fmt.Println(fmt.Sprintf("Tidy success status: %s", response.Status))
+				fmt.Printf("Tidy success status: %s\n", response.Status)
 
 				if response.StatusCode == 202 {
 					var tidyResponseMap map[string]interface{}
@@ -286,8 +301,8 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenExpiration bool, logge
 						}
 					}
 				} else {
-					fmt.Println(fmt.Sprintf("Non critical tidy success failure: %s", response.Status))
-					fmt.Println(fmt.Sprintf("Non critical tidy success failure: %d", response.StatusCode))
+					fmt.Printf("Non critical tidy success failure: %s\n", response.Status)
+					fmt.Printf("Non critical tidy success failure: %d\n", response.StatusCode)
 				}
 			}
 		}
@@ -337,7 +352,7 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 
 // GetExistsTokenRole - Gets the token role by token role name.
 func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
-	roleFile, err := ioutil.ReadFile(filename)
+	roleFile, err := os.ReadFile(filename)
 	if err != nil {
 		return false, err
 	}
@@ -351,16 +366,17 @@ func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
 	fmt.Printf("Role: %s\n", tokenRole.RoleName)
 
 	r := v.client.NewRequest("GET", fmt.Sprintf("/v1/auth/token/roles/%s", tokenRole.RoleName))
-	resp, err := v.client.RawRequest(r)
-
-	defer resp.Body.Close()
+	response, err := v.client.RawRequest(r)
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
 
 	if err != nil {
 		return false, err
 	}
 
 	var jsonData map[string]interface{}
-	if err = resp.DecodeJSON(&jsonData); err != nil {
+	if err = response.DecodeJSON(&jsonData); err != nil {
 		return false, err
 	}
 
@@ -368,7 +384,7 @@ func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
 		return true, nil
 	}
 
-	return false, fmt.Errorf("Error parsing resonse for key 'data'")
+	return false, fmt.Errorf("error parsing resonse for key 'data'")
 }
 
 // CreatePolicyFromFile Creates a policy with the given name and rules
@@ -388,7 +404,7 @@ func (v *Vault) GetExistsPolicyFromFileName(filename string) (bool, error) {
 
 // CreatePolicyFromFile Creates a policy with the given name and rules
 func (v *Vault) CreatePolicyFromFile(name string, filepath string) error {
-	data, err := ioutil.ReadFile(filepath)
+	data, err := os.ReadFile(filepath)
 	if err != nil {
 		return err
 	}
@@ -442,7 +458,7 @@ func (v *Vault) Unseal() (int, int, bool, error) {
 
 // CreateTokenCidrRoleFromFile Creates a new token cidr role from the given file and returns the name
 func (v *Vault) CreateTokenCidrRoleFromFile(filename string) error {
-	tokenfile, err := ioutil.ReadFile(filename)
+	tokenfile, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
@@ -457,7 +473,7 @@ func (v *Vault) CreateTokenCidrRoleFromFile(filename string) error {
 
 // CreateTokenFromFile Creates a new token from the given file and returns the name
 func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
-	tokenfile, err := ioutil.ReadFile(filename)
+	tokenfile, err := os.ReadFile(filename)
 	if err != nil {
 		return "", err
 	}
@@ -532,7 +548,7 @@ func (v *Vault) CreateTokenFromMap(data map[string]interface{}) (string, error) 
 	return response.Auth.ClientToken, err
 }
 
-//GetStatus checks the health of the vault and retrieves version and status of init/seal
+// GetStatus checks the health of the vault and retrieves version and status of init/seal
 func (v *Vault) GetStatus() (map[string]interface{}, error) {
 	health, err := v.client.Sys().Health()
 	if err != nil {

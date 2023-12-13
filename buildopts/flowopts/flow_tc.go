@@ -5,8 +5,10 @@ package flowopts
 
 import (
 	tccutil "VaultConfig.TenantConfig/util/controller"
-	flowcore "tierceron/trcflow/core"
-	trcf "tierceron/trcflow/core/flowcorehelper"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	askflume "github.com/trimble-oss/tierceron/trcflow/core/askflume"
+	trcf "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
+	flows "github.com/trimble-oss/tierceron/trcflow/flows"
 )
 
 func GetAdditionalFlows() []flowcore.FlowNameType {
@@ -22,7 +24,15 @@ func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
 }
 
 func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return tccutil.ProcessFlowController(tfmContext, trcFlowContext)
+	switch trcFlowContext.Flow {
+	case flowcore.DataFlowStatConfigurationsFlow:
+		// Table flow...
+		return flows.ProcessDataFlowStatConfigurations(tfmContext, trcFlowContext)
+	case flowcore.AskFlumeFlow:
+		return askflume.ProcessAskFlumeController(tfmContext, trcFlowContext)
+	default:
+		return tccutil.ProcessFlowController(tfmContext, trcFlowContext)
+	}
 }
 
 func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
