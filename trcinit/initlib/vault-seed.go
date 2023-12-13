@@ -471,6 +471,11 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 			certPath = strings.Replace(certPath, "ENV", config.EnvRaw, 1)
 		}
 	}
+	if strings.Contains(certPath, "..") {
+		fmt.Println("Invalid cert path: " + certPath + " Certs not allowed to contain complex path navigation.")
+		config.Log.Println("Invalid cert path: " + certPath + " Certs not allowed to contain complex path navigation.")
+		return
+	}
 	certPath = coreopts.GetFolderPrefix(nil) + "_seeds/" + certPath
 	eUtils.LogInfo(config, fmt.Sprintf("Inspecting certificate: "+certPath+"."))
 	cert, err := os.ReadFile(certPath)
