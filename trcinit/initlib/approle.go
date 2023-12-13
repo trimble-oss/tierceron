@@ -2,7 +2,6 @@ package initlib
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -20,7 +19,7 @@ func GetApproleFileNames(config *eUtils.DriverConfig, namespace string) []string
 		os.Exit(-1)
 	}
 
-	approleFiles, approleFilesErr := ioutil.ReadDir(cwd + "/vault_namespaces/" + namespace + "/approle_files")
+	approleFiles, approleFilesErr := os.ReadDir(cwd + "/vault_namespaces/" + namespace + "/approle_files")
 	if approleFilesErr != nil {
 		fmt.Println("Error reading approle_files directory. Cannot continue.")
 		eUtils.LogErrorObject(config, approleFilesErr, false)
@@ -44,7 +43,7 @@ func ParseApproleYaml(fileName string, namespace string) (map[interface{}]interf
 	if cwdErr != nil {
 		return nil, cwdErr
 	}
-	file, err := ioutil.ReadFile(cwd + "/vault_namespaces/" + namespace + "/approle_files/" + fileName + ".yml")
+	file, err := os.ReadFile(cwd + "/vault_namespaces/" + namespace + "/approle_files/" + fileName + ".yml")
 	if err != nil {
 		return nil, err
 	}

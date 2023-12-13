@@ -23,7 +23,7 @@ var count int
 
 // Collects time data from DataFlowStatistics layer and adds data to DataFlow object
 // Returns updated DetailedElements array and an array of time data from DataFlowStatistics
-func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement, node flowcore.TTDINode, testTimes []float64, depth int) ([]*mashupsdk.MashupDetailedElement, []float64) {
+func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement, node *flowcore.TTDINode, testTimes []float64, depth int) ([]*mashupsdk.MashupDetailedElement, []float64) {
 	for _, child_node := range node.ChildNodes {
 		if child_node.MashupDetailedElement.Genre == "DataFlowStatistic" {
 			node.MashupDetailedElement.Genre = "DataFlow"
@@ -32,7 +32,7 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 				if stat.State == nil {
 					stat.State = &mashupsdk.MashupElementState{Id: stat.Id, State: int64(mashupsdk.Init)}
 				}
-				detailedElements = append(detailedElements, &stat)
+				detailedElements = append(detailedElements, stat)
 				var decodedstat interface{}
 				err := json.Unmarshal([]byte(stat.Data), &decodedstat)
 				if err != nil {
@@ -46,7 +46,7 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 				timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
 				nextStat := node.ChildNodes[i+1].MashupDetailedElement
 				if i == len(node.ChildNodes)-2 {
-					detailedElements = append(detailedElements, &nextStat)
+					detailedElements = append(detailedElements, nextStat)
 				}
 				var nextdecodedstat interface{}
 				err = json.Unmarshal([]byte(nextStat.Data), &nextdecodedstat)
@@ -68,7 +68,7 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 	}
 	node.MashupDetailedElement.Alias = strconv.Itoa(depth)
 	if node.MashupDetailedElement.Id != 0 {
-		detailedElements = append(detailedElements, &node.MashupDetailedElement)
+		detailedElements = append(detailedElements, node.MashupDetailedElement)
 		if node.MashupDetailedElement.Id == 2 {
 			idForData = len(detailedElements) - 1
 		}
@@ -176,11 +176,11 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 		for i := 0; i < len(argosy.ChildNodes); i++ {
 			detailedElement := argosy.ChildNodes[i].MashupDetailedElement
 			detailedElement.Alias = "DataFlowGroup"
-			DetailedElements = append(DetailedElements, &detailedElement)
+			DetailedElements = append(DetailedElements, detailedElement)
 			for j := 0; j < len(argosy.ChildNodes[i].ChildNodes); j++ {
 				element := argosy.ChildNodes[i].ChildNodes[j].MashupDetailedElement
 				element.Alias = "DataFlow"
-				DetailedElements = append(DetailedElements, &element)
+				DetailedElements = append(DetailedElements, element)
 				if pointer < len(data)-1 {
 					pointer += 1
 				} else {
@@ -195,7 +195,7 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 					}
 					dfstatData[el.Name] = timeSeconds
 					statGroup = append(statGroup, timeSeconds)
-					DetailedElements = append(DetailedElements, &el)
+					DetailedElements = append(DetailedElements, el)
 				}
 				for l := 0; l < len(statGroup)-1; l++ {
 					if statGroup[l+1]-statGroup[l] > 0 {
@@ -208,7 +208,7 @@ func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDeta
 			argosyBasis.Data = strconv.Itoa(int(maxTime))
 
 		}
-		DetailedElements = append(DetailedElements, &argosyBasis)
+		DetailedElements = append(DetailedElements, argosyBasis)
 	}
 
 	DetailedElements = append(DetailedElements, &mashupsdk.MashupDetailedElement{

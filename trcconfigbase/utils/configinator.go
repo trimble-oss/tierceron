@@ -4,17 +4,16 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/go-git/go-billy/v5"
 
+	"github.com/trimble-oss/tierceron/utils"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/validator"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -23,10 +22,10 @@ import (
 var mutex = &sync.Mutex{}
 
 // GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverConfig) (interface{}, error) {
+func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigContext, config *eUtils.DriverConfig) (interface{}, error) {
 	/*Cyan := "\033[36m"
 	Reset := "\033[0m"
-	if runtime.GOOS == "windows" {
+	if utils.IsWindows() {
 		Reset = ""
 		Cyan = ""
 	}*/
@@ -35,6 +34,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	version := ""
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
+		return nil, err
 	}
 	modCheck.VersionFilter = config.VersionFilter
 
@@ -46,15 +46,16 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 
 		config.Env = envVersion[0]
 		version = envVersion[1]
-		if version == "versionInfo" {
+		switch version {
+		case "versionInfo":
 			versionInfo = true
-		} else if version == "templateInfo" {
+		case "templateInfo":
 			templateInfo = true
 		}
 	}
 	versionData := make(map[string]interface{})
 	if config.Token != "novault" {
-		if valid, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "", config.Log); errValidateEnvironment != nil || !valid {
+		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "", config.Log); errValidateEnvironment != nil || !valid {
 			if errValidateEnvironment != nil {
 				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
 					if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
@@ -63,8 +64,8 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				}
 			}
 
-			if unrestrictedValid, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-				return nil, eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+config.Env, 1)
+			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+				return nil, eUtils.LogAndSafeExit(config, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", config.Env, baseDesiredPolicy, desiredPolicy), 1)
 			}
 		}
 	}
@@ -77,6 +78,18 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	for _, startDir := range config.StartDir {
 		//get files from directory
 		tp, ep := getDirFiles(startDir, config.EndDir)
+		if trcProjectService, ok := config.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
+			epScrubbed := []string{}
+			// Do some scrubbing...
+			for _, e := range ep {
+				e = strings.Replace(e, trcProjectService.(string), "/", 1)
+				projectService := strings.Replace(trcProjectService.(string), "/", "\\", 1)
+				e = strings.Replace(e, projectService, "\\", 1)
+				epScrubbed = append(epScrubbed, e)
+			}
+			ep = epScrubbed
+		}
+
 		templatePaths = append(templatePaths, tp...)
 		endPaths = append(endPaths, ep...)
 	}
@@ -94,34 +107,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 	}
 
 	//File filter
-	fileFound := true
-	fileFilterIndex := make([]int, len(config.FileFilter))
-	fileFilterCounter := 0
-	if len(config.FileFilter) != 0 && config.FileFilter[0] != "" {
-		for _, FileFilter := range config.FileFilter {
-			for i, templatePath := range templatePaths {
-				if strings.Contains(templatePath, FileFilter) {
-					fileFilterIndex[fileFilterCounter] = i
-					fileFilterCounter++
-					fileFound = true
-					break
-				}
-			}
-		}
-		if !fileFound {
-			return nil, eUtils.LogAndSafeExit(config, "Could not find specified file in templates", 1)
-		}
+	templatePaths, endPaths = FilterPaths(templatePaths, endPaths, config.FileFilter, false)
 
-		fileTemplatePaths := []string{}
-		fileEndPaths := []string{}
-		for _, index := range fileFilterIndex {
-			fileTemplatePaths = append(fileTemplatePaths, templatePaths[index])
-			fileEndPaths = append(fileEndPaths, endPaths[index])
-		}
-
-		templatePaths = fileTemplatePaths
-		endPaths = fileEndPaths
-	}
+	templatePaths, endPaths = FilterPaths(templatePaths, endPaths, config.ServicesWanted, false)
 
 	for _, templatePath := range templatePaths {
 		if !config.WantCerts && strings.Contains(templatePath, "Common") {
@@ -328,9 +316,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				} else {
 					if config.Diff {
 						if version != "" {
-							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
+							config.Update(configCtx, &configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
 						} else {
-							config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+							config.Update(configCtx, &configuredTemplate, config.Env+"||"+endPaths[i])
 						}
 					} else {
 						writeToFile(config, configuredTemplate, endPaths[i])
@@ -384,9 +372,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				} else {
 					if config.Diff {
 						if version != "" {
-							config.Update(&configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
+							config.Update(configCtx, &configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
 						} else {
-							config.Update(&configuredTemplate, config.Env+"||"+endPaths[i])
+							config.Update(configCtx, &configuredTemplate, config.Env+"||"+endPaths[i])
 						}
 					} else {
 						writeToFile(config, configuredTemplate, endPaths[i])
@@ -400,7 +388,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, config *eUtils.DriverCo
 				if config.OutputMemCache {
 					messageBase = "template configured and pre-processed for "
 				}
-				if runtime.GOOS == "windows" {
+				if utils.IsWindows() {
 					eUtils.LogInfo(config, messageBase+endPaths[i])
 				} else {
 					eUtils.LogInfo(config, "\033[0;33m"+messageBase+endPaths[i]+"\033[0m")
@@ -437,7 +425,14 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 	if strings.Contains(data, "${TAG}") {
 		tag := os.Getenv("TRCENV_TAG")
 		if len(tag) > 0 {
-			matched, err := regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
+			var matched bool
+			var err error
+			if config.Env == "staging" || config.Env == "prod" {
+				matched, err = regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
+			} else {
+				matched, err = regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
+			}
+
 			if !matched || err != nil {
 				fmt.Println("Invalid build tag")
 				eUtils.LogInfo(config, "Invalid build tag was found:"+tag+"- exiting...")
@@ -455,6 +450,9 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 		var memFile billy.File
 		memCacheLock.Lock()
 		if _, err := config.MemFs.Stat(path); errors.Is(err, os.ErrNotExist) {
+			if strings.HasPrefix(path, "./") {
+				path = strings.TrimLeft(path, "./")
+			}
 			memFile, err = config.MemFs.Create(path)
 			if err != nil {
 				eUtils.CheckError(config, err, true)
@@ -483,7 +481,7 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 }
 
 func getDirFiles(dir string, endDir string) ([]string, []string) {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	filePaths := []string{}
 	endPaths := []string{}
 	if err != nil {

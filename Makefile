@@ -10,7 +10,7 @@ config:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly"  github.com/trimble-oss/tierceron/trcconfig
 
 devplugincarrierbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "insecure awsecr" -o trcvault/deploy/target/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/trcvault/plugins/carrier
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "insecure azrcr" -o trcvault/deploy/target/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/trcvault/plugins/carrier
 devplugincarriersha:
 	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin.sha256
 devplugincarrier: devplugincarrierbuild devplugincarriersha
@@ -50,7 +50,7 @@ pub:
 sub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/trcsub
 certify:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "memonly awsecr" github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "memonly azrcr" github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase
 trcshell: 
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcsh -tags "memonly" github.com/trimble-oss/tierceron/trcsh
 gen:

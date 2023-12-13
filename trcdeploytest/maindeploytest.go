@@ -44,7 +44,7 @@ func main() {
 	//envMap["vaddress"] = "vaultaddr"
 	//envMap["token"] = "INSERT TOKEN HERE"
 	carrierfactory.InitLogger(logger)
-	go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))
+	//go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))
 
 	go carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "QA"

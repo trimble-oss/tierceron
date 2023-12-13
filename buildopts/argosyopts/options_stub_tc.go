@@ -7,12 +7,13 @@ import (
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
 
 	"encoding/json"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
-	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
-	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	"log"
 	"math"
 	"strconv"
+
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 var pointer int
@@ -57,7 +58,7 @@ func buildStubArgosies(startID int64, argosysize int, dfgsize int) ([]flowcore.T
 		argosyId = startID + int64(i)*int64(1.0+float64(dfgsize)+math.Pow(float64(dfsize), 2.0)+math.Pow(float64(dfstatsize), 3.0))
 		collectionIDs = append(collectionIDs, argosyId)
 		argosy := flowcore.TTDINode{
-			mashupsdk.MashupDetailedElement{
+			&mashupsdk.MashupDetailedElement{
 				Id:          argosyId,
 				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Init)},
 				Name:        "Argosy-" + strconv.Itoa(int(argosyId)),
@@ -69,7 +70,7 @@ func buildStubArgosies(startID int64, argosysize int, dfgsize int) ([]flowcore.T
 				Parentids:   []int64{},
 				Childids:    []int64{-2},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		}
 		collection := []int64{}
 		children := []int64{}
@@ -87,18 +88,18 @@ func buildStubArgosies(startID int64, argosysize int, dfgsize int) ([]flowcore.T
 	return argosies, collectionIDs, curveCollection
 }
 
-func buildStubDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int, parentID int64) ([]flowcore.TTDINode, []int64, []int64, []int64) {
+func buildStubDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize int, parentID int64) ([]*flowcore.TTDINode, []int64, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
-	groups := []flowcore.TTDINode{}
+	groups := []*flowcore.TTDINode{}
 	curveCollection := []int64{}
 	for i := 0; i < dfgsize; i++ {
 		argosyId = startID + int64(i)*int64(1.0+float64(dfsize)+math.Pow(float64(dfstatsize), 2.0))
 		collectionIDs = append(collectionIDs, argosyId)
 		childIDs = append(childIDs, argosyId)
-		group := flowcore.TTDINode{
-			mashupsdk.MashupDetailedElement{
+		group := &flowcore.TTDINode{
+			&mashupsdk.MashupDetailedElement{
 				Id:          argosyId,
 				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
 				Name:        "DataFlowGroup-" + strconv.Itoa(int(argosyId)),
@@ -110,7 +111,7 @@ func buildStubDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize 
 				Parentids:   []int64{parentID},
 				Childids:    []int64{-4},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		}
 		collection := []int64{}
 		children := []int64{}
@@ -122,24 +123,25 @@ func buildStubDataFlowGroups(startID int64, dfgsize int, dfsize int, dfstatsize 
 		for _, id := range children {
 			group.MashupDetailedElement.Childids = append(group.MashupDetailedElement.Childids, id)
 		}
+
 		groups = append(groups, group)
 	}
 	return groups, collectionIDs, childIDs, curveCollection
 }
 
-func buildStubDataFlows(startID int64, dfsize int, dfstatsize int, parentID int64) ([]flowcore.TTDINode, []int64, []int64, []int64) {
+func buildStubDataFlows(startID int64, dfsize int, dfstatsize int, parentID int64) ([]*flowcore.TTDINode, []int64, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
-	flows := []flowcore.TTDINode{}
+	flows := []*flowcore.TTDINode{}
 	curveCollection := []int64{}
 	for i := 0; i < dfsize; i++ {
 		argosyId = startID + int64(i)*int64(1.0+float64(dfstatsize))
 		collectionIDs = append(collectionIDs, argosyId)
 		childIDs = append(childIDs, argosyId)
 		pointer = i
-		flow := flowcore.TTDINode{
-			mashupsdk.MashupDetailedElement{
+		flow := &flowcore.TTDINode{
+			&mashupsdk.MashupDetailedElement{
 				Id:             argosyId,
 				State:          &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
 				Name:           data[i] + "-" + strconv.Itoa(int(argosyId)), //"DataFlow-" + strconv.Itoa(int(argosyId)),
@@ -152,7 +154,7 @@ func buildStubDataFlows(startID int64, dfsize int, dfstatsize int, parentID int6
 				Parentids:      []int64{parentID},
 				Childids:       []int64{-4},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		}
 		otherIds := []int64{}
 		children := []int64{}
@@ -169,18 +171,18 @@ func buildStubDataFlows(startID int64, dfsize int, dfstatsize int, parentID int6
 	return flows, collectionIDs, childIDs, curveCollection
 }
 
-func buildStubDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]flowcore.TTDINode, []int64, []int64, []int64) {
+func buildStubDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]*flowcore.TTDINode, []int64, []int64, []int64) {
 	argosyId := startID - 1
 	collectionIDs := []int64{}
 	childIDs := []int64{}
 	curveCollection := []int64{}
-	stats := []flowcore.TTDINode{}
+	stats := []*flowcore.TTDINode{}
 	for i := 0; i < len(TimeData[data[pointer]]); i++ {
 		argosyId = argosyId + 1
 		childIDs = append(childIDs, argosyId)
 		curveCollection = append(curveCollection, argosyId)
-		stat := flowcore.TTDINode{
-			mashupsdk.MashupDetailedElement{
+		stat := &flowcore.TTDINode{
+			&mashupsdk.MashupDetailedElement{
 				Id:          argosyId,
 				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
 				Name:        "DataFlowStatistic-" + strconv.Itoa(int(argosyId)), //data[pointer], //
@@ -192,7 +194,7 @@ func buildStubDataFlowStatistics(startID int64, dfstatsize int, parentID int64) 
 				Parentids:   []int64{parentID},
 				Childids:    []int64{-1},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		}
 		statdata := make(map[string]interface{})
 		statdata["TimeSplit"] = (TimeData[data[pointer]][i]) * math.Pow(10.0, 9.0)
@@ -210,10 +212,10 @@ func buildStubDataFlowStatistics(startID int64, dfstatsize int, parentID int64) 
 	return stats, collectionIDs, childIDs, curveCollection
 }
 
-func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, error) {
-	Argosys := []flowcore.TTDINode{
+func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (*flowcore.TTDINode, error) {
+	Argosys := []*flowcore.TTDINode{
 		{
-			mashupsdk.MashupDetailedElement{
+			&mashupsdk.MashupDetailedElement{
 				Id:          3,
 				State:       &mashupsdk.MashupElementState{Id: 3, State: int64(mashupsdk.Init)},
 				Name:        "Outside",
@@ -225,10 +227,10 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, er
 				Parentids:   nil,
 				Childids:    nil,
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		},
 		{
-			mashupsdk.MashupDetailedElement{
+			&mashupsdk.MashupDetailedElement{
 				Basisid:     -4,
 				State:       &mashupsdk.MashupElementState{Id: -4, State: int64(mashupsdk.Hidden)},
 				Name:        "{0}-SubSpiral",
@@ -240,10 +242,10 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, er
 				Parentids:   []int64{-2},
 				Childids:    []int64{},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		},
 		{
-			mashupsdk.MashupDetailedElement{
+			&mashupsdk.MashupDetailedElement{
 				Basisid:       -1,
 				State:         &mashupsdk.MashupElementState{Id: -1, State: int64(mashupsdk.Mutable)},
 				Name:          "Curve",
@@ -256,10 +258,10 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, er
 				Parentids:     []int64{},
 				Childids:      []int64{},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		},
 		{
-			mashupsdk.MashupDetailedElement{
+			&mashupsdk.MashupDetailedElement{
 				Id:            1,
 				State:         &mashupsdk.MashupElementState{Id: 1, State: int64(mashupsdk.Init)},
 				Name:          "CurvePathEntity-1",
@@ -271,10 +273,10 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, er
 				Parentids:     nil,
 				Childids:      []int64{-1},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		},
 		{
-			mashupsdk.MashupDetailedElement{
+			&mashupsdk.MashupDetailedElement{
 				Basisid:     -2,
 				State:       &mashupsdk.MashupElementState{Id: -2, State: int64(mashupsdk.Mutable)},
 				Name:        "{0}-Path",
@@ -286,15 +288,15 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, er
 				Parentids:   nil,
 				Childids:    []int64{-4},
 			},
-			[]flowcore.TTDINode{},
+			[]*flowcore.TTDINode{},
 		},
 	}
 	tempArgosies, collectionIDs, curveIDs := buildStubArgosies(5, 10, 10)
 	for _, argosy := range tempArgosies {
-		Argosys = append(Argosys, argosy)
+		Argosys = append(Argosys, &argosy)
 	}
-	Argosys = append(Argosys, flowcore.TTDINode{
-		mashupsdk.MashupDetailedElement{
+	Argosys = append(Argosys, &flowcore.TTDINode{
+		&mashupsdk.MashupDetailedElement{
 			Id:          4,
 			State:       &mashupsdk.MashupElementState{Id: 4, State: int64(mashupsdk.Init)},
 			Name:        "PathGroupOne",
@@ -305,11 +307,11 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, er
 			Parentids:   []int64{},
 			Childids:    collectionIDs,
 		},
-		[]flowcore.TTDINode{},
+		[]*flowcore.TTDINode{},
 	})
 	curveIDs = append(curveIDs, 1)
-	Argosys = append(Argosys, flowcore.TTDINode{
-		mashupsdk.MashupDetailedElement{
+	Argosys = append(Argosys, &flowcore.TTDINode{
+		&mashupsdk.MashupDetailedElement{
 			Id:            2,
 			State:         &mashupsdk.MashupElementState{Id: 2, State: int64(mashupsdk.Init)},
 			Name:          "CurvesGroupOne",
@@ -321,10 +323,10 @@ func BuildStubFleet(mod *kv.Modifier, logger *log.Logger) (flowcore.TTDINode, er
 			Parentids:     nil,
 			Childids:      curveIDs,
 		},
-		[]flowcore.TTDINode{},
+		[]*flowcore.TTDINode{},
 	})
 
-	return flowcore.TTDINode{ChildNodes: Argosys}, nil
+	return &flowcore.TTDINode{ChildNodes: Argosys}, nil
 	// flowcore.ArgosyFleet{
 	// 	ArgosyName: "Dev Environment",
 	// 	Argosies:   []flowcore.Argosy(Argosys),

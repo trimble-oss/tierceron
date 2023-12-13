@@ -12,7 +12,7 @@ import (
 
 	//pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 
-	tm "golang.org/x/crypto/ssh/terminal"
+	tm "golang.org/x/term"
 )
 
 // LoginToLocal prompts the user to enter credentials from the terminal and resolves granular local environment

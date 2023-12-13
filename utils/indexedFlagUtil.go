@@ -7,16 +7,28 @@ import (
 	"strings"
 )
 
-var SubPathFilter = flag.String("subPathFilter", "", "Specifies subpath templates to filter")                           // a sub path filter.
-var ServiceNameFilterPtr = flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
-var ServiceFilterPtr = flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")               // Table names
-var IndexNameFilterPtr = flag.String("indexFilter", "", "Specifies which index names to filter")                        // column index, table to filter.
-var IndexValueFilterPtr = flag.String("indexValueFilter", "", "Specifies which index values to filter")                 // column index value to filter on.
-var IndexedPtr = flag.String("indexed", "", "Specifies which projects are indexed")                                     // Indicates indexed projects...
-var RestrictedPtr = flag.String("restricted", "", "Specifies which projects have restricted access.")
-var ProtectedPtr = flag.String("protected", "", "Specifies which projects have protected access.")
-var BasePtr = flag.Bool("base", false, "Specifies whether the base env seed file will be seeded")
+var SubPathFilter *string
+var ServiceNameFilterPtr *string
+var ServiceFilterPtr *string
+var IndexNameFilterPtr *string
+var IndexValueFilterPtr *string
+var IndexedPtr *string
+var RestrictedPtr *string
+var ProtectedPtr *string
+var BasePtr *bool
 var OnlyBasePtr = false
+
+func initglobals(flagset *flag.FlagSet) {
+	SubPathFilter = flagset.String("subPathFilter", "", "Specifies subpath templates to filter")                           // a sub path filter.
+	ServiceNameFilterPtr = flagset.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
+	ServiceFilterPtr = flagset.String("serviceFilter", "", "Specifies which services (or tables) to filter")               // Table names
+	IndexNameFilterPtr = flagset.String("indexFilter", "", "Specifies which index names to filter")                        // column index, table to filter.
+	IndexValueFilterPtr = flagset.String("indexValueFilter", "", "Specifies which index values to filter")                 // column index value to filter on.
+	IndexedPtr = flagset.String("indexed", "", "Specifies which projects are indexed")                                     // Indicates indexed projects...
+	RestrictedPtr = flagset.String("restricted", "", "Specifies which projects have restricted access.")
+	ProtectedPtr = flagset.String("protected", "", "Specifies which projects have protected access.")
+	BasePtr = flagset.Bool("base", false, "Specifies whether the base env seed file will be seeded")
+}
 
 func checkInitFlagHelper() {
 	if len(*IndexValueFilterPtr) > 0 {
@@ -34,8 +46,10 @@ func checkInitFlagHelper() {
 		os.Exit(1)
 	}
 }
-func CheckInitFlags() {
+
+func CheckInitFlags(flagset *flag.FlagSet) {
 	filtered := false
+	initglobals(flagset)
 	//Cannot specify a pathed indexed/restricted seed file while specifying a restricted/indexed section.
 	if len(*IndexNameFilterPtr) > 0 || len(*ServiceNameFilterPtr) > 0 || len(*IndexValueFilterPtr) > 0 || len(*ServiceNameFilterPtr) > 0 {
 		filtered = true

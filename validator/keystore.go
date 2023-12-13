@@ -9,7 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -18,7 +18,6 @@ import (
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 
 	"github.com/youmark/pkcs8"
-	"golang.org/x/crypto/pkcs12"
 	pkcs "golang.org/x/crypto/pkcs12"
 	"golang.org/x/crypto/ssh"
 )
@@ -36,9 +35,12 @@ func StoreKeystore(config *eUtils.DriverConfig, trustStorePassword string) ([]by
 	keystoreWriter := bufio.NewWriter(buffer)
 
 	if config.KeyStore == nil {
-		return nil, errors.New("Cert bundle not properly named")
+		return nil, errors.New("cert bundle not properly named")
 	}
-	config.KeyStore.Store(keystoreWriter, []byte(trustStorePassword))
+	storeErr := config.KeyStore.Store(keystoreWriter, []byte(trustStorePassword))
+	if storeErr != nil {
+		return nil, storeErr
+	}
 	keystoreWriter.Flush()
 
 	return buffer.Bytes(), nil
@@ -59,7 +61,7 @@ func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, c
 
 	block, _ := pem.Decode(data)
 	if block == nil {
-		key, cert, err := pkcs12.Decode(data, string(password)) // Note the order of the return values.
+		key, cert, err := pkcs.Decode(data, string(password)) // Note the order of the return values.
 		if err != nil {
 			return err
 		}
@@ -113,7 +115,7 @@ func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, c
 
 // ValidateKeyStore validates the sendgrid API key.
 func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string) (bool, error) {
-	file, err := ioutil.ReadFile(filename)
+	file, err := os.ReadFile(filename)
 	if err != nil {
 		return false, err
 	}
@@ -128,7 +130,8 @@ func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string)
 		//	certificateType = "CERTIFICATE"
 		//	privateKeyType  = "PRIVATE KEY"
 
-		if (*pemBlock).Type == certificateType {
+		switch (*pemBlock).Type {
+		case certificateType:
 			var cert x509.Certificate
 			_, errUnmarshal := asn1.Unmarshal((*pemBlock).Bytes, &cert)
 			if errUnmarshal != nil {
@@ -140,7 +143,7 @@ func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string)
 				eUtils.LogInfo(config, "Certificate validation failure.")
 			}
 			isValid = isCertValid
-		} else if (*pemBlock).Type == privateKeyType {
+		case privateKeyType:
 			var key rsa.PrivateKey
 			_, errUnmarshal := asn1.Unmarshal((*pemBlock).Bytes, &key)
 			if errUnmarshal != nil {

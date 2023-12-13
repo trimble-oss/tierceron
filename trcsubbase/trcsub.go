@@ -1,6 +1,7 @@
 package trcsubbase
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -8,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	il "github.com/trimble-oss/tierceron/trcinit/initlib"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
@@ -21,69 +22,117 @@ import (
 // The file is saved under the data key, and the extension under the ext key
 // Vault automatically encodes the file into base64
 
-func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
+func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
+	secretIDPtr *string,
+	appRoleIDPtr *string,
+	flagset *flag.FlagSet,
+	argLines []string,
+	c *eUtils.DriverConfig) error {
 	if memonly.IsMemonly() {
-		mlock.Mlock(nil)
+		memprotectopts.MemProtectInit(nil)
 	}
-	fmt.Println("Version: " + "1.4")
-	dirPtr := flag.String("dir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
-	tokenPtr := flag.String("token", "", "Vault access token")
-	secretIDPtr := flag.String("secretID", "", "Public app role ID")
-	appRoleIDPtr := flag.String("appRoleID", "", "Secret app role ID")
-	tokenNamePtr := flag.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"pub to access the vault")
-	pingPtr := flag.Bool("ping", false, "Ping vault.")
-	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
-	projectInfoPtr := flag.Bool("projectInfo", false, "Lists all project info")
-	filterTemplatePtr := flag.String("templateFilter", "", "Specifies which templates to filter")
+	fmt.Println("Version: " + "1.6")
 
-	flag.Parse()
+	exitOnFailure := false
+	if flagset == nil {
+		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		flagset.Usage = func() {
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			flagset.PrintDefaults()
+		}
+		flagset.String("env", "dev", "Environment to configure")
+		flagset.String("addr", "", "API endpoint for the vault")
+		flagset.String("secretID", "", "Public app role ID")
+		flagset.String("appRoleID", "", "Secret app role ID")
+		exitOnFailure = true
+	}
+	endDirPtr := flagset.String("endDir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
+	tokenPtr := flagset.String("token", "", "Vault access token")
+	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"pub to access the vault")
+	pingPtr := flagset.Bool("ping", false, "Ping vault.")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
+	projectInfoPtr := flagset.Bool("projectInfo", false, "Lists all project info")
+	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
+	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
 
-	if len(*filterTemplatePtr) == 0 && !*projectInfoPtr {
+	flagset.Parse(argLines[1:])
+
+	if len(*filterTemplatePtr) == 0 && !*projectInfoPtr && *templatePathsPtr == "" {
 		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")
-		os.Exit(1)
+		return errors.New("must specify either -projectInfo or -templateFilter flag")
 	}
+	var configBase *eUtils.DriverConfig
+	var appRoleConfigPtr *string
 
-	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"sub.log" {
-		*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "sub.log"
+	if c != nil {
+		configBase = c
+		if len(configBase.EndDir) == 0 && len(*endDirPtr) != 0 {
+			// Bad inputs... use default.
+			configBase.EndDir = *endDirPtr
+		}
+		appRoleConfigPtr = &c.AppRoleConfig
+
+	} else {
+		// If logging production directory does not exist and is selected log to local directory
+		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"sub.log" {
+			*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "sub.log"
+		}
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		if err != nil {
+			fmt.Println("Log init failure")
+			return err
+		}
+
+		logger := log.New(f, "[INIT]", log.LstdFlags)
+		configBase = &eUtils.DriverConfig{Insecure: *insecurePtr,
+			EndDir:        *endDirPtr,
+			Log:           logger,
+			ExitOnFailure: exitOnFailure}
+		appRoleConfigPtr = new(string)
 	}
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-
-	logger := log.New(f, "[INIT]", log.LstdFlags)
-	config := &eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger, ExitOnFailure: true}
-	eUtils.CheckError(config, err, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(configBase, err, false)
+		return err
 	}
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 
-	autoErr := eUtils.AutoAuth(config, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
+	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
-		os.Exit(1)
+		return autoErr
 	}
 	if memonly.IsMemonly() {
-		mlock.MunlockAll(nil)
-		mlock.Mlock2(nil, tokenPtr)
+		memprotectopts.MemUnprotectAll(nil)
+		memprotectopts.MemProtect(nil, tokenPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, logger)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
-	eUtils.CheckError(config, err, true)
+	if err != nil {
+		fmt.Println("Failure to init to vault")
+		configBase.Log.Println("Failure to init to vault")
+		return err
+	}
 	mod.Env = *envPtr
 
-	if *projectInfoPtr {
-		templateList, err := mod.List("templates/", logger)
+	if *templatePathsPtr != "" {
+		fmt.Printf("Downloading templates from vault to %s\n", configBase.EndDir)
+		// The actual download templates goes here.
+		il.DownloadTemplates(configBase, mod, configBase.EndDir, configBase.Log, templatePathsPtr)
+	} else if *projectInfoPtr {
+		templateList, err := mod.List("templates/", configBase.Log)
 		if err != nil {
-			eUtils.CheckError(config, err, true)
+			fmt.Println("Failure read templates")
+			configBase.Log.Println("Failure read templates")
+			return err
 		}
 		fmt.Printf("\nProjects available:\n")
 		for _, templatePath := range templateList.Data {
@@ -92,18 +141,20 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string) {
 				fmt.Println(strings.TrimRight(project, "/"))
 			}
 		}
-		os.Exit(1)
+		return nil
 	} else {
-		fmt.Printf("Downloading templates from vault to %s\n", *dirPtr)
+		fmt.Printf("Downloading templates from vault to %s\n", configBase.EndDir)
 		// The actual download templates goes here.
-		err, warn := il.DownloadTemplateDirectory(config, mod, *dirPtr, logger, filterTemplatePtr)
+		warn, err := il.DownloadTemplateDirectory(configBase, mod, configBase.EndDir, configBase.Log, filterTemplatePtr)
 		if err != nil {
 			fmt.Println(err)
+			configBase.Log.Printf("Failure to download: %s", err.Error())
 			if strings.Contains(err.Error(), "x509: certificate") {
-				os.Exit(-1)
+				return err
 			}
 		}
-		eUtils.CheckError(config, err, true)
-		eUtils.CheckWarnings(config, warn, true)
+		eUtils.CheckError(configBase, err, false)
+		eUtils.CheckWarnings(configBase, warn, false)
 	}
+	return nil
 }

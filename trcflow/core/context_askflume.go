@@ -4,78 +4,59 @@
 package core
 
 import (
-	"context"
-
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
-
-	chat "google.golang.org/api/chat/v1"
 )
-
-// var GChatHandler trccontext.MashupSdkApiHandler
-
-var clientConnectionConfigs *mashupsdk.MashupConnectionConfigs
-var serverConnectionConfigs *mashupsdk.MashupConnectionConfigs
-
-
 
 type AskFlumeMessage struct {
 	Id      int64
 	Message string
-}
-
-type GoogleChatCxt struct {
-	Context context.Context
-	Service *chat.Service
+	Type    string
 }
 
 type AskFlumeContext struct {
-	GchatQueries   chan *AskFlumeContext
-	ChatGptQueries chan *AskFlumeContext
-	ChatGptAnswers chan *AskFlumeContext
-	GchatAnswers   chan *AskFlumeContext
-	GoogleChatCxt  *GoogleChatCxt
-	Close          bool
-	FlowCase       string
-	Query          *AskFlumeMessage
-	Queries        []*AskFlumeMessage
+	GchatQueries chan *AskFlumeContext
+	DFQueries    chan *AskFlumeContext
+	DFAnswers    chan *AskFlumeContext
+	GchatAnswers chan *AskFlumeContext
+	Upsert       chan *mashupsdk.MashupDetailedElementBundle
+	Close        bool
+	FlowCase     string
+	Query        *AskFlumeMessage
+	Queries      []*AskFlumeMessage
 }
 
 var id int64
 
+// Keeps track of ID value for number of queries processed
+// Should match up with ID for Flumeworld.MashupDetailedElementLibrary
 func GetId() int64 {
 	id += 1
 	return id - 1
 }
 
+// Initializes the AskFlumeContext and returns the
+// initialized context
 func InitAskFlume() (*AskFlumeContext, error) {
 	gchat_queries := make(chan *AskFlumeContext)
-	chatgpt_queries := make(chan *AskFlumeContext)
-	chatgpt_ans := make(chan *AskFlumeContext)
+	df_queries := make(chan *AskFlumeContext)
+	df_ans := make(chan *AskFlumeContext)
 	gchat_ans := make(chan *AskFlumeContext)
+	upsert := make(chan *mashupsdk.MashupDetailedElementBundle)
 	empty_query := &AskFlumeMessage{
 		Id:      0,
 		Message: "",
 	}
-	// gchat_cxt, err := InitGoogleChat()
-	// if e}rr != nil {
-	// 	fmt.Println("Find way to log err")
 
-	id = 1
+	id = 0
 	cxt := &AskFlumeContext{
-		GchatQueries:   gchat_queries,
-		ChatGptQueries: chatgpt_queries,
-		ChatGptAnswers: chatgpt_ans,
-		GchatAnswers:   gchat_ans,
-		GoogleChatCxt:  nil,
-		Close:          false,
-		FlowCase:       "",
-		Query:          empty_query,
+		GchatQueries: gchat_queries,
+		DFQueries:    df_queries,
+		DFAnswers:    df_ans,
+		GchatAnswers: gchat_ans,
+		Upsert:       upsert,
+		Close:        false,
+		FlowCase:     "",
+		Query:        empty_query,
 	}
 	return cxt, nil
-}
-
-func InitChatGPT() {
-	// Initialize the chat gpt api here and train it!
-	// Wonder if it's possible to use chat gpt to train itself? --> tell it to come up with questions about... to populate
-	// training data?
 }
