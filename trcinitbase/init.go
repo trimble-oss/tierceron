@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -270,14 +271,16 @@ func CommonMain(envPtr *string,
 		v.SetToken(*tokenPtr)
 	} else { // Unseal and grab keys/root token
 		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
-		if err != nil {
+		if err != nil || totalKeyShard > math.MaxInt {
 			fmt.Println("Unable to parse totalKeyShard into int")
+			os.Exit(-1)
 		}
-		unsealShardPtr, err := strconv.ParseUint(*unsealShardPtr, 10, 32)
-		if err != nil {
-			fmt.Println("Unable to parse unsealShardPtr into int")
+		keyThreshold, err := strconv.ParseUint(*unsealShardPtr, 10, 32)
+		if err != nil || keyThreshold > math.MaxInt {
+			fmt.Println("Unable to parse keyThreshold into int")
+			os.Exit(-1)
 		}
-		keyToken, err := v.InitVault(int(totalKeyShard), int(unsealShardPtr))
+		keyToken, err := v.InitVault(int(totalKeyShard), int(keyThreshold))
 		eUtils.LogErrorObject(config, err, true)
 		v.SetToken(keyToken.Token)
 		v.SetShards(keyToken.Keys)
