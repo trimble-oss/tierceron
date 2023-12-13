@@ -273,6 +273,7 @@ func CommonMain(envPtr *string,
 		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
 		if err != nil || totalKeyShard > math.MaxInt {
 			fmt.Println("Unable to parse totalKeyShard into int")
+			os.Exit(-1)
 		}
 		keyThreshold, err := strconv.ParseUint(*unsealShardPtr, 10, 32)
 		if err != nil || keyThreshold > math.MaxInt {

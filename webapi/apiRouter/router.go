@@ -114,7 +114,7 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 			// Auth method passed but is not a bearer token
 			errMsg = "Invalid auth method " + splitAuth[0]
 			http.Error(w, errMsg, 401)
-			s.Log.Printf("%d: %s", 401, errMsg)
+			s.Log.Print(eUtils.SanitizeForLogging(fmt.Sprintf("%d: %s", 401, errMsg)))
 			return
 		}
 		// No token to authenticate against
