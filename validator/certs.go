@@ -5,10 +5,12 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
-	"runtime"
+	"os"
 	"time"
+
+	"github.com/trimble-oss/tierceron/utils"
 )
 
 // Definition here: https://tools.ietf.org/html/rfc5280
@@ -57,7 +59,7 @@ func IsPfxRfc7292(byteCert []byte) (bool, error) {
 
 // ValidateCertificate validates certificate pointed to by the path
 func ValidateCertificate(certPath string, host string) (bool, error) {
-	byteCert, err := ioutil.ReadFile(certPath)
+	byteCert, err := os.ReadFile(certPath)
 	if err != nil {
 		return false, errors.New("failed to read file: " + err.Error())
 	}
@@ -90,7 +92,7 @@ func getCert(url string) (*x509.Certificate, error) {
 		return nil, err
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +107,7 @@ func VerifyCertificate(cert *x509.Certificate, host string) (bool, error) {
 		CurrentTime: time.Now(),
 	}
 
-	if runtime.GOOS != "windows" {
+	if !utils.IsWindows() {
 		rootCAs, err := x509.SystemCertPool()
 		if err != nil {
 			return false, err
@@ -115,7 +117,7 @@ func VerifyCertificate(cert *x509.Certificate, host string) (bool, error) {
 	}
 
 	if _, err := cert.Verify(opts); err != nil {
-		if runtime.GOOS != "windows" {
+		if !utils.IsWindows() {
 			if _, ok := err.(x509.UnknownAuthorityError); ok {
 				issuer, issuerErr := getCert("http://r3.i.lencr.org/")
 				if issuerErr != nil {

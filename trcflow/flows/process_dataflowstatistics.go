@@ -23,13 +23,24 @@ import (
 
 const flowGroupName = "Ninja"
 
+var refresh = false
+var endRefreshChan = make(chan bool, 1)
+
 func GetDataflowStatIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
 	tenantIndexPath, _ := utilcore.GetDFSPathName()
-
-	if first, second, third, fourth := rowDataMap[dfssql.DataflowTestIdColumn].(string), rowDataMap[dfssql.DataflowTestNameColumn].(string), rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), rowDataMap["flowGroup"].(string); first != "" && second != "" && third != "" && fourth != "" {
-		return "super-secrets/PublicIndex/" + tenantIndexPath + "/" + dfssql.DataflowTestIdColumn + "/" + rowDataMap[dfssql.DataflowTestIdColumn].(string) + "/DataFlowStatistics/DataFlowGroup/" + rowDataMap["flowGroup"].(string) + "/dataFlowName/" + rowDataMap[dfssql.DataflowTestNameColumn].(string) + "/" + rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), nil
+	if _, ok := rowDataMap[dfssql.DataflowTestIdColumn].(string); ok {
+		if _, ok := rowDataMap[dfssql.DataflowTestNameColumn].(string); ok {
+			if _, ok := rowDataMap[dfssql.DataflowTestStateCodeColumn].(string); ok {
+				if _, ok := rowDataMap["flowGroup"].(string); ok {
+					if first, second, third, fourth := rowDataMap[dfssql.DataflowTestIdColumn].(string), rowDataMap[dfssql.DataflowTestNameColumn].(string), rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), rowDataMap["flowGroup"].(string); first != "" && second != "" && third != "" && fourth != "" {
+						return "super-secrets/PublicIndex/" + tenantIndexPath + "/" + dfssql.DataflowTestIdColumn + "/" + rowDataMap[dfssql.DataflowTestIdColumn].(string) + "/DataFlowStatistics/DataFlowGroup/" + rowDataMap["flowGroup"].(string) + "/dataFlowName/" + rowDataMap[dfssql.DataflowTestNameColumn].(string) + "/" + rowDataMap[dfssql.DataflowTestStateCodeColumn].(string), nil
+					}
+				}
+			}
+		}
 	}
-	return "", errors.New("Could not find data flow statistic index.")
+
+	return "", errors.New("could not find data flow statistic index")
 }
 
 func GetDataFlowUpdateTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
@@ -43,6 +54,13 @@ func GetDataFlowInsertTrigger(databaseName string, tableName string, iden1 strin
 	return `CREATE TRIGGER tcInsertTrigger AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
 		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,current_timestamp());` +
+		` END;`
+}
+
+func GetDataFlowDeleteTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
+	return `CREATE TRIGGER tcDeleteTrigger AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+		` BEGIN` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + iden1 + `,old.` + iden2 + `,old.` + iden3 + `,current_timestamp());` +
 		` END;`
 }
 
@@ -135,7 +153,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 
 	tfContext.FlowLock.Lock()
 	if tfContext.Init { //Alert interface that the table is ready for permissions
-		tfmContext.PermissionChan <- flowcore.PermissionUpdate{tfContext.Flow.TableName(), tfContext.FlowState.State}
+		tfmContext.PermissionChan <- flowcore.PermissionUpdate{TableName: tfContext.Flow.TableName(), CurrentState: tfContext.FlowState.State}
 		tfContext.Init = false
 	}
 	tfContext.FlowLock.Unlock()
@@ -158,7 +176,7 @@ func prepareDataFlowChangeTable(tfmContext *flowcore.TrcFlowMachineContext, tfCo
 	if changeTableErr != nil {
 		tfmContext.Log("Error creating ninja change table", changeTableErr)
 	}
-	tfmContext.CreateDataFlowTableTriggers(tfContext, dfssql.DataflowTestNameColumn, dfssql.DataflowTestIdColumn, dfssql.DataflowTestStateCodeColumn, GetDataFlowInsertTrigger, GetDataFlowUpdateTrigger)
+	tfmContext.CreateDataFlowTableTriggers(tfContext, dfssql.DataflowTestNameColumn, dfssql.DataflowTestIdColumn, dfssql.DataflowTestStateCodeColumn, GetDataFlowInsertTrigger, GetDataFlowUpdateTrigger, GetDataFlowDeleteTrigger)
 	tfmContext.GetTableModifierLock().Unlock()
 }
 
@@ -189,6 +207,9 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				stateUpdate.SyncFilter = "N/A"
 				if previousState.State == stateUpdate.State && previousState.SyncMode == stateUpdate.SyncMode && previousState.SyncFilter == stateUpdate.SyncFilter && previousState.FlowAlias == stateUpdate.FlowAlias {
 					continue
+				} else if previousState.SyncMode == "refreshingDaily" && stateUpdate.SyncMode != "refreshEnd" && stateUpdate.State == 2 && int(previousState.State) != utilcore.PreviousStateCheck(int(stateUpdate.State)) {
+					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(stateUpdate.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: previousState.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
+					break
 				} else if int(previousState.State) != utilcore.PreviousStateCheck(int(stateUpdate.State)) && stateUpdate.State != previousState.State {
 					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(previousState.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: stateUpdate.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
 					continue
@@ -215,7 +236,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				tfContext.FlowLock.Lock()
 				if tfContext.FlowState.State == 3 {
 					tfContext.FlowLock.Unlock()
-					tfmContext.PermissionChan <- flowcore.PermissionUpdate{tfContext.Flow.TableName(), tfContext.FlowState.State}
+					tfmContext.PermissionChan <- flowcore.PermissionUpdate{TableName: tfContext.Flow.TableName(), CurrentState: tfContext.FlowState.State}
 					if tfContext.CancelContext != nil {
 						tfContext.CancelContext() //This cancel also pushes any final changes to vault before closing sync cycle.
 						var baseTableTemplate extract.TemplateResultData
@@ -228,6 +249,10 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				} else if tfContext.FlowState.State == 0 {
 					tfContext.FlowLock.Unlock()
 					tfmContext.Log("DataFlowStatistics flow is currently offline...", nil)
+					if tfContext.FlowState.SyncMode == "refreshingDaily" {
+						refresh = true
+						stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "1", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: tfContext.FlowState.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
+					}
 					continue
 				} else if tfContext.FlowState.State == 1 {
 					tfContext.FlowLock.Unlock()
@@ -246,6 +271,22 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 					tfmContext.Log("Ignoring invalid flow.", nil)
 					continue
 				}
+
+				tfContext.FlowLock.Lock()
+				if strings.HasPrefix(tfContext.FlowState.SyncMode, "refresh") { //This is to refresh from vault - different from pulling/pushing.
+					refreshSuffix, _ := strings.CutPrefix(tfContext.FlowState.SyncMode, "refresh")
+					if tfContext.FlowState.SyncMode == "refreshingDaily" {
+						if !refresh { //This is for if trcdb loads up in "refreshingDaily" -> need to kick off refresh again.
+							KickOffTimedRefresh(tfContext, stateUpdateChannel, "Daily")
+						}
+					} else if !KickOffTimedRefresh(tfContext, stateUpdateChannel, refreshSuffix) {
+						tfmContext.Log("DataFlowStatistics has an invalid refresh timing"+flowcorehelper.SyncCheck(tfContext.FlowState.SyncMode)+".", nil)
+						tfContext.FlowState.SyncMode = "InvalidRefreshMode"
+						stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "InvalidRefreshMode", FlowAlias: tfContext.FlowState.FlowAlias}
+					}
+				}
+				tfContext.FlowLock.Unlock()
+
 				tfContext.FlowLock.Lock()
 				if tfContext.FlowState.SyncMode == "pullonce" {
 					tfContext.FlowState.SyncMode = "pullsynccomplete"
@@ -261,4 +302,46 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 	}
 	tfContext.CancelContext()
 	return nil
+}
+
+func KickOffTimedRefresh(tfContext *flowcore.TrcFlowContext, stateUpdateChannel chan flowcorehelper.FlowStateUpdate, timing string) bool {
+	switch { //Always at midnight
+	case timing == "Daily":
+		stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "refreshingDaily", FlowAlias: tfContext.FlowState.FlowAlias}
+		loc, _ := time.LoadLocation("America/Los_Angeles")
+		now := time.Now().In(loc)
+		midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, loc)
+		//midnight := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+3, 0, loc)
+		timeTilMidnight := midnight.Sub(now)
+		go func(tfc *flowcore.TrcFlowContext, tilMidnight time.Duration) {
+			refresh = true
+			time.Sleep(tilMidnight)
+			refreshTime := time.Duration(time.Second * 0)
+			for {
+				select {
+				case <-endRefreshChan:
+					tfContext.Log.Println("Daily Refresh Ended - no longer refreshing DFS")
+					return
+				case <-time.After(refreshTime):
+					tfContext.Log.Println("Daily Refresh Triggered - refreshing DFS")
+					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfc.Flow.TableName(), StateUpdate: "3", SyncFilter: tfc.FlowState.SyncFilter, SyncMode: "refreshingDaily", FlowAlias: tfc.FlowState.FlowAlias}
+					refreshTime = time.Duration(time.Hour * 24)
+				}
+
+			}
+		}(tfContext, timeTilMidnight)
+	case timing == "End":
+		endRefreshChan <- true
+		refresh = false
+		stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "refreshEnded", FlowAlias: tfContext.FlowState.FlowAlias}
+	case timing == "Ended":
+		for len(endRefreshChan) > 0 {
+			<-endRefreshChan
+		}
+		return true
+	default:
+		return false
+	}
+
+	return true
 }

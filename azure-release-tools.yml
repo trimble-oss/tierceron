@@ -1,0 +1,51 @@
+steps:
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trcpub 
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcpub/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: trcconfig
+    buildContext: '$(Build.ArtifactStagingDirectory)'
+    command: build
+    dockerfile: '**/docker/trcconfig/Dockerfile'
+    tags: |
+      $(Build.SourceVersion)
+
+- task: Docker@1
+  displayName: 'Tag TrcConfig'
+  inputs:
+    azureSubscriptionEndpoint: '{{.release_endpoint}}'
+    azureContainerRegistry: {{.release_acr}}
+    command: 'Tag image'
+    imageName: 'trcconfig:$(Build.SourceVersion)'
+
+- task: Docker@1
+  displayName: 'Tag TrcPub'
+  inputs:
+    azureSubscriptionEndpoint: '{{.release_endpoint}}'
+    azureContainerRegistry: {{.release_acr}}
+    command: 'Tag image'
+    imageName: 'trcpub:$(Build.SourceVersion)'
+
+- task: Docker@1
+  displayName: 'Push TrcPub'
+  inputs:
+    azureSubscriptionEndpoint: '{{.release_endpoint}}'
+    azureContainerRegistry: {{.release_acr}}
+    command: 'Push an image'
+    imageName: 'trcpub:$(Build.SourceVersion)'
+
+- task: Docker@1
+  displayName: 'Push TrcConfig'
+  inputs:
+    azureSubscriptionEndpoint: '{{.release_endpoint}}'
+    azureContainerRegistry: {{.release_acr}}
+    command: 'Push an image'
+    imageName: 'trcconfig:$(Build.SourceVersion)'

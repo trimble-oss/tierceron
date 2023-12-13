@@ -1,25 +1,34 @@
 package native
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/component-base/cli"
+	"k8s.io/klog/v2"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/kubectl/pkg/cmd"
+	"k8s.io/kubectl/pkg/cmd/apply"
+	"k8s.io/kubectl/pkg/cmd/plugin"
+	"k8s.io/kubectl/pkg/cmd/util"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	kubectlutil "k8s.io/kubectl/pkg/util"
 
-	memapply "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/apply"
-	memfactory "github.com/trimble-oss/tierceron/trcsh/kube/native/memory/factory"
-	"github.com/trimble-oss/tierceron/trcsh/trcshauth"
+	"github.com/go-git/go-billy/v5"
+	"github.com/trimble-oss/tierceron/capauth"
+	"github.com/trimble-oss/tierceron/trcsh/kube/native/path"
+	"github.com/trimble-oss/tierceron/trcsh/kube/native/trccreate"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
@@ -45,57 +54,64 @@ type TrcKubeDirective struct {
 }
 
 type TrcKubeConfig struct {
+	// .kube/config
+	KubeConfigBytes []byte
 	// .kube/config is parsed into these fields...
 	RestConfig *rest.Config
-	ApiConfig  *clientcmdapi.Config
+	ApiConfig  map[string]*clientcmdapi.Config
 
 	// config context stuff..
 	KubeContext *TrcKubeContext
 	// Current kubectl directive... configmap, secret, apply, etc...
 	KubeDirective *TrcKubeDirective
+
+	PipeOS billy.File // Where to send output.
 }
 
 func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
-	kubeConfig, err := clientcmd.Load(kubeConfigBytes)
-	if err != nil {
-		return nil, err
-	}
+	// kubeConfig, err := clientcmd.Load(kubeConfigBytes)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	restConfig, restErr := clientcmd.RESTConfigFromKubeConfig(kubeConfigBytes)
-	if restErr != nil {
-		eUtils.LogErrorObject(config, restErr, false)
-	}
+	// restConfig, restErr := clientcmd.RESTConfigFromKubeConfig(kubeConfigBytes)
+	// if restErr != nil {
+	// 	eUtils.LogErrorObject(config, restErr, false)
+	// }
 
-	// set LocationOfOrigin on every Cluster, User, and Context
-	for key, obj := range kubeConfig.AuthInfos {
-		obj.LocationOfOrigin = ".kube/config"
-		kubeConfig.AuthInfos[key] = obj
-	}
-	for key, obj := range kubeConfig.Clusters {
-		obj.LocationOfOrigin = ".kube/config"
-		kubeConfig.Clusters[key] = obj
-	}
-	for key, obj := range kubeConfig.Contexts {
-		obj.LocationOfOrigin = ".kube/config"
-		kubeConfig.Contexts[key] = obj
-	}
+	// // set LocationOfOrigin on every Cluster, User, and Context
+	// for key, obj := range kubeConfig.AuthInfos {
+	// 	obj.LocationOfOrigin = ".kube/config"
+	// 	kubeConfig.AuthInfos[key] = obj
+	// }
+	// for key, obj := range kubeConfig.Clusters {
+	// 	obj.LocationOfOrigin = ".kube/config"
+	// 	kubeConfig.Clusters[key] = obj
+	// }
+	// for key, obj := range kubeConfig.Contexts {
+	// 	obj.LocationOfOrigin = ".kube/config"
+	// 	kubeConfig.Contexts[key] = obj
+	// }
 
-	if kubeConfig.AuthInfos == nil {
-		kubeConfig.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
-	}
-	if kubeConfig.Clusters == nil {
-		kubeConfig.Clusters = map[string]*clientcmdapi.Cluster{}
-	}
-	if kubeConfig.Contexts == nil {
-		kubeConfig.Contexts = map[string]*clientcmdapi.Context{}
-	}
+	// if kubeConfig.AuthInfos == nil {
+	// 	kubeConfig.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
+	// }
+	// if kubeConfig.Clusters == nil {
+	// 	kubeConfig.Clusters = map[string]*clientcmdapi.Cluster{}
+	// }
+	// if kubeConfig.Contexts == nil {
+	// 	kubeConfig.Contexts = map[string]*clientcmdapi.Context{}
+	// }
 
-	return &TrcKubeConfig{RestConfig: restConfig, ApiConfig: kubeConfig}, nil
+	trcConfig := &TrcKubeConfig{KubeConfigBytes: kubeConfigBytes, ApiConfig: map[string]*clientcmdapi.Config{}}
+
+	return trcConfig, nil
 }
 
-func InitTrcKubeConfig(trcshConfig *trcshauth.TrcShConfig, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
-	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(trcshConfig.KubeConfig)
+func InitTrcKubeConfig(trcshConfig *capauth.TrcShConfig, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
+	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(*trcshConfig.KubeConfig)
 	if decodeErr != nil {
+		fmt.Println("Decoding error")
 		eUtils.LogErrorObject(config, decodeErr, false)
 	}
 
@@ -176,115 +192,233 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 	return trcKubeDirective
 }
 
-func CreateKubeResource(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) {
-	clientset, err := corev1client.NewForConfig(trcKubeDeploymentConfig.RestConfig)
-	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
-		return
+func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
+	configFlags := genericclioptions.NewConfigFlags(true).
+		WithDeprecatedPasswordFlag().
+		WithDiscoveryBurst(300).
+		WithDiscoveryQPS(50.0)
+
+	configFlags.KubeConfigLoader = func(filename string) (*clientcmdapi.Config, error) {
+		var kubeconfigBytes []byte
+		var err error
+		if apiConfig, apiConfigOk := trcKubeDeploymentConfig.ApiConfig[filename]; apiConfigOk {
+			return apiConfig, nil
+		}
+
+		if len(trcKubeDeploymentConfig.KubeConfigBytes) > 0 {
+			kubeconfigBytes = trcKubeDeploymentConfig.KubeConfigBytes
+		}
+		config, err := clientcmd.Load(kubeconfigBytes)
+		if err != nil {
+			return nil, err
+		}
+		klog.V(6).Infoln("Config loaded from file: ", filename)
+
+		// set LocationOfOrigin on every Cluster, User, and Context
+		for key, obj := range config.AuthInfos {
+			obj.LocationOfOrigin = filename
+			config.AuthInfos[key] = obj
+		}
+		for key, obj := range config.Clusters {
+			obj.LocationOfOrigin = filename
+			config.Clusters[key] = obj
+		}
+		for key, obj := range config.Contexts {
+			obj.LocationOfOrigin = filename
+			config.Contexts[key] = obj
+		}
+
+		if config.AuthInfos == nil {
+			config.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
+		}
+		if config.Clusters == nil {
+			config.Clusters = map[string]*clientcmdapi.Cluster{}
+		}
+		if config.Contexts == nil {
+			config.Contexts = map[string]*clientcmdapi.Context{}
+		}
+
+		trcKubeDeploymentConfig.ApiConfig[filename] = config
+
+		return config, nil
+	}
+	iostreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
+
+	configFlags.PathVisitorLoader = func() resource.PathVisitor {
+		return &path.MemPathVisitor{MemFs: config.MemFs, Iostreams: iostreams}
 	}
 
-	switch trcKubeDeploymentConfig.KubeDirective.Object {
-	case "secret":
-		var secretType corev1.SecretType
-		if trcKubeDeploymentConfig.KubeDirective.Type == "generic" {
-			secretType = corev1.SecretType("")
-		} else {
-			fmt.Println("Unsupported secret type: " + trcKubeDeploymentConfig.KubeDirective.Type)
+	configFlags.HandleSecretFromFileSources = func(secret *corev1.Secret, fileSources []string) error {
+		for _, fileSource := range fileSources {
+			keyName, filePath, err := kubectlutil.ParseFileSource(fileSource)
+			if err != nil {
+				return err
+			}
+			var data []byte
+
+			var memFile billy.File
+			var memFileErr error
+
+			if memFile, memFileErr = config.MemFs.Open(filePath); memFileErr == nil {
+				buf := bytes.NewBuffer(nil)
+				io.Copy(buf, memFile) // Error handling elided for brevity.
+				data = buf.Bytes()
+			} else {
+				return fmt.Errorf("Error could not find %s for deployment instructions", fileSource)
+			}
+
+			if errs := validation.IsConfigMapKey(keyName); len(errs) != 0 {
+				return fmt.Errorf("%q is not valid key name for a Secret %s", keyName, strings.Join(errs, ";"))
+			}
+			if _, entryExists := secret.Data[keyName]; entryExists {
+				return fmt.Errorf("cannot add key %s, another key by that name already exists", keyName)
+			}
+			secret.Data[keyName] = data
 		}
+		return nil
+	}
 
-		secret := &corev1.Secret{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: corev1.SchemeGroupVersion.String(),
-				Kind:       "Secret",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      trcKubeDeploymentConfig.KubeDirective.Name, // vault-cert
-				Namespace: "",                                         // I think it can always be blank...
-			},
-			Type: secretType,
-			Data: map[string][]byte{},
-		}
+	configFlags.HandleConfigMapFromFileSources = func(configMap *corev1.ConfigMap, fileSources []string) error {
+		fmt.Printf("ConfigMap file sources: %v\n", fileSources)
+		for _, fileSource := range fileSources {
+			keyName, filePath, err := kubectlutil.ParseFileSource(fileSource)
+			if err != nil {
+				return err
+			}
+			var data []byte
 
-		keyParts := strings.Split(trcKubeDeploymentConfig.KubeDirective.FromFilePath, "/")
-		keyName := keyParts[len(keyParts)-1]
+			var memFile billy.File
+			var memFileErr error
 
-		if errs := validation.IsConfigMapKey(keyName); len(errs) != 0 {
-			eUtils.LogErrorObject(config, fmt.Errorf("%q invalid keyname having errors %s", keyName, strings.Join(errs, ";")), false)
-			return
-		} else {
-			if secretData, secretDataOk := config.MemCache[trcKubeDeploymentConfig.KubeDirective.FromFilePath]; secretDataOk {
-				secret.Data[keyName] = secretData.Bytes()
-			} else if secretData, secretDataOk := config.MemCache["./"+trcKubeDeploymentConfig.KubeDirective.FromFilePath]; secretDataOk {
-				secret.Data[keyName] = secretData.Bytes()
+			if memFile, memFileErr = config.MemFs.Open(fileSource); memFileErr == nil {
+				buf := bytes.NewBuffer(nil)
+				io.Copy(buf, memFile) // Error handling elided for brevity.
+				data = buf.Bytes()
+			} else {
+				return fmt.Errorf("Error could not find %s for deployment instructions", fileSource)
+			}
+
+			if err := trccreate.HandleConfigMapFromFileSource(configMap, keyName, filePath, data); err != nil {
+				return err
 			}
 		}
+		return nil
+	}
 
-		switch trcKubeDeploymentConfig.KubeDirective.Action {
-		case "create":
-			createOptions := metav1.CreateOptions{}
-			createOptions.FieldManager = "kubectl-create" //
-			fmt.Println(clientset)
-			//			clientset.Secrets(trcKubeDeploymentConfig.KubeContext.Namespace).Create(context.TODO(), secret, createOptions)
-		case "update":
-			updateOptions := metav1.UpdateOptions{}
-			updateOptions.FieldManager = "" //
-			fmt.Println(clientset)
-			//			clientset.Secrets(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), secret, updateOptions)
-		}
-	case "configmap":
-		configMap := &corev1.ConfigMap{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: corev1.SchemeGroupVersion.String(),
-				Kind:       "ConfigMap",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      trcKubeDeploymentConfig.KubeDirective.Name, // vault-cert
-				Namespace: "",                                         // I think it can always be blank...
-			},
-			Data: map[string]string{},
-		}
+	configFlags.HandleConfigMapFromEnvFileSources = func(configMap *corev1.ConfigMap, fileSources []string) error {
+		for _, fileSource := range fileSources {
+			var data []byte
 
-		keyParts := strings.Split(trcKubeDeploymentConfig.KubeDirective.FromFilePath, "/")
-		keyName := keyParts[len(keyParts)-1]
+			var memFile billy.File
+			var memFileErr error
 
-		if errs := validation.IsConfigMapKey(keyName); len(errs) != 0 {
-			eUtils.LogErrorObject(config, fmt.Errorf("%q invalid keyname having errors %s", keyName, strings.Join(errs, ";")), false)
-			return
-		} else {
-			if configData, configDataOk := config.MemCache[trcKubeDeploymentConfig.KubeDirective.FromFilePath]; configDataOk {
-				configMap.Data[keyName] = string(configData.Bytes())
-			} else if configData, configDataOk := config.MemCache["./"+trcKubeDeploymentConfig.KubeDirective.FromFilePath]; configDataOk {
-				configMap.Data[keyName] = string(configData.Bytes())
+			if memFile, memFileErr = config.MemFs.Open(fileSource); memFileErr == nil {
+				buf := bytes.NewBuffer(nil)
+				io.Copy(buf, memFile) // Error handling elided for brevity.
+				data = buf.Bytes()
+			} else {
+				return fmt.Errorf("Error could not find %s for deployment instructions", fileSource)
+			}
+
+			err := trccreate.HandleConfigMapFromEnvFileSource(configMap, fileSource, data)
+			if err != nil {
+				return err
 			}
 		}
+		return nil
+	}
 
-		switch trcKubeDeploymentConfig.KubeDirective.Action {
-		case "create":
-			createOptions := metav1.CreateOptions{}
-			createOptions.FieldManager = "" //
-			fmt.Println(clientset)
-			//			clientset.ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Create(context.TODO(), configMap, createOptions)
-		case "update":
-			updateOptions := metav1.UpdateOptions{}
-			updateOptions.FieldManager = "" //
-			fmt.Println(clientset)
-			//			clientset.ConfigMaps(trcKubeDeploymentConfig.KubeContext.Namespace).Update(context.TODO(), configMap, updateOptions)
+	if trcKubeDeploymentConfig.PipeOS != nil {
+		if iostat, ioerr := config.MemFs.Stat(trcKubeDeploymentConfig.PipeOS.Name()); ioerr == nil {
+			if iostat.Size() > 0 {
+				pipeName := trcKubeDeploymentConfig.PipeOS.Name()
+				trcKubeDeploymentConfig.PipeOS.Close()
+				if trcKubeDeploymentConfig.PipeOS, ioerr = config.MemFs.Open(pipeName); ioerr == nil {
+					iostreams.In = trcKubeDeploymentConfig.PipeOS
+				}
+			} else {
+				iostreams.Out = trcKubeDeploymentConfig.PipeOS
+			}
 		}
 	}
+
+	command := cmd.NewDefaultKubectlCommandWithArgs(cmd.KubectlOptions{
+		PluginHandler: cmd.NewDefaultPluginHandler(plugin.ValidPluginFilenamePrefixes),
+		Arguments:     os.Args,
+		ConfigFlags:   configFlags,
+		IOStreams:     iostreams,
+	})
+
+	if err := cli.RunNoErrOutput(command); err != nil {
+		// Pretty-print the error and exit with an error.
+		util.CheckErr(err)
+	}
+
+	return nil
 }
 
 // KubeApply applies an in memory yaml file to a kubernetes cluster
 func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
-	f := memfactory.NewFactory(
-		cmdutil.NewMatchVersionFlags(genericclioptions.
-			NewConfigFlags(true).
-			WithDeprecatedPasswordFlag()),
-		config.MemCache)
+	configFlags := genericclioptions.
+		NewConfigFlags(true).
+		WithDeprecatedPasswordFlag()
+	configFlags.KubeConfigLoader = func(filename string) (*clientcmdapi.Config, error) {
+		var kubeconfigBytes []byte
+		var err error
+		if len(trcKubeDeploymentConfig.KubeConfigBytes) > 0 {
+			kubeconfigBytes = trcKubeDeploymentConfig.KubeConfigBytes
+		}
+		config, err := clientcmd.Load(kubeconfigBytes)
+		if err != nil {
+			return nil, err
+		}
+		klog.V(6).Infoln("Config loaded from file: ", filename)
+
+		// set LocationOfOrigin on every Cluster, User, and Context
+		for key, obj := range config.AuthInfos {
+			obj.LocationOfOrigin = filename
+			config.AuthInfos[key] = obj
+		}
+		for key, obj := range config.Clusters {
+			obj.LocationOfOrigin = filename
+			config.Clusters[key] = obj
+		}
+		for key, obj := range config.Contexts {
+			obj.LocationOfOrigin = filename
+			config.Contexts[key] = obj
+		}
+
+		if config.AuthInfos == nil {
+			config.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
+		}
+		if config.Clusters == nil {
+			config.Clusters = map[string]*clientcmdapi.Cluster{}
+		}
+		if config.Contexts == nil {
+			config.Contexts = map[string]*clientcmdapi.Context{}
+		}
+
+		return config, nil
+	}
+
+	f := cmdutil.NewFactory(
+		cmdutil.NewMatchVersionFlags(configFlags),
+		&path.MemPathVisitor{MemFs: config.MemFs},
+		configFlags.HandleSecretFromFileSources,
+		configFlags.HandleConfigMapFromFileSources,
+		configFlags.HandleConfigMapFromEnvFileSources,
+	)
 
 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 
-	o := memapply.NewApplyOptions(ioStreams)
-	o.Complete(f, memapply.NewCmdApply("kubectl", f, ioStreams))
+	flags := apply.NewApplyFlags(ioStreams)
+	fileNamesPtr := flags.DeleteFlags.FileNameFlags.Filenames
+	*fileNamesPtr = append(*fileNamesPtr, trcKubeDeploymentConfig.KubeDirective.FromFilePath)
+
+	o, err := flags.ToOptions(f, apply.NewCmdApply("kubectl", f, ioStreams), "kubectl", []string{})
+	if err != nil {
+		return err
+	}
 	o.Run()
 
 	return nil

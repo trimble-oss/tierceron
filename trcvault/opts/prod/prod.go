@@ -1,8 +1,11 @@
-//go:build prod
-// +build prod
-
 package prod
 
+var isProd bool = false
+
+func SetProd(prod bool) {
+	isProd = prod
+}
+
 func IsProd() bool {
-	return true
+	return isProd
 }

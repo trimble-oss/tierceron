@@ -4,7 +4,7 @@
 package argosyopts
 
 import (
-	"github.com/mrjrieke/nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 	"github.com/trimble-oss/tierceron/trcvault/util"
 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 	"log"

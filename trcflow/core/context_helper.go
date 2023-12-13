@@ -145,10 +145,10 @@ func getStatisticChangedByIdQuery(databaseName string, changeTable string, idCol
 			}
 			return query, nil
 		} else {
-			return "", errors.New("Invalid index value data for statistic data")
+			return "", errors.New("invalid index value data for statistic data")
 		}
 	} else {
-		return "", errors.New("Invalid index name data for statistic data")
+		return "", errors.New("invalid index name data for statistic data")
 	}
 }
 
@@ -238,23 +238,61 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		if len(changedTableRowData) == 0 && err == nil && len(changedEntry) != 3 { //This change was a delete
+			syncDelete := false
 			for _, syncedTable := range coreopts.GetSyncedTables() {
-				if tfContext.Flow.TableName() != syncedTable { //TODO: Add delete functionality for other tables? - logic is in SEC push remote
-					continue
+				if tfContext.Flow.TableName() == syncedTable {
+					syncDelete = true
 				}
 			}
-			//Check if it exists in trcdb
-			//Writeback to mysql to delete that
-			rowDataMap := map[string]interface{}{}
-			rowDataMap["Deleted"] = "true"
-			rowDataMap["changedId"] = changedId
-			for _, column := range changedTableColumns {
-				rowDataMap[column] = ""
+
+			if !syncDelete {
+				continue
 			}
-			if flowPushRemote != nil {
+
+			if tfContext.FlowState.State != 0 && (tfContext.FlowState.SyncMode == "push" || tfContext.FlowState.SyncMode == "pushonce") && flowPushRemote != nil {
+				//Check if it exists in trcdb
+				//Writeback to mysql to delete that
+				rowDataMap := map[string]interface{}{}
+				rowDataMap["Deleted"] = "true"
+				rowDataMap["changedId"] = changedId
+				for _, column := range changedTableColumns {
+					rowDataMap[column] = ""
+				}
+
 				pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
 				if pushError != nil {
 					eUtils.LogErrorObject(tfmContext.Config, err, false)
+				}
+			}
+
+			rowDataMap := map[string]interface{}{}
+			for index, column := range indexColumnNames.([]string) {
+				if _, strOk := changedEntry[index].(string); strOk && len(changedEntry[index].(string)) == 0 {
+					// Invalid string index...  Skip these.
+					continue
+				}
+				rowDataMap[column] = changedEntry[index]
+			}
+
+			indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query map[string]interface{}) (string, []string, [][]interface{}, error) {
+				return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"].(string), tfContext.FlowLock)
+			})
+			if indexPathErr != nil {
+				eUtils.LogErrorObject(tfmContext.Config, indexPathErr, false)
+				continue
+			}
+
+			if !tfContext.ReadOnly {
+				if !strings.Contains(indexPath, "/PublicIndex/") {
+					indexPath = "Index/" + tfContext.FlowSource + indexPath
+					if !strings.HasSuffix(indexPath, tfContext.Flow.TableName()) {
+						indexPath = indexPath + "/" + tfContext.Flow.TableName()
+					}
+				}
+
+				deleteMap, deleteErr := tfContext.GoMod.SoftDelete(indexPath, tfContext.Log)
+				if deleteErr != nil || deleteMap != nil {
+					eUtils.LogErrorObject(tfmContext.Config, errors.New("Unable to process a delete query for "+tfContext.Flow.TableName()), false)
 				}
 			}
 			continue
@@ -463,6 +501,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		}
 	}
 	tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
+
 	tfContext.Inserter = nil
 
 	return nil

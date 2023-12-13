@@ -51,7 +51,7 @@ func (s *Server) InitConfig(config *eUtils.DriverConfig, env string) error {
 	}
 	trcAPITokenSecretString, ok := connInfo["trcAPITokenSecret"].(string)
 	if !ok {
-		err := fmt.Errorf("Missing trcAPITokenSecret")
+		err := fmt.Errorf("missing trcAPITokenSecret")
 		eUtils.LogErrorObject(config, err, false)
 		return err
 	}
@@ -77,13 +77,13 @@ func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb
 		return nil, err
 	}
 	if secret == nil {
-		err := fmt.Errorf("Could not find any templates under %s", req.Project+"/"+req.Service)
+		err := fmt.Errorf("could not find any templates under %s", req.Project+"/"+req.Service)
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
 	eUtils.LogWarningsObject(config, secret.Warnings, false)
 	if len(secret.Warnings) > 0 {
-		err := errors.New("Warnings generated from vault " + req.Project + "/" + req.Service)
+		err := errors.New("warnings generated from vault " + req.Project + "/" + req.Service)
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
@@ -230,19 +230,15 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 					//get a list of values
 					valueMap, err := mod.ReadData(filePath)
 					if err != nil {
-						err := fmt.Errorf("Unable to fetch data from %s", filePath)
+						err := fmt.Errorf("unable to fetch data from %s", filePath)
 						eUtils.LogErrorObject(config, err, false)
 						return nil, err
 					}
-					if valueMap != nil {
-
-						for key, value := range valueMap {
-							kv := &pb.ValuesRes_Env_Project_Service_File_Value{Key: key, Value: value.(string), Source: "value"}
-							vals = append(vals, kv)
-							//data = append(data, value.(string))
-							//fmt.Println(value)
-						}
-
+					for key, value := range valueMap {
+						kv := &pb.ValuesRes_Env_Project_Service_File_Value{Key: key, Value: value.(string), Source: "value"}
+						vals = append(vals, kv)
+						//data = append(data, value.(string))
+						//fmt.Println(value)
 					}
 					if len(vals) > 0 {
 						file := &pb.ValuesRes_Env_Project_Service_File{Name: getPathEnd(filePath), Values: vals}
@@ -275,7 +271,7 @@ func (s *Server) getPaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, p
 	pathList := []string{}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
-		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, mod.Env)
+		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
@@ -300,7 +296,7 @@ func (s *Server) getTemplateFilePaths(config *eUtils.DriverConfig, mod *helperkv
 	pathList := []string{}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
-		return nil, fmt.Errorf("Unable to list paths under %s in %s", pathName, mod.Env)
+		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
@@ -314,10 +310,8 @@ func (s *Server) getTemplateFilePaths(config *eUtils.DriverConfig, mod *helperkv
 		subPathList := []string{}
 		for _, path := range pathList {
 			subsubList, _ := s.templateFileRecurse(config, mod, path)
-			for _, subsub := range subsubList {
-				//List is returning both pathEnd and pathEnd/
-				subPathList = append(subPathList, subsub)
-			}
+			//List is returning both pathEnd and pathEnd/
+			subPathList = append(subPathList, subsubList...)
 		}
 		if len(subPathList) != 0 {
 			return subPathList, nil
@@ -337,12 +331,10 @@ func (s *Server) templateFileRecurse(config *eUtils.DriverConfig, mod *helperkv.
 			for _, pathEnd := range subslice {
 				//List is returning both pathEnd and pathEnd/
 				subpath := pathName + pathEnd.(string)
-				subsublist, _ := s.templateFileRecurse(config, mod, subpath)
-				if len(subsublist) != 0 {
-					for _, subsub := range subsublist {
-						//List is returning both pathEnd and pathEnd/
-						subPathList = append(subPathList, subsub)
-					}
+				subsubList, _ := s.templateFileRecurse(config, mod, subpath)
+				if len(subsubList) != 0 {
+					//List is returning both pathEnd and pathEnd/
+					subPathList = append(subPathList, subsubList...)
 				}
 				subPathList = append(subPathList, subpath)
 			}

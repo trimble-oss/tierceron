@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io/ioutil"
+	"os"
 	"strings"
 	"text/template/parse"
 
@@ -52,7 +52,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 	pathSlice := strings.SplitN(templatePath, "/", -1)
 
 	// Initialize map subsections
-	templatePathSlice, templateDir, templateDepth := GetInitialTemplateStructure(pathSlice)
+	templatePathSlice, templateDir, templateDepth := GetInitialTemplateStructure(config, pathSlice)
 
 	// Gets the template file
 	var newTemplate string
@@ -63,13 +63,13 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 			templatePathExtended = templatePath
 			serviceRaw = ""
 		} else {
-			templatePathExtended = strings.Replace(templatePath, coreopts.GetFolderPrefix()+"_templates/", "/", 1)
+			templatePathExtended = strings.Replace(templatePath, coreopts.GetFolderPrefix(config.StartDir)+"_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
 		templateFile, _ := vcutils.ConfigTemplateRaw(config, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, config.ExitOnFailure)
 		newTemplate = string(templateFile)
 	} else {
-		templateFile, err := ioutil.ReadFile(templatePath)
+		templateFile, err := os.ReadFile(templatePath)
 		newTemplate = string(templateFile)
 		if err != nil {
 			return nil, nil, nil, 0, eUtils.LogAndSafeExit(config, err.Error(), -1)
@@ -124,20 +124,20 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 //
 // Output:
 //   - String(s) containing the structure of the template section
-func GetInitialTemplateStructure(templatePathSlice []string) ([]string, int, int) {
+func GetInitialTemplateStructure(config *eUtils.DriverConfig, templatePathSlice []string) ([]string, int, int) {
 
 	var templateDir int
 	var templateDepth int
 
 	// Remove the file format from the name of the template file
-	if strings.Index(templatePathSlice[len(templatePathSlice)-1], ".") >= 0 {
+	if strings.Contains(templatePathSlice[len(templatePathSlice)-1], ".") {
 		idxFileFormat := strings.Index(templatePathSlice[len(templatePathSlice)-1], ".")
 		templatePathSlice[len(templatePathSlice)-1] = templatePathSlice[len(templatePathSlice)-1][:idxFileFormat]
 	}
 
 	// Find the index in the slice of the vault_template subdirectory
 	for i, folder := range templatePathSlice {
-		if folder == coreopts.GetFolderPrefix()+"_templates" {
+		if folder == coreopts.GetFolderPrefix(config.StartDir)+"_templates" {
 			templateDir = i
 			templatePathSlice[i] = "templates"
 		}
@@ -166,8 +166,9 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 		value = "data"
 	} else {
 		if cds != nil {
+			// Load from Config Data Store.
 			vaultValue, vaultError := cds.GetValue(service, keyPath, keyName)
-			if vaultError == nil && vaultValue != "" {
+			if vaultError == nil {
 				value = vaultValue
 				okValue = true
 			}
@@ -227,7 +228,7 @@ func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
 		if templatePathSlice[templateDir+1] == "Common" {
 			fileOffsetIndex = 2
 		}
-		keyPath := templatePathSlice[templateDir+fileOffsetIndex : len(templatePathSlice)]
+		keyPath := templatePathSlice[templateDir+fileOffsetIndex:]
 
 		AppendToTemplateSection(interfaceTemplateSection,
 			valueSection,
@@ -270,7 +271,7 @@ func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
 		if len(templatePathSlice)-1 < keyFileIndex {
 			keyFileIndex = len(templatePathSlice) - 1
 		}
-		keyPath := templatePathSlice[keyFileIndex:len(templatePathSlice)]
+		keyPath := templatePathSlice[keyFileIndex:]
 		secret := defaultSecret
 		if keyName == "certData" {
 			secret = "data"
@@ -281,6 +282,8 @@ func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
 			valueSection,
 			secretSection,
 			templatePathSlice, templateDir, templateDepth, true, keyName, service)
+
+		// Sets the secret from Config Data Store.
 		parseAndSetSection(cds,
 			secretSection,
 			"super-secrets",
@@ -303,7 +306,7 @@ func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
 			}
 		}
 	} else {
-		parseMsg := fmt.Sprintf("Template: %s Incorrect template element count: %d Syntax error: %v", templatePathSlice[templateDir+3:len(templatePathSlice)], len(args), args)
+		parseMsg := fmt.Sprintf("Template: %s Incorrect template element count: %d Syntax error: %v", templatePathSlice[templateDir+3:], len(args), args)
 		return eUtils.LogAndSafeExit(config, parseMsg, 1)
 	}
 	return nil

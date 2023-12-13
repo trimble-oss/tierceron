@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"math"
 	"net/url"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -36,7 +35,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	var Cyan = "\033[36m"
 	var result string
 
-	if runtime.GOOS == "windows" {
+	if IsWindows() {
 		Reset = "\x1b[0m"
 		Red = "\x1b[31m"
 		Green = "\x1b[32m"
@@ -208,13 +207,13 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	//Diff vs no Diff output
 	if len(strings.TrimSpace(result)) == 0 && patchData {
 		if diffTimeout {
-			if runtime.GOOS == "windows" {
+			if IsWindows() {
 				return "@@ Diff Timed Out @@"
 			}
 			return Cyan + "@@ Diff Timed Out @@" + Reset
 		}
 
-		if runtime.GOOS == "windows" {
+		if IsWindows() {
 			return "@@ No Differences @@"
 		}
 		return Cyan + "@@ No Differences @@" + Reset
@@ -225,7 +224,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 		result = strings.TrimSuffix(result, "\n")
 	}
 
-	if runtime.GOOS == "windows" {
+	if IsWindows() {
 		result = strings.ReplaceAll(result, Reset, "")
 		result = strings.ReplaceAll(result, Green, "")
 		result = strings.ReplaceAll(result, Cyan, "")
@@ -239,7 +238,7 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 	Reset := "\033[0m"
 	Cyan := "\033[36m"
 	Red := "\033[31m"
-	if runtime.GOOS == "windows" {
+	if IsWindows() {
 		Reset = ""
 		Cyan = ""
 		Red = ""
@@ -319,8 +318,13 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 
 		keys := make([]int, 0, len(versionData))
 		for versionNumber := range versionData {
-			versionNo, _ := strconv.ParseInt(versionNumber, 10, 64)
-			keys = append(keys, int(versionNo))
+			versionNo, err := strconv.ParseInt(versionNumber, 10, 64)
+			if err == nil && versionNo <= math.MaxInt {
+				keys = append(keys, int(versionNo))
+			} else {
+				fmt.Printf("Version limit exceeded: %s\n", versionNumber)
+				return
+			}
 		}
 		sort.Ints(keys)
 		for _, key := range keys {
@@ -359,28 +363,27 @@ func RemoveDuplicateValues(intSlice []string) []string {
 	return list
 }
 
-func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []string, fileSysIndex int, config bool, mutex *sync.Mutex) {
+func DiffHelper(configCtx *ConfigContext, config bool) {
 	fileIndex := 0
 	keys := []string{}
-	mutex.Lock()
-	if len(resultMap) == 0 {
+	configCtx.Mutex.Lock()
+	if len(configCtx.ResultMap) == 0 {
 		fmt.Println("Couldn't find any data to diff")
 		return
 	}
 
 	var baseEnv []string
 	diffEnvFound := false
-	if len(envDiffSlice) > 0 {
-		baseEnv = SplitEnv(envDiffSlice[0])
+	if len(configCtx.EnvSlice) > 0 {
+		baseEnv = SplitEnv(configCtx.EnvSlice[0])
 	}
 	//Sort Diff Slice if env are the same
-	for i, env := range envDiffSlice { //Arranges keys for ordered output
-		var base []string
-		base = SplitEnv(env)
+	for i, env := range configCtx.EnvSlice { //Arranges keys for ordered output
+		var base []string = SplitEnv(env)
 
 		if base[1] == "0" { //Special case for latest, so sort adds latest to the back of ordered slice
 			base[1] = "_999999"
-			envDiffSlice[i] = base[0] + base[1]
+			configCtx.EnvSlice[i] = base[0] + base[1]
 		}
 
 		if len(base) > 0 && len(baseEnv) > 0 && baseEnv[0] != base[0] {
@@ -389,24 +392,37 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 	}
 
 	if !diffEnvFound {
-		sort.Strings(envDiffSlice)
+		sort.Strings(configCtx.EnvSlice)
 	}
 
-	for i, env := range envDiffSlice { //Changes latest back - special case
-		var base []string
-		base = SplitEnv(env)
+	for i, env := range configCtx.EnvSlice { //Changes latest back - special case
+		var base []string = SplitEnv(env)
 		if base[1] == "999999" {
 			base[1] = "_0"
-			envDiffSlice[i] = base[0] + base[1]
+			configCtx.EnvSlice[i] = base[0] + base[1]
 		}
 	}
 
-	fileList := make([]string, len(resultMap)/envLength)
-	mutex.Unlock()
+	fileList := make([]string, configCtx.DiffFileCount)
+	configCtx.Mutex.Unlock()
+
+	sleepCount := 0
+	if len(configCtx.ResultMap) != int(configCtx.DiffFileCount) {
+		for {
+			time.Sleep(time.Second)
+			sleepCount++
+			if sleepCount >= 5 {
+				fmt.Println("Timeout: Attempted to wait for remaining configs to come in. Attempting incomplete diff.")
+				break
+			} else if len(configCtx.ResultMap) == int(configCtx.DiffFileCount)*configCtx.EnvLength {
+				break
+			}
+		}
+	}
 
 	if config {
 		//Make fileList
-		for key := range resultMap {
+		for key := range configCtx.ResultMap {
 			found := false
 			keySplit := strings.Split(key, "||")
 
@@ -422,7 +438,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 			}
 		}
 	} else {
-		for _, env := range envDiffSlice { //Arranges keys for ordered output
+		for _, env := range configCtx.EnvSlice { //Arranges keys for ordered output
 			keys = append(keys, env+"||"+env+"_seed.yml")
 		}
 		if len(fileList) > 0 {
@@ -436,10 +452,10 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 	for _, fileName := range fileList {
 		if config {
 			//Arranges keys for ordered output
-			for _, env := range envDiffSlice {
+			for _, env := range configCtx.EnvSlice {
 				keys = append(keys, env+"||"+fileName)
 			}
-			if fileSysIndex == len(envDiffSlice) {
+			if configCtx.FileSysIndex == len(configCtx.EnvSlice) {
 				keys = append(keys, "filesys||"+fileName)
 			}
 		}
@@ -449,7 +465,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		Green := "\033[32m"
 		Yellow := "\033[0;33m"
 
-		if runtime.GOOS == "windows" {
+		if IsWindows() {
 			Reset = ""
 			Red = ""
 			Green = ""
@@ -460,20 +476,20 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		keyB := keys[1]
 		keySplitA := strings.Split(keyA, "||")
 		keySplitB := strings.Split(keyB, "||")
-		mutex.Lock()
+		configCtx.Mutex.Lock()
 
 		sortedKeyA := keyA
 		sortedKeyB := keyB
-		if _, ok := resultMap[sortedKeyA]; !ok {
+		if _, ok := configCtx.ResultMap[sortedKeyA]; !ok {
 			sortedKeyA = "||" + keySplitA[1]
 		}
-		if _, ok := resultMap[sortedKeyB]; !ok {
+		if _, ok := configCtx.ResultMap[sortedKeyB]; !ok {
 			sortedKeyB = "||" + keySplitB[1]
 		}
 
-		envFileKeyA := resultMap[sortedKeyA]
-		envFileKeyB := resultMap[sortedKeyB]
-		mutex.Unlock()
+		envFileKeyA := configCtx.ResultMap[sortedKeyA]
+		envFileKeyB := configCtx.ResultMap[sortedKeyB]
+		configCtx.Mutex.Unlock()
 
 		latestVersionACheck := strings.Split(keySplitA[0], "_")
 		if len(latestVersionACheck) > 1 && latestVersionACheck[1] == "0" {
@@ -493,16 +509,16 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 			fileSplit := strings.Split(keySplitB[1], "_")
 			keySplitB[1] = fileSplit[0] + "_" + fileSplit[len(fileSplit)-1]
 		}
-		switch envLength {
+		switch configCtx.EnvLength {
 		case 4:
 			keyC := keys[2]
 			keyD := keys[3]
 			keySplitC := strings.Split(keyC, "||")
 			keySplitD := strings.Split(keyD, "||")
-			mutex.Lock()
-			envFileKeyC := resultMap[keyC]
-			envFileKeyD := resultMap[keyD]
-			mutex.Unlock()
+			configCtx.Mutex.Lock()
+			envFileKeyC := configCtx.ResultMap[keyC]
+			envFileKeyD := configCtx.ResultMap[keyD]
+			configCtx.Mutex.Unlock()
 
 			latestVersionCCheck := strings.Split(keySplitC[0], "_")
 			if len(latestVersionCCheck) > 1 && latestVersionCCheck[1] == "0" {
@@ -538,9 +554,9 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		case 3:
 			keyC := keys[2]
 			keySplitC := strings.Split(keyC, "||")
-			mutex.Lock()
-			envFileKeyC := resultMap[keyC]
-			mutex.Unlock()
+			configCtx.Mutex.Lock()
+			envFileKeyC := configCtx.ResultMap[keyC]
+			configCtx.Mutex.Unlock()
 
 			latestVersionCCheck := strings.Split(keySplitC[0], "_")
 			if len(latestVersionCCheck) > 1 && latestVersionCCheck[1] == "0" {
@@ -564,7 +580,7 @@ func DiffHelper(resultMap map[string]*string, envLength int, envDiffSlice []stri
 		}
 
 		//Seperator
-		if runtime.GOOS == "windows" {
+		if IsWindows() {
 			fmt.Printf("======================================================================================\n")
 		} else {
 			fmt.Printf("\033[1;35m======================================================================================\033[0m\n")

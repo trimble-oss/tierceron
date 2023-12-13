@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,6 +22,22 @@ func SplitEnv(env string) []string {
 	}
 
 	return envVersion
+}
+
+func GetRawEnv(env string) string {
+	if strings.HasPrefix(env, "dev") {
+		return "dev"
+	} else if strings.HasPrefix(env, "QA") {
+		return "QA"
+	} else if strings.HasPrefix(env, "RQA") {
+		return "RQA"
+	} else if strings.HasPrefix(env, "staging") {
+		return "staging"
+	} else if strings.HasPrefix(env, "prod") {
+		return "prod"
+	} else {
+		return strings.Split(env, "_")[0]
+	}
 }
 
 func GetProjectVersionInfo(config *DriverConfig, mod *helperkv.Modifier) map[string]map[string]interface{} {
@@ -112,7 +127,7 @@ func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[
 func BoundCheck(config *DriverConfig, versionNumbers []int, version string) {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
-	if runtime.GOOS == "windows" {
+	if IsWindows() {
 		Reset = ""
 		Cyan = ""
 	}
@@ -151,7 +166,7 @@ func GetProjectService(templateFile string) (string, string, string) {
 	offsetBase := 0
 
 	for i, component := range splitDir {
-		if component == coreopts.GetFolderPrefix()+"_templates" {
+		if component == coreopts.GetFolderPrefix(nil)+"_templates" {
 			offsetBase = i
 			break
 		}

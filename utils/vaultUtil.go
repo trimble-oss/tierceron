@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
@@ -35,10 +36,9 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 	return config, mod, vault, nil
 }
 
-var templateName string = coreopts.GetFolderPrefix() + "_templates"
-
 func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
 	var acceptedTemplatePaths []string
+	var templateName string = coreopts.GetFolderPrefix(config.StartDir) + "_templates"
 
 	if strings.Contains(config.EnvRaw, "_") {
 		config.EnvRaw = strings.Split(config.EnvRaw, "_")[0]
@@ -48,9 +48,15 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 	if len(config.DynamicPathFilter) > 0 {
 		dynamicPathParts := strings.Split(config.DynamicPathFilter, "/")
 
-		if len(dynamicPathParts) > 4 && dynamicPathParts[0] == "Restricted" || dynamicPathParts[0] == "Index" {
+		if dynamicPathParts[0] == "Restricted" || dynamicPathParts[0] == "Index" || dynamicPathParts[0] == "PublicIndex" || dynamicPathParts[0] == "Protected" {
 			projectFilter := "/" + dynamicPathParts[1] + "/"
-			serviceFilter := "/" + dynamicPathParts[4] + "/"
+			var serviceFilter string
+			if len(dynamicPathParts) > 4 {
+				serviceFilter = "/" + dynamicPathParts[4] + "/"
+			} else if len(dynamicPathParts) < 4 && dynamicPathParts[0] == "Protected" {
+				// Support shorter Protected paths.
+				serviceFilter = "/" + dynamicPathParts[2]
+			}
 			config.SectionName = serviceFilter
 
 			// Now filter and grab the templates we want...
@@ -68,7 +74,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 		// 1-800-ROIT
 		pathFilterBase := ""
 		if config.SectionKey != "/Restricted/" {
-			pathFilterBase = "/" + coreopts.GetFolderPrefix() + "_templates"
+			pathFilterBase = "/" + coreopts.GetFolderPrefix(config.StartDir) + "_templates"
 		}
 
 		for _, projectSection := range config.ProjectSections {
@@ -81,6 +87,8 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 					}
 					wantedTemplatePaths = append(wantedTemplatePaths, pathFilter+endPathFilter)
 				}
+			} else if len(config.SubPathFilter) > 0 {
+				wantedTemplatePaths = config.SubPathFilter
 			} else {
 				wantedTemplatePaths = append(wantedTemplatePaths, pathFilter)
 			}
@@ -104,6 +112,8 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 	return templatePaths, nil
 }
 
+var logMap sync.Map = sync.Map{}
+
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	logger.Println("InitVaultModForPlugin log setup: " + pluginConfig["env"].(string))
@@ -113,24 +123,32 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		logPrefix := fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
 
 		if logger.Prefix() != logPrefix {
-			logger.Println("Checking log permissions..")
 			logFile := fmt.Sprintf("/var/log/trcplugin%s-%s.log", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
-			f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-			if logErr != nil {
-				logFile = fmt.Sprintf("trcplugin%s-%s.log", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
-			}
-			f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-			if logErr != nil {
-				logger.Println("Log permissions failure.  Will exit.")
-			}
+			if tLogger, logOk := logMap.Load(logFile); !logOk {
+				logger.Printf("Checking log permissions for logfile: %s\n", logFile)
 
-			trcdbEnvLogger = log.New(f, fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string)), log.LstdFlags)
-			CheckError(&DriverConfig{Insecure: true, Log: trcdbEnvLogger, ExitOnFailure: true}, logErr, true)
-			logger.Println("InitVaultModForPlugin log setup complete")
+				f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+				if logErr != nil {
+					logFile = fmt.Sprintf("trcplugin%s-%s.log", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
+					f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+					if logErr != nil {
+						logger.Println("Log permissions failure.  Will exit.")
+					}
+				}
+
+				trcdbEnvLogger = log.New(f, fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string)), log.LstdFlags)
+				CheckError(&DriverConfig{Insecure: true, Log: trcdbEnvLogger, ExitOnFailure: true}, logErr, true)
+				logMap.Store(logFile, trcdbEnvLogger)
+				logger.Println("InitVaultModForPlugin log setup complete")
+			} else {
+				logger.Printf("Utilizing existing logger for logfile: %s\n", logFile)
+				trcdbEnvLogger = tLogger.(*log.Logger)
+			}
 		} else {
 			trcdbEnvLogger = logger
 		}
 	} else {
+		logger.Printf("Utilizing default logger invalid namespace\n")
 		trcdbEnvLogger = logger
 	}
 

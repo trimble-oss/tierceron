@@ -1,0 +1,32 @@
+resource "azurerm_resource_group" "rg" {
+  name     = var.resource_group_name
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "azurerm_virtual_network" "virtual-network" {
+  name                = var.vm_db_VN
+  resource_group_name = var.VN_rg_name
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "azurerm_subnet" "vm-subnet" {
+  name                 = var.VM_subnet_name
+  resource_group_name  = var.VN_rg_name
+  virtual_network_name = var.vm_db_VN
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "azurerm_subnet" "db-subnet" {
+  name                 = var.DB_subnet_name
+  resource_group_name  = var.VN_rg_name
+  virtual_network_name = var.vm_db_VN
+  lifecycle {
+    prevent_destroy = true
+  }
+}

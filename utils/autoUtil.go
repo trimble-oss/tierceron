@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -35,7 +34,7 @@ func (c *cert) getConfig(logger *log.Logger, file string) (*cert, error) {
 		return nil, err
 	}
 
-	yamlFile, err := ioutil.ReadFile(userHome + "/.tierceron/" + file)
+	yamlFile, err := os.ReadFile(userHome + "/.tierceron/" + file)
 	if err != nil {
 		logger.Printf("yamlFile.Get err #%v ", err)
 	}
@@ -90,18 +89,21 @@ func AutoAuth(config *DriverConfig,
 		override = true
 	}
 
-	// If cert file exists obtain secretID and appRoleID
-	if strings.Index(*envPtr, "staging") == 0 || strings.Index(*envPtr, "prod") == 0 {
+	if !config.IsShell && (strings.Index(*envPtr, "staging") == 0 || strings.Index(*envPtr, "prod") == 0) {
 		override = false
 		exists = true
 		appRoleIDPtr = nil
 		secretIDPtr = nil
 	} else {
+		// If cert file exists obtain secretID and appRoleID
 		config.Log.Printf("User home directory %v ", userHome)
 		if len(appRoleConfig) == 0 {
 			appRoleConfig = "config.yml"
 		}
 		if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
+			if config.IsShellSubProcess {
+				return errors.New("required azure deploy approle and secret are missing")
+			}
 			if _, err := os.Stat(userHome + "/.tierceron/" + appRoleConfig); !os.IsNotExist(err) {
 				exists = true
 				_, configErr := c.getConfig(config.Log, appRoleConfig)
@@ -194,9 +196,18 @@ func AutoAuth(config *DriverConfig,
 				return err
 			}
 		}
+		if config.IsShell {
+			config.Log.Printf("Auth connecting to vault @ %s\n", *addrPtr)
+		} else {
+			fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
+		}
 		v, err = sys.NewVault(config.Insecure, *addrPtr, *envPtr, false, ping, false, config.Log)
 		if v != nil {
 			defer v.Close()
+		} else {
+			if ping {
+				return nil
+			}
 		}
 		if err != nil {
 			return err
@@ -239,7 +250,7 @@ func AutoAuth(config *DriverConfig,
 			}
 
 			// Create cert file
-			writeErr := ioutil.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
+			writeErr := os.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
 			if writeErr != nil {
 				LogInfo(config, fmt.Sprintf("Unable to write file: %v\n", writeErr))
 			}
@@ -253,10 +264,15 @@ func AutoAuth(config *DriverConfig,
 			}
 		}
 	} else {
+		fmt.Printf("No override auth connecting to vault @ %s\n", *addrPtr)
 		v, err = sys.NewVault(config.Insecure, *addrPtr, *envPtr, false, ping, false, config.Log)
 
 		if v != nil {
 			defer v.Close()
+		} else {
+			if ping {
+				return nil
+			}
 		}
 		if err != nil {
 			return err
@@ -277,13 +293,17 @@ func AutoAuth(config *DriverConfig,
 		}
 
 		tokenNamePrefix := "config"
-		if appRoleConfig == "configpub.yml" {
+		switch appRoleConfig {
+		case "configpub.yml":
 			tokenNamePrefix = "vault_pub"
-		} else if appRoleConfig == "configdeploy.yml" {
+		case "configdeploy.yml":
 			tokenNamePrefix = "vault_token_deploy"
 			goto skipswitch
+		case "deployauth":
+			tokenNamePrefix = "vault_token_azuredeploy"
+			goto skipswitch
 		}
-		switch env {
+		switch GetRawEnv(env) {
 		case "dev":
 			*tokenNamePtr = tokenNamePrefix + "_token_dev"
 		case "QA":
@@ -294,6 +314,10 @@ func AutoAuth(config *DriverConfig,
 			*tokenNamePtr = tokenNamePrefix + "_token_itdev"
 		case "performance":
 			*tokenNamePtr = tokenNamePrefix + "_token_performance"
+		case "staging":
+			*tokenNamePtr = tokenNamePrefix + "_token_staging"
+		case "prod":
+			*tokenNamePtr = tokenNamePrefix + "_token_prod"
 		case "servicepack":
 			*tokenNamePtr = tokenNamePrefix + "_token_servicepack"
 		case "auto":
@@ -317,22 +341,22 @@ func AutoAuth(config *DriverConfig,
 		//check that token matches environment
 		tokenParts := strings.Split(*tokenNamePtr, "_")
 		tokenEnv := tokenParts[len(tokenParts)-1]
-		if env != tokenEnv {
+		if GetRawEnv(env) != tokenEnv {
 			return LogAndSafeExit(config, "Token doesn't match environment", 1)
 		}
 	}
 
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
-			return errors.New("Need both public and secret app role to retrieve token from vault")
+			return errors.New("need both public and secret app role to retrieve token from vault")
 		}
 
-		master, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
+		roleToken, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
 		if err != nil {
 			return err
 		}
 
-		mod, err := helperkv.NewModifier(config.Insecure, master, *addrPtr, *envPtr, nil, false, config.Log)
+		mod, err := helperkv.NewModifier(config.Insecure, roleToken, *addrPtr, *envPtr, nil, false, config.Log)
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -341,13 +365,18 @@ func AutoAuth(config *DriverConfig,
 		}
 		mod.RawEnv = "bamboo"
 		mod.Env = "bamboo"
-		if appRoleConfig == "configpub.yml" {
+		switch appRoleConfig {
+		case "configpub.yml":
 			mod.RawEnv = "pub"
 			mod.Env = "pub"
-		} else if appRoleConfig == "configdeploy.yml" {
+		case "configdeploy.yml":
 			mod.RawEnv = "deploy"
 			mod.Env = "deploy"
+		case "deployauth":
+			mod.RawEnv = "azuredeploy"
+			mod.Env = "azuredeploy"
 		}
+		LogInfo(config, "Detected and utilizing role: "+mod.Env)
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 )
 
 var headlessService bool
@@ -167,9 +168,9 @@ func LogErrorObject(config *DriverConfig, err error, exit bool) {
 			if !headlessService {
 				fmt.Printf("Errors encountered, exiting and writing to log file: %v\n", err)
 			}
-			config.Log.Fatal(err)
+			config.Log.Fatal(SanitizeForLogging(err.Error()))
 		} else {
-			config.Log.Println(err)
+			config.Log.Println(SanitizeForLogging(err.Error()))
 			config.Log.SetPrefix(_prefix)
 		}
 	}
@@ -178,12 +179,12 @@ func LogErrorObject(config *DriverConfig, err error, exit bool) {
 // LogErrorObject writes errors to the passed logger object and exits
 func LogInfo(config *DriverConfig, msg string) {
 	if !headlessService {
-		fmt.Println(msg)
+		fmt.Println(SanitizeForLogging(msg))
 	}
 	if config != nil && config.Log != nil {
 		_prefix := config.Log.Prefix()
 		config.Log.SetPrefix("[INFO]")
-		config.Log.Println(msg)
+		config.Log.Println(SanitizeForLogging(msg))
 		config.Log.SetPrefix(_prefix)
 	}
 }
@@ -231,4 +232,10 @@ func LogErrorAndSafeExit(config *DriverConfig, err error, code int) error {
 	}
 
 	return err
+}
+
+func SanitizeForLogging(errMsg string) string {
+	errMsgSanitized := strings.ReplaceAll(errMsg, "\n", "")
+	errMsgSanitized = strings.ReplaceAll(errMsgSanitized, "\r", "")
+	return errMsgSanitized
 }
