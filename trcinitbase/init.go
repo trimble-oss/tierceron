@@ -271,7 +271,7 @@ func CommonMain(envPtr *string,
 		v.SetToken(*tokenPtr)
 	} else { // Unseal and grab keys/root token
 		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
-		if err != nil {
+		if err != nil || totalKeyShard > math.MaxInt {
 			fmt.Println("Unable to parse totalKeyShard into int")
 		}
 		keyThreshold, err := strconv.ParseUint(*unsealShardPtr, 10, 32)
