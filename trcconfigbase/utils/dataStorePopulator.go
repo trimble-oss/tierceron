@@ -69,7 +69,7 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 
 	if len(dataPaths) == 0 {
 		eUtils.LogInfo(config, "No data paths found when initing CDS. \n")
-		return errors.New("No data paths found when initing CDS")
+		return errors.New("no data paths found when initing CDS")
 	}
 	for _, path := range dataPaths {
 		//for each path, read the secrets there
@@ -103,7 +103,7 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 					newValues = append(newValues, val.(string))
 				}
 				valueMaps = append(valueMaps, newValues)
-			} else if secretMode == false {
+			} else if !secretMode {
 				//add value straight to template
 				cds.dataMap[key] = value.(string)
 			}
@@ -189,7 +189,7 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 						fileDir: commonValues,
 					}
 				}
-				for commonKeyD, _ := range commonValues {
+				for commonKeyD := range commonValues {
 					delete(values, commonKeyD)
 				}
 			}
@@ -376,9 +376,7 @@ func (cds *ConfigDataStore) GetConfigValues(service string, config string) (map[
 
 // GetConfigValue gets an invididual configuration value for a service from the data store.
 func (cds *ConfigDataStore) GetConfigValue(service string, config string, key string) (string, bool) {
-	if strings.Index(key, ".") >= 0 {
-		key = strings.Replace(key, ".", "_", -1)
-	}
+	key = strings.Replace(key, ".", "_", -1)
 	if serviceValues, okServiceValues := cds.dataMap[service].(map[string]interface{}); okServiceValues {
 		if values, okServiceConfig := serviceValues[config].(map[string]interface{}); okServiceConfig {
 			if value, okValue := values[key]; okValue {
@@ -474,8 +472,8 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *helperkv.Modifier, pr
 			for _, project := range availProjects {
 				if !config.WantCerts && len(services) > 0 {
 					for _, service := range services {
-						mod.ProjectIndex = []string{project.(interface{}).(string)}
-						path := "templates/" + project.(interface{}).(string) + service + "/"
+						mod.ProjectIndex = []string{project.(string)}
+						path := "templates/" + project.(string) + service + "/"
 						paths, pathErr = getPaths(config, mod, path, paths, false)
 						//don't add on to paths until you're sure it's an END path
 						if pathErr != nil {
@@ -484,8 +482,8 @@ func GetPathsFromProject(config *eUtils.DriverConfig, mod *helperkv.Modifier, pr
 					}
 
 				} else {
-					mod.ProjectIndex = []string{project.(interface{}).(string)}
-					path := "templates/" + project.(interface{}).(string)
+					mod.ProjectIndex = []string{project.(string)}
+					path := "templates/" + project.(string)
 					paths, pathErr = getPaths(config, mod, path, paths, false)
 					//don't add on to paths until you're sure it's an END path
 					if pathErr != nil {
@@ -519,7 +517,7 @@ func verifyTemplatePath(mod *helperkv.Modifier, logger *log.Logger) error {
 			return nil
 		}
 	}
-	return errors.New(fmt.Sprintf("Template not found in vault: %s", mod.TemplatePath))
+	return fmt.Errorf("template not found in vault: %s", mod.TemplatePath)
 }
 
 func getPaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {

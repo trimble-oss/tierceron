@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -15,7 +15,7 @@ const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 // Underscores in key names will be replaced with periods before being uploaded
 func Parse(filepath string, service string, filename string) (map[string]interface{}, error) {
 	workingSet := make(map[string]interface{})
-	file, err := ioutil.ReadFile(filepath)
+	file, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}

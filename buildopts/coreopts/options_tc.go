@@ -4,11 +4,13 @@
 package coreopts
 
 import (
+	"os"
+	"strings"
+
 	bcore "VaultConfig.Bootstrap/configcore"
 	tcbuildopts "VaultConfig.TenantConfig/util/buildopts"
 	trcprefix "VaultConfig.TenantConfig/util/buildopts/trcprefix"
 	tccore "VaultConfig.TenantConfig/util/core"
-	"strings"
 
 	"database/sql"
 )
@@ -20,7 +22,7 @@ func GetFolderPrefix(custom []string) string {
 		endTi = 0
 
 		for endTi = ti; endTi > 0; endTi-- {
-			if custom[0][endTi] == '/' {
+			if custom[0][endTi] == '/' || custom[0][endTi] == os.PathSeparator {
 				endTi = endTi + 1
 				break
 			}
@@ -33,6 +35,14 @@ func GetFolderPrefix(custom []string) string {
 
 func GetSupportedTemplates(custom []string) []string {
 	return bcore.GetSupportedTemplates(GetFolderPrefix(custom))
+}
+
+func GetSupportedEndpoints() []string {
+	return bcore.GetSupportedEndpoints()
+}
+
+func GetRegion(hostName string) string {
+	return tccore.GetRegion(hostName)
 }
 
 func GetLocalHost() string {

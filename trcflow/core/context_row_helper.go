@@ -4,8 +4,8 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 var m sync.Mutex
@@ -16,7 +16,7 @@ func stringClone(s string) string {
 	copy(b, s)
 	if memonly.IsMemonly() {
 		newData := *(*string)(unsafe.Pointer(&b))
-		mlock.Mlock2(nil, &newData)
+		memprotectopts.MemProtect(nil, &newData)
 		return newData
 	} else {
 		return *(*string)(unsafe.Pointer(&b))

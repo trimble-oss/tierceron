@@ -4,57 +4,70 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	il "github.com/trimble-oss/tierceron/trcinit/initlib"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 	"github.com/trimble-oss/tierceron/webapi/rpc/apinator"
-
-	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose
 // of automating setup and initial seeding
 
-func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
-	devPtr := flag.Bool("dev", false, "Vault server running in dev mode (does not need to be unsealed)")
-	newPtr := flag.Bool("new", false, "New vault being initialized. Creates engines and requests first-time initialization")
-	addrPtr := flag.String("addr", "", "API endpoint for the vault")
+func CommonMain(envPtr *string,
+	addrPtrIn *string,
+	envCtxPtr *string,
+	flagset *flag.FlagSet,
+	argLines []string) {
+
+	if flagset == nil {
+		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		flagset.Usage = func() {
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			flagset.PrintDefaults()
+		}
+		flagset.String("env", "dev", "Environment to configure")
+	}
+
+	devPtr := flagset.Bool("dev", false, "Vault server running in dev mode (does not need to be unsealed)")
+	newPtr := flagset.Bool("new", false, "New vault being initialized. Creates engines and requests first-time initialization")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	if addrPtrIn != nil && *addrPtrIn != "" {
 		addrPtr = addrPtrIn
 	}
-	seedPtr := flag.String("seeds", coreopts.GetFolderPrefix(nil)+"_seeds", "Directory that contains vault seeds")
-	tokenPtr := flag.String("token", "", "Vault access token, only use if in dev mode or reseeding")
-	shardPtr := flag.String("shard", "", "Key shard used to unseal a vault that has been initialized but restarted")
+	seedPtr := flagset.String("seeds", coreopts.GetFolderPrefix(nil)+"_seeds", "Directory that contains vault seeds")
+	tokenPtr := flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
+	shardPtr := flagset.String("shard", "", "Key shard used to unseal a vault that has been initialized but restarted")
 
-	namespaceVariable := flag.String("namespace", "", "name of the namespace")
+	namespaceVariable := flagset.String("namespace", "vault", "name of the namespace")
 
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"init.log", "Output path for log files")
-	servicePtr := flag.String("service", "", "Seeding vault with a single service")
-	prodPtr := flag.Bool("prod", false, "Prod only seeds vault with staging environment")
-	uploadCertPtr := flag.Bool("certs", false, "Upload certs if provided")
-	rotateTokens := flag.Bool("rotateTokens", false, "rotate tokens")
-	tokenExpiration := flag.Bool("tokenExpiration", false, "Look up Token expiration dates")
-	pingPtr := flag.Bool("ping", false, "Ping vault.")
-	updateRole := flag.Bool("updateRole", false, "Update security role")
-	updatePolicy := flag.Bool("updatePolicy", false, "Update security policy")
-	initNamespace := flag.Bool("initns", false, "Init namespace (tokens, policy, and role)")
-	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	keyShardPtr := flag.String("totalKeys", "5", "Total number of key shards to make")
-	unsealShardPtr := flag.String("unsealKeys", "3", "Number of key shards needed to unseal")
-	tokenFileFilterPtr := flag.String("filter", "", "Filter files for token rotation.")
-	roleFileFilterPtr := flag.String("approle", "", "Filter files for approle rotation.")
-	dynamicPathPtr := flag.String("dynamicPath", "", "Seed a specific directory in vault.")
-	nestPtr := flag.Bool("nest", false, "Seed a specific directory in vault.")
+	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"init.log", "Output path for log files")
+	servicePtr := flagset.String("service", "", "Seeding vault with a single service")
+	prodPtr := flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
+	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
+	rotateTokens := flagset.Bool("rotateTokens", false, "rotate tokens")
+	tokenExpiration := flagset.Bool("tokenExpiration", false, "Look up Token expiration dates")
+	pingPtr := flagset.Bool("ping", false, "Ping vault.")
+	updateRole := flagset.Bool("updateRole", false, "Update security role")
+	updatePolicy := flagset.Bool("updatePolicy", false, "Update security policy")
+	initNamespace := flagset.Bool("initns", false, "Init namespace (tokens, policy, and role)")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	keyShardPtr := flagset.String("totalKeys", "5", "Total number of key shards to make")
+	unsealShardPtr := flagset.String("unsealKeys", "3", "Number of key shards needed to unseal")
+	tokenFileFilterPtr := flagset.String("filter", "", "Filter files for token rotation.")
+	roleFileFilterPtr := flagset.String("approle", "", "Filter files for approle rotation.")
+	dynamicPathPtr := flagset.String("dynamicPath", "", "Seed a specific directory in vault.")
+	nestPtr := flagset.Bool("nest", false, "Seed a specific directory in vault.")
 
 	// indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
 	// indexServiceFilterPtr := flag.String("serviceFilter", "", "Specifies which services (or tables) to filter")              // Table names
@@ -63,7 +76,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 
 	allowNonLocal := false
 
-	args := os.Args[1:]
+	args := argLines[1:]
 	for i := 0; i < len(args); i++ {
 		s := args[i]
 		if s[0] != '-' {
@@ -71,16 +84,16 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			os.Exit(1)
 		}
 	}
-	flag.Parse()
-	eUtils.CheckInitFlags()
+	eUtils.CheckInitFlags(flagset)
+	flagset.Parse(argLines[1:])
 	if memonly.IsMemonly() {
-		mlock.MunlockAll(nil)
-		mlock.Mlock2(nil, tokenPtr)
+		memprotectopts.MemUnprotectAll(nil)
+		memprotectopts.MemProtect(nil, tokenPtr)
 	}
 
 	// Prints usage if no flags are specified
-	if flag.NFlag() == 0 {
-		flag.Usage()
+	if flagset.NFlag() == 0 {
+		flagset.Usage()
 		os.Exit(1)
 	}
 
@@ -258,14 +271,16 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 		v.SetToken(*tokenPtr)
 	} else { // Unseal and grab keys/root token
 		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
-		if err != nil {
+		if err != nil || totalKeyShard > math.MaxInt {
 			fmt.Println("Unable to parse totalKeyShard into int")
+			os.Exit(-1)
 		}
-		unsealShardPtr, err := strconv.ParseUint(*unsealShardPtr, 10, 32)
-		if err != nil {
-			fmt.Println("Unable to parse unsealShardPtr into int")
+		keyThreshold, err := strconv.ParseUint(*unsealShardPtr, 10, 32)
+		if err != nil || keyThreshold > math.MaxInt {
+			fmt.Println("Unable to parse keyThreshold into int")
+			os.Exit(-1)
 		}
-		keyToken, err := v.InitVault(int(totalKeyShard), int(unsealShardPtr))
+		keyToken, err := v.InitVault(int(totalKeyShard), int(keyThreshold))
 		eUtils.LogErrorObject(config, err, true)
 		v.SetToken(keyToken.Token)
 		v.SetShards(keyToken.Keys)
@@ -345,8 +360,8 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			}
 		}
 
-		if (*rotateTokens || *tokenExpiration) && *tokenFileFilterPtr == "" {
-			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenExpiration, logger)
+		if (*rotateTokens || *tokenExpiration) && (*roleFileFilterPtr == "" || *tokenFileFilterPtr != "") {
+			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenFileFilterPtr, *tokenExpiration, logger)
 			if getOrRevokeError != nil {
 				fmt.Println("Token revocation or access failure.  Cannot continue.")
 				os.Exit(-1)
@@ -382,162 +397,108 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 		}
 
 		if *rotateTokens && !*tokenExpiration {
-			// Create new tokens.
 			var tokens []*apinator.InitResp_Token
-			if *roleFileFilterPtr == "" {
+			if *roleFileFilterPtr == "" || *tokenFileFilterPtr != "" {
+				// Create new tokens.
+				fmt.Println("Creating new tokens")
 				tokens = il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
 			}
-			if !*prodPtr && *namespaceVariable == "vault" {
-				mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
-				if mod != nil {
-					defer mod.Release()
-				}
 
-				if err != nil {
-					fmt.Println("Error creating modifer.")
-					eUtils.LogErrorObject(config, err, false)
-					os.Exit(-1)
-				}
-				if *tokenFileFilterPtr != "" {
-					approleFiles := il.GetApproleFileNames(config)
-					for _, approleFile := range approleFiles {
-						if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
-							continue
-						}
-						tokenMap := map[string]interface{}{}
-						fileYAML, parseErr := il.ParseApproleYaml(approleFile)
-						if parseErr != nil {
-							fmt.Println("Read parsing approle yaml file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
-						if approleName, ok := fileYAML["Approle_Name"].(string); ok {
-							mod.RawEnv = approleName
-							mod.Env = approleName
-						} else {
-							fmt.Println("Read parsing approle name from file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
+			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
+			if mod != nil {
+				defer mod.Release()
+			}
 
-						var tokenPerms map[interface{}]interface{}
-						if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
-							tokenPerms = permMap
-						} else {
-							fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
+			if err != nil {
+				fmt.Println("Error creating modifer.")
+				eUtils.LogErrorObject(config, err, false)
+				os.Exit(-1)
+			}
 
+			// Process existing approles for provided namespace
+			approleFiles := il.GetApproleFileNames(config, *namespaceVariable)
+			if len(approleFiles) == 0 {
+				fmt.Println("No approles found for namespace: " + *namespaceVariable)
+			} else {
+				for _, approleFile := range approleFiles {
+					if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
+						continue
+					}
+					tokenMap := map[string]interface{}{}
+					fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
+					if parseErr != nil {
+						fmt.Println("Read parsing approle yaml file, continuing to next file.")
+						eUtils.LogErrorObject(config, parseErr, false)
+						continue
+					}
+					if approleName, ok := fileYAML["Approle_Name"].(string); ok {
+						mod.RawEnv = approleName
+						mod.Env = approleName
+					} else {
+						fmt.Println("Read parsing approle name from file, continuing to next file.")
+						eUtils.LogErrorObject(config, parseErr, false)
+						continue
+					}
+
+					var tokenPerms map[interface{}]interface{}
+					if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
+						tokenPerms = permMap
+					} else {
+						fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
+						eUtils.LogErrorObject(config, parseErr, false)
+						continue
+					}
+
+					if len(tokenPerms) == 0 {
+						fmt.Println("Completely skipping " + mod.RawEnv + " as there is no token permission for this approle.")
+						continue
+					}
+
+					if *tokenFileFilterPtr != "" && *tokenFileFilterPtr != "*" {
+						// Filter out tokens that
 						if found, ok := tokenPerms[*tokenFileFilterPtr].(bool); !ok && !found {
 							fmt.Println("Skipping " + mod.RawEnv + " as there is no token permission for this approle.")
 							continue
 						}
+					}
 
-						existingTokens, err := mod.ReadData("super-secrets/tokens")
-						if err != nil {
-							fmt.Println("Read existing tokens failure.  Cannot continue.")
-							eUtils.LogErrorObject(config, err, false)
-							os.Exit(-1)
-						}
+					existingTokens, err := mod.ReadData("super-secrets/tokens")
+					if err != nil {
+						fmt.Println("Read existing tokens failure.  Cannot continue.")
+						eUtils.LogErrorObject(config, err, false)
+						os.Exit(-1)
+					}
 
-						// We have names of tokens that were referenced in old role.  Ok to delete the role now.
-						//
-						// Merge token data.
-						//
-						// Copy existing.
-						for key, valueObj := range existingTokens {
-							if value, ok := valueObj.(string); ok {
+					// We have names of tokens that were referenced in old role.  Ok to delete the role now.
+					//
+					// Merge token data.
+					//
+					// Copy existing, but only if they are still supported... otherwise strip them from the approle.
+					for key, valueObj := range existingTokens {
+						if value, ok := valueObj.(string); ok {
+							if found, ok := tokenPerms[key].(bool); ok && found && key != "admin" && key != "webapp" {
 								tokenMap[key] = value
-							} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
+							}
+						} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
+							if found, ok := tokenPerms[key].(bool); ok && found && key != "admin" && key != "webapp" {
 								tokenMap[key] = stringer.GoString()
 							}
 						}
-
-						//Overwrite new
-						for _, token := range tokens {
-							// Everything but webapp give access by app role and secret.
-							if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
-								tokenMap[token.Name] = token.Value
-							}
-						}
-
-						// Just update tokens in approle.
-						if len(tokenMap) > 0 {
-							warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
-							eUtils.LogErrorObject(config, err, true)
-							eUtils.LogWarningsObject(config, warn, true)
-							fmt.Println("Any new tokens added to approle")
-						}
-					}
-				} else {
-					mod.RawEnv = "bamboo"
-					mod.Env = "bamboo"
-
-					//Checks if vault is initialized already
-					if !mod.Exists("values/metadata") && !mod.Exists("templates/metadata") && !mod.Exists("super-secrets/metadata") {
-						fmt.Println("Vault has not been initialized yet")
-						os.Exit(1)
 					}
 
-					approleFiles := il.GetApproleFileNames(config)
-					for _, approleFile := range approleFiles {
-						if *roleFileFilterPtr != "" && approleFile != *roleFileFilterPtr {
-							continue
+					//Overwrite with new tokens.
+					for _, token := range tokens {
+						// Everything but webapp give access by app role and secret.
+						if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
+							tokenMap[token.Name] = token.Value
 						}
-						tokenMap := map[string]interface{}{}
-						fileYAML, parseErr := il.ParseApproleYaml(approleFile)
-						if parseErr != nil {
-							fmt.Println("Read parsing approle yaml file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
+					}
 
-						if approleName, ok := fileYAML["Approle_Name"].(string); ok {
-							mod.RawEnv = approleName
-							mod.Env = approleName
-						} else {
-							fmt.Println("Read parsing approle name from file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
-
-						var tokenPerms map[interface{}]interface{}
-						if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
-							tokenPerms = permMap
-						} else {
-							fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
-							continue
-						}
-
-						existingTokens, err := mod.ReadData("super-secrets/tokens")
-						if err != nil {
-							fmt.Println("Read existing tokens failure.  Cannot continue.")
-							eUtils.LogErrorObject(config, err, false)
-							os.Exit(-1)
-						}
-
-						// We have names of tokens that were referenced in old role.  Ok to delete the role now.
-						//
-						// Merge token data.
-						//
-						// Copy existing.
-						for key, valueObj := range existingTokens {
-							if value, ok := valueObj.(string); ok {
-								tokenMap[key] = value
-							} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
-								tokenMap[key] = stringer.GoString()
-							}
-						}
-
-						// Overwrite new.
-						for _, token := range tokens {
-							// Everything but webapp give access by app role and secret.
-							if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
-								tokenMap[token.Name] = token.Value
-							}
-						}
+					if *roleFileFilterPtr != "" && *tokenFileFilterPtr == "" {
+						// approle provided, tokenFileFilter not provided...
+						// This will just be an approler
+						mod.Env = *namespaceVariable
+						mod.RawEnv = *namespaceVariable
 
 						//
 						// Wipe existing role.
@@ -564,17 +525,24 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 						secretID, err := v.GetSecretID(mod.RawEnv)
 						eUtils.LogErrorObject(config, err, true)
 
-						fmt.Printf("Rotated role id and secret id for " + mod.RawEnv + ".\n")
+						fmt.Printf("Rotated role id and secret id for %s.\n", mod.RawEnv)
 						fmt.Printf("Role ID: %s\n", roleID)
 						fmt.Printf("Secret ID: %s\n", secretID)
+					} else {
+						fmt.Printf("Existing role token count: %d.\n", len(existingTokens))
+						fmt.Printf("Adding token to role: %s.\n", mod.RawEnv)
+						fmt.Printf("Post add role token count: %d.\n", len(tokenMap))
+					}
 
-						// Store all new tokens to new appRole.
+					// Just update tokens in approle.
+					// This could be adding to an existing approle or re-adding to rotated role...
+					if len(tokenMap) > 0 {
 						warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
 						eUtils.LogErrorObject(config, err, true)
 						eUtils.LogWarningsObject(config, warn, true)
+						fmt.Println("Approle tokens refreshed/updated.")
 					}
 				}
-
 			}
 		}
 		os.Exit(0)
@@ -646,7 +614,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 			fmt.Printf("Role ID: %s\n", roleID)
 			fmt.Printf("Secret ID: %s\n", secretID)
 
-			files, err := ioutil.ReadDir(namespaceAppRolePolicies)
+			files, err := os.ReadDir(namespaceAppRolePolicies)
 			appRolePolicies := []string{}
 			isPolicy := true
 			if err == nil {
@@ -655,7 +623,7 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 					ext := filepath.Ext(filename)
 					filename = filename[0 : len(filename)-len(ext)]
 					isPolicy = true
-					fileYAML, parseErr := il.ParseApproleYaml(filename)
+					fileYAML, parseErr := il.ParseApproleYaml(filename, *namespaceVariable)
 					if parseErr != nil {
 						isPolicy = false
 						fmt.Println("Unable to parse approle yaml file, continuing to next file.")
@@ -728,9 +696,9 @@ func CommonMain(envPtr *string, addrPtrIn *string, envCtxPtr *string) {
 		}
 		mod.Env = *envPtr
 		mod.RawEnv = eUtils.GetRawEnv(*envPtr)
-		if valid, errValidateEnvironment := mod.ValidateEnvironment(mod.RawEnv, *uploadCertPtr, "", config.Log); errValidateEnvironment != nil || !valid {
-			if unrestrictedValid, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.RawEnv, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-				eUtils.LogAndSafeExit(config, "Mismatched token for requested environment: "+mod.Env, 1)
+		if valid, baseDesiredPolicy, errValidateEnvironment := mod.ValidateEnvironment(mod.RawEnv, *uploadCertPtr, "", config.Log); errValidateEnvironment != nil || !valid {
+			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.RawEnv, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+				eUtils.LogAndSafeExit(config, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", mod.Env, baseDesiredPolicy, desiredPolicy), 1)
 				return
 			}
 		}

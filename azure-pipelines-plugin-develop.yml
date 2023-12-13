@@ -42,6 +42,11 @@ resources:
     endpoint: trimble-oss
     name: trimble-oss/tierceron-hat
     ref: main
+  - repository: tierceron-succinctly
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-succinctly
+    ref: main
   - repository: tierceron-nute
     type: github
     endpoint: trimble-oss
@@ -73,7 +78,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.20.5'
+    version: '1.21.5'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -90,6 +95,8 @@ steps:
 - checkout: VaultConfig.Test
   clean: false
 - checkout: tierceron-hat
+  clean: false
+- checkout: tierceron-succinctly
   clean: false
 - checkout: tierceron-nute
   clean: false
@@ -123,7 +130,7 @@ steps:
     fi
 
     echo "Compile Agent plugin trc-vault-carrier-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install -ldflags '-w' -tags "tc memonly awsecr insecure" github.com/trimble-oss/tierceron/trcvault/plugins/carrier
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install -ldflags '-w' -tags "tc memonly azrcr insecure" github.com/trimble-oss/tierceron/trcvault/plugins/carrier
     mv $GOBIN/carrier $GOBIN/trc-vault-carrier-plugin
 
     if [[ ! -f $GOBIN/trc-vault-carrier-plugin ]] ; then
@@ -140,19 +147,9 @@ steps:
         exit 1
     fi
 
-    echo "Compile Prod Linux trc-vault-plugin-prod"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$(GOCACHE) go install -ldflags '-w' -tags "tc memonly prod" github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
-    mv  $GOBIN/trcdb $GOBIN/trc-vault-plugin-prod
-
-    if [[ ! -f $GOBIN/trc-vault-plugin-prod ]] ; then
-        echo File trc vault plugin was not built, aborting.
-        exit 1
-    fi
-
     sha256sum $GOBIN/trcsh | cut -d' ' -f1 > $GOBIN/trcsh.sha256
     sha256sum $GOBIN/trc-vault-carrier-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-carrier-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-plugin.sha256
-    sha256sum $GOBIN/trc-vault-plugin-prod | cut -d' ' -f1 > $GOBIN/trc-vault-plugin-prod.sha256
 
     echo "Compile Complete"
     cp $GOBIN/trcsh $(Build.ArtifactStagingDirectory)
@@ -161,9 +158,7 @@ steps:
     cp $GOBIN/trc-vault-carrier-plugin $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-carrier-plugin.sha256 $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin  $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/trc-vault-plugin-prod  $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin.sha256  $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/trc-vault-plugin-prod.sha256  $(Build.ArtifactStagingDirectory)
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
 - task: SnykSecurityScan@1

@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/trcsubbase"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 )
 
 // Reads in template files in specified directory
@@ -17,11 +18,21 @@ import (
 
 func main() {
 	if memonly.IsMemonly() {
-		mlock.Mlock(nil)
+		memprotectopts.MemProtectInit(nil)
 	}
 	fmt.Println("Version: " + "1.26")
-	envPtr := flag.String("env", "dev", "Environment to configure")
-	addrPtr := flag.String("addr", "", "API endpoint for the vault")
+	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flagset.Usage = func() {
+		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
+		flagset.PrintDefaults()
+	}
+	envPtr := flagset.String("env", "dev", "Environment to configure")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
+	secretIDPtr := flagset.String("secretID", "", "Public app role ID")
+	appRoleIDPtr := flagset.String("appRoleID", "", "Secret app role ID")
 
-	trcsubbase.CommonMain(envPtr, addrPtr, nil)
+	err := trcsubbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, nil)
+	if err != nil {
+		os.Exit(1)
+	}
 }

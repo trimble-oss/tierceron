@@ -4,16 +4,10 @@
 package repository
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,9 +15,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
+
+	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
-func getImageSHA(svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
+func getImageSHA(config *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
 	imageInput := &ecr.BatchGetImageInput{
 		ImageIds: []*ecr.ImageIdentifier{
 			{
@@ -74,13 +70,13 @@ func getImageSHA(svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
 }
 
 // Return url to the image to be used for download.
-func GetImageDownloadUrl(pluginToolConfig map[string]interface{}) (string, error) {
+func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) (string, error) {
 	svc := ecr.New(session.New(&aws.Config{
 		Region:      aws.String("us-west-2"),
 		Credentials: credentials.NewStaticCredentials(pluginToolConfig["awspassword"].(string), pluginToolConfig["awsaccesskey"].(string), ""),
 	}))
 
-	err := getImageSHA(svc, pluginToolConfig)
+	err := getImageSHA(config, svc, pluginToolConfig)
 	if err != nil {
 		return "", err
 	}
@@ -115,62 +111,8 @@ func GetImageDownloadUrl(pluginToolConfig map[string]interface{}) (string, error
 	return *downloadOutput.DownloadUrl, nil
 }
 
-func gUnZipData(data []byte) ([]byte, error) {
-	var unCompressedBytes []byte
-	newB := bytes.NewBuffer(unCompressedBytes)
-	b := bytes.NewBuffer(data)
-	zr, err := gzip.NewReader(b)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := io.Copy(newB, zr); err != nil {
-		return nil, err
-	}
-
-	return newB.Bytes(), nil
-}
-
-func untarData(data []byte) ([]byte, error) {
-	var b bytes.Buffer
-	writer := io.Writer(&b)
-	tarReader := tar.NewReader(bytes.NewReader(data))
-	for {
-		_, err := tarReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = io.Copy(writer, tarReader)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return b.Bytes(), nil
-}
-
-func getImage(downloadUrl string) ([]byte, error) {
-	response, err := http.Get(downloadUrl)
-	if err != nil {
-		return nil, err
-	}
-	if response.Body != nil {
-		defer response.Body.Close()
-	}
-
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
-}
-
-func GetImageAndShaFromDownload(pluginToolConfig map[string]interface{}) error {
-	downloadUrl, downloadURlError := GetImageDownloadUrl(pluginToolConfig)
+func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+	downloadUrl, downloadURlError := GetImageDownloadUrl(config, pluginToolConfig)
 	if downloadURlError != nil {
 		return errors.New("Failed to get download url.")
 	}

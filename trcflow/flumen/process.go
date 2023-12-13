@@ -46,13 +46,31 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	//Need new function writing to that path using pluginName ->
 	//if not copied -> this plugin should fail to start up
 	//Update deployed status & return if
-	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok {
-		deployedUpdateErr := deploy.PluginDeployedUpdate(goMod, pluginNameList, logger)
+	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok || true {
+		tempAddr := pluginConfig["vaddress"]
+		tempToken := pluginConfig["token"]
+		if caddress, cOk := pluginConfig["caddress"]; cOk {
+			pluginConfig["vaddress"] = caddress
+		}
+		if cToken, cOk := pluginConfig["ctoken"]; cOk {
+			pluginConfig["token"] = cToken
+		}
+		pluginConfig["exitOnFailure"] = true
+
+		cConfig, cGoMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+		if err != nil {
+			eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
+			return err
+		}
+		deployedUpdateErr := deploy.PluginDeployedUpdate(cConfig, cGoMod, cVault, pluginNameList, pluginConfig["certifyPath"].([]string), logger)
 		if deployedUpdateErr != nil {
 			eUtils.LogErrorMessage(config, deployedUpdateErr.Error(), false)
 			eUtils.LogErrorMessage(config, "Could not update plugin deployed status in vault.", false)
 			return err
 		}
+		pluginConfig["vaddress"] = tempAddr
+		pluginConfig["token"] = tempToken
+		pluginConfig["exitOnFailure"] = false
 	}
 	logger.Println("Deployed status updated.")
 
@@ -149,11 +167,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		Regions:      emptySlice,
 		Token:        pluginConfig["token"].(string),
 		VaultAddress: pluginConfig["vaddress"].(string),
-		Insecure:     true, // TODO: investigate insecure implementation...
+		Insecure:     true, // Always local...
 		Env:          pluginConfig["env"].(string),
 		Log:          config.Log,
 	}
 
+	// Need to create askflumeflow template --> fill with default vals
 	templateList := pluginConfig["templatePath"].([]string)
 	flowTemplateMap := map[string]string{}
 	flowSourceMap := map[string]string{}
@@ -214,24 +233,26 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// 1. Auth -- Auth is provided by the external library.
 	// 2. Get json by Api call.
 	extensionAuthComponents := buildopts.GetExtensionAuthComponents(trcIdentityConfig)
-	httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
-	if httpClient != nil {
-		defer httpClient.CloseIdleConnections()
-	}
-	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
-		return err
-	}
+	if len(extensionAuthComponents) > 0 {
+		httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
+		if httpClient != nil {
+			defer httpClient.CloseIdleConnections()
+		}
+		if err != nil {
+			eUtils.LogErrorObject(config, err, false)
+			return err
+		}
 
-	tfmContext.ExtensionAuthData, _, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
-	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
-		//return err
+		tfmContext.ExtensionAuthData, _, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
+		if err != nil {
+			eUtils.LogErrorObject(config, err, false)
+			//return err
+		}
+		// Set up reloader in case things go sideways later on.
+		tfmContext.ExtensionAuthDataReloader = make(map[string]interface{}, 1)
+		tfmContext.ExtensionAuthDataReloader["config"] = config
+		tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
 	}
-	// Set up reloader in case things go sideways later on.
-	tfmContext.ExtensionAuthDataReloader = make(map[string]interface{}, 1)
-	tfmContext.ExtensionAuthDataReloader["config"] = config
-	tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
@@ -301,11 +322,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(flowcore.FlowNameType(table), &tfContext, config)
 
 			controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
-			if initReciever, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
+			if initReceiver, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
 			initAlert: //This waits for flow states to be loaded before starting all non-controller flows
 				for {
 					select {
-					case _, ok := <-initReciever:
+					case _, ok := <-initReceiver:
 						if ok {
 							break initAlert
 						}
@@ -314,9 +335,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					}
 				}
 			} else {
-				initRecieverErr := errors.New("Failed to retrieve channel alert for controller init")
-				eUtils.LogErrorMessage(config, initRecieverErr.Error(), false)
-				return initRecieverErr
+				initReceiverErr := errors.New("Failed to retrieve channel alert for controller init")
+				eUtils.LogErrorMessage(config, initReceiverErr.Error(), false)
+				return initReceiverErr
 			}
 		}
 

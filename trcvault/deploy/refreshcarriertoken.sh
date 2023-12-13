@@ -1,12 +1,26 @@
 #!/bin/bash
-if [[ -z "${VAULT_ADDR}" ]]; then
+if [[ -z "${VAULT_ENV}" ]]; then
+echo "Enter vault environment being configured: "
+read VAULT_ENV
+fi
+
+if [[ -z "${AGENT_VAULT_ADDR}" ]]; then
 echo "Enter agent vault host base url including port: "
-read VAULT_ADDR
+read AGENT_VAULT_ADDR
 fi
 
 if [[ -z "${SECRET_VAULT_ADDR}" ]]; then
-echo "Enter secrets vault host base url including port: "
+echo "Enter organization vault host base url including port (hit enter if just refreshing org tokens): "
 read SECRET_VAULT_ADDR
+fi
+
+if [[ -z "${SECRET_VAULT_PLUGIN_TOKEN}" ]]; then
+if [ "$VAULT_ENV" = "staging" ] || [ "$VAULT_ENV" = "prod" ]; then
+echo "Enter organization vault plugin token for certification(config_token_plugin$VAULT_ENV): "
+else
+echo "Enter organization vault plugin token for certification(config_token_pluginany): "
+fi
+read SECRET_VAULT_PLUGIN_TOKEN
 fi
 
 if [[ -z "${VAULT_TOKEN}" ]]; then
@@ -14,29 +28,28 @@ echo "Enter agent vault root token: "
 read VAULT_TOKEN
 fi
 
-if [[ -z "${VAULT_ENV}" ]]; then
-echo "Enter agent and secrets common vault environment: "
-read VAULT_ENV
-fi
-
 if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
-echo "Enter agent unrestricted environment token with write permissions: "
+if [ "$VAULT_ENV" = "staging" ] || [ "$VAULT_ENV" = "prod" ]; then
+echo "Enter agent vault *plugin* environment token with tightly confined write permissions(config_token_plugin$VAULT_ENV): "
+else
+echo "Enter agent vault *plugin* environment token with tightly confined write permissions(config_token_pluginany): "
+fi
 read VAULT_ENV_TOKEN
 fi
 
 
 if [[ -z "${SECRET_VAULT_CONFIG_ROLE}" ]]; then
-echo "Enter secrets vault config approle: "
+echo "Enter organization vault config approle: "
 read SECRET_VAULT_CONFIG_ROLE
 fi
 
 if [[ -z "${SECRET_VAULT_PUB_ROLE}" ]]; then
-echo "Enter secrets vault config pubrole: "
+echo "Enter organization vault config pubrole: "
 read SECRET_VAULT_PUB_ROLE
 fi
 
 if [[ -z "${KUBE_PATH}" ]]; then
-echo "Enter kube config path: "
+echo "Enter organization kube config path: "
 read KUBE_PATH
 fi
 
@@ -49,5 +62,4 @@ export VAULT_API_ADDR
 
 echo $VAULT_ADDR
 
-vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$SECRET_VAULT_ADDR pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
-
+vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -34,14 +34,17 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 		return "", "", nil, err
 	}
 
-	if res.StatusCode == 401 {
+	switch res.StatusCode {
+	case 401:
 		return "", "", &pb.LoginResp{
 			Success:   false,
 			AuthToken: "",
 		}, nil
-	} else if res.StatusCode == 200 || res.StatusCode == 204 {
+	case 200:
+		fallthrough
+	case 204:
 		var response map[string]interface{}
-		bodyBytes, err := ioutil.ReadAll(res.Body)
+		bodyBytes, err := io.ReadAll(res.Body)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 			return "", "", nil, err
@@ -61,10 +64,10 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 					AuthToken: "",
 				}, nil
 			}
-			err = fmt.Errorf("Unable to parse userCodeField in auth response")
+			err = fmt.Errorf("unable to parse userCodeField in auth response")
 			eUtils.LogErrorObject(config, err, false)
 		} else {
-			err = fmt.Errorf("Unable to parse userNameField in auth response")
+			err = fmt.Errorf("unable to parse userNameField in auth response")
 			eUtils.LogErrorObject(config, err, false)
 		}
 
@@ -73,7 +76,7 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 			AuthToken: "",
 		}, err
 	}
-	err = fmt.Errorf("Unexpected response code from auth endpoint: %d", res.StatusCode)
+	err = fmt.Errorf("unexpected response code from auth endpoint: %d", res.StatusCode)
 	eUtils.LogErrorObject(config, err, false)
 	return "", "", &pb.LoginResp{
 		Success:   false,

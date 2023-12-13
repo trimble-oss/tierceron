@@ -9,7 +9,7 @@ api:
 
 # Warning! windows not as secure....
 configwin:
-    @GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build   -o $(GOBIN)/trcconfig.exe trcconfig/trcconfig.go
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "tc windows azrcr memonly" -o $(GOBIN)/trcconfig.exe trcconfig/trcconfig.go
 config:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly" github.com/trimble-oss/tierceron/trcconfig
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcconfig
@@ -19,7 +19,7 @@ ctl:
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcctl
 
 devplugincarrierbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "tc insecure awsecr memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/trcvault/plugins/carrier
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "tc insecure azrcr memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/trcvault/plugins/carrier
 devplugincarriersha:
 	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin.sha256
 carrier: devplugincarrierbuild devplugincarriersha
@@ -35,18 +35,6 @@ harbingplugintrcdbbuild:
 harbingplugintrcdbsha:
 	sha256sum trcvault/deploy/target/trc-vault-plugin | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin.sha256
 harbinger: harbingplugintrcdbbuild harbingplugintrcdbsha
-
-prodplugintrcdbbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc prod awsecr memonly" -o trcvault/deploy/target/trc-vault-plugin-prod github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
-prodplugintrcdbsha:
-	sha256sum trcvault/deploy/target/trc-vault-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-plugin-prod.sha256
-prodplugintrcdb: prodplugintrcdbbuild prodplugintrcdbsha
-
-pluginprodcarrierbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "tc prod memonly" -o trcvault/deploy/target/trc-vault-carrier-plugin-prod github.com/trimble-oss/tierceron/trcvault/plugins/carrier
-pluginprodcarriersha:
-	sha256sum trcvault/deploy/target/trc-vault-carrier-plugin-prod | cut -d' ' -f1 > trcvault/deploy/target/trc-vault-carrier-plugin-prod.sha256
-pluginprodcarrier: pluginprodcarrierbuild pluginprodcarriersha
 
 configmac:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=darwin GOARCH=amd64 go build -o $(GOBIN)/trcconfig.mac github.com/trimble-oss/tierceron/trcconfig
@@ -66,10 +54,13 @@ xmac:
 xlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -a -ldflags '-w' -tags "memonly" -o $(GOBIN)/nc.so github.com/trimble-oss/tierceron/configlib
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/nc.so
+maccrosslib:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 OSXCROSS_NO_INCLUDE_PATH_WARNINGS=1 MACOSX_DEPLOYMENT_TARGET=10.7 CC=o64-clang CXX=o64-clang++ GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -tags "memonly" -o $(GOBIN)/nc.dylib github.com/trimble-oss/tierceron/configlib
 maclib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -buildmode=c-shared -tags "memonly" -o $(GOBIN)/nc.dylib github.com/trimble-oss/tierceron/configlib
+# Prerequisit: sudo apt-get install gcc-mingw-w64
 winlib:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build   -buildmode=c-shared -o $(GOBIN)/nc.dll github.com/trimble-oss/tierceron/configlib
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -tags "tc memonly windows vaultname" -buildmode=c-shared -o $(GOBIN)/nc.dll github.com/trimble-oss/tierceron/configlib
 xp:
 	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go install  -tags "memonly" github.com/trimble-oss/tierceron/trcxp
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcxp
@@ -79,9 +70,14 @@ pub:
 sub:
 	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go install   -tags "memonly" github.com/trimble-oss/tierceron/trcsub
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcsub
+# Warning! windows not as secure....
+subwin:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "tc windows memonly" -o $(GOBIN)/trcsub.exe trcsub/trcsub.go
 certify:
-	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "tc awsecr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
+	@GOPATH=$(GOPATH) CGO_ENABLED=0 GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "tc azrcr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
 	sudo setcap cap_ipc_lock=+ep $(GOBIN)/trcplgtool
+certifywin:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "tc windows azrcr memonly" -o $(GOBIN)/trcplgtool.exe github.com/trimble-oss/tierceron/trcvault/trcplgtool
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
@@ -91,10 +87,26 @@ trcshellsha:
 	sha256sum trcvault/deploy/target/trcsh | cut -d' ' -f1 > trcvault/deploy/target/trcsh.sha256
 trcshell: trcshellbuild trcshellsha
 
+trcshellwin:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "tc windows azrcr memonly" -o $(GOBIN)/trcsh.exe github.com/trimble-oss/tierceron/trcsh
+
+trckubectlbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o trcvault/deploy/target/kubectl -tags "memonly" github.com/trimble-oss/tierceron/trcsh
+trckubectlsha:
+	sha256sum trcvault/deploy/target/kubectl | cut -d' ' -f1 > trcvault/deploy/target/kubectl.sha256
+trckubectl: trckubectlbuild trckubectlsha
+
+
 ttdiserver:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/ttdiserver -tags "insecure fyneboot argosy tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/trcgorillaz/ttdiserver
 
 ttdivisualizer:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/ttdivisualizer -tags "insecure g3nboot argosy tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/trcgorillaz/ttdivisualizer	
+
+askflume:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/trcchatproxy -tags "insecure tc" github.com/trimble-oss/tierceron/trcchatproxy
+
+askflumeserver:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/trcchatserver -tags "insecure tc" github.com/trimble-oss/tierceron/trcflow
 
 all: api config devplugintrcdb config seed x xlib pub sub

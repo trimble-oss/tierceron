@@ -1,16 +1,9 @@
 package trcshauth
 
 import (
-	"context"
-	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
-	"embed"
-	"encoding/hex"
-	"encoding/pem"
+	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"regexp"
@@ -18,38 +11,10 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron-hat/cap"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/capauth"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
-
-//go:embed tls/mashup.crt
-var MashupCert embed.FS
-
-//go:embed tls/mashup.key
-var MashupKey embed.FS
-
-var mashupCertPool *x509.CertPool
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-	mashupCertBytes, err := MashupCert.ReadFile("tls/mashup.crt")
-	if err != nil {
-		fmt.Println("Cert read failure.")
-		return
-	}
-
-	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
-
-	mashupClientCert, parseErr := x509.ParseCertificate(mashupBlock.Bytes)
-	if parseErr != nil {
-		fmt.Println("Cert parse read failure.")
-		return
-	}
-	mashupCertPool = x509.NewCertPool()
-	mashupCertPool.AddCert(mashupClientCert)
-}
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
@@ -59,14 +24,6 @@ func randomString(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
-}
-
-type TrcShConfig struct {
-	Env        string
-	EnvContext string // Current env context...
-	ConfigRole string
-	PubRole    string
-	KubeConfig string
 }
 
 const configDir = "/.tierceron/config.yml"
@@ -80,14 +37,14 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 
 	//This will use env by default, if blank it will use context. If context is defined, it will replace context.
 	if env == "" {
-		file, err := ioutil.ReadFile(dirname + configDir)
+		file, err := os.ReadFile(dirname + configDir)
 		if err != nil {
 			fmt.Printf("Could not read the context file due to this %s error \n", err)
 			return "", "", "", err
 		}
 		fileContent := string(file)
 		if fileContent == "" {
-			return "", "", "", errors.New("Could not read the context file")
+			return "", "", "", errors.New("could not read the context file")
 		}
 		if !strings.Contains(fileContent, envContextPrefix) && envContext != "" {
 			var output string
@@ -97,7 +54,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 				output = fileContent + envContextPrefix + envContext + "\n"
 			}
 
-			if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+			if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
 				return "", "", "", err
 			}
 			fmt.Println("Context flag has been written out.")
@@ -108,12 +65,12 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 			if len(result) == 1 {
 				addrPort = result[0]
 			} else {
-				return "", "", "", errors.New("Couldn't find port.")
+				return "", "", "", errors.New("couldn't find port")
 			}
 			currentEnvContext := strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
 			if envContext != "" {
 				output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
-				if err = ioutil.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+				if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
 					return "", "", "", err
 				}
 				fmt.Println("Context flag has been written out.")
@@ -130,77 +87,124 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 	return env, envContext, addrPort, nil
 }
 
+func retryingPenseFeatherQuery(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfigs, pense string) (*string, error) {
+	retry := 0
+	for retry < 5 {
+		result, err := agentConfigs.PenseFeatherQuery(featherCtx, pense)
+
+		if err != nil || result == nil || *result == "...." {
+			time.Sleep(time.Second)
+			retry = retry + 1
+		} else {
+			return result, err
+		}
+	}
+	return nil, errors.New("unavailable secrets")
+}
+
 // Helper function for obtaining auth components.
-func TrcshAuth(config *eUtils.DriverConfig) (*TrcShConfig, error) {
+func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfigs, config *eUtils.DriverConfig) (*capauth.TrcShConfig, error) {
+	trcshConfig := &capauth.TrcShConfig{}
 	var err error
 
-	trcshConfig := &TrcShConfig{}
-	addr, vAddressErr := PenseQuery("vaddress")
-	if vAddressErr != nil {
+	if config.EnvRaw == "staging" || config.EnvRaw == "prod" || len(config.TrcShellRaw) > 0 {
+		dir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Println("No homedir for current user")
+			os.Exit(1)
+		}
+		fileBytes, err := os.ReadFile(dir + "/.kube/config")
+		if err != nil {
+			fmt.Println("No local kube config found...")
+			os.Exit(1)
+		}
+		kc := base64.StdEncoding.EncodeToString(fileBytes)
+		trcshConfig.KubeConfig = &kc
+
+		if len(config.TrcShellRaw) > 0 {
+			return trcshConfig, nil
+		}
+	} else {
+		if featherCtx == nil {
+			config.Log.Println("Auth phase 1")
+			trcshConfig.KubeConfig, err = capauth.PenseQuery(config, "kubeconfig")
+		}
+	}
+
+	if err != nil {
+		return trcshConfig, err
+	}
+	if trcshConfig.KubeConfig != nil {
+		memprotectopts.MemProtect(nil, trcshConfig.KubeConfig)
+	}
+
+	if featherCtx != nil {
+		trcshConfig.VaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
+	} else {
+		config.Log.Println("Auth phase 2")
+		trcshConfig.VaultAddress, err = capauth.PenseQuery(config, "caddress")
+	}
+	if err != nil {
+		return trcshConfig, err
+	}
+
+	memprotectopts.MemProtect(nil, trcshConfig.VaultAddress)
+
+	if err != nil {
 		var addrPort string
 		var env, envContext string
 
-		fmt.Println(vAddressErr)
+		fmt.Println(err)
 		//Env should come from command line - not context here. but addr port is needed.
 		trcshConfig.Env, trcshConfig.EnvContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
 		if err != nil {
 			fmt.Println(err)
 			return trcshConfig, err
 		}
-		addr = "https://127.0.0.1:" + addrPort
+		vAddr := "https://127.0.0.1:" + addrPort
+		trcshConfig.VaultAddress = &vAddr
 
 		config.Env = env
 		config.EnvRaw = env
 	}
 
-	config.VaultAddress = addr
-	mlock.Mlock2(nil, &config.VaultAddress)
+	config.VaultAddress = *trcshConfig.VaultAddress
+	memprotectopts.MemProtect(nil, &config.VaultAddress)
 
-	trcshConfig.ConfigRole, err = PenseQuery("configrole")
+	if featherCtx != nil {
+		trcshConfig.ConfigRole, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
+	} else {
+		config.Log.Println("Auth phase 3")
+		trcshConfig.ConfigRole, err = capauth.PenseQuery(config, "configrole")
+	}
 	if err != nil {
 		return trcshConfig, err
 	}
-	mlock.Mlock2(nil, &trcshConfig.ConfigRole)
 
-	trcshConfig.PubRole, err = PenseQuery("pubrole")
+	memprotectopts.MemProtect(nil, trcshConfig.ConfigRole)
+
+	if featherCtx == nil {
+		config.Log.Println("Auth phase 4")
+		trcshConfig.PubRole, err = capauth.PenseQuery(config, "pubrole")
+		if err != nil {
+			return trcshConfig, err
+		}
+		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
+	}
+
+	if featherCtx == nil {
+		config.Log.Println("Auth phase 5")
+		trcshConfig.CToken, err = capauth.PenseQuery(config, "ctoken")
+		if err != nil {
+			return trcshConfig, err
+		}
+		memprotectopts.MemProtect(nil, trcshConfig.CToken)
+	}
 	if err != nil {
 		return trcshConfig, err
 	}
-	mlock.Mlock2(nil, &trcshConfig.PubRole)
 
-	trcshConfig.KubeConfig, err = PenseQuery("kubeconfig")
-	if err != nil {
-		return trcshConfig, err
-	}
-	mlock.Mlock2(nil, &trcshConfig.KubeConfig)
+	config.Log.Println("Auth complete.")
+
 	return trcshConfig, err
-}
-
-func PenseQuery(pense string) (string, error) {
-	penseCode := randomString(7 + rand.Intn(7))
-	penseArray := sha256.Sum256([]byte(penseCode))
-	penseSum := hex.EncodeToString(penseArray[:])
-
-	capWriteErr := cap.TapWriter(penseSum)
-	if capWriteErr != nil {
-		return "", errors.Join(errors.New("Tap writer error"), capWriteErr)
-	}
-
-	conn, err := grpc.Dial("127.0.0.1:12384", grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: "", RootCAs: mashupCertPool, InsecureSkipVerify: true})))
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	c := cap.NewCapClient(conn)
-
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
-	if penseErr != nil {
-		return "", errors.Join(errors.New("Pense error"), penseErr)
-	}
-
-	return r.GetPense(), nil
 }

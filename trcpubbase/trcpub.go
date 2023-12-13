@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	il "github.com/trimble-oss/tierceron/trcinit/initlib"
 	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/utils/mlock"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
@@ -28,20 +28,35 @@ func CommonMain(envPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
 	tokenNamePtr *string,
+	flagset *flag.FlagSet,
+	argLines []string,
 	c *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
-		mlock.Mlock(nil)
+		memprotectopts.MemProtectInit(nil)
 	}
-	dirPtr := flag.String("dir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
-	pingPtr := flag.Bool("ping", false, "Ping vault.")
-	insecurePtr := flag.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flag.String("log", "./"+coreopts.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
-	appRolePtr := flag.String("", "config.yml", "Name of auth config file - example.yml")
+	if flagset == nil {
+		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		flagset.Usage = func() {
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			flagset.PrintDefaults()
+		}
+		flagset.String("env", "dev", "Environment to configure")
+		flagset.String("addr", "", "API endpoint for the vault")
+		flagset.String("token", "", "Vault access token")
+		flagset.String("secretID", "", "Public app role ID")
+		flagset.String("appRoleID", "", "Secret app role ID")
+		flagset.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"pub to access the vault")
+	}
+	dirPtr := flagset.String("dir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
+	pingPtr := flagset.Bool("ping", false, "Ping vault.")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
+	appRolePtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
 
-	if c == nil || !c.IsShell {
-		flag.Parse()
+	if c == nil || !c.IsShellSubProcess {
+		flagset.Parse(argLines[1:])
 	} else {
-		flag.CommandLine.Parse(nil)
+		flagset.Parse(nil)
 	}
 
 	var configBase *eUtils.DriverConfig
@@ -70,8 +85,13 @@ func CommonMain(envPtr *string,
 		eUtils.CheckError(configBase, err, true)
 	}
 
-	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
-	fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
+	if c != nil && c.IsShell {
+		c.Log.Printf("Connecting to vault @ %s\n", *addrPtr)
+		c.Log.Printf("Uploading templates in %s to vault\n", *dirPtr)
+	} else {
+		fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
+		fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
+	}
 
 	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
 	if mod != nil {
@@ -80,7 +100,7 @@ func CommonMain(envPtr *string,
 	eUtils.CheckError(configBase, err, true)
 	mod.Env = *envPtr
 
-	err, warn := il.UploadTemplateDirectory(mod, *dirPtr, configBase.Log)
+	warn, err := il.UploadTemplateDirectory(configBase, mod, *dirPtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)

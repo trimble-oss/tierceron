@@ -47,6 +47,11 @@ resources:
     endpoint: trimble-oss
     name: trimble-oss/tierceron-hat
     ref: main
+  - repository: tierceron-succinctly
+    type: github
+    endpoint: trimble-oss
+    name: trimble-oss/tierceron-succinctly
+    ref: main
   - repository: tierceron-nute
     type: github
     endpoint: trimble-oss
@@ -78,7 +83,7 @@ variables:
 steps:
 - task: GoTool@0
   inputs:
-    version: '1.20.5'
+    version: '1.21.5'
 - script: |
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
@@ -95,6 +100,8 @@ steps:
 - checkout: VaultConfig.Test
   clean: false
 - checkout: tierceron-hat
+  clean: false
+- checkout: tierceron-succinctly
   clean: false
 - checkout: tierceron-nute
   clean: false
@@ -121,14 +128,21 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcsh
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc memonly azrcr azure" github.com/trimble-oss/tierceron/trcsh
     if [[ ! -f $GOBIN/trcsh ]] ; then
         echo File trcsh was not built, aborting.
         exit 1
     fi
 
+    echo "Compile Windows"
+    GOBIN= CGO_ENABLED=0 GOOS=windows GOARCH=amd64 GOCACHE=$GOCACHE go install -tags "tc memonly azrcr azure windows" -ldflags '-w' github.com/trimble-oss/tierceron/trcsh
+    if [[ ! -f $GOBIN/windows_amd64/trcsh.exe ]] ; then
+        echo File trcsh.exe was not built, aborting.
+        exit 1
+    fi
+
     echo "Compile Agent plugin trc-vault-carrier-plugin"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc memonly awsecr insecure" github.com/trimble-oss/tierceron/trcvault/plugins/carrier
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc memonly azrcr insecure" github.com/trimble-oss/tierceron/trcvault/plugins/carrier
     mv $GOBIN/carrier $GOBIN/trc-vault-carrier-plugin 
 
     if [[ ! -f $GOBIN/trc-vault-carrier-plugin ]] ; then
@@ -148,18 +162,21 @@ steps:
     sha256sum $GOBIN/trcsh | cut -d' ' -f1 > $GOBIN/trcsh.sha256
     sha256sum $GOBIN/trc-vault-carrier-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-carrier-plugin.sha256
     sha256sum $GOBIN/trc-vault-plugin | cut -d' ' -f1 > $GOBIN/trc-vault-plugin.sha256
-    sha256sum $GOBIN/trc-vault-plugin-prod | cut -d' ' -f1 > $GOBIN/trc-vault-plugin-prod.sha256
 
     echo "Compile Complete"
     cp $GOBIN/trcsh $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trcsh.sha256 $(Build.ArtifactStagingDirectory)
+    cp $GOBIN/windows_amd64/trc* $(Build.ArtifactStagingDirectory)
 
     cp $GOBIN/trc-vault-carrier-plugin $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-carrier-plugin.sha256 $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin  $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/trc-vault-plugin-prod  $(Build.ArtifactStagingDirectory)
     cp $GOBIN/trc-vault-plugin.sha256  $(Build.ArtifactStagingDirectory)
-    cp $GOBIN/trc-vault-plugin-prod.sha256  $(Build.ArtifactStagingDirectory)
+    mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcsh
+    mkdir -p $(Build.ArtifactStagingDirectory)/docker/trcvaultplugin
+    cp docker/trcsh/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcsh/Dockerfile
+    cp docker/trcvaultplugin/Dockerfile $(Build.ArtifactStagingDirectory)/docker/trcvaultplugin/Dockerfile
+
   workingDirectory: '$(modulePath)'
   displayName: 'Build - get dependencies when needed.'
 - task: SnykSecurityScan@1
@@ -178,112 +195,3 @@ steps:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
     publishLocation: 'Container'
-
-
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trcsh
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcsh/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trc-vault-carrier-plugin
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcvaultplugincarrier/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trc-vault-plugin
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcvaultplugin/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
-- task: Docker@2
-  displayName: Build an image
-  inputs:
-    repository: trc-vault-plugin-prod
-    buildContext: '$(Build.ArtifactStagingDirectory)'
-    command: build
-    dockerfile: '**/docker/trcvaultpluginprod/Dockerfile'
-    tags: |
-      $(Build.SourceVersion)
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trc-vault-carrier-plugin'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-carrier-plugin'
-    pushTag: '$(Build.SourceVersion)'
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trc-vault-plugin'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-plugin'
-    pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trc-vault-plugin'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-plugin'
-    pushTag: 'latest'
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trc-vault-plugin-prod'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-plugin-prod'
-    pushTag: '$(Build.SourceVersion)'
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trc-vault-plugin-prod'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trc-vault-plugin-prod'
-    pushTag: 'latest'
-
-- task: ECRPushImage@1
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trcsh'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcsh'
-    pushTag: '$(Build.SourceVersion)'
-
-- task: ECRPushImage@1 
-  inputs:
-    awsCredentials: 'Seattle AWS Development'
-    regionName: 'us-west-2'
-    imageSource: 'imagename'
-    sourceImageName: 'trcsh'
-    sourceImageTag: '$(Build.SourceVersion)'
-    repositoryName: 'trcsh'
-    pushTag: 'latest'

@@ -1,19 +1,50 @@
 package utils
 
 import (
-	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
+	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 )
 
 type ProcessContext interface{}
 
-type ConfigDriver func(ctx ProcessContext, config *DriverConfig) (interface{}, error)
+type ConfigDriver func(ctx ProcessContext, configCtx *ConfigContext, config *DriverConfig) (interface{}, error)
+
+type ResultData struct {
+	Done   bool
+	InData *string
+	InPath string
+}
+
+type ConfigContext struct {
+	ResultMap            map[string]*string
+	EnvSlice             []string
+	ProjectSectionsSlice []string
+	ResultChannel        chan *ResultData
+	FileSysIndex         int
+	DiffFileCount        int32
+	EnvLength            int
+	ConfigWg             sync.WaitGroup
+	Mutex                *sync.Mutex
+}
+
+func (cfgContext *ConfigContext) SetDiffFileCount(cnt int) {
+	if cnt < math.MaxInt32 {
+		atomic.StoreInt32(&cfgContext.DiffFileCount, int32(cnt))
+	}
+}
+
+func (cfgContext *ConfigContext) GetDiffFileCount() int32 {
+	return cfgContext.DiffFileCount
+}
 
 // DriverConfig -- contains many structures necessary for Tierceron tool functionality.
 type DriverConfig struct {
@@ -23,16 +54,17 @@ type DriverConfig struct {
 	Context ProcessContext
 
 	// Internal systems...
-	ExitOnFailure bool // Exit on a failure or try to continue
-	Insecure      bool
-	IsShell       bool // If tool running in shell.
-	Log           *log.Logger
+	ExitOnFailure     bool // Exit on a failure or try to continue
+	Insecure          bool
+	IsShell           bool // If tool running in shell.
+	IsShellSubProcess bool // If subshell
+	Log               *log.Logger
 
 	// Vault Configurations...
 	Token         string
 	VaultAddress  string
-	EnvRaw        string
-	Env           string
+	EnvRaw        string // May change depending on tool running...
+	Env           string // Immutable...
 	Regions       []string
 	FileFilter    []string // Which systems to operate on.
 	SubPathFilter []string // Which subpaths to operate on.
@@ -43,16 +75,19 @@ type DriverConfig struct {
 	EndDir         string
 	OutputMemCache bool
 	MemFs          billy.Filesystem
+	FeatherCtx     *cap.FeatherContext
+	FeatherCtlCb   func(*cap.FeatherContext, string) error
 
 	// Config modes....
-	WantCerts  bool
-	ZeroConfig bool
-	GenAuth    bool
-	Trcxe      []string //Used for TRCXE
-	Trcxr      bool     //Used for TRCXR
+	WantCerts   bool
+	ZeroConfig  bool
+	GenAuth     bool
+	TrcShellRaw string   //Used for TrcShell
+	Trcxe       []string //Used for TRCXE
+	Trcxr       bool     //Used for TRCXR
 
 	Clean  bool
-	Update func(*string, string)
+	Update func(*ConfigContext, *string, string)
 
 	// KeyStore Output tooling
 	KeyStore         *keystore.KeyStore
@@ -76,10 +111,13 @@ type DriverConfig struct {
 	SubSectionValue   string
 	ServiceFilter     []string // Which tables to use.
 	DynamicPathFilter string   // Seeds from a specific path.
+
+	DeploymentConfig         map[string]interface{} // For trcsh to indicate which deployment to work on
+	DeploymentCtlMessageChan chan string
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
-func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver) {
+func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, config *DriverConfig, drive ConfigDriver) {
 	multiProject := false
 
 	config.EndDir = strings.Replace(config.EndDir, "\\", "/", -1)
@@ -98,8 +136,8 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 			config.StartDir[0] = pwd + string(os.PathSeparator) + config.StartDir[0]
 		}
 
-		projectFilesComplete, err := ioutil.ReadDir(config.StartDir[0])
-		projectFiles := []os.FileInfo{}
+		projectFilesComplete, err := os.ReadDir(config.StartDir[0])
+		projectFiles := []os.DirEntry{}
 		for _, projectFile := range projectFilesComplete {
 			if !strings.HasSuffix(projectFile.Name(), ".DS_Store") {
 				projectFiles = append(projectFiles, projectFile)
@@ -119,7 +157,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 					projectStartDir = projectStartDir + string(os.PathSeparator) + projectFile.Name()
 				} else if projectFile.IsDir() {
 					projectStartDir = projectStartDir + string(os.PathSeparator) + projectFile.Name()
-					serviceFiles, err := ioutil.ReadDir(projectStartDir)
+					serviceFiles, err := os.ReadDir(projectStartDir)
 					if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 						projectStartDir = projectStartDir + string(os.PathSeparator) + serviceFiles[0].Name()
 						config.VersionFilter = append(config.VersionFilter, serviceFiles[0].Name())
@@ -135,7 +173,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 
 			config.StartDir = startDirs
 			// Drive this set of configurations.
-			drive(ctx, config)
+			drive(ctx, configCtx, config)
 
 			return
 		}
@@ -145,7 +183,7 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 		} else if len(projectFiles) > 1 {
 			multiProject = true
 		}
-		serviceFiles, err := ioutil.ReadDir(config.StartDir[0])
+		serviceFiles, err := os.ReadDir(config.StartDir[0])
 
 		if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 			config.StartDir[0] = config.StartDir[0] + string(os.PathSeparator) + serviceFiles[0].Name()
@@ -170,5 +208,5 @@ func ConfigControl(ctx ProcessContext, config *DriverConfig, drive ConfigDriver)
 	}
 
 	// Drive this set of configurations.
-	drive(ctx, config)
+	drive(ctx, configCtx, config)
 }
