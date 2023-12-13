@@ -7,8 +7,8 @@ import (
 	harbinger "VaultConfig.TenantConfig/util/buildopts/harbinger"
 	//	trcprefix "VaultConfig.TenantConfig/util/buildopts/trcprefix"
 	tccore "VaultConfig.TenantConfig/util/core"
-	eUtils "tierceron/utils"
-	"tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 // Database name to use for interface

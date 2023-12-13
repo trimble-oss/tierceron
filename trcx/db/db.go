@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"tierceron/trcx/engine"
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/trcx/engine"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
@@ -27,7 +27,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 	te := &engine.TierceronEngine{Database: sqlememory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*engine.TierceronTable{}, Context: sqles.NewEmptyContext(), Config: *config}
 
 	var goMod *helperkv.Modifier
-	goMod, errModInit := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, "", config.Regions, config.Log)
+	goMod, errModInit := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, false, config.Log)
 	if errModInit != nil {
 		return nil, errModInit
 	}
@@ -113,6 +113,10 @@ func CreateEngine(config *eUtils.DriverConfig,
 		te.Engine.Analyzer.Debug = false
 		te.Engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
 	}
+	if goMod != nil {
+		goMod.Release()
+	}
+
 	return te, nil
 }
 

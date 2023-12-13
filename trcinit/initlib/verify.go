@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	eUtils "tierceron/utils"
-	"tierceron/validator"
-	helperkv "tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/validator"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
 // Runs the verification step from data in the seed file
@@ -32,7 +32,7 @@ func verify(config *eUtils.DriverConfig, mod *helperkv.Modifier, v map[interface
 		if err != nil {
 			return nil, err
 		}
-		config.Log.Printf("Verifying %s as type %s\n", service, vType)
+		config.Log.Print(eUtils.SanitizeForLogging(fmt.Sprintf("Verifying %s as type %s\n", service, vType)))
 		switch vType {
 		case "db":
 			if url, ok := serviceData["url"].(string); ok {
@@ -41,10 +41,10 @@ func verify(config *eUtils.DriverConfig, mod *helperkv.Modifier, v map[interface
 						isValid, err = validator.Heartbeat(config, url, user, pass)
 						eUtils.LogErrorObject(config, err, false)
 					} else {
-						eUtils.LogErrorObject(config, fmt.Errorf("Password field is not a string value"), false)
+						eUtils.LogErrorObject(config, fmt.Errorf("password field is not a string value"), false)
 					}
 				} else {
-					eUtils.LogErrorObject(config, fmt.Errorf("Username field is not a string value"), false)
+					eUtils.LogErrorObject(config, fmt.Errorf("username field is not a string value"), false)
 				}
 			} else {
 				eUtils.LogErrorObject(config, fmt.Errorf("URL field is not a string value"), false)

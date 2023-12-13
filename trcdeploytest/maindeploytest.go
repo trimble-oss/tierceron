@@ -5,12 +5,14 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
-	"tierceron/buildopts"
-	"tierceron/buildopts/coreopts"
-	"tierceron/trcflow/deploy"
-	"tierceron/trcvault/factory"
-	eUtils "tierceron/utils"
+
+	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/trcflow/deploy"
+	"github.com/trimble-oss/tierceron/trcvault/carrierfactory"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
 var signalChannel chan os.Signal
@@ -39,11 +41,16 @@ func main() {
 
 	//Grabbing configs
 	envMap := buildopts.GetTestDeployConfig(*tokenPtr)
+	//envMap["vaddress"] = "vaultaddr"
+	//envMap["token"] = "INSERT TOKEN HERE"
+	carrierfactory.InitLogger(logger)
+	//go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))
 
-	go factory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployFlow, true, logger)
+	go carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "QA"
 	envMap["insecure"] = true
-	factory.PushEnv(envMap)
+	envMap["syncOnce"] = &sync.Once{}
+	carrierfactory.PushEnv(envMap)
 
 	for {
 		select {

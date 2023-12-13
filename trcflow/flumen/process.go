@@ -9,21 +9,21 @@ import (
 	"sync"
 	"time"
 
-	"tierceron/buildopts"
-	"tierceron/buildopts/flowopts"
-	"tierceron/buildopts/harbingeropts"
-	"tierceron/buildopts/testopts"
-	trcvutils "tierceron/trcvault/util"
-	trcdb "tierceron/trcx/db"
+	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/testopts"
+	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcdb "github.com/trimble-oss/tierceron/trcx/db"
 
-	flowcore "tierceron/trcflow/core"
-	flowcorehelper "tierceron/trcflow/core/flowcorehelper"
-	"tierceron/trcflow/deploy"
-	helperkv "tierceron/vaulthelper/kv"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	flowcorehelper "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
+	"github.com/trimble-oss/tierceron/trcflow/deploy"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	eUtils "tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/utils"
 
-	sys "tierceron/vaulthelper/system"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
@@ -46,20 +46,37 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	//Need new function writing to that path using pluginName ->
 	//if not copied -> this plugin should fail to start up
 	//Update deployed status & return if
-	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok {
-		deployedUpdateErr := deploy.PluginDeployedUpdate(goMod, pluginNameList, logger)
+	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok || true {
+		tempAddr := pluginConfig["vaddress"]
+		tempToken := pluginConfig["token"]
+		if caddress, cOk := pluginConfig["caddress"]; cOk {
+			pluginConfig["vaddress"] = caddress
+		}
+		if cToken, cOk := pluginConfig["ctoken"]; cOk {
+			pluginConfig["token"] = cToken
+		}
+		pluginConfig["exitOnFailure"] = true
+
+		cConfig, cGoMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+		if err != nil {
+			eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start.", false)
+			return err
+		}
+		deployedUpdateErr := deploy.PluginDeployedUpdate(cConfig, cGoMod, cVault, pluginNameList, pluginConfig["certifyPath"].([]string), logger)
 		if deployedUpdateErr != nil {
 			eUtils.LogErrorMessage(config, deployedUpdateErr.Error(), false)
 			eUtils.LogErrorMessage(config, "Could not update plugin deployed status in vault.", false)
 			return err
 		}
+		pluginConfig["vaddress"] = tempAddr
+		pluginConfig["token"] = tempToken
+		pluginConfig["exitOnFailure"] = false
 	}
 	logger.Println("Deployed status updated.")
 
 	tfmContext = &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
-		InitConfigWG:              &sync.WaitGroup{},
 		FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
 	}
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
@@ -78,7 +95,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			regions, err := goMod.ListSubsection("/Index/", projects[i], goMod.SectionName, logger)
 			if err != nil {
 				eUtils.LogErrorObject(config, err, false)
-				return err
+				eUtils.LogInfo(config, "Skipping service: "+services[i])
+				continue
 			}
 			indexValues = regions
 		} else {
@@ -149,11 +167,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		Regions:      emptySlice,
 		Token:        pluginConfig["token"].(string),
 		VaultAddress: pluginConfig["vaddress"].(string),
-		Insecure:     true, // TODO: investigate insecure implementation...
+		Insecure:     true, // Always local...
 		Env:          pluginConfig["env"].(string),
 		Log:          config.Log,
 	}
 
+	// Need to create askflumeflow template --> fill with default vals
 	templateList := pluginConfig["templatePath"].([]string)
 	flowTemplateMap := map[string]string{}
 	flowSourceMap := map[string]string{}
@@ -214,19 +233,25 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// 1. Auth -- Auth is provided by the external library.
 	// 2. Get json by Api call.
 	extensionAuthComponents := buildopts.GetExtensionAuthComponents(trcIdentityConfig)
-	httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
-	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
-		return err
-	}
+	if len(extensionAuthComponents) > 0 {
+		httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
+		if httpClient != nil {
+			defer httpClient.CloseIdleConnections()
+		}
+		if err != nil {
+			eUtils.LogErrorObject(config, err, false)
+			return err
+		}
 
-	tfmContext.ExtensionAuthData, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
-	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
+		tfmContext.ExtensionAuthData, _, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
+		if err != nil {
+			eUtils.LogErrorObject(config, err, false)
+			//return err
+		}
+		// Set up reloader in case things go sideways later on.
 		tfmContext.ExtensionAuthDataReloader = make(map[string]interface{}, 1)
 		tfmContext.ExtensionAuthDataReloader["config"] = config
 		tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
-		//return err
 	}
 
 	// 2. Initialize Engine and create changes table.
@@ -243,6 +268,16 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		FlowControllerUpdateAlert: make(chan string, 1),
 	}
 
+	if len(sourceDatabaseConnectionsMap) == 0 {
+		sourceDatabaseConnectionsMap = make(map[string]map[string]interface{}, 1)
+		sourceDatabaseDetails := make(map[string]interface{}, 1)
+		sourceDatabaseDetails["dbsourceregion"] = "NA"
+		var d time.Duration = 60000
+		sourceDatabaseDetails["dbingestinterval"] = d
+		sourceDatabaseConnectionsMap["NA"] = sourceDatabaseDetails
+		sourceDatabaseDetails["sqlConn"] = nil
+	}
+
 	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
@@ -251,7 +286,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var flowWG sync.WaitGroup
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range GetTierceronTableNames() {
-			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false}
+			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
 			tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 			tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
 			tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
@@ -287,11 +322,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(flowcore.FlowNameType(table), &tfContext, config)
 
 			controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
-			if initReciever, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
+			if initReceiver, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
 			initAlert: //This waits for flow states to be loaded before starting all non-controller flows
 				for {
 					select {
-					case _, ok := <-initReciever:
+					case _, ok := <-initReceiver:
 						if ok {
 							break initAlert
 						}
@@ -300,9 +335,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					}
 				}
 			} else {
-				initRecieverErr := errors.New("Failed to retrieve channel alert for controller init")
-				eUtils.LogErrorMessage(config, initRecieverErr.Error(), false)
-				return initRecieverErr
+				initReceiverErr := errors.New("Failed to retrieve channel alert for controller init")
+				eUtils.LogErrorMessage(config, initReceiverErr.Error(), false)
+				return initReceiverErr
 			}
 		}
 
@@ -312,11 +347,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
 		for _, table := range configBasis.VersionFilter {
 			flowWG.Add(1)
-			tfmContext.InitConfigWG.Add(1)
 			go func(tableFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning data source flow: "+tableFlow.ServiceName())
 				defer flowWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
 				tfContext.Flow = tableFlow
@@ -346,17 +380,18 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 		for _, enhancement := range flowopts.GetAdditionalFlows() {
 			flowWG.Add(1)
-			tfmContext.InitConfigWG.Add(1)
 
 			go func(enhancementFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
 				eUtils.LogInfo(dc, "Beginning additional flow: "+enhancementFlow.ServiceName())
 				defer flowWG.Done()
-				tfmContext.InitConfigWG.Done()
 
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
 				tfContext.Flow = enhancementFlow
 				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
 				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
+				flowMapLock.Lock()
+				tfmContext.FlowMap[tfContext.Flow] = &tfContext
+				flowMapLock.Unlock()
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 				if initErr != nil {
@@ -378,12 +413,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 		for _, test := range testopts.GetAdditionalTestFlows() {
 			flowWG.Add(1)
-			tfmContext.InitConfigWG.Add(1)
 			go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
-				tfmContext.InitConfigWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false}
+				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
 				tfContext.Flow = testFlow
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
@@ -430,6 +463,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		controllerCheck++
 	}
 
+	controllerVaultDatabaseConfig["controller"] = true
+
 	if controllerCheck == 3 {
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
 		controllerInterfaceErr := harbingeropts.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
@@ -452,12 +487,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	for index, config := range vaultDatabaseConfig {
 		controllerVaultDatabaseConfig[index] = config
 	}
-
-	// Wait for all tables to be built before starting interface.
-	tfmContext.InitConfigWG.Wait()
-	tfmContext.FlowControllerLock.Lock()
-	tfmContext.InitConfigWG = nil
-	tfmContext.FlowControllerLock.Unlock()
 
 	// TODO: Start up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
 	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.

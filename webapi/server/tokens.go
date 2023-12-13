@@ -7,10 +7,10 @@ import (
 
 	jwt "github.com/golang-jwt/jwt"
 
-	eUtils "tierceron/utils"
-	helperkv "tierceron/vaulthelper/kv"
-	sys "tierceron/vaulthelper/system"
-	pb "tierceron/webapi/rpc/apinator"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
+	pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 )
 
 func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (string, error) {
@@ -50,6 +50,10 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	// Create 2 vault connections, one for checking/rolling tokens, the other for accessing the AWS user cubbyhole
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
 	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	if v != nil {
+		defer v.Close()
+	}
+
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
@@ -58,7 +62,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	v.SetToken(s.VaultToken)
 
 	if len(req.AppRoleID) == 0 || len(req.AppRoleSecretID) == 0 {
-		return nil, fmt.Errorf("Need both role ID and secret ID to login through app role")
+		return nil, fmt.Errorf("need both role ID and secret ID to login through app role")
 	}
 
 	arToken, err := v.AppRoleLogin(req.AppRoleID, req.AppRoleSecretID)
@@ -68,11 +72,12 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	}
 
 	// Modifier to access token values granted to bamboo
-	mod, err := helperkv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, s.Log)
+	mod, err := helperkv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
+	mod.RawEnv = "bamboo"
 	mod.Env = "bamboo"
 
 	data, err := mod.ReadData("super-secrets/tokens")
