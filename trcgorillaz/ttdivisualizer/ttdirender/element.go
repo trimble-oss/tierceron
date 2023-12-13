@@ -11,11 +11,11 @@ import (
 	"github.com/g3n/engine/graphic"
 	"github.com/g3n/engine/material"
 	"github.com/g3n/engine/math32"
-	"github.com/mrjrieke/nute/g3nd/g3nmash"
-	"github.com/mrjrieke/nute/g3nd/g3nworld"
-	g3ndpalette "github.com/mrjrieke/nute/g3nd/palette"
-	"github.com/mrjrieke/nute/g3nd/worldg3n/g3nrender"
-	"github.com/mrjrieke/nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute/g3nd/g3nmash"
+	"github.com/trimble-oss/tierceron-nute/g3nd/g3nworld"
+	g3ndpalette "github.com/trimble-oss/tierceron-nute/g3nd/palette"
+	"github.com/trimble-oss/tierceron-nute/g3nd/worldg3n/g3nrender"
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
 type ClickedG3nDetailElement struct {

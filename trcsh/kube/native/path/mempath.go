@@ -4,15 +4,16 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/dsnet/golib/memfile"
+	"github.com/go-git/go-billy/v5"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 )
 
 // MemoryFileVisitor is wrapping around a StreamVisitor, to handle open/close files
 type MemoryFileVisitor struct {
-	MemFile *memfile.File
+	MemFile billy.File
 	*resource.StreamVisitor
 }
 
@@ -40,7 +41,15 @@ func ignoreFile(path string, extensions []string) bool {
 }
 
 type MemPathVisitor struct {
-	MemCache map[string]*memfile.File // Where to send output.
+	MemFs     billy.Filesystem // Where to send output.
+	Iostreams genericclioptions.IOStreams
+}
+
+func (mpv *MemPathVisitor) FileVisitorForSTDIN(builder *resource.Builder) resource.Visitor {
+	return &MemoryFileVisitor{
+		MemFile:       mpv.Iostreams.In.(billy.File),
+		StreamVisitor: builder.NewStreamVisitorHelper(resource.NewStreamVisitor, mpv.Iostreams.In),
+	}
 }
 
 // ExpandPathsToFileVisitors will return a slice of FileVisitors that will handle files from the provided path.
@@ -56,13 +65,11 @@ func (mpv *MemPathVisitor) ExpandPathsToFileVisitors(mapper resource.InfoMapper,
 		return nil, errors.New("Unsupported extension")
 	}
 	memPath := path
-	var memFile *memfile.File
-	memFileOk := false
-	if memFile, memFileOk = mpv.MemCache[memPath]; !memFileOk {
-		memPath = "./" + memPath
-		if memFile, memFileOk = mpv.MemCache[memPath]; !memFileOk {
-			return nil, errors.New("Unsupported file")
-		}
+	var memFile billy.File
+	var memFileErr error
+
+	if memFile, memFileErr = mpv.MemFs.Open(memPath); memFileErr != nil {
+		return nil, errors.New("Unsupported file")
 	}
 
 	visitor := &MemoryFileVisitor{

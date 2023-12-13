@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  tiercerondns.server: |
+    {{.tierceron_domain}}:53 {
+      errors
+      cache 1
+      forward .  {{.tierceron_custom_dns}}
+    }

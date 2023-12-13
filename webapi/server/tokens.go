@@ -62,7 +62,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	v.SetToken(s.VaultToken)
 
 	if len(req.AppRoleID) == 0 || len(req.AppRoleSecretID) == 0 {
-		return nil, fmt.Errorf("Need both role ID and secret ID to login through app role")
+		return nil, fmt.Errorf("need both role ID and secret ID to login through app role")
 	}
 
 	arToken, err := v.AppRoleLogin(req.AppRoleID, req.AppRoleSecretID)

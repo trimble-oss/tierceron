@@ -24,7 +24,7 @@ data "azurerm_virtual_network" "virtual-network" {
 }
 
 resource "azurerm_kubernetes_cluster" "tierceron_aks_cluster" {
-  name                = "Tierceron-${var.productenv}-${local.locationCode}-AKS"
+  name                = var.cluster_name
   location            = var.resource_group_location
   resource_group_name = local.rgname
   dns_prefix          = "${var.dnsprefix}"

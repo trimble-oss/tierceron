@@ -2,7 +2,7 @@ package initlib
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -16,7 +16,7 @@ func UploadTokens(config *eUtils.DriverConfig, dir string, fileFilterPtr *string
 	tokens := []*pb.InitResp_Token{}
 	config.Log.SetPrefix("[TOKEN]")
 	config.Log.Printf("Writing tokens from %s\n", dir)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 
 	eUtils.LogErrorObject(config, err, true)
 	for _, file := range files {

@@ -18,12 +18,15 @@ import (
 func ConfigTemplateLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
 
-	logger.Println("NCLib Version: " + "1.12")
+	logger.Println("NCLib Version: " + "1.20")
 	mod, err := helperkv.NewModifier(false, token, address, env, nil, true, logger)
 	mod.Env = env
 	config := &eUtils.DriverConfig{
-		Insecure: false,
-		Log:      logger,
+		ZeroConfig: true,
+		WantCerts:  false,
+		StartDir:   append([]string{}, "trc_templates"),
+		Insecure:   false,
+		Log:        logger,
 	}
 
 	if err != nil {
@@ -43,12 +46,15 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 //export ConfigCertLib
 func ConfigCertLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
-	logger.Println("NCLib Version: " + "1.12")
+	logger.Println("NCLib Version: " + "1.20")
 	mod, err := helperkv.NewModifier(false, token, address, env, nil, true, logger)
 	mod.Env = env
 	config := &eUtils.DriverConfig{
-		Insecure: false,
-		Log:      logger,
+		ZeroConfig: true,
+		WantCerts:  true,
+		StartDir:   append([]string{}, "trc_templates"),
+		Insecure:   false,
+		Log:        logger,
 	}
 	if err != nil {
 		eUtils.LogErrorMessage(config, err.Error(), false)

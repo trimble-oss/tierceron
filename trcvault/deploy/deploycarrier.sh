@@ -1,23 +1,18 @@
 #!/bin/bash
 
 if [[ -z "${VAULT_ADDR}" ]]; then
-echo "Enter vault host base url: "
+echo "Enter agent vault host base url: "
 read VAULT_ADDR
 fi
 
 if [[ -z "${VAULT_TOKEN}" ]]; then
-echo "Enter root token: "
+echo "Enter agent root token: "
 read VAULT_TOKEN
 fi
 
 if [[ -z "${VAULT_ENV}" ]]; then
-echo "Enter environment: "
+echo "Enter organization/agent environment: "
 read VAULT_ENV
-fi
-
-if [[ -z "${VAULT_ENV}" ]]; then
-echo "Enter carrier environment token with write permissions: "
-read VAULT_ENV_TOKEN
 fi
 
 VAULT_API_ADDR=VAULT_ADDR
@@ -27,22 +22,16 @@ export VAULT_API_ADDR
 
 echo "Disable old carrier secrets"
 vault secrets disable vaultcarrier/
+vault secrets list | grep trc-vault-carrier-plugin
+existingplugin=$?
+if [ $existingplugin -eq 0 ]; then       
+    echo "Carrier plugin still mounted elsewhere.  Manual intervention required to clean up before registration can proceed."
+    exit 1
+else
+    echo "All mounts cleared.  Continuing..."
+fi
 echo "Unregister old carrier plugin"
 vault plugin deregister trc-vault-carrier-plugin
-
-if [ "$VAULT_ENV" = "prod" ] || [ "$VAULT_ENV" = "staging" ]
-then
-vault plugin register \
-          -command=trc-vault-carrier-plugin-prod \
-          -sha256=$( cat target/trc-vault-carrier-plugin-prod.sha256 ) \
-          -args=`backendUUID=567` \
-          plugin
-vault secrets enable \
-          -path=vaultcarrier \
-          -plugin-name=trc-vault-carrier-plugin-prod \
-          -description="Tierceron Vault Carrier Plugin Prod" \
-          plugin
-else
 
 if [ "$VAULT_PLUGIN_DIR" ]
 then
@@ -52,9 +41,18 @@ chmod 700 $VAULT_PLUGIN_DIR/trc-vault-carrier-plugin
 sudo setcap cap_ipc_lock=+ep $VAULT_PLUGIN_DIR/trc-vault-carrier-plugin
 fi
 
+PROD_EXT=""
+for x in "staging" "prod"; do
+    if [ $x = $VAULT_ENV ]; then
+       PROD_EXT="-prod"
+    fi
+done
+
 echo "Registering Carrier"
+echo trc-vault-carrier-plugin$PROD_EXT
+
 vault plugin register \
-          -command=trc-vault-carrier-plugin \
+          -command=trc-vault-carrier-plugin$PROD_EXT \
           -sha256=$( cat target/trc-vault-carrier-plugin.sha256 ) \
           -args=`backendUUID=567` \
           trc-vault-carrier-plugin
@@ -64,4 +62,3 @@ vault secrets enable \
           -plugin-name=trc-vault-carrier-plugin \
           -description="Tierceron Vault Carrier Plugin" \
           plugin
-fi
