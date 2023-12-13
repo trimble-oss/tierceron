@@ -29,7 +29,9 @@ func main() {
 	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
 	pluginConfig["address"] = ""
 	pluginConfig["vaddress"] = ""
+	pluginConfig["caddress"] = ""
 	pluginConfig["token"] = ""
+	pluginConfig["ctoken"] = ""
 	pluginConfig["env"] = "dev"
 	pluginConfig["insecure"] = true
 
