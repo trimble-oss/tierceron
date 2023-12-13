@@ -3,10 +3,11 @@ package flumen
 import (
 	"errors"
 
-	flowcore "tierceron/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
 
-	flowcorehelper "tierceron/trcflow/core/flowcorehelper"
 	"time"
+
+	flowcorehelper "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -18,16 +19,19 @@ func GetTierceronFlowIdColName() string {
 	return tierceronFlowIdColumnName
 }
 
-func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnName interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
+func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNameInterface interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
 	indexName, idValue := "", ""
-	if tierceronFlowName, ok := rowDataMap[indexColumnName.(string)].(string); ok {
-		indexName = indexColumnName.(string)
-		idValue = tierceronFlowName
+	if indexColumnNameSlice, iOk := indexColumnNameInterface.([]string); iOk && len(indexColumnNameSlice) == 1 { // 1 ID
+		if tierceronFlowName, ok := rowDataMap[indexColumnNameSlice[0]].(string); ok {
+			indexName = indexColumnNameSlice[0]
+			idValue = tierceronFlowName
 
-	} else {
-		return "", errors.New("flowName not found for TierceronFlow: " + indexColumnName.(string))
+		} else {
+			return "", errors.New("flowName not found for TierceronFlow: " + indexColumnNameSlice[0])
+		}
+		return "/" + indexName + "/" + idValue, nil
 	}
-	return "/" + indexName + "/" + idValue, nil
+	return "", errors.New("Too many columnIDs for incoming TierceronFlow change")
 }
 
 func GetTierceronTableNames() []string {
@@ -44,6 +48,7 @@ func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
 		{Name: "state", Type: sqle.Int64, Source: tableName, Default: stateDefault},
 		{Name: "syncMode", Type: sqle.Text, Source: tableName, Default: syncModeDefault},
 		{Name: "syncFilter", Type: sqle.Text, Source: tableName, Default: syncFilterDefault},
+		{Name: "flowAlias", Type: sqle.Text, Source: tableName, Default: syncFilterDefault},
 		{Name: "lastModified", Type: sqle.Timestamp, Source: tableName, Default: timestampDefault},
 	})
 }
@@ -52,12 +57,13 @@ func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
 
 func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 	tfFlow := make(map[string]interface{})
-	if len(arr) == 5 {
+	if len(arr) == 6 {
 		tfFlow[tierceronFlowIdColumnName] = arr[0]
 		tfFlow["state"] = arr[1]
 		tfFlow["syncMode"] = arr[2]
 		tfFlow["syncFilter"] = arr[3]
-		tfFlow["lastModified"] = arr[4]
+		tfFlow["flowAlias"] = arr[4]
+		tfFlow["lastModified"] = arr[5]
 	}
 	return tfFlow
 }
@@ -82,10 +88,12 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 			if stateMsg, ok := tfFlow["state"].(int64); ok {
 				if syncModeMsg, ok := tfFlow["syncMode"].(string); ok {
 					if syncFilterMsg, ok := tfFlow["syncFilter"].(string); ok {
-						go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fId string) {
-							tfmContext.Log("Queuing state change: "+fId, nil)
-							sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage}
-						}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg, flowId)
+						if flowAliasMsg, ok := tfFlow["flowAlias"].(string); ok {
+							go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fId string, flowAlias string) {
+								tfmContext.Log("Queuing state change: "+fId, nil)
+								sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage, FlowAlias: flowAlias}
+							}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg, flowId, flowAliasMsg)
+						}
 					}
 				}
 			}
@@ -141,7 +149,7 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 						select {
 						case x, ok := <-currentReceiver:
 							if ok {
-								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode), nil, true, "UPDATE", []flowcore.FlowNameType{flowcore.FlowNameType(flowcorehelper.TierceronFlowConfigurationTableName)}, "")
+								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcore.FlowNameType(flowcorehelper.TierceronFlowConfigurationTableName)}, "")
 							}
 						}
 					}

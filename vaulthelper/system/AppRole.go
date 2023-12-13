@@ -65,8 +65,11 @@ func (v *Vault) CreateNewRole(roleName string, options *NewRoleOptions) error {
 		return err
 	}
 
-	resp, err := v.client.RawRequest(r)
-	defer resp.Body.Close()
+	response, err := v.client.RawRequest(r)
+
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
 	return err
 }
 
@@ -74,9 +77,11 @@ func (v *Vault) CreateNewRole(roleName string, options *NewRoleOptions) error {
 func (v *Vault) DeleteRole(roleName string) (*api.Response, error) {
 	r := v.client.NewRequest("DELETE", fmt.Sprintf("/v1/auth/approle/role/%s", roleName))
 
-	resp, err := v.client.RawRequest(r)
-	defer resp.Body.Close()
-	return resp, err
+	response, err := v.client.RawRequest(r)
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
+	return response, err
 }
 
 // CreateNewTokenCidrRole creates a new token cidr only role with given cidr options.
@@ -90,25 +95,29 @@ func (v *Vault) CreateNewTokenCidrRole(options *YamlNewTokenRoleOptions) error {
 		return err
 	}
 
-	resp, err := v.client.RawRequest(r)
+	response, err := v.client.RawRequest(r)
 
-	defer resp.Body.Close()
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
 	return err
 }
 
 // GetRoleID checks for the given role name and returns the coresponding id if it exists
 func (v *Vault) GetRoleID(roleName string) (string, string, error) {
 	r := v.client.NewRequest("GET", fmt.Sprintf("/v1/auth/approle/role/%s/role-id", roleName))
-	resp, err := v.client.RawRequest(r)
+	response, err := v.client.RawRequest(r)
 
-	defer resp.Body.Close()
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
 
 	if err != nil {
 		return "", "", err
 	}
 
 	var jsonData map[string]interface{}
-	if err = resp.DecodeJSON(&jsonData); err != nil {
+	if err = response.DecodeJSON(&jsonData); err != nil {
 		return "", "", err
 	}
 
@@ -116,25 +125,27 @@ func (v *Vault) GetRoleID(roleName string) (string, string, error) {
 		if roleID, ok := raw["role_id"].(string); ok {
 			return roleID, string(jsonData["lease_duration"].(json.Number)), nil
 		}
-		return "", "", fmt.Errorf("Error parsing response for key 'data.id'")
+		return "", "", fmt.Errorf("error parsing response for key 'data.id'")
 	}
 
-	return "", "", fmt.Errorf("Error parsing resonse for key 'data'")
+	return "", "", fmt.Errorf("error parsing resonse for key 'data'")
 }
 
 // GetSecretID checks the vault for the secret ID corresponding to the role name
 func (v *Vault) GetSecretID(roleName string) (string, error) {
 	r := v.client.NewRequest("POST", fmt.Sprintf("/v1/auth/approle/role/%s/secret-id", roleName))
-	resp, err := v.client.RawRequest(r)
+	response, err := v.client.RawRequest(r)
 
-	defer resp.Body.Close()
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
 
 	if err != nil {
 		return "", err
 	}
 
 	var jsonData map[string]interface{}
-	if err = resp.DecodeJSON(&jsonData); err != nil {
+	if err = response.DecodeJSON(&jsonData); err != nil {
 		return "", err
 	}
 
@@ -142,29 +153,31 @@ func (v *Vault) GetSecretID(roleName string) (string, error) {
 		if secretID, ok := raw["secret_id"].(string); ok {
 			return secretID, nil
 		}
-		return "", fmt.Errorf("Error parsing response for key 'data.secret_id'")
+		return "", fmt.Errorf("error parsing response for key 'data.secret_id'")
 	}
 
-	return "", fmt.Errorf("Error parsing resonse for key 'data'")
+	return "", fmt.Errorf("error parsing resonse for key 'data'")
 }
 
 // GetListApproles lists available approles
 func (v *Vault) GetListApproles() (string, error) {
-	r := v.client.NewRequest("LIST", fmt.Sprintf("/v1/auth/approle/role"))
-	resp, err := v.client.RawRequest(r)
+	r := v.client.NewRequest("LIST", "/v1/auth/approle/role")
+	response, err := v.client.RawRequest(r)
 
-	defer resp.Body.Close()
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
 
 	if err != nil {
 		return "", err
 	}
 
 	var jsonData map[string]interface{}
-	if err = resp.DecodeJSON(&jsonData); err != nil {
+	if err = response.DecodeJSON(&jsonData); err != nil {
 		return "", err
 	}
 
-	return "", fmt.Errorf("Error parsing resonse for key 'data'")
+	return "", fmt.Errorf("error parsing resonse for key 'data'")
 }
 
 // AppRoleLogin tries logging into the vault using app role and returns a client token on success
@@ -180,9 +193,9 @@ func (v *Vault) AppRoleLogin(roleID string, secretID string) (string, error) {
 		return "", err
 	}
 
-	resp, err := v.client.RawRequest(r)
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
+	response, err := v.client.RawRequest(r)
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
 	}
 
 	if err != nil {
@@ -191,7 +204,7 @@ func (v *Vault) AppRoleLogin(roleID string, secretID string) (string, error) {
 
 	var jsonData map[string]interface{}
 
-	if err = resp.DecodeJSON(&jsonData); err != nil {
+	if err = response.DecodeJSON(&jsonData); err != nil {
 		return "", err
 	}
 
@@ -199,8 +212,8 @@ func (v *Vault) AppRoleLogin(roleID string, secretID string) (string, error) {
 		if token, ok := authData["client_token"].(string); ok {
 			return token, nil
 		}
-		return "", fmt.Errorf("Error parsing response for key 'auth.client_token'")
+		return "", fmt.Errorf("error parsing response for key 'auth.client_token'")
 	}
 
-	return "", fmt.Errorf("Error parsing response for key 'auth'")
+	return "", fmt.Errorf("error parsing response for key 'auth'")
 }

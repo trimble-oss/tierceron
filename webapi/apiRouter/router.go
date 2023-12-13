@@ -8,11 +8,11 @@ import (
 	"os"
 	"strings"
 
-	"tierceron/buildopts/coreopts"
-	eUtils "tierceron/utils"
-	"tierceron/utils/mlock"
-	twp "tierceron/webapi/rpc/apinator"
-	"tierceron/webapi/server"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	eUtils "github.com/trimble-oss/tierceron/utils"
+	twp "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
+	"github.com/trimble-oss/tierceron/webapi/server"
 
 	jwt "github.com/golang-jwt/jwt"
 	rtr "github.com/julienschmidt/httprouter"
@@ -39,7 +39,8 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 	// Simply route
 	noauth := func(w http.ResponseWriter, r *http.Request, ps rtr.Params) {
 		s.Log.SetPrefix("[INFO]")
-		s.Log.Printf("Incoming request %s %s\n \tfrom %s\n", r.Method, r.URL.String(), r.RemoteAddr)
+		errMsg := eUtils.SanitizeForLogging(fmt.Sprintf("Incoming request %s %s From %s", r.Method, r.URL.String(), r.RemoteAddr))
+		s.Log.Print(errMsg)
 		s.Log.Println("Handling with no auth")
 		restHandler.ServeHTTP(w, r)
 	}
@@ -53,7 +54,8 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 		var errMsg string
 
 		s.Log.SetPrefix("[INFO]")
-		s.Log.Printf("Incoming request %s %s\n \tFrom %s\n", r.Method, r.URL.String(), r.RemoteAddr)
+		errMsg = eUtils.SanitizeForLogging(fmt.Sprintf("Incoming request %s %s From %s", r.Method, r.URL.String(), r.RemoteAddr))
+		s.Log.Print(errMsg)
 		s.Log.SetPrefix("[ERROR]")
 		authString := r.Header.Get("Authorization")
 
@@ -98,6 +100,8 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 					// Token claims not in json format
 					errMsg = "Format error with auth token claims"
 					http.Error(w, errMsg, 401)
+
+					errMsg = eUtils.SanitizeForLogging(errMsg)
 					s.Log.Printf("%d: %s", 401, errMsg)
 					return
 				}
@@ -110,7 +114,7 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 			// Auth method passed but is not a bearer token
 			errMsg = "Invalid auth method " + splitAuth[0]
 			http.Error(w, errMsg, 401)
-			s.Log.Printf("%d: %s", 401, errMsg)
+			s.Log.Print(eUtils.SanitizeForLogging(fmt.Sprintf("%d: %s", 401, errMsg)))
 			return
 		}
 		// No token to authenticate against
@@ -170,8 +174,8 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 // declare global variale for local hosting
 var localHost bool
 
-//environments
-var environments = []string{"dev", "QA", "RQA", "performance", "servicepack", "itdev"}
+// environments
+var environments = []string{"dev", "QA", "RQA", "auto", "performance", "servicepack", "itdev"}
 var prodEnvironments = []string{"staging", "prod"}
 var webAPIProdEnvironments = []string{"staging"}
 
@@ -179,7 +183,7 @@ func main() {
 	fmt.Println("Version: " + "1.1")
 	addrPtr := flag.String("addr", coreopts.GetVaultHostPort(), "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
-	logPathPtr := flag.String("log", "/etc/opt/"+coreopts.GetFolderPrefix()+"API/server.log", "Log file path for this server")
+	logPathPtr := flag.String("log", "/etc/opt/"+coreopts.GetFolderPrefix(nil)+"API/server.log", "Log file path for this server")
 	tlsPathPtr := flag.String("tlsPath", "../vault/certs", "Path to server certificate and private key")
 	authPtr := flag.Bool("auth", true, "Run with auth enabled?")
 	localPtr := flag.Bool("local", false, "Run locally")
@@ -194,7 +198,7 @@ func main() {
 	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	eUtils.CheckError(config, err, true)
 	s.Log.SetOutput(f)
-	mlock.Mlock(s.Log)
+	memprotectopts.MemProtectInit(nil)
 
 	status, err := s.GetStatus(context.Background(), nil)
 	eUtils.LogErrorObject(config, err, true)

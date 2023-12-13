@@ -14,7 +14,6 @@ import bytes "bytes"
 import strings "strings"
 import context "context"
 import fmt "fmt"
-import ioutil "io/ioutil"
 import http "net/http"
 import strconv "strconv"
 
@@ -691,7 +690,7 @@ func (s *enterpriseServiceBrokerServer) serveGetTemplateProtobuf(ctx context.Con
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -820,7 +819,7 @@ func (s *enterpriseServiceBrokerServer) serveValidateProtobuf(ctx context.Contex
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -949,7 +948,7 @@ func (s *enterpriseServiceBrokerServer) serveListServiceTemplatesProtobuf(ctx co
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -1078,7 +1077,7 @@ func (s *enterpriseServiceBrokerServer) serveGetValuesProtobuf(ctx context.Conte
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -1207,7 +1206,7 @@ func (s *enterpriseServiceBrokerServer) serveInitVaultProtobuf(ctx context.Conte
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -1336,7 +1335,7 @@ func (s *enterpriseServiceBrokerServer) serveGetStatusProtobuf(ctx context.Conte
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -1465,7 +1464,7 @@ func (s *enterpriseServiceBrokerServer) serveAPILoginProtobuf(ctx context.Contex
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -1594,7 +1593,7 @@ func (s *enterpriseServiceBrokerServer) serveUnsealProtobuf(ctx context.Context,
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -1723,7 +1722,7 @@ func (s *enterpriseServiceBrokerServer) serveGraphQLProtobuf(ctx context.Context
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -1852,7 +1851,7 @@ func (s *enterpriseServiceBrokerServer) serveUpdateAPIProtobuf(ctx context.Conte
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -1981,7 +1980,7 @@ func (s *enterpriseServiceBrokerServer) serveGetVaultTokensProtobuf(ctx context.
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -2110,7 +2109,7 @@ func (s *enterpriseServiceBrokerServer) serveRollTokensProtobuf(ctx context.Cont
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -2239,7 +2238,7 @@ func (s *enterpriseServiceBrokerServer) serveResetServerProtobuf(ctx context.Con
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -2368,7 +2367,7 @@ func (s *enterpriseServiceBrokerServer) serveCheckConnectionProtobuf(ctx context
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -2497,7 +2496,7 @@ func (s *enterpriseServiceBrokerServer) serveEnvironmentsProtobuf(ctx context.Co
 		return
 	}
 
-	buf, err := ioutil.ReadAll(req.Body)
+	buf, err := io.ReadAll(req.Body)
 	if err != nil {
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
@@ -2741,7 +2740,7 @@ func errorFromResponse(resp *http.Response) twirp.Error {
 		return twirpErrorFromIntermediary(statusCode, msg, location)
 	}
 
-	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	respBodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return wrapInternal(err, "failed to read server error response body")
 	}
@@ -2908,27 +2907,30 @@ func doProtobufRequest(ctx context.Context, client HTTPClient, url string, in, o
 	if err != nil {
 		return wrapInternal(err, "could not build request")
 	}
-	resp, err := client.Do(req)
+	response, err := client.Do(req)
+	
 	if err != nil {
 		return wrapInternal(err, "failed to do request")
 	}
 
-	defer func() {
-		cerr := resp.Body.Close()
-		if err == nil && cerr != nil {
-			err = wrapInternal(cerr, "failed to close response body")
+	defer func(resp *http.Response) {
+		if resp.Body != nil {
+			cerr := resp.Body.Close()
+			if err == nil && cerr != nil {
+				err = wrapInternal(cerr, "failed to close response body")
+			}
 		}
-	}()
+	}(response)
 
 	if err = ctx.Err(); err != nil {
 		return wrapInternal(err, "aborted because context was done")
 	}
 
-	if resp.StatusCode != 200 {
-		return errorFromResponse(resp)
+	if response.StatusCode != 200 {
+		return errorFromResponse(response)
 	}
 
-	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	respBodyBytes, err := io.ReadAll(response.Body)
 	if err != nil {
 		return wrapInternal(err, "failed to read response body")
 	}
@@ -2957,28 +2959,30 @@ func doJSONRequest(ctx context.Context, client HTTPClient, url string, in, out p
 	if err != nil {
 		return wrapInternal(err, "could not build request")
 	}
-	resp, err := client.Do(req)
+	response, err := client.Do(req)
 	if err != nil {
 		return wrapInternal(err, "failed to do request")
 	}
 
-	defer func() {
-		cerr := resp.Body.Close()
-		if err == nil && cerr != nil {
-			err = wrapInternal(cerr, "failed to close response body")
+	defer func(resp *http.Response) {
+		if resp.Body != nil {
+			cerr := resp.Body.Close()
+			if err == nil && cerr != nil {
+				err = wrapInternal(cerr, "failed to close response body")
+			}
 		}
-	}()
+	}(response)
 
 	if err = ctx.Err(); err != nil {
 		return wrapInternal(err, "aborted because context was done")
 	}
 
-	if resp.StatusCode != 200 {
-		return errorFromResponse(resp)
+	if response.StatusCode != 200 {
+		return errorFromResponse(response)
 	}
 
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
-	if err = unmarshaler.Unmarshal(resp.Body, out); err != nil {
+	if err = unmarshaler.Unmarshal(response.Body, out); err != nil {
 		return wrapInternal(err, "failed to unmarshal json response")
 	}
 	if err = ctx.Err(); err != nil {

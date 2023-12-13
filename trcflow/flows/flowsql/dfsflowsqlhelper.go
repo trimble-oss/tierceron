@@ -27,8 +27,8 @@ func GetDataFlowStatisticInsert(tenantId string, statisticData map[string]interf
 func GetDataFlowStatisticLM(tenantId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
 	tenantId = strings.ReplaceAll(tenantId, "/", "")
 	sqlstr := map[string]interface{}{
-		"TrcQuery": `select lastTestedDate from ` + dbName + `.` + tableName + `where ` + DataflowTestNameColumn + `=` + statisticData["flowName"].(string) + ` and ` +
-			DataflowTestIdColumn + "=" + tenantId + ` and ` + DataflowTestStateCodeColumn + ` = ` + statisticData["stateCode"].(string),
+		"TrcQuery": `select lastTestedDate from ` + dbName + `.` + tableName + ` where ` + DataflowTestNameColumn + `='` + statisticData["flowName"].(string) + `' and ` +
+			DataflowTestIdColumn + "='" + tenantId + `' and ` + DataflowTestStateCodeColumn + ` = '` + statisticData["stateCode"].(string) + `'`,
 	}
 	return sqlstr
 }
@@ -59,5 +59,11 @@ func DataFlowStatisticsArrayToMap(dfs []interface{}) map[string]interface{} {
 	m["timeSplit"] = dfs[6]
 	m["lastTestedDate"] = dfs[7]
 	m["lastModified"] = m["lastTestedDate"] //This is for lastModified comparison -> not used in table or queries
+	return m
+}
+
+func DataFlowStatisticsSparseArrayToMap(dfs []interface{}) map[string]interface{} {
+	m := make(map[string]interface{})
+	m["lastModified"] = dfs[0] //This is for lastModified comparison -> not used in table or queries
 	return m
 }

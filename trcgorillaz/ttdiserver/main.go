@@ -9,12 +9,13 @@ import (
 	"flag"
 	"log"
 	"os"
-	"tierceron/trcgorillaz/ttdiserver/data"
-	"tierceron/trcgorillaz/ttdiserver/trcRenderers"
+
+	"github.com/trimble-oss/tierceron/trcgorillaz/ttdiserver/data"
+	"github.com/trimble-oss/tierceron/trcgorillaz/ttdiserver/trcRenderers"
 
 	"fyne.io/fyne/v2"
-	"github.com/mrjrieke/nute/custos/custosworld"
-	"github.com/mrjrieke/nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute/custos/custosworld"
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
 var worldCompleteChan chan bool
@@ -34,7 +35,7 @@ var logoIcon embed.FS
 
 func main() {
 	callerCreds := flag.String("CREDS", "", "Credentials of caller")
-	insecure := flag.Bool("insecure", false, "Skip server validation")
+	insecure := flag.Bool("tls-skip-validation", false, "Skip server validation")
 	headless := flag.Bool("headless", false, "Run headless")
 	serverheadless := flag.Bool("serverheadless", false, "Run server completely headless")
 	envPtr := flag.String("env", "QA", "Environment to configure")
@@ -67,7 +68,7 @@ func main() {
 	custosWorld.CustomTabItemRenderer["TenantDataRenderer"] = tenantDataRenderer
 	custosWorld.CustomTabItemRenderer["SearchRenderer"] = &trcRenderers.SearchRenderer{CustosWorldApp: custosWorld}
 
-	custosWorld.Title = "Hello Custos"
+	custosWorld.Title = "Tierceron Topology Discovery Interface"
 	custosWorld.MainWindowSize = fyne.NewSize(800, 100)
 	logoIconBytes, _ := logoIcon.ReadFile("logo.png")
 	custosWorld.Icon = fyne.NewStaticResource("Logo", logoIconBytes)
