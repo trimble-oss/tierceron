@@ -650,8 +650,8 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 
 	// Second row here
 	// Not sure if necessary to copy entire ReportStatistics method
-	//tenantIndexPath, tenantDFSIdPath := utilcore.GetDFSPathName()
-	//df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.Config.Log, false)
+	tenantIndexPath, tenantDFSIdPath := utilcore.GetDFSPathName()
+	df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.Config.Log, false)
 
 	//df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, ...)
 	tfmContext.FlowControllerLock.Lock()
