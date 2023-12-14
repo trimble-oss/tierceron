@@ -5,7 +5,7 @@ go 1.21.5
 require (
 	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
 	github.com/denisenkom/go-mssqldb v0.12.0
-	github.com/dolthub/go-mysql-server v0.12.0
+	github.com/dolthub/go-mysql-server v0.17.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/protobuf v1.5.3
 	github.com/google/go-cmp v0.5.9
@@ -38,6 +38,8 @@ require github.com/trimble-oss/tierceron-nute v0.0.0-20230128181737-65043c9e434b
 require github.com/trimble-oss/tierceron-succinctly v0.0.0-00010101000000-000000000000 // indirect
 
 require (
+	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000
+	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
@@ -54,7 +56,6 @@ require (
 )
 
 require (
-	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 // indirect
@@ -64,7 +65,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/daviddengcn/go-colortext v1.0.0 // indirect
-	github.com/docker/distribution v2.8.1+incompatible // indirect
+	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
@@ -105,6 +106,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
+	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
@@ -173,7 +175,7 @@ require (
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564 // indirect
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9 // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/yuin/goldmark v1.4.13 // indirect
 	golang.org/x/image v0.14.0 // indirect
 	golang.org/x/mobile v0.0.0-20220307220422-55113b94f09c // indirect
@@ -185,7 +187,7 @@ require (
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/aws/aws-sdk-go v1.43.30
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/dolthub/vitess v0.0.0-20220930181015-759b1acd9188
+	github.com/dolthub/vitess v0.0.0-20221128235342-e80b37ceed86
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/frankban/quicktest v1.14.4 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
@@ -199,7 +201,7 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-kms-wrapping/entropy v0.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-plugin v1.4.3 // indirect
+	github.com/hashicorp/go-plugin v1.6.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.6 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
@@ -207,7 +209,7 @@ require (
 	github.com/hashicorp/go-version v1.2.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d // indirect
+	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/jmoiron/sqlx v1.3.4 // indirect
 	github.com/lestrrat-go/strftime v1.0.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -223,10 +225,10 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.18.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
+	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/term v0.14.0
 	golang.org/x/text v0.14.0
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
@@ -247,7 +249,7 @@ replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
 replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.6
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.10
 
 replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 

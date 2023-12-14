@@ -15,6 +15,9 @@ import (
 func LoadPluginDeploymentScript(config *eUtils.DriverConfig, trcshConfig *capauth.TrcShConfig, pwd string) ([]byte, error) {
 	if strings.Contains(pwd, "TrcDeploy") && len(config.DeploymentConfig) > 0 {
 		if deployment, ok := config.DeploymentConfig["trcplugin"]; ok {
+			if deploymentAlias, deployAliasOk := config.DeploymentConfig["trcpluginalias"]; deployAliasOk {
+				deployment = deploymentAlias
+			}
 			mergedEnvRaw := config.EnvRaw
 			// Swapping in project root...
 			configRoleSlice := strings.Split(*trcshConfig.ConfigRole, ":")
@@ -31,8 +34,12 @@ func LoadPluginDeploymentScript(config *eUtils.DriverConfig, trcshConfig *capaut
 				fmt.Println("Unable to obtain resources for deployment")
 				return nil, err
 			}
-			mod.Env = config.EnvRaw
+			tempEnv := config.EnvRaw
+			envParts := strings.Split(config.EnvRaw, "-")
+			mod.Env = envParts[0]
+			fmt.Printf("Loading deployment details for %s and env %s", deployment, mod.Env)
 			deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
+			mod.Env = tempEnv
 			if err != nil {
 				fmt.Println("Unable to obtain config for deployment")
 				return nil, err
