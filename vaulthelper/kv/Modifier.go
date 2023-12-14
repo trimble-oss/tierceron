@@ -156,7 +156,7 @@ func cachedModifierHelper(env string, addr string) (*Modifier, error) {
 	for {
 		select {
 		case checkoutModifier := <-modifierCache[fmt.Sprintf("%s+%s", env, addr)].modifierChan:
-			atomic.AddUint64(&modifierCache[env].modCount, ^uint64(0))
+			atomic.AddUint64(&modifierCache[fmt.Sprintf("%s+%s", env, addr)].modCount, ^uint64(0))
 			return checkoutModifier, nil
 		case <-time.After(time.Millisecond * 200):
 			// Nothing here...
