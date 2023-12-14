@@ -107,9 +107,14 @@ func NewAgentConfig(address string,
 		os.Exit(-1)
 	}
 	mod.Direct = true
-	mod.Env = env
+	envParts := strings.Split(env, "-")
+	mod.Env = envParts[0]
 
 	data, readErr := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
+	defer func(m *helperkv.Modifier, e string) {
+		m.Env = e
+	}(mod, env)
+
 	if readErr != nil {
 		return nil, nil, readErr
 	} else {
@@ -126,7 +131,12 @@ func NewAgentConfig(address string,
 
 		hatFeatherHostAddr := fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatSecretsPort"].(string))
 		memprotectopts.MemProtect(nil, &hatFeatherHostAddr)
-		trcHatEnv := data["trcHatEnv"].(string)
+		var trcHatEnv string
+		if strings.HasPrefix(env, data["trcHatEnv"].(string)) {
+			trcHatEnv = env
+		} else {
+			trcHatEnv = data["trcHatEnv"].(string)
+		}
 
 		agentconfig := &AgentConfigs{
 			captiplib.FeatherCtlInit(nil,
@@ -135,7 +145,9 @@ func NewAgentConfig(address string,
 				&trcHatEncryptSalt,
 				&hatHandshakeHostAddr,
 				&trcHatHandshakeCode,
-				&sessionIdentifier, captiplib.AcceptRemote, nil),
+				&sessionIdentifier,
+				&env,
+				captiplib.AcceptRemote, nil),
 			&agentToken,
 			&hatFeatherHostAddr,
 			new(string),
