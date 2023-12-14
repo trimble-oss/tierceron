@@ -51,6 +51,7 @@ var AskFlumeFlow FlowNameType = "AskFlumeFlow"
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]interface{}
 var tfmContextMap = make(map[string]*TrcFlowMachineContext, 5)
+var cleanerInit = false
 
 const (
 	TableSyncFlow FlowType = iota
@@ -89,16 +90,6 @@ func (fnt FlowNameType) ServiceName() string {
 func TriggerChangeChannel(table string) {
 	for _, tfmContext := range tfmContextMap {
 		if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
-			if len(notificationFlowChannel) == 5 {
-			emptied:
-				for i := 0; i < 3; i++ {
-					select {
-					case <-notificationFlowChannel:
-					default:
-						break emptied
-					}
-				}
-			}
 			go func(nfc chan bool) {
 				nfc <- true
 			}(notificationFlowChannel)
@@ -108,8 +99,26 @@ func TriggerChangeChannel(table string) {
 }
 
 func TriggerAllChangeChannel(table string, changeIds map[string]string) {
-	for _, tfmContext := range tfmContextMap {
+	if !cleanerInit { //Kicks off cleaner goroutine if not already active.
+		cleanerInit = true
+		for _, tfmContext := range tfmContextMap {
+			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
+				go func(nFC chan bool) {
+					for {
+						time.Sleep(time.Second * 3)
+						if len(nFC) >= 8 {
+							for i := 0; i < 4; i++ {
+								<-nFC
+							}
+							nFC <- true
+						}
+					}
+				}(notificationFlowChannel)
+			}
+		}
+	}
 
+	for _, tfmContext := range tfmContextMap {
 		// If changIds identified, manually trigger a change.
 		if table != "" {
 			for changeIdKey, changeIdValue := range changeIds {
@@ -125,16 +134,6 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 				}
 			}
 			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
-				if len(notificationFlowChannel) == 5 {
-				emptied:
-					for i := 0; i < 3; i++ {
-						select {
-						case <-notificationFlowChannel:
-						default:
-							break emptied
-						}
-					}
-				}
 				go func(nfc chan bool) {
 					nfc <- true
 				}(notificationFlowChannel)
@@ -143,17 +142,7 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 		}
 
 		for _, notificationFlowChannel := range tfmContext.ChannelMap {
-			if len(notificationFlowChannel) == 5 {
-			emptied1:
-				for i := 0; i < 3; i++ {
-					select {
-					case <-notificationFlowChannel:
-					default:
-						break emptied1
-					}
-				}
-			}
-			if len(notificationFlowChannel) < 3 {
+			if len(notificationFlowChannel) < 10 {
 				go func(nfc chan bool) {
 					nfc <- true
 				}(notificationFlowChannel)
@@ -277,7 +266,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 	tfmContext.ChannelMap = make(map[FlowNameType]chan bool)
 
 	for _, table := range tableNames {
-		tfmContext.ChannelMap[FlowNameType(table)] = make(chan bool, 5)
+		tfmContext.ChannelMap[FlowNameType(table)] = make(chan bool, 10)
 	}
 
 	for _, f := range additionalFlowNames {
@@ -478,16 +467,6 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)
 		case <-flowChangedChannel:
-			if len(flowChangedChannel) == 5 {
-			emptied:
-				for i := 0; i < 3; i++ {
-					select {
-					case <-flowChangedChannel:
-					default:
-						break emptied
-					}
-				}
-			}
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
@@ -782,7 +761,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 5 {
+						if len(notificationFlowChannel) < 10 {
 							go func(nfc chan bool) {
 								nfc <- true
 							}(notificationFlowChannel)
@@ -795,7 +774,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 5 {
+						if len(notificationFlowChannel) < 10 {
 							go func(nfc chan bool) {
 								nfc <- true
 							}(notificationFlowChannel)
@@ -876,7 +855,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 5 {
+						if len(notificationFlowChannel) < 10 {
 							go func(nfc chan bool) {
 								nfc <- true
 							}(notificationFlowChannel)
@@ -889,7 +868,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 5 {
+						if len(notificationFlowChannel) < 10 {
 							go func(nfc chan bool) {
 								nfc <- true
 							}(notificationFlowChannel)
@@ -975,7 +954,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 			eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
 		retryConnectionAccess:
 			dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
-			if err.Error() != "incorrect URL format" {
+			if err != nil && err.Error() != "incorrect URL format" {
 				if retryCount < 3 && err != nil && dbsourceConn == nil {
 					retryCount = retryCount + 1
 					goto retryConnectionAccess

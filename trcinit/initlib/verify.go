@@ -32,7 +32,7 @@ func verify(config *eUtils.DriverConfig, mod *helperkv.Modifier, v map[interface
 		if err != nil {
 			return nil, err
 		}
-		config.Log.Printf("Verifying %s as type %s\n", service, vType)
+		config.Log.Print(eUtils.SanitizeForLogging(fmt.Sprintf("Verifying %s as type %s\n", service, vType)))
 		switch vType {
 		case "db":
 			if url, ok := serviceData["url"].(string); ok {
