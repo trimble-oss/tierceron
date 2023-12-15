@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -425,11 +426,13 @@ func CommonMain(envPtr *string,
 			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) {
 			// Write the image to the destination...
 			var deployPath string
+			var deployRoot string
 			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
-				deployPath = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), pluginToolConfig["trccodebundle"].(string))
+				deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
 			} else {
-				deployPath = filepath.Join(pluginToolConfig["trcdeployroot"].(string), pluginToolConfig["trccodebundle"].(string))
+				deployRoot = pluginToolConfig["trcdeployroot"].(string)
 			}
+			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
 			fmt.Printf("Deploying image to: %s\n", deployPath)
 
 			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
@@ -438,6 +441,32 @@ func CommonMain(envPtr *string,
 				fmt.Println("Image write failure.")
 				return err
 			}
+
+			if strings.HasSuffix(deployPath, ".war") {
+				explodedWarPath := strings.TrimSuffix(deployPath, ".war")
+				fmt.Printf("Checking exploded war path: %s\n", explodedWarPath)
+				if _, err := os.Stat(explodedWarPath); err == nil {
+					if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+						archiveDirPath := filepath.Join(deployRoot, "archive")
+						fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
+						err := os.MkdirAll(archiveDirPath, 0700)
+						if err == nil {
+							currentTime := time.Now()
+							formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
+							archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), "archive", formattedTime)
+							fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
+							err := os.MkdirAll(archiveRoot, 0700)
+							if err == nil {
+								archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
+								archivePath = strings.TrimSuffix(archivePath, ".war")
+								fmt.Printf("Archiving: %s to %s\n", explodedWarPath, archivePath)
+								os.Rename(explodedWarPath, archivePath)
+							}
+						}
+					}
+				}
+			}
+
 			fmt.Printf("Image deployed to: %s\n", deployPath)
 		} else {
 			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
