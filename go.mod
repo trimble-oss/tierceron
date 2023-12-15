@@ -248,7 +248,7 @@ replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
 replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.10
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.12
 
 replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 
