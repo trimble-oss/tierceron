@@ -52,7 +52,7 @@ func CommonMain(ctx eUtils.ProcessContext,
 	flagset *flag.FlagSet,
 	argLines []string) {
 	// Executable input arguments(flags)
-	addrPtr := flag.String("addr", "", "API endpoint for the vault")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	if addrPtrIn != nil && *addrPtrIn != "" {
 		addrPtr = addrPtrIn
 	}
