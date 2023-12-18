@@ -52,10 +52,6 @@ func CommonMain(ctx eUtils.ProcessContext,
 	flagset *flag.FlagSet,
 	argLines []string) {
 	// Executable input arguments(flags)
-	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	if addrPtrIn != nil && *addrPtrIn != "" {
-		addrPtr = addrPtrIn
-	}
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
@@ -63,6 +59,10 @@ func CommonMain(ctx eUtils.ProcessContext,
 			flagset.PrintDefaults()
 		}
 		flagset.String("env", "dev", "Environment to configure")
+	}
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
+	if addrPtrIn != nil && *addrPtrIn != "" {
+		addrPtr = addrPtrIn
 	}
 
 	startDirPtr := flagset.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Pull templates from this directory")
