@@ -51,7 +51,7 @@ var AskFlumeFlow FlowNameType = "AskFlumeFlow"
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]interface{}
 var tfmContextMap = make(map[string]*TrcFlowMachineContext, 5)
-var cleanerInit = false
+var cleanerInit = make(map[FlowNameType]bool, 1)
 
 const (
 	TableSyncFlow FlowType = iota
@@ -99,25 +99,6 @@ func TriggerChangeChannel(table string) {
 }
 
 func TriggerAllChangeChannel(table string, changeIds map[string]string) {
-	if !cleanerInit { //Kicks off cleaner goroutine if not already active.
-		cleanerInit = true
-		for _, tfmContext := range tfmContextMap {
-			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
-				go func(nFC chan bool) {
-					for {
-						time.Sleep(time.Second * 3)
-						if len(nFC) >= 8 {
-							for i := 0; i < 4; i++ {
-								<-nFC
-							}
-							nFC <- true
-						}
-					}
-				}(notificationFlowChannel)
-			}
-		}
-	}
-
 	for _, tfmContext := range tfmContextMap {
 		// If changIds identified, manually trigger a change.
 		if table != "" {
@@ -460,6 +441,21 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	go func(fcc chan bool) {
 		fcc <- true
 	}(flowChangedChannel)
+
+	if init, ok := cleanerInit[tfContext.Flow]; !ok || !init { //Kicks off cleaner goroutine if not already active.
+		cleanerInit[tfContext.Flow] = true
+		go func(nFC chan bool) {
+			for {
+				time.Sleep(time.Second * 1)
+				if len(nFC) >= 8 {
+					for i := 0; i < 4; i++ {
+						<-nFC
+					}
+					nFC <- true
+				}
+			}
+		}(flowChangedChannel)
+	}
 
 	for {
 		select {
