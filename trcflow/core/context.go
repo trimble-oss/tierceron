@@ -51,7 +51,7 @@ var AskFlumeFlow FlowNameType = "AskFlumeFlow"
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]interface{}
 var tfmContextMap = make(map[string]*TrcFlowMachineContext, 5)
-var cleanerInit = false
+var cleanerInit = make(map[FlowNameType]bool, 1)
 
 const (
 	TableSyncFlow FlowType = iota
@@ -442,23 +442,19 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 		fcc <- true
 	}(flowChangedChannel)
 
-	if !cleanerInit { //Kicks off cleaner goroutine if not already active.
-		cleanerInit = true
-		for _, tfmContext := range tfmContextMap {
-			for _, notificationFlowChannel := range tfmContext.ChannelMap {
-				go func(nFC chan bool) {
-					for {
-						time.Sleep(time.Second * 1)
-						if len(nFC) >= 8 {
-							for i := 0; i < 4; i++ {
-								<-nFC
-							}
-							nFC <- true
-						}
+	if init, ok := cleanerInit[tfContext.Flow]; !ok || !init { //Kicks off cleaner goroutine if not already active.
+		cleanerInit[tfContext.Flow] = true
+		go func(nFC chan bool) {
+			for {
+				time.Sleep(time.Second * 1)
+				if len(nFC) >= 8 {
+					for i := 0; i < 4; i++ {
+						<-nFC
 					}
-				}(notificationFlowChannel)
+					nFC <- true
+				}
 			}
-		}
+		}(flowChangedChannel)
 	}
 
 	for {
