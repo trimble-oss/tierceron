@@ -264,7 +264,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				} else if tfContext.FlowState.State == 2 {
 					tfContext.FlowLock.Unlock()
 					if tfContext.Init {
-						go tfmContext.SyncTableCycle(tfContext, dfssql.DataflowTestNameColumn, []string{dfssql.DataflowTestIdColumn, dfssql.DataflowTestStateCodeColumn}, GetDataflowStatIndexedPathExt, nil, false)
+						go tfmContext.SyncTableCycle(tfContext, dfssql.DataflowTestNameColumn, []string{dfssql.DataflowTestIdColumn, dfssql.DataflowTestStateCodeColumn, dfssql.DataflowTestNameColumn}, GetDataflowStatIndexedPathExt, nil, false)
 					}
 				} else {
 					tfContext.FlowLock.Unlock()
