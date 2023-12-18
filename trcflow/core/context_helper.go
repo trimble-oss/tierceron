@@ -124,12 +124,50 @@ func getStatisticDeleteChangeQuery(databaseName string, changeTable string, idCo
 	return ""
 }
 
+func removeElementFromSlice(slice []string, s string) ([]string, string) {
+	for k, v := range slice {
+		if slice[k] == s {
+			removedVal := slice[k]
+			return append(slice[:k], slice[k+1:]...), removedVal
+		}
+		slice[k] = v
+	}
+	return slice, ""
+}
+
+func removeElementFromSliceInterface(slice []interface{}, s string) ([]interface{}, interface{}) {
+	indexFound := -1
+	for k, v := range slice {
+		if valueStr, sOk := v.(string); sOk && valueStr == s {
+			indexFound = k
+			break
+		}
+	}
+
+	if indexFound == -1 {
+		return slice, nil
+	}
+
+	var value interface{} = &slice
+
+	// Now do the removal:
+	sp := value.(*[]interface{})
+	removedVal := (*sp)[indexFound]
+	*sp = append((*sp)[:indexFound], (*sp)[indexFound+1:]...)
+	return *sp, removedVal
+}
+
 func getStatisticChangedByIdQuery(databaseName string, changeTable string, idColumn string, indexColumnNames interface{}, indexColumnValues interface{}) (string, error) {
 	if indexColumnNamesSlice, iOk := indexColumnNames.([]string); iOk {
 		if indexColumnValuesSlice, iOk := indexColumnValues.([]interface{}); iOk {
 			var query string
+			var removedVal interface{}
+			var removedValName string
 			if valueStr, sOk := indexColumnValuesSlice[0].(string); sOk {
 				query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, idColumn, valueStr)
+				if indexColumnValuesSlice, removedVal = removeElementFromSliceInterface(indexColumnValuesSlice, valueStr); removedVal != nil { //this logic is for dfs...names & values appear out of order in slices at this point but is needed for previous step.
+					indexColumnNamesSlice, removedValName = removeElementFromSlice(indexColumnNamesSlice, idColumn) //							 may need to revist if a table has 3 identifiying column names (none currently).
+				}
 			} else if valueInt, viOK := indexColumnValuesSlice[0].(int64); viOK {
 				query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, idColumn, valueInt)
 			} else if valueInt, vIntOK := indexColumnValuesSlice[0].(int); vIntOK {
@@ -138,11 +176,17 @@ func getStatisticChangedByIdQuery(databaseName string, changeTable string, idCol
 				panic("Error - Unsupported type for index column - add support for new type.")
 			}
 
-			if len(indexColumnValuesSlice) > 1 {
-				for i := 0; i < len(indexColumnValuesSlice); i++ {
+			if len(indexColumnNamesSlice) > 1 {
+				for i := 0; i < len(indexColumnNamesSlice); i++ {
 					query = fmt.Sprintf("%s AND %s='%s'", query, indexColumnNamesSlice[i], indexColumnValuesSlice[i])
 				}
 			}
+
+			if removedValName != "" { //Adding back in ordered name & val for dfs for next steps...
+				indexColumnValuesSlice = append(indexColumnValuesSlice, removedVal)
+				indexColumnNamesSlice = append(indexColumnNamesSlice, removedValName)
+			}
+
 			return query, nil
 		} else {
 			return "", errors.New("invalid index value data for statistic data")
@@ -299,6 +343,9 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		rowDataMap := map[string]interface{}{}
+		if len(changedTableRowData) == 0 {
+			continue
+		}
 		for i, column := range changedTableColumns {
 			rowDataMap[column] = changedTableRowData[0][i]
 		}
