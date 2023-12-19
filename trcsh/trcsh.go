@@ -283,7 +283,7 @@ func main() {
 			fmt.Println("trcsh on windows requires VAULT_ADDR address.")
 			os.Exit(-1)
 		}
-		if err := capauth.ValidateVhost(address); err != nil {
+		if err := capauth.ValidateVhost(address, "https://"); err != nil {
 			fmt.Printf("trcsh on windows requires supported VAULT_ADDR address: %s\n", err.Error())
 			os.Exit(-1)
 		}
