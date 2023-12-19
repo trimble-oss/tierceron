@@ -47,7 +47,7 @@ func GetTlsConfig() (*tls.Config, error) {
 		return nil, errors.New("couldn't append certs to root.")
 	}
 	clientCert := make([]tls.Certificate, 0, 1)
-	certs, err := tls.LoadX509KeyPair("Todoclientcert", "todoclientkey")
+	certs, err := tls.LoadX509KeyPair(ServCert, ServKey)
 	if err != nil {
 		return nil, err
 	}

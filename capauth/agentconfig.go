@@ -43,13 +43,12 @@ func randomString(n int) string {
 	return string(b)
 }
 
-func ValidateVhost(host string) error {
-	protocolHost := host
-	if !strings.HasPrefix(host, "https://") {
-		protocolHost = fmt.Sprintf("https://%s", host)
+func ValidateVhost(host string, protocol string) error {
+	if !strings.HasPrefix(host, protocol) {
+		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
 	for _, endpoint := range coreopts.GetSupportedEndpoints() {
-		if strings.HasPrefix(endpoint, protocolHost) {
+		if strings.Contains(host, endpoint) {
 			return nil
 		}
 	}
@@ -201,7 +200,7 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	localHost := ""
 	if len(addrs) > 0 {
 		localHost = strings.TrimRight(addrs[0], ".")
-		if validErr := ValidateVhost(localHost); validErr != nil {
+		if validErr := ValidateVhost(localHost, "https://"); validErr != nil {
 			return nil, validErr
 		}
 	} else {
