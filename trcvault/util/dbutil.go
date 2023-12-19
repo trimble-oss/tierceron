@@ -27,7 +27,10 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 	if err != nil {
 		return nil, err
 	}
-	mysql.RegisterTLSConfig("tiercerontls", tlsConfig)
+	err = mysql.RegisterTLSConfig("tiercerontls", tlsConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	err = capauth.ValidateVhost(server, "")
 	if err != nil {
