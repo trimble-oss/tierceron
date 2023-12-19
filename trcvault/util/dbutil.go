@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
+	"github.com/trimble-oss/tierceron/capauth"
 	"github.com/trimble-oss/tierceron/validator"
 
 	"github.com/xo/dburl"
@@ -21,20 +23,33 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 	}
 
 	var conn *sql.DB
+	tlsConfig, err := capauth.GetTlsConfig()
+	if err != nil {
+		return nil, err
+	}
+	err1 := mysql.RegisterTLSConfig("tiercerontls", tlsConfig)
+	if err1 != nil {
+		return nil, err1
+	}
+
+	err = capauth.ValidateVhostInverse(server, "", true)
+	if err != nil {
+		return nil, err
+	}
 
 	switch driver {
 	case "mysql", "mariadb":
 		if len(port) == 0 {
 			// protocol+transport://user:pass@host/dbname?option1=a&option2=b
-			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + "/" + dbname + "?tls=skip-verify&parseTime=true")
+			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + "/" + dbname + "?tls=tiercerontls&parseTime=true")
 		} else {
-			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify&parseTime=true")
+			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=tiercerontls&parseTime=true")
 		}
 	case "sqlserver":
 		if len(port) == 0 {
 			port = "1433"
 		}
-		conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify")
+		conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=tiercerontls")
 	}
 
 	if err != nil {
