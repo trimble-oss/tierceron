@@ -38,14 +38,16 @@ func ReadServerCert() ([]byte, error) {
 }
 
 func GetTlsConfig() (*tls.Config, error) {
-	rootCertPool := x509.NewCertPool()
-	pem, err := ReadServerCert()
-	if err != nil {
-		return nil, err
-	}
-	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-		return nil, errors.New("couldn't append certs to root.")
-	}
+	// I don't think we're doing this right...?.?
+	// Comment out for now...
+	// rootCertPool := x509.NewCertPool()
+	// pem, err := ReadServerCert()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+	// 	return nil, errors.New("couldn't append certs to root.")
+	// }
 	clientCert := make([]tls.Certificate, 0, 1)
 	certs, err := tls.LoadX509KeyPair(ServCert, ServKey)
 	if err != nil {
@@ -53,7 +55,7 @@ func GetTlsConfig() (*tls.Config, error) {
 	}
 	clientCert = append(clientCert, certs)
 	return &tls.Config{
-		RootCAs:      rootCertPool,
+		RootCAs:      nil,
 		Certificates: clientCert,
 	}, nil
 }

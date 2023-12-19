@@ -44,12 +44,22 @@ func randomString(n int) string {
 }
 
 func ValidateVhost(host string, protocol string) error {
+	return ValidateVhostInverse(host, protocol, false)
+}
+
+func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	if !strings.HasPrefix(host, protocol) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
 	for _, endpoint := range coreopts.GetSupportedEndpoints() {
-		if strings.Contains(host, endpoint) {
-			return nil
+		if inverse {
+			if strings.Contains(endpoint, host) {
+				return nil
+			}
+		} else {
+			if strings.Contains(host, endpoint) {
+				return nil
+			}
 		}
 	}
 	return errors.New("Bad host: " + host)
