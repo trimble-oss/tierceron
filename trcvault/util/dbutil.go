@@ -27,15 +27,16 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 	if err != nil {
 		return nil, err
 	}
-	err = mysql.RegisterTLSConfig("tiercerontls", tlsConfig)
+	err1 := mysql.RegisterTLSConfig("tiercerontls", tlsConfig)
+	if err1 != nil {
+		return nil, err1
+	}
+
+	err = capauth.ValidateVhostInverse(server, "", true)
 	if err != nil {
 		return nil, err
 	}
 
-	err = capauth.ValidateVhost(server, "")
-	if err != nil {
-		return nil, err
-	}
 	switch driver {
 	case "mysql", "mariadb":
 		if len(port) == 0 {
