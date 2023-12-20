@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"database/sql"
+	"net"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -27,9 +28,9 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 	if err != nil {
 		return nil, err
 	}
-	err1 := mysql.RegisterTLSConfig("tiercerontls", tlsConfig)
-	if err1 != nil {
-		return nil, err1
+	tlsErr := mysql.RegisterTLSConfig("tiercerontls", tlsConfig)
+	if tlsErr != nil {
+		return nil, tlsErr
 	}
 
 	err = capauth.ValidateVhostInverse(server, "", true)
@@ -49,7 +50,11 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 		if len(port) == 0 {
 			port = "1433"
 		}
-		conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=tiercerontls")
+		if net.ParseIP(server) == nil {
+			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=tiercerontls")
+		} else {
+			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify")
+		}
 	}
 
 	if err != nil {
