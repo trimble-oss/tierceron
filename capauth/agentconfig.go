@@ -57,7 +57,15 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 				return nil
 			}
 		} else {
-			if strings.Contains(host, endpoint) {
+			var protocolHost = host
+			if !strings.HasPrefix(host, "https://") {
+				protocolHost = fmt.Sprintf("https://%s", host)
+			}
+			var protocolEndpoint = endpoint
+			if !strings.HasPrefix(endpoint, "https://") {
+				protocolEndpoint = fmt.Sprintf("https://%s", endpoint)
+			}
+			if strings.HasPrefix(protocolEndpoint, protocolHost) {
 				return nil
 			}
 		}
@@ -210,7 +218,7 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	localHost := ""
 	if len(addrs) > 0 {
 		localHost = strings.TrimRight(addrs[0], ".")
-		if validErr := ValidateVhost(localHost, "https://"); validErr != nil {
+		if validErr := ValidateVhost(localHost, ""); validErr != nil {
 			return nil, validErr
 		}
 	} else {
