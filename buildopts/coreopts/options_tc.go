@@ -16,7 +16,7 @@ import (
 )
 
 func GetFolderPrefix(custom []string) string {
-	if len(custom) > 0 && len(custom[0]) > 0 {
+	if len(custom) > 0 && len(custom[0]) > 0 && custom[0] != "trc_seeds" {
 		var ti, endTi int
 		ti = strings.Index(custom[0], "_templates")
 		endTi = 0
