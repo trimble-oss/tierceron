@@ -210,7 +210,7 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	localHost := ""
 	if len(addrs) > 0 {
 		localHost = strings.TrimRight(addrs[0], ".")
-		if validErr := ValidateVhost(localHost, "https://"); validErr != nil {
+		if validErr := ValidateVhost(localHost, ""); validErr != nil {
 			return nil, validErr
 		}
 	} else {
