@@ -100,7 +100,7 @@ steps:
 - checkout: VaultConfig.Test
   clean: false
 - checkout: tierceron-hat
-  clean: true
+  clean: false
 - checkout: tierceron-succinctly
   clean: false
 - checkout: tierceron-nute
