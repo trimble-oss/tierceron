@@ -44,6 +44,10 @@ var (
 	MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
 )
 
+const (
+	YOU_SHALL_NOT_PASS = "you shall not pass"
+)
+
 func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.DriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
@@ -123,14 +127,18 @@ func deployCtlAcceptRemote(featherCtx *cap.FeatherContext, x int, y string) (boo
 	return acceptInterruptFun(featherCtx, featherCtx.MultiSecondInterruptTicker, featherCtx.FifteenSecondInterruptTicker, featherCtx.ThirtySecondInterruptTicker)
 }
 
+func deployCtlAcceptRemoteNoTimeout(featherCtx *cap.FeatherContext, x int, y string) (bool, error) {
+	return acceptInterruptNoTimeoutFun(featherCtx, featherCtx.MultiSecondInterruptTicker)
+}
+
 // deployCtl -- is the deployment controller or manager if you will.
 func deployCtlInterrupted(featherCtx *cap.FeatherContext) error {
 	os.Exit(-1)
 	return nil
 }
 
-func deployerAcceptRemote(featherCtx *cap.FeatherContext, x int, y string) (bool, error) {
-	return acceptInterruptFun(featherCtx, featherCtx.MultiSecondInterruptTicker, featherCtx.FifteenSecondInterruptTicker, featherCtx.ThirtySecondInterruptTicker)
+func deployerAcceptRemoteNoTimeout(featherCtx *cap.FeatherContext, x int, y string) (bool, error) {
+	return acceptInterruptNoTimeoutFun(featherCtx, featherCtx.MultiSecondInterruptTicker)
 }
 
 // deployer -- does the work of deploying..
@@ -173,7 +181,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 		gAgentConfig.HandshakeCode,
 		&sessionIdentifier, /*Session identifier */
 		&env,
-		deployerAcceptRemote,
+		deployerAcceptRemoteNoTimeout,
 		deployerInterrupted)
 	config.FeatherCtx.Log = config.Log
 	// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
@@ -296,7 +304,7 @@ func main() {
 		gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
 			deployments,
-			agentEnv, nil, nil)
+			agentEnv, deployCtlAcceptRemoteNoTimeout, nil)
 		if errAgentLoad != nil {
 			fmt.Println("trcsh agent bootstrap failure.")
 			os.Exit(-1)
@@ -334,7 +342,23 @@ func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Tic
 	case <-tickerInterrupt.C:
 		// full stop
 		result = true
-		resultError = errors.New("you shall not pass")
+		resultError = errors.New(YOU_SHALL_NOT_PASS)
+	}
+	if len(featherCtx.InterruptChan) > 0 {
+		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
+		os.Exit(1)
+	}
+	return result, resultError
+}
+
+func acceptInterruptNoTimeoutFun(featherCtx *cap.FeatherContext, tickerContinue *time.Ticker) (bool, error) {
+	result := false
+	var resultError error = nil
+	select {
+	case <-tickerContinue.C:
+		// don't break... continue...
+		result = false
+		resultError = nil
 	}
 	if len(featherCtx.InterruptChan) > 0 {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
