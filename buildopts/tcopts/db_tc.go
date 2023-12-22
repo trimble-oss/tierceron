@@ -11,7 +11,7 @@ func CheckIncomingColumnName(col string) bool {
 	return tclibc.CheckIncomingColumnName(col)
 }
 
-func CheckMysqlFileIncoming(secretColumns map[string]string, secretValue string, flowSourceAlias string, tableName string) (interface{}, string, string, string, error) {
+func CheckMysqlFileIncoming(secretColumns map[string]string, secretValue string, dbName string, tableName string) ([]byte, string, string, string, error) {
 	return tclibc.CheckMysqlFileIncoming(secretColumns, secretValue, flowSourceAlias, tableName)
 }
 
