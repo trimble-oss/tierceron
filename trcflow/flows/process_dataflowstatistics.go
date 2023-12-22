@@ -5,16 +5,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
-	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
-
 	"time"
+
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
 
 	flowcorehelper "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
 	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	"github.com/trimble-oss/tierceron/trcx/extract"
-
-	utilcore "VaultConfig.TenantConfig/util/core"
 
 	dfssql "github.com/trimble-oss/tierceron/trcflow/flows/flowsql"
 
@@ -27,7 +25,7 @@ var refresh = false
 var endRefreshChan = make(chan bool, 1)
 
 func GetDataflowStatIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
-	tenantIndexPath, _ := utilcore.GetDFSPathName()
+	tenantIndexPath, _ := coreopts.GetDFSPathName()
 	if _, ok := rowDataMap[dfssql.DataflowTestIdColumn].(string); ok {
 		if _, ok := rowDataMap[dfssql.DataflowTestNameColumn].(string); ok {
 			if _, ok := rowDataMap[dfssql.DataflowTestStateCodeColumn].(string); ok {
@@ -78,7 +76,7 @@ func getDataFlowStatisticsSchema(tableName string) sqle.PrimaryKeySchema {
 }
 
 func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) error {
-	tenantIndexPath, tenantDFSIdPath := utilcore.GetDFSPathName()
+	tenantIndexPath, tenantDFSIdPath := coreopts.GetDFSPathName()
 	tenantListData, tenantListErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath, tfmContext.Config.Log)
 	if tenantListErr != nil {
 		return tenantListErr
@@ -131,7 +129,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 										}
 									} else {
 										for _, value := range rows {
-											if utilcore.CompareLastModified(dfStatMap, dfssql.DataFlowStatisticsSparseArrayToMap(value)) { //If equal-> do nothing
+											if coreopts.CompareLastModified(dfStatMap, dfssql.DataFlowStatisticsSparseArrayToMap(value)) { //If equal-> do nothing
 												continue
 											} else { //If not equal -> update
 												tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticUpdate(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
@@ -207,10 +205,10 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 				stateUpdate.SyncFilter = "N/A"
 				if previousState.State == stateUpdate.State && previousState.SyncMode == stateUpdate.SyncMode && previousState.SyncFilter == stateUpdate.SyncFilter && previousState.FlowAlias == stateUpdate.FlowAlias {
 					continue
-				} else if previousState.SyncMode == "refreshingDaily" && stateUpdate.SyncMode != "refreshEnd" && stateUpdate.State == 2 && int(previousState.State) != utilcore.PreviousStateCheck(int(stateUpdate.State)) {
+				} else if previousState.SyncMode == "refreshingDaily" && stateUpdate.SyncMode != "refreshEnd" && stateUpdate.State == 2 && int(previousState.State) != coreopts.PreviousStateCheck(int(stateUpdate.State)) {
 					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(stateUpdate.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: previousState.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
 					break
-				} else if int(previousState.State) != utilcore.PreviousStateCheck(int(stateUpdate.State)) && stateUpdate.State != previousState.State {
+				} else if int(previousState.State) != coreopts.PreviousStateCheck(int(stateUpdate.State)) && stateUpdate.State != previousState.State {
 					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(previousState.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: stateUpdate.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
 					continue
 				}
