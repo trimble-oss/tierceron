@@ -5,7 +5,7 @@ package deployopts
 
 //	"time"
 
-func InitSupportedDeployers() {
+func InitSupportedDeployers() []string {
 
 }
 

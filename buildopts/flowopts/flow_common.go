@@ -42,6 +42,6 @@ type AskFlumeResponse struct {
 	Type    string
 }
 
-func ProcessAskFlumeEventMapper(askFlumeContext *flowcore.AskFlumeContext, tfmcontext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) *AskFlumeResponse {
+func ProcessAskFlumeEventMapper(askFlumeContext *flowcore.AskFlumeContext, query *flowcore.AskFlumeMessage, tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) *flowcore.AskFlumeMessage {
 	return nil
 }

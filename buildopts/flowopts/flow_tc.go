@@ -4,6 +4,7 @@
 package flowopts
 
 import (
+	"VaultConfig.TenantConfig/util"
 	tccutil "VaultConfig.TenantConfig/util/controller"
 	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
 	askflume "github.com/trimble-oss/tierceron/trcflow/core/askflume"
@@ -43,6 +44,6 @@ func GetFlowDatabaseName() string {
 	return trcf.GetFlowDBName()
 }
 
-func ProcessAskFlumeEventMapper(askFlumeContext *flowcore.AskFlumeContext, tfmcontext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) *AskFlumeResponse {
+func ProcessAskFlumeEventMapper(askFlumeContext *flowcore.AskFlumeContext, query *flowcore.AskFlumeMessage, tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) *flowcore.AskFlumeMessage {
 	return util.ProcessAskFlumeEventMapper(askFlumeContext, askFlumeContext.Query, tfmcontext, tfContext)
 }
