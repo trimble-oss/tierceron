@@ -61,3 +61,7 @@ func GetSupportedTemplates() []string {
 func CheckMemLock(bucket string, key string) bool {
 	return true
 }
+
+func GetTrcDbUrl(data map[string]interface{}) string {
+	return ""
+}
