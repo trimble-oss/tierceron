@@ -1,7 +1,7 @@
 //go:build tc
 // +build tc
 
-package tclibc
+package tcopts
 
 import (
 	tclibc "VaultConfig.TenantConfig/lib/libsqlc"

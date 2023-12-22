@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	tclibc "github.com/trimble-oss/tierceron/buildopts/tclibc"
+	tcopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/flowcoreopts"
@@ -1068,8 +1068,8 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 		} else if secretValue, svOk := secretColumns[column.Name]; svOk {
 			var iVar interface{}
 			var cErr error
-			if tclibc.CheckIncomingColumnName(column.Name) && secretValue != "<Enter Secret Here>" && secretValue != "" {
-				decodedValue, secretValue, lmQuery, lm, incomingValErr := tclibc.CheckMysqlFileIncoming(secretColumns, secretValue, tfContext.FlowSourceAlias, tfContext.Flow.TableName())
+			if tcopts.CheckIncomingColumnName(column.Name) && secretValue != "<Enter Secret Here>" && secretValue != "" {
+				decodedValue, secretValue, lmQuery, lm, incomingValErr := tcopts.CheckMysqlFileIncoming(secretColumns, secretValue, tfContext.FlowSourceAlias, tfContext.Flow.TableName())
 				if incomingValErr != nil {
 					eUtils.LogErrorObject(tfmContext.Config, incomingValErr, false)
 					continue
@@ -1100,7 +1100,7 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 			row = append(row, iVar)
 		} else if _, svOk := secretColumns[column.Name]; !svOk {
 			var iVar interface{}
-			if tclibc.CheckIncomingAliasColumnName(column.Name) { //Specific case for controller
+			if tcopts.CheckIncomingAliasColumnName(column.Name) { //Specific case for controller
 				iVar, _ = column.Type.Convert(row[0].(string))
 			} else {
 				iVar, _ = column.Type.Convert(column.Default.String())
@@ -1125,7 +1125,7 @@ func WhichLastModified(a interface{}, b interface{}) bool {
 	var timeErr error
 	if lastMA, ok := a.(time.Time); !ok {
 		if lmA, ok := a.(string); ok {
-			lastModifiedA, timeErr = time.Parse(tclibc.RFC_ISO_8601, lmA)
+			lastModifiedA, timeErr = time.Parse(tcopts.RFC_ISO_8601, lmA)
 			if timeErr != nil {
 				return false
 			}
@@ -1136,7 +1136,7 @@ func WhichLastModified(a interface{}, b interface{}) bool {
 
 	if lastMB, ok := b.(time.Time); !ok {
 		if lmB, ok := b.(string); ok {
-			lastModifiedB, timeErr = time.Parse(tclibc.RFC_ISO_8601, lmB)
+			lastModifiedB, timeErr = time.Parse(tcopts.RFC_ISO_8601, lmB)
 			if timeErr != nil {
 				return false
 			}

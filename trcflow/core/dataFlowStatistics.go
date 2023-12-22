@@ -12,7 +12,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	tclibc "github.com/trimble-oss/tierceron/buildopts/tclibc"
+	tcopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 
@@ -321,7 +321,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 func InitDataFlow(logF func(string, error), name string, logS bool) *TTDINode {
 	var stats []*TTDINode
 	data := make(map[string]interface{})
-	data["TimeStart"] = time.Now().Format(tclibc.RFC_ISO_8601)
+	data["TimeStart"] = time.Now().Format(tcopts.RFC_ISO_8601)
 	data["LogStat"] = logS
 	if logF != nil {
 		data["LogFunc"] = logF
@@ -355,7 +355,7 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 			} else {
 				var timeParseErr error
 				timeStartStr := decodedData["TimeStart"].(string)
-				timeStart, timeParseErr = time.Parse(tclibc.RFC_ISO_8601, timeStartStr)
+				timeStart, timeParseErr = time.Parse(tcopts.RFC_ISO_8601, timeStartStr)
 				if timeParseErr != nil {
 					logF("Error in parsing start time in UpdateDataFlowStatistics", timeParseErr)
 					return
@@ -365,7 +365,7 @@ func (dfs *TTDINode) UpdateDataFlowStatistic(flowG string, flowN string, stateN 
 	} else {
 		decodedData = make(map[string]interface{})
 		timeStart = time.Now()
-		decodedData["TimeStart"] = timeStart.Format(tclibc.RFC_ISO_8601)
+		decodedData["TimeStart"] = timeStart.Format(tcopts.RFC_ISO_8601)
 
 		newEncodedData, err := json.Marshal(decodedData)
 		if err != nil {
