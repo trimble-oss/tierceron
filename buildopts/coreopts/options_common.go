@@ -84,3 +84,19 @@ func ProcessDeployPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[st
 func DecryptSecretConfig(tenantConfiguration map[string]interface{}, config map[string]interface{}) string {
 	return ""
 }
+
+func GetDFSPathName() (string, string) {
+	return "", ""
+}
+
+func GetDatabaseName() string {
+	return ""
+}
+
+func CompareLastModified(dfStatMapA map[string]interface{}, dfStatMapB map[string]interface{}) bool {
+	return false
+}
+
+func PreviousStateCheck(currentState int) int {
+	return 0
+}
