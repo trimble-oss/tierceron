@@ -18,3 +18,7 @@ func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
 func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
 	return nil
 }
+
+func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
+	return nil
+}
