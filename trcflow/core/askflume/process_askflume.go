@@ -6,10 +6,10 @@ import (
 	"log"
 	"sync"
 
-	"VaultConfig.TenantConfig/util"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 
+	"github.com/trimble-oss/tierceron/buildopts/flowopts"
 	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
 )
 
@@ -174,7 +174,7 @@ func handleDFQuery(askFlumeContext *flowcore.AskFlumeContext) error {
 		log.Println("Received query from DialogFlowQueries channel in Flume: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
 		log.Println("Processing query and accessing database...")
 
-		response := util.ProcessAskFlumeEventMapper(askFlumeContext, askFlumeContext.Query, tfmcontext, tfContext)
+		response := flowopts.ProcessAskFlumeEventMapper(askFlumeContext, tfmcontext, tfContext)
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Alias = response.Type // Determines which category message belongs
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Name = "DialogFlowResponse"
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Data = response.Message
