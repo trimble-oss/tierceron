@@ -12,6 +12,7 @@ import (
 	configcore "VaultConfig.Bootstrap/configcore"
 
 	"database/sql"
+
 	trcf "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
 )
 
@@ -58,4 +59,8 @@ func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, st
 // Whether to memlock data.
 func CheckMemLock(bucket string, key string) bool {
 	return tcbuildopts.CheckMemLock(bucket, key)
+}
+
+func GetTrcDbUrl(data map[string]interface{}) string {
+	return tcbuildopts.GetTrcDbUrl(data)
 }

@@ -35,3 +35,13 @@ func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowCo
 func GetFlowDatabaseName() string {
 	return trcf.GetFlowDBName()
 }
+
+// Placeholder
+type AskFlumeResponse struct {
+	Message string
+	Type    string
+}
+
+func ProcessAskFlumeEventMapper(askFlumeContext *flowcore.AskFlumeContext, tfmcontext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) *AskFlumeResponse {
+	return nil
+}

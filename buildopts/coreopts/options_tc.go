@@ -87,3 +87,19 @@ func ProcessDeployPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[st
 func DecryptSecretConfig(tenantConfiguration map[string]interface{}, config map[string]interface{}) string {
 	return bcore.DecryptSecretConfig(tenantConfiguration, config)
 }
+
+func GetDFSPathName() (string, string) {
+	return tccore.GetDFSPathName()
+}
+
+func GetDatabaseName() string {
+	return tccore.GetDatabaseName()
+}
+
+func CompareLastModified(dfStatMapA map[string]interface{}, dfStatMapB map[string]interface{}) bool {
+	return tccore.CompareLastModified(dfStatMapA, dfStatMapB)
+}
+
+func PreviousStateCheck(currentState int) int {
+	return tccore.PreviousStateCheck(currentState)
+}

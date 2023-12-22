@@ -9,12 +9,11 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/trcx/extract"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
-
-	trcxerutil "VaultConfig.TenantConfig/util/trcxerutil"
 
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
@@ -537,33 +536,33 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 
 	if len(config.Trcxe) > 1 { //Validate first then replace fields
 		config.ProjectSections = projectSectionTemp
-		valValidateError := trcxerutil.FieldValidator(config.Trcxe[0]+","+config.Trcxe[1], secretCombinedSection, valueCombinedSection)
+		valValidateError := xencryptopts.FieldValidator(config.Trcxe[0]+","+config.Trcxe[1], secretCombinedSection, valueCombinedSection)
 		if valValidateError != nil {
 			eUtils.LogErrorObject(config, valValidateError, false)
 			return "", false, "", valValidateError
 		}
 
-		encryptSecretErr := trcxerutil.SetEncryptionSecret(config)
+		encryptSecretErr := xencryptopts.SetEncryptionSecret(config)
 		if encryptSecretErr != nil {
 			eUtils.LogErrorObject(config, encryptSecretErr, false)
 			return "", false, "", encryptSecretErr
 		}
 
-		encryption, encryptErr := trcxerutil.GetEncrpytors(secretCombinedSection)
+		encryption, encryptErr := xencryptopts.GetEncrpytors(secretCombinedSection)
 		if encryptErr != nil {
 			eUtils.LogErrorObject(config, encryptErr, false)
 			return "", false, "", encryptErr
 		}
 
 		if config.Trcxr {
-			trcxerutil.FieldReader(trcxerutil.CreateEncrpytedReadMap(config.Trcxe[1]), secretCombinedSection, valueCombinedSection, encryption)
+			xencryptopts.FieldReader(xencryptopts.CreateEncrpytedReadMap(config.Trcxe[1]), secretCombinedSection, valueCombinedSection, encryption)
 		} else {
-			fieldChangedMap, encryptedChangedMap, promptErr := trcxerutil.PromptUserForFields(config.Trcxe[0], config.Trcxe[1], encryption)
+			fieldChangedMap, encryptedChangedMap, promptErr := xencryptopts.PromptUserForFields(config.Trcxe[0], config.Trcxe[1], encryption)
 			if promptErr != nil {
 				eUtils.LogErrorObject(config, promptErr, false)
 				return "", false, "", promptErr
 			}
-			trcxerutil.FieldReplacer(fieldChangedMap, encryptedChangedMap, secretCombinedSection, valueCombinedSection)
+			xencryptopts.FieldReplacer(fieldChangedMap, encryptedChangedMap, secretCombinedSection, valueCombinedSection)
 		}
 	}
 

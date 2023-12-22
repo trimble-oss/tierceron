@@ -42,3 +42,7 @@ func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFl
 func GetFlowDatabaseName() string {
 	return trcf.GetFlowDBName()
 }
+
+func ProcessAskFlumeEventMapper(askFlumeContext *flowcore.AskFlumeContext, tfmcontext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) *AskFlumeResponse {
+	return util.ProcessAskFlumeEventMapper(askFlumeContext, askFlumeContext.Query, tfmcontext, tfContext)
+}
