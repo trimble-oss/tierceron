@@ -7,7 +7,7 @@ import (
 	"VaultConfig.TenantConfig/util/buildopts/deployers"
 )
 
-func InitSupportedDeployers() {
+func InitSupportedDeployers() []string {
 	deployers.InitSupportedDeployers()
 }
 
