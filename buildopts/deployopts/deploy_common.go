@@ -6,7 +6,7 @@ package deployopts
 //	"time"
 
 func InitSupportedDeployers() []string {
-
+	return nil
 }
 
 func GetDecodedDeployerId(sessionId string) (string, error) {
