@@ -174,7 +174,7 @@ func handleDFQuery(askFlumeContext *flowcore.AskFlumeContext) error {
 		log.Println("Received query from DialogFlowQueries channel in Flume: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
 		log.Println("Processing query and accessing database...")
 
-		response := flowopts.ProcessAskFlumeEventMapper(askFlumeContext, tfmcontext, tfContext)
+		response := flowopts.ProcessAskFlumeEventMapper(askFlumeContext, askFlumeContext.Query, tfmcontext, tfContext)
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Alias = response.Type // Determines which category message belongs
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Name = "DialogFlowResponse"
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Data = response.Message
