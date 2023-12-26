@@ -33,9 +33,11 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 		return nil, tlsErr
 	}
 
-	err = capauth.ValidateVhostInverse(server, "", true)
-	if err != nil {
-		return nil, err
+	if net.ParseIP(server) == nil {
+		err = capauth.ValidateVhostInverse(server, "", true)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	switch driver {
