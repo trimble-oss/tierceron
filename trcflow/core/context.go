@@ -21,7 +21,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
 
-	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcvutils "github.com/trimble-oss/tierceron/trcdb/util"
 	trcdb "github.com/trimble-oss/tierceron/trcx/db"
 	trcengine "github.com/trimble-oss/tierceron/trcx/engine"
 	"github.com/trimble-oss/tierceron/trcx/extract"

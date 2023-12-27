@@ -10,8 +10,8 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/trcdb/carrierfactory"
 	"github.com/trimble-oss/tierceron/trcflow/deploy"
-	"github.com/trimble-oss/tierceron/trcvault/carrierfactory"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 

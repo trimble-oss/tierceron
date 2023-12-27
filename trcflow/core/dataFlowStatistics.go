@@ -18,7 +18,7 @@ import (
 
 	"time"
 
-	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcvutils "github.com/trimble-oss/tierceron/trcdb/util"
 
 	dfssql "github.com/trimble-oss/tierceron/trcflow/flows/flowsql"
 

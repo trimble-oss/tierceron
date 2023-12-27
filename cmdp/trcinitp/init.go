@@ -1,0 +1,24 @@
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/trcdb/opts/memonly"
+	trcinitbase "github.com/trimble-oss/tierceron/trcinitbase"
+)
+
+// This assumes that the vault is completely new, and should only be run for the purpose
+// of automating setup and initial seeding
+
+func main() {
+	if memonly.IsMemonly() {
+		memprotectopts.MemProtectInit(nil)
+	}
+	fmt.Println("Version: " + "1.6")
+	env := "local"
+	addr := coreopts.GetVaultHostPort()
+	trcinitbase.CommonMain(&env, &addr, nil, nil, os.Args)
+}

@@ -10,8 +10,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
 
+	trcvutils "github.com/trimble-oss/tierceron/trcdb/util"
 	flowcorehelper "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
-	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
 	"github.com/trimble-oss/tierceron/trcx/extract"
 
 	dfssql "github.com/trimble-oss/tierceron/trcflow/flows/flowsql"

@@ -18,7 +18,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcdb/opts/memonly"
 
 	"github.com/hashicorp/vault/api"
 )

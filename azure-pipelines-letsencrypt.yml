@@ -128,7 +128,7 @@ steps:
     echo "Compile start"
 
     echo "Compile Linux"
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/trcinit
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "azure memonly tc" github.com/trimble-oss/tierceron/cmd/trcinit
     for p in trcinit; do
       echo Compiling $p
       if [[ ! -f $GOBIN/$p ]] ; then

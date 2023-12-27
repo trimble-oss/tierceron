@@ -13,7 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/testopts"
-	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcvutils "github.com/trimble-oss/tierceron/trcdb/util"
 	trcdb "github.com/trimble-oss/tierceron/trcx/db"
 
 	flowcore "github.com/trimble-oss/tierceron/trcflow/core"

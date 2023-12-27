@@ -131,7 +131,7 @@ steps:
     done
 
     echo Compiling trc-vault-plugin
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "tc memonly" github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  -tags "tc memonly" github.com/trimble-oss/tierceron/plugins/trcdb
     mv $GOBIN/trcdb $GOBIN/trc-vault-plugin
 
     if [[ ! -f $GOBIN/trc-vault-plugin ]] ; then
@@ -140,7 +140,7 @@ steps:
     fi
 
     echo Compiling api
-    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  github.com/trimble-oss/tierceron/webapi/apiRouter
+    GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install  github.com/trimble-oss/tierceron/trcweb/apiRouter
     if [[ ! -f $GOBIN/apiRouter ]] ; then
         echo File apiRouter was not built, aborting.
         exit 1

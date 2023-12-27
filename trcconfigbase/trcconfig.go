@@ -14,7 +14,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
-	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcdb/opts/memonly"
 	"github.com/trimble-oss/tierceron/utils"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 

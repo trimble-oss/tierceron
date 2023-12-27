@@ -10,7 +10,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	//pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
+	//pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 
 	tm "golang.org/x/term"
 )

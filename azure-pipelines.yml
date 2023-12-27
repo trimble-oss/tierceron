@@ -156,7 +156,7 @@ steps:
     done
 
     echo Compiling/Verifying trcplgtool
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc azrcr memonly" github.com/trimble-oss/tierceron/trcvault/trcplgtool
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc azrcr memonly" github.com/trimble-oss/tierceron/cmd/trcplgtool
     mv $GOBIN/trcplgtool $GOBIN/trcplgtool
 
     if [[ ! -f $GOBIN/trcplgtool ]] ; then
@@ -165,7 +165,7 @@ steps:
     fi
 
     echo Compiling/Verifying trc-vault-plugin
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc memonly" github.com/trimble-oss/tierceron/trcvault/plugins/trcdb
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' -tags "tc memonly" github.com/trimble-oss/tierceron/plugins/trcdb
     mv $GOBIN/trcdb $GOBIN/verify-trc-vault-plugin
 
     if [[ ! -f $GOBIN/verify-trc-vault-plugin ]] ; then
@@ -174,7 +174,7 @@ steps:
     fi
 
     echo Compiling api
-    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' github.com/trimble-oss/tierceron/webapi/apiRouter
+    GOBIN= CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOCACHE=$GOCACHE go install -ldflags '-w' github.com/trimble-oss/tierceron/trcweb/apiRouter
     if [[ ! -f $GOBIN/apiRouter ]] ; then
         echo File apiRouter was not built, aborting.
         exit 1

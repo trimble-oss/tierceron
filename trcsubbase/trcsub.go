@@ -10,8 +10,8 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/trcdb/opts/memonly"
 	il "github.com/trimble-oss/tierceron/trcinit/initlib"
-	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 )

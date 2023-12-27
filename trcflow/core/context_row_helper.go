@@ -5,7 +5,7 @@ import (
 	"unsafe"
 
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcdb/opts/memonly"
 )
 
 var m sync.Mutex

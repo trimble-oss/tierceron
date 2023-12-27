@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcvutils "github.com/trimble-oss/tierceron/trcdb/util"
 	"github.com/trimble-oss/tierceron/trcx/extract"
 
 	trcdb "github.com/trimble-oss/tierceron/trcx/db"
