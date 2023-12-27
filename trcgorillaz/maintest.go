@@ -21,7 +21,7 @@ func main() {
 	logger := log.New(f, "[trcgorillaz]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
-	//pluginConfig := buildopts.GetTestConfig(*tokenPtr, false)
+	//pluginConfig := buildopts.BuildOptions.GetTestConfig(*tokenPtr, false)
 
 	//trcflow.ProcessFlows(pluginConfig, logger)
 }

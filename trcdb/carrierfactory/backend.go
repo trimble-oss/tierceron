@@ -178,7 +178,7 @@ func PushEnv(envMap map[string]interface{}) {
 }
 func ValidateVaddr(vaddr string) error {
 	logger.Println("ValidateVaddr")
-	for _, endpoint := range coreopts.GetSupportedEndpoints() {
+	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints() {
 		if strings.HasPrefix(vaddr, fmt.Sprintf("https://%s", endpoint)) {
 			return nil
 		}
@@ -574,7 +574,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			logger.Println("Creating modifier for env: " + req.Path)
 
 			pluginConfig := map[string]interface{}{}
-			pluginConfig = buildopts.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
+			pluginConfig = buildopts.BuildOptions.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
 			if pluginConfig == nil {
 				logger.Println("Error: " + errors.New("Could not find plugin config").Error())
 				return logical.ErrorResponse("Failed to find config for TrcUpdate."), nil
@@ -593,7 +593,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 				logger.Println("Error: " + errors.New("Found empty hostname").Error())
 				return logical.ErrorResponse("Found empty hostname"), nil
 			}
-			hostRegion := coreopts.GetRegion(hostName)
+			hostRegion := coreopts.BuildOptions.GetRegion(hostName)
 
 			pluginConfig["env"] = req.Path
 			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)

@@ -63,7 +63,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 			templatePathExtended = templatePath
 			serviceRaw = ""
 		} else {
-			templatePathExtended = strings.Replace(templatePath, coreopts.GetFolderPrefix(config.StartDir)+"_templates/", "/", 1)
+			templatePathExtended = strings.Replace(templatePath, coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
 		templateFile, _ := vcutils.ConfigTemplateRaw(config, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, config.ExitOnFailure)
@@ -137,7 +137,7 @@ func GetInitialTemplateStructure(config *eUtils.DriverConfig, templatePathSlice 
 
 	// Find the index in the slice of the vault_template subdirectory
 	for i, folder := range templatePathSlice {
-		if folder == coreopts.GetFolderPrefix(config.StartDir)+"_templates" {
+		if folder == coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates" {
 			templateDir = i
 			templatePathSlice[i] = "templates"
 		}

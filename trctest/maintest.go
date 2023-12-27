@@ -26,7 +26,7 @@ func main() {
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
 
-	pluginConfig := testopts.GetTestConfig(*tokenPtr, false)
+	pluginConfig := testopts.BuildOptions.GetTestConfig(*tokenPtr, false)
 	pluginConfig["address"] = ""
 	pluginConfig["vaddress"] = ""
 	pluginConfig["caddress"] = ""

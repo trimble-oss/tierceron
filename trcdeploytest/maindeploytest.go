@@ -40,13 +40,13 @@ func main() {
 	eUtils.CheckError(configDriver, err, true)
 
 	//Grabbing configs
-	envMap := buildopts.GetTestDeployConfig(*tokenPtr)
+	envMap := buildopts.BuildOptions.GetTestDeployConfig(*tokenPtr)
 	//envMap["vaddress"] = "vaultaddr"
 	//envMap["token"] = "INSERT TOKEN HERE"
 	carrierfactory.InitLogger(logger)
 	//go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))
 
-	go carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
+	go carrierfactory.Init(coreopts.BuildOptions.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "QA"
 	envMap["insecure"] = true
 	envMap["syncOnce"] = &sync.Once{}

@@ -8,6 +8,13 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/deployopts"
+	"github.com/trimble-oss/tierceron/buildopts/flowcoreopts"
+	"github.com/trimble-oss/tierceron/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/tcopts"
+	"github.com/trimble-oss/tierceron/buildopts/testopts"
+	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/trcdb/carrierfactory"
 	memonly "github.com/trimble-oss/tierceron/trcdb/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcdb/opts/prod"
@@ -29,6 +36,15 @@ func main() {
 			os.Exit(-1)
 		}
 	}
+	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
+	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
+	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
+	flowcoreopts.NewOptionsBuilder(flowcoreopts.LoadOptions())
+	flowopts.NewOptionsBuilder(flowopts.LoadOptions())
+	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
+	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
+	testopts.NewOptionsBuilder(testopts.LoadOptions())
+	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 
 	eUtils.InitHeadless(true)
 	logFile := "/var/log/trcplugincarrier.log"
@@ -44,15 +60,14 @@ func main() {
 		logger.Println("Running prod plugin")
 		prod.SetProd(true)
 	}
-
-	buildopts.SetLogger(logger.Writer())
+	buildopts.BuildOptions.SetLogger(logger.Writer())
 	carrierfactory.InitLogger(logger)
 
 	e := os.Remove("/tmp/trccarrier/trcsnap.sock")
 	if e != nil {
 		logger.Println("Unable to refresh socket.  Uneccessary.")
 	}
-	carrierfactory.Init(coreopts.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
+	carrierfactory.Init(coreopts.BuildOptions.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()

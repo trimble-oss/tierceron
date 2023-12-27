@@ -128,7 +128,7 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 		query := strings.Replace(r.URL.Query().Get("query"), `"`, `\"`, -1)
 		body := `{"query": "` + query + `"}`
 		GQLReq, err := http.NewRequest("POST",
-			coreopts.GetVaultHost()+"/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GraphQL",
+			coreopts.BuildOptions.GetVaultHost()+"/twirp/viewpoint.whoville.apinator.EnterpriseServiceBroker/GraphQL",
 			strings.NewReader(body))
 		GQLReq.Header = r.Header
 		if err != nil {
@@ -181,9 +181,9 @@ var webAPIProdEnvironments = []string{"staging"}
 
 func main() {
 	fmt.Println("Version: " + "1.1")
-	addrPtr := flag.String("addr", coreopts.GetVaultHostPort(), "API endpoint for the vault")
+	addrPtr := flag.String("addr", coreopts.BuildOptions.GetVaultHostPort(), "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
-	logPathPtr := flag.String("log", "/etc/opt/"+coreopts.GetFolderPrefix(nil)+"API/server.log", "Log file path for this server")
+	logPathPtr := flag.String("log", "/etc/opt/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"API/server.log", "Log file path for this server")
 	tlsPathPtr := flag.String("tlsPath", "../vault/certs", "Path to server certificate and private key")
 	authPtr := flag.Bool("auth", true, "Run with auth enabled?")
 	localPtr := flag.Bool("local", false, "Run locally")
@@ -243,9 +243,9 @@ func main() {
 }
 
 func redirectToTLS(w http.ResponseWriter, r *http.Request) {
-	redirectURL := coreopts.GetVaultHost() + r.URL.Path
+	redirectURL := coreopts.BuildOptions.GetVaultHost() + r.URL.Path
 	if localHost {
-		redirectURL = coreopts.GetLocalHost() + r.URL.Path
+		redirectURL = coreopts.BuildOptions.GetLocalHost() + r.URL.Path
 	}
 	if len(r.URL.RawQuery) > 0 {
 		redirectURL += "?" + r.URL.RawQuery

@@ -384,7 +384,7 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 		return errors.New("could not find hostname")
 	}
 
-	hostRegion := coreopts.GetRegion(hostName)
+	hostRegion := coreopts.BuildOptions.GetRegion(hostName)
 	mod.Regions = append(mod.Regions, hostRegion)
 	projects, services, _ := eUtils.GetProjectServices(cPath)
 	for _, pluginName := range pluginNameList {

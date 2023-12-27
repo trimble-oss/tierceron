@@ -8,7 +8,15 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/deployopts"
+	"github.com/trimble-oss/tierceron/buildopts/flowcoreopts"
+	"github.com/trimble-oss/tierceron/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/buildopts/tcopts"
+	"github.com/trimble-oss/tierceron/buildopts/testopts"
+	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/trcdb/factory"
 	memonly "github.com/trimble-oss/tierceron/trcdb/opts/memonly"
 	"github.com/trimble-oss/tierceron/trcdb/opts/prod"
@@ -30,6 +38,16 @@ func main() {
 			os.Exit(-1)
 		}
 	}
+	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
+	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
+	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
+	flowcoreopts.NewOptionsBuilder(flowcoreopts.LoadOptions())
+	flowopts.NewOptionsBuilder(flowopts.LoadOptions())
+	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
+	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
+	testopts.NewOptionsBuilder(testopts.LoadOptions())
+	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
+
 	logFile := "/var/log/trcplugindb.log"
 	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcplugindb]", log.LstdFlags)
@@ -39,18 +57,17 @@ func main() {
 		logger.Println("Running prod plugin")
 		prod.SetProd(true)
 	}
-
-	buildopts.SetLogger(func(query string, args ...interface{}) {
+	buildopts.BuildOptions.SetLogger(func(query string, args ...interface{}) {
 		logger.Println(query)
 	})
-	buildopts.SetErrorLogger(logger.Writer())
+	buildopts.BuildOptions.SetErrorLogger(logger.Writer())
 	defer func() {
 		if e := recover(); e != nil {
 			logger.Printf("%s: %s", e, debug.Stack())
 		}
 	}()
 
-	factory.Init(buildopts.ProcessPluginEnvConfig, flumen.ProcessFlows, true, logger)
+	factory.Init(buildopts.BuildOptions.ProcessPluginEnvConfig, flumen.ProcessFlows, true, logger)
 	memprotectopts.MemProtectInit(logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}

@@ -46,12 +46,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		flagset.String("appRoleID", "", "Secret app role ID")
 		exitOnFailure = true
 	}
-	endDirPtr := flagset.String("endDir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
+	endDirPtr := flagset.String("endDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
 	tokenPtr := flagset.String("token", "", "Vault access token")
-	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"pub to access the vault")
+	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
+	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
 	projectInfoPtr := flagset.Bool("projectInfo", false, "Lists all project info")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
@@ -75,8 +75,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
-		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"sub.log" {
-			*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "sub.log"
+		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"sub.log" {
+			*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "sub.log"
 		}
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		if err != nil {

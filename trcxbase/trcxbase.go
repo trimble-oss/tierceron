@@ -65,17 +65,17 @@ func CommonMain(ctx eUtils.ProcessContext,
 		addrPtr = addrPtrIn
 	}
 
-	startDirPtr := flagset.String("startDir", coreopts.GetFolderPrefix(nil)+"_templates", "Pull templates from this directory")
-	endDirPtr := flagset.String("endDir", "./"+coreopts.GetFolderPrefix(nil)+"_seeds/", "Write generated seed files to this directory")
-	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"x.log", "Output path for log file")
-	helpPtr := flagset.Bool("h", false, "Provide options for "+coreopts.GetFolderPrefix(nil)+"x")
+	startDirPtr := flagset.String("startDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Pull templates from this directory")
+	endDirPtr := flagset.String("endDir", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"_seeds/", "Write generated seed files to this directory")
+	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"x.log", "Output path for log file")
+	helpPtr := flagset.Bool("h", false, "Provide options for "+coreopts.BuildOptions.GetFolderPrefix(nil)+"x")
 	tokenPtr := flagset.String("token", "", "Vault access token")
 	secretMode := flagset.Bool("secretMode", true, "Only override secret values in templates?")
 	genAuth := flagset.Bool("genAuth", false, "Generate auth section of seed data?")
 	cleanPtr := flagset.Bool("clean", false, "Cleans seed files locally")
 	secretIDPtr := flagset.String("secretID", "", "Secret app role ID")
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
-	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"x to access the vault")
+	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"x to access the vault")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 
@@ -129,7 +129,7 @@ func CommonMain(ctx eUtils.ProcessContext,
 		defer f.Close()
 	}
 	eUtils.CheckError(config, err, true)
-	logger := log.New(f, "["+coreopts.GetFolderPrefix(nil)+"x]", log.LstdFlags)
+	logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"x]", log.LstdFlags)
 	config.Log = logger
 
 	envRaw := *envPtr
@@ -202,9 +202,9 @@ func CommonMain(ctx eUtils.ProcessContext,
 		indexed := false
 		if !*noVaultPtr {
 			pwd, _ := os.Getwd()
-			_, fileErr := os.Open(pwd + "/" + coreopts.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Index/" + *fileAddrPtr + "_seed.yml")
+			_, fileErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Index/" + *fileAddrPtr + "_seed.yml")
 			if errors.Is(fileErr, os.ErrNotExist) {
-				_, fileRErr := os.Open(pwd + "/" + coreopts.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Restricted/" + *fileAddrPtr + "_seed.yml")
+				_, fileRErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Restricted/" + *fileAddrPtr + "_seed.yml")
 				if errors.Is(fileRErr, os.ErrNotExist) {
 					fmt.Println("Specified seed file could not be found.")
 					os.Exit(1)
@@ -339,8 +339,8 @@ skipDiff:
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"x.log" {
-		*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "x.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"x.log" {
+		*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "x.log"
 	}
 
 	regions := []string{}
@@ -374,7 +374,7 @@ skipDiff:
 
 	logger.Println("=============== Initializing Seed Generator ===============")
 
-	logger.SetPrefix("[" + coreopts.GetFolderPrefix(nil) + "x]")
+	logger.SetPrefix("[" + coreopts.BuildOptions.GetFolderPrefix(nil) + "x]")
 	logger.Printf("Looking for template(s) in directory: %s\n", *startDirPtr)
 
 	var subSectionName string
@@ -763,7 +763,7 @@ skipDiff:
 	}
 	waitg.Wait() //Wait for diff
 
-	logger.SetPrefix("[" + coreopts.GetFolderPrefix(nil) + "x]")
+	logger.SetPrefix("[" + coreopts.BuildOptions.GetFolderPrefix(nil) + "x]")
 	logger.Println("=============== Terminating Seed Generator ===============")
 	logger.SetPrefix("[END]")
 	logger.Println()

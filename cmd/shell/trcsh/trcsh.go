@@ -19,9 +19,16 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
+	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
+	"github.com/trimble-oss/tierceron/buildopts/flowcoreopts"
+	"github.com/trimble-oss/tierceron/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/buildopts/tcopts"
+	"github.com/trimble-oss/tierceron/buildopts/testopts"
+	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/capauth"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
 	"github.com/trimble-oss/tierceron/trcdb/opts/memonly"
@@ -76,9 +83,9 @@ func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.Dr
 	fmt.Println("trcsh env: " + env)
 	fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
 
-	logFile := "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.GetFolderPrefix(nil)+"deploy.log" {
-		logFile = "./" + coreopts.GetFolderPrefix(nil) + "deploy.log"
+	logFile := "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"deploy.log" {
+		logFile = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
 	}
 	f, errOpenFile := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	if errOpenFile != nil {
@@ -108,7 +115,7 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
 		fmt.Printf("%s\n", msg)
 	}
-	deployerId, _ := deployopts.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
+	deployerId, _ := deployopts.BuildOptions.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
 	featherCtx.Log.Printf("deployer: %s ctl: %s  msg: %s\n", deployerId, ctlFlapMode, strings.Trim(msg, "\n"))
 	if strings.Contains(msg, "encountered errors") {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
@@ -167,7 +174,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	//
 	localHostAddr := ""
 	var sessionIdentifier string
-	if sessionId, ok := deployopts.GetEncodedDeployerId(deployment, *gAgentConfig.Env); ok {
+	if sessionId, ok := deployopts.BuildOptions.GetEncodedDeployerId(deployment, *gAgentConfig.Env); ok {
 		sessionIdentifier = sessionId
 	} else {
 		fmt.Printf("Unsupported deployer: %s\n", deployment)
@@ -198,8 +205,17 @@ func main() {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
+	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
+	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
+	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
+	flowcoreopts.NewOptionsBuilder(flowcoreopts.LoadOptions())
+	flowopts.NewOptionsBuilder(flowopts.LoadOptions())
+	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
+	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
+	testopts.NewOptionsBuilder(testopts.LoadOptions())
+	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.23")
+	fmt.Println("trcsh Version: " + "1.24")
 	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
 	// Initiate signal handling.
 	var ic chan os.Signal = make(chan os.Signal, 5)
@@ -215,7 +231,7 @@ func main() {
 	}()
 
 	// Initialize the supported
-	deployopts.InitSupportedDeployers()
+	deployopts.BuildOptions.InitSupportedDeployers()
 
 	if !eUtils.IsWindows() {
 		if os.Geteuid() == 0 {
@@ -395,7 +411,7 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		return errors.New("incorrect feathering")
 	}
 
-	if sessionIdentifier, ok := deployopts.GetEncodedDeployerId(agentName, *featherCtx.Env); ok {
+	if sessionIdentifier, ok := deployopts.BuildOptions.GetEncodedDeployerId(agentName, *featherCtx.Env); ok {
 		featherCtx.SessionIdentifier = &sessionIdentifier
 		featherCtx.Log.Printf("Starting deploy ctl session: %s\n", sessionIdentifier)
 		captiplib.FeatherCtl(featherCtx, deployerCtlEmote)

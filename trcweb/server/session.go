@@ -55,7 +55,7 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 		return false, "", err
 	}
 
-	return buildopts.Authorize(db, operatorId, operatorPassword)
+	return buildopts.BuildOptions.Authorize(db, operatorId, operatorPassword)
 }
 
 func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]map[string]interface{}, error) {
@@ -95,7 +95,7 @@ func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]m
 		return nil, err
 	}
 
-	return coreopts.ActiveSessions(db)
+	return coreopts.BuildOptions.ActiveSessions(db)
 }
 
 func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, string, error) {

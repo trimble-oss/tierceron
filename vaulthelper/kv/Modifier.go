@@ -426,7 +426,7 @@ retryVaultAccess:
 		}
 		if memonly.IsMemonly() && !strings.HasPrefix(path, "templates") { // Don't lock templates
 			for dataKey, dataValues := range data {
-				if !buildopts.CheckMemLock(bucket, dataKey) {
+				if !buildopts.BuildOptions.CheckMemLock(bucket, dataKey) {
 					continue
 				}
 				if dataValuesSlice, isSlice := dataValues.([]interface{}); isSlice {

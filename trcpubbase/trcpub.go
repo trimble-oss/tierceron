@@ -45,12 +45,12 @@ func CommonMain(envPtr *string,
 		flagset.String("token", "", "Vault access token")
 		flagset.String("secretID", "", "Public app role ID")
 		flagset.String("appRoleID", "", "Secret app role ID")
-		flagset.String("tokenName", "", "Token name used by this "+coreopts.GetFolderPrefix(nil)+"pub to access the vault")
+		flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	}
-	dirPtr := flagset.String("dir", coreopts.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
+	dirPtr := flagset.String("dir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
-	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
+	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
 	appRolePtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
 
 	if c == nil || !c.IsShellSubProcess {
@@ -66,8 +66,8 @@ func CommonMain(envPtr *string,
 		*appRolePtr = configBase.AppRoleConfig
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
-		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"pub.log" {
-			*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "pub.log"
+		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log" {
+			*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "pub.log"
 		}
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "[INIT]", log.LstdFlags)

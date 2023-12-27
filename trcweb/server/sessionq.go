@@ -56,8 +56,8 @@ func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) 
 			return "", "", nil, err
 		}
 
-		if userNameField, ok := response[coreopts.GetUserNameField()].(string); ok {
-			if userCodeField, ok := response[coreopts.GetUserCodeField()].(string); ok {
+		if userNameField, ok := response[coreopts.BuildOptions.GetUserNameField()].(string); ok {
+			if userCodeField, ok := response[coreopts.BuildOptions.GetUserCodeField()].(string); ok {
 
 				return userNameField, userCodeField, &pb.LoginResp{
 					Success:   true,
