@@ -39,6 +39,10 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]i
 	return map[string]interface{}{}
 }
 
+func GetFlowDatabaseName() string {
+	return ""
+}
+
 // Which tables synced..
 func GetSyncedTables() []string {
 	return []string{}

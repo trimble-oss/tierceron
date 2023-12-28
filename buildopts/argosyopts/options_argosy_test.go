@@ -4,7 +4,9 @@
 package argosyopts
 
 import (
-	"github.com/trimble-oss/tierceron/trcvault/util"
+	"log"
+
+	"github.com/trimble-oss/tierceron/trcdb/util"
 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 
