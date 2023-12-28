@@ -5,7 +5,7 @@ type Option func(*OptionsBuilder)
 type OptionsBuilder struct {
 	// Deploy
 	InitSupportedDeployers func() []string
-	GetDecodedDeployerId   func(sessionId string) (string, error)
+	GetDecodedDeployerId   func(sessionId string) (string, bool)
 	GetEncodedDeployerId   func(deployment string, env string) (string, bool)
 }
 

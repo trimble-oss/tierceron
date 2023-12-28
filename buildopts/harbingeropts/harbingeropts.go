@@ -1,6 +1,3 @@
-//go:build !harbinger
-// +build !harbinger
-
 package harbingeropts
 
 import (
