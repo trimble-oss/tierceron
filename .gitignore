@@ -56,5 +56,5 @@ trcgorillaz/ttdiserver/tls/mashup.*
 trcgorillaz/ttdivisualizer/__debug_bin
 trcgorillaz/ttdiserver/__debug_bin
 
-
+cmd/shell/deploy/trc_seeds/*
 

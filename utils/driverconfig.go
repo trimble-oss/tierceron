@@ -166,7 +166,6 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, config *DriverC
 						projectStartDir = projectStartDir + string(os.PathSeparator)
 					}
 				}
-				// VaultConfig is happiest with linux path separators
 				projectStartDir = strings.Replace(projectStartDir, "\\", "/", -1)
 				startDirs = append(startDirs, projectStartDir)
 			}

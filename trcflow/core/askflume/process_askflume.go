@@ -165,7 +165,7 @@ func handleGChatQuery(askFlumeContext *flowcore.AskFlumeContext) error {
 }
 
 // Processes mapped result of sending a question to DialogFlow
-// Calls ProcessAskFlumeEventMapper in VaultConfig.TenantConfig to query trcdb
+// Calls ProcessAskFlumeEventMapper to query trcdb
 // Changes setting to "DialogFlowResponse" so the returned result can be processed
 // to make it more understandable to the user
 func handleDFQuery(askFlumeContext *flowcore.AskFlumeContext) error {
