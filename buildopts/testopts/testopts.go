@@ -1,6 +1,3 @@
-//go:build !testflow
-// +build !testflow
-
 package testopts
 
 import (
