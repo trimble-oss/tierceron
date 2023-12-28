@@ -1,6 +1,3 @@
-//go:build !tc
-// +build !tc
-
 package flowopts
 
 import (
