@@ -13,12 +13,12 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/trcdb/opts/memonly"
 	il "github.com/trimble-oss/tierceron/trcinit/initlib"
-	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
-	"github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose
@@ -45,13 +45,13 @@ func CommonMain(envPtr *string,
 	if addrPtrIn != nil && *addrPtrIn != "" {
 		addrPtr = addrPtrIn
 	}
-	seedPtr := flagset.String("seeds", coreopts.GetFolderPrefix(nil)+"_seeds", "Directory that contains vault seeds")
+	seedPtr := flagset.String("seeds", coreopts.BuildOptions.GetFolderPrefix(nil)+"_seeds", "Directory that contains vault seeds")
 	tokenPtr := flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
 	shardPtr := flagset.String("shard", "", "Key shard used to unseal a vault that has been initialized but restarted")
 
 	namespaceVariable := flagset.String("namespace", "vault", "name of the namespace")
 
-	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"init.log", "Output path for log files")
+	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"init.log", "Output path for log files")
 	servicePtr := flagset.String("service", "", "Seeding vault with a single service")
 	prodPtr := flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
 	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
@@ -208,8 +208,8 @@ func CommonMain(envPtr *string,
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+coreopts.GetFolderPrefix(nil)+"init.log" && os.IsNotExist(err) {
-		*logFilePtr = "./" + coreopts.GetFolderPrefix(nil) + "init.log"
+	if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"init.log" && os.IsNotExist(err) {
+		*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "init.log"
 	}
 
 	// Initialize logging

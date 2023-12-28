@@ -18,7 +18,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcdb/opts/memonly"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -426,7 +426,7 @@ retryVaultAccess:
 		}
 		if memonly.IsMemonly() && !strings.HasPrefix(path, "templates") { // Don't lock templates
 			for dataKey, dataValues := range data {
-				if !buildopts.CheckMemLock(bucket, dataKey) {
+				if !buildopts.BuildOptions.CheckMemLock(bucket, dataKey) {
 					continue
 				}
 				if dataValuesSlice, isSlice := dataValues.([]interface{}); isSlice {

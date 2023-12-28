@@ -51,7 +51,7 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	if !strings.HasPrefix(host, protocol) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
-	for _, endpoint := range coreopts.GetSupportedEndpoints() {
+	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints() {
 		if inverse {
 			if strings.Contains(endpoint, host) {
 				return nil

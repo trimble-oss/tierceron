@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron
 go 1.21.5
 
 require (
-	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
+	//	VaultConfig.Bootstrap v0.0.0-00010101000000-000000000000
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dolthub/go-mysql-server v0.17.0
 	github.com/go-sql-driver/mysql v1.6.0
@@ -25,27 +25,22 @@ require (
 require (
 	github.com/g3n/engine v0.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	//github.com/trimble-oss/tierceron-nute v0.0.0-20221220150022-370bea61eb44
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible
+	github.com/trimble-oss/tierceron-hat v0.0.0-20231220141246-26dd2d238664
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 
 )
 
-require github.com/trimble-oss/tierceron-nute v0.0.0-20230128181737-65043c9e434b
-
-require github.com/trimble-oss/tierceron-succinctly v0.0.0-00010101000000-000000000000 // indirect
-
 require (
-	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000
-	VaultConfig.Test v0.0.0-00010101000000-000000000000
+	//	VaultConfig.TenantConfig v0.0.0-00010101000000-000000000000
+	//	VaultConfig.Test v0.0.0-00010101000000-000000000000
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
-	github.com/trimble-oss/tierceron-hat v0.0.0-00010101000000-000000000000
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/cli-runtime v0.26.1
@@ -120,6 +115,8 @@ require (
 	github.com/templexxx/cpu v0.1.0 // indirect
 	github.com/templexxx/xorsimd v0.4.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
+	github.com/trimble-oss/tierceron-nute v0.0.0-20231215170009-f41bd163ccda // indirect
+	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
@@ -127,9 +124,9 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231030173426-d783a09b4405 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/component-helpers v0.0.0-20230215120307-78f7b9c080f0 // indirect
+	k8s.io/component-helpers v0.26.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect
-	k8s.io/metrics v0.0.0-20230215135002-90fa97165491 // indirect
+	k8s.io/metrics v0.26.1 // indirect
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
@@ -239,19 +236,19 @@ require (
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
 
-replace VaultConfig.Bootstrap => ../VaultConfig.Bootstrap
+//replace VaultConfig.Bootstrap => ../VaultConfig.Bootstrap
 
-replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
+//replace VaultConfig.TenantConfig => ../VaultConfig.TenantConfig
 
-replace VaultConfig.Test => ../VaultConfig.Test
+//replace VaultConfig.Test => ../VaultConfig.Test
 
-replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
+//replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
-replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
+//replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.12
 
-replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
+//replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 
 replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d
 
@@ -261,18 +258,18 @@ replace gioui.org v0.0.0-20220318070519-8833a6738a3b => github.com/mrjrieke/gio 
 
 replace github.com/fyne-io/glfw-js v0.0.0-20220120001248-ee7290d23504 => github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb
 
-// replace k8s.io/client-go v0.26.1 => github.com/trimble-oss/client-go v0.0.3
+replace k8s.io/client-go v0.26.1 => github.com/trimble-oss/client-go v0.0.3
 
-// replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.7
+replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.7
 
-// replace k8s.io/kubectl v0.26.1 => github.com/trimble-oss/kubectl v0.0.5
+replace k8s.io/kubectl v0.26.1 => github.com/trimble-oss/kubectl v0.0.5
 
 //Don't forget to update pipelines with the right version.
 
-replace k8s.io/client-go v0.26.1 => ../client-go
+//replace k8s.io/client-go v0.26.1 => ../client-go
 
-replace k8s.io/cli-runtime v0.26.1 => ../cli-runtime
+//replace k8s.io/cli-runtime v0.26.1 => ../cli-runtime
 
-replace k8s.io/kubectl v0.26.1 => ../kubectl
+//replace k8s.io/kubectl v0.26.1 => ../kubectl
 
 replace k8s.io/api v0.26.1 => k8s.io/api v0.0.0-20230228090259-b5b22ca1babf

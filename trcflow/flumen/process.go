@@ -13,7 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/testopts"
-	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcvutils "github.com/trimble-oss/tierceron/trcdb/util"
 	trcdb "github.com/trimble-oss/tierceron/trcx/db"
 
 	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
@@ -76,7 +76,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	tfmContext = &flowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
-		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
+		GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
 		FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
 	}
 	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
@@ -129,7 +129,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					eUtils.LogWarningMessage(config, "Expected database configuration does not exist: "+indexValue, false)
 					continue
 				}
-				for _, supportedRegion := range buildopts.GetSupportedSourceRegions() {
+				for _, supportedRegion := range buildopts.BuildOptions.GetSupportedSourceRegions() {
 					if sourceDatabaseConfig["dbsourceregion"] == supportedRegion {
 						sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
 					}
@@ -191,12 +191,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		flowStateReceiverMap[tableName] = make(chan flowcorehelper.FlowStateUpdate, 1)
 	}
 
-	for _, enhancement := range flowopts.GetAdditionalFlows() {
+	for _, enhancement := range flowopts.BuildOptions.GetAdditionalFlows() {
 		flowStateControllerMap[enhancement.TableName()] = make(chan flowcorehelper.CurrentFlowState, 1)
 		flowStateReceiverMap[enhancement.TableName()] = make(chan flowcorehelper.FlowStateUpdate, 1)
 	}
 
-	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), harbingeropts.GetDatabaseName())
+	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), harbingeropts.BuildOptions.GetDatabaseName())
 	tfmContext.Config = &configBasis
 
 	if err != nil {
@@ -232,7 +232,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// Http query resources include:
 	// 1. Auth -- Auth is provided by the external library.
 	// 2. Get json by Api call.
-	extensionAuthComponents := buildopts.GetExtensionAuthComponents(trcIdentityConfig)
+	extensionAuthComponents := buildopts.BuildOptions.GetExtensionAuthComponents(trcIdentityConfig)
 	if len(extensionAuthComponents) > 0 {
 		httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
 		if httpClient != nil {
@@ -256,13 +256,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
-	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
+	tfmContext.Init(sourceDatabaseConnectionsMap, configBasis.VersionFilter, flowopts.BuildOptions.GetAdditionalFlows(), flowopts.BuildOptions.GetAdditionalFlows())
 
 	//Initialize tfcContext for flow controller
 	tfmFlumeContext := &flowcore.TrcFlowMachineContext{
 		InitConfigWG:              &sync.WaitGroup{},
 		Env:                       pluginConfig["env"].(string),
-		GetAdditionalFlowsByState: flowopts.GetAdditionalFlowsByState,
+		GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
 		FlowControllerInit:        true,
 		FlowControllerUpdateLock:  sync.Mutex{},
 		FlowControllerUpdateAlert: make(chan string, 1),
@@ -278,9 +278,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		sourceDatabaseDetails["sqlConn"] = nil
 	}
 
-	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.GetFlowDatabaseName())
+	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.BuildOptions.GetFlowDatabaseName())
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
-	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowopts.GetAdditionalFlows(), flowopts.GetAdditionalFlows())
+	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowopts.BuildOptions.GetAdditionalFlows(), flowopts.BuildOptions.GetAdditionalFlows())
 	tfmFlumeContext.Config = &configBasis
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
@@ -308,7 +308,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
-				tcfContext.FlowSourceAlias = flowopts.GetFlowDatabaseName()
+				tcfContext.FlowSourceAlias = flowopts.BuildOptions.GetFlowDatabaseName()
 
 				tfmFlumeContext.ProcessFlow(
 					dc,
@@ -365,12 +365,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
-				tfContext.FlowSourceAlias = harbingeropts.GetDatabaseName()
+				tfContext.FlowSourceAlias = harbingeropts.BuildOptions.GetDatabaseName()
 
 				tfmContext.ProcessFlow(
 					dc,
 					&tfContext,
-					flowopts.ProcessFlowController,
+					flowopts.BuildOptions.ProcessFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
 					tableFlow,
@@ -378,7 +378,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				)
 			}(flowcore.FlowNameType(table), config)
 		}
-		for _, enhancement := range flowopts.GetAdditionalFlows() {
+		for _, enhancement := range flowopts.BuildOptions.GetAdditionalFlows() {
 			flowWG.Add(1)
 
 			go func(enhancementFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
@@ -402,7 +402,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfmContext.ProcessFlow(
 					dc,
 					&tfContext,
-					flowopts.ProcessFlowController,
+					flowopts.BuildOptions.ProcessFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
 					enhancementFlow,
@@ -411,7 +411,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}(enhancement, config)
 		}
 
-		for _, test := range testopts.GetAdditionalTestFlows() {
+		for _, test := range testopts.BuildOptions.GetAdditionalTestFlows() {
 			flowWG.Add(1)
 			go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc, "Beginning test flow: "+testFlow.ServiceName())
@@ -428,7 +428,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				tfmc.ProcessFlow(
 					dc,
 					&tfContext,
-					flowopts.ProcessTestFlowController,
+					flowopts.BuildOptions.ProcessTestFlowController,
 					vaultDatabaseConfig,
 					sourceDatabaseConnectionMap,
 					testFlow,
@@ -467,7 +467,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	if controllerCheck == 3 {
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
-		controllerInterfaceErr := harbingeropts.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
+		controllerInterfaceErr := harbingeropts.BuildOptions.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
 		if controllerInterfaceErr != nil {
 			eUtils.LogErrorMessage(config, "Failed to start up controller database interface:"+controllerInterfaceErr.Error(), false)
 			return controllerInterfaceErr
@@ -501,7 +501,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		vaultDatabaseConfig["dfsPass"] = dfsPass
 	}
 
-	interfaceErr := harbingeropts.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
+	interfaceErr := harbingeropts.BuildOptions.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
 	if interfaceErr != nil {
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)
 		return interfaceErr

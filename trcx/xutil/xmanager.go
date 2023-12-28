@@ -377,7 +377,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 					goMod.SubSectionValue = config.SubSectionValue
 				}
 
-				relativeTemplatePathParts := strings.Split(tp, coreopts.GetFolderPrefix(config.StartDir)+"_templates")
+				relativeTemplatePathParts := strings.Split(tp, coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates")
 				templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
 				goMod.TemplatePath = "templates" + templatePathParts[0]
 
@@ -412,7 +412,7 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 						var formattedTPath string
 						tempList := make([]string, 0)
 						// TODO: Chebacca Monday!
-						tPath := strings.Split(tp, coreopts.GetFolderPrefix(config.StartDir)+"_")[1]
+						tPath := strings.Split(tp, coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_")[1]
 						tPathSplit := strings.Split(tPath, ".")
 						if len(tPathSplit) > 2 {
 							formattedTPath = tPathSplit[0] + "." + tPathSplit[1]
@@ -536,33 +536,33 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 
 	if len(config.Trcxe) > 1 { //Validate first then replace fields
 		config.ProjectSections = projectSectionTemp
-		valValidateError := xencryptopts.FieldValidator(config.Trcxe[0]+","+config.Trcxe[1], secretCombinedSection, valueCombinedSection)
+		valValidateError := xencryptopts.BuildOptions.FieldValidator(config.Trcxe[0]+","+config.Trcxe[1], secretCombinedSection, valueCombinedSection)
 		if valValidateError != nil {
 			eUtils.LogErrorObject(config, valValidateError, false)
 			return "", false, "", valValidateError
 		}
 
-		encryptSecretErr := xencryptopts.SetEncryptionSecret(config)
+		encryptSecretErr := xencryptopts.BuildOptions.SetEncryptionSecret(config)
 		if encryptSecretErr != nil {
 			eUtils.LogErrorObject(config, encryptSecretErr, false)
 			return "", false, "", encryptSecretErr
 		}
 
-		encryption, encryptErr := xencryptopts.GetEncrpytors(secretCombinedSection)
+		encryption, encryptErr := xencryptopts.BuildOptions.GetEncrpytors(secretCombinedSection)
 		if encryptErr != nil {
 			eUtils.LogErrorObject(config, encryptErr, false)
 			return "", false, "", encryptErr
 		}
 
 		if config.Trcxr {
-			xencryptopts.FieldReader(xencryptopts.CreateEncrpytedReadMap(config.Trcxe[1]), secretCombinedSection, valueCombinedSection, encryption)
+			xencryptopts.BuildOptions.FieldReader(xencryptopts.BuildOptions.CreateEncrpytedReadMap(config.Trcxe[1]), secretCombinedSection, valueCombinedSection, encryption)
 		} else {
-			fieldChangedMap, encryptedChangedMap, promptErr := xencryptopts.PromptUserForFields(config.Trcxe[0], config.Trcxe[1], encryption)
+			fieldChangedMap, encryptedChangedMap, promptErr := xencryptopts.BuildOptions.PromptUserForFields(config.Trcxe[0], config.Trcxe[1], encryption)
 			if promptErr != nil {
 				eUtils.LogErrorObject(config, promptErr, false)
 				return "", false, "", promptErr
 			}
-			xencryptopts.FieldReplacer(fieldChangedMap, encryptedChangedMap, secretCombinedSection, valueCombinedSection)
+			xencryptopts.BuildOptions.FieldReplacer(fieldChangedMap, encryptedChangedMap, secretCombinedSection, valueCombinedSection)
 		}
 	}
 
@@ -624,7 +624,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigC
 	}
 
 	if len(tempTemplatePaths) == 0 {
-		eUtils.LogErrorMessage(config, "No files found in "+coreopts.GetFolderPrefix(config.StartDir)+"_templates", true)
+		eUtils.LogErrorMessage(config, "No files found in "+coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates", true)
 	}
 
 	//Duplicate path remover

@@ -10,7 +10,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
-	//pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
+	//pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 
 	tm "golang.org/x/term"
 )
@@ -19,12 +19,12 @@ import (
 func LoginToLocal() (string, error) {
 	var username, environment string
 	var err error
-	httpsClient, err := helperkv.CreateHTTPClient(false, coreopts.GetVaultHost(), "nonprod", false)
+	httpsClient, err := helperkv.CreateHTTPClient(false, coreopts.BuildOptions.GetVaultHost(), "nonprod", false)
 	if err != nil {
 		return "", err
 	}
 
-	//client := pb.NewEnterpriseServiceBrokerProtobufClient(coreopts.GetVaultHost(), httpsClient)
+	//client := pb.NewEnterpriseServiceBrokerProtobufClient(coreopts.BuildOptions.GetVaultHost(), httpsClient)
 	console := bufio.NewReader(os.Stdin)
 	fmt.Println("Login needed to use a local environment")
 	for {

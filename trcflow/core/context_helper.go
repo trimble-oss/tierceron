@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
+	trcvutils "github.com/trimble-oss/tierceron/trcdb/util"
 	"github.com/trimble-oss/tierceron/trcx/extract"
 
 	trcdb "github.com/trimble-oss/tierceron/trcx/db"
@@ -283,7 +283,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 		if len(changedTableRowData) == 0 && err == nil && len(changedEntry) != 3 { //This change was a delete
 			syncDelete := false
-			for _, syncedTable := range coreopts.GetSyncedTables() {
+			for _, syncedTable := range coreopts.BuildOptions.GetSyncedTables() {
 				if tfContext.Flow.TableName() == syncedTable {
 					syncDelete = true
 				}
@@ -451,7 +451,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		tfContext.GoMod.Env = tfmContext.Env
 		tfContext.GoMod.Version = "0"
 
-		index, secondaryI, indexExt, indexErr := coreopts.FindIndexForService(tfContext.FlowSource, tfContext.Flow.ServiceName())
+		index, secondaryI, indexExt, indexErr := coreopts.BuildOptions.FindIndexForService(tfContext.FlowSource, tfContext.Flow.ServiceName())
 		if indexErr == nil && index != "" {
 			tfContext.GoMod.SectionName = index
 			secondaryIndexes = secondaryI

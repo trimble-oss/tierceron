@@ -5,7 +5,7 @@ import (
 	"unsafe"
 
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcdb/opts/memonly"
 )
 
 var m sync.Mutex
@@ -64,7 +64,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEn
 			goMod.Version = version
 
 			// TODO: Replace _ with secondaryIndexSlice
-			index, _, indexErr := coreopts.FindIndexForService(project, service)
+			index, _, indexErr := coreopts.BuildOptions.FindIndexForService(project, service)
 			if indexErr == nil && index != "" {
 				goMod.SectionName = index
 			}

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
-	pb "github.com/trimble-oss/tierceron/webapi/rpc/apinator"
 )
 
 // UploadTokens accepts a file directory and vault object to upload tokens to. Logs to pased logger

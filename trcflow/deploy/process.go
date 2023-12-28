@@ -15,12 +15,12 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/trcvault/carrierfactory/servercapauth"
-	"github.com/trimble-oss/tierceron/trcvault/factory"
-	"github.com/trimble-oss/tierceron/trcvault/opts/prod"
-	trcplgtool "github.com/trimble-oss/tierceron/trcvault/trcplgtoolbase"
-	trcvutils "github.com/trimble-oss/tierceron/trcvault/util"
-	"github.com/trimble-oss/tierceron/trcvault/util/repository"
+	"github.com/trimble-oss/tierceron/trcdb/carrierfactory/servercapauth"
+	"github.com/trimble-oss/tierceron/trcdb/factory"
+	"github.com/trimble-oss/tierceron/trcdb/opts/prod"
+	trcplgtool "github.com/trimble-oss/tierceron/trcdb/trcplgtoolbase"
+	trcvutils "github.com/trimble-oss/tierceron/trcdb/util"
+	"github.com/trimble-oss/tierceron/trcdb/util/repository"
 	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
 
 	eUtils "github.com/trimble-oss/tierceron/utils"
@@ -384,7 +384,7 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 		return errors.New("could not find hostname")
 	}
 
-	hostRegion := coreopts.GetRegion(hostName)
+	hostRegion := coreopts.BuildOptions.GetRegion(hostName)
 	mod.Regions = append(mod.Regions, hostRegion)
 	projects, services, _ := eUtils.GetProjectServices(cPath)
 	for _, pluginName := range pluginNameList {

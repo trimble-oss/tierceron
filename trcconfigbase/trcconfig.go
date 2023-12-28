@@ -14,7 +14,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
-	"github.com/trimble-oss/tierceron/trcvault/opts/memonly"
+	"github.com/trimble-oss/tierceron/trcdb/opts/memonly"
 	"github.com/trimble-oss/tierceron/utils"
 	eUtils "github.com/trimble-oss/tierceron/utils"
 
@@ -67,7 +67,7 @@ func receiver(configCtx *utils.ConfigContext) {
 
 var (
 	ENDDIR_DEFAULT   = "."
-	STARTDIR_DEFAULT = coreopts.GetFolderPrefix(nil) + "_templates"
+	STARTDIR_DEFAULT = coreopts.BuildOptions.GetFolderPrefix(nil) + "_templates"
 )
 
 func CommonMain(envPtr *string,
@@ -107,7 +107,7 @@ func CommonMain(envPtr *string,
 		flagset.String("secretID", "", "Secret app role ID")
 		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
 		flagset.String("appRoleID", "", "Public app role ID")
-		flagset.String("tokenName", "", "Token name used by this"+coreopts.GetFolderPrefix(nil)+"config to access the vault")
+		flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
 	}
 	startDirPtr := flagset.String("startDir", STARTDIR_DEFAULT, "Template directory")
 	endDirPtr := flagset.String("endDir", ENDDIR_DEFAULT, "Directory to put configured templates into")
@@ -115,7 +115,7 @@ func CommonMain(envPtr *string,
 	servicesWanted := flagset.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	wantCertsPtr := flagset.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	keyStorePtr := flagset.String("keystore", "", "Put certificates into this keystore file.")
-	logFilePtr := flagset.String("log", "./"+coreopts.GetFolderPrefix(nil)+"config.log", "Output path for log file")
+	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	zcPtr := flagset.Bool("zc", false, "Zero config (no configuration option).")
 	diffPtr := flagset.Bool("diff", false, "Diff files")
@@ -197,7 +197,7 @@ func CommonMain(envPtr *string,
 		}
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-		logger := log.New(f, "["+coreopts.GetFolderPrefix(nil)+"config]", log.LstdFlags)
+		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 		configBase = &eUtils.DriverConfig{Insecure: true,
 			StartDir:      append([]string{}, *startDirPtr),
 			EndDir:        *endDirPtr,

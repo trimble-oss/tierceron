@@ -27,7 +27,7 @@ func GetProjectService(config *eUtils.DriverConfig, templateFile string) (string
 	offsetBase := 0
 
 	for i, component := range splitDir {
-		if component == coreopts.GetFolderPrefix(config.StartDir)+"_templates" {
+		if component == coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates" {
 			offsetBase = i
 			break
 		}
@@ -126,7 +126,7 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 	var err error
 
 	if !config.WantCerts {
-		relativeTemplatePathParts := strings.Split(emptyFilePath, coreopts.GetFolderPrefix(config.StartDir)+"_templates")
+		relativeTemplatePathParts := strings.Split(emptyFilePath, coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates")
 		if len(relativeTemplatePathParts) == 1 {
 			config.Log.Println("Unable to split relative template path:" + relativeTemplatePathParts[0])
 		} else if len(relativeTemplatePathParts) == 0 {
@@ -172,7 +172,7 @@ func ConfigTemplate(config *eUtils.DriverConfig,
 	extra := ""
 	// Please rework... Urg...
 	for i, component := range s {
-		if component == coreopts.GetFolderPrefix(config.StartDir)+"_templates" {
+		if component == coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates" {
 			extra = ""
 			continue
 		}
@@ -219,7 +219,7 @@ func PopulateTemplate(config *eUtils.DriverConfig,
 	if config.Token != "novault" {
 		cds.Init(config, modifier, secretMode, true, project, nil, service)
 	} else {
-		rawFile, err := os.ReadFile(strings.Split(config.StartDir[0], coreopts.GetFolderPrefix(config.StartDir)+"_")[0] + coreopts.GetFolderPrefix(config.StartDir) + "_seeds/" + config.EnvRaw + "/" + config.Env + "_seed.yml")
+		rawFile, err := os.ReadFile(strings.Split(config.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(config.StartDir) + "_seeds/" + config.EnvRaw + "/" + config.Env + "_seed.yml")
 		if err != nil {
 			eUtils.LogErrorObject(config, errors.New("unable to open seed file for -novault"), false)
 		}

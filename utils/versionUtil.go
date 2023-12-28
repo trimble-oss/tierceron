@@ -166,7 +166,7 @@ func GetProjectService(templateFile string) (string, string, string) {
 	offsetBase := 0
 
 	for i, component := range splitDir {
-		if component == coreopts.GetFolderPrefix(nil)+"_templates" {
+		if component == coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates" {
 			offsetBase = i
 			break
 		}
