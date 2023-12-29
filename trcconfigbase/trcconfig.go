@@ -65,9 +65,10 @@ func receiver(configCtx *utils.ConfigContext) {
 
 }
 
+var STARTDIR_DEFAULT string
+
 var (
-	ENDDIR_DEFAULT   = "."
-	STARTDIR_DEFAULT = coreopts.BuildOptions.GetFolderPrefix(nil) + "_templates"
+	ENDDIR_DEFAULT = "."
 )
 
 func CommonMain(envPtr *string,
@@ -84,6 +85,7 @@ func CommonMain(envPtr *string,
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
+	STARTDIR_DEFAULT = coreopts.BuildOptions.GetFolderPrefix(nil) + "_templates"
 
 	configCtx := &utils.ConfigContext{
 		ResultMap:     make(map[string]*string),
