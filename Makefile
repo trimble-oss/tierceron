@@ -22,7 +22,7 @@ devplugintrcdbsha:
 devplugintrcdb: devplugintrcdbbuild devplugintrcdbsha
 
 harbingplugintrcdbbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build  -tags "insecure harbinger" -o plugins/deploy/target/trc-vault-plugin github.com/trimble-oss/tierceron/plugins/trcdb
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build  -tags "insecure" -o plugins/deploy/target/trc-vault-plugin github.com/trimble-oss/tierceron/plugins/trcdb
 harbingplugintrcdbsha:
 	sha256sum plugins/deploy/target/trc-vault-plugin | cut -d' ' -f1 > plugins/deploy/target/trc-vault-plugin.sha256
 harbingplugintrcdb: harbingplugintrcdbbuild harbingplugintrcdbsha
