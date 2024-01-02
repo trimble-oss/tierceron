@@ -56,12 +56,14 @@ trcshell:
 trcshellwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "tc windows azrcr memonly" -o $(GOBIN)/trcsh.exe github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
 
+ctl:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go install  -tags "memonly tc" github.com/trimble-oss/tierceron/cmd/trcctl
+
 fenestra:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/fenestra -tags "insecure fyneboot argosystub tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/atrium/speculatio/fenestra
 
 spiralis:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/spiralis -tags "insecure g3nboot argosystub tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/atrium/speculatio/spiralis
-
 
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
