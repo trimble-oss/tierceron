@@ -18,7 +18,7 @@ bin/trc*
 bin/api*
 bin
 .idea/
-.vscode/
+
 .DS_Store
 *.log
 trcinit/vaultfiles/azure/.terraform/
@@ -50,11 +50,12 @@ trcvault/trc_seeds/
 
 tierceron.iml
 trcvault/deploy/deploy_dev.sh
-trcgorillaz/trcdatavisualizer/__debug_bin
-trcgorillaz/ttdivisualizer/tls/mashup.*
-trcgorillaz/ttdiserver/tls/mashup.*
-trcgorillaz/ttdivisualizer/__debug_bin
-trcgorillaz/ttdiserver/__debug_bin
+atrium/speculatio/spiralis/tls/mashup.*
+atrium/speculatio/fenestra/tls/mashup.*
+atrium/speculatio/spiralis/__debug_bin
+atrium/speculatio/fenestra/__debug_bin
 
 cmd/shell/deploy/trc_seeds/*
 
+go.work*
+.vscode/*
