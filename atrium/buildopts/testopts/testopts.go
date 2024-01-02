@@ -1,7 +1,7 @@
 package testopts
 
 import (
-	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 )
 
 func GetAdditionalTestFlows() []flowcore.FlowNameType {

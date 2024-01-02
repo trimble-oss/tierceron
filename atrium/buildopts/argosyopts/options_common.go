@@ -1,12 +1,12 @@
-//go:build !argosy
-// +build !argosy
+//go:build !argosy && !tc
+// +build !argosy,!tc
 
 package argosyopts
 
 import (
 	"log"
 
-	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
 )
 

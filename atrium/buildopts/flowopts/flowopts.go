@@ -3,8 +3,8 @@ package flowopts
 import (
 	"errors"
 
-	flowcore "github.com/trimble-oss/tierceron/trcflow/core"
-	trcf "github.com/trimble-oss/tierceron/trcflow/core/flowcorehelper"
+	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 )
 
 // Flow names
@@ -30,7 +30,7 @@ func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowCo
 }
 
 func GetFlowDatabaseName() string {
-	return trcf.GetFlowDBName()
+	return flowcorehelper.GetFlowDBName()
 }
 
 // Placeholder

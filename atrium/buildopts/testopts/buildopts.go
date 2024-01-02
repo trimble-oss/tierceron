@@ -1,6 +1,6 @@
 package testopts
 
-import flowcore "github.com/trimble-oss/tierceron/trcflow/core"
+import flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 
 type Option func(*OptionsBuilder)
 
