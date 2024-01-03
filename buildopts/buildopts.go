@@ -14,7 +14,6 @@ type OptionsBuilder struct {
 	GetSupportedSourceRegions  func() []string
 	GetTestDeployConfig        func(token string) map[string]interface{}
 	ProcessPluginEnvConfig     func(pluginEnvConfig map[string]interface{}) map[string]interface{}
-	GetFlowDatabaseName        func() string
 	GetExtensionAuthComponents func(config map[string]interface{}) map[string]interface{}
 	GetSyncedTables            func() []string
 	Authorize                  func(db *sql.DB, userIdentifier string, userPassword string) (bool, string, error)
@@ -30,7 +29,6 @@ func LoadOptions() Option {
 		optionsBuilder.GetSupportedSourceRegions = GetSupportedSourceRegions
 		optionsBuilder.GetTestDeployConfig = GetTestDeployConfig
 		optionsBuilder.ProcessPluginEnvConfig = ProcessPluginEnvConfig
-		optionsBuilder.GetFlowDatabaseName = GetFlowDatabaseName
 		optionsBuilder.GetExtensionAuthComponents = GetExtensionAuthComponents
 		optionsBuilder.GetSyncedTables = GetSyncedTables
 		optionsBuilder.Authorize = Authorize
