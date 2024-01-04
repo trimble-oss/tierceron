@@ -114,7 +114,6 @@ func CommonMain(envPtr *string,
 	etag := "*" //Wildcard match on eTag, otherwise it doesn't match from command above.
 	poller, err := clientFactory.NewAPIClient().BeginCreateOrUpdate(ctx, apimConfigMap["RESOURCE_GROUP_NAME"], apimConfigMap["SERVICE_NAME"], apimConfigMap["API_NAME"], armapimanagement.APICreateOrUpdateParameter{
 		Properties: &armapimanagement.APICreateOrUpdateProperties{
-			//Path: to.Ptr("/subscriptions/" + testsuite.subscriptionId + "/resourceGroups/" + testsuite.resourceGroupName + "/providers/Microsoft.ApiManagement/service/" + testsuite.serviceName + "/apis/" + testsuite.apiId),
 			Path:                   to.Ptr(apimConfigMap["API_PATH"]), //API URL Suffix in portal
 			Format:                 to.Ptr(armapimanagement.ContentFormatOpenapiJSON),
 			Value:                  to.Ptr(openApiString),
