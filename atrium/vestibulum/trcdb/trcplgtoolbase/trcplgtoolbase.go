@@ -19,6 +19,8 @@ import (
 	trcvutils "github.com/trimble-oss/tierceron/core/util"
 	"github.com/trimble-oss/tierceron/core/util/repository"
 	eUtils "github.com/trimble-oss/tierceron/utils"
+
+	trcapimgmtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcapimgmtbase"
 )
 
 func CommonMain(envPtr *string,
@@ -78,6 +80,9 @@ func CommonMain(envPtr *string,
 	checkCopiedPtr := flagset.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
 
 	certifyInit := false
+
+	//APIM flags
+	updateAPIMPtr := flagset.Bool("updateAPIM", false, "Used to update Azure APIM")
 
 	if c == nil || !c.IsShellSubProcess {
 		args := argLines[1:]
@@ -272,6 +277,14 @@ func CommonMain(envPtr *string,
 			}
 		}
 		configBase.Regions = regions
+	}
+
+	if *updateAPIMPtr {
+		updateAPIMError := trcapimgmtbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
+		if updateAPIMError != nil {
+			fmt.Println(updateAPIMError.Error())
+		}
+		return updateAPIMError
 	}
 
 	// Get existing configs if they exist...
