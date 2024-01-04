@@ -143,37 +143,39 @@ func CommonMain(envPtr *string,
 		*pluginTypePtr = "trcshservice"
 	}
 
-	switch *pluginTypePtr {
-	case "vault": // A vault plugin
-		if c != nil {
-			// TODO: do we want to support Deployment certifications in the pipeline at some point?
-			// If so this is a config check to remove.
-			fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
-			return fmt.Errorf("plugin type %s not supported in trcsh", *pluginTypePtr)
-		}
-		if *codebundledeployPtr {
-			fmt.Printf("codebundledeploy not supported for plugin type %s in trcsh\n", *pluginTypePtr)
-			return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
-		}
+	if !*updateAPIMPtr {
+		switch *pluginTypePtr {
+		case "vault": // A vault plugin
+			if c != nil {
+				// TODO: do we want to support Deployment certifications in the pipeline at some point?
+				// If so this is a config check to remove.
+				fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
+				return fmt.Errorf("plugin type %s not supported in trcsh", *pluginTypePtr)
+			}
+			if *codebundledeployPtr {
+				fmt.Printf("codebundledeploy not supported for plugin type %s in trcsh\n", *pluginTypePtr)
+				return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
+			}
 
-	case "agent": // A deployment agent tool.
-		if c != nil {
-			// TODO: do we want to support Deployment certifications in the pipeline at some point?
-			// If so this is a config check to remove.
-			fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
-			return fmt.Errorf("plugin type %s not supported in trcsh", *pluginTypePtr)
-		}
-		if *codebundledeployPtr {
-			fmt.Printf("codebundledeploy not supported for plugin type %s in trcsh\n", *pluginTypePtr)
-			return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
-		}
-	case "trcshservice": // A trcshservice managed microservice
-	default:
-		if !*agentdeployPtr {
-			fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
-			return fmt.Errorf("unsupported plugin type: %s", *pluginTypePtr)
-		} else {
-			fmt.Printf("\nBeginning agent deployment for %s..\n", *pluginNamePtr)
+		case "agent": // A deployment agent tool.
+			if c != nil {
+				// TODO: do we want to support Deployment certifications in the pipeline at some point?
+				// If so this is a config check to remove.
+				fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
+				return fmt.Errorf("plugin type %s not supported in trcsh", *pluginTypePtr)
+			}
+			if *codebundledeployPtr {
+				fmt.Printf("codebundledeploy not supported for plugin type %s in trcsh\n", *pluginTypePtr)
+				return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
+			}
+		case "trcshservice": // A trcshservice managed microservice
+		default:
+			if !*agentdeployPtr {
+				fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
+				return fmt.Errorf("unsupported plugin type: %s", *pluginTypePtr)
+			} else {
+				fmt.Printf("\nBeginning agent deployment for %s..\n", *pluginNamePtr)
+			}
 		}
 	}
 
