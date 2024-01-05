@@ -1,4 +1,4 @@
-package main
+package trcshbase
 
 import (
 	"bytes"
@@ -23,14 +23,10 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/deployutil"
 	kube "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshauth"
-	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
-	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/buildopts/tcopts"
-	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/capauth"
 	"github.com/trimble-oss/tierceron/core/util"
 	"github.com/trimble-oss/tierceron/trcconfigbase"
@@ -198,19 +194,31 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 
 // This is a controller program that can act as any command line utility.
 // The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
-func main() {
+
+func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
+	secretIDPtr *string,
+	appRoleIDPtr *string,
+	flagset *flag.FlagSet,
+	argLines []string,
+	c *eUtils.DriverConfig) error {
+
+	if flagset == nil {
+		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		flagset.Usage = func() {
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			flagset.PrintDefaults()
+		}
+		flagset.String("env", "dev", "Environment to configure")
+		flagset.String("addr", "", "API endpoint for the vault")
+		flagset.String("secretID", "", "Public app role ID")
+		flagset.String("appRoleID", "", "Secret app role ID")
+	}
+
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
-	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
-	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
-	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
-	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
-	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
-	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 	eUtils.InitHeadless(true)
-	fmt.Println("trcsh Version: " + "1.24")
-	var envPtr, regionPtr, trcPathPtr, appRoleIDPtr, secretIDPtr *string
+	var regionPtr, trcPathPtr *string
 	// Initiate signal handling.
 	var ic chan os.Signal = make(chan os.Signal, 5)
 
@@ -240,11 +248,8 @@ func main() {
 				os.Args[1] = "-c=" + os.Args[1]
 			}
 		}
-		envPtr = flag.String("env", "", "Environment to be processed")   //If this is blank -> use context otherwise override context.
-		regionPtr = flag.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
-		trcPathPtr = flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
-		appRoleIDPtr = flag.String("appRoleID", "", "Public app role ID")
-		secretIDPtr = flag.String("secretID", "", "App role secret")
+		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
+		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 		flag.Parse()
 
 		if len(*appRoleIDPtr) == 0 {
@@ -271,11 +276,8 @@ func main() {
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
 
-		envPtr := flag.String("env", "", "Environment to configure")
-		regionPtr = flag.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
-		trcPathPtr = flag.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
-		appRoleIDPtr = flag.String("appRoleID", "", "Public app role ID")
-		secretIDPtr = flag.String("secretID", "", "App role secret")
+		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
+		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 		flag.Parse()
 
 		if len(deployments) == 0 {
@@ -327,6 +329,7 @@ func main() {
 
 		<-shutdown
 	}
+	return nil
 }
 
 var interruptChan chan os.Signal = make(chan os.Signal, 5)
@@ -927,6 +930,7 @@ collaboratorReRun:
 	//Make the arguments in the script -> os.args.
 
 }
+
 func ResetModifier(config *eUtils.DriverConfig) {
 	//Resetting modifier cache to be used again.
 	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
