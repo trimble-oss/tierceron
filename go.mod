@@ -24,7 +24,6 @@ require (
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible
-	github.com/trimble-oss/tierceron-hat v0.0.0-20231220141246-26dd2d238664
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 
 )
@@ -57,6 +56,7 @@ require (
 require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
+	github.com/trimble-oss/tierceron-hat v0.0.0-20240105173112-8eae141c3201 // indirect
 )
 
 require (
