@@ -250,7 +250,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
-		flag.Parse()
+		flagset.Parse(argLines[1:])
 
 		if len(*appRoleIDPtr) == 0 {
 			*appRoleIDPtr = os.Getenv("DEPLOY_ROLE")
@@ -278,7 +278,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
-		flag.Parse()
+		flagset.Parse(argLines[1:])
 
 		if len(deployments) == 0 {
 			fmt.Println("trcsh on windows requires a DEPLOYMENTS.")
