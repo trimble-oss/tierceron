@@ -80,7 +80,7 @@ func CommonMain(envPtr *string,
 
 	if !strings.Contains(openApiString, `"openapi":"3.0.3","servers": [{"url":"`+apimConfigMap["API_URL"]+`"}]`) {
 		openApiString = strings.Replace(openApiString, `"openapi":"3.0.3"`, `"openapi":"3.0.3","servers":[{"url":"`+apimConfigMap["API_URL"]+`"}]`, 1)
-		if !strings.Contains(openApiString, `"openapi":"3.0.3","servers": [{"url":"`+apimConfigMap["API_URL"]+`"}]`) {
+		if !strings.Contains(openApiString, apimConfigMap["API_URL"]) {
 			return errors.New("Unable to insert server url into apim update.")
 		}
 	}
