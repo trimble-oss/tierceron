@@ -37,7 +37,7 @@ func main() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
 		flagset.PrintDefaults()
 	}
-	envPtr := flagset.String("env", "dev", "Environment to configure")
+	envPtr := flag.String("env", "", "Environment to be processed") //If this is blank -> use context otherwise override context.
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	secretIDPtr := flagset.String("secretID", "", "Public app role ID")
 	appRoleIDPtr := flagset.String("appRoleID", "", "Secret app role ID")
