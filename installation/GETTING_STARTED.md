@@ -6,10 +6,10 @@ be trivial to do.
 
 # Prerequisites
 You must have 4 basic tools installed either via the Makefile or via:
-go get github.com/trimble-oss/tierceron/cmd/trcpub
-go get github.com/trimble-oss/tierceron/cmd/trcx
-go get github.com/trimble-oss/tierceron/cmd/trcinit
-go get github.com/trimble-oss/tierceron/cmd/trcconfig
+go install github.com/trimble-oss/tierceron/cmd/trcpub@latest
+go install github.com/trimble-oss/tierceron/cmd/trcx@latest
+go install github.com/trimble-oss/tierceron/cmd/trcinit@latest
+go install github.com/trimble-oss/tierceron/cmd/trcconfig@latest
 
 # Installation order
 1. trccloud -- cloud infrastructure including an installation of vault. (Optional if you chose manual installation of vault or installation of local vault)
