@@ -1,0 +1,6 @@
+policies: ["vault_token_azuredeploy"]
+metadata:
+  user : "Azure Deploy"
+
+ttl:  "43800h"
+display_name: "Azure Deploy Token"
