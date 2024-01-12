@@ -64,7 +64,10 @@ func CommonMain(envPtr *string,
 		apimConfigMap[fmt.Sprintf("%v", key)] = fmt.Sprintf("%v", value)
 	}
 
-	swaggerDoc.Info.Title = apimConfigMap["API_TITLE"]
+	if title, titleOK := apimConfigMap["API_TITLE"]; titleOK && title != "" {
+		swaggerDoc.Info.Title = apimConfigMap["API_TITLE"]
+	}
+
 	openapi, convertErr := openapi2conv.ToV3(&swaggerDoc)
 	if convertErr != nil {
 		return convertErr
