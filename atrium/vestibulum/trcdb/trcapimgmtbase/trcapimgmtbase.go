@@ -52,16 +52,6 @@ func CommonMain(envPtr *string,
 		return swaggerErr
 	}
 
-	openapi, convertErr := openapi2conv.ToV3(&swaggerDoc)
-	if convertErr != nil {
-		return convertErr
-	}
-
-	validateErr := openapi.Validate(context.Background())
-	if validateErr != nil {
-		return validateErr
-	}
-
 	apimConfigMap := make(map[string]string)
 	tempMap, readErr := mod.ReadData("super-secrets/Restricted/APIMConfig/config")
 	if readErr != nil {
@@ -72,6 +62,17 @@ func CommonMain(envPtr *string,
 
 	for key, value := range tempMap {
 		apimConfigMap[fmt.Sprintf("%v", key)] = fmt.Sprintf("%v", value)
+	}
+
+	swaggerDoc.Info.Title = apimConfigMap["API_TITLE"]
+	openapi, convertErr := openapi2conv.ToV3(&swaggerDoc)
+	if convertErr != nil {
+		return convertErr
+	}
+
+	validateErr := openapi.Validate(context.Background())
+	if validateErr != nil {
+		return validateErr
 	}
 
 	openapiByteArray, err := json.Marshal(openapi)
@@ -96,7 +97,7 @@ func CommonMain(envPtr *string,
 		return err
 	}
 
-	ctx := context.Background()
+	ctx, ctxCancel := context.WithCancel(context.Background())
 	clientFactory, err := armapimanagement.NewClientFactory(apimConfigMap["SUBSCRIPTION_ID"], svc, nil)
 	if err != nil {
 		c.Log.Fatalf("failed to create client: %v", err)
@@ -124,6 +125,13 @@ func CommonMain(envPtr *string,
 		c.Log.Fatalf("failed to finish the request: %v", err)
 		return err
 	}
+
+	//Adding a 3 minute timeout on APIM Update.
+	go func(ctxC context.CancelFunc) {
+		time.Sleep(time.Second * 120)
+		ctxC()
+	}(ctxCancel)
+
 	resp, err := poller.PollUntilDone(ctx, nil)
 	if err != nil {
 		c.Log.Fatalf("failed to pull the result: %v", err)

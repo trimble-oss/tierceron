@@ -285,8 +285,9 @@ func CommonMain(envPtr *string,
 		updateAPIMError := trcapimgmtbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
 		if updateAPIMError != nil {
 			fmt.Println(updateAPIMError.Error())
+			fmt.Println("Couldn't update APIM...proceeding with build")
 		}
-		return updateAPIMError
+		return nil
 	}
 
 	// Get existing configs if they exist...
