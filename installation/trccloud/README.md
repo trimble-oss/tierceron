@@ -21,6 +21,8 @@ After running trcx -certs, a certs folder will appear under trc_seeds with place
 You'll want to replace these placeholder files with the real thing.
 
 # Generate terraform script files.
+mkdir trc_seeds
+trcx -env=dev -novault
 trcconfig -env=dev -novault
 
 # Generate your infrastructure.
