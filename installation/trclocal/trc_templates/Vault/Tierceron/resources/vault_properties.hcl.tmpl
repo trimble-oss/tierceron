@@ -1,5 +1,5 @@
 storage "file" {
-    path = "./vault/data"
+    path = "./vault_data/data"
     max_entry_size = 16777216
 }
 
@@ -18,15 +18,15 @@ listener "tcp" {
    address = "127.0.0.1:{{.hostport}}"
    tls_disable = "false"
 
-   tls_cert_file = "/usr/local/vault/certs/serv_cert.pem"
-   tls_key_file = "/usr/local/vault/certs/serv_key.pem"
+   tls_cert_file = "/usr/local/vault/certs/cert.pem"
+   tls_key_file = "/usr/local/vault/certs/key.pem"
 }
 
 listener "tcp" {
     address     = "{{.vault_ip}}:{{.hostport}}"
     tls_disable = "false"
-    tls_cert_file = "/usr/local/vault/certs/serv_cert.pem"
-    tls_key_file = "/usr/local/vault/certs/serv_key.pem"
+    tls_cert_file = "/usr/local/vault/certs/cert.pem"
+    tls_key_file = "/usr/local/vault/certs/key.pem"
 }
 disable_mlock = false
 ui = false
