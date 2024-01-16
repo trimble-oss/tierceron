@@ -100,8 +100,12 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	diffTimeout := false
 	timeOut := time.Now().Add(time.Minute * 1)
 	if stringA == nil || stringB == nil {
-		fmt.Println("A null string was found while diffing")
-		return ""
+		if stringA == nil {
+			stringA = new(string)
+		}
+		if stringB == nil {
+			stringB = new(string)
+		}
 	}
 	diffs := dmp.DiffBisect(*stringA, *stringB, timeOut)
 	diffs = dmp.DiffCleanupSemantic(diffs)
@@ -366,8 +370,7 @@ func RemoveDuplicateValues(intSlice []string) []string {
 func DiffHelper(configCtx *ConfigContext, config bool) {
 	fileIndex := 0
 	keys := []string{}
-	configCtx.Mutex.Lock()
-	if len(configCtx.ResultMap) == 0 {
+	if configCtx.ResultMap.Count() == 0 {
 		fmt.Println("Couldn't find any data to diff")
 		return
 	}
@@ -404,17 +407,16 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 	}
 
 	fileList := make([]string, configCtx.DiffFileCount)
-	configCtx.Mutex.Unlock()
 
 	sleepCount := 0
-	if len(configCtx.ResultMap) != int(configCtx.DiffFileCount) {
+	if configCtx.ResultMap.Count() != int(configCtx.DiffFileCount) {
 		for {
 			time.Sleep(time.Second)
 			sleepCount++
 			if sleepCount >= 5 {
 				fmt.Println("Timeout: Attempted to wait for remaining configs to come in. Attempting incomplete diff.")
 				break
-			} else if len(configCtx.ResultMap) == int(configCtx.DiffFileCount)*configCtx.EnvLength {
+			} else if configCtx.ResultMap.Count() == int(configCtx.DiffFileCount)*configCtx.EnvLength {
 				break
 			}
 		}
@@ -422,7 +424,8 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 
 	if config {
 		//Make fileList
-		for key := range configCtx.ResultMap {
+
+		for _, key := range configCtx.ResultMap.Keys() {
 			found := false
 			keySplit := strings.Split(key, "||")
 
@@ -476,20 +479,26 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 		keyB := keys[1]
 		keySplitA := strings.Split(keyA, "||")
 		keySplitB := strings.Split(keyB, "||")
-		configCtx.Mutex.Lock()
 
 		sortedKeyA := keyA
 		sortedKeyB := keyB
-		if _, ok := configCtx.ResultMap[sortedKeyA]; !ok {
+		if _, ok := configCtx.ResultMap.Get(sortedKeyA); !ok {
 			sortedKeyA = "||" + keySplitA[1]
 		}
-		if _, ok := configCtx.ResultMap[sortedKeyB]; !ok {
+		if _, ok := configCtx.ResultMap.Get(sortedKeyB); !ok {
 			sortedKeyB = "||" + keySplitB[1]
 		}
 
-		envFileKeyA := configCtx.ResultMap[sortedKeyA]
-		envFileKeyB := configCtx.ResultMap[sortedKeyB]
-		configCtx.Mutex.Unlock()
+		var envFileKeyA *string
+		var ok bool
+		if envFileKeyA, ok = configCtx.ResultMap.Get(sortedKeyA); !ok {
+			envFileKeyA = new(string)
+		}
+
+		var envFileKeyB *string
+		if envFileKeyB, ok = configCtx.ResultMap.Get(sortedKeyB); !ok {
+			envFileKeyB = new(string)
+		}
 
 		latestVersionACheck := strings.Split(keySplitA[0], "_")
 		if len(latestVersionACheck) > 1 && latestVersionACheck[1] == "0" {
@@ -515,10 +524,17 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 			keyD := keys[3]
 			keySplitC := strings.Split(keyC, "||")
 			keySplitD := strings.Split(keyD, "||")
-			configCtx.Mutex.Lock()
-			envFileKeyC := configCtx.ResultMap[keyC]
-			envFileKeyD := configCtx.ResultMap[keyD]
-			configCtx.Mutex.Unlock()
+
+			var ok bool
+			var envFileKeyC *string
+			if envFileKeyC, ok = configCtx.ResultMap.Get(keyC); !ok {
+				envFileKeyC = new(string)
+			}
+
+			var envFileKeyD *string
+			if envFileKeyD, ok = configCtx.ResultMap.Get(keyD); !ok {
+				envFileKeyD = new(string)
+			}
 
 			latestVersionCCheck := strings.Split(keySplitC[0], "_")
 			if len(latestVersionCCheck) > 1 && latestVersionCCheck[1] == "0" {
@@ -554,9 +570,7 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 		case 3:
 			keyC := keys[2]
 			keySplitC := strings.Split(keyC, "||")
-			configCtx.Mutex.Lock()
-			envFileKeyC := configCtx.ResultMap[keyC]
-			configCtx.Mutex.Unlock()
+			envFileKeyC, _ := configCtx.ResultMap.Get(keyC)
 
 			latestVersionCCheck := strings.Split(keySplitC[0], "_")
 			if len(latestVersionCCheck) > 1 && latestVersionCCheck[1] == "0" {

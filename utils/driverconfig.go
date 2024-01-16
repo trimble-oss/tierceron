@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/go-git/go-billy/v5"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -25,7 +26,7 @@ type ResultData struct {
 }
 
 type ConfigContext struct {
-	ResultMap            map[string]*string
+	ResultMap            cmap.ConcurrentMap[string, *string]
 	EnvSlice             []string
 	ProjectSectionsSlice []string
 	ResultChannel        chan *ResultData
@@ -33,7 +34,6 @@ type ConfigContext struct {
 	DiffFileCount        int32
 	EnvLength            int
 	ConfigWg             sync.WaitGroup
-	Mutex                *sync.Mutex
 }
 
 func (cfgContext *ConfigContext) SetDiffFileCount(cnt int) {

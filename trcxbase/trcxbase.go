@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
@@ -33,9 +34,7 @@ func receiver(configCtx *utils.ConfigContext) {
 		select {
 		case data := <-configCtx.ResultChannel:
 			if data != nil && data.InData != nil && data.InPath != "" {
-				configCtx.Mutex.Lock()
-				configCtx.ResultMap[data.InPath] = data.InData
-				configCtx.Mutex.Unlock()
+				configCtx.ResultMap.Set(data.InPath, data.InData)
 			}
 		}
 	}
@@ -111,13 +110,12 @@ func CommonMain(ctx eUtils.ProcessContext,
 
 	flagset.Parse(argLines[1:])
 	configCtx := &utils.ConfigContext{
-		ResultMap:            make(map[string]*string),
+		ResultMap:            cmap.New[*string](),
 		EnvSlice:             make([]string, 0),
 		ProjectSectionsSlice: make([]string, 0),
 		ResultChannel:        make(chan *utils.ResultData, 5),
 		FileSysIndex:         -1,
 		ConfigWg:             sync.WaitGroup{},
-		Mutex:                &sync.Mutex{},
 	}
 
 	config := &eUtils.DriverConfig{ExitOnFailure: true, Insecure: *insecurePtr}
@@ -747,17 +745,14 @@ skipDiff:
 			defer waitg.Done()
 			retry := 0
 			for {
-				cctx.Mutex.Lock()
-				if len(cctx.ResultMap) == len(cctx.EnvSlice)*len(sectionSlice) || retry == 3 {
-					cctx.Mutex.Unlock()
+				if cctx.ResultMap.Count() == len(cctx.EnvSlice)*len(sectionSlice) || retry == 3 {
 					break
 				}
-				cctx.Mutex.Unlock()
 				time.Sleep(time.Duration(time.Second))
 				retry++
 			}
 			configCtx.FileSysIndex = -1
-			cctx.SetDiffFileCount(len(configCtx.ResultMap) / configCtx.EnvLength)
+			cctx.SetDiffFileCount(configCtx.ResultMap.Count() / configCtx.EnvLength)
 			eUtils.DiffHelper(cctx, false)
 		}(configCtx)
 	}
