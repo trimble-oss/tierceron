@@ -35,3 +35,11 @@ confidential_vars.tf
 variables.tf
 trc_seeds
 
+agent_setup.sh
+bootstrap/*
+deploy/*
+importrg.sh
+main.tf
+outputs.tf
+providers.tf
+scripts/*

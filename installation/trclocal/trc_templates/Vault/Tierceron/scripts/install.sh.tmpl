@@ -1,0 +1,25 @@
+#!/bin/bash -e
+
+# Using heredoc '<<'' in terraform doesn't
+# allow for terraform variable substitution.
+# it's neccessary to insert '<<' as a variable
+# to add the host and host port to the script.
+# ${write_service} serves this purpose.
+cat << EOF >/tmp/upstart
+[Unit]
+Description=Vault Service
+After=systemd-user-sessions.service
+[Service]
+
+Type=simple
+Environment="VAULT_API_ADDR=https://{{.vault_ip}}:{{.hostport}}"
+Environment="GOMAXPROCS=$(nproc)"
+ExecStart=/usr/local/vault/vault server -config /usr/local/vault/vault_properties.hcl
+LimitMEMLOCK=infinity
+
+#end script
+EOF
+sudo mv /tmp/upstart /lib/systemd/system/vault.service
+
+# Start Vault
+#sudo service vault start
