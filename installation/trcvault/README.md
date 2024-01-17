@@ -3,13 +3,12 @@ The installation folder for trcdb.  This is responsible for setting up the initi
 need to manage your vault.
 
 # Prerequisites
-This assumes the existence of a machine or virtual machine (in the cloud) with a reachable ip address
-and host name.
+This assumes the existence of a machine or virtual machine (in the cloud) with a reachable ip address and host name.  You should have run either trclocal or trccloud by this point.
 
 # Build initial vault.
-Current version of vault: vault 1.3.6 (downloadable here: https://releases.hashicorp.com/vault/1.3.6/)
-
 trcinit -new -namespace=vault -addr=https://<vaulthost:vaultport> -totalKeys=3 -unsealKeys=2 > tokens.txt
+
+Note, for local development installs where you may be using a self signed certificate, you can use the --insecure flag to give "flexibility" on certificate validation, meaning you want encrypted communication, but you are flexible on the validation of the certificate.
 
 # Additional helpful commands
 For reference, the default token namespaces provided are as follows..
@@ -21,6 +20,4 @@ vault - Env based tokens.
 trcinit -tokenExpiration -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 
 # Rotate tokens in provided namespace.
-trcinit -rotateTokens -namespace=rest -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
-
-
+trcinit -rotateTokens -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
