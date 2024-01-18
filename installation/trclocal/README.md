@@ -41,6 +41,16 @@ sudo service vault start
 
 Continue with the trcvault step to initialize vault and set up some tokens for utilization.
 
+# Rebooting vault (requires unseal)
+You'll need to run the following command once for each unseal key you set up...
+
+VAULT_ADDR=https://<vaulthost:vaultport> /usr/local/vault/vault operator unseal
+
+Note, for local development installs where you may be using a self signed certificate, you can use the --tls-skip-verify
+
+# Confirm vault running
+You can enter https://<vaulthost:vaultport>/v1/sys/health in your browser to confirm vault is running.
+
 # Optional: later, after initializing trcvault, you can perform this step: Publish terraform seed data to vault.
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -indexed=TrcVault
 trcinit -env=dev -certs -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
