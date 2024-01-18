@@ -14,7 +14,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // This is a controller program that can act as any command line utility.

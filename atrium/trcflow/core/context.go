@@ -23,12 +23,12 @@ import (
 
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
-	trcvutils "github.com/trimble-oss/tierceron/core/util"
-	"github.com/trimble-oss/tierceron/trcx/extract"
-	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
+	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
+	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
+	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 
-	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
 	sqlee "github.com/dolthub/go-mysql-server/sql/expression"

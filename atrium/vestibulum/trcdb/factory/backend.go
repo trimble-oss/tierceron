@@ -17,8 +17,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	trcvutils "github.com/trimble-oss/tierceron/core/util"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 

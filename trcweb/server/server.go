@@ -9,9 +9,9 @@ import (
 	"os/exec"
 	"strings"
 
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
-	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
 
 	gql "github.com/graphql-go/graphql"
 )

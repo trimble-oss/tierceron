@@ -13,7 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
-	"github.com/trimble-oss/tierceron/trcconfigbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose

@@ -3,7 +3,7 @@ package xencryptopts
 import (
 	"errors"
 
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 //	"time"

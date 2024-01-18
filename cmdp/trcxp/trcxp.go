@@ -12,8 +12,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
-	"github.com/trimble-oss/tierceron/trcx/xutil"
-	"github.com/trimble-oss/tierceron/trcxbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
+	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 )
 
 // This executable automates the creation of seed files from template file(s).

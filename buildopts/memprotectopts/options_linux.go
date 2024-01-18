@@ -6,7 +6,7 @@ package memprotectopts
 import (
 	"log"
 
-	"github.com/trimble-oss/tierceron/utils/mlock"
+	"github.com/trimble-oss/tierceron/pkg/utils/mlock"
 )
 
 func MemProtectInit(logger *log.Logger) error {

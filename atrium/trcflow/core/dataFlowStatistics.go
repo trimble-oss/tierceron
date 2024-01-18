@@ -13,12 +13,12 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	tcopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
-	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"time"
 
-	trcvutils "github.com/trimble-oss/tierceron/core/util"
+	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 
 	dfssql "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/flowsql"
 
@@ -753,7 +753,7 @@ func (dfs *TTDINode) StatisticToMap(mod *kv.Modifier, dfst *TTDINode, enrichLast
 // 	"log"
 // 	"strconv"
 // 	"strings"
-// 	"github.com/trimble-oss/tierceron/vaulthelper/kv"
+// 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 // 	"time"
 
 // 	"github.com/trimble-oss/tierceron-nute/mashupsdk"

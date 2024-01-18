@@ -6,12 +6,12 @@ import (
 
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
-	trcvutils "github.com/trimble-oss/tierceron/core/util"
-	"github.com/trimble-oss/tierceron/trcx/extract"
+	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
+	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 const (

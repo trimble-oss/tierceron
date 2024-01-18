@@ -12,8 +12,8 @@ import (
 
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/capauth"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/pkg/capauth"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
