@@ -10,7 +10,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 	util "github.com/trimble-oss/tierceron/atrium/trcflow/core"
-	"github.com/trimble-oss/tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	//	"time"
 )
 
