@@ -12,7 +12,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 var signalChannel chan os.Signal

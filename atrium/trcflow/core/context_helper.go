@@ -7,12 +7,12 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	trcvutils "github.com/trimble-oss/tierceron/core/util"
-	"github.com/trimble-oss/tierceron/trcx/extract"
+	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
+	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
 )

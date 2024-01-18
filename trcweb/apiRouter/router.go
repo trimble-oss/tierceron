@@ -10,9 +10,9 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	twp "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 	"github.com/trimble-oss/tierceron/trcweb/server"
-	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	jwt "github.com/golang-jwt/jwt"
 	rtr "github.com/julienschmidt/httprouter"

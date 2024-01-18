@@ -15,12 +15,12 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
-	"github.com/trimble-oss/tierceron/trcconfigbase"
-	trcinitbase "github.com/trimble-oss/tierceron/trcinitbase"
-	"github.com/trimble-oss/tierceron/trcpubbase"
-	"github.com/trimble-oss/tierceron/trcsubbase"
-	"github.com/trimble-oss/tierceron/trcx/xutil"
-	"github.com/trimble-oss/tierceron/trcxbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
+	trcinitbase "github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
+	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 )
 
 const configDir = "/.tierceron/config.yml"

@@ -14,16 +14,16 @@ import (
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
-	trcvutils "github.com/trimble-oss/tierceron/core/util"
+	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
-	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
+	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )

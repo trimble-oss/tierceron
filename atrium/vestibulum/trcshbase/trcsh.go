@@ -27,14 +27,14 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/capauth"
-	"github.com/trimble-oss/tierceron/core/util"
-	"github.com/trimble-oss/tierceron/trcconfigbase"
-	"github.com/trimble-oss/tierceron/trcpubbase"
-	"github.com/trimble-oss/tierceron/trcsubbase"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/pkg/capauth"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
+	"github.com/trimble-oss/tierceron/pkg/core/util"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 var gAgentConfig *capauth.AgentConfigs = nil
