@@ -13,7 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
-	"github.com/trimble-oss/tierceron/trcsubbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 )
 
 // Reads in template files in specified directory

@@ -7,7 +7,7 @@ import (
 	"log"
 
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
-	"github.com/trimble-oss/tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {

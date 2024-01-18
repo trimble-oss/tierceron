@@ -17,8 +17,8 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	eUtils "github.com/trimble-oss/tierceron/utils"
-	"github.com/trimble-oss/tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 func CommonMain(envPtr *string,

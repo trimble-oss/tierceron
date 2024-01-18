@@ -10,8 +10,8 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 
-	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )

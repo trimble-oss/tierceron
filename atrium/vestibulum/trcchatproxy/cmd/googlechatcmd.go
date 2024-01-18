@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/trimble-oss/tierceron/trcchatproxy/pubsub"
 	"github.com/trimble-oss/tierceron/trcchatproxy/trcchat"

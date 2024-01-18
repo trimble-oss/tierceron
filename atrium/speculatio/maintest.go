@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // This executable automates the creation of seed files from template file(s).

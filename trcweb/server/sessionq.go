@@ -8,8 +8,8 @@ import (
 	"net/http"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
-	eUtils "github.com/trimble-oss/tierceron/utils"
 )
 
 // ProxyLogin proxy logs in the user.

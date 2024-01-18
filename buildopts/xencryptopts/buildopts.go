@@ -1,6 +1,6 @@
 package xencryptopts
 
-import eUtils "github.com/trimble-oss/tierceron/utils"
+import eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 type Option func(*OptionsBuilder)
 

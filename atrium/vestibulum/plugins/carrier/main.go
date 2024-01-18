@@ -18,7 +18,7 @@ import (
 	memonly "github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"

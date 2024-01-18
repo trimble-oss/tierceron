@@ -3,9 +3,9 @@ package harbingeropts
 import (
 	"strings"
 
-	"github.com/trimble-oss/tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 func GetFolderPrefix(custom []string) string {

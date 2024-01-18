@@ -19,12 +19,12 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	trcplgtool "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	trcvutils "github.com/trimble-oss/tierceron/core/util"
-	"github.com/trimble-oss/tierceron/core/util/repository"
-	sys "github.com/trimble-oss/tierceron/vaulthelper/system"
+	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
+	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
+	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 
-	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	//"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
