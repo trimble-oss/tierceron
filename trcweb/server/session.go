@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron/buildopts"
-	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 

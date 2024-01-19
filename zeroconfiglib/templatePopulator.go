@@ -5,9 +5,9 @@ import (
 
 	"encoding/base64"
 
-	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
-	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 import (
 	"log"

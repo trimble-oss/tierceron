@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"net/http"
 
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
-	eUtils "github.com/trimble-oss/tierceron/utils"
 
 	"github.com/graphql-go/graphql"
 )

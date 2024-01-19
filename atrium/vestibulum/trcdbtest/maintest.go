@@ -9,7 +9,7 @@ import (
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // This executable automates the creation of seed files from template file(s).

@@ -12,8 +12,8 @@ import (
 
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
-	"github.com/trimble-oss/tierceron/capauth"
-	"github.com/trimble-oss/tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/pkg/capauth"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
 )
 

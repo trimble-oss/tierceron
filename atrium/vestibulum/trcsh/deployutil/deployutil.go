@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/trimble-oss/tierceron/capauth"
-	vcutils "github.com/trimble-oss/tierceron/trcconfigbase/utils"
-	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/pkg/capauth"
+	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 // Loads a plugin's deploy.trc script directly from vault.

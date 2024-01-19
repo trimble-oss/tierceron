@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/atrium/trcdb/engine"
-	eUtils "github.com/trimble-oss/tierceron/utils"
-	helperkv "github.com/trimble-oss/tierceron/vaulthelper/kv"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	sqlememory "github.com/dolthub/go-mysql-server/memory"

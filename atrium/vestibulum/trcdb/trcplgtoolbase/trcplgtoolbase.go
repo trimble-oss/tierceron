@@ -16,9 +16,9 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	trcvutils "github.com/trimble-oss/tierceron/core/util"
-	"github.com/trimble-oss/tierceron/core/util/repository"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
+	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	trcapimgmtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcapimgmtbase"
 )

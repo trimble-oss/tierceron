@@ -4,8 +4,8 @@ import (
 	"os"
 
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
-	"github.com/trimble-oss/tierceron/trcx/xutil"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // GenerateSeedsFromVaultToDb pulls all data from vault for each template into a database

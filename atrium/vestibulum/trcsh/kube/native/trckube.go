@@ -28,8 +28,8 @@ import (
 	"github.com/go-git/go-billy/v5"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/path"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/trccreate"
-	"github.com/trimble-oss/tierceron/capauth"
-	eUtils "github.com/trimble-oss/tierceron/utils"
+	"github.com/trimble-oss/tierceron/pkg/capauth"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 const (
