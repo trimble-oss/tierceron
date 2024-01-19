@@ -64,7 +64,10 @@ trcpub -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -certs
 
-Clean up locally stored secrets (Recommended but not required):
+# Test your configs are in vault.
+trcconfig -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport> -insecure 
+
+# Clean up locally stored secrets (Recommended but not required):
 rm -r trc_seeds/dev
 rm -r trc_seeds/certs
 rm -r resources
