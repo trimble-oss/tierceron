@@ -14,7 +14,15 @@ sudo mkdir /usr/local/vault/vault_data
 
 Download current version of vault: vault 1.3.6 (downloadable here: https://releases.hashicorp.com/vault/1.3.6/)
 Unzip it and copy the vault executable to /usr/local/vault
-sudo cp vault /usr/local/vault/vault
+
+curl -L "https://releases.hashicorp.com/vault/1.3.6/vault_1.3.6_linux_amd64.zip" > /tmp/vault.zip
+cd /tmp
+sudo unzip vault.zip
+sudo mkdir -p /usr/local/vault
+sudo mv vault /usr/local/vault/vault
+sudo chmod 0700 /usr/local/vault/vault
+sudo chown root:root /usr/local/vault/vault
+sudo setcap cap_ipc_lock=+ep /usr/local/vault/vault
 
 # Generating empty seed files
 mkdir trc_seeds
@@ -56,7 +64,10 @@ trcpub -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -certs
 
-Clean up locally stored secrets (Recommended but not required):
+# Test your configs are in vault.
+trcconfig -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport> -insecure 
+
+# Clean up locally stored secrets (Recommended but not required):
 rm -r trc_seeds/dev
 rm -r trc_seeds/certs
 rm -r resources
