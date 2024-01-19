@@ -19,3 +19,15 @@ func CheckIncomingAliasColumnName(col string) bool {
 func GetTrcDbUrl(data map[string]interface{}) string {
 	return ""
 }
+
+func GetArgosIdByArgosIdentifier(dbname string, argosDbName string, argosId string) string {
+	return ""
+}
+
+func GetDatabaseName() string {
+	return ""
+}
+
+func GetArgosIdTableName() string {
+	return ""
+}
