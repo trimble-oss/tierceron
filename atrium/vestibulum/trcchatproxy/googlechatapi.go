@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/trimble-oss/tierceron/trcchatproxy/pubsub"
-	"github.com/trimble-oss/tierceron/trcchatproxy/trcchat"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/pubsub"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/trcchat"
 	"google.golang.org/api/chat/v1"
 )
 
