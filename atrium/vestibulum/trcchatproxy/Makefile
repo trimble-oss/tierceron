@@ -6,4 +6,4 @@ askflume:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/trcchatproxy -tags "insecure tc" github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/cmd
 
 askflumeserver:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/trcchatserver -tags "insecure tc" github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/trcchatserver -tags "insecure tc" github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/trcchat
