@@ -34,6 +34,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
+	github.com/trimble-oss/tierceron-hat v0.0.0-20240105173112-8eae141c3201
 )
 
 require (
@@ -54,21 +55,8 @@ require (
 )
 
 require (
-	cloud.google.com/go/compute v1.23.0 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/google/s2a-go v0.1.7 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.3.1 // indirect
-	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
-	github.com/trimble-oss/tierceron-hat v0.0.0-20240105173112-8eae141c3201 // indirect
-	github.com/trimble-oss/tierceron-nute v0.0.0-20231215170009-f41bd163ccda // indirect
-	github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy v0.0.0-20240123162712-8a60a82ce60d // indirect
-	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/oauth2 v0.12.0 // indirect
-	google.golang.org/api v0.145.0 // indirect
-	google.golang.org/appengine v1.6.7 // indirect
 )
 
 require (
