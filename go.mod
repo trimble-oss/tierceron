@@ -34,6 +34,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
+	github.com/trimble-oss/tierceron-hat v0.0.0-20240105173112-8eae141c3201
 )
 
 require (
@@ -56,7 +57,6 @@ require (
 require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
-	github.com/trimble-oss/tierceron-hat v0.0.0-20240105173112-8eae141c3201 // indirect
 )
 
 require (
