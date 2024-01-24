@@ -65,7 +65,8 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		return err
 	}
 
-	if ok, err := servercapauth.ValidatePathSha(goMod, pluginConfig, logger); true || ok {
+	if ok, err := servercapauth.ValidatePathSha(goMod, pluginConfig, logger); ok {
+		// Only start up if trcsh is up to date....
 		onceAuth.Do(func() {
 			if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
 				// Ensure only dev is the cap auth...
@@ -82,9 +83,10 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 
 				servercapauth.Memorize(pluginConfig, logger)
 
-				// TODO: Support variables for different environments...
 				// Not really clear how cap auth would do this...
-				go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+				if featherAuth != nil {
+					go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+				}
 				logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
 				gCapInitted = true
 			}
