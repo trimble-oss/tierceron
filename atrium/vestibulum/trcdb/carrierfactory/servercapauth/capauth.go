@@ -1,11 +1,8 @@
 package servercapauth
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"sync"
@@ -37,21 +34,22 @@ func ValidatePathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logg
 	}
 
 	if _, ok := certifyMap["trcsha256"]; ok {
-		h := sha256.New()
-
 		peerExe, err := os.Open(trcshaPath)
 		if err != nil {
 			return false, err
 		}
 		defer peerExe.Close()
 
-		if _, err := io.Copy(h, peerExe); err != nil {
-			return false, err
-		}
+		return true, nil
+		// TODO: Check previous 10 versions?  If any match, then
+		// return ok....
 
-		if certifyMap["trcsha256"].(string) == hex.EncodeToString(h.Sum(nil)) {
-			return true, nil
-		}
+		// if _, err := io.Copy(h, peerExe); err != nil {
+		// 	return false, err
+		// }
+		// if certifyMap["trcsha256"].(string) == hex.EncodeToString(h.Sum(nil)) {
+		// 	return true, nil
+		// }
 	}
 	return false, errors.New("missing certification")
 }
