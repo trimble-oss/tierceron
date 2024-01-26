@@ -402,9 +402,6 @@ func acceptRemote(featherCtx *cap.FeatherContext, mode int, remote string) (bool
 }
 
 func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
-	// Initialize supoorted deployers.
-	deployopts.BuildOptions.InitSupportedDeployers([]string{agentName})
-
 	if gAgentConfig == nil {
 		return errors.New("incorrect agent initialization")
 	}
@@ -412,6 +409,9 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 	if featherCtx == nil {
 		return errors.New("incorrect feathering")
 	}
+
+	// Initialize supoorted deployers.
+	deployopts.BuildOptions.InitSupportedDeployers([]string{agentName})
 
 	if sessionIdentifier, ok := deployopts.BuildOptions.GetEncodedDeployerId(agentName, *featherCtx.Env); ok {
 		featherCtx.SessionIdentifier = &sessionIdentifier
