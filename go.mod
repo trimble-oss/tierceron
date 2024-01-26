@@ -29,8 +29,8 @@ require (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.6.0
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.9.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.4.0
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
@@ -38,8 +38,8 @@ require (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
-	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.5.0 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.1.1 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
 	github.com/klauspost/reedsolomon v1.11.8 // indirect
@@ -57,6 +57,7 @@ require (
 require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20240126223816-e0ce721b2e97 // indirect
 )
 
 require (
