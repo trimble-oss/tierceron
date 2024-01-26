@@ -114,7 +114,6 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 
 func NewAgentConfig(address string,
 	agentToken string,
-	deployments string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error) (*AgentConfigs, *TrcShConfig, error) {
@@ -155,6 +154,7 @@ func NewAgentConfig(address string,
 			trcHatEnv = data["trcHatEnv"].(string)
 		}
 
+		deployments := "bootstrap"
 		agentconfig := &AgentConfigs{
 			captiplib.FeatherCtlInit(nil,
 				trcHatHostLocal,

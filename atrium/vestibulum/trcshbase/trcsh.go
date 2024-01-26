@@ -232,9 +232,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		interruptChan <- x
 	}()
 
-	// Initialize the supported
-	deployopts.BuildOptions.InitSupportedDeployers()
-
 	if !eUtils.IsWindows() {
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
@@ -271,7 +268,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		//Open deploy script and parse it.
 		ProcessDeploy(nil, config, *regionPtr, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
-		deployments := os.Getenv("DEPLOYMENTS")
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
@@ -279,11 +275,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 		flagset.Parse(argLines[1:])
-
-		if len(deployments) == 0 {
-			fmt.Println("trcsh on windows requires a DEPLOYMENTS.")
-			os.Exit(-1)
-		}
 
 		if len(agentToken) == 0 {
 			fmt.Println("trcsh on windows requires AGENT_TOKEN.")
@@ -315,15 +306,24 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		var errAgentLoad error
 		gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
-			deployments,
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil)
 		if errAgentLoad != nil {
 			fmt.Println("trcsh agent bootstrap failure.")
 			os.Exit(-1)
 		}
 
-		deploymentsSlice := strings.Split(deployments, ",")
-		for _, deployment := range deploymentsSlice {
+		// Initialize deployers.
+		config, err := TrcshInitConfig(*envPtr, *regionPtr, true)
+		deployments, err := deployutil.GetDeployers(config)
+		if err != nil {
+			fmt.Println("trcsh agent bootstrap failure.")
+			os.Exit(-1)
+		}
+		Deployments := strings.Join(deployments, ",")
+		gAgentConfig.Deployments = &Deployments
+		deployopts.BuildOptions.InitSupportedDeployers(deployments)
+
+		for _, deployment := range deployments {
 			EnableDeployer(*gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, false, deployment)
 		}
 
@@ -519,7 +519,6 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			// Bootstrap deployment is replaced during callback with the agent name.
 			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(config.VaultAddress,
 				*trcshConfig.CToken,
-				"bootstrap",
 				config.Env,
 				deployCtlAcceptRemote,
 				deployCtlInterrupted)
@@ -721,6 +720,16 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		config.StartDir = []string{"trc_templates"}
 		config.EndDir = "."
 		config.Log.Printf("Preloading path %s env %s\n", trcPath, config.EnvRaw)
+
+		// Initialize deployers.
+		deployments, err := deployutil.GetDeployers(config)
+		if err != nil {
+			fmt.Println("Error could not load deployers.  Invalid installation.")
+			config.Log.Printf("Error could not load deployers.  Invalid installation.\n")
+			os.Exit(-1)
+		}
+		deployopts.BuildOptions.InitSupportedDeployers(deployments)
+
 		configErr := trcconfigbase.CommonMain(&config.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, config)
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")

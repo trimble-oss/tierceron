@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/buildopts/memonly"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -70,4 +72,53 @@ func LoadPluginDeploymentScript(config *eUtils.DriverConfig, trcshConfig *capaut
 		}
 	}
 	return nil, errors.New("not deployer")
+}
+
+// Gets list of supported deployers for current environment.
+func GetDeployers(config *eUtils.DriverConfig) ([]string, error) {
+
+	// Swapping in project root...
+	configRoleSlice := strings.Split(config.AppRoleConfig, ":")
+	mergedEnvRaw := config.EnvRaw
+	tokenName := "config_token_" + config.Env
+	readToken := ""
+	autoErr := eUtils.AutoAuth(config, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &config.Env, &config.VaultAddress, &mergedEnvRaw, "config.yml", false)
+	if autoErr != nil {
+		fmt.Println("Missing auth components.")
+		return nil, autoErr
+	}
+	if memonly.IsMemonly() {
+		memprotectopts.MemUnprotectAll(nil)
+		memprotectopts.MemProtect(nil, &readToken)
+	}
+
+	mod, err := helperkv.NewModifier(config.Insecure, readToken, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
+	if mod != nil {
+		defer mod.Release()
+	}
+	if err != nil {
+		fmt.Println("Failure to init to vault")
+		config.Log.Println("Failure to init to vault")
+		return nil, err
+	}
+	envParts := strings.Split(config.EnvRaw, "-")
+	mod.Env = envParts[0]
+
+	plugListData, pluginListErr := mod.List("super-secrets/Index/TrcVault/trcplugin", config.Log)
+	if pluginListErr != nil {
+		return nil, pluginListErr
+	}
+
+	if plugListData == nil {
+		return nil, errors.New("no plugins available")
+	}
+	pluginList := []string{}
+
+	for _, plugListInterface := range plugListData.Data {
+		for _, plugin := range plugListInterface.([]interface{}) {
+			pluginList = append(pluginList, plugin.(string))
+		}
+	}
+
+	return pluginList, nil
 }
