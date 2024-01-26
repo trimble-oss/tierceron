@@ -73,6 +73,21 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	return errors.New("Bad host: " + host)
 }
 
+func (agentconfig *AgentConfigs) RetryingPenseFeatherQuery(pense string) (*string, error) {
+	retry := 0
+	for retry < 5 {
+		result, err := agentconfig.PenseFeatherQuery(agentconfig.FeatherContext, pense)
+
+		if err != nil || result == nil || *result == "...." {
+			time.Sleep(time.Second)
+			retry = retry + 1
+		} else {
+			return result, err
+		}
+	}
+	return nil, errors.New("unavailable secrets")
+}
+
 func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
 	penseCode := randomString(7 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
@@ -176,12 +191,15 @@ func NewAgentConfig(address string,
 			EnvContext: trcHatEnv,
 		}
 
-		trcShConfigRole, penseError := agentconfig.PenseFeatherQuery(agentconfig.FeatherContext, "configrole")
+		var penseError error
+		trcshConfig.ConfigRole, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
 		if penseError != nil {
 			return nil, nil, penseError
 		}
-		memprotectopts.MemProtect(nil, trcShConfigRole)
-		trcshConfig.ConfigRole = trcShConfigRole
+		trcshConfig.VaultAddress, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
+		if penseError != nil {
+			return nil, nil, penseError
+		}
 
 		return agentconfig, trcshConfig, nil
 	}
