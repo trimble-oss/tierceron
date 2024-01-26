@@ -402,6 +402,8 @@ func acceptRemote(featherCtx *cap.FeatherContext, mode int, remote string) (bool
 }
 
 func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
+	// Initialize supoorted deployers.
+	deployopts.BuildOptions.InitSupportedDeployers([]string{agentName})
 
 	if gAgentConfig == nil {
 		return errors.New("incorrect agent initialization")
@@ -723,15 +725,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		config.StartDir = []string{"trc_templates"}
 		config.EndDir = "."
 		config.Log.Printf("Preloading path %s env %s\n", trcPath, config.EnvRaw)
-
-		// Initialize deployers.
-		deployments, err := deployutil.GetDeployers(config)
-		if err != nil {
-			fmt.Println("Error could not load deployers.  Invalid installation.")
-			config.Log.Printf("Error could not load deployers.  Invalid installation.\n")
-			os.Exit(-1)
-		}
-		deployopts.BuildOptions.InitSupportedDeployers(deployments)
 
 		configErr := trcconfigbase.CommonMain(&config.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, config)
 		if configErr != nil {
