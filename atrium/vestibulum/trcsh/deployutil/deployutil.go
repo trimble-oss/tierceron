@@ -104,21 +104,30 @@ func GetDeployers(config *eUtils.DriverConfig) ([]string, error) {
 	envParts := strings.Split(config.EnvRaw, "-")
 	mod.Env = envParts[0]
 
-	plugListData, pluginListErr := mod.List("super-secrets/Index/TrcVault/trcplugin", config.Log)
-	if pluginListErr != nil {
-		return nil, pluginListErr
+	deploymentListData, deploymentListDataErr := mod.List("super-secrets/Index/TrcVault/trcplugin", config.Log)
+	if deploymentListDataErr != nil {
+		return nil, deploymentListDataErr
 	}
 
-	if plugListData == nil {
+	if deploymentListData == nil {
 		return nil, errors.New("no plugins available")
 	}
-	pluginList := []string{}
+	deploymentList := []string{}
 
-	for _, plugListInterface := range plugListData.Data {
-		for _, plugin := range plugListInterface.([]interface{}) {
-			pluginList = append(pluginList, plugin.(string))
+	for _, deploymentInterface := range deploymentListData.Data {
+		for _, deploymentPath := range deploymentInterface.([]interface{}) {
+			deployment := strings.TrimSuffix(deploymentPath.(string), "/")
+
+			deploymentConfig, deploymentConfigErr := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
+			if deploymentConfigErr != nil || deploymentConfig == nil {
+				continue
+			}
+
+			if deploymentConfig["trctype"].(string) == "trcshservice" {
+				deploymentList = append(deploymentList, deployment)
+			}
 		}
 	}
 
-	return pluginList, nil
+	return deploymentList, nil
 }

@@ -304,7 +304,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		// Preload agent synchronization configs...
 		var errAgentLoad error
-		gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(address,
+		var trcshConfig *capauth.TrcShConfig
+		gAgentConfig, trcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil)
 		if errAgentLoad != nil {
@@ -313,7 +314,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		// Initialize deployers.
-		config, err := TrcshInitConfig(*envPtr, *regionPtr, true)
+		config, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, true)
+		config.AppRoleConfig = *trcshConfig.ConfigRole
+		config.VaultAddress = *trcshConfig.VaultAddress
 		deployments, err := deployutil.GetDeployers(config)
 		if err != nil {
 			fmt.Println("trcsh agent bootstrap failure.")
