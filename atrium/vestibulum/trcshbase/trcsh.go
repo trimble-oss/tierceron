@@ -841,7 +841,7 @@ collaboratorReRun:
 			os.Args = argsOrig
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
 
-			deployLine = strings.Trim(deployLine, " ")
+			deployLine = strings.TrimSpace(deployLine)
 			deployArgs := strings.Split(deployLine, " ")
 			control := deployArgs[0]
 			if len(deployArgs) > 1 {
