@@ -57,7 +57,6 @@ require (
 require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20240126223816-e0ce721b2e97 // indirect
 )
 
 require (
