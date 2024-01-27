@@ -73,7 +73,7 @@ func AutoAuth(config *DriverConfig,
 	var c cert
 	var v *sys.Vault
 
-	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" {
+	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" && appRoleConfig != "deployauth" {
 		// For token based auth, auto auth not
 		return nil
 	}
