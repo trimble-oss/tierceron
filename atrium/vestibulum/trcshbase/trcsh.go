@@ -268,6 +268,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		//Open deploy script and parse it.
 		ProcessDeploy(nil, config, *regionPtr, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
+		deploymentsShard := os.Getenv("DEPLOYMENTS")
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
@@ -275,6 +276,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 		flagset.Parse(argLines[1:])
+
+		if len(deploymentsShard) == 0 {
+			fmt.Println("trcsh on windows requires a DEPLOYMENTS.")
+			os.Exit(-1)
+		}
 
 		if len(agentToken) == 0 {
 			fmt.Println("trcsh on windows requires AGENT_TOKEN.")
@@ -315,15 +321,34 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		// Initialize deployers.
 		config, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, true)
-		config.AppRoleConfig = *trcshConfig.ConfigRole
-		config.VaultAddress = *trcshConfig.VaultAddress
-		deployments, err := deployutil.GetDeployers(config)
 		if err != nil {
 			fmt.Println("trcsh agent bootstrap failure.")
 			os.Exit(-1)
 		}
-		Deployments := strings.Join(deployments, ",")
-		gAgentConfig.Deployments = &Deployments
+		config.AppRoleConfig = *trcshConfig.ConfigRole
+		config.VaultAddress = *trcshConfig.VaultAddress
+		serviceDeployments, err := deployutil.GetDeployers(config)
+		if err != nil {
+			fmt.Println("trcsh agent bootstrap failure.")
+			os.Exit(-1)
+		}
+		deploymentShards := strings.Split(deploymentsShard, ",")
+		deployments := []string{}
+
+		// This is a tad more complex but will scale more nicely.
+		deploymentShardsSet := map[string]struct{}{}
+		for _, str := range deploymentShards {
+			deploymentShardsSet[str] = struct{}{}
+		}
+
+		for _, serviceDeployment := range serviceDeployments {
+			if _, ok := deploymentShardsSet[serviceDeployment]; ok {
+				deployments = append(deployments, serviceDeployment)
+			}
+		}
+		deploymentsCDL := strings.Join(deployments, ",")
+		gAgentConfig.Deployments = &deploymentsCDL
+
 		deployopts.BuildOptions.InitSupportedDeployers(deployments)
 
 		for _, deployment := range deployments {
