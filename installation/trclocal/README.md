@@ -8,24 +8,36 @@ You *must* have all trc cmd line utilities installed as explained in GETTING_STA
 Select installation directory.  This example will use /usr/local/vault
 
 sudo mkdir /usr/local/vault
+
 sudo mkdir /usr/local/vault/certs
+
 sudo mkdir /usr/local/vault/plugins
+
 sudo mkdir /usr/local/vault/vault_data
 
 Download current version of vault: vault 1.3.6 (downloadable here: https://releases.hashicorp.com/vault/1.3.6/)
+
 Unzip it and copy the vault executable to /usr/local/vault
 
 curl -L "https://releases.hashicorp.com/vault/1.3.6/vault_1.3.6_linux_amd64.zip" > /tmp/vault.zip
+
 cd /tmp
+
 sudo unzip vault.zip
+
 sudo mkdir -p /usr/local/vault
+
 sudo mv vault /usr/local/vault/vault
+
 sudo chmod 0700 /usr/local/vault/vault
+
 sudo chown root:root /usr/local/vault/vault
+
 sudo setcap cap_ipc_lock=+ep /usr/local/vault/vault
 
 # Generating empty seed files
 mkdir trc_seeds
+
 trcx -env=dev -novault
 
 # Edit seed files and provide certificates.
@@ -35,13 +47,16 @@ Fill in seed variables in super-secrets section of trc_seeds/dev/dev_seed.yml
 
 # Create cert placeholder files
 trcx -env=dev -certs -novault
+
 After running trcx -certs, a certs folder will appear under trc_seeds with placeholder empty certificate files.
 You'll want to replace these placeholder files with the real thing under ./trc_seeds/certs.
 sudo cp trc_seeds/certs/* /usr/local/vault/certs/
 
 # Generate vault properties configuration
 trcconfig -env=dev -novault
+
 sudo cp resources/vault_properties.hcl /usr/local/vault/
+
 sudo cp trc_seeds/certs/* /usr/local/vault/certs/
 
 # Start vault as a service.
@@ -61,7 +76,9 @@ You can enter https://<vaulthost:vaultport>/v1/sys/health in your browser to con
 
 # Optional: later, after initializing trcvault, you can perform this step: Publish terraform seed data to vault.
 trcpub -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
+
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
+
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -certs
 
 # Test your configs are in vault.
@@ -69,8 +86,12 @@ trcconfig -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport> -inse
 
 # Clean up locally stored secrets (Recommended but not required):
 rm -r trc_seeds/dev
+
 rm -r trc_seeds/certs
+
 rm -r resources
+
 rm -r scripts
+
 rm *.log
 
