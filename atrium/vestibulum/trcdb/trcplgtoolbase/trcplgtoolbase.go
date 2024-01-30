@@ -510,6 +510,9 @@ func CommonMain(envPtr *string,
 				if err != nil {
 					fmt.Println(err.Error())
 				}
+				if err == nil {
+					err = errors.New("invalid or nonexistent image on download")
+				}
 				return err
 			}
 		}
