@@ -185,6 +185,10 @@ func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifi
 					continue
 				}
 				err = os.MkdirAll(dirPath, os.ModePerm)
+				if err != nil {
+					eUtils.LogErrorMessage(config, "Couldn't make directory components: "+dirPath, false)
+					continue
+				}
 				templateFile := fmt.Sprintf("%s%s%s.tmpl", dirPath, file, ext)
 				//create new file
 				newFile, err := os.Create(templateFile)
