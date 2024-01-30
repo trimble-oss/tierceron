@@ -84,6 +84,7 @@ func UploadTemplates(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName str
 			if err != nil {
 				return nil, err
 			}
+			defer f.Close()
 
 			// Read the file
 			fileInfo, err := file.Info()

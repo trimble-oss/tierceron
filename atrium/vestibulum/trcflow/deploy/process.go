@@ -65,7 +65,8 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		return err
 	}
 
-	if ok, err := servercapauth.ValidatePathSha(goMod, pluginConfig, logger); true || ok {
+	if ok, err := servercapauth.ValidatePathSha(goMod, pluginConfig, logger); ok {
+		// Only start up if trcsh is up to date....
 		onceAuth.Do(func() {
 			if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
 				// Ensure only dev is the cap auth...
@@ -82,9 +83,10 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 
 				servercapauth.Memorize(pluginConfig, logger)
 
-				// TODO: Support variables for different environments...
 				// Not really clear how cap auth would do this...
-				go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+				if featherAuth != nil {
+					go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+				}
 				logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
 				gCapInitted = true
 			}
@@ -287,6 +289,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			}
 
 			if imageFile, err := os.Open(agentPath); err == nil {
+				defer imageFile.Close()
 				chdModErr := imageFile.Chmod(0750)
 				if chdModErr != nil {
 					eUtils.LogErrorMessage(cConfig, fmt.Sprintf("PluginDeployFlow failure: Could not give permission to image in file system.  Bailing.. for env: %s and plugin %s\n", cConfig.Env, pluginName), false)

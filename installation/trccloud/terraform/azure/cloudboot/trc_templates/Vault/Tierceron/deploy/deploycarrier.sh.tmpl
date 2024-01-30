@@ -50,6 +50,7 @@ done
 
 echo "Registering Carrier"
 echo trc-vault-carrier-plugin$PROD_EXT
+
 vault plugin register \
           -command=trc-vault-carrier-plugin$PROD_EXT \
           -sha256=$( cat target/trc-vault-carrier-plugin.sha256 ) \
