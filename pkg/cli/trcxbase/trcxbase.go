@@ -202,9 +202,15 @@ func CommonMain(ctx eUtils.ProcessContext,
 		indexed := false
 		if !*noVaultPtr {
 			pwd, _ := os.Getwd()
-			_, fileErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Index/" + *fileAddrPtr + "_seed.yml")
+			fileIndex, fileErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Index/" + *fileAddrPtr + "_seed.yml")
+			if fileIndex != nil {
+				defer fileIndex.Close()
+			}
 			if errors.Is(fileErr, os.ErrNotExist) {
-				_, fileRErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Restricted/" + *fileAddrPtr + "_seed.yml")
+				fileRestricted, fileRErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Restricted/" + *fileAddrPtr + "_seed.yml")
+				if fileRestricted != nil {
+					defer fileRestricted.Close()
+				}
 				if errors.Is(fileRErr, os.ErrNotExist) {
 					fmt.Println("Specified seed file could not be found.")
 					os.Exit(1)
