@@ -13,22 +13,20 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
-	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"github.com/hashicorp/vault/api"
 )
 
-func messenger(configCtx *utils.ConfigContext, inData *string, inPath string) {
-	var data utils.ResultData
+func messenger(configCtx *eUtils.ConfigContext, inData *string, inPath string) {
+	var data eUtils.ResultData
 	data.InData = inData
 	data.InPath = inPath
 	configCtx.ResultChannel <- &data
 }
 
-func receiver(configCtx *utils.ConfigContext) {
+func receiver(configCtx *eUtils.ConfigContext) {
 	for {
 		select {
 		case data := <-configCtx.ResultChannel:
@@ -110,11 +108,11 @@ func CommonMain(ctx eUtils.ProcessContext,
 	}
 
 	flagset.Parse(argLines[1:])
-	configCtx := &utils.ConfigContext{
+	configCtx := &eUtils.ConfigContext{
 		ResultMap:            make(map[string]*string),
 		EnvSlice:             make([]string, 0),
 		ProjectSectionsSlice: make([]string, 0),
-		ResultChannel:        make(chan *utils.ResultData, 5),
+		ResultChannel:        make(chan *eUtils.ResultData, 5),
 		FileSysIndex:         -1,
 		ConfigWg:             sync.WaitGroup{},
 		Mutex:                &sync.Mutex{},
@@ -136,7 +134,7 @@ func CommonMain(ctx eUtils.ProcessContext,
 
 	Yellow := "\033[33m"
 	Reset := "\033[0m"
-	if utils.IsWindows() {
+	if eUtils.IsWindows() {
 		Reset = ""
 		Yellow = ""
 	}
@@ -202,9 +200,15 @@ func CommonMain(ctx eUtils.ProcessContext,
 		indexed := false
 		if !*noVaultPtr {
 			pwd, _ := os.Getwd()
-			_, fileErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Index/" + *fileAddrPtr + "_seed.yml")
+			fileIndex, fileErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Index/" + *fileAddrPtr + "_seed.yml")
+			if fileIndex != nil {
+				defer fileIndex.Close()
+			}
 			if errors.Is(fileErr, os.ErrNotExist) {
-				_, fileRErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Restricted/" + *fileAddrPtr + "_seed.yml")
+				fileRestricted, fileRErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Restricted/" + *fileAddrPtr + "_seed.yml")
+				if fileRestricted != nil {
+					defer fileRestricted.Close()
+				}
 				if errors.Is(fileRErr, os.ErrNotExist) {
 					fmt.Println("Specified seed file could not be found.")
 					os.Exit(1)
@@ -475,7 +479,7 @@ skipDiff:
 				for i, dynamicPart := range dynamicPathParts {
 					if dynamicPart == "%s" {
 						if testMod == nil {
-							testMod, err = helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, true, logger)
+							testMod, err = kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, true, logger)
 							testMod.Env = baseEnv
 							if err != nil {
 								eUtils.LogErrorMessage(config, "Access to vault failure.", true)
@@ -501,7 +505,7 @@ skipDiff:
 						}
 
 						if len(dynamicPathParts) > i {
-							for level, _ := range levelPart {
+							for level := range levelPart {
 								recursivePathBuilder(testMod, pGen+"/"+level, dynamicPathParts[i+1:])
 							}
 							return
@@ -552,7 +556,7 @@ skipDiff:
 					if authErr != nil {
 						eUtils.LogErrorMessage(config, "Auth failure: "+authErr.Error(), true)
 					}
-					testMod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, true, logger)
+					testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, true, logger)
 					testMod.Env = baseEnv
 					if err != nil {
 						logger.Printf(err.Error())
