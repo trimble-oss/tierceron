@@ -19,6 +19,17 @@ import (
 )
 
 func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
+
+	if len(pluginToolConfig["acrrepository"].(string)) == 0 {
+		config.Log.Printf("Acr repository undefined.  Refusing to continue.\n")
+		return errors.New("undefined acr repository")
+	}
+
+	if len(pluginToolConfig["trcplugin"].(string)) == 0 {
+		config.Log.Printf("Trcplugin undefined.  Refusing to continue.\n")
+		return errors.New("undefined trcplugin")
+	}
+
 	client, err := azcontainerregistry.NewClient(
 		pluginToolConfig["acrrepository"].(string),
 		svc, nil)
