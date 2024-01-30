@@ -67,6 +67,7 @@ func DownloadTemplates(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirN
 			eUtils.LogErrorMessage(config, fmt.Sprintf("Couldn't create file: %s", templateFile), false)
 			continue
 		}
+		defer newFile.Close()
 		//write to file
 		_, err = newFile.Write(templateBytes)
 		if err != nil {
@@ -78,7 +79,6 @@ func DownloadTemplates(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirN
 			eUtils.LogErrorMessage(config, fmt.Sprintf("Couldn't sync file: %s", templateFile), false)
 			continue
 		}
-		newFile.Close()
 		fmt.Printf("File has been writen to %s\n", templateFile)
 	}
 }
@@ -197,6 +197,7 @@ func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifi
 					eUtils.LogErrorMessage(config, "Couldn't create file: "+dirPath+file+ext+".tmpl", false)
 					continue
 				}
+				defer newFile.Close()
 				//write to file
 				_, err = newFile.Write(templateBytes)
 				if err != nil {
@@ -208,7 +209,6 @@ func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifi
 					eUtils.LogErrorMessage(config, "Couldn't sync file: "+dirPath+file+ext+".tmpl", false)
 					continue
 				}
-				newFile.Close()
 				fmt.Println("File has been writen to " + dirPath + file + ext + ".tmpl")
 			}
 		}
