@@ -34,7 +34,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
-	github.com/trimble-oss/tierceron-hat v1.0.2
+	github.com/trimble-oss/tierceron-hat v1.0.3
 )
 
 require (

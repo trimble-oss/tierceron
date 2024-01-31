@@ -237,6 +237,8 @@ github.com/trimble-oss/tierceron-hat v1.0.1 h1:WC5JDDeWpiI6zsy/tT0jXb2we4jLuquig
 github.com/trimble-oss/tierceron-hat v1.0.1/go.mod h1:tGBWlLEwe9A9JvWYqMkC9cHeWWqF0RWJ7wVtijuK8hE=
 github.com/trimble-oss/tierceron-hat v1.0.2 h1:UlPuMa1OVU4MHvAxjgPiTx8a6YJGcyOmGiO7Tyl8l3I=
 github.com/trimble-oss/tierceron-hat v1.0.2/go.mod h1:tGBWlLEwe9A9JvWYqMkC9cHeWWqF0RWJ7wVtijuK8hE=
+github.com/trimble-oss/tierceron-hat v1.0.3 h1:Hrwe5n+9tcEVpU2clqlr3E2mNeCfvgTBj9njPgXcBYs=
+github.com/trimble-oss/tierceron-hat v1.0.3/go.mod h1:tGBWlLEwe9A9JvWYqMkC9cHeWWqF0RWJ7wVtijuK8hE=
 github.com/trimble-oss/tierceron/atrium v0.0.0-20240126223816-e0ce721b2e97 h1:R3aUZ76Kj69adXoniq5WflzNYtrra7jquPl/Ku3x0N8=
 github.com/trimble-oss/tierceron/atrium v0.0.0-20240126223816-e0ce721b2e97/go.mod h1:YyFJRydD6ZKU3guNgqy4vmEkTWy66C7vMymHCPgtxi8=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
