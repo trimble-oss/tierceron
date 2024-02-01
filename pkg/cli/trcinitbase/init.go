@@ -362,7 +362,7 @@ func CommonMain(envPtr *string,
 
 		if (*rotateTokens || *tokenExpiration) && (*roleFileFilterPtr == "" || *tokenFileFilterPtr != "") {
 			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenFileFilterPtr, *tokenExpiration, logger)
-			if getOrRevokeError != nil {
+			if !*rotateTokens && getOrRevokeError != nil {
 				fmt.Println("Token revocation or access failure.  Cannot continue.")
 				os.Exit(-1)
 			}
