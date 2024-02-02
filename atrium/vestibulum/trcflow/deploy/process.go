@@ -72,7 +72,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 				// Ensure only dev is the cap auth...
 				logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
 				var featherAuth *servercapauth.FeatherAuth = nil
-				if pluginConfig["env"].(string) == "dev" {
+				if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
 					featherAuth, err = servercapauth.Init(goMod, pluginConfig, logger)
 					if err != nil {
 						eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
