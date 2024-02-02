@@ -78,7 +78,9 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 						eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
 						return
 					}
-					pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
+					if featherAuth != nil {
+						pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
+					}
 				}
 
 				servercapauth.Memorize(pluginConfig, logger)
