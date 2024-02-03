@@ -86,9 +86,8 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 				servercapauth.Memorize(pluginConfig, logger)
 
 				// Not really clear how cap auth would do this...
-				if featherAuth != nil {
-					go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
-				}
+				go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+
 				logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
 				gCapInitted = true
 			}

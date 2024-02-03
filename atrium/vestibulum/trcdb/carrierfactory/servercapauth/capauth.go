@@ -81,8 +81,16 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 	}
 	if pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod" {
 		// Feathering not supported in staging/prod at this time.
+		featherMap, _ := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
+		if _, ok := featherMap["trcHatSecretsPort"]; ok {
+			featherAuth := &FeatherAuth{EncryptPass: "", EncryptSalt: "", HandshakePort: "", SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: ""}
+			return featherAuth, nil
+		}
+
+		logger.Println("Mad hat cap failure port init.")
 		return nil, nil
 	}
+
 	featherMap, _ := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
 	// TODO: enable error validation when secrets are stored...
 	// if err != nil {
@@ -143,7 +151,7 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 		return err
 	}
 
-	if featherAuth != nil {
+	if featherAuth != nil && len(featherAuth.EncryptPass) > 0 {
 		logger.Println("Feathering server.")
 		go cap.Feather(featherAuth.EncryptPass,
 			featherAuth.EncryptSalt,
