@@ -11,7 +11,7 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
-func UploadTemplateDirectory(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string) ([]string, error) {
+func UploadTemplateDirectory(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
 
 	dirs, err := os.ReadDir(dirName)
 	if err != nil {
@@ -23,17 +23,20 @@ func UploadTemplateDirectory(c *eUtils.DriverConfig, mod *helperkv.Modifier, dir
 	for _, subDir := range dirs {
 		if subDir.IsDir() {
 			pathName := dirName + "/" + subDir.Name()
-			warn, err := UploadTemplates(c, mod, pathName)
-			if err != nil || len(warn) > 0 {
-				fmt.Printf("Upload templates couldn't be completed. %v", err)
-				return warn, err
+
+			if len(*templateFilter) == 0 || strings.HasPrefix(*templateFilter, subDir.Name()) {
+				warn, err := UploadTemplates(c, mod, pathName, templateFilter)
+				if err != nil || len(warn) > 0 {
+					fmt.Printf("Upload templates couldn't be completed. %v", err)
+					return warn, err
+				}
 			}
 		}
 	}
 	return nil, nil
 }
 
-func UploadTemplates(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string) ([]string, error) {
+func UploadTemplates(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
 	// Open directory
 	files, err := os.ReadDir(dirName)
 	if err != nil {
@@ -48,9 +51,12 @@ func UploadTemplates(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName str
 	for _, file := range files {
 		// Extract extension and name
 		if file.IsDir() { // Recurse folders
-			warn, err := UploadTemplates(c, mod, dirName+"/"+file.Name())
-			if err != nil || len(warn) > 0 {
-				return warn, err
+			templateSubDir := dirName + "/" + file.Name()
+			if strings.Contains(templateSubDir, *templateFilter) {
+				warn, err := UploadTemplates(c, mod, dirName+"/"+file.Name(), templateFilter)
+				if err != nil || len(warn) > 0 {
+					return warn, err
+				}
 			}
 			continue
 		}

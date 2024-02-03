@@ -52,6 +52,7 @@ func CommonMain(envPtr *string,
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
 	appRolePtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
+	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 
 	if c == nil || !c.IsShellSubProcess {
 		flagset.Parse(argLines[1:])
@@ -100,7 +101,7 @@ func CommonMain(envPtr *string,
 	eUtils.CheckError(configBase, err, true)
 	mod.Env = *envPtr
 
-	warn, err := il.UploadTemplateDirectory(configBase, mod, *dirPtr)
+	warn, err := il.UploadTemplateDirectory(configBase, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)
