@@ -761,6 +761,12 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		trcPathParts := strings.Split(trcPath, "/")
 		config.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 		configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
+		if len(configRoleSlice) != 2 {
+			fmt.Println("Preload failed.  Couldn't load required resource.")
+			config.Log.Printf("Couldn't config auth required resource.")
+			os.Exit(-1)
+		}
+
 		tokenName := "config_token_" + config.EnvRaw
 		config.OutputMemCache = true
 		config.StartDir = []string{"trc_templates"}
