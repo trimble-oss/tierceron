@@ -24,7 +24,7 @@ func UploadTemplateDirectory(c *eUtils.DriverConfig, mod *helperkv.Modifier, dir
 		if subDir.IsDir() {
 			pathName := dirName + "/" + subDir.Name()
 
-			if len(*templateFilter) == 0 || strings.HasPrefix(*templateFilter, subDir.Name()) {
+			if templateFilter == nil || len(*templateFilter) == 0 || strings.HasPrefix(*templateFilter, subDir.Name()) {
 				warn, err := UploadTemplates(c, mod, pathName, templateFilter)
 				if err != nil || len(warn) > 0 {
 					fmt.Printf("Upload templates couldn't be completed. %v", err)
@@ -52,7 +52,7 @@ func UploadTemplates(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName str
 		// Extract extension and name
 		if file.IsDir() { // Recurse folders
 			templateSubDir := dirName + "/" + file.Name()
-			if strings.Contains(templateSubDir, *templateFilter) {
+			if templateFilter == nil || strings.Contains(templateSubDir, *templateFilter) {
 				warn, err := UploadTemplates(c, mod, dirName+"/"+file.Name(), templateFilter)
 				if err != nil || len(warn) > 0 {
 					return warn, err
