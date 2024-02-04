@@ -173,6 +173,10 @@ var environmentConfigs map[string]interface{} = map[string]interface{}{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
 
+func TestInit() {
+	vaultInitialized <- true
+}
+
 func PushEnv(envMap map[string]interface{}) {
 	tokenEnvChan <- envMap
 }
