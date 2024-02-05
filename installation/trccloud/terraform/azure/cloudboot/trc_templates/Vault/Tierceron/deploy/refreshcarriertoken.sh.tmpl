@@ -26,6 +26,7 @@ fi
 
 if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
 echo "Enter agent vault *plugin* environment token with tightly confined write permissions(config_token_pluginany): "
+read VAULT_ENV_TOKEN
 fi
 
 
