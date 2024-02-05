@@ -15,11 +15,7 @@ read SECRET_VAULT_ADDR
 fi
 
 if [[ -z "${SECRET_VAULT_PLUGIN_TOKEN}" ]]; then
-if [ "$VAULT_ENV" = "staging" ] || [ "$VAULT_ENV" = "prod" ]; then
-echo "Enter organization vault plugin token for certification(config_token_plugin$VAULT_ENV): "
-else
 echo "Enter organization vault plugin token for certification(config_token_pluginany): "
-fi
 read SECRET_VAULT_PLUGIN_TOKEN
 fi
 
@@ -29,12 +25,7 @@ read VAULT_TOKEN
 fi
 
 if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
-if [ "$VAULT_ENV" = "staging" ] || [ "$VAULT_ENV" = "prod" ]; then
-echo "Enter agent vault *plugin* environment token with tightly confined write permissions(config_token_plugin$VAULT_ENV): "
-else
 echo "Enter agent vault *plugin* environment token with tightly confined write permissions(config_token_pluginany): "
-fi
-read VAULT_ENV_TOKEN
 fi
 
 
