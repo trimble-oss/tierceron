@@ -16,7 +16,6 @@ import (
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/carrierfactory/servercapauth"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/factory"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	trcplgtool "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
@@ -215,11 +214,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	pluginCopied := false
 	var agentPath string
 
-	pluginExtension := ""
-	if prod.IsProd() {
-		pluginExtension = "-prod"
-	}
-
 	// trcsh is always type agent... even if it somehow ends up incorrect in vault...
 	if vaultPluginSignature["trcplugin"].(string) == "trcsh" {
 		vaultPluginSignature["trctype"] = "agent"
@@ -229,7 +223,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	case "agent":
 		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
 	default:
-		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string) + pluginExtension
+		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)
 	}
 
 	if _, err := os.Stat(agentPath); errors.Is(err, os.ErrNotExist) {
@@ -409,15 +403,11 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 					pluginData["trcplugin"] = pluginName
 
 					var agentPath string
-					pluginExtension := ""
-					if prod.IsProd() {
-						pluginExtension = "-prod"
-					}
 
 					if pluginData["trctype"] == "agent" {
 						agentPath = "/home/azuredeploy/bin/" + pluginName
 					} else {
-						agentPath = "/etc/opt/vault/plugins/" + pluginName + pluginExtension
+						agentPath = "/etc/opt/vault/plugins/" + pluginName
 					}
 
 					logger.Println("Checking file.")
