@@ -97,7 +97,12 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 	// request.Header.Set("Content-Type", "application/json")
 	response, err := httpClient.Do(request)
 	if err != nil {
-		return nil, response.StatusCode, err
+		if response != nil {
+			return nil, response.StatusCode, err
+		} else {
+			return nil, 204, err
+		}
+
 	}
 	if response.Body != nil {
 		defer response.Body.Close()
