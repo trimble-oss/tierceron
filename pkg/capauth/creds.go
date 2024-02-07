@@ -79,23 +79,30 @@ func init() {
 	MashupCertPool.AddCert(mashupClientCert)
 }
 
-func LocalIp(env string) (string, error) {
-	if strings.Contains(env, "staging") || strings.Contains(env, "prod") {
-		return "127.0.0.1", nil
+func LocalAddr() (string, error) {
+	addrs, hostErr := net.LookupAddr("127.0.0.1")
+	if hostErr != nil {
+		return "", hostErr
 	}
-
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return "", err
-	}
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String(), nil
+	localHost := ""
+	if len(addrs) > 0 {
+		if len(addrs) > 20 {
+			return "", errors.New("Unsupported hosts")
+		}
+		for _, addr := range addrs {
+			localHost = strings.TrimRight(addr, ".")
+			if validErr := ValidateVhost(localHost, ""); validErr != nil {
+				localHost = ""
+				continue
+			} else {
+				break
 			}
 		}
+	} else {
+		return "", errors.New("Invalid host")
 	}
-	return "", err
+
+	return localHost, nil
 }
 
 func GetTransportCredentials() (credentials.TransportCredentials, error) {
