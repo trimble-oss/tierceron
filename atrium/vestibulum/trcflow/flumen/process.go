@@ -229,6 +229,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 	//time.Sleep(8 * time.Second)
 
+	eUtils.LogInfo(config, "Finished building source configs")
 	// Http query resources include:
 	// 1. Auth -- Auth is provided by the external library.
 	// 2. Get json by Api call.
@@ -243,6 +244,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			return err
 		}
 
+		eUtils.LogInfo(config, "Finished creating auth extension connection")
+
 		tfmContext.ExtensionAuthData, _, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
@@ -253,6 +256,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		tfmContext.ExtensionAuthDataReloader["config"] = config
 		tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
 	}
+
+	eUtils.LogInfo(config, "Finished building source extension configs")
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
@@ -277,6 +282,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		sourceDatabaseConnectionsMap["NA"] = sourceDatabaseDetails
 		sourceDatabaseDetails["sqlConn"] = nil
 	}
+
+	eUtils.LogInfo(config, "Finished building engine & changes tables")
 
 	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.BuildOptions.GetFlowDatabaseName())
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
