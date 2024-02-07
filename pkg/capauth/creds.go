@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"net"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/jaytaylor/go-hostsfile"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	"google.golang.org/grpc/credentials"
 )
@@ -80,7 +80,8 @@ func init() {
 }
 
 func LocalAddr() (string, error) {
-	addrs, hostErr := net.LookupAddr("127.0.0.1")
+	// TODO: replace if go ever gets around to implementing this...
+	addrs, hostErr := hostsfile.ReverseLookup("127.0.0.1")
 	if hostErr != nil {
 		return "", hostErr
 	}

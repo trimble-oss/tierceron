@@ -54,6 +54,7 @@ require (
 )
 
 require (
+	github.com/jaytaylor/go-hostsfile v0.0.0-20220426042432-61485ac1fa6c // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )
 
