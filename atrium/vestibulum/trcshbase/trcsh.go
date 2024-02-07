@@ -693,18 +693,20 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 	config.Log.Printf("Auth..")
 
 	trcshEnvRaw := config.EnvRaw
-	auth := new(string)
+	tokenPtr := new(string)
 	authTokenEnv := "azuredeploy"
 	appRoleConfig := "deployauth"
 	if gAgentConfig != nil && gAgentConfig.AgentToken != nil {
-		auth = gAgentConfig.AgentToken
+		tokenPtr = gAgentConfig.AgentToken
 		appRoleConfig = "none"
 	}
 	authTokenName := "vault_token_azuredeploy"
-	autoErr := eUtils.AutoAuth(config, secretId, approleId, auth, &authTokenName, &authTokenEnv, &config.VaultAddress, &trcshEnvRaw, appRoleConfig, false)
-	if autoErr != nil || *auth == "" {
+	autoErr := eUtils.AutoAuth(config, secretId, approleId, tokenPtr, &authTokenName, &authTokenEnv, &config.VaultAddress, &trcshEnvRaw, appRoleConfig, false)
+	if autoErr != nil || tokenPtr == nil || *tokenPtr == "" {
 		fmt.Println("Unable to auth.")
-		fmt.Println(autoErr)
+		if autoErr != nil {
+			fmt.Println(autoErr)
+		}
 		os.Exit(-1)
 	}
 	config.Log.Printf("Bootstrap..")
@@ -729,9 +731,9 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 	if (approleId != nil && len(*approleId) == 0) || (secretId != nil && len(*secretId) == 0) {
 		// If in context of trcsh, utilize CToken to auth...
 		if gTrcshConfig != nil && gTrcshConfig.CToken != nil {
-			auth = gTrcshConfig.CToken
+			tokenPtr = gTrcshConfig.CToken
 		} else if gAgentConfig.AgentToken != nil {
-			auth = gAgentConfig.AgentToken
+			tokenPtr = gAgentConfig.AgentToken
 		}
 	}
 
