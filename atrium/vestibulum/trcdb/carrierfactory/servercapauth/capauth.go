@@ -145,11 +145,7 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 
 	logger.Println("Cap creds.")
 
-	localip, err := capauth.LocalIp(env)
-	if err != nil {
-		logger.Printf("Couldn't load ip: %v\n", err)
-		return err
-	}
+	localip := "127.0.0.1"
 
 	if featherAuth != nil && len(featherAuth.EncryptPass) > 0 {
 		logger.Println("Feathering server.")
