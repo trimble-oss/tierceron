@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -225,24 +224,6 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 		return new(string), errors.New("Tap writer error")
 	}
 
-	localIP, err := LocalIp(config.EnvRaw)
-	if err != nil {
-		return nil, err
-	}
-	addrs, hostErr := net.LookupAddr(localIP)
-	if hostErr != nil {
-		return nil, hostErr
-	}
-	localHost := ""
-	if len(addrs) > 0 {
-		localHost = strings.TrimRight(addrs[0], ".")
-		if validErr := ValidateVhost(localHost, ""); validErr != nil {
-			return nil, validErr
-		}
-	} else {
-		return nil, errors.New("Invalid host")
-	}
-
 	// TODO: add domain if it's missing because that might actually happen...  Pull the domain from
 	// vaddress in config..  that should always be the same...
 
@@ -250,8 +231,13 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	if err != nil {
 		return nil, err
 	}
+	dialOptions := grpc.WithTransportCredentials(creds)
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localHost, gTrcHatSecretsPort), grpc.WithTransportCredentials(creds))
+	localHost, localHostErr := LocalAddr()
+	if localHostErr != nil {
+		return nil, localHostErr
+	}
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localHost, gTrcHatSecretsPort), dialOptions)
 	if err != nil {
 		return new(string), err
 	}
@@ -261,6 +247,14 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+
+	localHostConfirm, localHostConfirmErr := LocalAddr()
+	if localHostConfirmErr != nil {
+		return nil, localHostConfirmErr
+	}
+	if localHost != localHostConfirm {
+		return nil, errors.New("Host selection in flux")
+	}
 
 	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 	if penseErr != nil {
