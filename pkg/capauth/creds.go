@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -77,6 +78,25 @@ func init() {
 	}
 	MashupCertPool = x509.NewCertPool()
 	MashupCertPool.AddCert(mashupClientCert)
+}
+
+func LocalIp(env string) (string, error) {
+	if strings.Contains(env, "staging") || strings.Contains(env, "prod") {
+		return "127.0.0.1", nil
+	}
+
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+	return "", err
 }
 
 func LocalAddr() (string, error) {
