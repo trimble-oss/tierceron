@@ -74,15 +74,18 @@ Note, for local development installs where you may be using a self signed certif
 # Confirm vault running
 You can enter https://<vaulthost:vaultport>/v1/sys/health in your browser to confirm vault is running.
 
+# Make some tokens to operate on vault (other than root token)
+trcinit -rotateTokens -namespace=base -addr=https://<vaulthost:vaultport> -token=<root token>
+
 # Optional: later, after initializing trcvault, you can perform this step: Publish terraform seed data to vault.
-trcpub -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
+trcpub -env=dev -token=$VAULT_PUB_TOKEN -addr=https://<vaulthost:vaultport>
 
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
 
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -certs
 
 # Test your configs are in vault.
-trcconfig -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport> -insecure 
+trcconfig -env=dev -token=$VAULT_CONFIG_TOKEN -addr=https://<vaulthost:vaultport> -insecure 
 
 # Clean up locally stored secrets (Recommended but not required):
 rm -r trc_seeds/dev
