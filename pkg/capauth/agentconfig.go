@@ -221,7 +221,7 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 		fmt.Println("Code 54 failure...  Possible deploy components mismatch..")
 		// 2023-06-30T01:29:21.7020686Z read unix @->/tmp/trccarrier/trcsnap.sock: read: connection reset by peer
 		//		os.Exit(-1) // restarting carrier will rebuild necessary resources...
-		return new(string), errors.New("Tap writer error")
+		return new(string), errors.New("tap writer error")
 	}
 
 	// TODO: add domain if it's missing because that might actually happen...  Pull the domain from
@@ -233,7 +233,7 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	}
 	dialOptions := grpc.WithTransportCredentials(creds)
 
-	localHost, localHostErr := LocalAddr()
+	localHost, localHostErr := LocalAddr(config.EnvRaw)
 	if localHostErr != nil {
 		return nil, localHostErr
 	}
@@ -248,12 +248,12 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	localHostConfirm, localHostConfirmErr := LocalAddr()
+	localHostConfirm, localHostConfirmErr := LocalAddr(config.EnvRaw)
 	if localHostConfirmErr != nil {
 		return nil, localHostConfirmErr
 	}
 	if localHost != localHostConfirm {
-		return nil, errors.New("Host selection in flux")
+		return nil, errors.New("host selection flux - cannot continue")
 	}
 
 	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})

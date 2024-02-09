@@ -445,7 +445,7 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		featherCtx.Log.Printf("Starting deploy ctl session: %s\n", sessionIdentifier)
 		captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
 	} else {
-		fmt.Println(fmt.Sprintf("Unsupported agent: %s", agentName))
+		fmt.Printf("Unsupported agent: %s\n", agentName)
 		os.Exit(-1)
 	}
 
@@ -730,6 +730,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 	mergedVaultAddress := config.VaultAddress
 	mergedEnvRaw := config.EnvRaw
 
+	// Chewbacca: Wipe this next section out 731-739.  Code analysis indicates it's not used.
 	if (approleId != nil && len(*approleId) == 0) || (secretId != nil && len(*secretId) == 0) {
 		// If in context of trcsh, utilize CToken to auth...
 		if gTrcshConfig != nil && gTrcshConfig.CToken != nil {
