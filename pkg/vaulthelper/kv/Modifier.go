@@ -260,6 +260,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 		} else if strings.Contains(err.Error(), "x509: certificate") {
 			return false, desiredPolicy, err
 		}
+		fmt.Println("Possible attempted use of expired token")
 	}
 
 	valid := false
