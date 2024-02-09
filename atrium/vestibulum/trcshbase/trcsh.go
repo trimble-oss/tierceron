@@ -779,7 +779,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		config.EndDir = "."
 		config.Log.Printf("Preloading path %s env %s\n", trcPath, config.EnvRaw)
 		region := ""
-		if len(config.Regions) > 1 {
+		if len(config.Regions) > 0 {
 			region = config.Regions[0]
 		}
 
@@ -920,7 +920,7 @@ collaboratorReRun:
 				// Log for traceability.
 				config.Log.Println(deployLine)
 				region := ""
-				if len(config.Regions) > 1 {
+				if len(config.Regions) > 0 {
 					region = config.Regions[0]
 				}
 				err := processWindowsCmds(
@@ -959,7 +959,7 @@ collaboratorReRun:
 			} else {
 				config.FeatherCtx = featherCtx
 				region := ""
-				if len(config.Regions) > 1 {
+				if len(config.Regions) > 0 {
 					region = config.Regions[0]
 				}
 
