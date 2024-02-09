@@ -19,7 +19,7 @@ This suite of tools provides functionality for creating, reading, and updating c
 
 - This project follows a [GitFlow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow) model for development and release.
 - Encrypted configurations store in Vault backed by encrypted mysql.
-- Highly stable Vault service that can run on something as small as a t2 micro in AWS for example.
+- Highly stable Vault service that can run on something as small as a t2 micro in AWS or something similar in Azure for example.
 - Tools: 
     * trcconfig -- for reading configurations
     * trcinit -- for initializing a configuration set over multiple projects.

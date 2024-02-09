@@ -189,7 +189,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 
 	go captiplib.FeatherCtlEmitter(config.FeatherCtx, config.DeploymentCtlMessageChan, deployerEmote, nil)
 
-	go ProcessDeploy(config.FeatherCtx, config, region, "", deployment, trcPath, secretId, approleId, false)
+	go ProcessDeploy(config.FeatherCtx, config, "", deployment, trcPath, secretId, approleId, false)
 }
 
 // This is a controller program that can act as any command line utility.
@@ -266,7 +266,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		//Open deploy script and parse it.
-		ProcessDeploy(nil, config, *regionPtr, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
+		ProcessDeploy(nil, config, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
 		deploymentsShard := os.Getenv("DEPLOYMENTS")
 		agentToken := os.Getenv("AGENT_TOKEN")
@@ -308,6 +308,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtect(nil, &address)
 		shutdown := make(chan bool)
 
+		fmt.Printf("trcsh beginning new agent configuration sequence.\n")
 		// Preload agent synchronization configs...
 		var errAgentLoad error
 		var trcshConfig *capauth.TrcShConfig
@@ -319,6 +320,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			os.Exit(-1)
 		}
 
+		fmt.Printf("trcsh beginning initialization sequence.\n")
 		// Initialize deployers.
 		config, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, true)
 		if err != nil {
@@ -648,7 +650,7 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 // Returns:
 //
 //	Nothing.
-func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, region string, token string, deployment string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
+func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, token string, deployment string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
 	agentToken := false
 	if token != "" {
 		agentToken = true
@@ -775,6 +777,10 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		config.StartDir = []string{"trc_templates"}
 		config.EndDir = "."
 		config.Log.Printf("Preloading path %s env %s\n", trcPath, config.EnvRaw)
+		region := ""
+		if len(config.Regions) > 1 {
+			region = config.Regions[0]
+		}
 
 		configErr := trcconfigbase.CommonMain(&config.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, config)
 		if configErr != nil {
@@ -912,6 +918,10 @@ collaboratorReRun:
 			if eUtils.IsWindows() {
 				// Log for traceability.
 				config.Log.Println(deployLine)
+				region := ""
+				if len(config.Regions) > 1 {
+					region = config.Regions[0]
+				}
 				err := processWindowsCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
@@ -947,6 +957,11 @@ collaboratorReRun:
 				}
 			} else {
 				config.FeatherCtx = featherCtx
+				region := ""
+				if len(config.Regions) > 1 {
+					region = config.Regions[0]
+				}
+
 				processPluginCmds(
 					&trcKubeDeploymentConfig,
 					&onceKubeInit,
