@@ -1,0 +1,4 @@
+Approle_Name: "configemarole"
+Token_Permissions: 
+  config_token_dev: true
+  vault_pub_token_dev: true

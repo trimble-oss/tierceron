@@ -2,6 +2,7 @@ package flumen
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"strconv"
@@ -86,8 +87,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var trcIdentityConfig map[string]interface{}
 	logger.Println("Grabbing configs.")
 	for i := 0; i < len(projects); i++ {
+		eUtils.LogInfo(config, fmt.Sprintf("Loading service: %s", services[i]))
 
-		var indexValues []string
+		var regionValues []string
 
 		if services[i] == "Database" {
 			goMod.SectionName = "regionId"
@@ -98,9 +100,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogInfo(config, "Skipping service: "+services[i])
 				continue
 			}
-			indexValues = regions
+			regionValues = regions
 		} else {
-			indexValues = []string{""}
+			regionValues = []string{""}
 		}
 
 		if services[i] == "VaultDatabase" || services[i] == "Identity" {
@@ -111,8 +113,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			goMod.SectionKey = "/Protected/"
 		}
 
-		for _, indexValue := range indexValues {
-			goMod.SubSectionValue = indexValue
+		for _, regionValue := range regionValues {
+			eUtils.LogInfo(config, fmt.Sprintf("Processing region: %s", regionValue))
+			goMod.SubSectionValue = regionValue
 			ok := false
 			properties, err := trcvutils.NewProperties(config, vault, goMod, pluginConfig["env"].(string), projects[i], services[i])
 			if err != nil {
@@ -123,14 +126,16 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			switch services[i] {
 			case "Database":
 				var sourceDatabaseConfig map[string]interface{}
+
 				sourceDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok || len(sourceDatabaseConfig) == 0 {
 					// Just ignore this one and go to the next one.
-					eUtils.LogWarningMessage(config, "Expected database configuration does not exist: "+indexValue, false)
+					eUtils.LogWarningMessage(config, "Expected database configuration does not exist: "+regionValue, false)
 					continue
 				}
 				for _, supportedRegion := range buildopts.BuildOptions.GetSupportedSourceRegions() {
 					if sourceDatabaseConfig["dbsourceregion"] == supportedRegion {
+						eUtils.LogInfo(config, fmt.Sprintf("Loading service: %s for region: %s", services[i], regionValue))
 						sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
 					}
 				}
@@ -229,6 +234,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 	//time.Sleep(8 * time.Second)
 
+	eUtils.LogInfo(config, "Finished building source configs")
 	// Http query resources include:
 	// 1. Auth -- Auth is provided by the external library.
 	// 2. Get json by Api call.
@@ -243,6 +249,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			return err
 		}
 
+		eUtils.LogInfo(config, "Finished creating auth extension connection")
+
 		tfmContext.ExtensionAuthData, _, err = trcvutils.GetJSONFromClientByPost(config, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
@@ -253,6 +261,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		tfmContext.ExtensionAuthDataReloader["config"] = config
 		tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
 	}
+
+	eUtils.LogInfo(config, "Finished building source extension configs")
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
@@ -277,6 +287,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		sourceDatabaseConnectionsMap["NA"] = sourceDatabaseDetails
 		sourceDatabaseDetails["sqlConn"] = nil
 	}
+
+	eUtils.LogInfo(config, "Finished building engine & changes tables")
 
 	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&configBasis, templateList, pluginConfig["env"].(string), flowopts.BuildOptions.GetFlowDatabaseName())
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()

@@ -73,7 +73,7 @@ func AutoAuth(config *DriverConfig,
 	var c cert
 	var v *sys.Vault
 
-	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" {
+	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" && appRoleConfig != "deployauth" {
 		// For token based auth, auto auth not
 		return nil
 	}
@@ -85,7 +85,7 @@ func AutoAuth(config *DriverConfig,
 	}
 
 	// New values available for the cert file
-	if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
+	if secretIDPtr != nil && len(*secretIDPtr) > 0 && appRoleIDPtr != nil && len(*appRoleIDPtr) > 0 {
 		override = true
 	}
 
@@ -148,7 +148,8 @@ func AutoAuth(config *DriverConfig,
 		var approleID string
 		var dump []byte
 
-		if override {
+		if override || appRoleConfig == "deployauth" {
+			// Nothing...
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
@@ -221,7 +222,7 @@ func AutoAuth(config *DriverConfig,
 			}
 
 			dump = []byte(certConfigData)
-		} else if override && !exists {
+		} else if (override && !exists) || appRoleConfig == "deployauth" {
 			if !config.IsShell {
 				LogInfo(config, "No approle file exists, continuing without saving config IDs")
 			}
@@ -239,7 +240,7 @@ func AutoAuth(config *DriverConfig,
 		}
 
 		// Do not save IDs if overriding and no approle file exists
-		if !override || exists {
+		if (!override || exists) && appRoleConfig != "deployauth" {
 
 			// Create hidden folder
 			if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {

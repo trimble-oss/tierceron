@@ -46,7 +46,7 @@ func GetTlsConfig() (*tls.Config, error) {
 		return nil, err
 	}
 	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-		return nil, errors.New("couldn't append certs to root.")
+		return nil, errors.New("couldn't append certs to root")
 	}
 	// clientCert := make([]tls.Certificate, 0, 1)
 	// certs, err := tls.LoadX509KeyPair(ServCert, ServKey)
@@ -96,6 +96,37 @@ func LocalIp(env string) (string, error) {
 		}
 	}
 	return "", err
+}
+
+func LocalAddr(env string) (string, error) {
+	// TODO: replace if go ever gets around to implementing this...
+	localIP, err := LocalIp(env)
+	if err != nil {
+		return "", err
+	}
+	addrs, hostErr := net.LookupAddr(localIP)
+	if hostErr != nil {
+		return "", hostErr
+	}
+	localHost := ""
+	if len(addrs) > 0 {
+		if len(addrs) > 20 {
+			return "", errors.New("unsupported hosts")
+		}
+		for _, addr := range addrs {
+			localHost = strings.TrimRight(addr, ".")
+			if validErr := ValidateVhost(localHost, ""); validErr != nil {
+				localHost = ""
+				continue
+			} else {
+				break
+			}
+		}
+	} else {
+		return "", errors.New("invalid host")
+	}
+
+	return localHost, nil
 }
 
 func GetTransportCredentials() (credentials.TransportCredentials, error) {

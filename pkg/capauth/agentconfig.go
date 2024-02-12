@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -73,6 +72,21 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	return errors.New("Bad host: " + host)
 }
 
+func (agentconfig *AgentConfigs) RetryingPenseFeatherQuery(pense string) (*string, error) {
+	retry := 0
+	for retry < 5 {
+		result, err := agentconfig.PenseFeatherQuery(agentconfig.FeatherContext, pense)
+
+		if err != nil || result == nil || *result == "...." {
+			time.Sleep(time.Second)
+			retry = retry + 1
+		} else {
+			return result, err
+		}
+	}
+	return nil, errors.New("unavailable secrets")
+}
+
 func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
 	penseCode := randomString(7 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
@@ -114,7 +128,6 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 
 func NewAgentConfig(address string,
 	agentToken string,
-	deployments string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error) (*AgentConfigs, *TrcShConfig, error) {
@@ -155,6 +168,7 @@ func NewAgentConfig(address string,
 			trcHatEnv = data["trcHatEnv"].(string)
 		}
 
+		deployments := "bootstrap"
 		agentconfig := &AgentConfigs{
 			captiplib.FeatherCtlInit(nil,
 				trcHatHostLocal,
@@ -176,12 +190,15 @@ func NewAgentConfig(address string,
 			EnvContext: trcHatEnv,
 		}
 
-		trcShConfigRole, penseError := agentconfig.PenseFeatherQuery(agentconfig.FeatherContext, "configrole")
+		var penseError error
+		trcshConfig.ConfigRole, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
 		if penseError != nil {
 			return nil, nil, penseError
 		}
-		memprotectopts.MemProtect(nil, trcShConfigRole)
-		trcshConfig.ConfigRole = trcShConfigRole
+		trcshConfig.VaultAddress, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
+		if penseError != nil {
+			return nil, nil, penseError
+		}
 
 		return agentconfig, trcshConfig, nil
 	}
@@ -201,28 +218,10 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	}
 
 	if capWriteErr != nil || gTrcHatSecretsPort == "" {
-		fmt.Println("Code 54 failure...")
+		fmt.Println("Code 54 failure...  Possible deploy components mismatch..")
 		// 2023-06-30T01:29:21.7020686Z read unix @->/tmp/trccarrier/trcsnap.sock: read: connection reset by peer
 		//		os.Exit(-1) // restarting carrier will rebuild necessary resources...
-		return new(string), errors.Join(errors.New("Tap writer error"), capWriteErr)
-	}
-
-	localIP, err := LocalIp(config.EnvRaw)
-	if err != nil {
-		return nil, err
-	}
-	addrs, hostErr := net.LookupAddr(localIP)
-	if hostErr != nil {
-		return nil, hostErr
-	}
-	localHost := ""
-	if len(addrs) > 0 {
-		localHost = strings.TrimRight(addrs[0], ".")
-		if validErr := ValidateVhost(localHost, ""); validErr != nil {
-			return nil, validErr
-		}
-	} else {
-		return nil, errors.New("Invalid host")
+		return new(string), errors.New("tap writer error")
 	}
 
 	// TODO: add domain if it's missing because that might actually happen...  Pull the domain from
@@ -232,8 +231,13 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	if err != nil {
 		return nil, err
 	}
+	dialOptions := grpc.WithTransportCredentials(creds)
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localHost, gTrcHatSecretsPort), grpc.WithTransportCredentials(creds))
+	localHost, localHostErr := LocalAddr(config.EnvRaw)
+	if localHostErr != nil {
+		return nil, localHostErr
+	}
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localHost, gTrcHatSecretsPort), dialOptions)
 	if err != nil {
 		return new(string), err
 	}
@@ -243,6 +247,14 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+
+	localHostConfirm, localHostConfirmErr := LocalAddr(config.EnvRaw)
+	if localHostConfirmErr != nil {
+		return nil, localHostConfirmErr
+	}
+	if localHost != localHostConfirm {
+		return nil, errors.New("host selection flux - cannot continue")
+	}
 
 	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 	if penseErr != nil {

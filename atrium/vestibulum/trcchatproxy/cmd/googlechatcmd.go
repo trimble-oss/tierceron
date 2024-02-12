@@ -7,8 +7,8 @@ import (
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
-	"github.com/trimble-oss/tierceron/trcchatproxy/pubsub"
-	"github.com/trimble-oss/tierceron/trcchatproxy/trcchat"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/pubsub"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/trcchat"
 )
 
 func main() {

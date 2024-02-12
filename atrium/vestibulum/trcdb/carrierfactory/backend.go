@@ -173,6 +173,10 @@ var environmentConfigs map[string]interface{} = map[string]interface{}{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
 
+func TestInit() {
+	vaultInitialized <- true
+}
+
 func PushEnv(envMap map[string]interface{}) {
 	tokenEnvChan <- envMap
 }
@@ -647,7 +651,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			if sha256Interface, shaOk := tokenEnvMap["trcsha256"]; shaOk {
 				sha256 = sha256Interface.(string)
 			} else {
-				sha256 = "Failure to copy plugin."
+				sha256 = "Plugin not copied."
 			}
 
 			return &logical.Response{

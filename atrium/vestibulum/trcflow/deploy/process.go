@@ -16,7 +16,6 @@ import (
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/carrierfactory/servercapauth"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/factory"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	trcplgtool "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
@@ -65,26 +64,29 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		return err
 	}
 
-	if ok, err := servercapauth.ValidatePathSha(goMod, pluginConfig, logger); true || ok {
+	if ok, err := servercapauth.ValidatePathSha(goMod, pluginConfig, logger); ok {
+		// Only start up if trcsh is up to date....
 		onceAuth.Do(func() {
 			if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
 				// Ensure only dev is the cap auth...
 				logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
 				var featherAuth *servercapauth.FeatherAuth = nil
-				if pluginConfig["env"].(string) == "dev" {
+				if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
 					featherAuth, err = servercapauth.Init(goMod, pluginConfig, logger)
 					if err != nil {
 						eUtils.LogErrorMessage(config, "Skipping cap auth init.", false)
 						return
 					}
-					pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
+					if featherAuth != nil {
+						pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
+					}
 				}
 
 				servercapauth.Memorize(pluginConfig, logger)
 
-				// TODO: Support variables for different environments...
 				// Not really clear how cap auth would do this...
 				go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+
 				logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
 				gCapInitted = true
 			}
@@ -212,11 +214,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	pluginCopied := false
 	var agentPath string
 
-	pluginExtension := ""
-	if prod.IsProd() {
-		pluginExtension = "-prod"
-	}
-
 	// trcsh is always type agent... even if it somehow ends up incorrect in vault...
 	if vaultPluginSignature["trcplugin"].(string) == "trcsh" {
 		vaultPluginSignature["trctype"] = "agent"
@@ -226,7 +223,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	case "agent":
 		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
 	default:
-		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string) + pluginExtension
+		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)
 	}
 
 	if _, err := os.Stat(agentPath); errors.Is(err, os.ErrNotExist) {
@@ -287,6 +284,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			}
 
 			if imageFile, err := os.Open(agentPath); err == nil {
+				defer imageFile.Close()
 				chdModErr := imageFile.Chmod(0750)
 				if chdModErr != nil {
 					eUtils.LogErrorMessage(cConfig, fmt.Sprintf("PluginDeployFlow failure: Could not give permission to image in file system.  Bailing.. for env: %s and plugin %s\n", cConfig.Env, pluginName), false)
@@ -405,15 +403,11 @@ func PluginDeployedUpdate(config *eUtils.DriverConfig, mod *helperkv.Modifier, v
 					pluginData["trcplugin"] = pluginName
 
 					var agentPath string
-					pluginExtension := ""
-					if prod.IsProd() {
-						pluginExtension = "-prod"
-					}
 
 					if pluginData["trctype"] == "agent" {
 						agentPath = "/home/azuredeploy/bin/" + pluginName
 					} else {
-						agentPath = "/etc/opt/vault/plugins/" + pluginName + pluginExtension
+						agentPath = "/etc/opt/vault/plugins/" + pluginName
 					}
 
 					logger.Println("Checking file.")

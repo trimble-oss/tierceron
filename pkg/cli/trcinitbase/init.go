@@ -495,11 +495,6 @@ func CommonMain(envPtr *string,
 					}
 
 					if *roleFileFilterPtr != "" && *tokenFileFilterPtr == "" {
-						// approle provided, tokenFileFilter not provided...
-						// This will just be an approler
-						mod.Env = *namespaceVariable
-						mod.RawEnv = *namespaceVariable
-
 						//
 						// Wipe existing role.
 						// Recreate the role.

@@ -320,7 +320,13 @@ func CommonMain(envPtr *string,
 				}
 				sha256Bytes := sha256.Sum256(pluginImage)
 				*sha256Ptr = fmt.Sprintf("%x", sha256Bytes)
+			} else {
+				fmt.Println("Irregular image")
+				return errors.New("irregular image")
 			}
+		} else {
+			fmt.Println("Failure to stat image:" + statErr.Error())
+			return statErr
 		}
 	}
 
@@ -500,9 +506,12 @@ func CommonMain(envPtr *string,
 			fmt.Println("Checking for existing image.")
 			err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 			if _, ok := pluginToolConfig["imagesha256"].(string); err != nil || !ok {
-				fmt.Println("Invalid or nonexistent image.")
+				fmt.Println("Invalid or nonexistent image on download.")
 				if err != nil {
 					fmt.Println(err.Error())
+				}
+				if err == nil {
+					err = errors.New("invalid or nonexistent image on download")
 				}
 				return err
 			}
