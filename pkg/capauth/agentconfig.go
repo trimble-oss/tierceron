@@ -14,6 +14,7 @@ import (
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -50,7 +51,7 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	if !strings.HasPrefix(host, protocol) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
-	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints() {
+	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if inverse {
 			if strings.Contains(endpoint, host) {
 				return nil
