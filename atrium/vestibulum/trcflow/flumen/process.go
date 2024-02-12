@@ -297,6 +297,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
+		if !tfmFlumeContext.FlowControllerInit {
+			continue
+		}
 		for _, table := range GetTierceronTableNames() {
 			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
 			tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
@@ -391,6 +394,14 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				)
 			}(flowcore.FlowNameType(table), config)
 		}
+	}
+
+	additionalFlowInit := true
+	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
+		if !additionalFlowInit {
+			continue
+		}
+		additionalFlowInit = false
 		for _, enhancement := range flowopts.BuildOptions.GetAdditionalFlows() {
 			flowWG.Add(1)
 
