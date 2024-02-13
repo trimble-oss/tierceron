@@ -294,7 +294,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 		}
 	} else {
 		tfmContext.GetTableModifierLock().Unlock()
-		tfmContext.Log("Unrecognized table: "+tfContext.Flow.TableName(), nil)
+		tfmContext.Log("Recognized table: "+tfContext.Flow.TableName(), nil)
 	}
 }
 
