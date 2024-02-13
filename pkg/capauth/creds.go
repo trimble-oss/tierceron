@@ -18,15 +18,18 @@ import (
 )
 
 const (
-	ServCert      = "/etc/opt/vault/certs/serv_cert.pem"
-	ServCertLocal = "./serv_cert.pem"
-	ServKey       = "/etc/opt/vault/certs/serv_key.pem"
+	ServCert           = "/etc/opt/vault/certs/serv_cert.pem"
+	ServCertPrefixPath = "/etc/opt/vault/certs/"
+	ServCertLocal      = "./serv_cert.pem"
+	ServKey            = "/etc/opt/vault/certs/serv_key.pem"
 )
 
 var MashupCertPool *x509.CertPool
 
-func ReadServerCert() ([]byte, error) {
-	if _, err := os.Stat(ServCert); err == nil {
+func ReadServerCert(certName string) ([]byte, error) {
+	if _, err := os.Stat(ServCertPrefixPath + certName); err == nil { //To support &certName=??
+		return os.ReadFile(ServCertPrefixPath + certName)
+	} else if _, err := os.Stat(ServCert); err == nil {
 		return os.ReadFile(ServCert)
 	} else {
 		if utils.IsWindows() {
@@ -37,11 +40,11 @@ func ReadServerCert() ([]byte, error) {
 	}
 }
 
-func GetTlsConfig() (*tls.Config, error) {
+func GetTlsConfig(certName string) (*tls.Config, error) {
 	// I don't think we're doing this right...?.?
 	// Comment out for now...
 	rootCertPool := x509.NewCertPool()
-	pem, err := ReadServerCert()
+	pem, err := ReadServerCert(certName)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +65,7 @@ func GetTlsConfig() (*tls.Config, error) {
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-	mashupCertBytes, err := ReadServerCert()
+	mashupCertBytes, err := ReadServerCert("serv_cert.pem")
 	if err != nil {
 		fmt.Println("Cert read failure.")
 		return
@@ -131,7 +134,7 @@ func LocalAddr(env string) (string, error) {
 
 func GetTransportCredentials() (credentials.TransportCredentials, error) {
 
-	mashupKeyBytes, err := ReadServerCert()
+	mashupKeyBytes, err := ReadServerCert("serv_cert.pem")
 	if err != nil {
 		return nil, err
 	}
