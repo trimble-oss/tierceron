@@ -57,12 +57,12 @@ func Heartbeat(config *eUtils.DriverConfig, url string, username string, passwor
 }
 func ParseURL(config *eUtils.DriverConfig, url string) (string, string, string, string, string, error) {
 	//only works with jdbc:mysql or jdbc:sqlserver.
-	regex := regexp.MustCompile(`(?i)(?:jdbc:(mysql|sqlserver|mariadb))://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+).*(certName=\w+.\w+)`)
+	regex := regexp.MustCompile(`(?i)(?:jdbc:(mysql|sqlserver|mariadb))://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+)(.*certName=([\w\.]+)|.*).*`)
 	m := regex.FindStringSubmatch(url)
 	if m == nil {
 		err := errors.New("incorrect URL format")
 		eUtils.LogErrorObject(config, err, false)
 		return "", "", "", "", "", err
 	}
-	return m[1], m[2], m[3], m[4], m[5], nil
+	return m[1], m[2], m[3], m[4], m[6], nil
 }
