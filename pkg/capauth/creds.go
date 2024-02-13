@@ -40,6 +40,7 @@ func ReadServerCert(certName string) ([]byte, error) {
 			return nil, errors.New("file not found")
 		}
 	}
+	return "", errors.New("File not found")
 }
 
 func GetTlsConfig(certName string) (*tls.Config, error) {
