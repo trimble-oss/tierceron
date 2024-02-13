@@ -27,20 +27,19 @@ const (
 var MashupCertPool *x509.CertPool
 
 func ReadServerCert(certName string) ([]byte, error) {
-	if certName == "" {
-		if _, err := os.Stat(ServCert); err == nil {
+	var err error
+	if len(certName) == 0 {
+		if _, err = os.Stat(ServCert); err == nil {
 			return os.ReadFile(ServCert)
 		}
-	} else if _, err := os.Stat(ServCertPrefixPath + certName); err == nil { //To support &certName=??
+	} else if _, err = os.Stat(ServCertPrefixPath + certName); err == nil { //To support &certName=??
 		return os.ReadFile(ServCertPrefixPath + certName)
 	} else {
 		if utils.IsWindows() {
 			return os.ReadFile(ServCertLocal)
-		} else {
-			return nil, errors.New("file not found")
 		}
 	}
-	return "", errors.New("File not found")
+	return nil, err
 }
 
 func GetTlsConfig(certName string) (*tls.Config, error) {
