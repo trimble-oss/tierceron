@@ -67,7 +67,7 @@ func GetTlsConfig(certName string) (*tls.Config, error) {
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-	mashupCertBytes, err := ReadServerCert("serv_cert.pem")
+	mashupCertBytes, err := ReadServerCert("")
 	if err != nil {
 		fmt.Println("Cert read failure.")
 		return
@@ -136,7 +136,7 @@ func LocalAddr(env string) (string, error) {
 
 func GetTransportCredentials() (credentials.TransportCredentials, error) {
 
-	mashupKeyBytes, err := ReadServerCert("serv_cert.pem")
+	mashupKeyBytes, err := ReadServerCert("")
 	if err != nil {
 		return nil, err
 	}
