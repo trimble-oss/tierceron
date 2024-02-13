@@ -27,10 +27,12 @@ const (
 var MashupCertPool *x509.CertPool
 
 func ReadServerCert(certName string) ([]byte, error) {
-	if _, err := os.Stat(ServCertPrefixPath + certName); err == nil { //To support &certName=??
+	if certName == "" {
+		if _, err := os.Stat(ServCert); err == nil {
+			return os.ReadFile(ServCert)
+		}
+	} else if _, err := os.Stat(ServCertPrefixPath + certName); err == nil { //To support &certName=??
 		return os.ReadFile(ServCertPrefixPath + certName)
-	} else if _, err := os.Stat(ServCert); err == nil {
-		return os.ReadFile(ServCert)
 	} else {
 		if utils.IsWindows() {
 			return os.ReadFile(ServCertLocal)
