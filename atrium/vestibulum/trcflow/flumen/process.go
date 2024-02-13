@@ -297,6 +297,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
 	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
+		if !tfmFlumeContext.FlowControllerInit {
+			continue
+		}
 		for _, table := range GetTierceronTableNames() {
 			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
 			tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
@@ -335,6 +338,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 			controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
 			if initReceiver, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
+				eUtils.LogInfo(config, "Controller has been initialized...sending alert to interface...")
 			initAlert: //This waits for flow states to be loaded before starting all non-controller flows
 				for {
 					select {
@@ -390,6 +394,14 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				)
 			}(flowcore.FlowNameType(table), config)
 		}
+	}
+
+	additionalFlowInit := true
+	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
+		if !additionalFlowInit {
+			continue
+		}
+		additionalFlowInit = false
 		for _, enhancement := range flowopts.BuildOptions.GetAdditionalFlows() {
 			flowWG.Add(1)
 
@@ -451,6 +463,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}
 		}
 	}
+	eUtils.LogInfo(config, "Waiting for controller initialization...")
 	tfmFlumeContext.InitConfigWG.Wait()
 	tfmFlumeContext.FlowControllerLock.Lock()
 	tfmFlumeContext.InitConfigWG = nil
@@ -480,6 +493,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	controllerVaultDatabaseConfig["controller"] = true
 
 	if controllerCheck == 3 {
+		eUtils.LogInfo(config, "Starting controller interface...")
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
 		controllerInterfaceErr := harbingeropts.BuildOptions.BuildInterface(config, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
 		if controllerInterfaceErr != nil {
@@ -515,6 +529,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		vaultDatabaseConfig["dfsPass"] = dfsPass
 	}
 
+	eUtils.LogInfo(config, "Starting db interface...")
 	interfaceErr := harbingeropts.BuildOptions.BuildInterface(config, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{Log: config.Log})
 	if interfaceErr != nil {
 		eUtils.LogErrorMessage(config, "Failed to start up database interface:"+interfaceErr.Error(), false)

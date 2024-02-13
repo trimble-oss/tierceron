@@ -182,7 +182,7 @@ func PushEnv(envMap map[string]interface{}) {
 }
 func ValidateVaddr(vaddr string) error {
 	logger.Println("ValidateVaddr")
-	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints() {
+	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if strings.HasPrefix(vaddr, fmt.Sprintf("https://%s", endpoint)) {
 			return nil
 		}
