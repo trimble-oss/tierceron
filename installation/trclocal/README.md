@@ -98,3 +98,7 @@ rm -r scripts
 
 rm *.log
 
+# Initialze simple secrets to vault
+cd trchelloworld
+mkdir trc_seeds
+trcx -env=dev -novault
