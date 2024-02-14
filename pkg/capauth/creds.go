@@ -80,10 +80,6 @@ func init() {
 }
 
 func LocalIp(env string) (string, error) {
-	if strings.Contains(env, "staging") || strings.Contains(env, "prod") {
-		return "127.0.0.1", nil
-	}
-
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return "", err
