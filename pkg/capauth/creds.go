@@ -85,14 +85,27 @@ func init() {
 }
 
 func LocalIp(env string) (string, error) {
-	addrs, err := net.InterfaceAddrs()
+
+	interfaces, err := net.Interfaces()
 	if err != nil {
 		return "", err
 	}
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String(), nil
+
+	for _, iface := range interfaces {
+		if strings.HasPrefix(iface.Name, "eth0") {
+			addrs, err := iface.Addrs()
+			if err != nil {
+				fmt.Println("Error getting addresses for", iface.Name, ":", err)
+				continue
+			}
+
+			for _, address := range addrs {
+				// Check if address belongs to eth0
+				if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+					if ipnet.IP.To4() != nil {
+						return ipnet.IP.String(), nil
+					}
+				}
 			}
 		}
 	}
@@ -100,7 +113,6 @@ func LocalIp(env string) (string, error) {
 }
 
 func LocalAddr(env string) (string, error) {
-	// TODO: replace if go ever gets around to implementing this...
 	localIP, err := LocalIp(env)
 	if err != nil {
 		return "", err
