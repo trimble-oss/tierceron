@@ -102,3 +102,10 @@ rm *.log
 cd trchelloworld
 mkdir trc_seeds
 trcx -env=dev -novault
+
+# Change some secrets 
+vim trc_seeds/dev/dev_seed.yml
+trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR
+
+# Clean up...
+rm -r trc_seeds/dev
