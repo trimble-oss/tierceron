@@ -64,5 +64,9 @@ func ParseURL(config *eUtils.DriverConfig, url string) (string, string, string, 
 		eUtils.LogErrorObject(config, err, false)
 		return "", "", "", "", "", err
 	}
-	return m[1], m[2], m[3], m[4], m[6], nil
+	certName := ""
+	if len(m) >= 7 {
+		certName = m[6]
+	}
+	return m[1], m[2], m[3], m[4], certName, nil
 }
