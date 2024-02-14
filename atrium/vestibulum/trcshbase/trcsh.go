@@ -522,6 +522,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	configCount *int) {
 	switch control {
 	case "trcpub":
+		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		config.AppRoleConfig = "configpub.yml"
 		config.EnvRaw = env
 		config.IsShellSubProcess = true

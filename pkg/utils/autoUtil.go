@@ -354,7 +354,7 @@ func AutoAuth(config *DriverConfig,
 		}
 
 		if len(*appRoleIDPtr) != 36 || len(*secretIDPtr) != 36 {
-			return fmt.Errorf("unexpected approle len = %d and secret len = %d", len(*appRoleIDPtr), len(*secretIDPtr))
+			return fmt.Errorf("unexpected approle len = %d and secret len = %d --> expecting 36", len(*appRoleIDPtr), len(*secretIDPtr))
 		}
 
 		roleToken, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
