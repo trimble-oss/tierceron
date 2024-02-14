@@ -90,6 +90,7 @@ func AutoAuth(config *DriverConfig,
 	}
 
 	if !config.IsShell && (strings.Index(*envPtr, "staging") == 0 || strings.Index(*envPtr, "prod") == 0) {
+		config.Log.Printf("Command linue approle use unsupported in staging\n")
 		override = false
 		exists = true
 		appRoleIDPtr = nil
@@ -350,6 +351,10 @@ func AutoAuth(config *DriverConfig,
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			return errors.New("need both public and secret app role to retrieve token from vault")
+		}
+
+		if len(*appRoleIDPtr) != 36 || len(*secretIDPtr) != 36 {
+			return fmt.Errorf("unexpected approle len = %d and secret len = %d", len(*appRoleIDPtr), len(*secretIDPtr))
 		}
 
 		roleToken, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
