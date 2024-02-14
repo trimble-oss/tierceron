@@ -88,23 +88,18 @@ func AutoAuth(config *DriverConfig,
 	if secretIDPtr != nil && len(*secretIDPtr) > 0 && appRoleIDPtr != nil && len(*appRoleIDPtr) > 0 {
 		override = true
 	}
+	isProd := strings.Index(*envPtr, "staging") == 0 || strings.Index(*envPtr, "prod") == 0
 
-	if !config.IsShell && (strings.Index(*envPtr, "staging") == 0 || strings.Index(*envPtr, "prod") == 0) {
-		config.Log.Printf("Command linue approle use unsupported in staging\n")
-		override = false
-		exists = true
-		appRoleIDPtr = nil
-		secretIDPtr = nil
-	} else {
-		// If cert file exists obtain secretID and appRoleID
-		config.Log.Printf("User home directory %v ", userHome)
-		if len(appRoleConfig) == 0 {
-			appRoleConfig = "config.yml"
+	// If cert file exists obtain secretID and appRoleID
+	config.Log.Printf("User home directory %v ", userHome)
+	if len(appRoleConfig) == 0 {
+		appRoleConfig = "config.yml"
+	}
+	if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
+		if config.IsShellSubProcess {
+			return errors.New("required azure deploy approle and secret are missing")
 		}
-		if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
-			if config.IsShellSubProcess {
-				return errors.New("required azure deploy approle and secret are missing")
-			}
+		if !isProd {
 			if _, err := os.Stat(userHome + "/.tierceron/" + appRoleConfig); !os.IsNotExist(err) {
 				exists = true
 				_, configErr := c.getConfig(config.Log, appRoleConfig)
@@ -154,7 +149,11 @@ func AutoAuth(config *DriverConfig,
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
-			LogInfo(config, "No cert file found, please enter config IDs")
+			if !isProd {
+				LogInfo(config, "No cert file found, please enter config IDs")
+			} else {
+				LogInfo(config, "Please enter config IDs")
+			}
 			if addrPtr != nil && *addrPtr != "" {
 				LogInfo(config, "vaultHost: "+*addrPtr)
 				vaultHost = *addrPtr
@@ -166,7 +165,9 @@ func AutoAuth(config *DriverConfig,
 
 			if *tokenPtr == "" {
 				if secretIDPtr != nil && *secretIDPtr != "" {
-					LogInfo(config, "secretID: "+*secretIDPtr)
+					if !isProd {
+						LogInfo(config, "secretID: "+*secretIDPtr)
+					}
 					secretID = *secretIDPtr
 				} else if secretIDPtr != nil {
 					LogInfo(config, "secretID: ")
@@ -176,7 +177,9 @@ func AutoAuth(config *DriverConfig,
 				}
 
 				if appRoleIDPtr != nil && *appRoleIDPtr != "" {
-					LogInfo(config, "approleID: "+*appRoleIDPtr)
+					if !isProd {
+						LogInfo(config, "approleID: "+*appRoleIDPtr)
+					}
 					approleID = *appRoleIDPtr
 				} else if appRoleIDPtr != nil {
 					LogInfo(config, "approleID: ")
@@ -241,7 +244,7 @@ func AutoAuth(config *DriverConfig,
 		}
 
 		// Do not save IDs if overriding and no approle file exists
-		if (!override || exists) && appRoleConfig != "deployauth" {
+		if !isProd && (!override || exists) && appRoleConfig != "deployauth" {
 
 			// Create hidden folder
 			if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {
