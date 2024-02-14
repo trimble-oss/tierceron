@@ -19,6 +19,7 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/deployutil"
 	kube "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native"
@@ -58,6 +59,10 @@ func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.Dr
 
 	regions := []string{}
 	if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
+		if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") {
+			prod.SetProd(true)
+		}
+
 		supportedRegions := eUtils.GetSupportedProdRegions()
 		if region != "" {
 			for _, supportedRegion := range supportedRegions {
@@ -522,6 +527,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	configCount *int) {
 	switch control {
 	case "trcpub":
+		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		config.AppRoleConfig = "configpub.yml"
 		config.EnvRaw = env
 		config.IsShellSubProcess = true

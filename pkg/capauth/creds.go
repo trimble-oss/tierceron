@@ -18,30 +18,35 @@ import (
 )
 
 const (
-	ServCert      = "/etc/opt/vault/certs/serv_cert.pem"
-	ServCertLocal = "./serv_cert.pem"
-	ServKey       = "/etc/opt/vault/certs/serv_key.pem"
+	ServCert           = "/etc/opt/vault/certs/serv_cert.pem"
+	ServCertPrefixPath = "/etc/opt/vault/certs/"
+	ServCertLocal      = "./serv_cert.pem"
+	ServKey            = "/etc/opt/vault/certs/serv_key.pem"
 )
 
 var MashupCertPool *x509.CertPool
 
-func ReadServerCert() ([]byte, error) {
-	if _, err := os.Stat(ServCert); err == nil {
-		return os.ReadFile(ServCert)
+func ReadServerCert(certName string) ([]byte, error) {
+	var err error
+	if len(certName) == 0 {
+		if _, err = os.Stat(ServCert); err == nil {
+			return os.ReadFile(ServCert)
+		}
+	} else if _, err = os.Stat(ServCertPrefixPath + certName); err == nil { //To support &certName=??
+		return os.ReadFile(ServCertPrefixPath + certName)
 	} else {
 		if utils.IsWindows() {
 			return os.ReadFile(ServCertLocal)
-		} else {
-			return nil, errors.New("file not found")
 		}
 	}
+	return nil, err
 }
 
-func GetTlsConfig() (*tls.Config, error) {
+func GetTlsConfig(certName string) (*tls.Config, error) {
 	// I don't think we're doing this right...?.?
 	// Comment out for now...
 	rootCertPool := x509.NewCertPool()
-	pem, err := ReadServerCert()
+	pem, err := ReadServerCert(certName)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +67,7 @@ func GetTlsConfig() (*tls.Config, error) {
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-	mashupCertBytes, err := ReadServerCert()
+	mashupCertBytes, err := ReadServerCert("")
 	if err != nil {
 		fmt.Println("Cert read failure.")
 		return
@@ -80,18 +85,27 @@ func init() {
 }
 
 func LocalIp(env string) (string, error) {
-	if strings.Contains(env, "staging") || strings.Contains(env, "prod") {
-		return "127.0.0.1", nil
-	}
 
-	addrs, err := net.InterfaceAddrs()
+	interfaces, err := net.Interfaces()
 	if err != nil {
 		return "", err
 	}
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String(), nil
+
+	for _, iface := range interfaces {
+		if strings.HasPrefix(iface.Name, "eth0") {
+			addrs, err := iface.Addrs()
+			if err != nil {
+				fmt.Println("Error getting addresses for", iface.Name, ":", err)
+				continue
+			}
+
+			for _, address := range addrs {
+				// Check if address belongs to eth0
+				if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+					if ipnet.IP.To4() != nil {
+						return ipnet.IP.String(), nil
+					}
+				}
 			}
 		}
 	}
@@ -99,7 +113,6 @@ func LocalIp(env string) (string, error) {
 }
 
 func LocalAddr(env string) (string, error) {
-	// TODO: replace if go ever gets around to implementing this...
 	localIP, err := LocalIp(env)
 	if err != nil {
 		return "", err
@@ -131,7 +144,7 @@ func LocalAddr(env string) (string, error) {
 
 func GetTransportCredentials() (credentials.TransportCredentials, error) {
 
-	mashupKeyBytes, err := ReadServerCert()
+	mashupKeyBytes, err := ReadServerCert("")
 	if err != nil {
 		return nil, err
 	}

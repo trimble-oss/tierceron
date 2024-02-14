@@ -260,6 +260,7 @@ func CommonMain(envPtr *string,
 		if !*noVaultPtr {
 			autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
+				log.Printf("auth error: %s", autoErr)
 				fmt.Println("Missing auth components.")
 				return errors.New("missing auth components")
 			}
