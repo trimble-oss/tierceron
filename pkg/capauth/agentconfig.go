@@ -53,6 +53,11 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	}
 	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if inverse {
+			if len(protocol) > 0 {
+				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint), host) {
+					return nil
+				}
+			}
 			if strings.Contains(endpoint, host) {
 				return nil
 			}
