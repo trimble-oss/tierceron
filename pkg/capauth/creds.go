@@ -29,6 +29,9 @@ var MashupCertPool *x509.CertPool
 func ReadServerCert(certName string) ([]byte, error) {
 	var err error
 	if len(certName) == 0 {
+		if utils.IsWindows() {
+			return os.ReadFile(ServCertLocal)
+		}
 		if _, err = os.Stat(ServCert); err == nil {
 			return os.ReadFile(ServCert)
 		}
