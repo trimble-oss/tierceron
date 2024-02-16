@@ -31,10 +31,10 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
-	fmt.Println("Version: " + "1.6")
 
 	exitOnFailure := false
 	if flagset == nil {
+		fmt.Println("Version: " + "1.6")
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
@@ -44,8 +44,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("secretID", "", "Public app role ID")
 		flagset.String("appRoleID", "", "Secret app role ID")
-		exitOnFailure = true
 	}
+	exitOnFailure = true
 	endDirPtr := flagset.String("endDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
 	tokenPtr := flagset.String("token", "", "Vault access token")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
