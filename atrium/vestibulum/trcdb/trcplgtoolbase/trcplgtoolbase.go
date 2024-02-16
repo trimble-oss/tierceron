@@ -457,6 +457,15 @@ func CommonMain(envPtr *string,
 			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
 			fmt.Printf("Deploying image to: %s\n", deployPath)
 
+			if _, err = os.Stat(deployRoot); err != nil {
+				err = os.MkdirAll(deployRoot, 0644)
+				if err != nil {
+					fmt.Println(err.Error())
+					fmt.Println("Could not prepare needed directory for deployment.")
+					return err
+				}
+			}
+
 			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
 			if err != nil {
 				fmt.Println(err.Error())

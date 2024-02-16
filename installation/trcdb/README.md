@@ -19,3 +19,14 @@ You'll want to replace these placeholder files with the real thing.
 # Publish initial trcdb seed data
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -indexed=TrcVault
 trcinit -env=dev -certs -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
+
+# Agent installation
+trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=PluginTool -serviceFilter=config -indexFilter=config
+
+... after making edits to the generated seed file, init it.
+
+trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=PluginTool
+
+trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcshAgent -serviceFilter=config -indexFilter=config -addr=$VAULT_ADDR -novault
+
+trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent

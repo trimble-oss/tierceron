@@ -251,7 +251,7 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	c := cap.NewCapClient(conn)
 
 	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
 	localHostConfirm, localHostConfirmErr := LocalAddr(config.EnvRaw)

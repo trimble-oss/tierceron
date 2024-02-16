@@ -31,12 +31,12 @@ fi
 
 
 if [[ -z "${SECRET_VAULT_CONFIG_ROLE}" ]]; then
-echo "Enter organization vault config approle: "
+echo "Enter organization vault bamboo role as <roleid>:<secretid> - "
 read SECRET_VAULT_CONFIG_ROLE
 fi
 
 if [[ -z "${SECRET_VAULT_PUB_ROLE}" ]]; then
-echo "Enter organization vault config pubrole: "
+echo "Enter organization vault config pub role as <roleid>:<secretid> - "
 read SECRET_VAULT_PUB_ROLE
 fi
 
