@@ -321,7 +321,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			agentToken,
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil)
 		if errAgentLoad != nil {
-			fmt.Println("trcsh agent bootstrap failure.")
+			fmt.Printf("trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
 			os.Exit(-1)
 		}
 
@@ -329,14 +329,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		// Initialize deployers.
 		config, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, true)
 		if err != nil {
-			fmt.Println("trcsh agent bootstrap failure.")
+			fmt.Printf("trcsh agent bootstrap init config failure: %s\n", err.Error())
 			os.Exit(-1)
 		}
 		config.AppRoleConfig = *trcshConfig.ConfigRole
 		config.VaultAddress = *trcshConfig.VaultAddress
 		serviceDeployments, err := deployutil.GetDeployers(config)
 		if err != nil {
-			fmt.Println("trcsh agent bootstrap failure.")
+			fmt.Printf("trcsh agent bootstrap get deployers failure: %s\n", err.Error())
 			os.Exit(-1)
 		}
 		deploymentShards := strings.Split(deploymentsShard, ",")
