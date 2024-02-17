@@ -318,7 +318,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		var errAgentLoad error
 		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
-			agentEnv, deployCtlAcceptRemoteNoTimeout, nil)
+			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, nil)
 		if errAgentLoad != nil {
 			fmt.Printf("trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
 			os.Exit(-1)
@@ -592,7 +592,8 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 				*gTrcshConfig.CToken,
 				env,
 				deployCtlAcceptRemote,
-				deployCtlInterrupted)
+				deployCtlInterrupted,
+				config.Log)
 			if errAgentLoad != nil {
 				fmt.Printf("Permissions failure.  Incorrect deployment")
 				os.Exit(1)
