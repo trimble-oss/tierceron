@@ -470,6 +470,9 @@ retryVaultAccess:
 				}
 			}
 		}
+		if len(data) == 0 {
+			return nil, errors.New("could not get data from vault.  Provided token may lack permission to access provided path")
+		}
 		return data, err
 	}
 	return nil, errors.New("could not get data from vault response")
