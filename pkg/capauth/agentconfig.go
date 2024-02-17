@@ -137,6 +137,8 @@ func NewAgentConfig(address string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error) (*AgentConfigs, *TrcShConfig, error) {
+	fmt.Printf("☕")
+
 	mod, modErr := helperkv.NewModifier(false, agentToken, address, env, nil, true, nil)
 	if modErr != nil {
 		fmt.Println("trcsh Failed to bootstrap")
@@ -146,11 +148,13 @@ func NewAgentConfig(address string,
 	envParts := strings.Split(env, "-")
 	mod.Env = envParts[0]
 
+	fmt.Printf("♨️")
 	data, readErr := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
 	defer func(m *helperkv.Modifier, e string) {
 		m.Env = e
 	}(mod, env)
 
+	fmt.Printf("♨️")
 	if readErr != nil {
 		return nil, nil, readErr
 	} else {
@@ -173,6 +177,7 @@ func NewAgentConfig(address string,
 		} else {
 			trcHatEnv = data["trcHatEnv"].(string)
 		}
+		fmt.Printf("♨️")
 
 		deployments := "bootstrap"
 		agentconfig := &AgentConfigs{
@@ -201,10 +206,13 @@ func NewAgentConfig(address string,
 		if penseError != nil {
 			return nil, nil, penseError
 		}
+		fmt.Printf("♨️")
+
 		trcshConfig.VaultAddress, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
 		if penseError != nil {
 			return nil, nil, penseError
 		}
+		fmt.Printf("☕")
 
 		return agentconfig, trcshConfig, nil
 	}

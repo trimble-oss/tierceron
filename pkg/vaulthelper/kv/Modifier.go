@@ -129,7 +129,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	})
 	if err != nil {
 		if logger != nil {
-			logger.Println("vaultHost: "+modClient.Address(), logger)
+			logger.Printf("vaultHost: %s\n", modClient.Address())
 		}
 		return nil, err
 	}
