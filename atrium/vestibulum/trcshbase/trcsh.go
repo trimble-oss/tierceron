@@ -554,7 +554,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	case "trcplgtool":
 		// Utilize elevated CToken to perform certifications if asked.
 		if prod.IsProd() {
-			fmt.Printf("trcplgtool unsupported in production")
+			fmt.Printf("trcplgtool unsupported in production\n")
 			os.Exit(1)
 		}
 		config.FeatherCtlCb = featherCtlCb
@@ -573,7 +573,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 							time.Sleep(time.Second)
 							retries = retries + 1
 							if retries >= 7 {
-								fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.")
+								fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.\n")
 								os.Exit(1)
 							}
 							continue
