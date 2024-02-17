@@ -473,6 +473,8 @@ func roleBasedRunner(env string,
 	config.EnvRaw = env
 	config.WantCerts = false
 	config.IsShellSubProcess = true
+	config.Log.Printf("Role runner init: %s\n", control)
+
 	if config.VaultAddress == "" {
 		config.VaultAddress = *gTrcshConfig.VaultAddress
 	}
@@ -488,6 +490,7 @@ func roleBasedRunner(env string,
 	tokenConfig := ""
 	configEnv := env
 	var err error
+	config.Log.Printf("Role runner complete: %s\n", control)
 
 	switch control {
 	case "trcplgtool":
@@ -525,6 +528,9 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	argsOrig []string,
 	deployArgLines []string,
 	configCount *int) {
+
+	config.Log.Printf("Processing control: %s\n", control)
+
 	switch control {
 	case "trcpub":
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
@@ -569,6 +575,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			}
 			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 		}
+		config.Log.Printf("Feather ctl init...\n", control)
 		config.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
 			gAgentConfig.LocalHostAddr,
 			gAgentConfig.EncryptPass,
@@ -963,6 +970,7 @@ collaboratorReRun:
 					config.DeploymentCtlMessageChan <- deployLine
 				}
 			} else {
+				config.Log.Println(deployLine)
 				config.FeatherCtx = featherCtx
 				region := ""
 				if len(config.Regions) > 0 {

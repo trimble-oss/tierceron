@@ -38,6 +38,7 @@ func CommonMain(envPtr *string,
 	var flagEnvPtr *string
 	// Main functions are as follows:
 	if flagset == nil {
+		fmt.Println("Version: " + "1.05")
 		flagset = flag.NewFlagSet(argLines[0], flag.ContinueOnError)
 		// set and ignore..
 		flagEnvPtr = flagset.String("env", "dev", "Environment to configure")
@@ -224,6 +225,9 @@ func CommonMain(envPtr *string,
 			return errors.New("auth failure")
 		}
 	}
+	if logger != nil {
+		logger.Printf("Certify begin gathering certify configs\n")
+	}
 
 	regions := []string{}
 
@@ -262,7 +266,9 @@ func CommonMain(envPtr *string,
 		configBase.SubSectionValue = *pluginNamePtr
 	}
 	mod.Env = *envPtr
-	eUtils.CheckError(config, err, true)
+	if logger != nil {
+		logger.Printf("Certify mod initialized\n")
+	}
 
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
@@ -295,6 +301,9 @@ func CommonMain(envPtr *string,
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		return plcErr
+	}
+	if logger != nil {
+		logger.Printf("Certify begin activities\n")
 	}
 
 	if len(*sha256Ptr) > 0 {
