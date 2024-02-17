@@ -562,7 +562,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		if gAgentConfig == nil {
 			var errAgentLoad error
 			if gTrcshConfig == nil {
-				fmt.Printf("Unexpected nit trcshConfig.  Cannot continue.")
+				fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.")
 				os.Exit(1)
 			}
 
