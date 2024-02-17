@@ -565,6 +565,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 				fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.")
 				os.Exit(1)
 			}
+			config.Log.Printf("Reloading agent configs for control: %s\n", control)
 
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
@@ -582,7 +583,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			}
 			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 		}
-		config.Log.Printf("Feather ctl init...\n", control)
+		config.Log.Printf("Feather ctl init for control: %s\n", control)
 		config.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
 			gAgentConfig.LocalHostAddr,
 			gAgentConfig.EncryptPass,
