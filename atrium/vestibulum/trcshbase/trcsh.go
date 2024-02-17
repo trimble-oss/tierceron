@@ -316,8 +316,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("trcsh beginning new agent configuration sequence.\n")
 		// Preload agent synchronization configs...
 		var errAgentLoad error
-		var trcshConfig *capauth.TrcShConfig
-		gAgentConfig, trcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
+		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil)
 		if errAgentLoad != nil {
@@ -332,8 +331,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			fmt.Printf("trcsh agent bootstrap init config failure: %s\n", err.Error())
 			os.Exit(-1)
 		}
-		config.AppRoleConfig = *trcshConfig.ConfigRole
-		config.VaultAddress = *trcshConfig.VaultAddress
+		config.AppRoleConfig = *gTrcshConfig.ConfigRole
+		config.VaultAddress = *gTrcshConfig.VaultAddress
 		serviceDeployments, err := deployutil.GetDeployers(config)
 		if err != nil {
 			fmt.Printf("trcsh agent bootstrap get deployers failure: %s\n", err.Error())
@@ -561,9 +560,29 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		config.FeatherCtlCb = featherCtlCb
 		if gAgentConfig == nil {
 			var errAgentLoad error
-			if gTrcshConfig == nil {
-				fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.")
-				os.Exit(1)
+			if gTrcshConfig == nil || gTrcshConfig.VaultAddress == nil || gTrcshConfig.CToken == nil {
+				config.Log.Printf("Unexpected invalid trcshConfig.  Attempting recovery.")
+				retries := 0
+				for {
+					if gTrcshConfig == nil || !gTrcshConfig.IsValid(gAgentConfig) {
+						var err error
+						// Loop until we have something usable...
+						gTrcshConfig, err = trcshauth.TrcshAuth(nil, gAgentConfig, config)
+						if err != nil {
+							config.Log.Printf(".")
+							time.Sleep(time.Second)
+							retries = retries + 1
+							if retries >= 7 {
+								fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.")
+								os.Exit(1)
+							}
+							continue
+						}
+						config.Log.Printf("Auth re-loaded %s\n", config.EnvRaw)
+					} else {
+						break
+					}
+				}
 			}
 			config.Log.Printf("Reloading agent configs for control: %s\n", control)
 
