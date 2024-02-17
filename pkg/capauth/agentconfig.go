@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"strings"
@@ -136,29 +137,49 @@ func NewAgentConfig(address string,
 	agentToken string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
-	interruptedFunc func(*cap.FeatherContext) error) (*AgentConfigs, *TrcShConfig, error) {
-	fmt.Printf(".\n")
-	fmt.Printf("☕")
+	interruptedFunc func(*cap.FeatherContext) error,
+	logger *log.Logger) (*AgentConfigs, *TrcShConfig, error) {
+	if logger != nil {
+		logger.Printf(".")
+	} else {
+		fmt.Printf(".")
+	}
 
 	mod, modErr := helperkv.NewModifier(false, agentToken, address, env, nil, true, nil)
 	if modErr != nil {
-		fmt.Println("trcsh Failed to bootstrap")
+		logger.Println("trcsh Failed to bootstrap")
 		os.Exit(-1)
 	}
 	mod.Direct = true
 	envParts := strings.Split(env, "-")
 	mod.Env = envParts[0]
 
-	fmt.Printf("♨️")
+	if logger != nil {
+		logger.Printf(".")
+	} else {
+		fmt.Printf(".")
+	}
 	data, readErr := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
 	defer func(m *helperkv.Modifier, e string) {
 		m.Env = e
 	}(mod, env)
 
-	fmt.Printf("♨️")
+	if logger != nil {
+		logger.Printf(".")
+	} else {
+		fmt.Printf(".")
+	}
+
 	if readErr != nil {
 		return nil, nil, readErr
 	} else {
+		if data["trcHatEncryptPass"] == nil ||
+			data["trcHatEncryptSalt"] == nil ||
+			data["trcHatHandshakeCode"] == nil ||
+			data["trcHatEnv"] == nil ||
+			data["trcHatHost"] == nil {
+			return nil, nil, errors.New("missing required secrets: possible missing secrets or lack of permissions for provided token")
+		}
 		trcHatHostLocal := new(string)
 		trcHatEncryptPass := data["trcHatEncryptPass"].(string)
 		memprotectopts.MemProtect(nil, &trcHatEncryptPass)
@@ -178,7 +199,11 @@ func NewAgentConfig(address string,
 		} else {
 			trcHatEnv = data["trcHatEnv"].(string)
 		}
-		fmt.Printf("♨️")
+		if logger != nil {
+			logger.Printf(".")
+		} else {
+			fmt.Printf(".")
+		}
 
 		deployments := "bootstrap"
 		agentconfig := &AgentConfigs{
@@ -207,13 +232,22 @@ func NewAgentConfig(address string,
 		if penseError != nil {
 			return nil, nil, penseError
 		}
-		fmt.Printf("♨️")
+		if logger != nil {
+			logger.Printf("♨️")
+		} else {
+			fmt.Printf("♨️")
+		}
 
 		trcshConfig.VaultAddress, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
 		if penseError != nil {
 			return nil, nil, penseError
 		}
-		fmt.Printf("☕")
+		logger.Printf("☕")
+		if logger != nil {
+			logger.Printf("☕")
+		} else {
+			fmt.Printf("☕")
+		}
 
 		return agentconfig, trcshConfig, nil
 	}
