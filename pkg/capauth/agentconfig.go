@@ -137,6 +137,7 @@ func NewAgentConfig(address string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error) (*AgentConfigs, *TrcShConfig, error) {
+	fmt.Printf(".\n")
 	fmt.Printf("☕")
 
 	mod, modErr := helperkv.NewModifier(false, agentToken, address, env, nil, true, nil)
