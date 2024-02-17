@@ -242,11 +242,10 @@ func NewAgentConfig(address string,
 		if penseError != nil {
 			return nil, nil, penseError
 		}
-		logger.Printf("☕")
 		if logger != nil {
-			logger.Printf("☕")
+			logger.Printf(".")
 		} else {
-			fmt.Printf("☕")
+			fmt.Printf(".")
 		}
 
 		return agentconfig, trcshConfig, nil
