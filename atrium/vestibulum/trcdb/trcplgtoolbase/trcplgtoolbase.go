@@ -511,6 +511,7 @@ func CommonMain(envPtr *string,
 		} else {
 			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
 			if configBase.FeatherCtx != nil {
+				fmt.Printf("%s\n", errMessage)
 				configBase.FeatherCtx.Log.Printf(errMessage)
 			} else {
 				fmt.Printf("%s\n", errMessage)
