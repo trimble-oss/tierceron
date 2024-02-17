@@ -233,9 +233,9 @@ func NewAgentConfig(address string,
 			return nil, nil, penseError
 		}
 		if logger != nil {
-			logger.Printf("♨️")
+			logger.Printf(".")
 		} else {
-			fmt.Printf("♨️")
+			fmt.Printf(".")
 		}
 
 		trcshConfig.VaultAddress, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
