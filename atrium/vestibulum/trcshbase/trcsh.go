@@ -267,7 +267,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		config, err := TrcshInitConfig(*envPtr, *regionPtr, true)
 		if err != nil {
 			fmt.Printf("trcsh config setup failure: %s\n", err.Error())
-			os.Exit(-1)
+			os.Exit(124)
 		}
 
 		//Open deploy script and parse it.
@@ -307,7 +307,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 		if err := capauth.ValidateVhost(address, "https://"); err != nil {
 			fmt.Printf("trcsh on windows requires supported VAULT_ADDR address: %s\n", err.Error())
-			os.Exit(-1)
+			os.Exit(124)
 		}
 		memprotectopts.MemProtect(nil, &agentToken)
 		memprotectopts.MemProtect(nil, &address)
@@ -321,7 +321,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, nil)
 		if errAgentLoad != nil {
 			fmt.Printf("trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
-			os.Exit(-1)
+			os.Exit(124)
 		}
 
 		fmt.Printf("trcsh beginning initialization sequence.\n")
@@ -329,14 +329,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		config, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, true)
 		if err != nil {
 			fmt.Printf("trcsh agent bootstrap init config failure: %s\n", err.Error())
-			os.Exit(-1)
+			os.Exit(124)
 		}
 		config.AppRoleConfig = *gTrcshConfig.ConfigRole
 		config.VaultAddress = *gTrcshConfig.VaultAddress
 		serviceDeployments, err := deployutil.GetDeployers(config)
 		if err != nil {
 			fmt.Printf("trcsh agent bootstrap get deployers failure: %s\n", err.Error())
-			os.Exit(-1)
+			os.Exit(124)
 		}
 		deploymentShards := strings.Split(deploymentsShard, ",")
 		deployments := []string{}
@@ -450,7 +450,7 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
 	} else {
 		fmt.Printf("Unsupported agent: %s\n", agentName)
-		os.Exit(-1)
+		os.Exit(123) // Missing config.
 	}
 
 	return nil
@@ -813,8 +813,8 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
 		if len(configRoleSlice) != 2 {
 			fmt.Println("Preload failed.  Couldn't load required resource.")
-			config.Log.Printf("Couldn't config auth required resource.")
-			os.Exit(-1)
+			config.Log.Printf("Couldn't config auth required resource.\n")
+			os.Exit(124)
 		}
 
 		tokenName := "config_token_" + config.EnvRaw
@@ -831,7 +831,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")
 			config.Log.Printf("Preload Error %s\n", configErr.Error())
-			os.Exit(-1)
+			os.Exit(123)
 		}
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		if !isAgentToken {
