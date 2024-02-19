@@ -393,7 +393,7 @@ func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Tic
 	}
 	if len(featherCtx.InterruptChan) > 0 {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		os.Exit(1)
+		os.Exit(128)
 	}
 	return result, resultError
 }
@@ -409,7 +409,7 @@ func acceptInterruptNoTimeoutFun(featherCtx *cap.FeatherContext, tickerContinue 
 	}
 	if len(featherCtx.InterruptChan) > 0 {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		os.Exit(1)
+		os.Exit(128)
 	}
 	return result, resultError
 }
@@ -419,7 +419,7 @@ func interruptFun(featherCtx *cap.FeatherContext, tickerInterrupt *time.Ticker) 
 	case <-tickerInterrupt.C:
 		if len(featherCtx.InterruptChan) > 0 {
 			cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-			os.Exit(1)
+			os.Exit(128)
 		}
 	}
 }
@@ -555,12 +555,15 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		// Utilize elevated CToken to perform certifications if asked.
 		if prod.IsProd() {
 			fmt.Printf("trcplgtool unsupported in production\n")
-			os.Exit(1)
+			os.Exit(125) // Running functionality not supported in prod.
 		}
 		config.FeatherCtlCb = featherCtlCb
 		if gAgentConfig == nil {
+
 			var errAgentLoad error
 			if gTrcshConfig == nil || gTrcshConfig.VaultAddress == nil || gTrcshConfig.CToken == nil {
+				// Chewbacca: Consider removing as this should have already
+				// been done earlier in the process.
 				config.Log.Printf("Unexpected invalid trcshConfig.  Attempting recovery.")
 				retries := 0
 				for {
@@ -574,7 +577,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 							retries = retries + 1
 							if retries >= 7 {
 								fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.\n")
-								os.Exit(1)
+								os.Exit(124) // Setup problem.
 							}
 							continue
 						}
@@ -597,7 +600,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			if errAgentLoad != nil {
 				config.Log.Printf("Permissions failure.  Incorrect deployment\n")
 				fmt.Printf("Permissions failure.  Incorrect deployment\n")
-				os.Exit(1)
+				os.Exit(126) // possible token permissions issue
 			}
 			if gAgentConfig.FeatherContext == nil {
 				fmt.Printf("Warning!  Permissions failure.  Incorrect feathering\n")
