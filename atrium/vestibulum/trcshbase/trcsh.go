@@ -267,7 +267,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		config, err := TrcshInitConfig(*envPtr, *regionPtr, true)
 		if err != nil {
 			fmt.Printf("trcsh config setup failure: %s\n", err.Error())
-			os.Exit(-1)
+			os.Exit(124)
 		}
 
 		//Open deploy script and parse it.
@@ -307,7 +307,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 		if err := capauth.ValidateVhost(address, "https://"); err != nil {
 			fmt.Printf("trcsh on windows requires supported VAULT_ADDR address: %s\n", err.Error())
-			os.Exit(-1)
+			os.Exit(124)
 		}
 		memprotectopts.MemProtect(nil, &agentToken)
 		memprotectopts.MemProtect(nil, &address)
@@ -316,13 +316,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("trcsh beginning new agent configuration sequence.\n")
 		// Preload agent synchronization configs...
 		var errAgentLoad error
-		var trcshConfig *capauth.TrcShConfig
-		gAgentConfig, trcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
+		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
-			agentEnv, deployCtlAcceptRemoteNoTimeout, nil)
+			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, nil)
 		if errAgentLoad != nil {
 			fmt.Printf("trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
-			os.Exit(-1)
+			os.Exit(124)
 		}
 
 		fmt.Printf("trcsh beginning initialization sequence.\n")
@@ -330,14 +329,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		config, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, true)
 		if err != nil {
 			fmt.Printf("trcsh agent bootstrap init config failure: %s\n", err.Error())
-			os.Exit(-1)
+			os.Exit(124)
 		}
-		config.AppRoleConfig = *trcshConfig.ConfigRole
-		config.VaultAddress = *trcshConfig.VaultAddress
+		config.AppRoleConfig = *gTrcshConfig.ConfigRole
+		config.VaultAddress = *gTrcshConfig.VaultAddress
 		serviceDeployments, err := deployutil.GetDeployers(config)
 		if err != nil {
 			fmt.Printf("trcsh agent bootstrap get deployers failure: %s\n", err.Error())
-			os.Exit(-1)
+			os.Exit(124)
 		}
 		deploymentShards := strings.Split(deploymentsShard, ",")
 		deployments := []string{}
@@ -394,7 +393,7 @@ func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Tic
 	}
 	if len(featherCtx.InterruptChan) > 0 {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		os.Exit(1)
+		os.Exit(128)
 	}
 	return result, resultError
 }
@@ -410,7 +409,7 @@ func acceptInterruptNoTimeoutFun(featherCtx *cap.FeatherContext, tickerContinue 
 	}
 	if len(featherCtx.InterruptChan) > 0 {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		os.Exit(1)
+		os.Exit(128)
 	}
 	return result, resultError
 }
@@ -420,7 +419,7 @@ func interruptFun(featherCtx *cap.FeatherContext, tickerInterrupt *time.Ticker) 
 	case <-tickerInterrupt.C:
 		if len(featherCtx.InterruptChan) > 0 {
 			cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-			os.Exit(1)
+			os.Exit(128)
 		}
 	}
 }
@@ -451,7 +450,7 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
 	} else {
 		fmt.Printf("Unsupported agent: %s\n", agentName)
-		os.Exit(-1)
+		os.Exit(123) // Missing config.
 	}
 
 	return nil
@@ -555,16 +554,40 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	case "trcplgtool":
 		// Utilize elevated CToken to perform certifications if asked.
 		if prod.IsProd() {
-			fmt.Printf("trcplgtool unsupported in production")
-			os.Exit(1)
+			fmt.Printf("trcplgtool unsupported in production\n")
+			os.Exit(125) // Running functionality not supported in prod.
 		}
 		config.FeatherCtlCb = featherCtlCb
 		if gAgentConfig == nil {
+
 			var errAgentLoad error
-			if gTrcshConfig == nil {
-				fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.")
-				os.Exit(1)
+			if gTrcshConfig == nil || gTrcshConfig.VaultAddress == nil || gTrcshConfig.CToken == nil {
+				// Chewbacca: Consider removing as this should have already
+				// been done earlier in the process.
+				config.Log.Printf("Unexpected invalid trcshConfig.  Attempting recovery.")
+				retries := 0
+				for {
+					if gTrcshConfig == nil || !gTrcshConfig.IsValid(gAgentConfig) {
+						var err error
+						// Loop until we have something usable...
+						gTrcshConfig, err = trcshauth.TrcshAuth(nil, gAgentConfig, config)
+						if err != nil {
+							config.Log.Printf(".")
+							time.Sleep(time.Second)
+							retries = retries + 1
+							if retries >= 7 {
+								fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.\n")
+								os.Exit(124) // Setup problem.
+							}
+							continue
+						}
+						config.Log.Printf("Auth re-loaded %s\n", config.EnvRaw)
+					} else {
+						break
+					}
+				}
 			}
+			config.Log.Printf("Reloading agent configs for control: %s\n", control)
 
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
@@ -572,17 +595,19 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 				*gTrcshConfig.CToken,
 				env,
 				deployCtlAcceptRemote,
-				deployCtlInterrupted)
+				deployCtlInterrupted,
+				config.Log)
 			if errAgentLoad != nil {
-				fmt.Printf("Permissions failure.  Incorrect deployment")
-				os.Exit(1)
+				config.Log.Printf("Permissions failure.  Incorrect deployment\n")
+				fmt.Printf("Permissions failure.  Incorrect deployment\n")
+				os.Exit(126) // possible token permissions issue
 			}
 			if gAgentConfig.FeatherContext == nil {
-				fmt.Printf("Warning!  Permissions failure.  Incorrect feathering")
+				fmt.Printf("Warning!  Permissions failure.  Incorrect feathering\n")
 			}
 			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 		}
-		config.Log.Printf("Feather ctl init...\n", control)
+		config.Log.Printf("Feather ctl init for control: %s\n", control)
 		config.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
 			gAgentConfig.LocalHostAddr,
 			gAgentConfig.EncryptPass,
@@ -788,8 +813,8 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
 		if len(configRoleSlice) != 2 {
 			fmt.Println("Preload failed.  Couldn't load required resource.")
-			config.Log.Printf("Couldn't config auth required resource.")
-			os.Exit(-1)
+			config.Log.Printf("Couldn't config auth required resource.\n")
+			os.Exit(124)
 		}
 
 		tokenName := "config_token_" + config.EnvRaw
@@ -806,7 +831,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")
 			config.Log.Printf("Preload Error %s\n", configErr.Error())
-			os.Exit(-1)
+			os.Exit(123)
 		}
 		ResetModifier(config) //Resetting modifier cache to avoid token conflicts.
 		if !isAgentToken {
