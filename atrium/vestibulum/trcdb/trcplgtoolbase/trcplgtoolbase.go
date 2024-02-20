@@ -68,6 +68,7 @@ func CommonMain(envPtr *string,
 	// defineService flags...
 	deployrootPtr := flagset.String("deployroot", "", "Optional path for deploying services to.")
 	serviceNamePtr := flagset.String("serviceName", "", "Optional name of service to use in managing service.")
+	pathParamPtr := flagset.String("pathParam", "", "Optional path placeholder replacement to use in managing service.")
 	codeBundlePtr := flagset.String("codeBundle", "", "Code bundle to deploy.")
 
 	// Common plugin flags...
@@ -563,7 +564,7 @@ func CommonMain(envPtr *string,
 				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {
 					pluginTarget = *pluginNamePtr
 				}
-				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginTarget)
+				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), replacedFields, mod, config.Log, *regionPtr, pluginTarget)
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					return err
@@ -575,7 +576,7 @@ func CommonMain(envPtr *string,
 					return err
 				}
 
-				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), configBase.Log)
+				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), configBase.Log)
 				if err != nil {
 					fmt.Println(err)
 					return err
@@ -650,7 +651,7 @@ func CommonMain(envPtr *string,
 	return nil
 }
 
-func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string) map[string]interface{} {
+func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string, pathParamPtr string) map[string]interface{} {
 	if pluginTypePtr != "trcshservice" {
 		writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
 		writeMap["trctype"] = pluginTypePtr
@@ -669,6 +670,11 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 		writeMap["trcsha256"] = pluginToolConfig["imagesha256"].(string) // Pull image sha from registry...
 	} else {
 		writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string) // Pull image sha from registry...
+	}
+	if pathParamPtr != "" { //optional if not found.
+		writeMap["trcpathparam"] = pathParamPtr
+	} else if pathParam, pathOK := writeMap["trcpathparam"].(string); pathOK {
+		writeMap["trcpathparam"] = pathParam
 	}
 	writeMap["copied"] = false
 	writeMap["deployed"] = false
