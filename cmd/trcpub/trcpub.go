@@ -41,8 +41,8 @@ func main() {
 	envPtr := flagset.String("env", "dev", "Environment to configure")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flagset.String("token", "", "Vault access token")
-	secretIDPtr := flagset.String("secretID", "", "Public app role ID")
-	appRoleIDPtr := flagset.String("appRoleID", "", "Secret app role ID")
+	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
+	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 
 	trcpubbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, flagset, os.Args, nil)

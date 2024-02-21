@@ -42,8 +42,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 		flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
-		flagset.String("secretID", "", "Public app role ID")
-		flagset.String("appRoleID", "", "Secret app role ID")
+		flagset.String("secretID", "", "Secret for app role ID")
+		flagset.String("appRoleID", "", "Public app role ID")
 	}
 	exitOnFailure = true
 	endDirPtr := flagset.String("endDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
