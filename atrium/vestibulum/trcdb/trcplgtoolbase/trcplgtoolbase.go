@@ -355,7 +355,6 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["deployrootPtr"] = *deployrootPtr
 	pluginToolConfig["deploysubpathPtr"] = *deploysubpathPtr
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
-	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
 	pluginToolConfig["pathParamPtr"] = *pathParamPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
