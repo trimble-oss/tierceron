@@ -501,8 +501,8 @@ func CommonMain(envPtr *string,
 			}
 			fmt.Printf("Deploying image to: %s\n", deployPath)
 
-			if _, err = os.Stat(deployRoot); err != nil {
-				err = os.MkdirAll(deployRoot, 0644)
+			if _, err = os.Stat(deployPath); err != nil {
+				err = os.MkdirAll(deployPath, 0644)
 				if err != nil {
 					fmt.Println(err.Error())
 					fmt.Println("Could not prepare needed directory for deployment.")
