@@ -346,7 +346,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		} else {
 			writeMap["trctype"] = "vault"
 		}
-		writeMap = trcplgtool.WriteMapUpdate(writeMap, vaultPluginSignature, false, writeMap["trctype"].(string))
+		writeMap = trcplgtool.WriteMapUpdate(writeMap, vaultPluginSignature, false, writeMap["trctype"].(string), "")
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
