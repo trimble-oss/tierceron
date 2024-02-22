@@ -142,7 +142,12 @@ func CommonMain(envPtr *string,
 		return errors.New("-pluginName cannot contain reserved character '.'")
 	}
 
-	if *pathParamPtr != "" {
+	if c != nil && len(c.PathParam) > 0 {
+		// Prefer internal definition of alias
+		*pathParamPtr = c.PathParam
+	}
+
+	if len(*pathParamPtr) > 0 {
 		r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
 		if !r.MatchString(*pathParamPtr) {
 			fmt.Println("-pathParam can only contain alphanumberic characters or underscores")
@@ -484,6 +489,11 @@ func CommonMain(envPtr *string,
 			//check if there is a place holder, if there is replace it
 			if strings.Contains(deployPath, "{{.trcpathparam}}") {
 				if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
+					r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
+					if !r.MatchString(pathParam) {
+						fmt.Println("trcpathparam can only contain alphanumberic characters or underscores")
+						return errors.New("trcpathparam can only contain alphanumberic characters or underscores")
+					}
 					deployPath = strings.Replace(deployPath, "{{.trcpathparam}}", pathParam, -1)
 				} else {
 					return errors.New("Unable to replace path placeholder with pathParam.")
