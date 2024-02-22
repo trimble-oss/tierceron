@@ -103,7 +103,7 @@ func CommonMain(envPtr *string,
 		flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
-		flagset.String("secretID", "", "Secret app role ID")
+		flagset.String("secretID", "", "Secret for app role ID")
 		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
 		flagset.String("appRoleID", "", "Public app role ID")
 		flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")

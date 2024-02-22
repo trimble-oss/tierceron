@@ -70,7 +70,7 @@ func CommonMain(ctx eUtils.ProcessContext,
 	secretMode := flagset.Bool("secretMode", true, "Only override secret values in templates?")
 	genAuth := flagset.Bool("genAuth", false, "Generate auth section of seed data?")
 	cleanPtr := flagset.Bool("clean", false, "Cleans seed files locally")
-	secretIDPtr := flagset.String("secretID", "", "Secret app role ID")
+	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"x to access the vault")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")

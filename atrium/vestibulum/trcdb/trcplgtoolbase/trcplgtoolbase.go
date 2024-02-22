@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -68,6 +69,7 @@ func CommonMain(envPtr *string,
 	// defineService flags...
 	deployrootPtr := flagset.String("deployroot", "", "Optional path for deploying services to.")
 	serviceNamePtr := flagset.String("serviceName", "", "Optional name of service to use in managing service.")
+	pathParamPtr := flagset.String("pathParam", "", "Optional path placeholder replacement to use in managing service.")
 	codeBundlePtr := flagset.String("codeBundle", "", "Code bundle to deploy.")
 
 	// Common plugin flags...
@@ -140,6 +142,18 @@ func CommonMain(envPtr *string,
 		return errors.New("-pluginName cannot contain reserved character '.'")
 	}
 
+	if c != nil && len(c.PathParam) > 0 {
+		// Prefer internal definition of alias
+		*pathParamPtr = c.PathParam
+	}
+
+	if len(*pathParamPtr) > 0 {
+		r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
+		if !r.MatchString(*pathParamPtr) {
+			fmt.Println("-pathParam can only contain alphanumberic characters or underscores")
+			return errors.New("-pathParam can only contain alphanumberic characters or underscores")
+		}
+	}
 	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr {
 		*pluginTypePtr = "trcshservice"
 	}
@@ -346,6 +360,7 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["deployrootPtr"] = *deployrootPtr
 	pluginToolConfig["deploysubpathPtr"] = *deploysubpathPtr
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
+	pluginToolConfig["pathParamPtr"] = *pathParamPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
@@ -378,6 +393,9 @@ func CommonMain(envPtr *string,
 			if _, ok := pluginToolConfig["projectServicePtr"].(string); ok {
 				pluginToolConfig["trcprojectservice"] = pluginToolConfig["projectServicePtr"].(string)
 			}
+			if pathParam, ok := pluginToolConfig["pathParamPtr"].(string); ok && pathParam != "" {
+				pluginToolConfig["trcpathparam"] = pluginToolConfig["pathParamPtr"].(string)
+			}
 		}
 	}
 
@@ -402,6 +420,9 @@ func CommonMain(envPtr *string,
 		}
 		if _, ok := pluginToolConfig["trcprojectservice"]; ok {
 			writeMap["trcprojectservice"] = pluginToolConfig["trcprojectservice"]
+		}
+		if pathParam, ok := pluginToolConfig["trcpathparam"]; ok && pathParam != "" {
+			writeMap["trcpathparam"] = pluginToolConfig["trcpathparam"]
 		}
 		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
 		if err != nil {
@@ -464,10 +485,24 @@ func CommonMain(envPtr *string,
 				deployRoot = pluginToolConfig["trcdeployroot"].(string)
 			}
 			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
+
+			//check if there is a place holder, if there is replace it
+			if strings.Contains(deployPath, "{{.trcpathparam}}") {
+				if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
+					r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
+					if !r.MatchString(pathParam) {
+						fmt.Println("trcpathparam can only contain alphanumberic characters or underscores")
+						return errors.New("trcpathparam can only contain alphanumberic characters or underscores")
+					}
+					deployPath = strings.Replace(deployPath, "{{.trcpathparam}}", pathParam, -1)
+				} else {
+					return errors.New("Unable to replace path placeholder with pathParam.")
+				}
+			}
 			fmt.Printf("Deploying image to: %s\n", deployPath)
 
-			if _, err = os.Stat(deployRoot); err != nil {
-				err = os.MkdirAll(deployRoot, 0644)
+			if _, err = os.Stat(deployPath); err != nil {
+				err = os.MkdirAll(deployPath, 0644)
 				if err != nil {
 					fmt.Println(err.Error())
 					fmt.Println("Could not prepare needed directory for deployment.")
@@ -563,7 +598,7 @@ func CommonMain(envPtr *string,
 				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {
 					pluginTarget = *pluginNamePtr
 				}
-				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginTarget)
+				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), replacedFields, mod, config.Log, *regionPtr, pluginTarget)
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					return err
@@ -575,7 +610,7 @@ func CommonMain(envPtr *string,
 					return err
 				}
 
-				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), configBase.Log)
+				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), configBase.Log)
 				if err != nil {
 					fmt.Println(err)
 					return err
@@ -650,7 +685,7 @@ func CommonMain(envPtr *string,
 	return nil
 }
 
-func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string) map[string]interface{} {
+func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string, pathParamPtr string) map[string]interface{} {
 	if pluginTypePtr != "trcshservice" {
 		writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
 		writeMap["trctype"] = pluginTypePtr
@@ -669,6 +704,11 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 		writeMap["trcsha256"] = pluginToolConfig["imagesha256"].(string) // Pull image sha from registry...
 	} else {
 		writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string) // Pull image sha from registry...
+	}
+	if pathParamPtr != "" { //optional if not found.
+		writeMap["trcpathparam"] = pathParamPtr
+	} else if pathParam, pathOK := writeMap["trcpathparam"].(string); pathOK {
+		writeMap["trcpathparam"] = pathParam
 	}
 	writeMap["copied"] = false
 	writeMap["deployed"] = false

@@ -49,7 +49,7 @@ const (
 	YOU_SHALL_NOT_PASS = "you shall not pass"
 )
 
-func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.DriverConfig, error) {
+func TrcshInitConfig(env string, region string, pathParam string, outputMemCache bool) (*eUtils.DriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
 	}
@@ -99,6 +99,7 @@ func TrcshInitConfig(env string, region string, outputMemCache bool) (*eUtils.Dr
 		OutputMemCache:    outputMemCache,
 		MemFs:             memfs.New(),
 		Regions:           regions,
+		PathParam:         pathParam, // Make available to trcplgtool
 		ExitOnFailure:     true}
 	return config, nil
 }
@@ -154,7 +155,7 @@ func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 
 // EnableDeploy - initializes and starts running deployer for provided deployment and environment.
 func EnableDeployer(env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string) {
-	config, err := TrcshInitConfig(env, region, outputMemCache)
+	config, err := TrcshInitConfig(env, region, "", outputMemCache)
 	if err != nil {
 		fmt.Printf("Initialization setup error: %s\n", err.Error())
 	}
@@ -215,8 +216,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 		flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
-		flagset.String("secretID", "", "Public app role ID")
-		flagset.String("appRoleID", "", "Secret app role ID")
+		flagset.String("secretID", "", "Secret for app role ID")
+		flagset.String("appRoleID", "", "Public app role ID")
 	}
 
 	if memonly.IsMemonly() {
@@ -238,6 +239,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	}()
 
 	if !eUtils.IsWindows() {
+		var pathParam string
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
@@ -261,10 +263,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		if len(*secretIDPtr) == 0 {
 			*secretIDPtr = os.Getenv("DEPLOY_SECRET")
 		}
+
+		pathParam = os.Getenv("PATH_PARAM")
+
 		memprotectopts.MemProtect(nil, secretIDPtr)
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
 
-		config, err := TrcshInitConfig(*envPtr, *regionPtr, true)
+		config, err := TrcshInitConfig(*envPtr, *regionPtr, pathParam, true)
 		if err != nil {
 			fmt.Printf("trcsh config setup failure: %s\n", err.Error())
 			os.Exit(124)
@@ -326,7 +331,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		fmt.Printf("trcsh beginning initialization sequence.\n")
 		// Initialize deployers.
-		config, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, true)
+		config, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, "", true)
 		if err != nil {
 			fmt.Printf("trcsh agent bootstrap init config failure: %s\n", err.Error())
 			os.Exit(124)

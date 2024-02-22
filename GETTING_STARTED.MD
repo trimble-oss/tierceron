@@ -194,7 +194,7 @@ trcconfig
 	-servicesWanted string
 		Services to pull template values for, in the form 'service1,service2' (defaults to all services)
 	-secretID string
-		Secret app role ID
+		Secret for app role ID
 	-appRoleID string
 		Public app role ID
 	-tokenfiles string

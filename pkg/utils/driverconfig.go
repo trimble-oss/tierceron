@@ -68,6 +68,7 @@ type DriverConfig struct {
 	Regions       []string
 	FileFilter    []string // Which systems to operate on.
 	SubPathFilter []string // Which subpaths to operate on.
+	PathParam     string   // Path parameter for dynamic pathing...
 
 	SecretMode bool
 	// Tierceron source and destination I/O

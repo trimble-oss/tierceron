@@ -43,8 +43,8 @@ func CommonMain(envPtr *string,
 		flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
-		flagset.String("secretID", "", "Public app role ID")
-		flagset.String("appRoleID", "", "Secret app role ID")
+		flagset.String("secretID", "", "Secret for app role ID")
+		flagset.String("appRoleID", "", "Public app role ID")
 		flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	}
 	dirPtr := flagset.String("dir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
