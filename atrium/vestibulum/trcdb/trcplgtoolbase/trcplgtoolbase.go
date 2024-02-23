@@ -484,25 +484,25 @@ func CommonMain(envPtr *string,
 			} else {
 				deployRoot = pluginToolConfig["trcdeployroot"].(string)
 			}
-			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
 
 			//check if there is a place holder, if there is replace it
-			if strings.Contains(deployPath, "{{.trcpathparam}}") {
+			if strings.Contains(deployRoot, "{{.trcpathparam}}") {
 				if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
 					r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
 					if !r.MatchString(pathParam) {
 						fmt.Println("trcpathparam can only contain alphanumberic characters or underscores")
 						return errors.New("trcpathparam can only contain alphanumberic characters or underscores")
 					}
-					deployPath = strings.Replace(deployPath, "{{.trcpathparam}}", pathParam, -1)
+					deployRoot = strings.Replace(deployRoot, "{{.trcpathparam}}", pathParam, -1)
 				} else {
 					return errors.New("Unable to replace path placeholder with pathParam.")
 				}
 			}
+			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
 			fmt.Printf("Deploying image to: %s\n", deployPath)
 
-			if _, err = os.Stat(deployPath); err != nil {
-				err = os.MkdirAll(deployPath, 0644)
+			if _, err = os.Stat(deployRoot); err != nil {
+				err = os.MkdirAll(deployRoot, 0644)
 				if err != nil {
 					fmt.Println(err.Error())
 					fmt.Println("Could not prepare needed directory for deployment.")
