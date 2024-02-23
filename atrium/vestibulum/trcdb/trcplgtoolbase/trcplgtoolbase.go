@@ -71,6 +71,7 @@ func CommonMain(envPtr *string,
 	serviceNamePtr := flagset.String("serviceName", "", "Optional name of service to use in managing service.")
 	pathParamPtr := flagset.String("pathParam", "", "Optional path placeholder replacement to use in managing service.")
 	codeBundlePtr := flagset.String("codeBundle", "", "Code bundle to deploy.")
+	expandTargetPtr := flagset.Bool("expandTarget", false, "Used to unzip files at deploy path")
 
 	// Common plugin flags...
 	pluginNamePtr := flagset.String("pluginName", "", "Used to certify vault plugin")
@@ -361,6 +362,7 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["deploysubpathPtr"] = *deploysubpathPtr
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
 	pluginToolConfig["pathParamPtr"] = *pathParamPtr
+	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr //is a bool that gets converted to a string for writeout/certify
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
@@ -396,6 +398,9 @@ func CommonMain(envPtr *string,
 			if pathParam, ok := pluginToolConfig["pathParamPtr"].(string); ok && pathParam != "" {
 				pluginToolConfig["trcpathparam"] = pluginToolConfig["pathParamPtr"].(string)
 			}
+			if expandTarget, ok := pluginToolConfig["expandTargetPtr"].(bool); ok && expandTarget { //only writes out if expandTarget = true
+				pluginToolConfig["trcexpandtarget"] = "true"
+			}
 		}
 	}
 
@@ -421,8 +426,11 @@ func CommonMain(envPtr *string,
 		if _, ok := pluginToolConfig["trcprojectservice"]; ok {
 			writeMap["trcprojectservice"] = pluginToolConfig["trcprojectservice"]
 		}
-		if pathParam, ok := pluginToolConfig["trcpathparam"]; ok && pathParam != "" {
+		if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
 			writeMap["trcpathparam"] = pluginToolConfig["trcpathparam"]
+		}
+		if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
+			writeMap["trcexpandtarget"] = expandTarget
 		}
 		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
 		if err != nil {
@@ -515,6 +523,12 @@ func CommonMain(envPtr *string,
 				fmt.Println(err.Error())
 				fmt.Println("Image write failure.")
 				return err
+			}
+
+			if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
+				if !trcvutils.UncompressZipFile(deployPath) {
+					fmt.Println("Uncompressing zip file in place failed.")
+				}
 			}
 
 			if strings.HasSuffix(deployPath, ".war") {
