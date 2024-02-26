@@ -381,6 +381,10 @@ func UncompressZipFile(filePath string) bool {
 
 	//Range archive
 	for _, f := range r.File {
+		// GOOD: Check that path does not contain ".." before using it - must be absolute path.
+		if strings.Contains(f.Name, "..") {
+			continue
+		}
 		rc, openErr := f.Open()
 		if openErr != nil {
 			fmt.Println("Could not open file inside archive - " + f.Name + " - " + openErr.Error())
