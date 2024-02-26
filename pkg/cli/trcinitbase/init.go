@@ -398,11 +398,9 @@ func CommonMain(envPtr *string,
 
 		if *rotateTokens && !*tokenExpiration {
 			var tokens []*apinator.InitResp_Token
-			if *tokenFileFilterPtr != "" {
-				// Create new tokens.
-				fmt.Println("Creating new tokens")
-				tokens = il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
-			}
+			// Create new tokens.
+			fmt.Println("Creating new tokens")
+			tokens = il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
 
 			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
 			if mod != nil {
@@ -474,7 +472,7 @@ func CommonMain(envPtr *string,
 
 						existingTokens, err := mod.ReadData("super-secrets/tokens")
 						if err != nil {
-							//
+							// TODO: consider scenarios...
 						} else {
 							// We have names of tokens that were referenced in old role.  Ok to delete the role now.
 							//
