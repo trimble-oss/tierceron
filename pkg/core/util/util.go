@@ -383,7 +383,8 @@ func UncompressZipFile(filePath string) bool {
 	for _, f := range r.File {
 		// GOOD: Check that path does not contain ".." before using it - must be absolute path.
 		if strings.Contains(f.Name, "..") {
-			continue
+			fmt.Println("Path must be absolute in archive - " + f.Name + ".")
+			return false
 		}
 		rc, openErr := f.Open()
 		if openErr != nil {
