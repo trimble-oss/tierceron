@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -369,8 +370,8 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	return pluginEnvConfigClone, nil
 }
 
-func UncompressZipFile(filePath string) bool {
-	errorList := make([]error, 1)
+func UncompressZipFile(filePath string) (bool, []error) {
+	errorList := []error{}
 	// Open zip archive
 	r, readErr := zip.OpenReader(filePath)
 	if readErr != nil {
@@ -384,45 +385,57 @@ func UncompressZipFile(filePath string) bool {
 		// GOOD: Check that path does not contain ".." before using it - must be absolute path.
 		if strings.Contains(f.Name, "..") {
 			fmt.Println("Path must be absolute in archive - " + f.Name + ".")
-			return false
+			errorList = append(errorList, fmt.Errorf("path must be absolute in archive - %s", f.Name))
+			return false, errorList
 		}
 		rc, openErr := f.Open()
 		if openErr != nil {
 			fmt.Println("Could not open file inside archive - " + f.Name + " - " + openErr.Error())
-			errorList = append(errorList, readErr)
+			errorList = append(errorList, openErr)
 		}
 		defer rc.Close()
+		pathParts := strings.Split(filePath, ".")
+		rootPath := pathParts[0]
 
-		newFilePath := f.Name
+		newFilePath := fmt.Sprintf("%s%c%s", rootPath, filepath.Separator, f.Name)
 
 		// if we have a directory we have to create it
 		if f.FileInfo().IsDir() {
-			dirErr := os.MkdirAll(newFilePath, 0777)
+			dirErr := os.MkdirAll(newFilePath, 0700)
 			if dirErr != nil {
 				fmt.Println("Could not create directory  - " + dirErr.Error())
-				errorList = append(errorList, readErr)
+				errorList = append(errorList, dirErr)
 			}
 			// we can go to next iteration
 			continue
+		}
+
+		dir := filepath.Dir(newFilePath)
+		if dir != "." {
+			dirErr := os.MkdirAll(dir, 0700)
+			if dirErr != nil {
+				fmt.Println("Could not create directory  - " + dirErr.Error())
+				errorList = append(errorList, dirErr)
+			}
 		}
 
 		// create new uncompressed file if not directory
 		uncompressedFile, createErr := os.Create(newFilePath)
 		if createErr != nil {
 			fmt.Println("Could not open create uncompressed file - " + createErr.Error())
-			errorList = append(errorList, readErr)
+			errorList = append(errorList, createErr)
 		}
 		_, uncompressErr := io.Copy(uncompressedFile, rc)
 		if uncompressErr != nil {
 			fmt.Println("Could not copy uncompressed file into directory - " + uncompressErr.Error())
-			errorList = append(errorList, readErr)
+			errorList = append(errorList, uncompressErr)
 		}
 	}
 
 	if len(errorList) == 0 {
-		return true
+		return true, nil
 	} else {
-		return false
+		return false, errorList
 	}
 
 }
