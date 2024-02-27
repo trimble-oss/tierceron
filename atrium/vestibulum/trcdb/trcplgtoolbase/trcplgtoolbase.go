@@ -354,7 +354,9 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	pluginToolConfig["trcsha256"] = *sha256Ptr
+	if !*codebundledeployPtr && len(*sha256Ptr) > 0 {
+		pluginToolConfig["trcsha256"] = *sha256Ptr
+	}
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
 	pluginToolConfig["serviceNamePtr"] = *serviceNamePtr
 	pluginToolConfig["projectservicePtr"] = *projectservicePtr
