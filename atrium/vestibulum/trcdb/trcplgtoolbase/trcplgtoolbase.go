@@ -509,9 +509,6 @@ func CommonMain(envPtr *string,
 				}
 			}
 			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
-			// deployPathParts := strings.Split(deployPath, "/")
-			// deployPath = deployPathParts[len(deployPathParts)-1]
-			// deployRoot = "./"
 
 			fmt.Printf("Deploying image to: %s\n", deployPath)
 
