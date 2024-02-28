@@ -172,6 +172,9 @@ func (p *Properties) WritePluginData(pluginData map[string]interface{}, replaced
 	if readErr != nil {
 		return readErr
 	}
+	if writeMap == nil {
+		writeMap = map[string]interface{}{}
+	}
 
 	for field, value := range pluginData {
 		writeMap[field] = value

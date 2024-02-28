@@ -31,7 +31,7 @@ echo "Enter agent vault root token: "
 read VAULT_TOKEN
 fi
 
-echo "Enter organization vault unrestricted environment token with write permissions(config_token_"$VAULT_ENV"_unrestricted): "
+echo "Enter agent vault unrestricted environment token with write permissions(config_token_"$VAULT_ENV"_unrestricted): "
 read VAULT_ENV_TOKEN
 
 VAULT_API_ADDR=$VAULT_ADDR

@@ -211,7 +211,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 				}
 
 				if err != nil {
-					if response.StatusCode == 403 {
+					if response.StatusCode == 403 || response.StatusCode == 400 {
 						// Some accessors we don't have access to, but we don't care about those.
 						continue
 					} else {

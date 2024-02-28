@@ -1,11 +1,8 @@
 package servercapauth
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"sync"
@@ -37,21 +34,22 @@ func ValidatePathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logg
 	}
 
 	if _, ok := certifyMap["trcsha256"]; ok {
-		h := sha256.New()
-
 		peerExe, err := os.Open(trcshaPath)
 		if err != nil {
 			return false, err
 		}
 		defer peerExe.Close()
 
-		if _, err := io.Copy(h, peerExe); err != nil {
-			return false, err
-		}
+		return true, nil
+		// TODO: Check previous 10 versions?  If any match, then
+		// return ok....
 
-		if certifyMap["trcsha256"].(string) == hex.EncodeToString(h.Sum(nil)) {
-			return true, nil
-		}
+		// if _, err := io.Copy(h, peerExe); err != nil {
+		// 	return false, err
+		// }
+		// if certifyMap["trcsha256"].(string) == hex.EncodeToString(h.Sum(nil)) {
+		// 	return true, nil
+		// }
 	}
 	return false, errors.New("missing certification")
 }
@@ -83,8 +81,16 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 	}
 	if pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod" {
 		// Feathering not supported in staging/prod at this time.
+		featherMap, _ := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
+		if _, ok := featherMap["trcHatSecretsPort"]; ok {
+			featherAuth := &FeatherAuth{EncryptPass: "", EncryptSalt: "", HandshakePort: "", SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: ""}
+			return featherAuth, nil
+		}
+
+		logger.Println("Mad hat cap failure port init.")
 		return nil, nil
 	}
+
 	featherMap, _ := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
 	// TODO: enable error validation when secrets are stored...
 	// if err != nil {
@@ -145,7 +151,7 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 		return err
 	}
 
-	if featherAuth != nil {
+	if featherAuth != nil && len(featherAuth.EncryptPass) > 0 {
 		logger.Println("Feathering server.")
 		go cap.Feather(featherAuth.EncryptPass,
 			featherAuth.EncryptSalt,

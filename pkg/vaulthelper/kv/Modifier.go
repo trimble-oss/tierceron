@@ -129,7 +129,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	})
 	if err != nil {
 		if logger != nil {
-			logger.Println("vaultHost: "+modClient.Address(), logger)
+			logger.Printf("vaultHost: %s\n", modClient.Address())
 		}
 		return nil, err
 	}
@@ -260,6 +260,8 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 		} else if strings.Contains(err.Error(), "x509: certificate") {
 			return false, desiredPolicy, err
 		}
+		logger.Println("Possible attempted use of expired token")
+		fmt.Println("Possible attempted use of expired token")
 	}
 
 	valid := false
@@ -467,6 +469,9 @@ retryVaultAccess:
 					return nil, fmt.Errorf("unexpected datatype. Refusing to read what we cannot lock. %T", dataValues)
 				}
 			}
+		}
+		if len(data) == 0 {
+			return nil, errors.New("could not get data from vault.  Provided token may lack permission to access provided path")
 		}
 		return data, err
 	}

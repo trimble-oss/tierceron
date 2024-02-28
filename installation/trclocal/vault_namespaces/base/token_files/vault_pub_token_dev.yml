@@ -1,0 +1,6 @@
+policies: ["vault_pub_dev"]
+metadata:
+  user : "pubu"
+
+ttl:  "8760h"
+display_name: "Template Publisher Token"

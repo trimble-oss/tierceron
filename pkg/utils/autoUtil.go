@@ -73,7 +73,7 @@ func AutoAuth(config *DriverConfig,
 	var c cert
 	var v *sys.Vault
 
-	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" {
+	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" && appRoleConfig != "deployauth" {
 		// For token based auth, auto auth not
 		return nil
 	}
@@ -85,25 +85,21 @@ func AutoAuth(config *DriverConfig,
 	}
 
 	// New values available for the cert file
-	if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
+	if secretIDPtr != nil && len(*secretIDPtr) > 0 && appRoleIDPtr != nil && len(*appRoleIDPtr) > 0 {
 		override = true
 	}
+	isProd := strings.Contains(*envPtr, "staging") || strings.Contains(*envPtr, "prod")
 
-	if !config.IsShell && (strings.Index(*envPtr, "staging") == 0 || strings.Index(*envPtr, "prod") == 0) {
-		override = false
-		exists = true
-		appRoleIDPtr = nil
-		secretIDPtr = nil
-	} else {
-		// If cert file exists obtain secretID and appRoleID
-		config.Log.Printf("User home directory %v ", userHome)
-		if len(appRoleConfig) == 0 {
-			appRoleConfig = "config.yml"
+	// If cert file exists obtain secretID and appRoleID
+	config.Log.Printf("User home directory %v ", userHome)
+	if len(appRoleConfig) == 0 {
+		appRoleConfig = "config.yml"
+	}
+	if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
+		if config.IsShellSubProcess {
+			return errors.New("required azure deploy approle and secret are missing")
 		}
-		if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
-			if config.IsShellSubProcess {
-				return errors.New("required azure deploy approle and secret are missing")
-			}
+		if !isProd {
 			if _, err := os.Stat(userHome + "/.tierceron/" + appRoleConfig); !os.IsNotExist(err) {
 				exists = true
 				_, configErr := c.getConfig(config.Log, appRoleConfig)
@@ -148,11 +144,16 @@ func AutoAuth(config *DriverConfig,
 		var approleID string
 		var dump []byte
 
-		if override {
+		if override || appRoleConfig == "deployauth" {
+			// Nothing...
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
-			LogInfo(config, "No cert file found, please enter config IDs")
+			if !isProd {
+				LogInfo(config, "No cert file found, please enter config IDs")
+			} else {
+				LogInfo(config, "Please enter config IDs")
+			}
 			if addrPtr != nil && *addrPtr != "" {
 				LogInfo(config, "vaultHost: "+*addrPtr)
 				vaultHost = *addrPtr
@@ -164,7 +165,9 @@ func AutoAuth(config *DriverConfig,
 
 			if *tokenPtr == "" {
 				if secretIDPtr != nil && *secretIDPtr != "" {
-					LogInfo(config, "secretID: "+*secretIDPtr)
+					if !isProd {
+						LogInfo(config, "secretID: "+*secretIDPtr)
+					}
 					secretID = *secretIDPtr
 				} else if secretIDPtr != nil {
 					LogInfo(config, "secretID: ")
@@ -174,7 +177,9 @@ func AutoAuth(config *DriverConfig,
 				}
 
 				if appRoleIDPtr != nil && *appRoleIDPtr != "" {
-					LogInfo(config, "approleID: "+*appRoleIDPtr)
+					if !isProd {
+						LogInfo(config, "approleID: "+*appRoleIDPtr)
+					}
 					approleID = *appRoleIDPtr
 				} else if appRoleIDPtr != nil {
 					LogInfo(config, "approleID: ")
@@ -221,7 +226,7 @@ func AutoAuth(config *DriverConfig,
 			}
 
 			dump = []byte(certConfigData)
-		} else if override && !exists {
+		} else if (override && !exists) || appRoleConfig == "deployauth" {
 			if !config.IsShell {
 				LogInfo(config, "No approle file exists, continuing without saving config IDs")
 			}
@@ -239,7 +244,7 @@ func AutoAuth(config *DriverConfig,
 		}
 
 		// Do not save IDs if overriding and no approle file exists
-		if !override || exists {
+		if !isProd && (!override || exists) && appRoleConfig != "deployauth" {
 
 			// Create hidden folder
 			if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {
@@ -349,6 +354,10 @@ func AutoAuth(config *DriverConfig,
 	if len(*tokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			return errors.New("need both public and secret app role to retrieve token from vault")
+		}
+
+		if len(*appRoleIDPtr) != 36 || len(*secretIDPtr) != 36 {
+			return fmt.Errorf("unexpected approle len = %d and secret len = %d --> expecting 36", len(*appRoleIDPtr), len(*secretIDPtr))
 		}
 
 		roleToken, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)

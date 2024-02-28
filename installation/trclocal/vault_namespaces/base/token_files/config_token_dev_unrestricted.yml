@@ -1,0 +1,6 @@
+policies: ["config_dev_unrestricted"]
+metadata:
+  user : "configu"
+
+ttl: "8760h"
+display_name: "Unrestricted Dev Configuration Token"

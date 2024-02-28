@@ -102,6 +102,19 @@ func retryingPenseFeatherQuery(featherCtx *cap.FeatherContext, agentConfigs *cap
 	return nil, errors.New("unavailable secrets")
 }
 
+func TrcshVAddress(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfigs, config *eUtils.DriverConfig) (*string, error) {
+	var err error
+	var vaultAddress *string
+
+	if featherCtx != nil {
+		vaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
+	} else {
+		config.Log.Println("Auth phase 0")
+		vaultAddress, err = capauth.PenseQuery(config, "caddress")
+	}
+	return vaultAddress, err
+}
+
 // Helper function for obtaining auth components.
 func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfigs, config *eUtils.DriverConfig) (*capauth.TrcShConfig, error) {
 	trcshConfig := &capauth.TrcShConfig{}

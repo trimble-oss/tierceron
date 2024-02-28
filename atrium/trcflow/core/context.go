@@ -294,7 +294,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchema sqle.Primary
 		}
 	} else {
 		tfmContext.GetTableModifierLock().Unlock()
-		tfmContext.Log("Unrecognized table: "+tfContext.Flow.TableName(), nil)
+		tfmContext.Log("Recognized table: "+tfContext.Flow.TableName(), nil)
 	}
 }
 
@@ -959,7 +959,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 			} else {
 				defer dbsourceConn.Close()
 			}
-
+			eUtils.LogInfo(config, "Obtained resource connection for : "+flow.ServiceName())
 			tfContext.RemoteDataSource["connection"] = dbsourceConn
 		}
 	}
@@ -994,6 +994,10 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tfContext *TrcFlow
 		if dataString, ok := columnData.(string); ok {
 			rowDataMap[columnName] = dataString
 		} else {
+			if columnData != nil { //Cover non strings if possible.
+				rowDataMap[columnName] = fmt.Sprintf("%v", columnData)
+				continue
+			}
 			return nil, errors.New("Found data that was not a string - unable to write columnName: " + columnName + " to " + tfContext.Flow.TableName())
 		}
 	}

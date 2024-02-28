@@ -471,12 +471,12 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 		//create new file
 		newFile, err = os.Create(path)
 		eUtils.CheckError(config, err, true)
+		defer newFile.Close()
 		//write to file
 		_, err = newFile.Write(byteData)
 		eUtils.CheckError(config, err, true)
 		err = newFile.Sync()
 		eUtils.CheckError(config, err, true)
-		newFile.Close()
 	}
 }
 

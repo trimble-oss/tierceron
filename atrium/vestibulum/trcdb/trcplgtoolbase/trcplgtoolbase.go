@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -38,6 +39,7 @@ func CommonMain(envPtr *string,
 	var flagEnvPtr *string
 	// Main functions are as follows:
 	if flagset == nil {
+		fmt.Println("Version: " + "1.05")
 		flagset = flag.NewFlagSet(argLines[0], flag.ContinueOnError)
 		// set and ignore..
 		flagEnvPtr = flagset.String("env", "dev", "Environment to configure")
@@ -67,7 +69,9 @@ func CommonMain(envPtr *string,
 	// defineService flags...
 	deployrootPtr := flagset.String("deployroot", "", "Optional path for deploying services to.")
 	serviceNamePtr := flagset.String("serviceName", "", "Optional name of service to use in managing service.")
+	pathParamPtr := flagset.String("pathParam", "", "Optional path placeholder replacement to use in managing service.")
 	codeBundlePtr := flagset.String("codeBundle", "", "Code bundle to deploy.")
+	expandTargetPtr := flagset.Bool("expandTarget", false, "Used to unzip files at deploy path")
 
 	// Common plugin flags...
 	pluginNamePtr := flagset.String("pluginName", "", "Used to certify vault plugin")
@@ -139,6 +143,18 @@ func CommonMain(envPtr *string,
 		return errors.New("-pluginName cannot contain reserved character '.'")
 	}
 
+	if c != nil && len(c.PathParam) > 0 {
+		// Prefer internal definition of alias
+		*pathParamPtr = c.PathParam
+	}
+
+	if len(*pathParamPtr) > 0 {
+		r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
+		if !r.MatchString(*pathParamPtr) {
+			fmt.Println("-pathParam can only contain alphanumberic characters or underscores")
+			return errors.New("-pathParam can only contain alphanumberic characters or underscores")
+		}
+	}
 	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr {
 		*pluginTypePtr = "trcshservice"
 	}
@@ -224,6 +240,9 @@ func CommonMain(envPtr *string,
 			return errors.New("auth failure")
 		}
 	}
+	if logger != nil {
+		logger.Printf("Certify begin gathering certify configs\n")
+	}
 
 	regions := []string{}
 
@@ -262,7 +281,9 @@ func CommonMain(envPtr *string,
 		configBase.SubSectionValue = *pluginNamePtr
 	}
 	mod.Env = *envPtr
-	eUtils.CheckError(config, err, true)
+	if logger != nil {
+		logger.Printf("Certify mod initialized\n")
+	}
 
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
@@ -296,6 +317,9 @@ func CommonMain(envPtr *string,
 		fmt.Println(plcErr.Error())
 		return plcErr
 	}
+	if logger != nil {
+		logger.Printf("Certify begin activities\n")
+	}
 
 	if len(*sha256Ptr) > 0 {
 		fileInfo, statErr := os.Stat(*sha256Ptr)
@@ -320,17 +344,27 @@ func CommonMain(envPtr *string,
 				}
 				sha256Bytes := sha256.Sum256(pluginImage)
 				*sha256Ptr = fmt.Sprintf("%x", sha256Bytes)
+			} else {
+				fmt.Println("Irregular image")
+				return errors.New("irregular image")
 			}
+		} else {
+			fmt.Println("Failure to stat image:" + statErr.Error())
+			return statErr
 		}
 	}
 
-	pluginToolConfig["trcsha256"] = *sha256Ptr
+	if !*codebundledeployPtr && len(*sha256Ptr) > 0 {
+		pluginToolConfig["trcsha256"] = *sha256Ptr
+	}
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
 	pluginToolConfig["serviceNamePtr"] = *serviceNamePtr
 	pluginToolConfig["projectservicePtr"] = *projectservicePtr
 	pluginToolConfig["deployrootPtr"] = *deployrootPtr
 	pluginToolConfig["deploysubpathPtr"] = *deploysubpathPtr
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
+	pluginToolConfig["pathParamPtr"] = *pathParamPtr
+	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr //is a bool that gets converted to a string for writeout/certify
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
@@ -363,6 +397,12 @@ func CommonMain(envPtr *string,
 			if _, ok := pluginToolConfig["projectServicePtr"].(string); ok {
 				pluginToolConfig["trcprojectservice"] = pluginToolConfig["projectServicePtr"].(string)
 			}
+			if pathParam, ok := pluginToolConfig["pathParamPtr"].(string); ok && pathParam != "" {
+				pluginToolConfig["trcpathparam"] = pluginToolConfig["pathParamPtr"].(string)
+			}
+			if expandTarget, ok := pluginToolConfig["expandTargetPtr"].(bool); ok && expandTarget { //only writes out if expandTarget = true
+				pluginToolConfig["trcexpandtarget"] = "true"
+			}
 		}
 	}
 
@@ -387,6 +427,12 @@ func CommonMain(envPtr *string,
 		}
 		if _, ok := pluginToolConfig["trcprojectservice"]; ok {
 			writeMap["trcprojectservice"] = pluginToolConfig["trcprojectservice"]
+		}
+		if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
+			writeMap["trcpathparam"] = pluginToolConfig["trcpathparam"]
+		}
+		if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
+			writeMap["trcexpandtarget"] = expandTarget
 		}
 		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, configBase.Log)
 		if err != nil {
@@ -448,8 +494,32 @@ func CommonMain(envPtr *string,
 			} else {
 				deployRoot = pluginToolConfig["trcdeployroot"].(string)
 			}
+
+			//check if there is a place holder, if there is replace it
+			if strings.Contains(deployRoot, "{{.trcpathparam}}") {
+				if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
+					r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
+					if !r.MatchString(pathParam) {
+						fmt.Println("trcpathparam can only contain alphanumberic characters or underscores")
+						return errors.New("trcpathparam can only contain alphanumberic characters or underscores")
+					}
+					deployRoot = strings.Replace(deployRoot, "{{.trcpathparam}}", pathParam, -1)
+				} else {
+					return errors.New("Unable to replace path placeholder with pathParam.")
+				}
+			}
 			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
+
 			fmt.Printf("Deploying image to: %s\n", deployPath)
+
+			if _, err = os.Stat(deployRoot); err != nil {
+				err = os.MkdirAll(deployRoot, 0644)
+				if err != nil {
+					fmt.Println(err.Error())
+					fmt.Println("Could not prepare needed directory for deployment.")
+					return err
+				}
+			}
 
 			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
 			if err != nil {
@@ -458,25 +528,35 @@ func CommonMain(envPtr *string,
 				return err
 			}
 
-			if strings.HasSuffix(deployPath, ".war") {
-				explodedWarPath := strings.TrimSuffix(deployPath, ".war")
-				fmt.Printf("Checking exploded war path: %s\n", explodedWarPath)
-				if _, err := os.Stat(explodedWarPath); err == nil {
-					if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
-						archiveDirPath := filepath.Join(deployRoot, "archive")
-						fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
-						err := os.MkdirAll(archiveDirPath, 0700)
-						if err == nil {
-							currentTime := time.Now()
-							formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
-							archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), "archive", formattedTime)
-							fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
-							err := os.MkdirAll(archiveRoot, 0700)
+			if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
+				// TODO: provide archival of existing directory.
+				if ok, errList := trcvutils.UncompressZipFile(deployPath); !ok {
+					fmt.Printf("Uncompressing zip file in place failed. %v\n", errList)
+					return errList[0]
+				} else {
+					os.Remove(deployPath)
+				}
+			} else {
+				if strings.HasSuffix(deployPath, ".war") {
+					explodedWarPath := strings.TrimSuffix(deployPath, ".war")
+					fmt.Printf("Checking exploded war path: %s\n", explodedWarPath)
+					if _, err := os.Stat(explodedWarPath); err == nil {
+						if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+							archiveDirPath := filepath.Join(deployRoot, "archive")
+							fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
+							err := os.MkdirAll(archiveDirPath, 0700)
 							if err == nil {
-								archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
-								archivePath = strings.TrimSuffix(archivePath, ".war")
-								fmt.Printf("Archiving: %s to %s\n", explodedWarPath, archivePath)
-								os.Rename(explodedWarPath, archivePath)
+								currentTime := time.Now()
+								formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
+								archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), "archive", formattedTime)
+								fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
+								err := os.MkdirAll(archiveRoot, 0700)
+								if err == nil {
+									archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
+									archivePath = strings.TrimSuffix(archivePath, ".war")
+									fmt.Printf("Archiving: %s to %s\n", explodedWarPath, archivePath)
+									os.Rename(explodedWarPath, archivePath)
+								}
 							}
 						}
 					}
@@ -487,6 +567,7 @@ func CommonMain(envPtr *string,
 		} else {
 			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
 			if configBase.FeatherCtx != nil {
+				fmt.Printf("%s\n", errMessage)
 				configBase.FeatherCtx.Log.Printf(errMessage)
 			} else {
 				fmt.Printf("%s\n", errMessage)
@@ -500,9 +581,12 @@ func CommonMain(envPtr *string,
 			fmt.Println("Checking for existing image.")
 			err := repository.GetImageAndShaFromDownload(configBase, pluginToolConfig)
 			if _, ok := pluginToolConfig["imagesha256"].(string); err != nil || !ok {
-				fmt.Println("Invalid or nonexistent image.")
+				fmt.Println("Invalid or nonexistent image on download.")
 				if err != nil {
 					fmt.Println(err.Error())
+				}
+				if err == nil {
+					err = errors.New("invalid or nonexistent image on download")
 				}
 				return err
 			}
@@ -535,7 +619,7 @@ func CommonMain(envPtr *string,
 				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {
 					pluginTarget = *pluginNamePtr
 				}
-				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), replacedFields, mod, config.Log, *regionPtr, pluginTarget)
+				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), replacedFields, mod, config.Log, *regionPtr, pluginTarget)
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					return err
@@ -547,7 +631,7 @@ func CommonMain(envPtr *string,
 					return err
 				}
 
-				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr), configBase.Log)
+				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), configBase.Log)
 				if err != nil {
 					fmt.Println(err)
 					return err
@@ -622,7 +706,7 @@ func CommonMain(envPtr *string,
 	return nil
 }
 
-func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string) map[string]interface{} {
+func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string, pathParamPtr string) map[string]interface{} {
 	if pluginTypePtr != "trcshservice" {
 		writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
 		writeMap["trctype"] = pluginTypePtr
@@ -641,6 +725,11 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 		writeMap["trcsha256"] = pluginToolConfig["imagesha256"].(string) // Pull image sha from registry...
 	} else {
 		writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string) // Pull image sha from registry...
+	}
+	if pathParamPtr != "" { //optional if not found.
+		writeMap["trcpathparam"] = pathParamPtr
+	} else if pathParam, pathOK := writeMap["trcpathparam"].(string); pathOK {
+		writeMap["trcpathparam"] = pathParam
 	}
 	writeMap["copied"] = false
 	writeMap["deployed"] = false

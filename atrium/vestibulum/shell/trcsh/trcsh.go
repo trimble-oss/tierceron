@@ -39,8 +39,8 @@ func main() {
 	}
 	envPtr := flagset.String("env", "", "Environment to be processed") //If this is blank -> use context otherwise override context.
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	secretIDPtr := flagset.String("secretID", "", "Public app role ID")
-	appRoleIDPtr := flagset.String("appRoleID", "", "Secret app role ID")
+	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
+	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 
 	err := trcshbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, nil)
 	if err != nil {

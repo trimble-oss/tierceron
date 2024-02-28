@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -19,6 +20,22 @@ import (
 )
 
 func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
+
+	if pluginToolConfig["acrrepository"] != nil && len(pluginToolConfig["acrrepository"].(string)) == 0 {
+		config.Log.Printf("Acr repository undefined.  Refusing to continue.\n")
+		return errors.New("undefined acr repository")
+	}
+
+	if !strings.HasPrefix(pluginToolConfig["acrrepository"].(string), "https://") {
+		config.Log.Printf("Malformed Acr repository.  https:// required.  Refusing to continue.\n")
+		return errors.New("malformed acr repository - https:// required")
+	}
+
+	if pluginToolConfig["trcplugin"] != nil && len(pluginToolConfig["trcplugin"].(string)) == 0 {
+		config.Log.Printf("Trcplugin undefined.  Refusing to continue.\n")
+		return errors.New("undefined trcplugin")
+	}
+
 	client, err := azcontainerregistry.NewClient(
 		pluginToolConfig["acrrepository"].(string),
 		svc, nil)

@@ -6,9 +6,13 @@ be trivial to do.
 
 # Prerequisites
 You must have 4 basic tools installed either via the Makefile or via:
+
 go install github.com/trimble-oss/tierceron/cmd/trcpub@latest
+
 go install github.com/trimble-oss/tierceron/cmd/trcx@latest
+
 go install github.com/trimble-oss/tierceron/cmd/trcinit@latest
+
 go install github.com/trimble-oss/tierceron/cmd/trcconfig@latest
 
 # Installation order

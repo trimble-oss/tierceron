@@ -19,7 +19,7 @@ import (
 // Heartbeat validates the database connection
 func Heartbeat(config *eUtils.DriverConfig, url string, username string, password string) (bool, error) {
 	//extract driver, server, port and dbname with regex
-	driver, server, port, dbname, err := ParseURL(config, url)
+	driver, server, port, dbname, _, err := ParseURL(config, url)
 	if err != nil {
 		return false, err
 	}
@@ -55,14 +55,18 @@ func Heartbeat(config *eUtils.DriverConfig, url string, username string, passwor
 	}
 	return true, nil
 }
-func ParseURL(config *eUtils.DriverConfig, url string) (string, string, string, string, error) {
+func ParseURL(config *eUtils.DriverConfig, url string) (string, string, string, string, string, error) {
 	//only works with jdbc:mysql or jdbc:sqlserver.
-	regex := regexp.MustCompile(`(?i)(?:jdbc:(mysql|sqlserver|mariadb))://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+).*`)
+	regex := regexp.MustCompile(`(?i)(?:jdbc:(mysql|sqlserver|mariadb))://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+)(.*certName=([\w\.]+)|.*).*`)
 	m := regex.FindStringSubmatch(url)
 	if m == nil {
 		err := errors.New("incorrect URL format")
 		eUtils.LogErrorObject(config, err, false)
-		return "", "", "", "", err
+		return "", "", "", "", "", err
 	}
-	return m[1], m[2], m[3], m[4], nil
+	certName := ""
+	if len(m) >= 7 {
+		certName = m[6]
+	}
+	return m[1], m[2], m[3], m[4], certName, nil
 }

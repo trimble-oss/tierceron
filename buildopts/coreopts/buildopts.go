@@ -9,7 +9,7 @@ type Option func(*OptionsBuilder)
 type OptionsBuilder struct {
 	GetFolderPrefix              func(custom []string) string
 	GetSupportedTemplates        func(custom []string) []string
-	GetSupportedEndpoints        func() []string
+	GetSupportedEndpoints        func(bool) []string
 	GetLocalHost                 func() string
 	GetRegion                    func(hostName string) string
 	GetVaultHost                 func() string

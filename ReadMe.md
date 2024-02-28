@@ -12,14 +12,14 @@ This suite of tools provides functionality for creating, reading, and updating c
 * Because Configuration Management is a pain.  I wanted to be able to switch between development and QA and any other environment with a single call for all my microservices.  With these tools, I can now do that.
 * We wanted a system that worked transparently from dev -> QA -> staging -> production.
 * Wanted a fun project for our interns to work on over the summer.
-* Since Tierceron is written all in go, the services involved are very stable and tiny.  All our configurations are managed on an EC2 tiny up in AWS backed by an encrypted and backed up database.
+* Since Tierceron is written all in go, the services involved are very stable and tiny.  All configurations may be managed on a small EC2/virtual machine running anywhere from locally to AWS/Azure backed by an encrypted and backed up database.
 * Coding in go is a dream.  If I could code an entire system in go, I would do it in a snap.
 
 ## Key Features 🔑
 
 - This project follows a [GitFlow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow) model for development and release.
 - Encrypted configurations store in Vault backed by encrypted mysql.
-- Highly stable Vault service running on t2 micro in AWS.
+- Highly stable Vault service that can run on something as small as a t2 micro in AWS or something similar in Azure for example.
 - Tools: 
     * trcconfig -- for reading configurations
     * trcinit -- for initializing a configuration set over multiple projects.

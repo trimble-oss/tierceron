@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -15,6 +16,11 @@ import (
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	LogInfo(config, "InitVaultMod begins..")
+	if config == nil {
+		LogInfo(config, "InitVaultMod failure.  config provided is nil")
+		return config, nil, nil, errors.New("invalid nil config")
+	}
+
 	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, false, config.Log)
 	if err != nil {
 		LogInfo(config, "Failure to connect to vault..")
@@ -22,7 +28,7 @@ func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys
 		return config, nil, nil, err
 	}
 	vault.SetToken(config.Token)
-
+	LogInfo(config, "InitVaultMod - Initializing Modifier")
 	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, false, config.Log)
 	if err != nil {
 		LogErrorObject(config, err, false)

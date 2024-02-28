@@ -2,5 +2,5 @@
 azure-repository: {{.acrrepository}}
 azure-client-id: {{.azureClientId}}
 azure-client-secret: {{.azureClientSecret}}
-azure-subscription-id: {{.azureSubscriptionId}}
+azure-tenant-id: {{.azureTenantId}}
 

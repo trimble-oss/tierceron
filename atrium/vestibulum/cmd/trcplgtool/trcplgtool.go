@@ -30,7 +30,7 @@ func main() {
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 
-	fmt.Println("Version: " + "1.03")
+	fmt.Println("Version: " + "1.05")
 
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {
@@ -41,7 +41,7 @@ func main() {
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	tokenPtr := flagset.String("token", "", "Vault access token")
 	regionPtr := flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
-	secretIDPtr := flagset.String("secretID", "", "Secret app role ID")
+	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
 

@@ -29,7 +29,7 @@ func GetSupportedTemplates(custom []string) []string {
 	return []string{}
 }
 
-func GetSupportedEndpoints() []string {
+func GetSupportedEndpoints(prod bool) []string {
 	return []string{}
 }
 

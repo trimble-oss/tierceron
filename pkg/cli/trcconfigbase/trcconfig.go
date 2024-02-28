@@ -106,7 +106,7 @@ func CommonMain(envPtr *string,
 		flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
-		flagset.String("secretID", "", "Secret app role ID")
+		flagset.String("secretID", "", "Secret for app role ID")
 		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
 		flagset.String("appRoleID", "", "Public app role ID")
 		flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
@@ -263,6 +263,7 @@ func CommonMain(envPtr *string,
 		if !*noVaultPtr {
 			autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
+				c.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)
 				fmt.Println("Missing auth components.")
 				return errors.New("missing auth components")
 			}

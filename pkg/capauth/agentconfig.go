@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -15,6 +15,7 @@ import (
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -51,8 +52,13 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	if !strings.HasPrefix(host, protocol) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
-	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints() {
+	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if inverse {
+			if len(protocol) > 0 {
+				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint), host) {
+					return nil
+				}
+			}
 			if strings.Contains(endpoint, host) {
 				return nil
 			}
@@ -71,6 +77,21 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 		}
 	}
 	return errors.New("Bad host: " + host)
+}
+
+func (agentconfig *AgentConfigs) RetryingPenseFeatherQuery(pense string) (*string, error) {
+	retry := 0
+	for retry < 5 {
+		result, err := agentconfig.PenseFeatherQuery(agentconfig.FeatherContext, pense)
+
+		if err != nil || result == nil || *result == "...." {
+			time.Sleep(time.Second)
+			retry = retry + 1
+		} else {
+			return result, err
+		}
+	}
+	return nil, errors.New("unavailable secrets")
 }
 
 func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
@@ -114,27 +135,51 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 
 func NewAgentConfig(address string,
 	agentToken string,
-	deployments string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
-	interruptedFunc func(*cap.FeatherContext) error) (*AgentConfigs, *TrcShConfig, error) {
+	interruptedFunc func(*cap.FeatherContext) error,
+	logger *log.Logger) (*AgentConfigs, *TrcShConfig, error) {
+	if logger != nil {
+		logger.Printf(".")
+	} else {
+		fmt.Printf(".")
+	}
+
 	mod, modErr := helperkv.NewModifier(false, agentToken, address, env, nil, true, nil)
 	if modErr != nil {
-		fmt.Println("trcsh Failed to bootstrap")
+		logger.Println("trcsh Failed to bootstrap")
 		os.Exit(-1)
 	}
 	mod.Direct = true
 	envParts := strings.Split(env, "-")
 	mod.Env = envParts[0]
 
+	if logger != nil {
+		logger.Printf(".")
+	} else {
+		fmt.Printf(".")
+	}
 	data, readErr := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
 	defer func(m *helperkv.Modifier, e string) {
 		m.Env = e
 	}(mod, env)
 
+	if logger != nil {
+		logger.Printf(".")
+	} else {
+		fmt.Printf(".")
+	}
+
 	if readErr != nil {
 		return nil, nil, readErr
 	} else {
+		if data["trcHatEncryptPass"] == nil ||
+			data["trcHatEncryptSalt"] == nil ||
+			data["trcHatHandshakeCode"] == nil ||
+			data["trcHatEnv"] == nil ||
+			data["trcHatHost"] == nil {
+			return nil, nil, errors.New("missing required secrets: possible missing secrets or lack of permissions for provided token")
+		}
 		trcHatHostLocal := new(string)
 		trcHatEncryptPass := data["trcHatEncryptPass"].(string)
 		memprotectopts.MemProtect(nil, &trcHatEncryptPass)
@@ -154,7 +199,13 @@ func NewAgentConfig(address string,
 		} else {
 			trcHatEnv = data["trcHatEnv"].(string)
 		}
+		if logger != nil {
+			logger.Printf(".")
+		} else {
+			fmt.Printf(".")
+		}
 
+		deployments := "bootstrap"
 		agentconfig := &AgentConfigs{
 			captiplib.FeatherCtlInit(nil,
 				trcHatHostLocal,
@@ -176,12 +227,26 @@ func NewAgentConfig(address string,
 			EnvContext: trcHatEnv,
 		}
 
-		trcShConfigRole, penseError := agentconfig.PenseFeatherQuery(agentconfig.FeatherContext, "configrole")
+		var penseError error
+		trcshConfig.ConfigRole, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
 		if penseError != nil {
 			return nil, nil, penseError
 		}
-		memprotectopts.MemProtect(nil, trcShConfigRole)
-		trcshConfig.ConfigRole = trcShConfigRole
+		if logger != nil {
+			logger.Printf(".")
+		} else {
+			fmt.Printf(".")
+		}
+
+		trcshConfig.VaultAddress, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
+		if penseError != nil {
+			return nil, nil, penseError
+		}
+		if logger != nil {
+			logger.Printf(".")
+		} else {
+			fmt.Printf(".")
+		}
 
 		return agentconfig, trcshConfig, nil
 	}
@@ -201,28 +266,10 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	}
 
 	if capWriteErr != nil || gTrcHatSecretsPort == "" {
-		fmt.Println("Code 54 failure...")
+		fmt.Println("Code 54 failure...  Possible deploy components mismatch..")
 		// 2023-06-30T01:29:21.7020686Z read unix @->/tmp/trccarrier/trcsnap.sock: read: connection reset by peer
 		//		os.Exit(-1) // restarting carrier will rebuild necessary resources...
-		return new(string), errors.Join(errors.New("Tap writer error"), capWriteErr)
-	}
-
-	localIP, err := LocalIp(config.EnvRaw)
-	if err != nil {
-		return nil, err
-	}
-	addrs, hostErr := net.LookupAddr(localIP)
-	if hostErr != nil {
-		return nil, hostErr
-	}
-	localHost := ""
-	if len(addrs) > 0 {
-		localHost = strings.TrimRight(addrs[0], ".")
-		if validErr := ValidateVhost(localHost, ""); validErr != nil {
-			return nil, validErr
-		}
-	} else {
-		return nil, errors.New("Invalid host")
+		return new(string), errors.New("tap writer error")
 	}
 
 	// TODO: add domain if it's missing because that might actually happen...  Pull the domain from
@@ -232,8 +279,13 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	if err != nil {
 		return nil, err
 	}
+	dialOptions := grpc.WithTransportCredentials(creds)
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localHost, gTrcHatSecretsPort), grpc.WithTransportCredentials(creds))
+	localHost, localHostErr := LocalAddr(config.EnvRaw)
+	if localHostErr != nil {
+		return nil, localHostErr
+	}
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localHost, gTrcHatSecretsPort), dialOptions)
 	if err != nil {
 		return new(string), err
 	}
@@ -241,8 +293,16 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	c := cap.NewCapClient(conn)
 
 	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
+
+	localHostConfirm, localHostConfirmErr := LocalAddr(config.EnvRaw)
+	if localHostConfirmErr != nil {
+		return nil, localHostConfirmErr
+	}
+	if localHost != localHostConfirm {
+		return nil, errors.New("host selection flux - cannot continue")
+	}
 
 	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 	if penseErr != nil {
