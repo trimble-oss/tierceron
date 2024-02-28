@@ -154,9 +154,9 @@ type PermissionUpdate struct {
 }
 
 type TrcFlowContext struct {
-	RemoteDataSource map[string]interface{}
-	GoMod            *helperkv.Modifier
-	Vault            *sys.Vault
+	RemoteDataSources map[string]map[string]interface{}
+	GoMod             *helperkv.Modifier
+	Vault             *sys.Vault
 
 	// Recommended not to store contexts, but because we
 	// are working with flows, this is a different pattern.
@@ -918,7 +918,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	tfContext *TrcFlowContext,
 	processFlowController func(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext) error,
 	vaultDatabaseConfig map[string]interface{}, // TODO: actually use this to set up a mysql facade.
-	sourceDatabaseConnectionMap map[string]interface{},
+	sourceDatabaseConnectionsMap map[string]map[string]interface{},
 	flow FlowNameType,
 	flowType FlowType) error {
 
@@ -936,8 +936,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		tfContext.FlowSource = flow.ServiceName()
 	}
 
-	tfContext.RemoteDataSource["dbsourceregion"] = sourceDatabaseConnectionMap["dbsourceregion"]
-	tfContext.RemoteDataSource["dbingestinterval"] = sourceDatabaseConnectionMap["dbingestinterval"] //60000
+	tfContext.RemoteDataSources = sourceDatabaseConnectionsMap
 	//if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() { //Flag is now replaced by syncMode in controller
 	// Create remote data source with only what is needed.
 	if flow.ServiceName() != flowcorehelper.TierceronFlowConfigurationTableName {
@@ -960,7 +959,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 				defer dbsourceConn.Close()
 			}
 			eUtils.LogInfo(config, "Obtained resource connection for : "+flow.ServiceName())
-			tfContext.RemoteDataSource["connection"] = dbsourceConn
+			tfContext.RemoteDataSources["connection"] = dbsourceConn
 		}
 	}
 
