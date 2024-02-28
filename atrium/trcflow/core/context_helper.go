@@ -237,7 +237,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	indexColumnNames interface{},
 	mysqlPushEnabled bool,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error) error {
+	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}, []string) error) error {
 
 	var matrixChangedEntries [][]interface{}
 	var removeErr error
@@ -303,7 +303,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 					rowDataMap[column] = ""
 				}
 
-				pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
+				pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap, nil)
 				if pushError != nil {
 					eUtils.LogErrorObject(tfmContext.Config, err, false)
 				}
@@ -402,7 +402,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 		// Push this change to the flow for delivery to remote data source.
 		if mysqlPushEnabled && flowPushRemote != nil {
-			pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap)
+			pushError := flowPushRemote(tfContext, tfContext.RemoteDataSource, rowDataMap, nil)
 			if pushError != nil {
 				eUtils.LogErrorObject(tfmContext.Config, err, false)
 			}

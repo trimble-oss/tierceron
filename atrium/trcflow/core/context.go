@@ -429,7 +429,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
+	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}, []string) error,
 	sqlState bool) {
 
 	mysqlPushEnabled := sqlState
@@ -497,7 +497,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
+	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}, []string) error,
 	bootStrap bool,
 	seedInitCompleteChan chan bool) {
 
@@ -581,7 +581,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
+	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}, []string) error,
 	sqlState bool) {
 
 	// 2 rows (on startup always):
