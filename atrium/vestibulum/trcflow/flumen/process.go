@@ -296,171 +296,157 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmFlumeContext.Config = &configBasis
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
-	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
-		if !tfmFlumeContext.FlowControllerInit {
-			continue
-		}
-		for _, table := range GetTierceronTableNames() {
-			tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
-			tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
-			tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
-			tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
-			var controllerInitWG sync.WaitGroup
-			tfContext.RemoteDataSource["controllerInitWG"] = &controllerInitWG
-			controllerInitWG.Add(1)
-			tfmFlumeContext.InitConfigWG.Add(1)
-			flowWG.Add(1)
-			go func(tableFlow flowcore.FlowNameType, tcfContext *flowcore.TrcFlowContext, dc *eUtils.DriverConfig) {
-				eUtils.LogInfo(dc, "Beginning flow: "+tableFlow.ServiceName())
-				defer flowWG.Done()
-				tcfContext.Flow = tableFlow
-				tcfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
-				tcfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
-				tfmContext.FlowMap[tcfContext.Flow] = tcfContext
-				var initErr error
-				dc, tcfContext.GoMod, tcfContext.Vault, initErr = eUtils.InitVaultMod(dc)
-				if initErr != nil {
-					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
-					return
-				}
-				tcfContext.FlowSourceAlias = flowopts.BuildOptions.GetFlowDatabaseName()
 
-				tfmFlumeContext.ProcessFlow(
-					dc,
-					tcfContext,
-					FlumenProcessFlowController,
-					vaultDatabaseConfig,
-					sourceDatabaseConnectionMap,
-					tableFlow,
-					flowcore.TableSyncFlow,
-				)
-			}(flowcore.FlowNameType(table), &tfContext, config)
-
-			controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
-			if initReceiver, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
-				eUtils.LogInfo(config, "Controller has been initialized...sending alert to interface...")
-			initAlert: //This waits for flow states to be loaded before starting all non-controller flows
-				for {
-					select {
-					case _, ok := <-initReceiver:
-						if ok {
-							break initAlert
-						}
-					default:
-						time.Sleep(time.Duration(time.Second))
-					}
-				}
-			} else {
-				initReceiverErr := errors.New("Failed to retrieve channel alert for controller init")
-				eUtils.LogErrorMessage(config, initReceiverErr.Error(), false)
-				return initReceiverErr
+	for _, table := range GetTierceronTableNames() {
+		tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
+		tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
+		tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
+		tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
+		var controllerInitWG sync.WaitGroup
+		tfContext.RemoteDataSource["controllerInitWG"] = &controllerInitWG
+		controllerInitWG.Add(1)
+		tfmFlumeContext.InitConfigWG.Add(1)
+		flowWG.Add(1)
+		go func(tableFlow flowcore.FlowNameType, tcfContext *flowcore.TrcFlowContext, dc *eUtils.DriverConfig) {
+			eUtils.LogInfo(dc, "Beginning flow: "+tableFlow.ServiceName())
+			defer flowWG.Done()
+			tcfContext.Flow = tableFlow
+			tcfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
+			tcfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+			tfmContext.FlowMap[tcfContext.Flow] = tcfContext
+			var initErr error
+			dc, tcfContext.GoMod, tcfContext.Vault, initErr = eUtils.InitVaultMod(dc)
+			if initErr != nil {
+				eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
+				return
 			}
-		}
+			tcfContext.FlowSourceAlias = flowopts.BuildOptions.GetFlowDatabaseName()
 
+			tfmFlumeContext.ProcessFlow(
+				dc,
+				tcfContext,
+				FlumenProcessFlowController,
+				vaultDatabaseConfig,
+				sourceDatabaseConnectionsMap,
+				tableFlow,
+				flowcore.TableSyncFlow,
+			)
+		}(flowcore.FlowNameType(table), &tfContext, config)
+
+		controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
+		if initReceiver, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
+			eUtils.LogInfo(config, "Controller has been initialized...sending alert to interface...")
+		initAlert: //This waits for flow states to be loaded before starting all non-controller flows
+			for {
+				select {
+				case _, ok := <-initReceiver:
+					if ok {
+						break initAlert
+					}
+				default:
+					time.Sleep(time.Duration(time.Second))
+				}
+			}
+		} else {
+			initReceiverErr := errors.New("Failed to retrieve channel alert for controller init")
+			eUtils.LogErrorMessage(config, initReceiverErr.Error(), false)
+			return initReceiverErr
+		}
 	}
 
 	flowMapLock := &sync.Mutex{}
-	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
-		for _, table := range configBasis.VersionFilter {
-			flowWG.Add(1)
-			go func(tableFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
-				eUtils.LogInfo(dc, "Beginning data source flow: "+tableFlow.ServiceName())
-				defer flowWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
-				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
-				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
-				tfContext.Flow = tableFlow
-				tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
-				tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
-				flowMapLock.Lock()
-				tfmContext.FlowMap[tfContext.Flow] = &tfContext
-				flowMapLock.Unlock()
-				var initErr error
-				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
-				if initErr != nil {
-					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
-					return
-				}
-				tfContext.FlowSourceAlias = harbingeropts.BuildOptions.GetDatabaseName()
+	for _, table := range configBasis.VersionFilter {
+		flowWG.Add(1)
+		go func(tableFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
+			eUtils.LogInfo(dc, "Beginning data source flow: "+tableFlow.ServiceName())
+			defer flowWG.Done()
+			tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
+			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
+			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
+			tfContext.Flow = tableFlow
+			tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
+			tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+			flowMapLock.Lock()
+			tfmContext.FlowMap[tfContext.Flow] = &tfContext
+			flowMapLock.Unlock()
+			var initErr error
+			dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
+			if initErr != nil {
+				eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
+				return
+			}
+			tfContext.FlowSourceAlias = harbingeropts.BuildOptions.GetDatabaseName()
 
-				tfmContext.ProcessFlow(
-					dc,
-					&tfContext,
-					flowopts.BuildOptions.ProcessFlowController,
-					vaultDatabaseConfig,
-					sourceDatabaseConnectionMap,
-					tableFlow,
-					flowcore.TableSyncFlow,
-				)
-			}(flowcore.FlowNameType(table), config)
-		}
+			tfmContext.ProcessFlow(
+				dc,
+				&tfContext,
+				flowopts.BuildOptions.ProcessFlowController,
+				vaultDatabaseConfig,
+				sourceDatabaseConnectionsMap,
+				tableFlow,
+				flowcore.TableSyncFlow,
+			)
+		}(flowcore.FlowNameType(table), config)
 	}
 
-	additionalFlowInit := true
-	for _, sourceDatabaseConnectionMap := range sourceDatabaseConnectionsMap {
-		if !additionalFlowInit {
-			continue
-		}
-		additionalFlowInit = false
-		for _, enhancement := range flowopts.BuildOptions.GetAdditionalFlows() {
+	for _, enhancement := range flowopts.BuildOptions.GetAdditionalFlows() {
+		flowWG.Add(1)
+
+		go func(enhancementFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
+			eUtils.LogInfo(dc, "Beginning additional flow: "+enhancementFlow.ServiceName())
+			defer flowWG.Done()
+
+			tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
+			tfContext.Flow = enhancementFlow
+			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
+			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
+			flowMapLock.Lock()
+			tfmContext.FlowMap[tfContext.Flow] = &tfContext
+			flowMapLock.Unlock()
+			var initErr error
+			dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
+			if initErr != nil {
+				eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
+				return
+			}
+
+			tfmContext.ProcessFlow(
+				dc,
+				&tfContext,
+				flowopts.BuildOptions.ProcessFlowController,
+				vaultDatabaseConfig,
+				sourceDatabaseConnectionsMap,
+				enhancementFlow,
+				flowcore.TableEnrichFlow,
+			)
+		}(enhancement, config)
+	}
+
+	if testopts.BuildOptions != nil {
+		for _, test := range testopts.BuildOptions.GetAdditionalTestFlows() {
 			flowWG.Add(1)
-
-			go func(enhancementFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
-				eUtils.LogInfo(dc, "Beginning additional flow: "+enhancementFlow.ServiceName())
+			go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
+				eUtils.LogInfo(dc, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
-
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
-				tfContext.Flow = enhancementFlow
-				tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
-				tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
-				flowMapLock.Lock()
-				tfmContext.FlowMap[tfContext.Flow] = &tfContext
-				flowMapLock.Unlock()
+				tfContext.Flow = testFlow
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 				if initErr != nil {
-					eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
+					eUtils.LogErrorMessage(dc, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
 
-				tfmContext.ProcessFlow(
+				tfmc.ProcessFlow(
 					dc,
 					&tfContext,
-					flowopts.BuildOptions.ProcessFlowController,
+					flowopts.BuildOptions.ProcessTestFlowController,
 					vaultDatabaseConfig,
-					sourceDatabaseConnectionMap,
-					enhancementFlow,
-					flowcore.TableEnrichFlow,
+					sourceDatabaseConnectionsMap,
+					testFlow,
+					flowcore.TableTestFlow,
 				)
-			}(enhancement, config)
-		}
-
-		if testopts.BuildOptions != nil {
-			for _, test := range testopts.BuildOptions.GetAdditionalTestFlows() {
-				flowWG.Add(1)
-				go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
-					eUtils.LogInfo(dc, "Beginning test flow: "+testFlow.ServiceName())
-					defer flowWG.Done()
-					tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.Config.Log, ContextNotifyChan: make(chan bool, 1)}
-					tfContext.Flow = testFlow
-					var initErr error
-					dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
-					if initErr != nil {
-						eUtils.LogErrorMessage(dc, "Could not access vault.  Failure to start flow.", false)
-						return
-					}
-
-					tfmc.ProcessFlow(
-						dc,
-						&tfContext,
-						flowopts.BuildOptions.ProcessTestFlowController,
-						vaultDatabaseConfig,
-						sourceDatabaseConnectionMap,
-						testFlow,
-						flowcore.TableTestFlow,
-					)
-				}(test, config, tfmContext)
-			}
+			}(test, config, tfmContext)
 		}
 	}
 	eUtils.LogInfo(config, "Waiting for controller initialization...")

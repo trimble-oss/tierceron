@@ -154,9 +154,9 @@ type PermissionUpdate struct {
 }
 
 type TrcFlowContext struct {
-	RemoteDataSources map[string]map[string]interface{}
-	GoMod             *helperkv.Modifier
-	Vault             *sys.Vault
+	RemoteDataSource map[string]interface{}
+	GoMod            *helperkv.Modifier
+	Vault            *sys.Vault
 
 	// Recommended not to store contexts, but because we
 	// are working with flows, this is a different pattern.
@@ -936,30 +936,40 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		tfContext.FlowSource = flow.ServiceName()
 	}
 
-	tfContext.RemoteDataSources = sourceDatabaseConnectionsMap
-	//if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() { //Flag is now replaced by syncMode in controller
-	// Create remote data source with only what is needed.
-	if flow.ServiceName() != flowcorehelper.TierceronFlowConfigurationTableName {
-		if _, ok := sourceDatabaseConnectionMap["dbsourceurl"].(string); ok {
-			retryCount := 0
-			eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName())
-		retryConnectionAccess:
-			dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
-			if err != nil && err.Error() != "incorrect URL format" {
-				if retryCount < 3 && err != nil && dbsourceConn == nil {
-					retryCount = retryCount + 1
-					goto retryConnectionAccess
+	for _, sDC := range sourceDatabaseConnectionsMap {
+		if _, ok := sDC["dbingestinterval"]; ok {
+			tfContext.RemoteDataSource["dbingestinterval"] = sDC["dbingestinterval"]
+		} else {
+			var d time.Duration = 60000
+			tfContext.RemoteDataSource["dbingestinterval"] = d
+		}
+		//if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() { //Flag is now replaced by syncMode in controller
+		// Create remote data source with only what is needed.
+		if flow.ServiceName() != flowcorehelper.TierceronFlowConfigurationTableName {
+			if region, ok := sDC["dbsourceregion"].(string); ok {
+				tfContext.RemoteDataSource["region-"+region] = sDC
+				if _, ok := sDC["dbsourceurl"].(string); ok {
+					retryCount := 0
+					eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName()+"-"+region)
+				retryConnectionAccess:
+					dbsourceConn, err := trcvutils.OpenDirectConnection(config, sDC["dbsourceurl"].(string), sDC["dbsourceuser"].(string), sDC["dbsourcepassword"].(string))
+					if err != nil && err.Error() != "incorrect URL format" {
+						if retryCount < 3 && err != nil && dbsourceConn == nil {
+							retryCount = retryCount + 1
+							goto retryConnectionAccess
+						}
+					}
+
+					if err != nil {
+						eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.  Sync modes will fail for "+sDC["dbsourceregion"].(string)+".", false)
+						eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection: "+err.Error(), false)
+					} else {
+						defer dbsourceConn.Close()
+					}
+					eUtils.LogInfo(config, "Obtained resource connection for : "+flow.ServiceName())
+					tfContext.RemoteDataSource[region].(map[string]interface{})["connection"] = dbsourceConn
 				}
 			}
-
-			if err != nil {
-				eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.  Sync modes will fail for "+sourceDatabaseConnectionMap["dbsourceregion"].(string)+".", false)
-				eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection: "+err.Error(), false)
-			} else {
-				defer dbsourceConn.Close()
-			}
-			eUtils.LogInfo(config, "Obtained resource connection for : "+flow.ServiceName())
-			tfContext.RemoteDataSources["connection"] = dbsourceConn
 		}
 	}
 
