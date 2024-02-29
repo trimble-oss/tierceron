@@ -14,6 +14,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (*flowcore.TTDINode, error
 	return &flowcore.TTDINode{}, nil
 }
 
+// Unused function - candidate for future deletion
 func GetDataFlowGroups(mod *kv.Modifier, argosy *flowcore.TTDINode) []flowcore.TTDINode {
 	return nil
 }
