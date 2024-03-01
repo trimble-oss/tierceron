@@ -968,6 +968,11 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 					}
 					eUtils.LogInfo(config, "Obtained resource connection for : "+flow.ServiceName()+"-"+region)
 					tfContext.RemoteDataSource["region-"+region].(map[string]interface{})["connection"] = dbsourceConn
+
+					if region == "west" { //Sets west as default connection for non-region controlled flows.
+						tfContext.RemoteDataSource["connection"] = dbsourceConn
+						tfContext.RemoteDataSource["dbsourceregion"] = region
+					}
 				}
 			}
 		}
