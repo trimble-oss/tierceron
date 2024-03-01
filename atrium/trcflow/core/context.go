@@ -966,8 +966,8 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 					} else {
 						defer dbsourceConn.Close()
 					}
-					eUtils.LogInfo(config, "Obtained resource connection for : "+flow.ServiceName())
-					tfContext.RemoteDataSource[region].(map[string]interface{})["connection"] = dbsourceConn
+					eUtils.LogInfo(config, "Obtained resource connection for : "+flow.ServiceName()+"-"+region)
+					tfContext.RemoteDataSource["region-"+region].(map[string]interface{})["connection"] = dbsourceConn
 				}
 			}
 		}
