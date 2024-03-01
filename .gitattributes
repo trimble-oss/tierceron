@@ -1,0 +1,15 @@
+*.png diff=exif
+.* export-ignore
+bin export-ignore
+atrium/bin export-ignore
+cmd/* export-ignore
+cmdp/* export-ignore
+docker/* export-ignore
+installation/* export-ignore
+Makefile export-ignore
+ttdi-video.mp4 export-ignore
+atrium/speculatio/maintest.go export-ignore
+atrium/vestibulum/trcdbtest/maintest.go export-ignore
+atrium/vestibulum/carriertest/maindeploytest.go export-ignore
+atrium/vestibulum/shell/trcsh/trcsh.go export-ignore
+
