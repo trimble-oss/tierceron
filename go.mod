@@ -81,6 +81,7 @@ require (
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
+	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
 	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/term v0.15.0
 	golang.org/x/text v0.14.0 // indirect
