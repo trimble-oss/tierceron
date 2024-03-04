@@ -8,6 +8,8 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
+// Folder prefix for _seed and _templates.  This function takes a list of paths and looking
+// at the first entry, retrieve an embedded folder prefix.
 func GetFolderPrefix(custom []string) string {
 	if len(custom) > 0 && len(custom[0]) > 0 {
 		var ti, endTi int
@@ -25,12 +27,12 @@ func GetFolderPrefix(custom []string) string {
 	return "trc"
 }
 
-// Database name to use for interface
+// GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
 	return ""
 }
 
-// Build interface
+// Used to define a database interface for querying TrcDb.
 func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContext interface{}, vaultDatabaseConfig map[string]interface{}, serverListener interface{}) error {
 	return nil
 }

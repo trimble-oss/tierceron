@@ -1086,7 +1086,7 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 			var iVar interface{}
 			var cErr error
 			if tcopts.BuildOptions.CheckIncomingColumnName(column.Name) && secretValue != "<Enter Secret Here>" && secretValue != "" {
-				decodedValue, secretValue, lmQuery, lm, incomingValErr := tcopts.BuildOptions.CheckMysqlFileIncoming(secretColumns, secretValue, tfContext.FlowSourceAlias, tfContext.Flow.TableName())
+				decodedValue, secretValue, lmQuery, lm, incomingValErr := tcopts.BuildOptions.CheckFlowDataIncoming(secretColumns, secretValue, tfContext.FlowSourceAlias, tfContext.Flow.TableName())
 				if incomingValErr != nil {
 					eUtils.LogErrorObject(tfmContext.Config, incomingValErr, false)
 					continue
