@@ -76,7 +76,7 @@ func SetEncryptionSecret(config *eUtils.DriverConfig) error {
 	return nil
 }
 
-func GetEncrpytors(secSection map[string]map[string]map[string]string) (map[string]interface{}, error) {
+func GetEncryptors(secSection map[string]map[string]map[string]string) (map[string]interface{}, error) {
 	encrpytion := map[string]interface{}{}
 	encrpytionList := []string{"salt", "initial_value"}
 	for _, encryptionField := range encrpytionList {
@@ -96,7 +96,7 @@ func GetEncrpytors(secSection map[string]map[string]map[string]string) (map[stri
 	return encrpytion, nil
 }
 
-func CreateEncrpytedReadMap(encryptedKeys string) map[string]interface{} {
+func CreateEncryptedReadMap(encryptedKeys string) map[string]interface{} {
 	encryptedMap := map[string]interface{}{}
 	encryptedKeysSplit := strings.Split(encryptedKeys, ",")
 

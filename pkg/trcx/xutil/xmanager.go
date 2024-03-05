@@ -547,14 +547,14 @@ func GenerateSeedsFromVaultRaw(config *eUtils.DriverConfig, fromVault bool, temp
 			return "", false, "", encryptSecretErr
 		}
 
-		encryption, encryptErr := xencrypt.GetEncrpytors(secretCombinedSection)
+		encryption, encryptErr := xencrypt.GetEncryptors(secretCombinedSection)
 		if encryptErr != nil {
 			eUtils.LogErrorObject(config, encryptErr, false)
 			return "", false, "", encryptErr
 		}
 
 		if config.Trcxr {
-			xencrypt.FieldReader(xencrypt.CreateEncrpytedReadMap(config.Trcxe[1]), secretCombinedSection, valueCombinedSection, encryption)
+			xencrypt.FieldReader(xencrypt.CreateEncryptedReadMap(config.Trcxe[1]), secretCombinedSection, valueCombinedSection, encryption)
 		} else {
 			fieldChangedMap, encryptedChangedMap, promptErr := xencrypt.PromptUserForFields(config.Trcxe[0], config.Trcxe[1], encryption)
 			if promptErr != nil {
