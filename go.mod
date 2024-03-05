@@ -36,7 +36,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-hat v1.0.4
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20240305171839-3ce95863dba0
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20240305174118-60239a804ed1
 )
 
 require (

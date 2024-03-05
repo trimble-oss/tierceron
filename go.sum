@@ -446,13 +446,12 @@ github.com/trimble-oss/go-mysql-server v0.12.0-1.12 h1:J9AY0+pgdwiAScHH4Ggb7aNy7
 github.com/trimble-oss/go-mysql-server v0.12.0-1.12/go.mod h1:BWcyVjTqYp/wL9LYTRJ341vcOaJDaDRPldmyay0CbmU=
 github.com/trimble-oss/tierceron-hat v1.0.4 h1:1XBqYwcHhjptK3Q4kKmbkRTvJamfmhnrfyOYv6SB6Ic=
 github.com/trimble-oss/tierceron-hat v1.0.4/go.mod h1:tGBWlLEwe9A9JvWYqMkC9cHeWWqF0RWJ7wVtijuK8hE=
-github.com/trimble-oss/tierceron-nute v0.0.0-20231215170009-f41bd163ccda h1:aDN/07KBM+aqxqt+5Ty3rbXZyNVT4+P1va0/wb8ByKg=
-github.com/trimble-oss/tierceron-nute v0.0.0-20231215170009-f41bd163ccda/go.mod h1:9d0O4NDikXUlHTTOMjIOONJ9JRqgI0c4BdD6icPtVBA=
+github.com/trimble-oss/tierceron-nute v1.0.0 h1:dIG22CQN4pV/N7kjBPz0BrqKdDu94ZOxLuT4UqX4miU=
 github.com/trimble-oss/tierceron-nute v1.0.0/go.mod h1:9d0O4NDikXUlHTTOMjIOONJ9JRqgI0c4BdD6icPtVBA=
 github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 h1:pawnUESmxej0xrSStXI91vK9ryLWI4rFVDEJqy+pKHs=
 github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103/go.mod h1:pS2vkiPDNCOggDomTxvPTLucBOB/PdeOQWzLIHHjvu0=
-github.com/trimble-oss/tierceron/atrium v0.0.0-20240305171839-3ce95863dba0 h1:WnyPoYqiG6yAQk+jvSyLwOG2gIiGW7wKKCYUJTdSPQE=
-github.com/trimble-oss/tierceron/atrium v0.0.0-20240305171839-3ce95863dba0/go.mod h1:YyFJRydD6ZKU3guNgqy4vmEkTWy66C7vMymHCPgtxi8=
+github.com/trimble-oss/tierceron/atrium v0.0.0-20240305174118-60239a804ed1 h1:/uRvJovuibMD5PPwR6SE/Zk2bdkMqB1GvzUpFWXk2/U=
+github.com/trimble-oss/tierceron/atrium v0.0.0-20240305174118-60239a804ed1/go.mod h1:GAKVSaqs60myBDmU2jj1Ld/TUc5VDD5iV05a79rfqoE=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
 github.com/twitchtv/twirp v5.12.1+incompatible h1:UnrJ4Z8llkdjnQbLqJBWRBwaDGojBsU5lft3DrD/SvY=
 github.com/twitchtv/twirp v5.12.1+incompatible/go.mod h1:RRJoFSAmTEh2weEqWtpPE3vFK5YBhA6bqp2l1kfCC5A=
