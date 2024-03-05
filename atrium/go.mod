@@ -35,7 +35,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2 v2.1.0
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/trimble-oss/tierceron v1.5.1
-	github.com/trimble-oss/tierceron-nute v0.0.0-20231215170009-f41bd163ccda
+	github.com/trimble-oss/tierceron-nute v1.0.0
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/cli-runtime v0.26.1
