@@ -48,6 +48,15 @@ func ValidateVhost(host string, protocol string) error {
 	return ValidateVhostInverse(host, protocol, false)
 }
 
+func ValidateVhostDomain(host string) error {
+	for _, endpoint := range coreopts.BuildOptions.GetSupportedDomains(prod.IsProd()) {
+		if strings.Contains(endpoint, host) {
+			return nil
+		}
+	}
+	return errors.New("Bad host: " + host)
+}
+
 func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	if !strings.HasPrefix(host, protocol) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
