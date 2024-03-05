@@ -9,6 +9,7 @@ type Option func(*OptionsBuilder)
 type OptionsBuilder struct {
 	GetFolderPrefix              func(custom []string) string
 	GetSupportedTemplates        func(custom []string) []string
+	GetSupportedDomains          func(bool) []string
 	GetSupportedEndpoints        func(bool) []string
 	GetLocalHost                 func() string
 	GetRegion                    func(hostName string) string
@@ -31,6 +32,7 @@ func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
 		optionsBuilder.GetFolderPrefix = GetFolderPrefix
 		optionsBuilder.GetSupportedTemplates = GetSupportedTemplates
+		optionsBuilder.GetSupportedDomains = GetSupportedDomains
 		optionsBuilder.GetSupportedEndpoints = GetSupportedEndpoints
 		optionsBuilder.GetLocalHost = GetLocalHost
 		optionsBuilder.GetRegion = GetRegion
