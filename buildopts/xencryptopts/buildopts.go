@@ -1,28 +1,24 @@
 package xencryptopts
 
-import eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+import (
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
+)
 
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
-	FieldValidator         func(fields string, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string) error
-	SetEncryptionSecret    func(config *eUtils.DriverConfig) error
-	GetEncrpytors          func(secSection map[string]map[string]map[string]string) (map[string]interface{}, error)
-	CreateEncrpytedReadMap func(encrypted string) map[string]interface{}
-	FieldReader            func(encryptedMap map[string]interface{}, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string, decryption map[string]interface{}) error
-	PromptUserForFields    func(fields string, encrypted string, encryption map[string]interface{}) (map[string]interface{}, map[string]interface{}, error)
-	FieldReplacer          func(fieldMap map[string]interface{}, encryptedMap map[string]interface{}, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string) error
+	LoadSecretFromSecretStore func(mod *helperkv.Modifier) (map[string]interface{}, error)
+	MakeNewEncryption         func() (string, string, error)
+	Encrypt                   func(input string, encryption map[string]interface{}) (string, error)
+	Decrypt                   func(passStr string, decryption map[string]interface{}) (string, error)
 }
 
 func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
-		optionsBuilder.FieldValidator = FieldValidator
-		optionsBuilder.SetEncryptionSecret = SetEncryptionSecret
-		optionsBuilder.GetEncrpytors = GetEncrpytors
-		optionsBuilder.CreateEncrpytedReadMap = CreateEncrpytedReadMap
-		optionsBuilder.FieldReader = FieldReader
-		optionsBuilder.PromptUserForFields = PromptUserForFields
-		optionsBuilder.FieldReplacer = FieldReplacer
+		optionsBuilder.LoadSecretFromSecretStore = LoadSecretFromSecretStore
+		optionsBuilder.MakeNewEncryption = MakeNewEncryption
+		optionsBuilder.Encrypt = Encrypt
+		optionsBuilder.Decrypt = Decrypt
 	}
 }
 
