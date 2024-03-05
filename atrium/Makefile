@@ -18,7 +18,7 @@ harbingplugintrcdbbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 go build  -tags "insecure" -o plugins/deploy/target/trc-vault-plugin github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/trcdb
 harbingplugintrcdbsha:
 	sha256sum plugins/deploy/target/trc-vault-plugin | cut -d' ' -f1 > plugins/deploy/target/trc-vault-plugin.sha256
-harbingplugintrcdb: harbingplugintrcdbbuild harbingplugintrcdbsha
+harbinger: harbingplugintrcdbbuild harbingplugintrcdbsha
 
 certify:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/trcplgtool -tags "memonly azrcr" github.com/trimble-oss/tierceron/atrium/vestibulum/cmd/trcplgtool
