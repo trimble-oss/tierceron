@@ -46,6 +46,12 @@ func GetSupportedEndpoints(prod bool) []string {
 	return []string{}
 }
 
+// GetSupportedDomains - return a list of supported domains.  Override this function to provide
+// a list of supported domains.
+func GetSupportedDomains(prod bool) []string {
+	return []string{}
+}
+
 // GetLocalHost - return the local host name.  Override this function to provide a custom local host name.
 func GetLocalHost() string {
 	return ""
