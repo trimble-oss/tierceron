@@ -34,15 +34,24 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 		return nil, tlsErr
 	}
 
-	if prod.IsProd() {
-		// Domain validation required in production environments.
-		if err = capauth.ValidateVhostDomain(server); err != nil {
-			return nil, err
+	if driver == "sqlserver" {
+		if prod.IsProd() {
+			// Domain validation required in production environments.
+			if err = capauth.ValidateVhostDomain(server); err != nil {
+				return nil, err
+			}
+		} else if net.ParseIP(server) == nil {
+			err = capauth.ValidateVhostDomain(server)
+			if err != nil {
+				return nil, err
+			}
 		}
-	} else if net.ParseIP(server) == nil {
-		err = capauth.ValidateVhostDomain(server)
-		if err != nil {
-			return nil, err
+	} else {
+		if net.ParseIP(server) == nil {
+			err = capauth.ValidateVhostInverse(server, "", true)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
