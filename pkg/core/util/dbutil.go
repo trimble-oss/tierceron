@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/validator"
 
@@ -33,7 +34,12 @@ func OpenDirectConnection(config *eUtils.DriverConfig, url string, username stri
 		return nil, tlsErr
 	}
 
-	if net.ParseIP(server) == nil {
+	if prod.IsProd() {
+		// Domain validation required in production environments.
+		if err = capauth.ValidateVhostDomain(server); err != nil {
+			return nil, err
+		}
+	} else if net.ParseIP(server) == nil {
 		err = capauth.ValidateVhostDomain(server)
 		if err != nil {
 			return nil, err
