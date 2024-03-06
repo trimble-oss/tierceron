@@ -442,8 +442,8 @@ github.com/templexxx/xorsimd v0.4.2/go.mod h1:HgwaPoDREdi6OnULpSfxhzaiiSUY4Fi3JP
 github.com/tjfoc/gmsm v1.4.1 h1:aMe1GlZb+0bLjn+cKTPEvvn9oUEBlJitaZiiBwsbgho=
 github.com/tjfoc/gmsm v1.4.1/go.mod h1:j4INPkHWMrhJb38G+J6W4Tw0AbuN8Thu3PbdVYhVcTE=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
-github.com/trimble-oss/go-mysql-server v0.12.0-1.16 h1:yxbYSR23YydpBlHbJ7SgFezFNxXGw5LvD+Y2yE4QlO4=
-github.com/trimble-oss/go-mysql-server v0.12.0-1.16/go.mod h1:vUtqjwKthGi61fvmesmDP4wJ7uVk4Y9OGObbmJbyP0A=
+github.com/trimble-oss/go-mysql-server v0.12.0-1.17 h1:ZvOsb0KBgeA4/BawmWI0ugXPWs93gu0hnag54GDz/9k=
+github.com/trimble-oss/go-mysql-server v0.12.0-1.17/go.mod h1:vUtqjwKthGi61fvmesmDP4wJ7uVk4Y9OGObbmJbyP0A=
 github.com/trimble-oss/tierceron-hat v1.0.4 h1:1XBqYwcHhjptK3Q4kKmbkRTvJamfmhnrfyOYv6SB6Ic=
 github.com/trimble-oss/tierceron-hat v1.0.4/go.mod h1:tGBWlLEwe9A9JvWYqMkC9cHeWWqF0RWJ7wVtijuK8hE=
 github.com/trimble-oss/tierceron-nute v1.0.0 h1:dIG22CQN4pV/N7kjBPz0BrqKdDu94ZOxLuT4UqX4miU=
