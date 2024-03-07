@@ -18,10 +18,12 @@ const MEM_COMMIT = 0x1000
 const MEM_RESERVE = 0x2000
 const PAGE_READWRITE = 0x40
 
+// MemProtectInit -- initialization of memory protection not required on Windows
 func MemProtectInit(logger *log.Logger) error {
 	return nil
 }
 
+// MemUnprotectAll -- not implemented on Windows
 func MemUnprotectAll(logger *log.Logger) error {
 	return nil
 }
@@ -53,6 +55,7 @@ func verifyKernelTrust() error {
 	return windows.WinVerifyTrustEx(windows.InvalidHWND, &windows.WINTRUST_ACTION_GENERIC_VERIFY_V2, data)
 }
 
+// MemProtect protects sensitive memory
 func MemProtect(logger *log.Logger, sensitive *string) error {
 	if kernel32 == nil {
 		verifyErr := verifyKernelTrust()
