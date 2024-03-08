@@ -49,8 +49,8 @@ func ValidateVhost(host string, protocol string) error {
 }
 
 func ValidateVhostDomain(host string) error {
-	for _, endpoint := range coreopts.BuildOptions.GetSupportedDomains(prod.IsProd()) {
-		if strings.HasSuffix(endpoint, host) {
+	for _, domain := range coreopts.BuildOptions.GetSupportedDomains(prod.IsProd()) {
+		if strings.HasSuffix(host, domain) {
 			return nil
 		}
 	}
