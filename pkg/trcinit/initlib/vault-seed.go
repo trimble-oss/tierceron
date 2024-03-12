@@ -565,7 +565,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 				eUtils.LogInfo(config, "Writing certificate to vault at: "+entry.path+".")
 				mod2 := WriteData(config, entry.path, entry.data, mod)
 				if mod != mod2 {
-					mod.Release()
+					mod.Stale = true
 					defer mod2.Release()
 					mod = mod2
 				}
@@ -577,7 +577,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 						entry.data["certData"] = "data"
 						mod2 := WriteData(config, commonPath, entry.data, mod)
 						if mod != mod2 {
-							mod.Release()
+							mod.Stale = true
 							defer mod2.Release()
 							mod = mod2
 						}
@@ -598,14 +598,14 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 								eUtils.LogInfo(config, "Writing certificate to vault at: "+secretEntry.path+".")
 								mod2 := WriteData(config, secretEntry.path, secretEntry.data, mod)
 								if mod != mod2 {
-									mod.Release()
+									mod.Stale = true
 									defer mod2.Release()
 									mod = mod2
 								}
 
 								mod2 = WriteData(config, entry.path, entry.data, mod)
 								if mod != mod2 {
-									mod.Release()
+									mod.Stale = true
 									defer mod2.Release()
 									mod = mod2
 								}
@@ -784,6 +784,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 				if strings.HasSuffix(entry.path, config.ServicesWanted[0]) || strings.Contains(entry.path, "Common") {
 					mod2 := WriteData(config, entry.path, entry.data, mod)
 					if mod != mod2 {
+						mod.Stale = true
 						defer mod2.Release()
 						mod = mod2
 					}
@@ -799,6 +800,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 
 					mod2 := WriteData(config, filepath, entry.data, mod)
 					if mod != mod2 {
+						mod.Stale = true
 						defer mod2.Release()
 						mod = mod2
 					}
@@ -806,6 +808,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 			} else {
 				mod2 := WriteData(config, entry.path, entry.data, mod)
 				if mod != mod2 {
+					mod.Stale = true
 					defer mod2.Release()
 					mod = mod2
 				}
