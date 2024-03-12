@@ -566,6 +566,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 				mod2 := WriteData(config, entry.path, entry.data, mod)
 				if mod != mod2 {
 					mod.Stale = true
+					mod.Release()
 					defer mod2.Release()
 					mod = mod2
 				}
@@ -578,6 +579,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 						mod2 := WriteData(config, commonPath, entry.data, mod)
 						if mod != mod2 {
 							mod.Stale = true
+							mod.Release()
 							defer mod2.Release()
 							mod = mod2
 						}
@@ -599,6 +601,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 								mod2 := WriteData(config, secretEntry.path, secretEntry.data, mod)
 								if mod != mod2 {
 									mod.Stale = true
+									mod.Release()
 									defer mod2.Release()
 									mod = mod2
 								}
@@ -606,6 +609,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 								mod2 = WriteData(config, entry.path, entry.data, mod)
 								if mod != mod2 {
 									mod.Stale = true
+									mod.Release()
 									defer mod2.Release()
 									mod = mod2
 								}
@@ -785,6 +789,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 					mod2 := WriteData(config, entry.path, entry.data, mod)
 					if mod != mod2 {
 						mod.Stale = true
+						mod.Release()
 						defer mod2.Release()
 						mod = mod2
 					}
@@ -801,6 +806,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 					mod2 := WriteData(config, filepath, entry.data, mod)
 					if mod != mod2 {
 						mod.Stale = true
+						mod.Release()
 						defer mod2.Release()
 						mod = mod2
 					}
@@ -809,6 +815,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 				mod2 := WriteData(config, entry.path, entry.data, mod)
 				if mod != mod2 {
 					mod.Stale = true
+					mod.Release()
 					defer mod2.Release()
 					mod = mod2
 				}
