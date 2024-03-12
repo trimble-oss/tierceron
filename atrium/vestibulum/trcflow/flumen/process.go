@@ -240,6 +240,11 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// 2. Get json by Api call.
 	extensionAuthComponents := buildopts.BuildOptions.GetExtensionAuthComponents(trcIdentityConfig)
 	if len(extensionAuthComponents) > 0 {
+
+		if !strings.HasPrefix(extensionAuthComponents["authDomain"].(string), "https://") {
+			eUtils.LogInfo(config, "Invalid identity domain.  Must be https://...")
+		}
+
 		httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), pluginConfig["env"].(string), false)
 		if httpClient != nil {
 			defer httpClient.CloseIdleConnections()

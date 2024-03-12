@@ -563,14 +563,24 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 				// insecure value entry.
 				entry.data["certData"] = certBase64
 				eUtils.LogInfo(config, "Writing certificate to vault at: "+entry.path+".")
-				WriteData(config, entry.path, entry.data, mod)
+				mod2 := WriteData(config, entry.path, entry.data, mod)
+				if mod != mod2 {
+					mod.Stale = true
+					defer mod2.Release()
+					mod = mod2
+				}
 
 				certPathSplit := strings.Split(certPath, "/")
 				for _, path := range config.ServiceFilter {
 					if strings.Contains(path, certPathSplit[len(certPathSplit)-1]) {
 						commonPath := strings.Replace(strings.TrimSuffix(path, ".mf.tmpl"), coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "values", -1)
 						entry.data["certData"] = "data"
-						WriteData(config, commonPath, entry.data, mod)
+						mod2 := WriteData(config, commonPath, entry.data, mod)
+						if mod != mod2 {
+							mod.Stale = true
+							defer mod2.Release()
+							mod = mod2
+						}
 					}
 				}
 
@@ -586,8 +596,20 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 							if _, ok := secretEntry.data["certData"]; ok {
 								secretEntry.data["certData"] = certBase64
 								eUtils.LogInfo(config, "Writing certificate to vault at: "+secretEntry.path+".")
-								WriteData(config, secretEntry.path, secretEntry.data, mod)
-								WriteData(config, entry.path, entry.data, mod)
+								mod2 := WriteData(config, secretEntry.path, secretEntry.data, mod)
+								if mod != mod2 {
+									mod.Stale = true
+									defer mod2.Release()
+									mod = mod2
+								}
+
+								mod2 = WriteData(config, entry.path, entry.data, mod)
+								if mod != mod2 {
+									mod.Stale = true
+									defer mod2.Release()
+									mod = mod2
+								}
+
 								done = true
 								return
 							}
@@ -709,7 +731,13 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		defer mod.Release()
 	}
 	if err != nil {
-		return eUtils.LogErrorAndSafeExit(config, err, 1)
+		mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, false, config.Log) // Connect to vault
+		if mod != nil {
+			defer mod.Release()
+		}
+		if err != nil {
+			return eUtils.LogErrorAndSafeExit(config, err, 1)
+		}
 	}
 
 	mod.Env = strings.Split(config.Env, "_")[0]
@@ -754,7 +782,12 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 			// Populate as a slice...
 			if config.ServicesWanted[0] != "" {
 				if strings.HasSuffix(entry.path, config.ServicesWanted[0]) || strings.Contains(entry.path, "Common") {
-					WriteData(config, entry.path, entry.data, mod)
+					mod2 := WriteData(config, entry.path, entry.data, mod)
+					if mod != mod2 {
+						mod.Stale = true
+						defer mod2.Release()
+						mod = mod2
+					}
 				}
 			} else if strings.Contains(filepath, "/PublicIndex/") {
 				if !strings.Contains(entry.path, "templates") {
@@ -765,10 +798,20 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 						filepath = "super-secrets" + filepath
 					}
 
-					WriteData(config, filepath, entry.data, mod)
+					mod2 := WriteData(config, filepath, entry.data, mod)
+					if mod != mod2 {
+						mod.Stale = true
+						defer mod2.Release()
+						mod = mod2
+					}
 				}
 			} else {
-				WriteData(config, entry.path, entry.data, mod)
+				mod2 := WriteData(config, entry.path, entry.data, mod)
+				if mod != mod2 {
+					mod.Stale = true
+					defer mod2.Release()
+					mod = mod2
+				}
 			}
 		} else {
 			config.Log.Printf("\nSkipping non-matching seed data: " + entry.path)
@@ -784,7 +827,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 }
 
 // WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
-func WriteData(config *eUtils.DriverConfig, path string, data map[string]interface{}, mod *helperkv.Modifier) {
+func WriteData(config *eUtils.DriverConfig, path string, data map[string]interface{}, mod *helperkv.Modifier) *helperkv.Modifier {
 	root := strings.Split(path, "/")[0]
 	if templateWritten == nil {
 		templateWritten = make(map[string]bool)
@@ -794,10 +837,25 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 		if !ok {
 			templateWritten[path] = true
 		} else {
-			return
+			return mod
 		}
 	}
 	warn, err := mod.Write(path, data, config.Log)
+	if err != nil {
+		mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, true, config.Log) // Connect to vault
+		if err != nil {
+			mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, false, config.Log) // Connect to vault
+			if err != nil {
+				// Panic scenario...  Can't reach secrets engine
+				eUtils.LogErrorAndSafeExit(config, err, 1)
+			}
+			warn, err = mod.Write(path, data, config.Log)
+			if err != nil {
+				// Panic scenario...  Can't reach secrets engine
+				eUtils.LogErrorAndSafeExit(config, err, 1)
+			}
+		}
+	}
 
 	eUtils.LogWarningsObject(config, warn, false)
 	eUtils.LogErrorObject(config, err, false)
@@ -807,4 +865,5 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 		config.Log.Println(coreopts.BuildOptions.GetFolderPrefix(nil) + "_" + path + ".*.tmpl")
 		mod.AdjustValue("value-metrics/credentials", data, 1, config.Log)
 	}
+	return mod
 }
