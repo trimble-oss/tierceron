@@ -565,6 +565,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 				eUtils.LogInfo(config, "Writing certificate to vault at: "+entry.path+".")
 				mod2 := WriteData(config, entry.path, entry.data, mod)
 				if mod != mod2 {
+					mod.Release()
 					defer mod2.Release()
 					mod = mod2
 				}
@@ -576,6 +577,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 						entry.data["certData"] = "data"
 						mod2 := WriteData(config, commonPath, entry.data, mod)
 						if mod != mod2 {
+							mod.Release()
 							defer mod2.Release()
 							mod = mod2
 						}
@@ -596,12 +598,14 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 								eUtils.LogInfo(config, "Writing certificate to vault at: "+secretEntry.path+".")
 								mod2 := WriteData(config, secretEntry.path, secretEntry.data, mod)
 								if mod != mod2 {
+									mod.Release()
 									defer mod2.Release()
 									mod = mod2
 								}
 
 								mod2 = WriteData(config, entry.path, entry.data, mod)
 								if mod != mod2 {
+									mod.Release()
 									defer mod2.Release()
 									mod = mod2
 								}
@@ -835,11 +839,7 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 	}
 	warn, err := mod.Write(path, data, config.Log)
 	if err != nil {
-		mod.Release()
 		mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, true, config.Log) // Connect to vault
-		if mod != nil {
-			defer mod.Release()
-		}
 		if err != nil {
 			mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, false, config.Log) // Connect to vault
 			if err != nil {
