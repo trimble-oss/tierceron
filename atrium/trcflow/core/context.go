@@ -110,7 +110,7 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 			}
 			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
 				notificationFlowChannel.Bcast(true)
-				return
+				continue
 			}
 		}
 
