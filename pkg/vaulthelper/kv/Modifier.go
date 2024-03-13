@@ -53,6 +53,7 @@ type Modifier struct {
 	SubSectionName  string   // The name of the actual subsection.
 	SubSectionValue string   // The actual value for the sub section.
 	SectionPath     string   // The path to the Index (both seed and vault)
+	Stale           bool     // If client is no longer usable, this will be true..
 }
 
 type modCache struct {
@@ -164,13 +165,18 @@ func cachedModifierHelper(env string, addr string) (*Modifier, error) {
 		}
 	}
 }
+
+// Release - releases the modifier back to the cache.
 func (m *Modifier) Release() {
+	if m.Stale {
+		m.httpClient.CloseIdleConnections()
+		return
+	}
 	if _, ok := modifierCache[m.Env]; ok {
 		m.releaseHelper(m.Env)
 	} else {
 		m.releaseHelper(m.RawEnv)
 	}
-
 }
 
 func (m *Modifier) releaseHelper(env string) {
@@ -178,7 +184,6 @@ func (m *Modifier) releaseHelper(env string) {
 
 	// Since modifiers are re-used now, this may not be necessary or even desired for that
 	// matter.
-	//	m.httpClient.CloseIdleConnections()
 	if modifierCache[fmt.Sprintf("%s+%s", env, m.client.Address())].modCount > 10 {
 		m.CleanCache(10)
 	}

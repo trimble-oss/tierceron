@@ -10,6 +10,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Not a lot of effort has been put into this Darwin implementation
+// for memory protection.  Som parts may be incomplete or incorrect.
 func MemProtectInit(logger *log.Logger) error {
 	mlock.Mlock(logger)
 	return nil

@@ -34,7 +34,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.4.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2 v2.1.0
 	github.com/go-git/go-billy/v5 v5.4.1
-	github.com/trimble-oss/tierceron v1.5.1
+	github.com/trimble-oss/tierceron v1.5.9
 	github.com/trimble-oss/tierceron-nute v1.0.0
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1

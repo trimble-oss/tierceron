@@ -14,13 +14,10 @@ import (
 	//	"time"
 )
 
-var data []string = []string{"UpdateBudget", "AddChangeOrder", "UpdateChangeOrder", "AddChangeOrderItem", "UpdateChangeOrderItem",
-	"UpdateChangeOrderItemApprovalDate", "AddChangeOrderStatus", "UpdateChangeOrderStatus", "AddContract",
-	"UpdateContract", "AddCustomer", "UpdateCustomer", "AddItemAddon", "UpdateItemAddon", "AddItemCost",
-	"UpdateItemCost", "AddItemMarkup", "UpdateItemMarkup", "AddPhase", "UpdatePhase", "AddScheduleOfValuesFixedPrice",
-	"UpdateScheduleOfValuesFixedPrice", "AddScheduleOfValuesUnitPrice", "UpdateScheduleOfValuesUnitPrice"}
+var data []string = []string{"One", "Two", "Three", "Four", "Five",
+	"Six", "Seven", "Eight", "Nine",
+	"Ten", "Eleven", "Twelve"}
 
-// using tests from 8/24/22
 var TimeData = map[string][]float64{
 	data[0]:  []float64{0.0, .650, .95, 5.13, 317.85, 317.85},
 	data[1]:  []float64{0.0, 0.3, 0.56, 5.06, 78.4, 78.4},
@@ -34,18 +31,6 @@ var TimeData = map[string][]float64{
 	data[9]:  []float64{0.0, 0.3, 0.62, 5, 599.99}, //when test fails no repeat at end
 	data[10]: []float64{0.0, 0.19, 0.47, 4.87, 38.5, 38.5},
 	data[11]: []float64{0.0, 0.26, 0.58, 5, 39.08, 39.08},
-	data[12]: []float64{0.0, 0.36, 0.37, 5.32, 69.09, 69.06},
-	data[13]: []float64{0.0, 0.09, 0.13, 4.73, 164.1, 164.1},
-	data[14]: []float64{0.0, 0.61, 0.61, 0.92, 5.09, 108.35, 108.35},
-	data[15]: []float64{0.0, 0.48, 0.66, 5.02, 108.46, 108.46},
-	data[16]: []float64{0.0, 0.34, 0.36, 4.87, 53.42, 53.42},
-	data[17]: []float64{0.0, 0.14, 0.23, 5.11, 53.29, 53.29},
-	data[18]: []float64{0.0, 0.69, 0.88, 5.07, 102.38, 102.38},
-	data[19]: []float64{0.0, 0.73, 1.03, 5.01, 104.31, 104.31},
-	data[20]: []float64{0.0, 0.19, 0.22, 4.82, 218.8, 218.8},
-	data[21]: []float64{0.0, 0.19, 0.36, 5.21, 218.66, 218.66},
-	data[22]: []float64{0.0, 0.36, 0.41, 4.93, 273.66, 273.66},
-	data[23]: []float64{0.0, 0.22, 0.39, 4.87, 273.24, 273.24},
 }
 
 var pointer int
@@ -336,6 +321,7 @@ func GetDataFlowGroups(mod *kv.Modifier, argosy *util.TTDINode) []util.TTDINode 
 	return nil
 }
 
+// GetStubbedDataFlowStatistics returns the list data being tracked along with time data for the data being tracked.
 func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
 	//	return data, TimeData
 	return data, TimeData
