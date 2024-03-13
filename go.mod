@@ -58,7 +58,6 @@ require (
 require (
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91 // indirect
-	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/gocraft/dbr/v2 v2.7.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
@@ -105,7 +104,7 @@ require (
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/grpc v1.59.0
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
 
