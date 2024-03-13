@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/glycerine/bchan"
 	tcopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
@@ -47,7 +48,6 @@ var AskFlumeFlow FlowNameType = "AskFlumeFlow"
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]interface{}
 var tfmContextMap = make(map[string]*TrcFlowMachineContext, 5)
-var cleanerInit = make(map[FlowNameType]bool, 1)
 
 const (
 	TableSyncFlow FlowType = iota
@@ -86,9 +86,7 @@ func (fnt FlowNameType) ServiceName() string {
 func TriggerChangeChannel(table string) {
 	for _, tfmContext := range tfmContextMap {
 		if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
-			go func(nfc chan bool) {
-				nfc <- true
-			}(notificationFlowChannel)
+			notificationFlowChannel.Bcast(true)
 			return
 		}
 	}
@@ -111,19 +109,13 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 				}
 			}
 			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
-				go func(nfc chan bool) {
-					nfc <- true
-				}(notificationFlowChannel)
-				return
+				notificationFlowChannel.Bcast(true)
+				continue
 			}
 		}
 
 		for _, notificationFlowChannel := range tfmContext.ChannelMap {
-			if len(notificationFlowChannel) < 10 {
-				go func(nfc chan bool) {
-					nfc <- true
-				}(notificationFlowChannel)
-			}
+			notificationFlowChannel.Bcast(true)
 		}
 	}
 }
@@ -143,7 +135,7 @@ type TrcFlowMachineContext struct {
 	ExtensionAuthData         map[string]interface{}
 	ExtensionAuthDataReloader map[string]interface{}
 	GetAdditionalFlowsByState func(teststate string) []FlowNameType
-	ChannelMap                map[FlowNameType]chan bool
+	ChannelMap                map[FlowNameType]*bchan.Bchan
 	FlowMap                   map[FlowNameType]*TrcFlowContext // Map of all running flows for engine
 	PermissionChan            chan PermissionUpdate            // This channel is used to alert for dynamic permissions when tables are loaded
 }
@@ -240,18 +232,18 @@ func (tfmContext *TrcFlowMachineContext) Init(
 	tfmContext.GetTableModifierLock().Unlock()
 	eUtils.LogInfo(tfmContext.Config, "Tables creation completed.")
 
-	tfmContext.ChannelMap = make(map[FlowNameType]chan bool)
+	tfmContext.ChannelMap = make(map[FlowNameType]*bchan.Bchan)
 
 	for _, table := range tableNames {
-		tfmContext.ChannelMap[FlowNameType(table)] = make(chan bool, 10)
+		tfmContext.ChannelMap[FlowNameType(table)] = bchan.New(1)
 	}
 
 	for _, f := range additionalFlowNames {
-		tfmContext.ChannelMap[f] = make(chan bool, 5)
+		tfmContext.ChannelMap[f] = bchan.New(1)
 	}
 
 	for _, f := range testFlowNames {
-		tfmContext.ChannelMap[f] = make(chan bool, 5)
+		tfmContext.ChannelMap[f] = bchan.New(1)
 	}
 
 	tfmContext.PermissionChan = make(chan PermissionUpdate, 10)
@@ -434,31 +426,14 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 
 	mysqlPushEnabled := sqlState
 	flowChangedChannel := tfmContext.ChannelMap[tfContext.Flow]
-	go func(fcc chan bool) {
-		fcc <- true
-	}(flowChangedChannel)
-
-	if init, ok := cleanerInit[tfContext.Flow]; !ok || !init { //Kicks off cleaner goroutine if not already active.
-		cleanerInit[tfContext.Flow] = true
-		go func(nFC chan bool) {
-			for {
-				time.Sleep(time.Second * 1)
-				if len(nFC) >= 8 {
-					for i := 0; i < 4; i++ {
-						<-nFC
-					}
-					nFC <- true
-				}
-			}
-		}(flowChangedChannel)
-	}
+	//	flowChangedChannel.Bcast(true)
 
 	for {
 		select {
 		case <-signalChannel:
 			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)
-		case <-flowChangedChannel:
+		case <-flowChangedChannel.Ch:
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
 				identityColumnName,
@@ -466,6 +441,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 				mysqlPushEnabled,
 				getIndexedPathExt,
 				flowPushRemote)
+			flowChangedChannel.Clear()
 		case <-tfContext.Context.Done():
 			tfmContext.Log(fmt.Sprintf("Flow shutdown: %s", tfContext.Flow), nil)
 			tfmContext.vaultPersistPushRemoteChanges(
@@ -605,11 +581,14 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	// tfContext.DataFlowStatistic["flume"] = "" //Used to be argosid
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
-	df := InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
-	if tfContext.FlowState.FlowAlias != "" {
-		df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Loading", "1", 1, tfmContext.Log)
-	} else {
-		df.UpdateDataFlowStatistic("Flows", tfContext.Flow.TableName(), "Loading", "1", 1, tfmContext.Log)
+	var df *TTDINode = nil
+	if tfContext.Init {
+		df = InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
+		if tfContext.FlowState.FlowAlias != "" {
+			df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Loading", "1", 1, tfmContext.Log)
+		} else {
+			df.UpdateDataFlowStatistic("Flows", tfContext.Flow.TableName(), "Loading", "1", 1, tfmContext.Log)
+		}
 	}
 	//Copy ReportStatistics from process_registerenterprise.go if !buildopts.BuildOptions.IsTenantAutoRegReady(tenant)
 	// Do we need to account for that here?
@@ -634,16 +613,20 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	if tfContext.FlowState.FlowAlias != "" {
-		df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Load complete", "2", 1, tfmContext.Log)
-	} else {
-		df.UpdateDataFlowStatistic("Flows", tfContext.Flow.TableName(), "Load complete", "2", 1, tfmContext.Log)
+	if tfContext.Init {
+		if tfContext.FlowState.FlowAlias != "" {
+			df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Load complete", "2", 1, tfmContext.Log)
+		} else {
+			df.UpdateDataFlowStatistic("Flows", tfContext.Flow.TableName(), "Load complete", "2", 1, tfmContext.Log)
+		}
 	}
 
 	// Second row here
 	// Not sure if necessary to copy entire ReportStatistics method
-	tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
-	df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.Config.Log, false)
+	if tfContext.Init {
+		tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
+		df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.Config.Log, false)
+	}
 
 	//df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, ...)
 	tfmContext.FlowControllerLock.Lock()
@@ -667,9 +650,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	go tfmContext.seedVaultCycle(tfContext, identityColumnName, indexColumnNames, getIndexedPathExt, flowPushRemote, sqlState)
 }
 
-func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan bool {
+func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tfContext *TrcFlowContext) <-chan interface{} {
 	if notificationFlowChannel, ok := tfmContext.ChannelMap[tfContext.Flow]; ok {
-		return notificationFlowChannel
+		return notificationFlowChannel.Ch
 	}
 	tfmContext.Log("Could not find channel for flow.", nil)
 
@@ -753,11 +736,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 10 {
-							go func(nfc chan bool) {
-								nfc <- true
-							}(notificationFlowChannel)
-						}
+						notificationFlowChannel.Bcast(true)
 					}
 				}
 			}
@@ -766,11 +745,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 10 {
-							go func(nfc chan bool) {
-								nfc <- true
-							}(notificationFlowChannel)
-						}
+						notificationFlowChannel.Bcast(true)
 					}
 				}
 			}
@@ -847,11 +822,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 10 {
-							go func(nfc chan bool) {
-								nfc <- true
-							}(notificationFlowChannel)
-						}
+						notificationFlowChannel.Bcast(true)
 					}
 				}
 			}
@@ -860,11 +831,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
 					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
-						if len(notificationFlowChannel) < 10 {
-							go func(nfc chan bool) {
-								nfc <- true
-							}(notificationFlowChannel)
-						}
+						notificationFlowChannel.Bcast(true)
 					}
 				}
 			}

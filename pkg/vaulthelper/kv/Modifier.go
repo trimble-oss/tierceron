@@ -169,6 +169,7 @@ func cachedModifierHelper(env string, addr string) (*Modifier, error) {
 // Release - releases the modifier back to the cache.
 func (m *Modifier) Release() {
 	if m.Stale {
+		m.httpClient.CloseIdleConnections()
 		return
 	}
 	if _, ok := modifierCache[m.Env]; ok {
@@ -183,7 +184,6 @@ func (m *Modifier) releaseHelper(env string) {
 
 	// Since modifiers are re-used now, this may not be necessary or even desired for that
 	// matter.
-	//	m.httpClient.CloseIdleConnections()
 	if modifierCache[fmt.Sprintf("%s+%s", env, m.client.Address())].modCount > 10 {
 		m.CleanCache(10)
 	}
