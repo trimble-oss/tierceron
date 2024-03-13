@@ -63,6 +63,7 @@ require (
 	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3 // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/fvbommel/sortorder v1.0.1 // indirect
+	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
