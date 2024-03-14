@@ -853,7 +853,21 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 			io.Copy(buf, memFile) // Error handling elided for brevity.
 			content = buf.Bytes()
 		} else {
-			fmt.Println("Error could not find " + trcPath + " for deployment instructions")
+			if strings.HasPrefix(trcPath, "./") {
+				trcPath = strings.TrimLeft(trcPath, "./")
+			}
+			if memFile, memFileErr = config.MemFs.Open(trcPath); memFileErr == nil {
+				// Read the generated .trc code...
+				buf := bytes.NewBuffer(nil)
+				io.Copy(buf, memFile) // Error handling elided for brevity.
+				content = buf.Bytes()
+			} else {
+				if strings.HasPrefix(trcPath, "./") {
+					trcPath = strings.TrimLeft(trcPath, "./")
+				}
+
+				fmt.Println("Trcsh - Error could not find " + trcPath + " for deployment instructions")
+			}
 		}
 
 		if !isAgentToken {
@@ -870,13 +884,13 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, config *eUtils.DriverConfig, 
 			if config.EnvRaw == "itdev" {
 				content, err = os.ReadFile(pwd + "/deploy/buildtest.trc")
 				if err != nil {
-					fmt.Println("Error could not find /deploy/buildtest.trc for deployment instructions")
+					fmt.Println("Trcsh - Error could not find /deploy/buildtest.trc for deployment instructions")
 				}
 			} else {
 				content, err = os.ReadFile(pwd + "/deploy/deploy.trc")
 				if err != nil {
-					fmt.Println("Error could not find " + pwd + "/deploy/deploy.trc for deployment instructions")
-					config.Log.Printf("Error could not find %s/deploy/deploy.trc for deployment instructions", pwd)
+					fmt.Println("Trcsh - Error could not find " + pwd + "/deploy/deploy.trc for deployment instructions")
+					config.Log.Printf("Trcsh - Error could not find %s/deploy/deploy.trc for deployment instructions", pwd)
 				}
 			}
 		}
