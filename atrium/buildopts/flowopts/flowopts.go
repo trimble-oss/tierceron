@@ -70,7 +70,7 @@ func ProcessAskFlumeEventMapper(askFlumeContext *flowcore.AskFlumeContext, query
 
 	// Not enough time to check how to implement above queries, so only runs the query below
 	for {
-		rows := tfmContext.CallDBQuery(tfContext, sql_query, nil, false, "SELECT", nil, "")
+		rows, _ := tfmContext.CallDBQuery(tfContext, sql_query, nil, false, "SELECT", nil, "")
 		encoded_rows, err := json.Marshal(rows)
 		if err != nil {
 			log.Printf("error encoding result from trcdb: %v", err)

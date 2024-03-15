@@ -668,10 +668,10 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	changed bool,
 	operation string,
 	flowNotifications []FlowNameType, // On successful completion, which flows to notify.
-	flowtestState string) [][]interface{} {
+	flowtestState string) ([][]interface{}, bool) {
 
 	if queryMap["TrcQuery"].(string) == "" {
-		return nil
+		return nil, false
 	}
 	switch operation {
 	case "INSERT":
@@ -841,9 +841,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 		}
-		return matrixChangedEntries
+		return matrixChangedEntries, changed
 	}
-	return nil
+	return nil, changed
 }
 
 // Open a database connection to the provided source using provided
@@ -1059,7 +1059,7 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 					continue
 				}
 				if lmQuery != "" {
-					rows := tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": lmQuery}, nil, true, "SELECT", nil, "") //Query to alert change channel
+					rows, _ := tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": lmQuery}, nil, true, "SELECT", nil, "") //Query to alert change channel
 					if len(rows) > 0 {
 						if WhichLastModified(rows[0][0], lm) { //True if table is more recent
 							continue

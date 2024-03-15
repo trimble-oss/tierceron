@@ -120,7 +120,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 							if len(dfGroup.ChildNodes) > 0 {
 								for _, dfstat := range dfGroup.ChildNodes {
 									dfStatMap := dfGroup.StatisticToMap(tfContext.GoMod, dfstat, true)
-									rows := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticLM(tenantId.(string), dfStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "SELECT", nil, "")
+									rows, _ := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticLM(tenantId.(string), dfStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "SELECT", nil, "")
 									//dfgroup to table
 									if len(rows) == 0 {
 										if strings.Contains(flowGroup.(string), flowGroupName) {
