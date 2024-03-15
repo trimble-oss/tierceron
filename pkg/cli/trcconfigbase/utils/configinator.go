@@ -460,8 +460,10 @@ func writeToFile(config *eUtils.DriverConfig, data string, path string) {
 			memFile.Write(byteData)
 			memFile.Close()
 			memCacheLock.Unlock()
+			eUtils.LogInfo(config, "Wrote memfile:"+path)
 		} else {
 			memCacheLock.Unlock()
+			eUtils.LogInfo(config, "Unexpected memfile exists:"+path)
 			eUtils.CheckError(config, err, true)
 		}
 	} else {
