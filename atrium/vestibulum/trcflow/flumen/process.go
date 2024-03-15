@@ -380,6 +380,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				eUtils.LogErrorMessage(config, "Could not access vault.  Failure to start flow.", false)
 				return
 			}
+			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/TierceronFlow", tableFlow.TableName())
+			dataMap, readErr := tfContext.GoMod.ReadData(flowPath)
+			if readErr == nil && len(dataMap) > 0 {
+				if dataMap["flowAlias"] != nil {
+					tfContext.FlowState.FlowAlias = dataMap["flowAlias"].(string)
+				}
+			}
 			tfContext.FlowSourceAlias = harbingeropts.BuildOptions.GetDatabaseName()
 
 			tfmContext.ProcessFlow(

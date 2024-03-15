@@ -15,6 +15,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var changesLock sync.Mutex
@@ -527,29 +528,28 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		}
 	}
 
+	var inserter sql.RowInserter
 	//Writes accumlated rows to the table.
-	if tfContext.Inserter == nil {
-		tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.Flow.TableName())
-		if tableOk {
-			tfContext.Inserter = tableSql.(*sqlememory.Table).Inserter(tfmContext.TierceronEngine.Context)
-		} else {
-			insertErr := errors.New("Unable to insert rows into:" + tfContext.Flow.TableName())
-			eUtils.LogErrorObject(tfmContext.Config, insertErr, false)
-			return insertErr
-		}
+	tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.Flow.TableName())
+	if tableOk {
+		inserter = tableSql.(*sqlememory.Table).Inserter(tfmContext.TierceronEngine.Context)
+	} else {
+		insertErr := errors.New("Unable to insert rows into:" + tfContext.Flow.TableName())
+		eUtils.LogErrorObject(tfmContext.Config, insertErr, false)
+		return insertErr
 	}
 	for _, row := range rows {
 		if row == nil {
 			continue
 		}
-		if err := tfContext.Inserter.Insert(tfmContext.TierceronEngine.Context, row); err != nil {
+		if err := inserter.Insert(tfmContext.TierceronEngine.Context, row); err != nil {
 			eUtils.LogErrorObject(tfmContext.Config, err, false)
 			continue
 		}
 	}
-	tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
+	inserter.Close(tfmContext.TierceronEngine.Context)
 
-	tfContext.Inserter = nil
+	inserter = nil
 
 	return nil
 }
