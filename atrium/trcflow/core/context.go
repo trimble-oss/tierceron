@@ -174,7 +174,6 @@ type TrcFlowContext struct {
 	Restart           bool
 	Init              bool
 	ReadOnly          bool
-	Inserter          sqle.RowInserter
 	DataFlowStatistic FakeDFStat
 	Log               *log.Logger
 }
