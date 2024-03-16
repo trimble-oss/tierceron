@@ -40,7 +40,7 @@ func FilterPaths(templatePaths []string, endPaths []string, fileFilter []string,
 		fileTemplatePaths := []string{}
 		fileEndPaths := []string{}
 		for _, index := range fileFilterIndex {
-			if index > 0 {
+			if index >= 0 {
 				fileTemplatePaths = append(fileTemplatePaths, templatePaths[index])
 				fileEndPaths = append(fileEndPaths, endPaths[index])
 			}
