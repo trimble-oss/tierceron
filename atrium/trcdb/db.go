@@ -162,13 +162,15 @@ func Query(te *engine.TierceronEngine, query string, queryLock *sync.Mutex) (str
 				return "", nil, nil, err
 			}
 			rowData := []interface{}{}
-			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
+			if sqles.IsOkResult(row) { //This is for insert statements
 				okResult = true
-				if len(row) > 0 {
-					if sqlOkResult, ok := row[0].(sqles.OkResult); ok {
-						if sqlOkResult.RowsAffected > 0 {
-							matrix = append(matrix, rowData)
-						}
+				sqlOkResult := sqles.GetOkResult(row)
+				if sqlOkResult.RowsAffected > 0 {
+					matrix = append(matrix, rowData)
+				} else {
+					if sqlOkResult.InsertID > 0 {
+						rowData = append(rowData, sqlOkResult.InsertID)
+						matrix = append(matrix, rowData)
 					}
 				}
 			} else {
@@ -226,13 +228,15 @@ func QueryWithBindings(te *engine.TierceronEngine, query string, bindings map[st
 				break
 			}
 			rowData := []interface{}{}
-			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
+			if sqles.IsOkResult(row) { //This is for insert statements
 				okResult = true
-				if len(row) > 0 {
-					if sqlOkResult, ok := row[0].(sql.OkResult); ok {
-						if sqlOkResult.RowsAffected > 0 {
-							matrix = append(matrix, rowData)
-						}
+				sqlOkResult := sqles.GetOkResult(row)
+				if sqlOkResult.RowsAffected > 0 {
+					matrix = append(matrix, rowData)
+				} else {
+					if sqlOkResult.InsertID > 0 {
+						rowData = append(rowData, sqlOkResult.InsertID)
+						matrix = append(matrix, rowData)
 					}
 				}
 			} else {

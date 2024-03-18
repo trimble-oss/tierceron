@@ -227,6 +227,8 @@ github.com/getkin/kin-openapi v0.122.0/go.mod h1:PCWw/lfBrJY4HcdqE3jj+QFkaFK8ABo
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/gioui/uax v0.2.1-0.20220325163150-e3d987515a12 h1:1bjaB/5IIicfKpP4k0s30T2WEw//Kh00zULa8DQ0cxA=
 github.com/gioui/uax v0.2.1-0.20220325163150-e3d987515a12/go.mod h1:kDhBRTA/i3H46PVdhqcw26TdGSIj42TOKNWKY+Kipnw=
+github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c h1:HSgdiDVw61eratEUy9GFtolPa00KZD+tdpJfKGE4xlQ=
+github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c/go.mod h1:jD29ULS3sOgFMjmLeH7QMK8CasGYe+buPBI+byHsjwk=
 github.com/go-asn1-ber/asn1-ber v1.3.1/go.mod h1:hEBeB/ic+5LoWskz+yKT7vGhhPYkProFKoKdwZRWMe0=
 github.com/go-errors/errors v1.0.1 h1:LUHzmkK3GUKUrL/1gfBUxAHzcev3apQlezX/+O7ma6w=
 github.com/go-errors/errors v1.0.1/go.mod h1:f4zRHt4oKfwPJE5k8C9vpYG+aDHdBFUsgrm6/TyX73Q=

@@ -71,9 +71,9 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext, flowControllerMap map[string]chan flowcorehelper.CurrentFlowState, tierceronFlowName string) {
 	var rows [][]interface{}
 	if tierceronFlowName != "" {
-		rows = tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
+		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
 	} else {
-		rows = tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow)}, nil, false, "SELECT", nil, "")
+		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow)}, nil, false, "SELECT", nil, "")
 	}
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)
