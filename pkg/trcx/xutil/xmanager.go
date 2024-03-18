@@ -41,6 +41,24 @@ func GenerateSeedSectionFromVaultRaw(config *eUtils.DriverConfig, templateFromVa
 	if len(config.ServiceFilter) > 0 {
 		service = config.ServiceFilter[0]
 	}
+
+	//This checks whether indexed section is available in current directory.
+	if len(config.SectionKey) > 0 && len(config.ProjectSections) > 0 {
+		projectFound := false
+		for _, projectSection := range config.ProjectSections {
+			for _, templatePath := range templatePaths {
+				if strings.Contains(templatePath, projectSection) {
+					projectFound = true
+					goto projectFound
+				}
+			}
+		projectFound:
+			if !projectFound {
+				return nil, false, nil, nil, nil, "", eUtils.LogAndSafeExit(config, "Unable to find indexed project in local templates.", 1)
+			}
+		}
+	}
+
 	multiService := false
 	var mod *helperkv.Modifier
 
