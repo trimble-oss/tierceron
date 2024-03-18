@@ -560,7 +560,17 @@ func (dfs *TTDINode) FinishStatistic(tfmContext *TrcFlowMachineContext, tfContex
 			}
 		} else {
 			if tfmContext != nil && tfContext != nil {
-				tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(id, statMap, coreopts.BuildOptions.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []FlowNameType{FlowNameType("DataFlowStatistics")}, "")
+				_, changed := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(id, statMap, coreopts.BuildOptions.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []FlowNameType{FlowNameType("DataFlowStatistics")}, "")
+				if !changed {
+					// Write directly even if query reports nothing changed...  We want all statistics to be written
+					// during registrations.
+					mod.SectionPath = ""
+					_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+decodedStatData["FlowGroup"].(string)+"/dataFlowName/"+decodedStatData["FlowName"].(string)+"/"+decodedStatData["StateCode"].(string), statMap, logger)
+					if writeErr != nil && decodedData["LogFunc"] != nil {
+						logFunc := decodedData["LogFunc"].(func(string, error))
+						logFunc("Error writing out DataFlowStatistics to vault", writeErr)
+					}
+				}
 			}
 		}
 	}
