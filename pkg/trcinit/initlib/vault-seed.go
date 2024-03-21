@@ -80,36 +80,36 @@ func GetTemplateParam(config *eUtils.DriverConfig, mod *helperkv.Modifier, fileP
 }
 
 // SeedVault seeds the vault with seed files in the given directory -> only init uses this
-func SeedVault(config *eUtils.DriverConfig) error {
+func SeedVault(driverConfig *eUtils.DriverConfig) error {
 
-	config.Log.SetPrefix("[SEED]")
-	config.Log.Printf("Seeding vault from seeds in: %s\n", config.StartDir[0])
+	driverConfig.CoreConfig.Log.SetPrefix("[SEED]")
+	driverConfig.CoreConfig.Log.Printf("Seeding vault from seeds in: %s\n", driverConfig.StartDir[0])
 
-	files, err := os.ReadDir(config.StartDir[0])
+	files, err := os.ReadDir(driverConfig.StartDir[0])
 
-	if len(config.FileFilter) == 1 && config.FileFilter[0] == "nest" {
+	if len(driverConfig.FileFilter) == 1 && driverConfig.FileFilter[0] == "nest" {
 		dynamicPathFilter := ""
-		if config.DynamicPathFilter != "" {
-			dynamicPathFilter = config.StartDir[0] + "/" + config.Env + "/" + config.DynamicPathFilter
+		if driverConfig.CoreConfig.DynamicPathFilter != "" {
+			dynamicPathFilter = driverConfig.StartDir[0] + "/" + driverConfig.Env + "/" + driverConfig.CoreConfig.DynamicPathFilter
 		}
-		err := filepath.Walk(config.StartDir[0]+"/"+config.Env,
+		err := filepath.Walk(driverConfig.StartDir[0]+"/"+driverConfig.Env,
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
 				if dynamicPathFilter != "" {
 					if strings.HasPrefix(path, dynamicPathFilter) && strings.HasSuffix(path, "_seed.yml") {
-						SeedVaultFromFile(config, path)
+						SeedVaultFromFile(driverConfig, path)
 					}
 				} else {
 					if strings.HasSuffix(path, "_seed.yml") {
-						SeedVaultFromFile(config, path)
+						SeedVaultFromFile(driverConfig, path)
 					}
 				}
 				return nil
 			})
 		if err != nil {
-			config.Log.Println(err)
+			driverConfig.CoreConfig.Log.Println(err)
 		}
 		fmt.Println("Nested initialization complete")
 		return nil
@@ -122,53 +122,53 @@ func SeedVault(config *eUtils.DriverConfig) error {
 	// For general certificate loading (where templates may not have yet been pushed to vault)
 	// a separate path deeper into the code is used for certificate loading.
 	//
-	if len(files) == 1 && files[0].Name() == "certs" && config.WantCerts {
+	if len(files) == 1 && files[0].Name() == "certs" && driverConfig.CoreConfig.WantCerts {
 		// Cert rotation support without templates
-		config.Log.Printf("Initializing certificates.  Common service requested.: %s\n", config.StartDir[0])
+		driverConfig.CoreConfig.Log.Printf("Initializing certificates.  Common service requested.: %s\n", driverConfig.StartDir[0])
 
-		var templatePaths = coreopts.BuildOptions.GetSupportedTemplates(config.StartDir)
+		var templatePaths = coreopts.BuildOptions.GetSupportedTemplates(driverConfig.StartDir)
 		regions := []string{}
 
-		if strings.HasPrefix(config.Env, "staging") || strings.HasPrefix(config.Env, "prod") || strings.HasPrefix(config.Env, "dev") {
+		if strings.HasPrefix(driverConfig.Env, "staging") || strings.HasPrefix(driverConfig.Env, "prod") || strings.HasPrefix(driverConfig.Env, "dev") {
 			regions = eUtils.GetSupportedProdRegions()
 		}
-		config.Regions = regions
+		driverConfig.Regions = regions
 
 		var tempPaths []string
 		for _, templatePath := range templatePaths {
 			var err error
-			mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
+			mod, err := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.EnvRaw, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
 			if err != nil {
-				eUtils.LogErrorObject(config, err, false)
+				eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 			}
 
-			mod.Env = config.Env
-			if len(config.ProjectSections) > 0 {
-				mod.ProjectIndex = config.ProjectSections
-				mod.RawEnv = strings.Split(config.EnvRaw, "_")[0]
-				mod.SectionName = config.SectionName
-				mod.SubSectionValue = config.SubSectionValue
+			mod.Env = driverConfig.Env
+			if len(driverConfig.ProjectSections) > 0 {
+				mod.ProjectIndex = driverConfig.ProjectSections
+				mod.RawEnv = strings.Split(driverConfig.EnvRaw, "_")[0]
+				mod.SectionName = driverConfig.SectionName
+				mod.SubSectionValue = driverConfig.SubSectionValue
 			}
-			templateParam, tParamErr := GetTemplateParam(config, mod, templatePath, ".certSourcePath")
+			templateParam, tParamErr := GetTemplateParam(driverConfig, mod, templatePath, ".certSourcePath")
 			if tParamErr != nil {
-				eUtils.LogErrorObject(config, tParamErr, false)
+				eUtils.LogErrorObject(&driverConfig.CoreConfig, tParamErr, false)
 				continue
 			}
 
-			if config.EnvRaw == "" {
-				config.EnvRaw = strings.Split(config.Env, "_")[0]
+			if driverConfig.EnvRaw == "" {
+				driverConfig.EnvRaw = strings.Split(driverConfig.Env, "_")[0]
 			}
-			templateParam = strings.Replace(templateParam, "ENV", config.EnvRaw, -1)
+			templateParam = strings.Replace(templateParam, "ENV", driverConfig.EnvRaw, -1)
 			wd, err := os.Getwd()
 			if err != nil {
-				eUtils.LogErrorObject(config, errors.New("could not get working directory for cert existence verification"), false)
+				eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("could not get working directory for cert existence verification"), false)
 				continue
 			}
 
 			_, fileError := os.Stat(wd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + templateParam)
 			if fileError != nil {
 				if os.IsNotExist(fileError) {
-					eUtils.LogErrorObject(config, errors.New("File does not exist\n"+templateParam), false)
+					eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("File does not exist\n"+templateParam), false)
 					continue
 				}
 			} else {
@@ -178,46 +178,46 @@ func SeedVault(config *eUtils.DriverConfig) error {
 		if len(tempPaths) > 0 {
 			templatePaths = tempPaths
 		} else {
-			return eUtils.LogErrorAndSafeExit(config, errors.New("no valid cert files were located"), -1)
+			return eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, errors.New("no valid cert files were located"), -1)
 		}
-		_, _, seedData, errGenerateSeeds := xutil.GenerateSeedsFromVaultRaw(config, true, templatePaths)
+		_, _, seedData, errGenerateSeeds := xutil.GenerateSeedsFromVaultRaw(driverConfig, true, templatePaths)
 		if errGenerateSeeds != nil {
-			return eUtils.LogErrorAndSafeExit(config, errGenerateSeeds, -1)
+			return eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, errGenerateSeeds, -1)
 		}
 
-		config.ServiceFilter = templatePaths
+		driverConfig.ServiceFilter = templatePaths
 		seedData = strings.ReplaceAll(seedData, "<Enter Secret Here>", "")
 
-		seedErr := SeedVaultFromData(config, "", []byte(seedData))
-		eUtils.LogErrorObject(config, seedErr, true)
+		seedErr := SeedVaultFromData(driverConfig, "", []byte(seedData))
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, seedErr, true)
 		if seedErr != nil {
 			return seedErr
 		}
 		return nil
 	}
 
-	eUtils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
-	_, suffix, indexedEnvNot, _ := helperkv.PreCheckEnvironment(config.Env)
+	_, suffix, indexedEnvNot, _ := helperkv.PreCheckEnvironment(driverConfig.Env)
 
 	seeded := false
 	starEnv := false
-	if strings.Contains(config.Env, "*") {
+	if strings.Contains(driverConfig.Env, "*") {
 		starEnv = true
-		config.Env = strings.Split(config.Env, "*")[0]
+		driverConfig.Env = strings.Split(driverConfig.Env, "*")[0]
 	}
 	for _, envDir := range files {
-		if strings.HasPrefix(config.Env, envDir.Name()) || (strings.HasPrefix(config.Env, "local") && envDir.Name() == "local") || (config.WantCerts && strings.HasPrefix(envDir.Name(), "certs")) {
-			if config.Env != config.EnvRaw && config.Env != envDir.Name() { //If raw & env don't match -> current env is env-* so env will be skipped
+		if strings.HasPrefix(driverConfig.Env, envDir.Name()) || (strings.HasPrefix(driverConfig.Env, "local") && envDir.Name() == "local") || (driverConfig.CoreConfig.WantCerts && strings.HasPrefix(envDir.Name(), "certs")) {
+			if driverConfig.Env != driverConfig.EnvRaw && driverConfig.Env != envDir.Name() { //If raw & env don't match -> current env is env-* so env will be skipped
 				continue
 			}
 
-			config.Log.Println("\tStepping into: " + envDir.Name())
+			driverConfig.CoreConfig.Log.Println("\tStepping into: " + envDir.Name())
 
-			if config.DynamicPathFilter != "" {
-				sectionConfigFiles, err := os.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + config.DynamicPathFilter)
+			if driverConfig.CoreConfig.DynamicPathFilter != "" {
+				sectionConfigFiles, err := os.ReadDir(driverConfig.StartDir[0] + "/" + envDir.Name() + "/" + driverConfig.CoreConfig.DynamicPathFilter)
 				if err != nil {
-					config.Log.Printf("Seed Sections Couldn't read into: %s \n", config.DynamicPathFilter)
+					driverConfig.CoreConfig.Log.Printf("Seed Sections Couldn't read into: %s \n", driverConfig.CoreConfig.DynamicPathFilter)
 				}
 				seedFileCount := 0
 				var seedFileName string
@@ -229,40 +229,40 @@ func SeedVault(config *eUtils.DriverConfig) error {
 				}
 
 				if seedFileCount > 1 {
-					eUtils.CheckWarning(config, fmt.Sprintf("Multiple potentially conflicting configuration files found for environment: %s", envDir.Name()), true)
+					eUtils.CheckWarning(&driverConfig.CoreConfig, fmt.Sprintf("Multiple potentially conflicting configuration files found for environment: %s", envDir.Name()), true)
 				}
 
-				SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+config.DynamicPathFilter+"/"+seedFileName)
+				SeedVaultFromFile(driverConfig, driverConfig.StartDir[0]+"/"+envDir.Name()+"/"+driverConfig.CoreConfig.DynamicPathFilter+"/"+seedFileName)
 				seeded = true
 				continue
 			}
 
 			var filesSteppedInto []fs.DirEntry
 			if indexedEnvNot {
-				filesSteppedInto, err = os.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + suffix)
+				filesSteppedInto, err = os.ReadDir(driverConfig.StartDir[0] + "/" + envDir.Name() + "/" + suffix)
 			} else {
-				filesSteppedInto, err = os.ReadDir(config.StartDir[0] + "/" + envDir.Name())
+				filesSteppedInto, err = os.ReadDir(driverConfig.StartDir[0] + "/" + envDir.Name())
 			}
-			eUtils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 			conflictingFile := false
 			for _, fileSteppedInto := range filesSteppedInto {
-				if !strings.HasPrefix(fileSteppedInto.Name(), config.Env) {
-					if strings.Contains(config.Env, ".") {
-						secondCheck := strings.Split(config.Env, ".")[0]
+				if !strings.HasPrefix(fileSteppedInto.Name(), driverConfig.Env) {
+					if strings.Contains(driverConfig.Env, ".") {
+						secondCheck := strings.Split(driverConfig.Env, ".")[0]
 						if !strings.HasPrefix(fileSteppedInto.Name(), secondCheck) {
 							conflictingFile = true
-							config.Log.Printf("Found conflicting env seed file: %s \n", fileSteppedInto.Name())
+							driverConfig.CoreConfig.Log.Printf("Found conflicting env seed file: %s \n", fileSteppedInto.Name())
 						}
 					}
 				}
 			}
 			if len(filesSteppedInto) > 1 && conflictingFile {
-				eUtils.CheckWarning(config, fmt.Sprintf("Multiple potentially conflicting configuration files found for environment: %s", envDir.Name()), true)
+				eUtils.CheckWarning(&driverConfig.CoreConfig, fmt.Sprintf("Multiple potentially conflicting configuration files found for environment: %s", envDir.Name()), true)
 			}
 
 			normalEnv := false
-			if !starEnv && !strings.Contains(config.Env, ".") {
+			if !starEnv && !strings.Contains(driverConfig.Env, ".") {
 				normalEnv = true
 			}
 
@@ -271,21 +271,21 @@ func SeedVault(config *eUtils.DriverConfig) error {
 					if !*eUtils.BasePtr {
 						continue
 					}
-					SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+fileSteppedInto.Name())
+					SeedVaultFromFile(driverConfig, driverConfig.StartDir[0]+"/"+envDir.Name()+"/"+fileSteppedInto.Name())
 					seeded = true
 				} else if fileSteppedInto.Name() == "Index" || fileSteppedInto.Name() == "Restricted" || fileSteppedInto.Name() == "Protected" {
 					if eUtils.OnlyBasePtr {
 						continue
 					}
-					projectDirectories, err := os.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
+					projectDirectories, err := os.ReadDir(driverConfig.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name())
 					if err != nil {
-						config.Log.Printf("Projects Couldn't read into: %s \n", fileSteppedInto.Name())
+						driverConfig.CoreConfig.Log.Printf("Projects Couldn't read into: %s \n", fileSteppedInto.Name())
 					}
 					// Iterate of projects...
 					for _, projectDirectory := range projectDirectories {
-						if len(config.ProjectSections) > 0 {
+						if len(driverConfig.ProjectSections) > 0 {
 							acceptProject := false
-							for _, index := range config.ProjectSections {
+							for _, index := range driverConfig.ProjectSections {
 								if index == projectDirectory.Name() {
 									acceptProject = true
 									break
@@ -295,44 +295,44 @@ func SeedVault(config *eUtils.DriverConfig) error {
 								continue
 							}
 						}
-						sectionNames, err := os.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name())
+						sectionNames, err := os.ReadDir(driverConfig.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name())
 						if err != nil {
-							config.Log.Printf("Sections Couldn't read into: %s \n", projectDirectory.Name())
+							driverConfig.CoreConfig.Log.Printf("Sections Couldn't read into: %s \n", projectDirectory.Name())
 						}
 						for _, sectionName := range sectionNames {
-							if config.SectionName != "" && sectionName.Name() != config.SectionName {
+							if driverConfig.SectionName != "" && sectionName.Name() != driverConfig.SectionName {
 								continue
 							}
 
-							sectionConfigFiles, err := os.ReadDir(config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name())
+							sectionConfigFiles, err := os.ReadDir(driverConfig.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name())
 							if err != nil {
-								config.Log.Printf("Section Config Couldn't read into: %s \n", sectionName.Name())
+								driverConfig.CoreConfig.Log.Printf("Section Config Couldn't read into: %s \n", sectionName.Name())
 							}
 
 							for _, sectionConfigFile := range sectionConfigFiles {
-								path := config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
-								if strings.HasPrefix(sectionConfigFile.Name(), ".") || (config.SubSectionValue != "" && (sectionConfigFile.Name() != config.SubSectionValue)) {
+								path := driverConfig.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name()
+								if strings.HasPrefix(sectionConfigFile.Name(), ".") || (driverConfig.SubSectionValue != "" && (sectionConfigFile.Name() != driverConfig.SubSectionValue)) {
 									continue
 								}
 								subSectionConfigFiles, err := os.ReadDir(path)
 
 								if err != nil {
-									config.Log.Printf("Sub Sections Couldn't read into: %s \n", config.SubSectionName)
+									driverConfig.CoreConfig.Log.Printf("Sub Sections Couldn't read into: %s \n", driverConfig.SubSectionName)
 								}
 
 								if len(subSectionConfigFiles) > 0 {
 									for _, subSectionConfigFile := range subSectionConfigFiles {
-										subSectionPath := config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name() + "/" + subSectionConfigFile.Name()
+										subSectionPath := driverConfig.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name() + "/" + projectDirectory.Name() + "/" + sectionName.Name() + "/" + sectionConfigFile.Name() + "/" + subSectionConfigFile.Name()
 										if strings.HasPrefix(sectionConfigFile.Name(), ".") ||
-											(config.SubSectionName != "" && (!strings.HasPrefix("/"+subSectionConfigFile.Name(), config.SubSectionName))) ||
-											(config.SectionName != "" && (!strings.HasPrefix("/"+sectionName.Name()+"/", "/"+config.SectionName+"/"))) {
+											(driverConfig.SubSectionName != "" && (!strings.HasPrefix("/"+subSectionConfigFile.Name(), driverConfig.SubSectionName))) ||
+											(driverConfig.SectionName != "" && (!strings.HasPrefix("/"+sectionName.Name()+"/", "/"+driverConfig.SectionName+"/"))) {
 											continue
 										}
 
 										if subSectionConfigFile.IsDir() {
 											deepNestedFiles, err := os.ReadDir(subSectionPath)
 											if err != nil {
-												config.Log.Printf("Deep Nested Couldn't read into: %s \n", config.SubSectionName)
+												driverConfig.CoreConfig.Log.Printf("Deep Nested Couldn't read into: %s \n", driverConfig.SubSectionName)
 												continue
 											}
 
@@ -341,37 +341,37 @@ func SeedVault(config *eUtils.DriverConfig) error {
 													subSectionPath = subSectionPath + "/" + deepNestedFile.Name()
 													deeplyNestedFiles, err := os.ReadDir(subSectionPath)
 													if err != nil {
-														config.Log.Printf("Sub secting deep nested Couldn't read into: %s \n", config.SubSectionName)
+														driverConfig.CoreConfig.Log.Printf("Sub secting deep nested Couldn't read into: %s \n", driverConfig.SubSectionName)
 														continue
 													}
 													for _, deeplyNestedFile := range deeplyNestedFiles {
 														if !deeplyNestedFile.IsDir() {
 															subSectionPath = subSectionPath + "/" + deeplyNestedFile.Name()
-															SeedVaultFromFile(config, subSectionPath)
+															SeedVaultFromFile(driverConfig, subSectionPath)
 															seeded = true
 														}
 													}
 												} else {
 													subSectionPath = subSectionPath + "/" + deepNestedFile.Name()
-													SeedVaultFromFile(config, subSectionPath)
+													SeedVaultFromFile(driverConfig, subSectionPath)
 													seeded = true
 												}
 											}
 										} else {
-											SeedVaultFromFile(config, subSectionPath)
+											SeedVaultFromFile(driverConfig, subSectionPath)
 											seeded = true
 										}
 									}
 								} else {
-									if len(config.ServiceFilter) > 0 {
-										for _, filter := range config.ServiceFilter {
+									if len(driverConfig.ServiceFilter) > 0 {
+										for _, filter := range driverConfig.ServiceFilter {
 											if strings.HasSuffix(path, filter+"_seed.yml") {
-												SeedVaultFromFile(config, config.StartDir[0]+"/"+envDir.Name()+"/"+fileSteppedInto.Name()+"/"+projectDirectory.Name()+"/"+sectionName.Name()+"/"+sectionConfigFile.Name())
+												SeedVaultFromFile(driverConfig, driverConfig.StartDir[0]+"/"+envDir.Name()+"/"+fileSteppedInto.Name()+"/"+projectDirectory.Name()+"/"+sectionName.Name()+"/"+sectionConfigFile.Name())
 												seeded = true
 											}
 										}
 									} else {
-										SeedVaultFromFile(config, path)
+										SeedVaultFromFile(driverConfig, path)
 										seeded = true
 									}
 								}
@@ -410,109 +410,109 @@ func SeedVault(config *eUtils.DriverConfig) error {
 				}
 
 				ext := filepath.Ext(fileSteppedInto.Name())
-				if strings.HasPrefix(fileSteppedInto.Name(), config.Env) && (ext == ".yaml" || ext == ".yml") { // Only read YAML config files
-					config.Log.Println("\t\t" + fileSteppedInto.Name())
-					config.Log.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
+				if strings.HasPrefix(fileSteppedInto.Name(), driverConfig.Env) && (ext == ".yaml" || ext == ".yml") { // Only read YAML config files
+					driverConfig.CoreConfig.Log.Println("\t\t" + fileSteppedInto.Name())
+					driverConfig.CoreConfig.Log.Printf("\tFound seed file: %s\n", fileSteppedInto.Name())
 					var path string
 					if indexedEnvNot {
-						path = config.StartDir[0] + "/" + envDir.Name() + "/" + suffix + "/" + fileSteppedInto.Name()
+						path = driverConfig.StartDir[0] + "/" + envDir.Name() + "/" + suffix + "/" + fileSteppedInto.Name()
 					} else {
-						path = config.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name()
+						path = driverConfig.StartDir[0] + "/" + envDir.Name() + "/" + fileSteppedInto.Name()
 					}
-					config.Log.Println("\tSeeding vault with: " + fileSteppedInto.Name())
+					driverConfig.CoreConfig.Log.Println("\tSeeding vault with: " + fileSteppedInto.Name())
 
-					SeedVaultFromFile(config, path)
+					SeedVaultFromFile(driverConfig, path)
 					seeded = true
 				}
 			}
 		}
 	}
 	if !seeded {
-		eUtils.LogInfo(config, "Environment is not valid - Environment: "+config.Env)
+		eUtils.LogInfo(&driverConfig.CoreConfig, "Environment is not valid - Environment: "+driverConfig.Env)
 	} else {
-		eUtils.LogInfo(config, "\nInitialization complete for: "+config.Env+"\n")
+		eUtils.LogInfo(&driverConfig.CoreConfig, "\nInitialization complete for: "+driverConfig.Env+"\n")
 	}
 	return nil
 }
 
 // SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(config *eUtils.DriverConfig, filepath string) {
+func SeedVaultFromFile(driverConfig *eUtils.DriverConfig, filepath string) {
 	rawFile, err := os.ReadFile(filepath)
 	// Open file
-	eUtils.LogErrorAndSafeExit(config, err, 1)
-	if config.WantCerts && (strings.Contains(filepath, "/Index/") || strings.Contains(filepath, "/PublicIndex/") || strings.Contains(filepath, "/Restricted/")) {
-		config.Log.Println("Skipping index: " + filepath + " Certs not allowed within index data.")
+	eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, err, 1)
+	if driverConfig.CoreConfig.WantCerts && (strings.Contains(filepath, "/Index/") || strings.Contains(filepath, "/PublicIndex/") || strings.Contains(filepath, "/Restricted/")) {
+		driverConfig.CoreConfig.Log.Println("Skipping index: " + filepath + " Certs not allowed within index data.")
 		return
 	}
 
-	eUtils.LogInfo(config, "Seed written to vault from "+filepath)
-	if len(config.ServiceFilter) > 0 && !strings.Contains(filepath, config.ServiceFilter[0]) {
+	eUtils.LogInfo(&driverConfig.CoreConfig, "Seed written to vault from "+filepath)
+	if len(driverConfig.ServiceFilter) > 0 && !strings.Contains(filepath, driverConfig.ServiceFilter[0]) {
 		lastSlashIndex := strings.LastIndex(filepath, "/")
-		filepath = filepath[:lastSlashIndex] + "/" + config.ServiceFilter[0] + "/" + filepath[lastSlashIndex+1:]
+		filepath = filepath[:lastSlashIndex] + "/" + driverConfig.ServiceFilter[0] + "/" + filepath[lastSlashIndex+1:]
 	}
-	SeedVaultFromData(config, strings.SplitAfterN(filepath, "/", 3)[2], rawFile)
+	SeedVaultFromData(driverConfig, strings.SplitAfterN(filepath, "/", 3)[2], rawFile)
 }
 
 // seedVaultWithCertsFromEntry takes entry from writestack and if it contains a cert, writes it to vault.
-func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modifier, writeStack *[]writeCollection, entry *writeCollection) {
+func seedVaultWithCertsFromEntry(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, writeStack *[]writeCollection, entry *writeCollection) {
 	certPathData, certPathOk := entry.data["certSourcePath"]
 	if !certPathOk {
-		eUtils.LogErrorMessage(config, "Missing cert path.", false)
+		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Missing cert path.", false)
 		return
 	}
 
 	certPath := fmt.Sprintf("%s", certPathData)
 
 	if strings.Contains(certPath, "ENV") {
-		if len(config.EnvRaw) >= 5 && (config.EnvRaw)[:5] == "local" {
-			envParts := strings.SplitN(config.Env, "/", 3)
+		if len(driverConfig.EnvRaw) >= 5 && (driverConfig.EnvRaw)[:5] == "local" {
+			envParts := strings.SplitN(driverConfig.Env, "/", 3)
 			certPath = strings.Replace(certPath, "ENV", envParts[1], 1)
 		} else {
-			certPath = strings.Replace(certPath, "ENV", config.EnvRaw, 1)
+			certPath = strings.Replace(certPath, "ENV", driverConfig.EnvRaw, 1)
 		}
 	}
 	if strings.Contains(certPath, "..") {
 		errMsg := eUtils.SanitizeForLogging("Invalid cert path: " + certPath + " Certs not allowed to contain complex path navigation.")
 		fmt.Println(errMsg)
-		config.Log.Println(errMsg)
+		driverConfig.CoreConfig.Log.Println(errMsg)
 		return
 	}
 	certPath = coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + certPath
-	eUtils.LogInfo(config, fmt.Sprintf("Inspecting certificate: "+certPath+"."))
+	eUtils.LogInfo(&driverConfig.CoreConfig, fmt.Sprintf("Inspecting certificate: "+certPath+"."))
 	cert, err := os.ReadFile(certPath)
 	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 		return
 	}
 
 	if err == nil {
 		//if pfx file size greater than 25 KB, print warning
 		if len(cert) > 32000 {
-			eUtils.LogInfo(config, "Unreasonable size for certificate type file. Not written to vault")
+			eUtils.LogInfo(&driverConfig.CoreConfig, "Unreasonable size for certificate type file. Not written to vault")
 			return
 		}
 
 		isValidCert := false
 		var certValidationErr error
 		if strings.HasSuffix(certPath, ".pfx") {
-			eUtils.LogInfo(config, "Inspecting pfx: "+certPath+".")
+			eUtils.LogInfo(&driverConfig.CoreConfig, "Inspecting pfx: "+certPath+".")
 			isValidCert, certValidationErr = validator.IsPfxRfc7292(cert)
 		} else if strings.HasSuffix(certPath, ".cer") {
-			eUtils.LogInfo(config, "Inspecting cer: "+certPath+".")
+			eUtils.LogInfo(&driverConfig.CoreConfig, "Inspecting cer: "+certPath+".")
 			cert, certValidationErr := x509.ParseCertificate(cert)
 			if certValidationErr == nil {
 				isValidCert = true
 			} else {
-				eUtils.LogInfo(config, "failed to parse and verify certificate: "+certValidationErr.Error())
+				eUtils.LogInfo(&driverConfig.CoreConfig, "failed to parse and verify certificate: "+certValidationErr.Error())
 			}
 			var certHost string
 			if certHostData, certHostOk := entry.data["certHost"]; certHostOk {
 				certHost = fmt.Sprintf("%s", certHostData)
 			} else {
-				eUtils.LogInfo(config, "Missing certHost, cannot validate cert.  Not written to vault")
+				eUtils.LogInfo(&driverConfig.CoreConfig, "Missing certHost, cannot validate cert.  Not written to vault")
 				return
 			}
-			switch config.EnvRaw {
+			switch driverConfig.EnvRaw {
 			case "itdev":
 				fallthrough
 			case "dev":
@@ -533,23 +533,23 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 
 			if _, err := cert.Verify(opts); err != nil {
 				if _, isUnknownAuthority := err.(x509.UnknownAuthorityError); !isUnknownAuthority {
-					eUtils.LogInfo(config, "Seeding of requested cert failed because it is invalid: Unknown authority: failed to verify certificate: "+err.Error())
+					eUtils.LogInfo(&driverConfig.CoreConfig, "Seeding of requested cert failed because it is invalid: Unknown authority: failed to verify certificate: "+err.Error())
 					return
 				}
 			}
 		} else if strings.HasSuffix(certPath, ".crt") || strings.HasSuffix(certPath, ".key") {
-			eUtils.LogInfo(config, "Inspecting crt or key: "+certPath+".")
+			eUtils.LogInfo(&driverConfig.CoreConfig, "Inspecting crt or key: "+certPath+".")
 			pemBlock, _ := pem.Decode(cert)
 			if pemBlock == nil {
-				eUtils.LogInfo(config, "failed to verify certificate crt or key.")
+				eUtils.LogInfo(&driverConfig.CoreConfig, "failed to verify certificate crt or key.")
 			} else {
 				isValidCert = true
 			}
 		} else if strings.HasSuffix(certPath, ".pem") {
-			eUtils.LogInfo(config, "Inspecting pem: "+certPath+".")
+			eUtils.LogInfo(&driverConfig.CoreConfig, "Inspecting pem: "+certPath+".")
 			pemBlock, _ := pem.Decode(cert)
 			if pemBlock == nil {
-				eUtils.LogInfo(config, "failed to verify certificate PEM.")
+				eUtils.LogInfo(&driverConfig.CoreConfig, "failed to verify certificate PEM.")
 			} else {
 				isValidCert = true
 			}
@@ -557,13 +557,13 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 			isValidCert = true
 		}
 		if isValidCert {
-			eUtils.LogInfo(config, "Certificate passed validation: "+certPath+".")
+			eUtils.LogInfo(&driverConfig.CoreConfig, "Certificate passed validation: "+certPath+".")
 			certBase64 := base64.StdEncoding.EncodeToString(cert)
 			if _, ok := entry.data["certData"]; ok {
 				// insecure value entry.
 				entry.data["certData"] = certBase64
-				eUtils.LogInfo(config, "Writing certificate to vault at: "+entry.path+".")
-				mod2 := WriteData(config, entry.path, entry.data, mod)
+				eUtils.LogInfo(&driverConfig.CoreConfig, "Writing certificate to vault at: "+entry.path+".")
+				mod2 := WriteData(driverConfig, entry.path, entry.data, mod)
 				if mod != mod2 {
 					mod.Stale = true
 					mod.Release()
@@ -572,11 +572,11 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 				}
 
 				certPathSplit := strings.Split(certPath, "/")
-				for _, path := range config.ServiceFilter {
+				for _, path := range driverConfig.ServiceFilter {
 					if strings.Contains(path, certPathSplit[len(certPathSplit)-1]) {
 						commonPath := strings.Replace(strings.TrimSuffix(path, ".mf.tmpl"), coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "values", -1)
 						entry.data["certData"] = "data"
-						mod2 := WriteData(config, commonPath, entry.data, mod)
+						mod2 := WriteData(driverConfig, commonPath, entry.data, mod)
 						if mod != mod2 {
 							mod.Stale = true
 							mod.Release()
@@ -586,7 +586,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 					}
 				}
 
-				eUtils.LogInfo(config, "Public cert updated: "+certPath+".")
+				eUtils.LogInfo(&driverConfig.CoreConfig, "Public cert updated: "+certPath+".")
 			} else {
 				entryPathParts := strings.Split(entry.path, "/")
 				if len(entryPathParts) == 2 {
@@ -597,8 +597,8 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 						if secretPath == secretEntry.path {
 							if _, ok := secretEntry.data["certData"]; ok {
 								secretEntry.data["certData"] = certBase64
-								eUtils.LogInfo(config, "Writing certificate to vault at: "+secretEntry.path+".")
-								mod2 := WriteData(config, secretEntry.path, secretEntry.data, mod)
+								eUtils.LogInfo(&driverConfig.CoreConfig, "Writing certificate to vault at: "+secretEntry.path+".")
+								mod2 := WriteData(driverConfig, secretEntry.path, secretEntry.data, mod)
 								if mod != mod2 {
 									mod.Stale = true
 									mod.Release()
@@ -606,7 +606,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 									mod = mod2
 								}
 
-								mod2 = WriteData(config, entry.path, entry.data, mod)
+								mod2 = WriteData(driverConfig, entry.path, entry.data, mod)
 								if mod != mod2 {
 									mod.Stale = true
 									mod.Release()
@@ -619,7 +619,7 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 							}
 						}
 					}
-					eUtils.LogInfo(config, "Cert loaded from: "+certPath+".")
+					eUtils.LogInfo(&driverConfig.CoreConfig, "Cert loaded from: "+certPath+".")
 
 					if done {
 						return
@@ -628,9 +628,9 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 			}
 		} else {
 			if certValidationErr == nil {
-				eUtils.LogInfo(config, "Cert validation failure. Cert will not be loaded.")
+				eUtils.LogInfo(&driverConfig.CoreConfig, "Cert validation failure. Cert will not be loaded.")
 			} else {
-				eUtils.LogInfo(config, "Cert validation failure.  Cert will not be loaded."+certValidationErr.Error())
+				eUtils.LogInfo(&driverConfig.CoreConfig, "Cert validation failure.  Cert will not be loaded."+certValidationErr.Error())
 			}
 			delete(entry.data, "certData")
 			delete(entry.data, "certHost")
@@ -639,26 +639,26 @@ func seedVaultWithCertsFromEntry(config *eUtils.DriverConfig, mod *helperkv.Modi
 			return
 		}
 	} else {
-		eUtils.LogInfo(config, "Missing expected cert at: "+certPath+".  Cert will not be loaded.")
+		eUtils.LogInfo(&driverConfig.CoreConfig, "Missing expected cert at: "+certPath+".  Cert will not be loaded.")
 		return
 	}
 }
 
 // SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byte) error {
-	config.Log.SetPrefix("[SEED]")
-	config.Log.Println("=========New File==========")
+func SeedVaultFromData(driverConfig *eUtils.DriverConfig, filepath string, fData []byte) error {
+	driverConfig.CoreConfig.Log.SetPrefix("[SEED]")
+	driverConfig.CoreConfig.Log.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
 	// Unmarshal
 	var rawYaml interface{}
 	hasEmptyValues := bytes.Contains(fData, []byte("<Enter Secret Here>"))
 	isIndexData := strings.HasPrefix(filepath, "Index/") || strings.Contains(filepath, "/PublicIndex/")
 	if hasEmptyValues && !isIndexData {
-		return eUtils.LogAndSafeExit(config, "Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", 1)
+		return eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Incomplete configuration of seed data.  Found default secret data: '<Enter Secret Here>'.  Refusing to continue.", 1)
 	}
 
 	if strings.HasPrefix(filepath, "Restricted/") || strings.HasPrefix(filepath, "Protected/") { //Fix incoming pathing for restricted projects
-		i := strings.LastIndex(filepath, "/"+config.Env)
+		i := strings.LastIndex(filepath, "/"+driverConfig.Env)
 		if i > 0 {
 			filepath = filepath[:i]
 		}
@@ -670,12 +670,12 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 
 	err := yaml.Unmarshal(fData, &rawYaml)
 	if err != nil {
-		return eUtils.LogErrorAndSafeExit(config, err, 1)
+		return eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, err, 1)
 	}
 
 	seed, ok := rawYaml.(map[interface{}]interface{})
 	if !ok {
-		return eUtils.LogAndSafeExit(config, "Invalid yaml file.  Refusing to continue.", 1)
+		return eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
 	}
 
 	mapStack := []seedCollection{seedCollection{"", seed}} // Begin with root of yaml file
@@ -691,8 +691,8 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		// Convert nested maps into vault writable data
 		for k, v := range current.data {
 			if v == nil { // Don't write empty valus, Vault does not handle them
-				if !config.WantCerts {
-					config.Log.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
+				if !driverConfig.CoreConfig.WantCerts {
+					driverConfig.CoreConfig.Log.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
 				}
 			} else if current.path == "" && k.(string) == "verification" { // Found verification on top level, store for later
 				verificationData = v.(map[interface{}]interface{})
@@ -730,34 +730,34 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		}
 	}
 
-	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, true, config.Log) // Connect to vault
+	mod, err := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, nil, true, driverConfig.CoreConfig.Log) // Connect to vault
 	if mod != nil {
 		defer mod.Release()
 	}
 	if err != nil {
-		mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, false, config.Log) // Connect to vault
+		mod, err = helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, nil, false, driverConfig.CoreConfig.Log) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
 		if err != nil {
-			return eUtils.LogErrorAndSafeExit(config, err, 1)
+			return eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, err, 1)
 		}
 	}
 
-	mod.Env = strings.Split(config.Env, "_")[0]
+	mod.Env = strings.Split(driverConfig.Env, "_")[0]
 	if strings.Contains(filepath, "/PublicIndex/") {
-		config.Log.Println("Seeding configuration data for the following templates: DataStatistics")
+		driverConfig.CoreConfig.Log.Println("Seeding configuration data for the following templates: DataStatistics")
 	} else if isIndexData || strings.HasPrefix(filepath, "Restricted/") || strings.HasPrefix(filepath, "Protected/") { //Sets restricted to indexpath due to forward logic using indexpath
 		mod.SectionPath = strings.TrimSuffix(filepath, "_seed.yml")
-		if len(config.ServiceFilter) > 0 && isIndexData && !strings.Contains(mod.SectionPath, config.ServiceFilter[0]) {
-			mod.SectionPath = mod.SectionPath[:strings.LastIndex(mod.SectionPath, "/")+1] + config.ServiceFilter[0] + mod.SectionPath[strings.LastIndex(mod.SectionPath, "/"):]
+		if len(driverConfig.ServiceFilter) > 0 && isIndexData && !strings.Contains(mod.SectionPath, driverConfig.ServiceFilter[0]) {
+			mod.SectionPath = mod.SectionPath[:strings.LastIndex(mod.SectionPath, "/")+1] + driverConfig.ServiceFilter[0] + mod.SectionPath[strings.LastIndex(mod.SectionPath, "/"):]
 		}
-		config.Log.Println("Seeding configuration data for the following templates:" + mod.SectionPath)
+		driverConfig.CoreConfig.Log.Println("Seeding configuration data for the following templates:" + mod.SectionPath)
 	} else {
-		config.Log.Println("Seeding configuration data for the following templates:" + filepath)
+		driverConfig.CoreConfig.Log.Println("Seeding configuration data for the following templates:" + filepath)
 	}
 	// Write values to vault
-	config.Log.Println("Please verify that these templates exist in each service")
+	driverConfig.CoreConfig.Log.Println("Please verify that these templates exist in each service")
 
 	for _, entry := range writeStack {
 		seedCert := false
@@ -765,28 +765,28 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 		// Write data and ouput any errors
 		_, isCertData := entry.data["certData"]
 
-		seedData := !config.WantCerts && !isCertData
+		seedData := !driverConfig.CoreConfig.WantCerts && !isCertData
 		if isCertData && strings.HasPrefix(entry.path, "templates/") {
 			seedData = true
 		}
 
 		if strings.HasPrefix(entry.path, "values/") {
 			_, isCertPath := entry.data["certSourcePath"]
-			seedCert = (isCertPath || isCertData) && config.WantCerts
+			seedCert = (isCertPath || isCertData) && driverConfig.CoreConfig.WantCerts
 		}
 
 		// Write Secrets...
 		if seedCert {
 			sectionPathTemp := mod.SectionPath
 			mod.SectionPath = ""
-			seedVaultWithCertsFromEntry(config, mod, &writeStack, &entry)
+			seedVaultWithCertsFromEntry(driverConfig, mod, &writeStack, &entry)
 			mod.SectionPath = sectionPathTemp
 		} else if seedData {
 			// TODO: Support all services, so range over ServicesWanted....
 			// Populate as a slice...
-			if config.ServicesWanted[0] != "" {
-				if strings.HasSuffix(entry.path, config.ServicesWanted[0]) || strings.Contains(entry.path, "Common") {
-					mod2 := WriteData(config, entry.path, entry.data, mod)
+			if driverConfig.ServicesWanted[0] != "" {
+				if strings.HasSuffix(entry.path, driverConfig.ServicesWanted[0]) || strings.Contains(entry.path, "Common") {
+					mod2 := WriteData(driverConfig, entry.path, entry.data, mod)
 					if mod != mod2 {
 						mod.Stale = true
 						mod.Release()
@@ -803,7 +803,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 						filepath = "super-secrets" + filepath
 					}
 
-					mod2 := WriteData(config, filepath, entry.data, mod)
+					mod2 := WriteData(driverConfig, filepath, entry.data, mod)
 					if mod != mod2 {
 						mod.Stale = true
 						mod.Release()
@@ -812,7 +812,7 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 					}
 				}
 			} else {
-				mod2 := WriteData(config, entry.path, entry.data, mod)
+				mod2 := WriteData(driverConfig, entry.path, entry.data, mod)
 				if mod != mod2 {
 					mod.Stale = true
 					mod.Release()
@@ -821,20 +821,20 @@ func SeedVaultFromData(config *eUtils.DriverConfig, filepath string, fData []byt
 				}
 			}
 		} else {
-			config.Log.Printf("\nSkipping non-matching seed data: " + entry.path)
+			driverConfig.CoreConfig.Log.Printf("\nSkipping non-matching seed data: " + entry.path)
 		}
 	}
 
 	// Run verification after seeds have been written
-	warn, err := verify(config, mod, verificationData)
-	eUtils.LogErrorObject(config, err, false)
-	eUtils.LogWarningsObject(config, warn, false)
-	eUtils.LogInfo(config, "\nInitialization complete for "+mod.Env+".\n")
+	warn, err := verify(&driverConfig.CoreConfig, mod, verificationData)
+	eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+	eUtils.LogWarningsObject(&driverConfig.CoreConfig, warn, false)
+	eUtils.LogInfo(&driverConfig.CoreConfig, "\nInitialization complete for "+mod.Env+".\n")
 	return nil
 }
 
 // WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
-func WriteData(config *eUtils.DriverConfig, path string, data map[string]interface{}, mod *helperkv.Modifier) *helperkv.Modifier {
+func WriteData(driverConfig *eUtils.DriverConfig, path string, data map[string]interface{}, mod *helperkv.Modifier) *helperkv.Modifier {
 	root := strings.Split(path, "/")[0]
 	if templateWritten == nil {
 		templateWritten = make(map[string]bool)
@@ -847,30 +847,30 @@ func WriteData(config *eUtils.DriverConfig, path string, data map[string]interfa
 			return mod
 		}
 	}
-	warn, err := mod.Write(path, data, config.Log)
+	warn, err := mod.Write(path, data, driverConfig.CoreConfig.Log)
 	if err != nil {
-		mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, true, config.Log) // Connect to vault
+		mod, err = helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, nil, true, driverConfig.CoreConfig.Log) // Connect to vault
 		if err != nil {
-			mod, err = helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, nil, false, config.Log) // Connect to vault
+			mod, err = helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, nil, false, driverConfig.CoreConfig.Log) // Connect to vault
 			if err != nil {
 				// Panic scenario...  Can't reach secrets engine
-				eUtils.LogErrorAndSafeExit(config, err, 1)
+				eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, err, 1)
 			}
-			warn, err = mod.Write(path, data, config.Log)
+			warn, err = mod.Write(path, data, driverConfig.CoreConfig.Log)
 			if err != nil {
 				// Panic scenario...  Can't reach secrets engine
-				eUtils.LogErrorAndSafeExit(config, err, 1)
+				eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, err, 1)
 			}
 		}
 	}
 
-	eUtils.LogWarningsObject(config, warn, false)
-	eUtils.LogErrorObject(config, err, false)
+	eUtils.LogWarningsObject(&driverConfig.CoreConfig, warn, false)
+	eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 	// Update value metrics to reflect credential use
 	if root == "templates" {
 		//Printing out path of each entry so that users can verify that folder structure in seed files are correct
-		config.Log.Println(coreopts.BuildOptions.GetFolderPrefix(nil) + "_" + path + ".*.tmpl")
-		mod.AdjustValue("value-metrics/credentials", data, 1, config.Log)
+		driverConfig.CoreConfig.Log.Println(coreopts.BuildOptions.GetFolderPrefix(nil) + "_" + path + ".*.tmpl")
+		mod.AdjustValue("value-metrics/credentials", data, 1, driverConfig.CoreConfig.Log)
 	}
 	return mod
 }

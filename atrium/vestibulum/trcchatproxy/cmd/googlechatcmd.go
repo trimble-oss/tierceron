@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/pubsub"
@@ -20,8 +21,13 @@ func main() {
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	log.SetOutput(f)
-	configDriver := &eUtils.DriverConfig{Log: log.Default(), ExitOnFailure: true}
-	eUtils.CheckError(configDriver, err, true)
+	driverConfig := &eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			Log:           log.Default(),
+			ExitOnFailure: true,
+		},
+	}
+	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
 	pubsub.CommonInit(true)
 	trcchat.CommonInit(*tokenPtr, *callerTokenPtr)
 

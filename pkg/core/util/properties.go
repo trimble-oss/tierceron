@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/core"
 
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
@@ -22,7 +22,7 @@ type Properties struct {
 	cds          *vcutils.ConfigDataStore
 }
 
-func NewProperties(config *eUtils.DriverConfig, v *sys.Vault, mod *helperkv.Modifier, env string, project string, service string) (*Properties, error) {
+func NewProperties(config *core.CoreConfig, v *sys.Vault, mod *helperkv.Modifier, env string, project string, service string) (*Properties, error) {
 	properties := Properties{}
 	properties.mod = mod
 	properties.mod.Env = env

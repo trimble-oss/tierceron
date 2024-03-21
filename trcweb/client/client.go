@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 )
@@ -15,10 +16,14 @@ func main() {
 	apiClient := pb.NewEnterpriseServiceBrokerProtobufClient(*addrPtr, &http.Client{})
 
 	makeVaultReq := &pb.GetValuesReq{}
-	config := &eUtils.DriverConfig{ExitOnFailure: true}
+	driverConfig := &eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			ExitOnFailure: true,
+		},
+	}
 
 	vault, err := apiClient.GetValues(context.Background(), makeVaultReq)
-	eUtils.CheckError(config, err, true)
+	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
 
 	fmt.Printf("Vault: \n")
 	for _, env := range vault.Envs {

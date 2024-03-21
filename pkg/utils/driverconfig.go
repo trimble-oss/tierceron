@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"log"
 	"math"
 	"os"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 )
 
 type ProcessContext interface{}
@@ -48,17 +48,16 @@ func (cfgContext *ConfigContext) GetDiffFileCount() int32 {
 
 // DriverConfig -- contains many structures necessary for Tierceron tool functionality.
 type DriverConfig struct {
+	CoreConfig core.CoreConfig
+
 	// Process context used by new tool implementations in callbacks.
 	// Tools can attach their own context here for later access in
 	// certain callbacks.
 	Context ProcessContext
 
 	// Internal systems...
-	ExitOnFailure     bool // Exit on a failure or try to continue
 	Insecure          bool
-	IsShell           bool // If tool running in shell.
 	IsShellSubProcess bool // If subshell
-	Log               *log.Logger
 
 	// Vault Configurations...
 	Token         string
@@ -80,7 +79,6 @@ type DriverConfig struct {
 	FeatherCtlCb   func(*cap.FeatherContext, string) error
 
 	// Config modes....
-	WantCerts   bool
 	ZeroConfig  bool
 	GenAuth     bool
 	TrcShellRaw string   //Used for TrcShell
@@ -103,15 +101,14 @@ type DriverConfig struct {
 
 	// Vault Pathing....
 	// This section stores information useful in directing I/O with Vault.
-	AppRoleConfig     string
-	ServicesWanted    []string
-	ProjectSections   []string
-	SectionKey        string // Restricted or Index
-	SectionName       string // extension provided name
-	SubSectionName    string // extension provided subsection name
-	SubSectionValue   string
-	ServiceFilter     []string // Which tables to use.
-	DynamicPathFilter string   // Seeds from a specific path.
+	AppRoleConfig   string
+	ServicesWanted  []string
+	ProjectSections []string
+	SectionKey      string // Restricted or Index
+	SectionName     string // extension provided name
+	SubSectionName  string // extension provided subsection name
+	SubSectionValue string
+	ServiceFilter   []string // Which tables to use.
 
 	DeploymentConfig         map[string]interface{} // For trcsh to indicate which deployment to work on
 	DeploymentCtlMessageChan chan string
@@ -149,7 +146,7 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, config *DriverC
 			for _, projectFile := range projectFiles {
 				projectStartDir := config.StartDir[0]
 
-				if projectFile.Name() != "Common" && config.WantCerts && config.WantKeystore == "" {
+				if projectFile.Name() != "Common" && config.CoreConfig.WantCerts && config.WantKeystore == "" {
 					// Ignore non-common if wantCerts
 					continue
 				}

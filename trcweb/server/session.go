@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
@@ -19,7 +20,7 @@ import (
 	_ "github.com/denisenkom/go-mssqldb"
 )
 
-func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
+func (s *Server) authUser(config *core.CoreConfig, mod *helperkv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
 	connInfo, err := mod.ReadData("apiLogins/meta")
 	if err != nil {
 		return false, "", err
@@ -58,7 +59,7 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 	return buildopts.BuildOptions.Authorize(db, operatorId, operatorPassword)
 }
 
-func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]map[string]interface{}, error) {
+func (s *Server) getActiveSessions(config *core.CoreConfig, env string) ([]map[string]interface{}, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
@@ -98,7 +99,7 @@ func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]m
 	return coreopts.BuildOptions.ActiveSessions(db)
 }
 
-func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, string, error) {
+func parseURL(config *core.CoreConfig, url string) (string, string, string, string, error) {
 	//only works with jdbc:mysql or jdbc:sqlserver.
 	regex := regexp.MustCompile(`(?i)(mysql|sqlserver)://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+).*`)
 	m := regex.FindStringSubmatch(url)

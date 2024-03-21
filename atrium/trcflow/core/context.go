@@ -129,7 +129,7 @@ type TrcFlowMachineContext struct {
 	FlowControllerInit        bool
 	FlowControllerUpdateLock  sync.Mutex
 	FlowControllerUpdateAlert chan string
-	Config                    *eUtils.DriverConfig
+	DriverConfig              *eUtils.DriverConfig
 	Vault                     *sys.Vault
 	TierceronEngine           *trcengine.TierceronEngine
 	ExtensionAuthData         map[string]interface{}
@@ -213,7 +213,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 	for _, tableName := range tableNames {
 		changeTableName := tableName + "_Changes"
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
-			eUtils.LogInfo(tfmContext.Config, "Creating tierceron sql table: "+changeTableName)
+			eUtils.LogInfo(&tfmContext.DriverConfig.CoreConfig, "Creating tierceron sql table: "+changeTableName)
 			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName,
 				sqle.NewPrimaryKeySchema(sqle.Schema{
 					{Name: "id", Type: flowcoreopts.BuildOptions.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
@@ -223,13 +223,13 @@ func (tfmContext *TrcFlowMachineContext) Init(
 			)
 			if err != nil {
 				tfmContext.GetTableModifierLock().Unlock()
-				eUtils.LogErrorObject(tfmContext.Config, err, false)
+				eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
 				return err
 			}
 		}
 	}
 	tfmContext.GetTableModifierLock().Unlock()
-	eUtils.LogInfo(tfmContext.Config, "Tables creation completed.")
+	eUtils.LogInfo(&tfmContext.DriverConfig.CoreConfig, "Tables creation completed.")
 
 	tfmContext.ChannelMap = make(map[FlowNameType]*bchan.Bchan)
 
@@ -308,7 +308,7 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(trcfc *TrcFlowConte
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
 		tfmContext.GetTableModifierLock().Unlock()
-		eUtils.CheckError(tfmContext.Config, err, false)
+		eUtils.CheckError(&tfmContext.DriverConfig.CoreConfig, err, false)
 	}
 
 	triggerExist := false
@@ -342,7 +342,7 @@ func (tfmContext *TrcFlowMachineContext) CreateCompositeTableTriggers(trcfc *Trc
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
 		tfmContext.GetTableModifierLock().Unlock()
-		eUtils.CheckError(tfmContext.Config, err, false)
+		eUtils.CheckError(&tfmContext.DriverConfig.CoreConfig, err, false)
 	}
 
 	triggerExist := false
@@ -376,7 +376,7 @@ func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcF
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
 		tfmContext.GetTableModifierLock().Unlock()
-		eUtils.CheckError(tfmContext.Config, err, false)
+		eUtils.CheckError(&tfmContext.DriverConfig.CoreConfig, err, false)
 	}
 
 	triggerExist := false
@@ -402,11 +402,11 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowCont
 	trcfc.GoMod.SectionName = flowService
 	if refreshErr := trcfc.Vault.RefreshClient(); refreshErr != nil {
 		// Panic situation...  Can't connect to vault... Wait until next cycle to try again.
-		eUtils.LogErrorMessage(tfmContext.Config, "Failure to connect to vault.  It may be down...", false)
-		eUtils.LogErrorObject(tfmContext.Config, refreshErr, false)
+		eUtils.LogErrorMessage(&tfmContext.DriverConfig.CoreConfig, "Failure to connect to vault.  It may be down...", false)
+		eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, refreshErr, false)
 		return nil, false
 	}
-	properties, err := trcvutils.NewProperties(tfmContext.Config, trcfc.Vault, trcfc.GoMod, tfmContext.Env, flowProject, flowProject)
+	properties, err := trcvutils.NewProperties(&tfmContext.DriverConfig.CoreConfig, trcfc.Vault, trcfc.GoMod, tfmContext.Env, flowProject, flowProject)
 	if err != nil {
 		return nil, false
 	}
@@ -430,7 +430,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tfContext *TrcFlowContex
 	for {
 		select {
 		case <-signalChannel:
-			eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
+			eUtils.LogErrorMessage(&tfmContext.DriverConfig.CoreConfig, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)
 		case <-flowChangedChannel.Ch:
 			tfmContext.vaultPersistPushRemoteChanges(
@@ -624,7 +624,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	// Not sure if necessary to copy entire ReportStatistics method
 	if tfContext.Init {
 		tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
-		df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.Config.Log, false)
+		df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, false)
 	}
 
 	//df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, ...)
@@ -690,7 +690,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 			}
 		}
 		if err != nil {
-			eUtils.LogErrorObject(tfmContext.Config, err, false)
+			eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
 		}
 		if changed && len(matrix) > 0 {
 
@@ -777,7 +777,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		}
 
 		if err != nil {
-			eUtils.LogErrorObject(tfmContext.Config, err, false)
+			eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
 		}
 		if changed && (len(matrix) > 0 || tableName != "") {
 			// If triggers are ever fixed, this can be removed.
@@ -838,7 +838,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 	case "SELECT":
 		_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), tfContext.FlowLock)
 		if err != nil {
-			eUtils.LogErrorObject(tfmContext.Config, err, false)
+			eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
 		}
 		return matrixChangedEntries, changed
 	}
@@ -848,7 +848,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 // Open a database connection to the provided source using provided
 // source configurations.
 func (tfmContext *TrcFlowMachineContext) GetDbConn(tfContext *TrcFlowContext, dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
-	return trcvutils.OpenDirectConnection(tfmContext.Config, dbUrl,
+	return trcvutils.OpenDirectConnection(&tfmContext.DriverConfig.CoreConfig, dbUrl,
 		username,
 		coreopts.BuildOptions.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionsMap[tfContext.RemoteDataSource["dbsourceregion"].(string)]))
 }
@@ -866,21 +866,21 @@ func (tfmContext *TrcFlowMachineContext) CallAPI(apiAuthHeaders map[string]strin
 		return nil, -1, err
 	}
 	if getOrPost {
-		return trcvutils.GetJSONFromClientByGet(tfmContext.Config, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
+		return trcvutils.GetJSONFromClientByGet(&tfmContext.DriverConfig.CoreConfig, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
 	}
-	return trcvutils.GetJSONFromClientByPost(tfmContext.Config, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
+	return trcvutils.GetJSONFromClientByPost(&tfmContext.DriverConfig.CoreConfig, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
 }
 
 func (tfmContext *TrcFlowMachineContext) Log(msg string, err error) {
 	if err != nil {
-		eUtils.LogMessageErrorObject(tfmContext.Config, msg, err, false)
+		eUtils.LogMessageErrorObject(&tfmContext.DriverConfig.CoreConfig, msg, err, false)
 	} else {
-		eUtils.LogInfo(tfmContext.Config, msg)
+		eUtils.LogInfo(&tfmContext.DriverConfig.CoreConfig, msg)
 	}
 }
 
 func (tfmContext *TrcFlowMachineContext) ProcessFlow(
-	config *eUtils.DriverConfig,
+	driverConfig *eUtils.DriverConfig,
 	tfContext *TrcFlowContext,
 	processFlowController func(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext) error,
 	vaultDatabaseConfig map[string]interface{}, // TODO: actually use this to set up a mysql facade.
@@ -895,7 +895,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		tfContext.FlowLock = &sync.Mutex{}
 		// 3. Create a base seed template for use in vault seed process.
 		var baseTableTemplate extract.TemplateResultData
-		trcvutils.LoadBaseTemplate(config, &baseTableTemplate, tfContext.GoMod, tfContext.FlowSource, tfContext.Flow.ServiceName(), tfContext.FlowPath)
+		trcvutils.LoadBaseTemplate(driverConfig, &baseTableTemplate, tfContext.GoMod, tfContext.FlowSource, tfContext.Flow.ServiceName(), tfContext.FlowPath)
 		tfContext.FlowData = &baseTableTemplate
 	} else {
 		// Use the flow name directly.
@@ -916,9 +916,9 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 				tfContext.RemoteDataSource["region-"+region] = sDC
 				if _, ok := sDC["dbsourceurl"].(string); ok {
 					retryCount := 0
-					eUtils.LogInfo(config, "Obtaining resource connections for : "+flow.ServiceName()+"-"+region)
+					eUtils.LogInfo(&driverConfig.CoreConfig, "Obtaining resource connections for : "+flow.ServiceName()+"-"+region)
 				retryConnectionAccess:
-					dbsourceConn, err := trcvutils.OpenDirectConnection(config, sDC["dbsourceurl"].(string), sDC["dbsourceuser"].(string), sDC["dbsourcepassword"].(string))
+					dbsourceConn, err := trcvutils.OpenDirectConnection(&driverConfig.CoreConfig, sDC["dbsourceurl"].(string), sDC["dbsourceuser"].(string), sDC["dbsourcepassword"].(string))
 					if err != nil && err.Error() != "incorrect URL format" {
 						if retryCount < 3 && err != nil && dbsourceConn == nil {
 							retryCount = retryCount + 1
@@ -927,12 +927,12 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 					}
 
 					if err != nil {
-						eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection.  Sync modes will fail for "+sDC["dbsourceregion"].(string)+".", false)
-						eUtils.LogErrorMessage(config, "Couldn't get dedicated database connection: "+err.Error(), false)
+						eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Couldn't get dedicated database connection.  Sync modes will fail for "+sDC["dbsourceregion"].(string)+".", false)
+						eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Couldn't get dedicated database connection: "+err.Error(), false)
 					} else {
 						defer dbsourceConn.Close()
 					}
-					eUtils.LogInfo(config, "Obtained resource connection for : "+flow.ServiceName()+"-"+region)
+					eUtils.LogInfo(&driverConfig.CoreConfig, "Obtained resource connection for : "+flow.ServiceName()+"-"+region)
 					tfContext.RemoteDataSource["region-"+region].(map[string]interface{})["connection"] = dbsourceConn
 
 					if region == "west" { //Sets west as default connection for non-region controlled flows.
@@ -957,7 +957,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	//
 	flowError := processFlowController(tfmContext, tfContext)
 	if flowError != nil {
-		eUtils.LogErrorObject(config, flowError, true)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, flowError, true)
 	}
 
 	return nil
@@ -1054,7 +1054,7 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 			if tcopts.BuildOptions.CheckIncomingColumnName(column.Name) && secretValue != "<Enter Secret Here>" && secretValue != "" {
 				decodedValue, secretValue, lmQuery, lm, incomingValErr := tcopts.BuildOptions.CheckFlowDataIncoming(secretColumns, secretValue, tfContext.FlowSourceAlias, tfContext.Flow.TableName())
 				if incomingValErr != nil {
-					eUtils.LogErrorObject(tfmContext.Config, incomingValErr, false)
+					eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, incomingValErr, false)
 					continue
 				}
 				if lmQuery != "" {

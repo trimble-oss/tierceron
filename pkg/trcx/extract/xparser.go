@@ -9,6 +9,7 @@ import (
 	"text/template/parse"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
@@ -36,7 +37,7 @@ type TemplateResultData struct {
 //
 // Output:
 //   - Parsed string containing the .yml file
-func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
+func ToSeed(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier,
 	cds *vcutils.ConfigDataStore,
 	templatePath string,
 	project string,
@@ -52,7 +53,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 	pathSlice := strings.SplitN(templatePath, "/", -1)
 
 	// Initialize map subsections
-	templatePathSlice, templateDir, templateDepth := GetInitialTemplateStructure(config, pathSlice)
+	templatePathSlice, templateDir, templateDepth := GetInitialTemplateStructure(driverConfig, pathSlice)
 
 	// Gets the template file
 	var newTemplate string
@@ -63,16 +64,16 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 			templatePathExtended = templatePath
 			serviceRaw = ""
 		} else {
-			templatePathExtended = strings.Replace(templatePath, coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates/", "/", 1)
+			templatePathExtended = strings.Replace(templatePath, coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
-		templateFile, _ := vcutils.ConfigTemplateRaw(config, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, config.ExitOnFailure)
+		templateFile, _ := vcutils.ConfigTemplateRaw(driverConfig, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, driverConfig.CoreConfig.ExitOnFailure)
 		newTemplate = string(templateFile)
 	} else {
 		templateFile, err := os.ReadFile(templatePath)
 		newTemplate = string(templateFile)
 		if err != nil {
-			return nil, nil, nil, 0, eUtils.LogAndSafeExit(config, err.Error(), -1)
+			return nil, nil, nil, 0, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, err.Error(), -1)
 		}
 	}
 
@@ -80,7 +81,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 	t := template.New("template")
 	theTemplate, err := t.Parse(newTemplate)
 	if err != nil {
-		return nil, nil, nil, 0, eUtils.LogAndSafeExit(config, err.Error(), -1)
+		return nil, nil, nil, 0, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, err.Error(), -1)
 	}
 	commandList := theTemplate.Tree.Root
 
@@ -91,14 +92,14 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 			for _, arg := range fields.Cmds[0].Args {
 				templateParameter := strings.ReplaceAll(arg.String(), "\\\"", "\"")
 				if strings.Contains(templateParameter, "~") {
-					eUtils.LogInfo(config, "Unsupported parameter name character ~: "+templateParameter)
+					eUtils.LogInfo(&driverConfig.CoreConfig, "Unsupported parameter name character ~: "+templateParameter)
 					return nil, nil, nil, 0, errors.New("Unsupported parameter name character ~: " + templateParameter)
 				}
 				args = append(args, templateParameter)
 			}
 
 			// Gets the parsed file line
-			errParse := Parse(config, cds,
+			errParse := Parse(&driverConfig.CoreConfig, cds,
 				args,
 				pathSlice[len(pathSlice)-2],
 				templatePathSlice,
@@ -203,7 +204,7 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 //
 // Output:
 //   - String(s) containing the .yml file subsections
-func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
+func Parse(config *core.CoreConfig, cds *vcutils.ConfigDataStore,
 	args []string,
 	currentDir string,
 	templatePathSlice []string,

@@ -15,6 +15,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
@@ -81,7 +82,7 @@ func CommonMain(envPtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	c *eUtils.DriverConfig) error {
+	driverConfig *eUtils.DriverConfig) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
@@ -128,11 +129,11 @@ func CommonMain(envPtr *string,
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
 	isShell := false
 
-	if c != nil {
-		isShell = c.IsShell
+	if driverConfig != nil {
+		isShell = driverConfig.CoreConfig.IsShell
 	}
 
-	if c == nil || !isShell {
+	if driverConfig == nil || !isShell {
 		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
@@ -146,7 +147,7 @@ func CommonMain(envPtr *string,
 		// TODO: rework to support standard arg parsing...
 		for _, args := range argLines {
 			if args == "-certs" {
-				c.WantCerts = true
+				driverConfig.CoreConfig.WantCerts = true
 			} else if strings.HasPrefix(args, "-keystore") {
 				storeArgs := strings.Split(args, "=")
 				if len(storeArgs) > 1 {
@@ -160,7 +161,7 @@ func CommonMain(envPtr *string,
 			}
 		}
 		flagset.Parse(nil)
-		if c.WantCerts {
+		if driverConfig.CoreConfig.WantCerts {
 			*wantCertsPtr = true
 		}
 	}
@@ -181,33 +182,34 @@ func CommonMain(envPtr *string,
 	}
 
 	var appRoleConfigPtr *string
-	var configBase *eUtils.DriverConfig
-	if c != nil {
-		configBase = c
-		if len(configBase.EndDir) == 0 || *endDirPtr != ENDDIR_DEFAULT {
+	var driverConfigBase *eUtils.DriverConfig
+	if driverConfig != nil {
+		driverConfigBase = driverConfig
+		if len(driverConfigBase.EndDir) == 0 || *endDirPtr != ENDDIR_DEFAULT {
 			// Honor inputs if provided...
-			configBase.EndDir = *endDirPtr
+			driverConfigBase.EndDir = *endDirPtr
 		}
-		if len(configBase.StartDir) == 0 || len(configBase.StartDir[0]) == 0 || *startDirPtr != STARTDIR_DEFAULT {
+		if len(driverConfigBase.StartDir) == 0 || len(driverConfigBase.StartDir[0]) == 0 || *startDirPtr != STARTDIR_DEFAULT {
 			// Bad inputs... use default.
-			configBase.StartDir = append([]string{}, *startDirPtr)
+			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
 		}
-		*insecurePtr = configBase.Insecure
-		appRoleConfigPtr = &(configBase.AppRoleConfig)
-		if configBase.FileFilter != nil {
-			fileFilterPtr = &(configBase.FileFilter[0])
+		*insecurePtr = driverConfigBase.Insecure
+		appRoleConfigPtr = &(driverConfigBase.AppRoleConfig)
+		if driverConfigBase.FileFilter != nil {
+			fileFilterPtr = &(driverConfigBase.FileFilter[0])
 		}
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
-		configBase = &eUtils.DriverConfig{Insecure: true,
-			StartDir:      append([]string{}, *startDirPtr),
-			EndDir:        *endDirPtr,
-			Log:           logger,
-			ExitOnFailure: true}
+		driverConfigBase = &eUtils.DriverConfig{
+			CoreConfig: core.CoreConfig{Log: logger, ExitOnFailure: true},
+			Insecure:   true,
+			StartDir:   append([]string{}, *startDirPtr),
+			EndDir:     *endDirPtr,
+		}
 
 		appRoleConfigPtr = new(string)
-		eUtils.CheckError(configBase, err, true)
+		eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)
 	}
 
 	//Dont allow these combinations of flags
@@ -261,9 +263,9 @@ func CommonMain(envPtr *string,
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
-				c.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)
+				driverConfig.CoreConfig.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)
 				fmt.Println("Missing auth components.")
 				return errors.New("missing auth components")
 			}
@@ -307,7 +309,7 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	if !*diffPtr && (c == nil || !c.IsShell) {
+	if !*diffPtr && (driverConfig == nil || !driverConfig.CoreConfig.IsShell) {
 		if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 			var err error
 			*envPtr, err = eUtils.LoginToLocal()
@@ -357,7 +359,7 @@ func CommonMain(envPtr *string,
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					return errors.New("missing auth components")
@@ -382,9 +384,14 @@ func CommonMain(envPtr *string,
 				memprotectopts.MemProtect(nil, tokenPtr)
 			}
 
-			config := eUtils.DriverConfig{
-				IsShell:           isShell,
-				IsShellSubProcess: configBase.IsShellSubProcess,
+			driverConfig := eUtils.DriverConfig{
+				CoreConfig: core.CoreConfig{
+					IsShell:       isShell,
+					WantCerts:     *wantCertsPtr,
+					ExitOnFailure: driverConfigBase.CoreConfig.ExitOnFailure,
+					Log:           driverConfigBase.CoreConfig.Log,
+				},
+				IsShellSubProcess: driverConfigBase.IsShellSubProcess,
 				Insecure:          *insecurePtr,
 				Token:             *tokenPtr,
 				VaultAddress:      *addrPtr,
@@ -393,22 +400,19 @@ func CommonMain(envPtr *string,
 				Regions:           regions,
 				SecretMode:        *secretMode,
 				ServicesWanted:    services,
-				StartDir:          configBase.StartDir,
-				EndDir:            configBase.EndDir,
-				WantCerts:         *wantCertsPtr,
+				StartDir:          driverConfigBase.StartDir,
+				EndDir:            driverConfigBase.EndDir,
 				WantKeystore:      *keyStorePtr,
 				ZeroConfig:        *zcPtr,
 				GenAuth:           false,
-				OutputMemCache:    configBase.OutputMemCache,
-				MemFs:             configBase.MemFs,
-				Log:               configBase.Log,
-				ExitOnFailure:     configBase.ExitOnFailure,
+				OutputMemCache:    driverConfigBase.OutputMemCache,
+				MemFs:             driverConfigBase.MemFs,
 				Diff:              *diffPtr,
 				Update:            messenger,
 				FileFilter:        fileFilterSlice,
 			}
 
-			configSlice = append(configSlice, config)
+			configSlice = append(configSlice, driverConfig)
 			configCtx.ConfigWg.Add(1)
 			go func() {
 				defer configCtx.ConfigWg.Done()
@@ -435,9 +439,14 @@ func CommonMain(envPtr *string,
 		if len(envVersion) < 2 {
 			*envPtr = envVersion[0] + "_0"
 		}
-		config := eUtils.DriverConfig{
-			IsShell:           isShell,
-			IsShellSubProcess: configBase.IsShellSubProcess,
+		dConfig := eUtils.DriverConfig{
+			CoreConfig: core.CoreConfig{
+				IsShell:       isShell,
+				WantCerts:     *wantCertsPtr,
+				ExitOnFailure: driverConfigBase.CoreConfig.ExitOnFailure,
+				Log:           driverConfigBase.CoreConfig.Log,
+			},
+			IsShellSubProcess: driverConfig.IsShellSubProcess,
 			Insecure:          *insecurePtr,
 			Token:             *tokenPtr,
 			VaultAddress:      *addrPtr,
@@ -446,35 +455,32 @@ func CommonMain(envPtr *string,
 			Regions:           regions,
 			SecretMode:        *secretMode,
 			ServicesWanted:    services,
-			StartDir:          configBase.StartDir,
-			EndDir:            configBase.EndDir,
-			WantCerts:         *wantCertsPtr,
+			StartDir:          driverConfig.StartDir,
+			EndDir:            driverConfig.EndDir,
 			WantKeystore:      *keyStorePtr,
 			ZeroConfig:        *zcPtr,
 			GenAuth:           false,
-			OutputMemCache:    configBase.OutputMemCache,
-			MemFs:             configBase.MemFs,
-			ExitOnFailure:     configBase.ExitOnFailure,
-			Log:               configBase.Log,
+			OutputMemCache:    driverConfigBase.OutputMemCache,
+			MemFs:             driverConfigBase.MemFs,
 			Diff:              *diffPtr,
 			FileFilter:        fileFilterSlice,
 			VersionInfo:       eUtils.VersionHelper,
 		}
 
-		if len(configBase.DeploymentConfig) > 0 {
-			config.DeploymentConfig = configBase.DeploymentConfig
+		if len(driverConfig.DeploymentConfig) > 0 {
+			dConfig.DeploymentConfig = driverConfig.DeploymentConfig
 		}
 		configCtx.ConfigWg.Add(1)
-		go func(c *eUtils.DriverConfig) {
+		go func(dc *eUtils.DriverConfig) {
 			defer configCtx.ConfigWg.Done()
-			eUtils.ConfigControl(nil, configCtx, c, vcutils.GenerateConfigsFromVault)
-		}(&config)
+			eUtils.ConfigControl(nil, configCtx, dc, vcutils.GenerateConfigsFromVault)
+		}(&dConfig)
 	}
 	configCtx.ConfigWg.Wait() //Wait for templates
-	if c == nil {
+	if driverConfig == nil {
 		configCtx.ResultChannel <- &eUtils.ResultData{Done: true}
 		close(configCtx.ResultChannel)
-	} else if c.IsShell {
+	} else if driverConfig.CoreConfig.IsShell {
 		// Just shut down result channel since not really used in shell..
 		configCtx.ResultChannel <- &eUtils.ResultData{Done: true}
 		select {

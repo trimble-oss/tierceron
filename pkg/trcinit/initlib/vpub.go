@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
-func UploadTemplateDirectory(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
+func UploadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
 
 	dirs, err := os.ReadDir(dirName)
 	if err != nil {
@@ -25,7 +26,7 @@ func UploadTemplateDirectory(c *eUtils.DriverConfig, mod *helperkv.Modifier, dir
 			pathName := dirName + "/" + subDir.Name()
 
 			if templateFilter == nil || len(*templateFilter) == 0 || strings.HasPrefix(*templateFilter, subDir.Name()) {
-				warn, err := UploadTemplates(c, mod, pathName, templateFilter)
+				warn, err := UploadTemplates(config, mod, pathName, templateFilter)
 				if err != nil || len(warn) > 0 {
 					fmt.Printf("Upload templates couldn't be completed. %v", err)
 					return warn, err
@@ -36,7 +37,7 @@ func UploadTemplateDirectory(c *eUtils.DriverConfig, mod *helperkv.Modifier, dir
 	return nil, nil
 }
 
-func UploadTemplates(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
+func UploadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
 	// Open directory
 	files, err := os.ReadDir(dirName)
 	if err != nil {
@@ -53,7 +54,7 @@ func UploadTemplates(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName str
 		if file.IsDir() { // Recurse folders
 			templateSubDir := dirName + "/" + file.Name()
 			if templateFilter == nil || strings.Contains(templateSubDir, *templateFilter) {
-				warn, err := UploadTemplates(c, mod, dirName+"/"+file.Name(), templateFilter)
+				warn, err := UploadTemplates(config, mod, dirName+"/"+file.Name(), templateFilter)
 				if err != nil || len(warn) > 0 {
 					return warn, err
 				}
@@ -65,20 +66,20 @@ func UploadTemplates(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName str
 		name = name[0 : len(name)-len(ext)] // Truncate extension
 
 		if ext == ".tmpl" { // Only upload template files
-			if c != nil && c.IsShell {
-				c.Log.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
+			if config != nil && config.IsShell {
+				config.Log.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
 			} else {
 				fmt.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
-				if c != nil {
-					c.Log.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
+				if config != nil {
+					config.Log.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
 				}
 			}
 
 			// Seperate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
 			name = name[0 : len(name)-len(ext)]
-			c.Log.Printf("dirName: %s\n", dirName)
-			c.Log.Printf("file name: %s\n", file.Name())
+			config.Log.Printf("dirName: %s\n", dirName)
+			config.Log.Printf("file name: %s\n", file.Name())
 			// Extract values
 			extractedValues, err := eUtils.Parse(dirName+"/"+file.Name(), subDir, name)
 			if err != nil {
@@ -115,25 +116,25 @@ func UploadTemplates(c *eUtils.DriverConfig, mod *helperkv.Modifier, dirName str
 
 			// Construct template path for vault
 			templatePath := "templates/" + subDir + "/" + name + "/template-file"
-			c.Log.Printf("\tUploading template to path:\t%s\n", templatePath)
+			config.Log.Printf("\tUploading template to path:\t%s\n", templatePath)
 
 			// Construct value path for vault
 			valuePath := "values/" + subDir + "/" + name
-			c.Log.Printf("\tUploading values to path:\t%s\n", valuePath)
+			config.Log.Printf("\tUploading values to path:\t%s\n", valuePath)
 
 			// Write templates to vault and output errors/warnings
-			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext}, c.Log)
+			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext}, config.Log)
 			if err != nil || len(warn) > 0 {
 				return warn, err
 			}
 
 			// Write values to vault and output any errors/warnings
-			warn, err = mod.Write(valuePath, extractedValues, c.Log)
+			warn, err = mod.Write(valuePath, extractedValues, config.Log)
 			if err != nil || len(warn) > 0 {
 				return warn, err
 			}
 		} else {
-			c.Log.Printf("\tSkippping template (templates must end in .tmpl):\t%s\n", file.Name())
+			config.Log.Printf("\tSkippping template (templates must end in .tmpl):\t%s\n", file.Name())
 		}
 	}
 	return nil, nil

@@ -11,6 +11,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -85,10 +86,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		logger := log.New(f, "[INIT]", log.LstdFlags)
-		configBase = &eUtils.DriverConfig{Insecure: *insecurePtr,
-			EndDir:        *endDirPtr,
-			Log:           logger,
-			ExitOnFailure: exitOnFailure}
+		configBase = &eUtils.DriverConfig{
+			CoreConfig: core.CoreConfig{
+				Log:           logger,
+				ExitOnFailure: exitOnFailure,
+			},
+			Insecure: *insecurePtr,
+			EndDir:   *endDirPtr,
+		}
 		appRoleConfigPtr = new(string)
 	}
 
@@ -96,7 +101,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(configBase, err, false)
+		eUtils.CheckError(&configBase.CoreConfig, err, false)
 		return err
 	}
 
@@ -112,13 +117,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtect(nil, tokenPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
 	if err != nil {
 		fmt.Println("Failure to init to vault")
-		configBase.Log.Println("Failure to init to vault")
+		configBase.CoreConfig.Log.Println("Failure to init to vault")
 		return err
 	}
 	mod.Env = *envPtr
@@ -126,12 +131,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	if *templatePathsPtr != "" {
 		fmt.Printf("Downloading templates from vault to %s\n", configBase.EndDir)
 		// The actual download templates goes here.
-		il.DownloadTemplates(configBase, mod, configBase.EndDir, configBase.Log, templatePathsPtr)
+		il.DownloadTemplates(&configBase.CoreConfig, mod, configBase.EndDir, configBase.CoreConfig.Log, templatePathsPtr)
 	} else if *projectInfoPtr {
-		templateList, err := mod.List("templates/", configBase.Log)
+		templateList, err := mod.List("templates/", configBase.CoreConfig.Log)
 		if err != nil {
 			fmt.Println("Failure read templates")
-			configBase.Log.Println("Failure read templates")
+			configBase.CoreConfig.Log.Println("Failure read templates")
 			return err
 		}
 		fmt.Printf("\nProjects available:\n")
@@ -145,16 +150,16 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	} else {
 		fmt.Printf("Downloading templates from vault to %s\n", configBase.EndDir)
 		// The actual download templates goes here.
-		warn, err := il.DownloadTemplateDirectory(configBase, mod, configBase.EndDir, configBase.Log, filterTemplatePtr)
+		warn, err := il.DownloadTemplateDirectory(&configBase.CoreConfig, mod, configBase.EndDir, configBase.CoreConfig.Log, filterTemplatePtr)
 		if err != nil {
 			fmt.Println(err)
-			configBase.Log.Printf("Failure to download: %s", err.Error())
+			configBase.CoreConfig.Log.Printf("Failure to download: %s", err.Error())
 			if strings.Contains(err.Error(), "x509: certificate") {
 				return err
 			}
 		}
-		eUtils.CheckError(configBase, err, false)
-		eUtils.CheckWarnings(configBase, warn, false)
+		eUtils.CheckError(&configBase.CoreConfig, err, false)
+		eUtils.CheckWarnings(&configBase.CoreConfig, warn, false)
 	}
 	return nil
 }

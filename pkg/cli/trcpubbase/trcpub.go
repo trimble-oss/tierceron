@@ -10,6 +10,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -30,7 +31,7 @@ func CommonMain(envPtr *string,
 	tokenNamePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	c *eUtils.DriverConfig) {
+	driverConfig *eUtils.DriverConfig) {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
@@ -54,17 +55,17 @@ func CommonMain(envPtr *string,
 	appRolePtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 
-	if c == nil || !c.IsShellSubProcess {
+	if driverConfig == nil || !driverConfig.IsShellSubProcess {
 		flagset.Parse(argLines[1:])
 	} else {
 		flagset.Parse(nil)
 	}
 
-	var configBase *eUtils.DriverConfig
-	if c != nil {
-		configBase = c
-		*insecurePtr = configBase.Insecure
-		*appRolePtr = configBase.AppRoleConfig
+	var driverConfigBase *eUtils.DriverConfig
+	if driverConfig != nil {
+		driverConfigBase = driverConfig
+		*insecurePtr = driverConfigBase.Insecure
+		*appRolePtr = driverConfigBase.AppRoleConfig
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log" {
@@ -72,42 +73,49 @@ func CommonMain(envPtr *string,
 		}
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "[INIT]", log.LstdFlags)
-		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
-		eUtils.CheckError(configBase, err, true)
+		driverConfigBase = &eUtils.DriverConfig{
+			CoreConfig: core.CoreConfig{
+				Log:           logger,
+				ExitOnFailure: true,
+			},
+			Insecure: true,
+		}
+
+		eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)
 	}
 
-	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRolePtr, *pingPtr)
-	eUtils.CheckError(configBase, autoErr, true)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRolePtr, *pingPtr)
+	eUtils.CheckError(&driverConfigBase.CoreConfig, autoErr, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(configBase, err, true)
+		eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)
 	}
 
-	if c != nil && c.IsShell {
-		c.Log.Printf("Connecting to vault @ %s\n", *addrPtr)
-		c.Log.Printf("Uploading templates in %s to vault\n", *dirPtr)
+	if driverConfig != nil && driverConfig.CoreConfig.IsShell {
+		driverConfig.CoreConfig.Log.Printf("Connecting to vault @ %s\n", *addrPtr)
+		driverConfig.CoreConfig.Log.Printf("Uploading templates in %s to vault\n", *dirPtr)
 	} else {
 		fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 		fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
-	eUtils.CheckError(configBase, err, true)
+	eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)
 	mod.Env = *envPtr
 
-	warn, err := il.UploadTemplateDirectory(configBase, mod, *dirPtr, filterTemplatePtr)
+	warn, err := il.UploadTemplateDirectory(&driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)
 		}
 	}
 
-	eUtils.CheckError(configBase, err, true)
-	eUtils.CheckWarnings(configBase, warn, true)
+	eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)
+	eUtils.CheckWarnings(&driverConfigBase.CoreConfig, warn, true)
 }

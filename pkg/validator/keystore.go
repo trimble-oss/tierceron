@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
@@ -114,7 +115,7 @@ func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, c
 }
 
 // ValidateKeyStore validates the sendgrid API key.
-func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string) (bool, error) {
+func ValidateKeyStore(config *core.CoreConfig, filename string, pass string) (bool, error) {
 	file, err := os.ReadFile(filename)
 	if err != nil {
 		return false, err

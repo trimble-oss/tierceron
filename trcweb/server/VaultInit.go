@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -24,7 +25,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
 
 	fmt.Println("Initing vault")
-	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, logger)
 	if err != nil {
@@ -76,7 +77,13 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 				Tokens:  nil,
 			}, err
 		}
-		il.SeedVaultFromData(&eUtils.DriverConfig{Insecure: false, VaultAddress: s.VaultAddr, Token: s.VaultToken, Env: seed.Env, Log: logger, ExitOnFailure: true, ServicesWanted: []string{""}, WantCerts: true}, "", fBytes)
+		il.SeedVaultFromData(&eUtils.DriverConfig{
+			CoreConfig: core.CoreConfig{
+				WantCerts:     true,
+				ExitOnFailure: true,
+				Log:           logger,
+			},
+			Insecure: false, VaultAddress: s.VaultAddr, Token: s.VaultToken, Env: seed.Env, ServicesWanted: []string{""}}, "", fBytes)
 	}
 
 	il.UploadPolicies(config, policyPath, v, false)
@@ -177,7 +184,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 		Success:   false,
 		AuthToken: "",
 	}
-	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
 	if err != nil {
@@ -209,7 +216,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 	if v != nil {
 		defer v.Close()
 	}
-	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
@@ -230,7 +237,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 // Unseal passes the unseal key to the vault and tries to unseal the vault
 func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp, error) {
 	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
-	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err

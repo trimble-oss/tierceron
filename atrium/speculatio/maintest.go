@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -19,7 +20,7 @@ func main() {
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcgorillaz]", log.LstdFlags)
-	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
+	eUtils.CheckError(&core.CoreConfig{Log: logger, ExitOnFailure: true}, err, true)
 
 	//pluginConfig := buildopts.BuildOptions.GetTestConfig(*tokenPtr, false)
 
