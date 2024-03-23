@@ -16,7 +16,7 @@ import (
 
 type ProcessContext interface{}
 
-type ConfigDriver func(ctx ProcessContext, configCtx *ConfigContext, config *DriverConfig) (interface{}, error)
+type ConfigDriver func(ctx ProcessContext, configCtx *ConfigContext, driverConfig *DriverConfig) (interface{}, error)
 
 type ResultData struct {
 	Done   bool
@@ -115,26 +115,26 @@ type DriverConfig struct {
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
-func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, config *DriverConfig, drive ConfigDriver) {
+func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, driverConfig *DriverConfig, drive ConfigDriver) {
 	multiProject := false
 
-	config.EndDir = strings.Replace(config.EndDir, "\\", "/", -1)
-	if config.EndDir != "." && (strings.LastIndex(config.EndDir, "/") < (len(config.EndDir) - 1)) {
-		config.EndDir = config.EndDir + "/"
+	driverConfig.EndDir = strings.Replace(driverConfig.EndDir, "\\", "/", -1)
+	if driverConfig.EndDir != "." && (strings.LastIndex(driverConfig.EndDir, "/") < (len(driverConfig.EndDir) - 1)) {
+		driverConfig.EndDir = driverConfig.EndDir + "/"
 	}
 
 	startDirs := []string{}
 
 	// Satisfy needs of templating tool with path cleanup.
-	if config.StartDir[0] == coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates" {
+	if driverConfig.StartDir[0] == coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates" {
 		// Set up for single service configuration when available.
 		// This is the most common use of the tool.
 		pwd, err := os.Getwd()
 		if err == nil {
-			config.StartDir[0] = pwd + string(os.PathSeparator) + config.StartDir[0]
+			driverConfig.StartDir[0] = pwd + string(os.PathSeparator) + driverConfig.StartDir[0]
 		}
 
-		projectFilesComplete, err := os.ReadDir(config.StartDir[0])
+		projectFilesComplete, err := os.ReadDir(driverConfig.StartDir[0])
 		projectFiles := []os.DirEntry{}
 		for _, projectFile := range projectFilesComplete {
 			if !strings.HasSuffix(projectFile.Name(), ".DS_Store") {
@@ -144,9 +144,9 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, config *DriverC
 
 		if len(projectFiles) == 2 && (projectFiles[0].Name() == "Common" || projectFiles[1].Name() == "Common") {
 			for _, projectFile := range projectFiles {
-				projectStartDir := config.StartDir[0]
+				projectStartDir := driverConfig.StartDir[0]
 
-				if projectFile.Name() != "Common" && config.CoreConfig.WantCerts && config.WantKeystore == "" {
+				if projectFile.Name() != "Common" && driverConfig.CoreConfig.WantCerts && driverConfig.WantKeystore == "" {
 					// Ignore non-common if wantCerts
 					continue
 				}
@@ -158,7 +158,7 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, config *DriverC
 					serviceFiles, err := os.ReadDir(projectStartDir)
 					if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 						projectStartDir = projectStartDir + string(os.PathSeparator) + serviceFiles[0].Name()
-						config.VersionFilter = append(config.VersionFilter, serviceFiles[0].Name())
+						driverConfig.VersionFilter = append(driverConfig.VersionFilter, serviceFiles[0].Name())
 					}
 					if strings.LastIndex(projectStartDir, string(os.PathSeparator)) < (len(projectStartDir) - 1) {
 						projectStartDir = projectStartDir + string(os.PathSeparator)
@@ -168,42 +168,42 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, config *DriverC
 				startDirs = append(startDirs, projectStartDir)
 			}
 
-			config.StartDir = startDirs
+			driverConfig.StartDir = startDirs
 			// Drive this set of configurations.
-			drive(ctx, configCtx, config)
+			drive(ctx, configCtx, driverConfig)
 
 			return
 		}
 
 		if err == nil && len(projectFiles) == 1 && projectFiles[0].IsDir() {
-			config.StartDir[0] = config.StartDir[0] + string(os.PathSeparator) + projectFiles[0].Name()
+			driverConfig.StartDir[0] = driverConfig.StartDir[0] + string(os.PathSeparator) + projectFiles[0].Name()
 		} else if len(projectFiles) > 1 {
 			multiProject = true
 		}
-		serviceFiles, err := os.ReadDir(config.StartDir[0])
+		serviceFiles, err := os.ReadDir(driverConfig.StartDir[0])
 
 		if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
-			config.StartDir[0] = config.StartDir[0] + string(os.PathSeparator) + serviceFiles[0].Name()
-			config.VersionFilter = append(config.VersionFilter, serviceFiles[0].Name())
+			driverConfig.StartDir[0] = driverConfig.StartDir[0] + string(os.PathSeparator) + serviceFiles[0].Name()
+			driverConfig.VersionFilter = append(driverConfig.VersionFilter, serviceFiles[0].Name())
 		} else if len(projectFiles) > 1 {
 			multiProject = true
 		}
 
-		if len(config.VersionFilter) == 0 {
+		if len(driverConfig.VersionFilter) == 0 {
 			for _, projectFile := range projectFilesComplete {
-				for _, projectSection := range config.ProjectSections {
+				for _, projectSection := range driverConfig.ProjectSections {
 					if !strings.HasSuffix(projectFile.Name(), ".DS_Store") && projectFile.Name() == projectSection {
-						config.VersionFilter = append(config.VersionFilter, projectFile.Name())
+						driverConfig.VersionFilter = append(driverConfig.VersionFilter, projectFile.Name())
 					}
 				}
 			}
 		}
 	}
 
-	if !multiProject && strings.LastIndex(config.StartDir[0], "/") < (len(config.StartDir[0])-1) {
-		config.StartDir[0] = config.StartDir[0] + "/"
+	if !multiProject && strings.LastIndex(driverConfig.StartDir[0], "/") < (len(driverConfig.StartDir[0])-1) {
+		driverConfig.StartDir[0] = driverConfig.StartDir[0] + "/"
 	}
 
 	// Drive this set of configurations.
-	drive(ctx, configCtx, config)
+	drive(ctx, configCtx, driverConfig)
 }

@@ -88,12 +88,12 @@ func GetProjectVersionInfo(driverConfig *DriverConfig, mod *helperkv.Modifier) m
 	return versionMetadataMap
 }
 
-func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
+func GetProjectVersions(driverConfig *DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
 	var versionNumbers []int
 	for valuePath, data := range versionMetadataMap {
-		if len(config.ServiceFilter) > 0 {
+		if len(driverConfig.ServiceFilter) > 0 {
 			found := false
-			for _, index := range config.ServiceFilter {
+			for _, index := range driverConfig.ServiceFilter {
 				if strings.Contains(valuePath, index) {
 					found = true
 				}
@@ -103,7 +103,7 @@ func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[
 			}
 		}
 		projectFound := false
-		for _, project := range config.VersionFilter {
+		for _, project := range driverConfig.VersionFilter {
 			if strings.Contains(valuePath, project) {
 				projectFound = true
 				for key := range data {

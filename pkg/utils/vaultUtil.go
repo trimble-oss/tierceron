@@ -15,32 +15,32 @@ import (
 )
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
-	LogInfo(&config.CoreConfig, "InitVaultMod begins..")
-	if config == nil {
-		LogInfo(&config.CoreConfig, "InitVaultMod failure.  config provided is nil")
-		return config, nil, nil, errors.New("invalid nil config")
+func InitVaultMod(driverConfig *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+	LogInfo(&driverConfig.CoreConfig, "InitVaultMod begins..")
+	if driverConfig == nil {
+		LogInfo(&driverConfig.CoreConfig, "InitVaultMod failure.  driverConfig provided is nil")
+		return driverConfig, nil, nil, errors.New("invalid nil driverConfig")
 	}
 
-	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, false, config.CoreConfig.Log)
+	vault, err := sys.NewVault(driverConfig.Insecure, driverConfig.VaultAddress, driverConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
 	if err != nil {
-		LogInfo(&config.CoreConfig, "Failure to connect to vault..")
-		LogErrorObject(&config.CoreConfig, err, false)
-		return config, nil, nil, err
+		LogInfo(&driverConfig.CoreConfig, "Failure to connect to vault..")
+		LogErrorObject(&driverConfig.CoreConfig, err, false)
+		return driverConfig, nil, nil, err
 	}
-	vault.SetToken(config.Token)
-	LogInfo(&config.CoreConfig, "InitVaultMod - Initializing Modifier")
-	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, false, config.CoreConfig.Log)
+	vault.SetToken(driverConfig.Token)
+	LogInfo(&driverConfig.CoreConfig, "InitVaultMod - Initializing Modifier")
+	mod, err := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, driverConfig.Regions, false, driverConfig.CoreConfig.Log)
 	if err != nil {
-		LogErrorObject(&config.CoreConfig, err, false)
-		return config, nil, nil, err
+		LogErrorObject(&driverConfig.CoreConfig, err, false)
+		return driverConfig, nil, nil, err
 	}
-	mod.Env = config.Env
+	mod.Env = driverConfig.Env
 	mod.Version = "0"
-	mod.VersionFilter = config.VersionFilter
-	LogInfo(&config.CoreConfig, "InitVaultMod complete..")
+	mod.VersionFilter = driverConfig.VersionFilter
+	LogInfo(&driverConfig.CoreConfig, "InitVaultMod complete..")
 
-	return config, mod, vault, nil
+	return driverConfig, mod, vault, nil
 }
 
 func GetAcceptedTemplatePaths(driverConfig *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
