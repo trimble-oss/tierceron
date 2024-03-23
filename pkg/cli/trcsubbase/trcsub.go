@@ -28,7 +28,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	appRoleIDPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	c *eUtils.DriverConfig) error {
+	driverConfig *eUtils.DriverConfig) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
@@ -66,13 +66,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	var driverConfigBase *eUtils.DriverConfig
 	var appRoleConfigPtr *string
 
-	if c != nil {
-		driverConfigBase = c
+	if driverConfig != nil {
+		driverConfigBase = driverConfig
 		if len(driverConfigBase.EndDir) == 0 && len(*endDirPtr) != 0 {
 			// Bad inputs... use default.
 			driverConfigBase.EndDir = *endDirPtr
 		}
-		appRoleConfigPtr = &c.AppRoleConfig
+		appRoleConfigPtr = &driverConfig.AppRoleConfig
 
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
