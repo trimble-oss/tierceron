@@ -346,7 +346,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(tp string, multiService bool, c *eUtils.DriverConfig, cPaths []string) {
+		go func(tp string, multiService bool, dc *eUtils.DriverConfig, cPaths []string) {
 			var project, service, env, version, innerProject string
 			var errSeed error
 			project = ""
@@ -372,10 +372,10 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 			project, service, tp = vcutils.GetProjectService(driverConfig, tp)
 			useCache := true
 
-			if c.Token != "" && c.Token != "novault" {
+			if dc.Token != "" && dc.Token != "novault" {
 				var err error
-				goMod, err = helperkv.NewModifier(c.Insecure, c.Token, c.VaultAddress, env, c.Regions, useCache, driverConfig.CoreConfig.Log)
-				goMod.Env = c.Env
+				goMod, err = helperkv.NewModifier(dc.Insecure, dc.Token, dc.VaultAddress, env, dc.Regions, useCache, driverConfig.CoreConfig.Log)
+				goMod.Env = dc.Env
 				if err != nil {
 					if useCache && goMod != nil {
 						goMod.Release()
@@ -425,12 +425,12 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 						}
 					}
 				}
-				if c.Token != "novault" {
-					if c.CoreConfig.WantCerts {
+				if dc.Token != "novault" {
+					if dc.CoreConfig.WantCerts {
 						var formattedTPath string
 						tempList := make([]string, 0)
 						// TODO: Chebacca Monday!
-						tPath := strings.Split(tp, coreopts.BuildOptions.GetFolderPrefix(c.StartDir)+"_")[1]
+						tPath := strings.Split(tp, coreopts.BuildOptions.GetFolderPrefix(dc.StartDir)+"_")[1]
 						tPathSplit := strings.Split(tPath, ".")
 						if len(tPathSplit) > 2 {
 							formattedTPath = tPathSplit[0] + "." + tPathSplit[1]
@@ -447,7 +447,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 						}
 						cPaths = tempList
 					}
-					cds.Init(&c.CoreConfig, goMod, c.SecretMode, true, project, cPaths, service)
+					cds.Init(&dc.CoreConfig, goMod, dc.SecretMode, true, project, cPaths, service)
 				}
 				if len(goMod.VersionFilter) >= 1 && strings.Contains(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!") {
 					// TODO: should this be before cds.Init???
@@ -461,7 +461,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 
 			}
 
-			_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(c, goMod,
+			_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(dc, goMod,
 				cds,
 				tp,
 				project,
@@ -480,7 +480,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 				goMod.Release()
 			}
 			if errSeed != nil {
-				eUtils.LogAndSafeExit(&c.CoreConfig, errSeed.Error(), -1)
+				eUtils.LogAndSafeExit(&dc.CoreConfig, errSeed.Error(), -1)
 				wg.Done()
 				return
 			}

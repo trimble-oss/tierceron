@@ -63,14 +63,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")
 		return errors.New("must specify either -projectInfo or -templateFilter flag")
 	}
-	var configBase *eUtils.DriverConfig
+	var driverConfigBase *eUtils.DriverConfig
 	var appRoleConfigPtr *string
 
 	if c != nil {
-		configBase = c
-		if len(configBase.EndDir) == 0 && len(*endDirPtr) != 0 {
+		driverConfigBase = c
+		if len(driverConfigBase.EndDir) == 0 && len(*endDirPtr) != 0 {
 			// Bad inputs... use default.
-			configBase.EndDir = *endDirPtr
+			driverConfigBase.EndDir = *endDirPtr
 		}
 		appRoleConfigPtr = &c.AppRoleConfig
 
@@ -86,7 +86,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		logger := log.New(f, "[INIT]", log.LstdFlags)
-		configBase = &eUtils.DriverConfig{
+		driverConfigBase = &eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: exitOnFailure,
 				Log:           logger,
@@ -101,13 +101,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(&configBase.CoreConfig, err, false)
+		eUtils.CheckError(&driverConfigBase.CoreConfig, err, false)
 		return err
 	}
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 
-	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return autoErr
@@ -117,26 +117,26 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtect(nil, tokenPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
 	if err != nil {
 		fmt.Println("Failure to init to vault")
-		configBase.CoreConfig.Log.Println("Failure to init to vault")
+		driverConfigBase.CoreConfig.Log.Println("Failure to init to vault")
 		return err
 	}
 	mod.Env = *envPtr
 
 	if *templatePathsPtr != "" {
-		fmt.Printf("Downloading templates from vault to %s\n", configBase.EndDir)
+		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
-		il.DownloadTemplates(&configBase.CoreConfig, mod, configBase.EndDir, configBase.CoreConfig.Log, templatePathsPtr)
+		il.DownloadTemplates(&driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, templatePathsPtr)
 	} else if *projectInfoPtr {
-		templateList, err := mod.List("templates/", configBase.CoreConfig.Log)
+		templateList, err := mod.List("templates/", driverConfigBase.CoreConfig.Log)
 		if err != nil {
 			fmt.Println("Failure read templates")
-			configBase.CoreConfig.Log.Println("Failure read templates")
+			driverConfigBase.CoreConfig.Log.Println("Failure read templates")
 			return err
 		}
 		fmt.Printf("\nProjects available:\n")
@@ -148,18 +148,18 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 		return nil
 	} else {
-		fmt.Printf("Downloading templates from vault to %s\n", configBase.EndDir)
+		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
-		warn, err := il.DownloadTemplateDirectory(&configBase.CoreConfig, mod, configBase.EndDir, configBase.CoreConfig.Log, filterTemplatePtr)
+		warn, err := il.DownloadTemplateDirectory(&driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, filterTemplatePtr)
 		if err != nil {
 			fmt.Println(err)
-			configBase.CoreConfig.Log.Printf("Failure to download: %s", err.Error())
+			driverConfigBase.CoreConfig.Log.Printf("Failure to download: %s", err.Error())
 			if strings.Contains(err.Error(), "x509: certificate") {
 				return err
 			}
 		}
-		eUtils.CheckError(&configBase.CoreConfig, err, false)
-		eUtils.CheckWarnings(&configBase.CoreConfig, warn, false)
+		eUtils.CheckError(&driverConfigBase.CoreConfig, err, false)
+		eUtils.CheckWarnings(&driverConfigBase.CoreConfig, warn, false)
 	}
 	return nil
 }
