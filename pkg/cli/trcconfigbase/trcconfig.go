@@ -467,8 +467,8 @@ func CommonMain(envPtr *string,
 			VersionInfo:       eUtils.VersionHelper,
 		}
 
-		if len(driverConfig.DeploymentConfig) > 0 {
-			dConfig.DeploymentConfig = driverConfig.DeploymentConfig
+		if len(driverConfigBase.DeploymentConfig) > 0 {
+			dConfig.DeploymentConfig = driverConfigBase.DeploymentConfig
 		}
 		configCtx.ConfigWg.Add(1)
 		go func(dc *eUtils.DriverConfig) {
