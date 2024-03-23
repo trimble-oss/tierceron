@@ -57,7 +57,7 @@ func CreateEngine(driverConfig *eUtils.DriverConfig,
 			// Load all vault table data into tierceron sql engine.
 			for _, envEnterprise := range envEnterprises {
 				wgEnterprise.Add(1)
-				go func(config *eUtils.DriverConfig, enterpriseEnv string) {
+				go func(driverConfig *eUtils.DriverConfig, enterpriseEnv string) {
 					defer wgEnterprise.Done()
 					if !strings.Contains(enterpriseEnv, ".") {
 						return

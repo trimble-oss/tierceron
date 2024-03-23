@@ -157,7 +157,7 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 }
 
 // Return url to the image to be used for download.
-func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	svc, err := azidentity.NewClientSecretCredential(
 		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureClientId"].(string),
@@ -167,7 +167,7 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 		return err
 	}
 
-	imageErr := getImageSHA(config, svc, pluginToolConfig)
+	imageErr := getImageSHA(driverConfig, svc, pluginToolConfig)
 	if imageErr != nil {
 		return imageErr
 	}

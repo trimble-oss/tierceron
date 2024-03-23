@@ -677,7 +677,7 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	PipeOS billy.File,
 	env string,
 	region string,
-	config *eUtils.DriverConfig,
+	driverConfig *eUtils.DriverConfig,
 	control string,
 	isAgentToken bool,
 	token string,
@@ -685,7 +685,7 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	deployArgLines []string,
 	configCount *int) error {
 
-	err := roleBasedRunner(env, region, config, control, isAgentToken, token, argsOrig, deployArgLines, configCount)
+	err := roleBasedRunner(env, region, driverConfig, control, isAgentToken, token, argsOrig, deployArgLines, configCount)
 	return err
 }
 

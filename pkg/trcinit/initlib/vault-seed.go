@@ -40,9 +40,9 @@ type writeCollection struct {
 
 var templateWritten map[string]bool
 
-func GetTemplateParam(config *eUtils.DriverConfig, mod *helperkv.Modifier, filePath string, paramWanted string) (string, error) {
+func GetTemplateParam(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, filePath string, paramWanted string) (string, error) {
 
-	templateEncoded, err := vcutils.GetTemplate(config, mod, filePath)
+	templateEncoded, err := vcutils.GetTemplate(driverConfig, mod, filePath)
 	if err != nil {
 		return "", err
 	}

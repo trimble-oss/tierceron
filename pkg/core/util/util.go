@@ -132,7 +132,7 @@ func GetJSONFromClientByPost(config *core.CoreConfig, httpClient *http.Client, h
 	return nil, response.StatusCode, fmt.Errorf("http status failure: %d", response.StatusCode)
 }
 
-func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
+func LoadBaseTemplate(driverConfig *eUtils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
 	templateResult.ValueSection["values"] = map[string]map[string]string{}
 
@@ -144,11 +144,11 @@ func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.Templ
 	if goMod != nil {
 		cds = new(vcutils.ConfigDataStore)
 		goMod.Version = goMod.Version + "***X-Mode"
-		cds.Init(&config.CoreConfig, goMod, true, true, project, commonPaths, service) //CommonPaths = "" - empty - not needed for tenant config
+		cds.Init(&driverConfig.CoreConfig, goMod, true, true, project, commonPaths, service) //CommonPaths = "" - empty - not needed for tenant config
 	}
 
 	var errSeed error
-	_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(config, goMod,
+	_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(driverConfig, goMod,
 		cds,
 		templatePath,
 		project,
@@ -162,7 +162,7 @@ func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.Templ
 	return errSeed
 }
 
-func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
+func SeedVaultById(driverConfig *eUtils.DriverConfig, goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -221,9 +221,9 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	sliceValueSection = append(sliceValueSection, templateResult.ValueSection)
 	sliceSecretSection = append(sliceSecretSection, templateResult.SecretSection)
 
-	xutil.CombineSection(&config.CoreConfig, sliceTemplateSection, maxDepth, templateCombinedSection)
-	xutil.CombineSection(&config.CoreConfig, sliceValueSection, -1, valueCombinedSection)
-	xutil.CombineSection(&config.CoreConfig, sliceSecretSection, -1, secretCombinedSection)
+	xutil.CombineSection(&driverConfig.CoreConfig, sliceTemplateSection, maxDepth, templateCombinedSection)
+	xutil.CombineSection(&driverConfig.CoreConfig, sliceValueSection, -1, valueCombinedSection)
+	xutil.CombineSection(&driverConfig.CoreConfig, sliceSecretSection, -1, secretCombinedSection)
 
 	template, errT := yaml.Marshal(templateCombinedSection)
 	value, errV := yaml.Marshal(valueCombinedSection)
@@ -247,13 +247,13 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	//VaultX Section Ends
 	//VaultInit Section Begins
 	if strings.Contains(indexPath, "/PublicIndex/") {
-		config.ServicesWanted = []string{""}
-		config.CoreConfig.WantCerts = false
-		il.SeedVaultFromData(config, indexPath, []byte(seedData))
+		driverConfig.ServicesWanted = []string{""}
+		driverConfig.CoreConfig.WantCerts = false
+		il.SeedVaultFromData(driverConfig, indexPath, []byte(seedData))
 	} else {
-		config.ServicesWanted = []string{service}
-		config.CoreConfig.WantCerts = false
-		il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData))
+		driverConfig.ServicesWanted = []string{service}
+		driverConfig.CoreConfig.WantCerts = false
+		il.SeedVaultFromData(driverConfig, "Index/"+project+indexPath, []byte(seedData))
 	}
 	return nil
 }

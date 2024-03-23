@@ -125,7 +125,7 @@ func ToSeed(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier,
 //
 // Output:
 //   - String(s) containing the structure of the template section
-func GetInitialTemplateStructure(config *eUtils.DriverConfig, templatePathSlice []string) ([]string, int, int) {
+func GetInitialTemplateStructure(driverConfig *eUtils.DriverConfig, templatePathSlice []string) ([]string, int, int) {
 
 	var templateDir int
 	var templateDepth int
@@ -138,7 +138,7 @@ func GetInitialTemplateStructure(config *eUtils.DriverConfig, templatePathSlice 
 
 	// Find the index in the slice of the vault_template subdirectory
 	for i, folder := range templatePathSlice {
-		if folder == coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates" {
+		if folder == coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates" {
 			templateDir = i
 			templatePathSlice[i] = "templates"
 		}

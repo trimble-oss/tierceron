@@ -19,7 +19,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
-func getImageSHA(config *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
+func getImageSHA(driverConfig *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
 	imageInput := &ecr.BatchGetImageInput{
 		ImageIds: []*ecr.ImageIdentifier{
 			{
@@ -70,13 +70,13 @@ func getImageSHA(config *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map
 }
 
 // Return url to the image to be used for download.
-func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) (string, error) {
+func GetImageDownloadUrl(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) (string, error) {
 	svc := ecr.New(session.New(&aws.Config{
 		Region:      aws.String("us-west-2"),
 		Credentials: credentials.NewStaticCredentials(pluginToolConfig["awspassword"].(string), pluginToolConfig["awsaccesskey"].(string), ""),
 	}))
 
-	err := getImageSHA(config, svc, pluginToolConfig)
+	err := getImageSHA(driverConfig, svc, pluginToolConfig)
 	if err != nil {
 		return "", err
 	}
@@ -111,8 +111,8 @@ func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[strin
 	return *downloadOutput.DownloadUrl, nil
 }
 
-func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
-	downloadUrl, downloadURlError := GetImageDownloadUrl(config, pluginToolConfig)
+func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+	downloadUrl, downloadURlError := GetImageDownloadUrl(driverConfig, pluginToolConfig)
 	if downloadURlError != nil {
 		return errors.New("Failed to get download url.")
 	}

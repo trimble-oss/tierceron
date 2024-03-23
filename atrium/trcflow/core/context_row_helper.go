@@ -36,7 +36,7 @@ func removeDuplicateValues(slice []string) []string {
 	return list
 }
 
-func TransformConfig(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig, tableLock *sync.Mutex) error {
+func TransformConfig(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, driverConfig *eUtils.DriverConfig, tableLock *sync.Mutex) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath, config.Log)
 	if err != nil {
@@ -114,7 +114,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEn
 	return nil
 }
 
-func templateToTableRowHelper(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, templatePath string, config *eUtils.DriverConfig) error {
+func templateToTableRowHelper(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, templatePath string, driverConfig *eUtils.DriverConfig) error {
 	cds := new(vcutils.ConfigDataStore)
 	var templateResult extract.TemplateResultData
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
@@ -150,7 +150,7 @@ func templateToTableRowHelper(goMod *helperkv.Modifier, te *engine.TierceronEngi
 	return nil
 }
 
-func writeToTable(te *engine.TierceronEngine, config *eUtils.DriverConfig, envEnterprise string, version string, project string, projectAlias string, service string, templateResult *extract.TemplateResultData) {
+func writeToTable(te *engine.TierceronEngine, driverConfig *eUtils.DriverConfig, envEnterprise string, version string, project string, projectAlias string, service string, templateResult *extract.TemplateResultData) {
 
 	//
 	// What we need is in ValueSection and SecretSection...
