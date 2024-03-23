@@ -82,7 +82,7 @@ func GetDeployers(driverConfig *eUtils.DriverConfig) ([]string, error) {
 	mergedEnvRaw := driverConfig.EnvRaw
 	tokenName := "config_token_" + driverConfig.Env
 	readToken := ""
-	autoErr := eUtils.AutoAuth(driverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &driverConfig.Env, &driverConfig.VaultAddress, &mergedEnvRaw, "driverConfig.yml", false)
+	autoErr := eUtils.AutoAuth(driverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &driverConfig.Env, &driverConfig.VaultAddress, &mergedEnvRaw, "config.yml", false)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return nil, autoErr
