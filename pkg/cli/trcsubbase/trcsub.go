@@ -88,8 +88,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		logger := log.New(f, "[INIT]", log.LstdFlags)
 		configBase = &eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
-				Log:           logger,
 				ExitOnFailure: exitOnFailure,
+				Log:           logger,
 			},
 			Insecure: *insecurePtr,
 			EndDir:   *endDirPtr,

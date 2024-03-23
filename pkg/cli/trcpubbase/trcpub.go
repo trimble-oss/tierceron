@@ -75,8 +75,8 @@ func CommonMain(envPtr *string,
 		logger := log.New(f, "[INIT]", log.LstdFlags)
 		driverConfigBase = &eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
-				Log:           logger,
 				ExitOnFailure: true,
+				Log:           logger,
 			},
 			Insecure: true,
 		}

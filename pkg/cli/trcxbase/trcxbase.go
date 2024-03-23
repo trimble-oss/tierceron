@@ -365,8 +365,8 @@ skipDiff:
 		}
 		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
-				Log:           logger,
 				ExitOnFailure: true,
+				Log:           logger,
 			},
 			Insecure: *insecurePtr,
 		}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
@@ -427,8 +427,8 @@ skipDiff:
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
-							Log:           logger,
 							ExitOnFailure: true,
+							Log:           logger,
 						},
 						Insecure: *insecurePtr,
 					}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, envCtxPtr, "", *pingPtr)
@@ -447,8 +447,8 @@ skipDiff:
 					if !*noVaultPtr && *tokenPtr == "" {
 						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 							CoreConfig: core.CoreConfig{
-								Log:           logger,
 								ExitOnFailure: true,
+								Log:           logger,
 							},
 							Insecure: *insecurePtr,
 						}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
@@ -456,8 +456,8 @@ skipDiff:
 							// Retry once.
 							authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 								CoreConfig: core.CoreConfig{
-									Log:           logger,
 									ExitOnFailure: true,
+									Log:           logger,
 								},
 								Insecure: *insecurePtr,
 							}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
@@ -477,9 +477,9 @@ skipDiff:
 					config := eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
 							WantCerts:         *wantCertsPtr,
-							Log:               logger,
 							DynamicPathFilter: pGen,
 							ExitOnFailure:     true,
+							Log:               logger,
 						},
 						Context:       ctx,
 						Insecure:      *insecurePtr,
@@ -586,8 +586,8 @@ skipDiff:
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
-							Log:           logger,
 							ExitOnFailure: true,
+							Log:           logger,
 						},
 						Insecure: *insecurePtr}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, envCtxPtr, "", *pingPtr)
 					if authErr != nil {
@@ -714,16 +714,16 @@ skipDiff:
 				if !*noVaultPtr && *tokenPtr == "" {
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
-							Log:           logger,
 							ExitOnFailure: true,
+							Log:           logger,
 						},
 						Insecure: *insecurePtr}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
 					if authErr != nil {
 						// Retry once.
 						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 							CoreConfig: core.CoreConfig{
-								Log:           logger,
 								ExitOnFailure: true,
+								Log:           logger,
 							},
 							Insecure: *insecurePtr,
 						}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
@@ -753,9 +753,9 @@ skipDiff:
 				config := eUtils.DriverConfig{
 					CoreConfig: core.CoreConfig{
 						WantCerts:         *wantCertsPtr,
-						Log:               logger,
 						DynamicPathFilter: *dynamicPathPtr,
 						ExitOnFailure:     true,
+						Log:               logger,
 					},
 					Context:         ctx,
 					Insecure:        *insecurePtr,

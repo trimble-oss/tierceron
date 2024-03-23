@@ -171,7 +171,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	driverConfigBasis := eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
-			Log: driverConfig.CoreConfig.Log,
+			ExitOnFailure: false,
+			Log:           driverConfig.CoreConfig.Log,
 		},
 		Regions:      emptySlice,
 		Token:        pluginConfig["token"].(string),

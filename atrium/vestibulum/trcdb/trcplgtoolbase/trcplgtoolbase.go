@@ -228,8 +228,8 @@ func CommonMain(envPtr *string,
 
 		driverConfigBase = &eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
-				Log:           logger,
 				ExitOnFailure: true,
+				Log:           logger,
 			},
 			Insecure: *insecurePtr, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
 		appRoleConfigPtr = new(string)

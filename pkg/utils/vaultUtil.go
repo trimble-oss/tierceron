@@ -144,7 +144,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 				}
 
 				trcdbEnvLogger = log.New(f, fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string)), log.LstdFlags)
-				CheckError(&core.CoreConfig{Log: trcdbEnvLogger, ExitOnFailure: true}, logErr, true)
+				CheckError(&core.CoreConfig{ExitOnFailure: true, Log: trcdbEnvLogger}, logErr, true)
 				logMap.Store(logFile, trcdbEnvLogger)
 				logger.Println("InitVaultModForPlugin log setup complete")
 			} else {

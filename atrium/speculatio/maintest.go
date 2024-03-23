@@ -20,7 +20,7 @@ func main() {
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcgorillaz]", log.LstdFlags)
-	eUtils.CheckError(&core.CoreConfig{Log: logger, ExitOnFailure: true}, err, true)
+	eUtils.CheckError(&core.CoreConfig{ExitOnFailure: true, Log: logger}, err, true)
 
 	//pluginConfig := buildopts.BuildOptions.GetTestConfig(*tokenPtr, false)
 

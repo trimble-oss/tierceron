@@ -23,8 +23,8 @@ func main() {
 	log.SetOutput(f)
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
-			Log:           log.Default(),
 			ExitOnFailure: true,
+			Log:           log.Default(),
 		},
 	}
 	eUtils.CheckError(&driverConfig.CoreConfig, err, true)

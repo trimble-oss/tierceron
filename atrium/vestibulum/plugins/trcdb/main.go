@@ -51,8 +51,8 @@ func main() {
 	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcplugindb]", log.LstdFlags)
 	eUtils.CheckError(&core.CoreConfig{
-		Log:           logger,
 		ExitOnFailure: true,
+		Log:           logger,
 	}, logErr, true)
 	logger.Println("Beginning plugin startup.")
 	if strings.HasSuffix(executableName, "-prod") {

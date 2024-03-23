@@ -102,8 +102,8 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 				} else {
 					driverConfig := &eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
-							Log:           logger,
 							ExitOnFailure: true,
+							Log:           logger,
 						},
 						Insecure: mod.Insecure,
 					}

@@ -222,8 +222,8 @@ func CommonMain(envPtr *string,
 	logger.Println("==========Beginning Vault Initialization==========")
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
-			Log:           logger,
 			ExitOnFailure: true,
+			Log:           logger,
 		},
 		Insecure: true,
 	}
@@ -240,7 +240,8 @@ func CommonMain(envPtr *string,
 		}
 		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
-				Log: logger,
+				ExitOnFailure: true,
+				Log:           logger,
 			},
 			Insecure: *insecurePtr,
 		}, nil, nil, tokenPtr, nil, envPtr, addrPtr, envCtxPtr, "", *pingPtr)

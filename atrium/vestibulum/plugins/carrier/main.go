@@ -54,7 +54,8 @@ func main() {
 	}
 	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
 	eUtils.CheckError(&core.CoreConfig{
-		Log: logger, ExitOnFailure: true,
+		ExitOnFailure: true,
+		Log:           logger,
 	}, logErr, true)
 	logger.Println("Beginning plugin startup.")
 	if strings.HasSuffix(executableName, "-prod") {
