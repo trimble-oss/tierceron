@@ -474,7 +474,7 @@ skipDiff:
 						*envPtr = envVersion[0] + "_0"
 					}
 
-					config := eUtils.DriverConfig{
+					driverConfig := &eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
 							WantCerts:         *wantCertsPtr,
 							DynamicPathFilter: pGen,
@@ -501,10 +501,10 @@ skipDiff:
 						Trcxr:         *readOnlyPtr,
 					}
 					waitg.Add(1)
-					go func() {
+					go func(dc *eUtils.DriverConfig) {
 						defer waitg.Done()
-						eUtils.ConfigControl(ctx, configCtx, &config, configDriver)
-					}()
+						eUtils.ConfigControl(ctx, configCtx, dc, configDriver)
+					}(driverConfig)
 					return
 				}
 
@@ -750,7 +750,7 @@ skipDiff:
 						trcxeList = append(trcxeList, "new")
 					}
 				}
-				config := eUtils.DriverConfig{
+				driverConfig := &eUtils.DriverConfig{
 					CoreConfig: core.CoreConfig{
 						WantCerts:         *wantCertsPtr,
 						DynamicPathFilter: *dynamicPathPtr,
@@ -785,10 +785,10 @@ skipDiff:
 					Trcxr:           *readOnlyPtr,
 				}
 				waitg.Add(1)
-				go func() {
+				go func(dc *eUtils.DriverConfig) {
 					defer waitg.Done()
-					eUtils.ConfigControl(ctx, configCtx, &config, configDriver)
-				}()
+					eUtils.ConfigControl(ctx, configCtx, dc, configDriver)
+				}(driverConfig)
 			}
 		}
 	}
