@@ -414,13 +414,13 @@ func CommonMain(envPtr *string,
 
 			configSlice = append(configSlice, driverConfig)
 			configCtx.ConfigWg.Add(1)
-			go func() {
+			go func(cs *[]eUtils.DriverConfig) {
 				defer configCtx.ConfigWg.Done()
-				eUtils.ConfigControl(nil, configCtx, &configSlice[len(configSlice)-1], vcutils.GenerateConfigsFromVault)
-				if int(configCtx.GetDiffFileCount()) < configSlice[len(configSlice)-1].DiffCounter { //Without this, resultMap may be missing data when diffing.
-					configCtx.SetDiffFileCount(configSlice[len(configSlice)-1].DiffCounter) //This counter helps the diff wait for results
+				eUtils.ConfigControl(nil, configCtx, &(*cs)[len(*cs)-1], vcutils.GenerateConfigsFromVault)
+				if int(configCtx.GetDiffFileCount()) < (*cs)[len(*cs)-1].DiffCounter { //Without this, resultMap may be missing data when diffing.
+					configCtx.SetDiffFileCount((*cs)[len(*cs)-1].DiffCounter) //This counter helps the diff wait for results
 				}
-			}()
+			}(&configSlice)
 		}
 	} else {
 		if memonly.IsMemonly() {
