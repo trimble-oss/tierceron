@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
@@ -17,7 +18,10 @@ import (
 // All template keys that reference public values will be populated with those values
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
-	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	config := &core.CoreConfig{
+		ExitOnFailure: false,
+		Log:           s.Log,
+	}
 
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	twp "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 	"github.com/trimble-oss/tierceron/trcweb/server"
@@ -193,15 +194,19 @@ func main() {
 
 	s = server.NewServer(*addrPtr, *tokenPtr)
 	localHost = *localPtr
-	config := &eUtils.DriverConfig{ExitOnFailure: true}
+	driverConfig := &eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			ExitOnFailure: true,
+		},
+	}
 
 	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(config, err, true)
+	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
 	s.Log.SetOutput(f)
 	memprotectopts.MemProtectInit(nil)
 
 	status, err := s.GetStatus(context.Background(), nil)
-	eUtils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 	if !status.Sealed && s.VaultToken != "" {
 		s.Log.Println("Vault is unsealed. Initializing GQL")

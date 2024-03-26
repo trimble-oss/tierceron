@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
@@ -16,7 +17,7 @@ type ConfigDataStore struct {
 	Regions []string
 }
 
-func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
+func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 	mod *helperkv.Modifier,
 	secretMode bool,
 	useDirs bool,
@@ -258,7 +259,7 @@ func (cds *ConfigDataStore) Init(config *eUtils.DriverConfig,
 	return nil
 }
 
-func (cds *ConfigDataStore) InitTemplateVersionData(config *eUtils.DriverConfig, mod *helperkv.Modifier, useDirs bool, project string, file string, servicesWanted ...string) (map[string]interface{}, error) {
+func (cds *ConfigDataStore) InitTemplateVersionData(config *core.CoreConfig, mod *helperkv.Modifier, useDirs bool, project string, file string, servicesWanted ...string) (map[string]interface{}, error) {
 	cds.Regions = mod.Regions
 	cds.dataMap = make(map[string]interface{})
 	//get paths where the data is stored
@@ -389,7 +390,7 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 	return "", false
 }
 
-func GetPathsFromProject(config *eUtils.DriverConfig, mod *helperkv.Modifier, projects []string, services []string) ([]string, error) {
+func GetPathsFromProject(config *core.CoreConfig, mod *helperkv.Modifier, projects []string, services []string) ([]string, error) {
 	//setup for getPaths
 	if len(config.DynamicPathFilter) > 0 && !config.WantCerts && mod.TemplatePath != "" {
 		pathErr := verifyTemplatePath(mod, config.Log)
@@ -520,7 +521,7 @@ func verifyTemplatePath(mod *helperkv.Modifier, logger *log.Logger) error {
 	return fmt.Errorf("template not found in vault: %s", mod.TemplatePath)
 }
 
-func getPaths(config *eUtils.DriverConfig, mod *helperkv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {
+func getPaths(config *core.CoreConfig, mod *helperkv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {
 	secrets, err := mod.List(pathName, config.Log)
 	if err != nil {
 		return nil, err

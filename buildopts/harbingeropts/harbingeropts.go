@@ -101,53 +101,53 @@ func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string,
 
 // Used to define a database interface for querying TrcDb.
 // Builds interface for TrcDB
-func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContextInterface interface{}, vaultDatabaseConfig map[string]interface{}, serverListenerInterface interface{}) error {
+func BuildInterface(driverConfig *eUtils.DriverConfig, goMod *kv.Modifier, tfmContextInterface interface{}, vaultDatabaseConfig map[string]interface{}, serverListenerInterface interface{}) error {
 	serverListener := serverListenerInterface.(server.ServerEventListener)
 	tfmContext := tfmContextInterface.(*flowcore.TrcFlowMachineContext)
 	interfaceUrl, parseErr := url.Parse(vaultDatabaseConfig["vaddress"].(string))
 
 	if parseErr != nil {
-		eUtils.LogErrorMessage(config, "Could not parse address for interface. Failing to start interface", false)
+		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Could not parse address for interface. Failing to start interface", false)
 		return parseErr
 	}
 
 	if _, ok := vaultDatabaseConfig["dbport"]; ok {
 		vaultDatabaseConfig["vaddress"] = strings.Split(interfaceUrl.Host, ":")[0] + ":" + vaultDatabaseConfig["dbport"].(string)
 	} else {
-		eUtils.LogErrorMessage(config, "Missing port. Failing to start interface", false)
+		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Missing port. Failing to start interface", false)
 		return errors.New("Missing port for interface")
 	}
-	config.Log.Println("Starting SQL Interface.")
+	driverConfig.CoreConfig.Log.Println("Starting SQL Interface.")
 	engine := sqle.NewDefault(
 		sqles.NewDatabaseProvider(
 			tfmContext.TierceronEngine.Database,
 			information_schema.NewInformationSchemaDatabase(),
 		))
 
-	config.Log.Println("Loading cert from vault.")
+	driverConfig.CoreConfig.Log.Println("Loading cert from vault.")
 	pwd, _ := os.Getwd()
 
 	//Grab certs
-	config.WantCerts = true
-	_, certData, certLoaded, ctErr := trcutil.ConfigTemplate(config, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/db_cert.pem.mf.tmpl", true, "Common", "db_cert", true, true)
+	driverConfig.CoreConfig.WantCerts = true
+	_, certData, certLoaded, ctErr := trcutil.ConfigTemplate(driverConfig, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/db_cert.pem.mf.tmpl", true, "Common", "db_cert", true, true)
 	if ctErr != nil || !certLoaded || len(certData) == 0 {
 		if ctErr != nil {
-			eUtils.LogErrorMessage(config, ctErr.Error(), false)
+			eUtils.LogErrorMessage(&driverConfig.CoreConfig, ctErr.Error(), false)
 		}
 		return errors.New("Failed to retrieve cert.")
 	}
 
-	_, keyData, keyLoaded, key_Err := trcutil.ConfigTemplate(config, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/db_key.pem.mf.tmpl", true, "Common", "db_key", true, true)
+	_, keyData, keyLoaded, key_Err := trcutil.ConfigTemplate(driverConfig, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/db_key.pem.mf.tmpl", true, "Common", "db_key", true, true)
 	if ctErr != nil || !keyLoaded || len(keyData) == 0 {
 		if key_Err != nil {
-			eUtils.LogErrorMessage(config, key_Err.Error(), false)
+			eUtils.LogErrorMessage(&driverConfig.CoreConfig, key_Err.Error(), false)
 		}
 		return errors.New("Failed to retrieve key.")
 	}
 
 	key_pair, key_pair_err := tls.X509KeyPair([]byte(certData[1]), []byte(keyData[1]))
 	if key_pair_err != nil {
-		eUtils.LogErrorMessage(config, key_pair_err.Error(), false)
+		eUtils.LogErrorMessage(&driverConfig.CoreConfig, key_pair_err.Error(), false)
 	}
 
 	certPool, _ := x509.SystemCertPool()
@@ -170,7 +170,7 @@ func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContextI
 
 	dbserver, serverErr := server.NewServer(serverConfig, engine, server.DefaultSessionBuilder, serverListener)
 	if serverErr != nil {
-		eUtils.LogErrorMessage(config, "Failed to start server:"+serverErr.Error(), false)
+		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to start server:"+serverErr.Error(), false)
 		return serverErr
 	}
 
@@ -188,12 +188,12 @@ func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContextI
 			cidrBlock = strings.TrimSpace(cidrBlock)
 			_, _, _, queryErr := engineQuery(engine, ctx, "CREATE USER '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"' IDENTIFIED BY '"+vaultDatabaseConfig["dbpassword"].(string)+"'")
 			if queryErr != nil {
-				eUtils.LogErrorMessage(config, "Failed to select user - "+queryErr.Error(), false)
+				eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to select user - "+queryErr.Error(), false)
 			}
 
 			_, _, tableNameMatrix, showQueryErr := engineQuery(engine, ctx, "SHOW TABLES FROM "+tfmContext.TierceronEngine.Database.Name())
 			if showQueryErr != nil {
-				eUtils.LogErrorMessage(config, "Failed to grant user permissions - 1 :"+showQueryErr.Error(), false)
+				eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to grant user permissions - 1 :"+showQueryErr.Error(), false)
 			}
 
 			for _, tableNameListInterface := range tableNameMatrix {
@@ -207,12 +207,12 @@ func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContextI
 							_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT,INSERT,UPDATE,DELETE ON "+tfmContext.TierceronEngine.Database.Name()+"."+tableName.(string)+" TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
 						}
 						if queryErr != nil {
-							eUtils.LogErrorMessage(config, "Failed to grant user permissions - 2a :"+queryErr.Error(), false)
+							eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to grant user permissions - 2a :"+queryErr.Error(), false)
 						}
 					} else {
 						_, _, _, queryErr = engineQuery(engine, ctx, "GRANT INSERT,UPDATE,DELETE ON "+tfmContext.TierceronEngine.Database.Name()+"."+tableName.(string)+" TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
 						if queryErr != nil {
-							eUtils.LogErrorMessage(config, "Failed to grant user permissions - 2b :"+queryErr.Error(), false)
+							eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to grant user permissions - 2b :"+queryErr.Error(), false)
 						}
 					}
 				}
@@ -220,29 +220,29 @@ func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContextI
 
 			_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT ON INFORMATION_SCHEMA.* TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
 			if queryErr != nil {
-				eUtils.LogErrorMessage(config, "Failed to grant user permissions - 3 :"+queryErr.Error(), false)
+				eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to grant user permissions - 3 :"+queryErr.Error(), false)
 			}
 
 			_, _, _, queryErr = engineQuery(engine, ctx, "REVOKE INSERT,UPDATE,DELETE ON "+tfmContext.TierceronEngine.Database.Name()+"."+"DataFlowStatistics FROM '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
 			if queryErr != nil {
-				eUtils.LogErrorMessage(config, "Failed to grant user permissions - 4 :"+queryErr.Error(), false)
+				eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to grant user permissions - 4 :"+queryErr.Error(), false)
 			}
 		}
 		_, _, _, queryErr := engineQuery(engine, ctx, "FLUSH PRIVILEGES")
 		if queryErr != nil {
-			eUtils.LogErrorMessage(config, "Failed refresh permissions for users- "+queryErr.Error(), false)
+			eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed refresh permissions for users- "+queryErr.Error(), false)
 			dbserver = nil
 			goto permsfailure
 		}
 
 		_, _, _, queryErr = engineQuery(engine, ctx, "DELETE USER FROM Mysql.user where USER=''")
 		if queryErr != nil {
-			eUtils.LogErrorMessage(config, "Failed to delete user used to set up permissions:"+queryErr.Error(), false)
+			eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to delete user used to set up permissions:"+queryErr.Error(), false)
 			dbserver = nil
 			goto permsfailure
 		}
 
-		eUtils.LogErrorMessage(config, "Permissions have been set up.", false)
+		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Permissions have been set up.", false)
 	}
 
 	go func(tfC *flowcore.TrcFlowMachineContext, vdc map[string]interface{}) {
@@ -257,7 +257,7 @@ func BuildInterface(config *eUtils.DriverConfig, goMod *kv.Modifier, tfmContextI
 
 	go dbserver.Start()
 
-	config.Log.Println("SQL Interface Started.")
+	driverConfig.CoreConfig.Log.Println("SQL Interface Started.")
 permsfailure:
 	return nil
 }

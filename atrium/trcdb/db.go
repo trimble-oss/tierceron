@@ -21,13 +21,13 @@ import (
 var m sync.Mutex
 
 // CreateEngine - creates a Tierceron query engine for query of configurations.
-func CreateEngine(config *eUtils.DriverConfig,
+func CreateEngine(driverConfig *eUtils.DriverConfig,
 	templatePaths []string, env string, dbname string) (*engine.TierceronEngine, error) {
 
-	te := &engine.TierceronEngine{Database: sqlememory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*engine.TierceronTable{}, Context: sqles.NewEmptyContext(), Config: *config}
+	te := &engine.TierceronEngine{Database: sqlememory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*engine.TierceronTable{}, Context: sqles.NewEmptyContext(), Config: *driverConfig}
 
 	var goMod *helperkv.Modifier
-	goMod, errModInit := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, false, config.Log)
+	goMod, errModInit := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, driverConfig.Regions, false, driverConfig.CoreConfig.Log)
 	if errModInit != nil {
 		return nil, errModInit
 	}
@@ -41,9 +41,9 @@ func CreateEngine(config *eUtils.DriverConfig,
 
 	var envEnterprises []string
 	goMod.Env = ""
-	tempEnterprises, err := goMod.List("values", config.Log)
+	tempEnterprises, err := goMod.List("values", driverConfig.CoreConfig.Log)
 	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 		return nil, err
 	}
 	if tempEnterprises != nil {
@@ -57,7 +57,7 @@ func CreateEngine(config *eUtils.DriverConfig,
 			// Load all vault table data into tierceron sql engine.
 			for _, envEnterprise := range envEnterprises {
 				wgEnterprise.Add(1)
-				go func(config *eUtils.DriverConfig, enterpriseEnv string) {
+				go func(driverConfig *eUtils.DriverConfig, enterpriseEnv string) {
 					defer wgEnterprise.Done()
 					if !strings.Contains(enterpriseEnv, ".") {
 						return

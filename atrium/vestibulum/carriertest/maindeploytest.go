@@ -12,6 +12,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -36,8 +37,13 @@ func main() {
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 
-	configDriver := &eUtils.DriverConfig{Log: logger, ExitOnFailure: true}
-	eUtils.CheckError(configDriver, err, true)
+	driverConfig := &eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			ExitOnFailure: true,
+			Log:           logger,
+		},
+	}
+	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
 
 	//Grabbing configs
 	envMap := buildopts.BuildOptions.GetTestDeployConfig(*tokenPtr)
@@ -55,7 +61,7 @@ func main() {
 	for {
 		select {
 		case <-signalChannel:
-			eUtils.LogErrorMessage(configDriver, "Receiving shutdown presumably from vault.", true)
+			eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)
 		}
 	}

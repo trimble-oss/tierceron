@@ -11,6 +11,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -27,7 +28,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	appRoleIDPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	c *eUtils.DriverConfig) error {
+	driverConfig *eUtils.DriverConfig) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
@@ -62,16 +63,16 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")
 		return errors.New("must specify either -projectInfo or -templateFilter flag")
 	}
-	var configBase *eUtils.DriverConfig
+	var driverConfigBase *eUtils.DriverConfig
 	var appRoleConfigPtr *string
 
-	if c != nil {
-		configBase = c
-		if len(configBase.EndDir) == 0 && len(*endDirPtr) != 0 {
+	if driverConfig != nil {
+		driverConfigBase = driverConfig
+		if len(driverConfigBase.EndDir) == 0 && len(*endDirPtr) != 0 {
 			// Bad inputs... use default.
-			configBase.EndDir = *endDirPtr
+			driverConfigBase.EndDir = *endDirPtr
 		}
-		appRoleConfigPtr = &c.AppRoleConfig
+		appRoleConfigPtr = &driverConfig.AppRoleConfig
 
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
@@ -85,10 +86,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		logger := log.New(f, "[INIT]", log.LstdFlags)
-		configBase = &eUtils.DriverConfig{Insecure: *insecurePtr,
-			EndDir:        *endDirPtr,
-			Log:           logger,
-			ExitOnFailure: exitOnFailure}
+		driverConfigBase = &eUtils.DriverConfig{
+			CoreConfig: core.CoreConfig{
+				ExitOnFailure: exitOnFailure,
+				Log:           logger,
+			},
+			Insecure: *insecurePtr,
+			EndDir:   *endDirPtr,
+		}
 		appRoleConfigPtr = new(string)
 	}
 
@@ -96,13 +101,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(configBase, err, false)
+		eUtils.CheckError(&driverConfigBase.CoreConfig, err, false)
 		return err
 	}
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 
-	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return autoErr
@@ -112,26 +117,26 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtect(nil, tokenPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
+	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
 	if err != nil {
 		fmt.Println("Failure to init to vault")
-		configBase.Log.Println("Failure to init to vault")
+		driverConfigBase.CoreConfig.Log.Println("Failure to init to vault")
 		return err
 	}
 	mod.Env = *envPtr
 
 	if *templatePathsPtr != "" {
-		fmt.Printf("Downloading templates from vault to %s\n", configBase.EndDir)
+		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
-		il.DownloadTemplates(configBase, mod, configBase.EndDir, configBase.Log, templatePathsPtr)
+		il.DownloadTemplates(&driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, templatePathsPtr)
 	} else if *projectInfoPtr {
-		templateList, err := mod.List("templates/", configBase.Log)
+		templateList, err := mod.List("templates/", driverConfigBase.CoreConfig.Log)
 		if err != nil {
 			fmt.Println("Failure read templates")
-			configBase.Log.Println("Failure read templates")
+			driverConfigBase.CoreConfig.Log.Println("Failure read templates")
 			return err
 		}
 		fmt.Printf("\nProjects available:\n")
@@ -143,18 +148,18 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 		return nil
 	} else {
-		fmt.Printf("Downloading templates from vault to %s\n", configBase.EndDir)
+		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
-		warn, err := il.DownloadTemplateDirectory(configBase, mod, configBase.EndDir, configBase.Log, filterTemplatePtr)
+		warn, err := il.DownloadTemplateDirectory(&driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, filterTemplatePtr)
 		if err != nil {
 			fmt.Println(err)
-			configBase.Log.Printf("Failure to download: %s", err.Error())
+			driverConfigBase.CoreConfig.Log.Printf("Failure to download: %s", err.Error())
 			if strings.Contains(err.Error(), "x509: certificate") {
 				return err
 			}
 		}
-		eUtils.CheckError(configBase, err, false)
-		eUtils.CheckWarnings(configBase, warn, false)
+		eUtils.CheckError(&driverConfigBase.CoreConfig, err, false)
+		eUtils.CheckWarnings(&driverConfigBase.CoreConfig, warn, false)
 	}
 	return nil
 }

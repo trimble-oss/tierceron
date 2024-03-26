@@ -4,12 +4,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
 // UploadTokenCidrRoles accepts a file directory and vault object to upload token roles to. Logs to pased logger
-func UploadTokenCidrRoles(config *eUtils.DriverConfig, dir string, v *sys.Vault) error {
+func UploadTokenCidrRoles(config *core.CoreConfig, dir string, v *sys.Vault) error {
 	config.Log.SetPrefix("[ROLE]")
 	config.Log.Printf("Writing token roles from %s\n", dir)
 	files, err := os.ReadDir(dir)
@@ -35,7 +36,7 @@ func UploadTokenCidrRoles(config *eUtils.DriverConfig, dir string, v *sys.Vault)
 }
 
 // GetExistsRole accepts a file directory and vault object to check existence of token roles. Logs to pased logger
-func GetExistsRoles(config *eUtils.DriverConfig, dir string, v *sys.Vault) (bool, error) {
+func GetExistsRoles(config *core.CoreConfig, dir string, v *sys.Vault) (bool, error) {
 	config.Log.SetPrefix("[ROLE]")
 	config.Log.Printf("Checking exists token roles from %s\n", dir)
 	files, err := os.ReadDir(dir)

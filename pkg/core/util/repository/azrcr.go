@@ -19,20 +19,20 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
-func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
+func getImageSHA(driverConfig *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
 
 	if pluginToolConfig["acrrepository"] != nil && len(pluginToolConfig["acrrepository"].(string)) == 0 {
-		config.Log.Printf("Acr repository undefined.  Refusing to continue.\n")
+		driverConfig.CoreConfig.Log.Printf("Acr repository undefined.  Refusing to continue.\n")
 		return errors.New("undefined acr repository")
 	}
 
 	if !strings.HasPrefix(pluginToolConfig["acrrepository"].(string), "https://") {
-		config.Log.Printf("Malformed Acr repository.  https:// required.  Refusing to continue.\n")
+		driverConfig.CoreConfig.Log.Printf("Malformed Acr repository.  https:// required.  Refusing to continue.\n")
 		return errors.New("malformed acr repository - https:// required")
 	}
 
 	if pluginToolConfig["trcplugin"] != nil && len(pluginToolConfig["trcplugin"].(string)) == 0 {
-		config.Log.Printf("Trcplugin undefined.  Refusing to continue.\n")
+		driverConfig.CoreConfig.Log.Printf("Trcplugin undefined.  Refusing to continue.\n")
 		return errors.New("undefined trcplugin")
 	}
 
@@ -40,7 +40,7 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 		pluginToolConfig["acrrepository"].(string),
 		svc, nil)
 	if err != nil {
-		config.Log.Printf("failed to create client: %v", err)
+		driverConfig.CoreConfig.Log.Printf("failed to create client: %v", err)
 		return err
 	}
 	ctx := context.Background()
@@ -52,7 +52,7 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
-			config.Log.Printf("Failed to advance page for tags: %v", err)
+			driverConfig.CoreConfig.Log.Printf("Failed to advance page for tags: %v", err)
 			return err
 		}
 		for _, v := range page.Tags {
@@ -63,18 +63,18 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 	// Get manifest
 	manifestRes, err := client.GetManifest(ctx, pluginToolConfig["trcplugin"].(string), latestTag, &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
 	if err != nil {
-		config.Log.Printf("failed to get manifest: %v", err)
+		driverConfig.CoreConfig.Log.Printf("failed to get manifest: %v", err)
 		return err
 	}
 
 	reader, err := azcontainerregistry.NewDigestValidationReader(*manifestRes.DockerContentDigest, manifestRes.ManifestData)
 	if err != nil {
-		config.Log.Printf("failed to create validation reader: %v", err)
+		driverConfig.CoreConfig.Log.Printf("failed to create validation reader: %v", err)
 		return err
 	}
 	manifest, err := io.ReadAll(reader)
 	if err != nil {
-		config.Log.Printf("failed to read manifest data: %v", err)
+		driverConfig.CoreConfig.Log.Printf("failed to read manifest data: %v", err)
 		return err
 	}
 
@@ -82,7 +82,7 @@ func getImageSHA(config *eUtils.DriverConfig, svc *azidentity.ClientSecretCreden
 	var manifestJSON map[string]any
 	err = json.Unmarshal(manifest, &manifestJSON)
 	if err != nil {
-		config.Log.Printf("failed to unmarshal manifest: %v", err)
+		driverConfig.CoreConfig.Log.Printf("failed to unmarshal manifest: %v", err)
 		return err
 	}
 	// Get layers
@@ -157,7 +157,7 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 }
 
 // Return url to the image to be used for download.
-func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	svc, err := azidentity.NewClientSecretCredential(
 		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureClientId"].(string),
@@ -167,7 +167,7 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 		return err
 	}
 
-	imageErr := getImageSHA(config, svc, pluginToolConfig)
+	imageErr := getImageSHA(driverConfig, svc, pluginToolConfig)
 	if imageErr != nil {
 		return imageErr
 	}

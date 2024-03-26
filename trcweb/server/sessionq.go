@@ -8,12 +8,13 @@ import (
 	"net/http"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 )
 
 // ProxyLogin proxy logs in the user.
-func ProxyLogin(config *eUtils.DriverConfig, authHost string, req *pb.LoginReq) (string, string, *pb.LoginResp, error) {
+func ProxyLogin(config *core.CoreConfig, authHost string, req *pb.LoginReq) (string, string, *pb.LoginResp, error) {
 	credentials := bytes.NewBuffer([]byte{})
 
 	err := json.NewEncoder(credentials).Encode(map[string]string{

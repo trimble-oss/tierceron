@@ -13,6 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	tcopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
@@ -99,14 +100,20 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 				if readErr != nil {
 					return &aFleet, readErr
 				} else {
-					config := &eUtils.DriverConfig{Insecure: mod.Insecure, Log: logger, ExitOnFailure: true}
+					driverConfig := &eUtils.DriverConfig{
+						CoreConfig: core.CoreConfig{
+							ExitOnFailure: true,
+							Log:           logger,
+						},
+						Insecure: mod.Insecure,
+					}
 
 					sourceDatabaseConnectionMap := map[string]interface{}{
 						"dbsourceurl":      buildopts.BuildOptions.GetTrcDbUrl(data),
 						"dbsourceuser":     data["dbuser"],
 						"dbsourcepassword": data["dbpassword"],
 					}
-					dbsourceConn, err := trcvutils.OpenDirectConnection(config, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+					dbsourceConn, err := trcvutils.OpenDirectConnection(&driverConfig.CoreConfig, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
 					if err != nil {
 						log.Println(err)

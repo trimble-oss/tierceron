@@ -18,6 +18,7 @@ import (
 	memonly "github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/hashicorp/go-hclog"
@@ -52,7 +53,10 @@ func main() {
 		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	}
 	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
-	eUtils.CheckError(&eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}, logErr, true)
+	eUtils.CheckError(&core.CoreConfig{
+		ExitOnFailure: true,
+		Log:           logger,
+	}, logErr, true)
 	logger.Println("Beginning plugin startup.")
 	if strings.HasSuffix(executableName, "-prod") {
 		logger.Println("Running prod plugin")

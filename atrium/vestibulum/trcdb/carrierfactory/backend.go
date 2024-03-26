@@ -603,7 +603,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)
 			pluginConfig["token"] = tokenEnvMap["ctoken"].(string)
 			pluginConfig["regions"] = []string{hostRegion}
-			cConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+			carrierDriverConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 			if err != nil {
 				logger.Println("Error: " + err.Error() + " - 1")
 				logger.Println("Failed to init mod for deploy update")
@@ -621,7 +621,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			cMod.SectionKey = "/Index/"
 			cMod.SubSectionValue = plugin.(string)
 
-			properties, err := trcvutils.NewProperties(cConfig, cVault, cMod, cMod.Env, "TrcVault", "Certify")
+			properties, err := trcvutils.NewProperties(&carrierDriverConfig.CoreConfig, cVault, cMod, cMod.Env, "TrcVault", "Certify")
 			if err != nil {
 				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to read previous plugin status from vault - 1"), nil

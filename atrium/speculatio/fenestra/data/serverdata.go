@@ -10,6 +10,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
@@ -82,23 +83,29 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 
 // Returns an array of mashup detailed elements populated with each Tenant's data and Childnodes
 func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.MashupDetailedElement {
-	config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
+	driverConfig := &eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			ExitOnFailure: true,
+			Log:           logger,
+		},
+		Insecure: *insecure,
+	}
 	secretID := ""
 	appRoleID := ""
 	address := ""
 	token := ""
 	empty := ""
 
-	autoErr := eUtils.AutoAuth(&config, &secretID, &appRoleID, &token, &empty, envPtr, &address, nil, "", false)
-	eUtils.CheckError(&config, autoErr, true)
+	autoErr := eUtils.AutoAuth(driverConfig, &secretID, &appRoleID, &token, &empty, envPtr, &address, nil, "", false)
+	eUtils.CheckError(&driverConfig.CoreConfig, autoErr, true)
 
 	mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, true, logger)
 	mod.Direct = true
 	mod.Env = *envPtr
-	eUtils.CheckError(&config, modErr, true)
+	eUtils.CheckError(&driverConfig.CoreConfig, modErr, true)
 	logger.Printf("Building fleet.\n")
 	ArgosyFleet, argosyErr := argosyopts.BuildFleet(mod, logger)
-	eUtils.CheckError(&config, argosyErr, true)
+	eUtils.CheckError(&driverConfig.CoreConfig, argosyErr, true)
 	logger.Printf("Fleet built.\n")
 
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
@@ -158,9 +165,12 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDetailedElement {
 	data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
 
-	config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
+	config := &core.CoreConfig{
+		ExitOnFailure: true,
+		Log:           logger,
+	}
 	ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil, logger)
-	eUtils.CheckError(&config, argosyErr, true)
+	eUtils.CheckError(config, argosyErr, true)
 
 	dfstatData := map[string]float64{}
 	statGroup := []float64{}

@@ -9,25 +9,25 @@ import (
 )
 
 // GenerateSeedsFromVaultToDb pulls all data from vault for each template into a database
-func GenerateSeedsFromVaultToDb(config *eUtils.DriverConfig) (interface{}, error) {
-	if config.Diff { //Clean flag in trcx
-		_, err1 := os.Stat(config.EndDir + config.Env)
-		err := os.RemoveAll(config.EndDir + config.Env)
+func GenerateSeedsFromVaultToDb(driverConfig *eUtils.DriverConfig) (interface{}, error) {
+	if driverConfig.Diff { //Clean flag in trcx
+		_, err1 := os.Stat(driverConfig.EndDir + driverConfig.Env)
+		err := os.RemoveAll(driverConfig.EndDir + driverConfig.Env)
 
 		if err != nil {
-			eUtils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 			return nil, err
 		}
 
 		if err1 == nil {
-			eUtils.LogInfo(config, "Seed removed from"+config.EndDir+config.Env)
+			eUtils.LogInfo(&driverConfig.CoreConfig, "Seed removed from"+driverConfig.EndDir+driverConfig.Env)
 		}
 		return nil, nil
 	}
 
 	// Get files from directory
 	tempTemplatePaths := []string{}
-	for _, startDir := range config.StartDir {
+	for _, startDir := range driverConfig.StartDir {
 		//get files from directory
 		tp := xutil.GetDirFiles(startDir)
 		tempTemplatePaths = append(tempTemplatePaths, tp...)
@@ -43,10 +43,10 @@ func GenerateSeedsFromVaultToDb(config *eUtils.DriverConfig) (interface{}, error
 		}
 	}
 
-	tierceronEngine, err := trcdb.CreateEngine(config,
-		templatePaths, config.Env, config.VersionFilter[0])
+	tierceronEngine, err := trcdb.CreateEngine(driverConfig,
+		templatePaths, driverConfig.Env, driverConfig.VersionFilter[0])
 	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 		return nil, err
 	}
 
