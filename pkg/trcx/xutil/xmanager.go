@@ -190,11 +190,11 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 	}
 
 	//Receiver for configs
-	go func(c *eUtils.DriverConfig) {
+	go func(dc *eUtils.DriverConfig) {
 		for {
 			select {
 			case tResult := <-templateResultChan:
-				if driverConfig.Env == tResult.Env && driverConfig.SubSectionValue == tResult.SubSectionValue {
+				if dc.Env == tResult.Env && dc.SubSectionValue == tResult.SubSectionValue {
 					sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
 					sliceValueSection = append(sliceValueSection, tResult.ValueSection)
 					sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
@@ -365,60 +365,60 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 
 			templateResult.SecretSection = map[string]map[string]map[string]string{}
 			templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
-			envVersion := eUtils.SplitEnv(driverConfig.Env)
+			envVersion := eUtils.SplitEnv(dc.Env)
 			env = envVersion[0]
 			version = envVersion[1]
 			//check for template_files directory here
-			project, service, tp = vcutils.GetProjectService(driverConfig, tp)
+			project, service, tp = vcutils.GetProjectService(dc, tp)
 			useCache := true
 
 			if dc.Token != "" && dc.Token != "novault" {
 				var err error
-				goMod, err = helperkv.NewModifier(dc.Insecure, dc.Token, dc.VaultAddress, env, dc.Regions, useCache, driverConfig.CoreConfig.Log)
+				goMod, err = helperkv.NewModifier(dc.Insecure, dc.Token, dc.VaultAddress, env, dc.Regions, useCache, dc.CoreConfig.Log)
 				goMod.Env = dc.Env
 				if err != nil {
 					if useCache && goMod != nil {
 						goMod.Release()
 					}
-					eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+					eUtils.LogErrorObject(&dc.CoreConfig, err, false)
 					wg.Done()
 					return
 				}
 
 				goMod.Env = env
 				goMod.Version = version
-				goMod.ProjectIndex = driverConfig.ProjectSections
+				goMod.ProjectIndex = dc.ProjectSections
 				if len(goMod.ProjectIndex) > 0 {
-					goMod.RawEnv = strings.Split(driverConfig.EnvRaw, "_")[0]
-					goMod.SectionKey = driverConfig.SectionKey
-					goMod.SectionName = driverConfig.SectionName
-					goMod.SubSectionValue = driverConfig.SubSectionValue
+					goMod.RawEnv = strings.Split(dc.EnvRaw, "_")[0]
+					goMod.SectionKey = dc.SectionKey
+					goMod.SectionName = dc.SectionName
+					goMod.SubSectionValue = dc.SubSectionValue
 				}
 
-				relativeTemplatePathParts := strings.Split(tp, coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates")
+				relativeTemplatePathParts := strings.Split(tp, coreopts.BuildOptions.GetFolderPrefix(dc.StartDir)+"_templates")
 				templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
 				goMod.TemplatePath = "templates" + templatePathParts[0]
 
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"
-				if len(driverConfig.CoreConfig.DynamicPathFilter) > 0 {
-					goMod.SectionPath = "super-secrets/" + driverConfig.CoreConfig.DynamicPathFilter
+				if len(dc.CoreConfig.DynamicPathFilter) > 0 {
+					goMod.SectionPath = "super-secrets/" + dc.CoreConfig.DynamicPathFilter
 				} else {
 					// TODO: Deprecated...
 					// 1-800-ROIT???  Not sure how certs play into this.
 					if goMod.SectionName != "" && (goMod.SubSectionValue != "" || goMod.SectionKey == "/Restricted/" || goMod.SectionKey == "/Protected/") {
 						switch goMod.SectionKey {
 						case "/Index/":
-							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + driverConfig.SubSectionName
+							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + dc.SubSectionName
 						case "/Restricted/":
-							if service != driverConfig.SectionName { //TODO: Revisit why we need this comparison
-								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + driverConfig.SectionName
+							if service != dc.SectionName { //TODO: Revisit why we need this comparison
+								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + dc.SectionName
 							} else {
-								goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + driverConfig.SectionName
+								goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + dc.SectionName
 							}
 						case "/Protected/":
-							if service != driverConfig.SectionName {
-								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + driverConfig.SectionName
+							if service != dc.SectionName {
+								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + dc.SectionName
 							}
 						default:
 							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue
@@ -471,7 +471,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 				&(templateResult.ValueSection),
 				&(templateResult.SecretSection),
 			)
-			if len(driverConfig.CoreConfig.DynamicPathFilter) > 0 {
+			if len(dc.CoreConfig.DynamicPathFilter) > 0 {
 				// Pass explicit desitination indiciated in gomod.
 				templateResult.SectionPath = goMod.SectionPath
 			}
@@ -486,7 +486,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 			}
 
 			templateResult.Env = env + "_" + version
-			templateResult.SubSectionValue = driverConfig.SubSectionValue
+			templateResult.SubSectionValue = dc.SubSectionValue
 			templateResultChan <- &templateResult
 		}(templatePath, multiService, driverConfig, commonPaths)
 	}
