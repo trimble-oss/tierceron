@@ -301,8 +301,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&driverConfigBasis, templateList, pluginConfig["env"].(string), flowopts.BuildOptions.GetFlowDatabaseName())
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
-	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowopts.BuildOptions.GetAdditionalFlows(), flowopts.BuildOptions.GetAdditionalFlows())
 	tfmFlumeContext.DriverConfig = &driverConfigBasis
+	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowopts.BuildOptions.GetAdditionalFlows(), flowopts.BuildOptions.GetAdditionalFlows())
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
 
