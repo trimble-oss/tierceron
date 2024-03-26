@@ -25,7 +25,7 @@ func LoadPluginDeploymentScript(driverConfig *eUtils.DriverConfig, trcshConfig *
 			configRoleSlice := strings.Split(*trcshConfig.ConfigRole, ":")
 			tokenName := "config_token_" + driverConfig.EnvRaw
 			readToken := ""
-			autoErr := eUtils.AutoAuth(driverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &driverConfig.Env, &driverConfig.VaultAddress, &mergedEnvRaw, "driverConfig.yml", false)
+			autoErr := eUtils.AutoAuth(driverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &driverConfig.Env, &driverConfig.VaultAddress, &mergedEnvRaw, "config.yml", false)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				return nil, autoErr
