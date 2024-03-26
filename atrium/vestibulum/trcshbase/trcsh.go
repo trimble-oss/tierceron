@@ -91,7 +91,7 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 		return nil, errOpenFile
 	}
 	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
-	config := &eUtils.DriverConfig{
+	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			IsShell:       true,
 			ExitOnFailure: true,
@@ -106,7 +106,7 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 		Regions:           regions,
 		PathParam:         pathParam, // Make available to trcplgtool
 	}
-	return config, nil
+	return driverConfig, nil
 }
 
 // Logging of deployer controller activities..
