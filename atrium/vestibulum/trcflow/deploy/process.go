@@ -355,6 +355,14 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		if err != nil {
 			logger.Printf(fmt.Sprintf("PluginDeployFlow failure: Failed to write plugin state for env: %s and plugin: %s error: %s\n", carrierDriverConfig.Env, pluginName, err.Error()))
 		}
+		if hostName != "" && writeMap["trctype"].(string) == "agent" {
+			overridePath := "overrides/" + hostName + "/" + writeMap["trcplugin"].(string) + "/Certify"
+			_, err = cGoMod.Write("super-secrets/Index/TrcVault/trcplugin/"+overridePath, writeMap, config.Log)
+			if err != nil {
+				logger.Println(pluginName + ": PluginDeployFlow failure: Failed to write plugin state: " + err.Error())
+			}
+		}
+
 		eUtils.LogInfo(&carrierDriverConfig.CoreConfig, fmt.Sprintf("Plugin image config in vault has been updated for env: %s and plugin: %s\n", carrierDriverConfig.Env, pluginName))
 	} else {
 		if !pluginDownloadNeeded && pluginCopied {
