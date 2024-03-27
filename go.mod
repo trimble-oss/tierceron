@@ -36,7 +36,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-hat v1.0.4
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20240305174118-60239a804ed1
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20240326213127-e85d6193e1c6
 )
 
 require (
@@ -111,4 +111,4 @@ require (
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.21
 
-// replace github.com/trimble-oss/tierceron/atrium => ./atrium
+replace github.com/trimble-oss/tierceron/atrium => ./atrium

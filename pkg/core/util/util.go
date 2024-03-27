@@ -440,3 +440,10 @@ func UncompressZipFile(filePath string) (bool, []error) {
 	}
 
 }
+
+func Sanitize(input interface{}) string {
+	if input == nil {
+		return ""
+	}
+	return strings.ReplaceAll(input.(string), "\n", "")
+}
