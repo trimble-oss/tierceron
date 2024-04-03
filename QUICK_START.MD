@@ -233,6 +233,8 @@ Until this project becomes Open source, in order to build Tierceron, you will ne
 
 $ git config --global url."git@github.com:trimble-oss/".insteadOf "https://github.com/trimble-oss/"  
 $ eval `ssh-agent`  
-# go get needs the following to function seemlessly with Private/Protected Trimble repositories.  
-# id_rsa should be the private key that has previously been given access to Trimble-oss.  
+
+go get needs the following to function seemlessly with Private/Protected Trimble repositories.  
+id_rsa should be the private key that has previously been given access to Trimble-oss.  
+
 $ ssh-add ~/.ssh/id_rsa_git  
