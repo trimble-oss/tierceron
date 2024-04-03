@@ -1,7 +1,7 @@
 ﻿
 ## Let's get started 🔧 
 
-#Deploy Vault
+# Deploy Vault
 
 ##What you'll need
 deploy.pem file
@@ -14,14 +14,14 @@ subnets
 
 public folder with dart build
 
-##Terraform set-up
+## Terraform set-up
 [Install Terraform](https://www.terraform.io/downloads.html)
 
 Clone the repository
 
 From command line, navigate to the directory containing terraform files (trcinit/vaultfiles) and run `terraform init`
 
-##Deploying Vault
+## Deploying Vault
 Now run `terraform plan -out=vault.plan`
 Terraform should ask you for the deploy.pem path, vpc id, and subnets.
 To deploy the vault instance, run `terraform apply "vault.plan"`
@@ -34,15 +34,15 @@ Connect to https://<vaulthost>:<vaultport>/v1/sys/health to check that the vault
 To destroy the instance of vault, run `terraform destroy` or terminate it from the AWS Console.
 
 
-##Connecting to the instance
+## Connecting to the instance
 Navigate to the EC2 instance of vault on AWS and get the Public DNS.
 Connect to the instance from the directory containing your deploy.pem file with the Public DNS, for example: `ssh -i "deploy.pem" ubuntu@ec2-xx-xxx-xx-xxx.us-west-2.compute.amazonaws.com`
 
-##Configuring AWS credentials
+## Configuring AWS credentials
 Configure the AWS credentials for the instance using `sudo aws configure --profile default`
 It will ask for your AWS access key and secret access key. Use "us-west-2" for the default region and "json" for default output format.
 
-##Seeding Vault 
+## Seeding Vault 
 Drop vault database in DBVisualizer
 Stop vault service
 Stop trcapi service
@@ -56,27 +56,27 @@ Exit/kill apiRouter
 Start trcapi service
 Log into UI using webapi token generated from seed process
 
-##Starting the server
+## Starting the server
 Navigate to /etc/opt/trcAPI and run `sudo ./apiRouter`
 "Server initialized and running" should print to the console. Otherwise, check server.log to see what's wrong
 
-#Initialize Vault
+# Initialize Vault
 
-##Create Policy Files
+## Create Policy Files
 Policies are written in hcl files. Write policies according to [Hashicorp's guide](https://www.vaultproject.io/docs/concepts/policies.html) and place them in the same folder. 
 Policies will be named the by their file name (ex: `mypolicy.hcl` is written as `mypolicy`)
 
-##Create Token Files
+## Create Token Files
 Access tokens are written in YAML files. A full list of configurable parameters can be found on [Vault's Website](https://www.vaultproject.io/api/auth/token/index.html#parameters).
 Tokens can only be created when logged in to the vault with token creation permissions.
 
-##Create Seed Files
+## Create Seed Files
 Seed files are written in a YAML format. Each seed file is seeded under a single environment. 
 Seperate values for different environments in different files. [Example](tierceron/trc_seeds/seed.yml)
 Data is organized in the vault as key-values pairs in a file system. The seed file should reflect this organization. 
 All values in the seed fall under 5 'root' categories.
 
-###templates
+### templates
 The templates folder should be seperated by service, then file. The keys match the name of what is being substituted in the 
 template file (e.g. `{{.username}}`). The value for each key provides a reference to where the secret is stored in the vault. 
 This allows viewing what's stored in the vault without seeing the actual value. The value is a 2 element array. The first 
@@ -91,7 +91,7 @@ templates:
 			password: [super-secrets/ProjectName, pass]
 ```
 
-###super-secrets
+### super-secrets
 This is where sensitive information is stored. Data in `super-secrets` is only given on a need to know basis. This should be restricted to populating templates.
 Secrets should be grouped by use cases (e.g. database credentials, API key, certificate info). The values referenced in `templates` will populate the template files
 exactly as they appear here.
@@ -107,7 +107,7 @@ super-secrets:
 		ApiKey: <Key>
 ```
 
-###verification
+### verification
 This is used in the seeding process to check the validity of secrets values. To verify a `super-secret`, create an entry under `verification` with the same name.  
 Each entry should have the key `type` to determine the type of credential to verify. `type` can be
 
@@ -120,11 +120,11 @@ Each entry should have the key `type` to determine the type of credential to ver
 *  	**SendGridKey**  _TODO_  
 	Used for verifying SendGrid API key. Requires `ApiKey`
 	
-###values and value-metrics
+### values and value-metrics
 These should not be seeded and are used by the build tools to track configuration data. However, values and metrics can be seeded if needed.  
 _Note: Values seeded here may be overwritten by configuration tools_
 
-#Run Trc Init 
+# Run Trc Init 
 Token is the only flag that needs to be specified to run. Also, when running trcinit in the local environment, user will be prompted for environment, username, and password.
 
 ### Commands
@@ -158,7 +158,7 @@ trcinit
 	-tokenfiles string
 		Directory with yaml files used to generate tokens (default "token_files")
 ```
-#Run Trc Config
+# Run Trc Config
 Run in the ServiceTechAPI folder and check the hibernate.properties file generated by trcconfig to verify that the vault has been reseeded.
 Will not run if you don't have appRoleID and secretID tokens. 
 
@@ -214,20 +214,22 @@ of global variables at build time_
 
 Until this project becomes Open source, in order to build Tierceron, you will need to do the following:
 
+```
 $ git config --global url."git@github.com:trimble-oss/".insteadOf "https://github.com/trimble-oss/"
 $ eval `ssh-agent`
-# go get needs the following to function seemlessly with Private/Protected Trimble repositories.
-# id_rsa should be the private key that has previously been given access to Trimble-oss.
+```
+
+go get needs the following to function seemlessly with Private/Protected Trimble repositories.  
+id_rsa should be the private key that has previously been given access to Trimble-oss.  
+
+```
 $ ssh-add ~/.ssh/id_rsa_git
+```
 
 
 
 ### Automated tests ⚙
 
-In order to run the ```Unit Tests``` or the ```Integration Tests``` for this project, after opening the solution in Visual Studio, you should right click on each project and click on the **Run tests** option or you can use ```dotnet test``` option in the terminal.
+In order to run the ```Unit Tests``` or the ```Integration Tests``` for this project, after opening the solution in Visual Studio...  TODO
 
-### Connecting to the database
-
-In case you would like to interogate the database, you can use the ```NoSQLBooster``` too.
-Then, you need to check the ```ConnectionString``` data from the [Configuration portal](https://portal.trimbleplatform.com/) so you can setup the connections.
 
