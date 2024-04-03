@@ -1,6 +1,13 @@
 ﻿
 ## Let's get started 🔧 
 
+##Command line building (via Makefile)
+Install build support (Makefile, gcc, etc...):
+sudo apt-get install build-essential
+
+Install g3n support libraries (Required for optional tools spiralis and fenestra):
+sudo apt-get install xorg-dev libgl1-mesa-dev libopenal1 libopenal-dev libvorbis0a libvorbis-dev libvorbisfile3
+
 #Deploy a cloud hosted vault instance using Tierceron
 First, we'll need a utility to help us generate some infrastructure in Azure.
 Everything in Tierceron run directly from a Hashicorp Vault instance and it
