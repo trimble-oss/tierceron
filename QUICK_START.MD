@@ -3,27 +3,37 @@
 
 ## Command line building (via Makefile)
 Install build support (Makefile, gcc, etc...):  
+```
 sudo apt-get install build-essential  
+```
 
 Install g3n support libraries (Required for optional tools spiralis and fenestra):  
+```
 sudo apt-get install xorg-dev libgl1-mesa-dev libopenal1 libopenal-dev libvorbis0a libvorbis-dev libvorbisfile3  
+```
 
 # Deploy a cloud hosted vault instance using Tierceron
 First, we'll need a utility to help us generate some infrastructure in Azure.
 Everything in Tierceron run directly from a Hashicorp Vault instance and it
 is easiest if you set one up in Azure cloud.  You can use a tiny instance
 to get started.  
+```
 go get github.com/trimble-oss/tierceron/cmd/trcconfig  
 go get github.com/trimble-oss/tierceron/cmd/trcx  
+```
 
 Now that we have the tools we need (trcconfig and trcx), go to the terraform templates.  
+```
 cd terraform/azure/trcagent  
 trcconfig -novault  
+```
 
 This next step generates a seed file for use in managing your sensitive terraform
 configurations in Vault.  
+```
 mkdir trc_seeds  
 trcx -novault  
+```
 
 Edit trc_seeds/dev/dev_seed.yml using your favorite editor to customize the
 configurations you'll want to use in your terraform script.  
@@ -32,7 +42,9 @@ configurations you'll want to use in your terraform script.
 [Install Terraform](https://www.terraform.io/downloads.html)  
 
 From command line, navigate to the directory containing terraform files (terraform/azure/trcagent) and run `terraform init`  
+```
 cd terraform/azure/trcagent  
+```
 
 ## What you'll need  
 deploy.pem file  
@@ -52,8 +64,10 @@ To deploy the vault instance, run `terraform apply "vault.plan"`
 Go to the Cloud Console and navigate to the Virtual Machine instance named vault.
 Copy the private IP (at this point, you could add routing for the private IP)  
 
+```
 ssh -i deploy.pem username@ip  
 service vault start  
+```
 
 Connect to https://<vaulthost>:<vaultport>/v1/sys/health to check that the vault is running.  
 
@@ -61,7 +75,9 @@ To destroy the instance of vault, run `terraform destroy` or terminate it from t
 
 #Initialize your vault instance so it can be ready to start accepting some secret data.
 To initialize vault, you'll first need another tool to create a usable vault instance.  
+```
 go get github.com/trimble-oss/tierceron/cmd/trcinit  
+```
 
 
 
@@ -231,10 +247,14 @@ trcconfig
 
 Until this project becomes Open source, in order to build Tierceron, you will need to do the following:  
 
+```
 $ git config --global url."git@github.com:trimble-oss/".insteadOf "https://github.com/trimble-oss/"  
 $ eval `ssh-agent`  
+```
 
 go get needs the following to function seemlessly with Private/Protected Trimble repositories.  
 id_rsa should be the private key that has previously been given access to Trimble-oss.  
 
+```
 $ ssh-add ~/.ssh/id_rsa_git  
+```
