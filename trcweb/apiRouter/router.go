@@ -10,6 +10,8 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	twp "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 	"github.com/trimble-oss/tierceron/trcweb/server"
@@ -75,52 +77,52 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 						err = claims.Valid()
 						if err == nil { // Verify that token had valid issuing time/date
 							if claims["iss"] != "Viewpoint, Inc." { // Verify issuer
-								errMsg = "Invalid token issuer: " + claims["iss"].(string)
-								http.Error(w, errMsg, 401)
+								errMsg = fmt.Sprintf("Invalid token issuer: %s", util.Sanitize(claims["iss"]))
+								http.Error(w, errMsg, http.StatusUnauthorized)
 								s.Log.Println(errMsg)
 								return
 							} else if claims["aud"] != "Viewpoint Vault WebAPI" { // Verify audience
-								errMsg = "Token issued for different audience: " + claims["aud"].(string)
-								http.Error(w, errMsg, 401)
+								errMsg = fmt.Sprintf("Token issued for different audience: %s", util.Sanitize(claims["aud"]))
+								http.Error(w, errMsg, http.StatusUnauthorized)
 								s.Log.Println(errMsg)
 								return
 							}
 							// Output token info and pass request to twirp server
 							s.Log.SetPrefix("[INFO]")
-							s.Log.Printf("Request authorized for %v with ID %v\n", claims["name"], claims["sub"])
+							s.Log.Printf("Request authorized for %v with ID %v\n", util.Sanitize(claims["name"]), util.Sanitize(claims["sub"]))
 							ctx := r.Context()
 							restHandler.ServeHTTP(w, r.WithContext(context.WithValue(ctx, "user", claims["sub"])))
 							return
 						}
 						// Before issue time, after expiration, or before validity time
-						http.Error(w, err.Error(), 401)
-						s.Log.Printf("%d: %s", 401, err.Error())
+						http.Error(w, err.Error(), http.StatusUnauthorized)
+						s.Log.Printf("%d: %s", http.StatusUnauthorized, err.Error())
 						return
 					}
 					// Token claims not in json format
 					errMsg = "Format error with auth token claims"
-					http.Error(w, errMsg, 401)
+					http.Error(w, errMsg, http.StatusUnauthorized)
 
 					errMsg = eUtils.SanitizeForLogging(errMsg)
-					s.Log.Printf("%d: %s", 401, errMsg)
+					s.Log.Printf("%d: %s", http.StatusUnauthorized, errMsg)
 					return
 				}
 				// Error when parsing token. Pass back a generalized error for formatting
 				errMsg = "Invalid token: " + err.Error()
-				http.Error(w, errMsg, 401)
-				s.Log.Printf("%d: %s\n", 401, errMsg)
+				http.Error(w, errMsg, http.StatusUnauthorized)
+				s.Log.Printf("%d: %s\n", http.StatusUnauthorized, errMsg)
 				return
 			}
 			// Auth method passed but is not a bearer token
 			errMsg = "Invalid auth method " + splitAuth[0]
-			http.Error(w, errMsg, 401)
-			s.Log.Print(eUtils.SanitizeForLogging(fmt.Sprintf("%d: %s", 401, errMsg)))
+			http.Error(w, errMsg, http.StatusUnauthorized)
+			s.Log.Print(eUtils.SanitizeForLogging(fmt.Sprintf("%d: %s", http.StatusUnauthorized, errMsg)))
 			return
 		}
 		// No token to authenticate against
 		errMsg = "Missing auth token"
-		http.Error(w, errMsg, 401)
-		s.Log.Printf("%d: %s", 401, errMsg)
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		s.Log.Printf("%d: %s", http.StatusUnauthorized, errMsg)
 		return
 
 	}
@@ -193,15 +195,19 @@ func main() {
 
 	s = server.NewServer(*addrPtr, *tokenPtr)
 	localHost = *localPtr
-	config := &eUtils.DriverConfig{ExitOnFailure: true}
+	driverConfig := &eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			ExitOnFailure: true,
+		},
+	}
 
 	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(config, err, true)
+	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
 	s.Log.SetOutput(f)
 	memprotectopts.MemProtectInit(nil)
 
 	status, err := s.GetStatus(context.Background(), nil)
-	eUtils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 	if !status.Sealed && s.VaultToken != "" {
 		s.Log.Println("Vault is unsealed. Initializing GQL")

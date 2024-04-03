@@ -9,50 +9,51 @@ import (
 	"sync"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultMod(config *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
-	LogInfo(config, "InitVaultMod begins..")
-	if config == nil {
-		LogInfo(config, "InitVaultMod failure.  config provided is nil")
-		return config, nil, nil, errors.New("invalid nil config")
+func InitVaultMod(driverConfig *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+	LogInfo(&driverConfig.CoreConfig, "InitVaultMod begins..")
+	if driverConfig == nil {
+		LogInfo(&driverConfig.CoreConfig, "InitVaultMod failure.  driverConfig provided is nil")
+		return driverConfig, nil, nil, errors.New("invalid nil driverConfig")
 	}
 
-	vault, err := sys.NewVault(config.Insecure, config.VaultAddress, config.Env, false, false, false, config.Log)
+	vault, err := sys.NewVault(driverConfig.Insecure, driverConfig.VaultAddress, driverConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
 	if err != nil {
-		LogInfo(config, "Failure to connect to vault..")
-		LogErrorObject(config, err, false)
-		return config, nil, nil, err
+		LogInfo(&driverConfig.CoreConfig, "Failure to connect to vault..")
+		LogErrorObject(&driverConfig.CoreConfig, err, false)
+		return driverConfig, nil, nil, err
 	}
-	vault.SetToken(config.Token)
-	LogInfo(config, "InitVaultMod - Initializing Modifier")
-	mod, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, false, config.Log)
+	vault.SetToken(driverConfig.Token)
+	LogInfo(&driverConfig.CoreConfig, "InitVaultMod - Initializing Modifier")
+	mod, err := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, driverConfig.Regions, false, driverConfig.CoreConfig.Log)
 	if err != nil {
-		LogErrorObject(config, err, false)
-		return config, nil, nil, err
+		LogErrorObject(&driverConfig.CoreConfig, err, false)
+		return driverConfig, nil, nil, err
 	}
-	mod.Env = config.Env
+	mod.Env = driverConfig.Env
 	mod.Version = "0"
-	mod.VersionFilter = config.VersionFilter
-	LogInfo(config, "InitVaultMod complete..")
+	mod.VersionFilter = driverConfig.VersionFilter
+	LogInfo(&driverConfig.CoreConfig, "InitVaultMod complete..")
 
-	return config, mod, vault, nil
+	return driverConfig, mod, vault, nil
 }
 
-func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
+func GetAcceptedTemplatePaths(driverConfig *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
 	var acceptedTemplatePaths []string
-	var templateName string = coreopts.BuildOptions.GetFolderPrefix(config.StartDir) + "_templates"
+	var templateName string = coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_templates"
 
-	if strings.Contains(config.EnvRaw, "_") {
-		config.EnvRaw = strings.Split(config.EnvRaw, "_")[0]
+	if strings.Contains(driverConfig.EnvRaw, "_") {
+		driverConfig.EnvRaw = strings.Split(driverConfig.EnvRaw, "_")[0]
 	}
 	var wantedTemplatePaths []string
 
-	if len(config.DynamicPathFilter) > 0 {
-		dynamicPathParts := strings.Split(config.DynamicPathFilter, "/")
+	if len(driverConfig.CoreConfig.DynamicPathFilter) > 0 {
+		dynamicPathParts := strings.Split(driverConfig.CoreConfig.DynamicPathFilter, "/")
 
 		if dynamicPathParts[0] == "Restricted" || dynamicPathParts[0] == "Index" || dynamicPathParts[0] == "PublicIndex" || dynamicPathParts[0] == "Protected" {
 			projectFilter := "/" + dynamicPathParts[1] + "/"
@@ -63,7 +64,7 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 				// Support shorter Protected paths.
 				serviceFilter = "/" + dynamicPathParts[2]
 			}
-			config.SectionName = serviceFilter
+			driverConfig.SectionName = serviceFilter
 
 			// Now filter and grab the templates we want...
 			for _, templateCandidate := range templatePaths {
@@ -79,22 +80,22 @@ func GetAcceptedTemplatePaths(config *DriverConfig, modCheck *helperkv.Modifier,
 		// TODO: Deprecated...
 		// 1-800-ROIT
 		pathFilterBase := ""
-		if config.SectionKey != "/Restricted/" {
-			pathFilterBase = "/" + coreopts.BuildOptions.GetFolderPrefix(config.StartDir) + "_templates"
+		if driverConfig.SectionKey != "/Restricted/" {
+			pathFilterBase = "/" + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_templates"
 		}
 
-		for _, projectSection := range config.ProjectSections {
+		for _, projectSection := range driverConfig.ProjectSections {
 			pathFilter := pathFilterBase + "/" + projectSection + "/"
-			if len(config.ServiceFilter) > 0 {
-				for _, serviceFilter := range config.ServiceFilter {
+			if len(driverConfig.ServiceFilter) > 0 {
+				for _, serviceFilter := range driverConfig.ServiceFilter {
 					endPathFilter := serviceFilter
-					if config.SectionKey != "/Restricted/" {
+					if driverConfig.SectionKey != "/Restricted/" {
 						endPathFilter = endPathFilter + "/"
 					}
 					wantedTemplatePaths = append(wantedTemplatePaths, pathFilter+endPathFilter)
 				}
-			} else if len(config.SubPathFilter) > 0 {
-				wantedTemplatePaths = config.SubPathFilter
+			} else if len(driverConfig.SubPathFilter) > 0 {
+				wantedTemplatePaths = driverConfig.SubPathFilter
 			} else {
 				wantedTemplatePaths = append(wantedTemplatePaths, pathFilter)
 			}
@@ -143,7 +144,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 				}
 
 				trcdbEnvLogger = log.New(f, fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string)), log.LstdFlags)
-				CheckError(&DriverConfig{Insecure: true, Log: trcdbEnvLogger, ExitOnFailure: true}, logErr, true)
+				CheckError(&core.CoreConfig{ExitOnFailure: true, Log: trcdbEnvLogger}, logErr, true)
 				logMap.Store(logFile, trcdbEnvLogger)
 				logger.Println("InitVaultModForPlugin log setup complete")
 			} else {
@@ -171,7 +172,12 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		regions = pluginConfig["regions"].([]string)
 	}
 
-	config := DriverConfig{
+	driverConfig := DriverConfig{
+		CoreConfig: core.CoreConfig{
+			WantCerts:     false,
+			ExitOnFailure: exitOnFailure,
+			Log:           trcdbEnvLogger,
+		},
 		Insecure:       !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
 		Token:          pluginConfig["token"].(string),
 		VaultAddress:   pluginConfig["vaddress"].(string),
@@ -181,12 +187,9 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		ServicesWanted: []string{},
 		StartDir:       append([]string{}, ""),
 		EndDir:         "",
-		WantCerts:      false,
 		GenAuth:        false,
-		ExitOnFailure:  exitOnFailure,
-		Log:            trcdbEnvLogger,
 	}
 	trcdbEnvLogger.Println("InitVaultModForPlugin ends..")
 
-	return InitVaultMod(&config)
+	return InitVaultMod(&driverConfig)
 }

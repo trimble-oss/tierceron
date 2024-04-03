@@ -9,6 +9,7 @@ import (
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -24,7 +25,7 @@ func main() {
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
-	eUtils.CheckError(&eUtils.DriverConfig{Log: logger, ExitOnFailure: true}, err, true)
+	eUtils.CheckError(&core.CoreConfig{ExitOnFailure: true, Log: logger}, err, true)
 
 	pluginConfig := testopts.BuildOptions.GetTestConfig(*tokenPtr, false)
 	pluginConfig["address"] = ""

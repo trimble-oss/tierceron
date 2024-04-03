@@ -12,6 +12,8 @@ import (
 import (
 	"log"
 	"os"
+
+	"github.com/trimble-oss/tierceron/pkg/core"
 )
 
 //export ConfigTemplateLib
@@ -21,21 +23,23 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 	logger.Println("NCLib Version: " + "1.20")
 	mod, err := helperkv.NewModifier(false, token, address, env, nil, true, logger)
 	mod.Env = env
-	config := &eUtils.DriverConfig{
+	driverConfig := &eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			WantCerts: false,
+			Log:       logger,
+		},
 		ZeroConfig: true,
-		WantCerts:  false,
 		StartDir:   append([]string{}, "trc_templates"),
 		Insecure:   false,
-		Log:        logger,
 	}
 
 	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 	}
 
-	configuredTemplate, _, _, err := vcutils.ConfigTemplate(config, mod, templatePath, true, project, service, false, true)
+	configuredTemplate, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, service, false, true)
 	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 	}
 
 	mod.Close()
@@ -49,20 +53,23 @@ func ConfigCertLib(token string, address string, env string, templatePath string
 	logger.Println("NCLib Version: " + "1.20")
 	mod, err := helperkv.NewModifier(false, token, address, env, nil, true, logger)
 	mod.Env = env
-	config := &eUtils.DriverConfig{
+	driverConfig := &eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			WantCerts: true,
+			Log:       logger,
+		},
+
 		ZeroConfig: true,
-		WantCerts:  true,
 		StartDir:   append([]string{}, "trc_templates"),
 		Insecure:   false,
-		Log:        logger,
 	}
 	if err != nil {
-		eUtils.LogErrorMessage(config, err.Error(), false)
+		eUtils.LogErrorMessage(&driverConfig.CoreConfig, err.Error(), false)
 		return C.CString("")
 	}
-	_, configuredCert, _, err := vcutils.ConfigTemplate(config, mod, templatePath, true, project, service, true, true)
+	_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, service, true, true)
 	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 	}
 
 	mod.Close()

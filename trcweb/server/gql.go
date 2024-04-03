@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 
@@ -105,7 +106,10 @@ func (s *Server) InitGQL() {
 
 	// Fetch template keys and values
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
-	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	config := &core.CoreConfig{
+		ExitOnFailure: false,
+		Log:           s.Log,
+	}
 
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)

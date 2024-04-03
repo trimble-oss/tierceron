@@ -14,6 +14,6 @@ func GetImageDownloadUrl(pluginToolConfig map[string]interface{}) (string, error
 	return "", nil
 }
 
-func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	return errors.New("Not defined")
 }

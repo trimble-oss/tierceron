@@ -8,11 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
-func DownloadTemplates(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templatePaths *string) {
+func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templatePaths *string) {
 	var filterTemplatePathSlice []string
 	if len(*templatePaths) > 0 {
 		filterTemplatePathSlice = strings.Split(*templatePaths, ",")
@@ -83,7 +84,7 @@ func DownloadTemplates(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirN
 	}
 }
 
-func DownloadTemplateDirectory(config *eUtils.DriverConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templateFilter *string) ([]string, error) {
+func DownloadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templateFilter *string) ([]string, error) {
 
 	var filterTemplateSlice []string
 	if len(*templateFilter) > 0 {

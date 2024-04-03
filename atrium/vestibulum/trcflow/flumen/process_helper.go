@@ -64,13 +64,13 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 
 	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.FlowLock)
 	if err != nil {
-		eUtils.LogErrorObject(tfmContext.Config, err, false)
+		eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
 	}
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
 		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.FlowLock)
 		if err != nil {
-			eUtils.LogErrorObject(tfmContext.Config, err, false)
+			eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
 		}
 	}
 	changesLock.Unlock()
@@ -82,7 +82,7 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 
 		_, changedTableColumns, changedTableRowData, err := trcdb.Query(tfmContext.TierceronEngine, changedTableQuery, tfContext.FlowLock)
 		if err != nil {
-			eUtils.LogErrorObject(tfmContext.Config, err, false)
+			eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
 			continue
 		}
 
@@ -99,30 +99,30 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 			return trcdb.Query(engine.(*trcengine.TierceronEngine), query, tfContext.FlowLock)
 		})
 		if indexPathErr != nil {
-			eUtils.LogErrorObject(tfmContext.Config, indexPathErr, false)
+			eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, indexPathErr, false)
 			// Re-inject into changes because it might not be here yet...
 			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.FlowLock)
 			if err != nil {
-				eUtils.LogErrorObject(tfmContext.Config, err, false)
+				eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
 			}
 			continue
 		}
 
 		if refreshErr := tfContext.Vault.RefreshClient(); refreshErr != nil {
 			// Panic situation...  Can't connect to vault... Wait until next cycle to try again.
-			eUtils.LogErrorMessage(tfmContext.Config, "Failure to connect to vault.  It may be down...", false)
-			eUtils.LogErrorObject(tfmContext.Config, refreshErr, false)
+			eUtils.LogErrorMessage(&tfmContext.DriverConfig.CoreConfig, "Failure to connect to vault.  It may be down...", false)
+			eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, refreshErr, false)
 			continue
 		}
 
-		eUtils.LogInfo(tfmContext.Config, "Attempting to seed:"+indexPath)
-		seedError := trcvutils.SeedVaultById(tfmContext.Config, tfContext.GoMod, tfContext.Flow.ServiceName(), vaultAddress, tfmContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
+		eUtils.LogInfo(&tfmContext.DriverConfig.CoreConfig, "Attempting to seed:"+indexPath)
+		seedError := trcvutils.SeedVaultById(tfmContext.DriverConfig, tfContext.GoMod, tfContext.Flow.ServiceName(), vaultAddress, tfmContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
 		if seedError != nil {
-			eUtils.LogErrorObject(tfmContext.Config, seedError, false)
+			eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, seedError, false)
 			// Re-inject into changes because it might not be here yet...
 			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.FlowLock)
 			if err != nil {
-				eUtils.LogErrorObject(tfmContext.Config, err, false)
+				eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
 			}
 			continue
 		}
@@ -132,7 +132,7 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 			tfContext.FlowLock.Lock()
 			pushError := flowPushRemote(tfContext.RemoteDataSource, rowDataMap)
 			if pushError != nil {
-				eUtils.LogErrorObject(tfmContext.Config, err, false)
+				eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
 			}
 			tfContext.FlowLock.Unlock()
 		}

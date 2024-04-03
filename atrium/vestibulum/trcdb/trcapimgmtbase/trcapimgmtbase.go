@@ -30,7 +30,7 @@ func CommonMain(envPtr *string,
 	tokenNamePtr *string,
 	regionPtr *string,
 	startDirPtr *string,
-	c *eUtils.DriverConfig,
+	driverConfig *eUtils.DriverConfig,
 	mod *kv.Modifier) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
@@ -96,20 +96,20 @@ func CommonMain(envPtr *string,
 		apimConfigMap["azureClientSecret"],
 		nil)
 	if err != nil {
-		c.Log.Fatalf("failed to obtain a credential: %v", err)
+		driverConfig.CoreConfig.Log.Fatalf("failed to obtain a credential: %v", err)
 		return err
 	}
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	clientFactory, err := armapimanagement.NewClientFactory(apimConfigMap["SUBSCRIPTION_ID"], svc, nil)
 	if err != nil {
-		c.Log.Fatalf("failed to create client: %v", err)
+		driverConfig.CoreConfig.Log.Fatalf("failed to create client: %v", err)
 		return err
 	}
 
 	_, eTagErr := clientFactory.NewAPIPolicyClient().GetEntityTag(ctx, apimConfigMap["RESOURCE_GROUP_NAME"], apimConfigMap["SERVICE_NAME"], apimConfigMap["API_NAME"], armapimanagement.PolicyIDNamePolicy, nil)
 	if eTagErr != nil {
-		c.Log.Fatalf("failed to finish the request: %v", eTagErr)
+		driverConfig.CoreConfig.Log.Fatalf("failed to finish the request: %v", eTagErr)
 		return eTagErr
 	}
 
@@ -125,7 +125,7 @@ func CommonMain(envPtr *string,
 		},
 	}, &armapimanagement.APIClientBeginCreateOrUpdateOptions{IfMatch: &etag})
 	if err != nil {
-		c.Log.Fatalf("failed to finish the request: %v", err)
+		driverConfig.CoreConfig.Log.Fatalf("failed to finish the request: %v", err)
 		return err
 	}
 
@@ -137,7 +137,7 @@ func CommonMain(envPtr *string,
 
 	resp, err := poller.PollUntilDone(ctx, nil)
 	if err != nil {
-		c.Log.Fatalf("failed to pull the result: %v", err)
+		driverConfig.CoreConfig.Log.Fatalf("failed to pull the result: %v", err)
 		return err
 	}
 

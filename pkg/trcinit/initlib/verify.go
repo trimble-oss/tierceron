@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/validator"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -21,7 +22,7 @@ import (
 // KeyStore:
 // 	type: KeyStore
 
-func verify(config *eUtils.DriverConfig, mod *helperkv.Modifier, v map[interface{}]interface{}) ([]string, error) {
+func verify(config *core.CoreConfig, mod *helperkv.Modifier, v map[interface{}]interface{}) ([]string, error) {
 	var isValid bool
 	var path string
 	config.Log.SetPrefix("[VERIFY]")

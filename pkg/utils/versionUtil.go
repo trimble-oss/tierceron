@@ -40,22 +40,22 @@ func GetRawEnv(env string) string {
 	}
 }
 
-func GetProjectVersionInfo(config *DriverConfig, mod *helperkv.Modifier) map[string]map[string]interface{} {
+func GetProjectVersionInfo(driverConfig *DriverConfig, mod *helperkv.Modifier) map[string]map[string]interface{} {
 	versionMetadataMap := make(map[string]map[string]interface{})
-	mod.VersionFilter = config.VersionFilter
+	mod.VersionFilter = driverConfig.VersionFilter
 	var secretMetadataMap map[string]map[string]interface{}
 	var err error
-	mod.SectionKey = config.SectionKey
-	mod.SubSectionName = config.SubSectionName
-	mod.RawEnv = strings.Split(config.EnvRaw, ".")[0]
-	if !config.WantCerts {
-		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "super-secrets", config.Log)
+	mod.SectionKey = driverConfig.SectionKey
+	mod.SubSectionName = driverConfig.SubSectionName
+	mod.RawEnv = strings.Split(driverConfig.EnvRaw, ".")[0]
+	if !driverConfig.CoreConfig.WantCerts {
+		secretMetadataMap, err = mod.GetVersionValues(mod, driverConfig.CoreConfig.WantCerts, "super-secrets", driverConfig.CoreConfig.Log)
 		if secretMetadataMap == nil {
-			secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values", config.Log)
+			secretMetadataMap, err = mod.GetVersionValues(mod, driverConfig.CoreConfig.WantCerts, "values", driverConfig.CoreConfig.Log)
 		}
 	} else {
 		//Certs are in values, not super secrets
-		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values", config.Log)
+		secretMetadataMap, err = mod.GetVersionValues(mod, driverConfig.CoreConfig.WantCerts, "values", driverConfig.CoreConfig.Log)
 	}
 	var foundKey string
 	for key, value := range secretMetadataMap {
@@ -78,22 +78,22 @@ func GetProjectVersionInfo(config *DriverConfig, mod *helperkv.Modifier) map[str
 
 	if err != nil {
 		fmt.Println("No version data available for this env")
-		LogErrorObject(config, err, false)
+		LogErrorObject(&driverConfig.CoreConfig, err, false)
 	}
 	if len(versionMetadataMap) == 0 {
 		fmt.Println("No version data available for this env")
-		LogErrorObject(config, err, false)
+		LogErrorObject(&driverConfig.CoreConfig, err, false)
 	}
 
 	return versionMetadataMap
 }
 
-func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
+func GetProjectVersions(driverConfig *DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
 	var versionNumbers []int
 	for valuePath, data := range versionMetadataMap {
-		if len(config.ServiceFilter) > 0 {
+		if len(driverConfig.ServiceFilter) > 0 {
 			found := false
-			for _, index := range config.ServiceFilter {
+			for _, index := range driverConfig.ServiceFilter {
 				if strings.Contains(valuePath, index) {
 					found = true
 				}
@@ -103,7 +103,7 @@ func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[
 			}
 		}
 		projectFound := false
-		for _, project := range config.VersionFilter {
+		for _, project := range driverConfig.VersionFilter {
 			if strings.Contains(valuePath, project) {
 				projectFound = true
 				for key := range data {
@@ -124,7 +124,7 @@ func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[
 	return versionNumbers
 }
 
-func BoundCheck(config *DriverConfig, versionNumbers []int, version string) {
+func BoundCheck(driverConfig *DriverConfig, versionNumbers []int, version string) {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if IsWindows() {
@@ -136,10 +136,10 @@ func BoundCheck(config *DriverConfig, versionNumbers []int, version string) {
 		oldestVersion := versionNumbers[0]
 		userVersion, _ := strconv.Atoi(version)
 		if userVersion > latestVersion || userVersion < oldestVersion && len(versionNumbers) != 1 {
-			LogAndSafeExit(config, Cyan+"This version "+config.Env+" is not available as the latest version is "+strconv.Itoa(versionNumbers[len(versionNumbers)-1])+" and oldest version available is "+strconv.Itoa(versionNumbers[0])+Reset, 1)
+			LogAndSafeExit(&driverConfig.CoreConfig, Cyan+"This version "+driverConfig.Env+" is not available as the latest version is "+strconv.Itoa(versionNumbers[len(versionNumbers)-1])+" and oldest version available is "+strconv.Itoa(versionNumbers[0])+Reset, 1)
 		}
 	} else {
-		LogAndSafeExit(config, Cyan+"No version data found"+Reset, 1)
+		LogAndSafeExit(&driverConfig.CoreConfig, Cyan+"No version data found"+Reset, 1)
 	}
 }
 

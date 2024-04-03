@@ -11,13 +11,14 @@ import (
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 //need mssql for spectrum
 
 // Heartbeat validates the database connection
-func Heartbeat(config *eUtils.DriverConfig, url string, username string, password string) (bool, error) {
+func Heartbeat(config *core.CoreConfig, url string, username string, password string) (bool, error) {
 	//extract driver, server, port and dbname with regex
 	driver, server, port, dbname, _, err := ParseURL(config, url)
 	if err != nil {
@@ -55,7 +56,7 @@ func Heartbeat(config *eUtils.DriverConfig, url string, username string, passwor
 	}
 	return true, nil
 }
-func ParseURL(config *eUtils.DriverConfig, url string) (string, string, string, string, string, error) {
+func ParseURL(config *core.CoreConfig, url string) (string, string, string, string, string, error) {
 	//only works with jdbc:mysql or jdbc:sqlserver.
 	regex := regexp.MustCompile(`(?i)(?:jdbc:(mysql|sqlserver|mariadb))://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+)(.*certName=([\w\.]+)|.*).*`)
 	m := regex.FindStringSubmatch(url)

@@ -261,7 +261,7 @@ func NewAgentConfig(address string,
 	}
 }
 
-func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
+func PenseQuery(driverConfig *eUtils.DriverConfig, pense string) (*string, error) {
 	penseCode := randomString(7 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
@@ -290,7 +290,7 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	}
 	dialOptions := grpc.WithTransportCredentials(creds)
 
-	localHost, localHostErr := LocalAddr(config.EnvRaw)
+	localHost, localHostErr := LocalAddr(driverConfig.EnvRaw)
 	if localHostErr != nil {
 		return nil, localHostErr
 	}
@@ -305,7 +305,7 @@ func PenseQuery(config *eUtils.DriverConfig, pense string) (*string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	localHostConfirm, localHostConfirmErr := LocalAddr(config.EnvRaw)
+	localHostConfirm, localHostConfirmErr := LocalAddr(driverConfig.EnvRaw)
 	if localHostConfirmErr != nil {
 		return nil, localHostConfirmErr
 	}

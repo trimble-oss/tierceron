@@ -9,15 +9,14 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/validator"
 
 	"github.com/xo/dburl"
-
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // OpenDirectConnection opens connection to a database using various sql urls used by Spectrum.
-func OpenDirectConnection(config *eUtils.DriverConfig, url string, username string, password string) (*sql.DB, error) {
+func OpenDirectConnection(config *core.CoreConfig, url string, username string, password string) (*sql.DB, error) {
 	driver, server, port, dbname, certName, err := validator.ParseURL(config, url)
 
 	if err != nil {

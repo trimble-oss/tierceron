@@ -11,6 +11,7 @@ import (
 
 	"os"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
@@ -75,9 +76,14 @@ func main() {
 		DetailedElements = libraryElementBundle.DetailedElements
 	} else if *headless && !*custos {
 		data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
-		config := eUtils.DriverConfig{Insecure: *insecure, Log: logger, ExitOnFailure: true}
+		driverConfig := eUtils.DriverConfig{
+			CoreConfig: core.CoreConfig{
+				ExitOnFailure: true,
+				Log:           logger,
+			},
+			Insecure: *insecure}
 		ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil, logger)
-		eUtils.CheckError(&config, argosyErr, true)
+		eUtils.CheckError(&driverConfig.CoreConfig, argosyErr, true)
 
 		dfstatData := map[string]float64{}
 		pointer := 0

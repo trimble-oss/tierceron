@@ -14,6 +14,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -219,11 +220,17 @@ func CommonMain(envPtr *string,
 	}
 	logger := log.New(f, "[INIT]", log.LstdFlags)
 	logger.Println("==========Beginning Vault Initialization==========")
-	config := &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
-	eUtils.CheckError(config, err, true)
+	driverConfig := &eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			ExitOnFailure: true,
+			Log:           logger,
+		},
+		Insecure: true,
+	}
+	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
 
 	if !*pingPtr && !*newPtr && *tokenPtr == "" {
-		eUtils.CheckWarning(config, "Missing auth tokens", true)
+		eUtils.CheckWarning(&driverConfig.CoreConfig, "Missing auth tokens", true)
 	}
 
 	if addrPtr == nil || *addrPtr == "" {
@@ -231,7 +238,13 @@ func CommonMain(envPtr *string,
 			fmt.Println("Address must be specified using -addr flag")
 			os.Exit(1)
 		}
-		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{Insecure: *insecurePtr, Log: logger}, nil, nil, tokenPtr, nil, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
+		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{
+			CoreConfig: core.CoreConfig{
+				ExitOnFailure: true,
+				Log:           logger,
+			},
+			Insecure: *insecurePtr,
+		}, nil, nil, tokenPtr, nil, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
 		if autoErr != nil {
 			fmt.Println("Auth failure: " + autoErr.Error())
 			os.Exit(1)
@@ -258,12 +271,12 @@ func CommonMain(envPtr *string,
 		os.Exit(0)
 	}
 
-	eUtils.LogErrorObject(config, err, true)
+	eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 	// Trying to use local, prompt for username/password
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		*envPtr, err = eUtils.LoginToLocal()
-		eUtils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 		logger.Printf("Login successful, using local envronment: %s\n", *envPtr)
 	}
 
@@ -281,21 +294,21 @@ func CommonMain(envPtr *string,
 			os.Exit(-1)
 		}
 		keyToken, err := v.InitVault(int(totalKeyShard), int(keyThreshold))
-		eUtils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 		v.SetToken(keyToken.Token)
 		v.SetShards(keyToken.Keys)
 		//check error returned by unseal
 		_, _, _, err = v.Unseal()
-		eUtils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 	}
 	logger.Printf("Succesfully connected to vault at %s\n", *addrPtr)
 
 	if !*newPtr && *namespaceVariable != "" && *namespaceVariable != "vault" && !(*rotateTokens || *updatePolicy || *updateRole || *tokenExpiration) {
 		if *initNamespace {
 			fmt.Println("Creating tokens, roles, and policies.")
-			policyExists, policyErr := il.GetExistsPolicies(config, namespacePolicyConfigs, v)
+			policyExists, policyErr := il.GetExistsPolicies(&driverConfig.CoreConfig, namespacePolicyConfigs, v)
 			if policyErr != nil {
-				eUtils.LogErrorObject(config, policyErr, false)
+				eUtils.LogErrorObject(&driverConfig.CoreConfig, policyErr, false)
 				fmt.Println("Cannot safely determine policy.")
 				os.Exit(-1)
 			}
@@ -305,9 +318,9 @@ func CommonMain(envPtr *string,
 				os.Exit(-1)
 			}
 
-			roleExists, roleErr := il.GetExistsRoles(config, namespaceRoleConfigs, v)
+			roleExists, roleErr := il.GetExistsRoles(&driverConfig.CoreConfig, namespaceRoleConfigs, v)
 			if roleErr != nil {
-				eUtils.LogErrorObject(config, roleErr, false)
+				eUtils.LogErrorObject(&driverConfig.CoreConfig, roleErr, false)
 				fmt.Println("Cannot safely determine role.")
 			}
 
@@ -322,15 +335,15 @@ func CommonMain(envPtr *string,
 
 			// Upload Create/Update new cidr roles.
 			fmt.Println("Creating role")
-			il.UploadTokenCidrRoles(config, namespaceRoleConfigs, v)
+			il.UploadTokenCidrRoles(&driverConfig.CoreConfig, namespaceRoleConfigs, v)
 			// Upload Create/Update policies from the given policy directory
 
 			fmt.Println("Creating policy")
-			il.UploadPolicies(config, namespacePolicyConfigs, v, false)
+			il.UploadPolicies(&driverConfig.CoreConfig, namespacePolicyConfigs, v, false)
 
 			// Upload tokens from the given token directory
 			fmt.Println("Creating tokens")
-			tokens := il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
+			tokens := il.UploadTokens(&driverConfig.CoreConfig, namespaceTokenConfigs, tokenFileFilterPtr, v)
 			if len(tokens) > 0 {
 				logger.Println(*namespaceVariable + " tokens successfully created.")
 			} else {
@@ -348,7 +361,7 @@ func CommonMain(envPtr *string,
 		if *tokenExpiration {
 			fmt.Println("Checking token expiration.")
 			roleId, lease, err := v.GetRoleID("bamboo")
-			eUtils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
 		} else {
 			if *rotateTokens {
@@ -371,7 +384,7 @@ func CommonMain(envPtr *string,
 		if *updateRole {
 			// Upload Create/Update new cidr roles.
 			fmt.Println("Updating role")
-			errTokenCidr := il.UploadTokenCidrRoles(config, namespaceRoleConfigs, v)
+			errTokenCidr := il.UploadTokenCidrRoles(&driverConfig.CoreConfig, namespaceRoleConfigs, v)
 			if errTokenCidr != nil {
 				if *roleFileFilterPtr != "" { //If old way didn't work -> try new way.
 					*rotateTokens = true
@@ -387,7 +400,7 @@ func CommonMain(envPtr *string,
 		if *updatePolicy {
 			// Upload Create/Update policies from the given policy directory
 			fmt.Println("Updating policies")
-			errTokenPolicy := il.UploadPolicies(config, namespacePolicyConfigs, v, false)
+			errTokenPolicy := il.UploadPolicies(&driverConfig.CoreConfig, namespacePolicyConfigs, v, false)
 			if errTokenPolicy != nil {
 				fmt.Println("Policy update failed.  Cannot continue.")
 				os.Exit(-1)
@@ -400,7 +413,7 @@ func CommonMain(envPtr *string,
 			var tokens []*apinator.InitResp_Token
 			// Create new tokens.
 			fmt.Println("Creating new tokens")
-			tokens = il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
+			tokens = il.UploadTokens(&driverConfig.CoreConfig, namespaceTokenConfigs, tokenFileFilterPtr, v)
 
 			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
 			if mod != nil {
@@ -409,7 +422,7 @@ func CommonMain(envPtr *string,
 
 			if err != nil {
 				fmt.Println("Error creating modifer.")
-				eUtils.LogErrorObject(config, err, false)
+				eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 				os.Exit(-1)
 			}
 
@@ -423,7 +436,7 @@ func CommonMain(envPtr *string,
 			}
 
 			// Process existing approles for provided namespace
-			approleFiles := il.GetApproleFileNames(config, *namespaceVariable)
+			approleFiles := il.GetApproleFileNames(&driverConfig.CoreConfig, *namespaceVariable)
 			if len(approleFiles) == 0 {
 				fmt.Println("No approles found for namespace: " + *namespaceVariable)
 			} else {
@@ -436,7 +449,7 @@ func CommonMain(envPtr *string,
 						fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
 						if parseErr != nil {
 							fmt.Println("Read parsing approle yaml file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
+							eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
 							continue
 						}
 						if approleName, ok := fileYAML["Approle_Name"].(string); ok {
@@ -444,7 +457,7 @@ func CommonMain(envPtr *string,
 							mod.Env = approleName
 						} else {
 							fmt.Println("Read parsing approle name from file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
+							eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
 							continue
 						}
 
@@ -453,7 +466,7 @@ func CommonMain(envPtr *string,
 							tokenPerms = permMap
 						} else {
 							fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
-							eUtils.LogErrorObject(config, parseErr, false)
+							eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
 							continue
 						}
 
@@ -506,11 +519,11 @@ func CommonMain(envPtr *string,
 							// Recreate the role.
 							//
 							resp, role_cleanup := v.DeleteRole(mod.RawEnv)
-							eUtils.LogErrorObject(config, role_cleanup, false)
+							eUtils.LogErrorObject(&driverConfig.CoreConfig, role_cleanup, false)
 
 							if resp.StatusCode == 404 {
 								err = v.EnableAppRole()
-								eUtils.LogErrorObject(config, err, true)
+								eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 							}
 
 							err = v.CreateNewRole(mod.RawEnv, &sys.NewRoleOptions{
@@ -518,13 +531,13 @@ func CommonMain(envPtr *string,
 								TokenMaxTTL: "15m",
 								Policies:    []string{mod.RawEnv},
 							})
-							eUtils.LogErrorObject(config, err, true)
+							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 							roleID, _, err := v.GetRoleID(mod.RawEnv)
-							eUtils.LogErrorObject(config, err, true)
+							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 							secretID, err := v.GetSecretID(mod.RawEnv)
-							eUtils.LogErrorObject(config, err, true)
+							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 							fmt.Printf("Rotated role id and secret id for %s.\n", mod.RawEnv)
 							fmt.Printf("Role ID: %s\n", roleID)
@@ -538,9 +551,9 @@ func CommonMain(envPtr *string,
 						// Just update tokens in approle.
 						// This could be adding to an existing approle or re-adding to rotated role...
 						if len(tokenMap) > 0 {
-							warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
-							eUtils.LogErrorObject(config, err, true)
-							eUtils.LogWarningsObject(config, warn, true)
+							warn, err := mod.Write("super-secrets/tokens", tokenMap, driverConfig.CoreConfig.Log)
+							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
+							eUtils.LogWarningsObject(&driverConfig.CoreConfig, warn, true)
 							fmt.Println("Approle tokens refreshed/updated.")
 						}
 					}
@@ -554,7 +567,7 @@ func CommonMain(envPtr *string,
 	if !*newPtr && len(*shardPtr) > 0 {
 		v.AddShard(*shardPtr)
 		prog, t, success, err := v.Unseal()
-		eUtils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 		if !success {
 			logger.Printf("Vault unseal progress: %d/%d key shards\n", prog, t)
 			logger.Println("============End Initialization Attempt============")
@@ -569,7 +582,7 @@ func CommonMain(envPtr *string,
 		if mod != nil {
 			defer mod.Release()
 		}
-		eUtils.LogErrorObject(config, err, true)
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 		mod.Env = "bamboo"
 
@@ -578,18 +591,18 @@ func CommonMain(envPtr *string,
 			os.Exit(1)
 		}
 
-		policyExists, err := il.GetExistsPolicies(config, namespacePolicyConfigs, v)
+		policyExists, err := il.GetExistsPolicies(&driverConfig.CoreConfig, namespacePolicyConfigs, v)
 		if policyExists || err != nil {
 			fmt.Printf("Vault may be initialized already - Policies exists.\n")
 			os.Exit(1)
 		}
 
 		// Create secret engines
-		il.CreateEngines(config, v)
+		il.CreateEngines(&driverConfig.CoreConfig, v)
 		// Upload policies from the given policy directory
-		il.UploadPolicies(config, namespacePolicyConfigs, v, false)
+		il.UploadPolicies(&driverConfig.CoreConfig, namespacePolicyConfigs, v, false)
 		// Upload tokens from the given token directory
-		tokens := il.UploadTokens(config, namespaceTokenConfigs, tokenFileFilterPtr, v)
+		tokens := il.UploadTokens(&driverConfig.CoreConfig, namespaceTokenConfigs, tokenFileFilterPtr, v)
 		if !*prodPtr {
 			tokenMap := map[string]interface{}{}
 			for _, token := range tokens {
@@ -597,20 +610,20 @@ func CommonMain(envPtr *string,
 			}
 
 			err = v.EnableAppRole()
-			eUtils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 			err = v.CreateNewRole("bamboo", &sys.NewRoleOptions{
 				TokenTTL:    "10m",
 				TokenMaxTTL: "15m",
 				Policies:    []string{"bamboo"},
 			})
-			eUtils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 			roleID, _, err := v.GetRoleID("bamboo")
-			eUtils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 			secretID, err := v.GetSecretID("bamboo")
-			eUtils.LogErrorObject(config, err, true)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 			fmt.Printf("Created new role id and secret id for bamboo.\n")
 			fmt.Printf("Role ID: %s\n", roleID)
@@ -629,14 +642,14 @@ func CommonMain(envPtr *string,
 					if parseErr != nil {
 						isPolicy = false
 						fmt.Println("Unable to parse approle yaml file, continuing to next file.")
-						eUtils.LogErrorObject(config, parseErr, false)
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
 						continue
 					}
 					_, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{})
 					if !okPerms {
 						isPolicy = false
 						fmt.Println("Read incorrect approle token permissions from file, continuing to next file.")
-						eUtils.LogErrorObject(config, parseErr, false)
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
 						continue
 					}
 					if isPolicy {
@@ -656,11 +669,11 @@ func CommonMain(envPtr *string,
 				}
 
 				resp, role_cleanup := v.DeleteRole(appRolePolicy)
-				eUtils.LogErrorObject(config, role_cleanup, false)
+				eUtils.LogErrorObject(&driverConfig.CoreConfig, role_cleanup, false)
 
 				if resp.StatusCode == 404 {
 					err = v.EnableAppRole()
-					eUtils.LogErrorObject(config, err, true)
+					eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 				}
 
 				err = v.CreateNewRole(appRolePolicy, &sys.NewRoleOptions{
@@ -668,13 +681,13 @@ func CommonMain(envPtr *string,
 					TokenMaxTTL: "15m",
 					Policies:    []string{appRolePolicy},
 				})
-				eUtils.LogErrorObject(config, err, true)
+				eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 				appRoleID, _, err := v.GetRoleID(appRolePolicy)
-				eUtils.LogErrorObject(config, err, true)
+				eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 				appRoleSecretID, err := v.GetSecretID(appRolePolicy)
-				eUtils.LogErrorObject(config, err, true)
+				eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
 				fmt.Printf("Created new role id and secret id for " + appRolePolicy + ".\n")
 				fmt.Printf("Role ID: %s\n", appRoleID)
@@ -682,9 +695,9 @@ func CommonMain(envPtr *string,
 			}
 
 			// Store all new tokens to new appRole.
-			warn, err := mod.Write("super-secrets/tokens", tokenMap, config.Log)
-			eUtils.LogErrorObject(config, err, true)
-			eUtils.LogWarningsObject(config, warn, true)
+			warn, err := mod.Write("super-secrets/tokens", tokenMap, driverConfig.CoreConfig.Log)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
+			eUtils.LogWarningsObject(&driverConfig.CoreConfig, warn, true)
 		}
 	}
 
@@ -698,9 +711,9 @@ func CommonMain(envPtr *string,
 		}
 		mod.Env = *envPtr
 		mod.RawEnv = eUtils.GetRawEnv(*envPtr)
-		if valid, baseDesiredPolicy, errValidateEnvironment := mod.ValidateEnvironment(mod.RawEnv, *uploadCertPtr, "", config.Log); errValidateEnvironment != nil || !valid {
-			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.RawEnv, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-				eUtils.LogAndSafeExit(config, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", mod.Env, baseDesiredPolicy, desiredPolicy), 1)
+		if valid, baseDesiredPolicy, errValidateEnvironment := mod.ValidateEnvironment(mod.RawEnv, *uploadCertPtr, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
+			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.RawEnv, false, "_unrestricted", driverConfig.CoreConfig.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+				eUtils.LogAndSafeExit(&driverConfig.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", mod.Env, baseDesiredPolicy, desiredPolicy), 1)
 				return
 			}
 		}
@@ -730,7 +743,7 @@ func CommonMain(envPtr *string,
 		}
 		if len(*eUtils.ServiceFilterPtr) > 0 {
 			if len(sectionSlice) == 0 {
-				eUtils.LogAndSafeExit(config, "No available indexes found for "+*eUtils.IndexValueFilterPtr, 1)
+				eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "No available indexes found for "+*eUtils.IndexValueFilterPtr, 1)
 			}
 			serviceFilterSlice = strings.Split(*eUtils.ServiceFilterPtr, ",")
 			if len(*eUtils.ServiceNameFilterPtr) > 0 {
@@ -764,30 +777,32 @@ func CommonMain(envPtr *string,
 			fileFilter = append(fileFilter, "nest")
 		}
 
-		config = &eUtils.DriverConfig{
-			Insecure:          *insecurePtr,
-			Token:             v.GetToken(),
-			VaultAddress:      *addrPtr,
-			Env:               *envPtr,
-			EnvRaw:            eUtils.GetRawEnv(*envPtr),
-			SectionKey:        sectionKey,
-			SectionName:       subSectionName,
-			SubSectionValue:   *eUtils.IndexValueFilterPtr,
-			SubSectionName:    *eUtils.ServiceNameFilterPtr,
-			FileFilter:        fileFilter,
-			SecretMode:        true, //  "Only override secret values in templates?"
-			ProjectSections:   subSectionSlice,
-			ServiceFilter:     serviceFilterSlice,
-			DynamicPathFilter: *dynamicPathPtr,
-			ServicesWanted:    []string{*servicePtr},
-			StartDir:          append([]string{}, *seedPtr),
-			EndDir:            "",
-			WantCerts:         *uploadCertPtr, // TODO: this was false...
-			GenAuth:           false,
-			Log:               logger,
+		dConfig := &eUtils.DriverConfig{
+			CoreConfig: core.CoreConfig{
+				DynamicPathFilter: *dynamicPathPtr,
+				WantCerts:         *uploadCertPtr, // TODO: this was false...
+				Log:               logger,
+			},
+			Insecure:        *insecurePtr,
+			Token:           v.GetToken(),
+			VaultAddress:    *addrPtr,
+			Env:             *envPtr,
+			EnvRaw:          eUtils.GetRawEnv(*envPtr),
+			SectionKey:      sectionKey,
+			SectionName:     subSectionName,
+			SubSectionValue: *eUtils.IndexValueFilterPtr,
+			SubSectionName:  *eUtils.ServiceNameFilterPtr,
+			FileFilter:      fileFilter,
+			SecretMode:      true, //  "Only override secret values in templates?"
+			ProjectSections: subSectionSlice,
+			ServiceFilter:   serviceFilterSlice,
+			ServicesWanted:  []string{*servicePtr},
+			StartDir:        append([]string{}, *seedPtr),
+			EndDir:          "",
+			GenAuth:         false,
 		}
 
-		il.SeedVault(config)
+		il.SeedVault(dConfig)
 	}
 
 	logger.SetPrefix("[INIT]")

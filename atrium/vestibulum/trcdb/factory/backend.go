@@ -139,7 +139,7 @@ func StartPluginSettingEater() {
 }
 
 // Only push to sha256 chan if one is present.  Non blocking otherwise.
-func PushPluginSha(config *eUtils.DriverConfig, pluginConfig map[string]interface{}, vaultPluginSignature map[string]interface{}) {
+func PushPluginSha(driverConfig *eUtils.DriverConfig, pluginConfig map[string]interface{}, vaultPluginSignature map[string]interface{}) {
 	if _, trcShaChanOk := pluginConfig["trcsha256chan"]; trcShaChanOk {
 		if vaultPluginSignature != nil {
 			pluginConfig["trcsha256"] = vaultPluginSignature["trcsha256"]
@@ -544,7 +544,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)
 			pluginConfig["token"] = tokenEnvMap["ctoken"].(string)
 			pluginConfig["regions"] = []string{hostRegion}
-			cConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+			carrierDriverConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 			if err != nil {
 				logger.Println("Error: " + err.Error() + " - 1")
 				logger.Println("Failed to init mod for deploy update")
@@ -560,7 +560,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			cMod.SectionKey = "/Index/"
 			cMod.SubSectionValue = plugin.(string)
 
-			properties, err := trcvutils.NewProperties(cConfig, cVault, cMod, cMod.Env, "TrcVault", "Certify")
+			properties, err := trcvutils.NewProperties(&carrierDriverConfig.CoreConfig, cVault, cMod, cMod.Env, "TrcVault", "Certify")
 			if err != nil {
 				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to read previous plugin status from vault - 1"), nil

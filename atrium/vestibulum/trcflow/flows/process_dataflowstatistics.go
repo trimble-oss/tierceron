@@ -78,7 +78,7 @@ func getDataFlowStatisticsSchema(tableName string) sqle.PrimaryKeySchema {
 
 func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) error {
 	tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
-	tenantListData, tenantListErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath, tfmContext.Config.Log)
+	tenantListData, tenantListErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log)
 	if tenantListErr != nil {
 		return tenantListErr
 	}
@@ -89,14 +89,14 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 
 	for _, tenantIdList := range tenantListData.Data {
 		for _, tenantId := range tenantIdList.([]interface{}) {
-			flowGroupNameListData, flowGroupNameListErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath+"/"+tenantId.(string)+"/DataFlowStatistics/DataFlowGroup", tfmContext.Config.Log)
+			flowGroupNameListData, flowGroupNameListErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath+"/"+tenantId.(string)+"/DataFlowStatistics/DataFlowGroup", tfmContext.DriverConfig.CoreConfig.Log)
 			if flowGroupNameListErr != nil {
 				return flowGroupNameListErr
 			}
 
 			for _, flowGroupNameList := range flowGroupNameListData.Data {
 				for _, flowGroup := range flowGroupNameList.([]interface{}) {
-					listData, listErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath+"/"+tenantId.(string)+"/DataFlowStatistics/DataFlowGroup/"+flowGroup.(string)+"/dataFlowName/", tfmContext.Config.Log)
+					listData, listErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath+"/"+tenantId.(string)+"/DataFlowStatistics/DataFlowGroup/"+flowGroup.(string)+"/dataFlowName/", tfmContext.DriverConfig.CoreConfig.Log)
 					if listData == nil {
 						continue
 					}
@@ -110,7 +110,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 							testName = strings.ReplaceAll(testName.(string), "/", "")
 							dfGroup := flowcore.InitDataFlow(nil, flowGroup.(string), false)
 							if listData != nil {
-								err := dfGroup.RetrieveStatistic(tfContext.GoMod, tenantId.(string), tenantIndexPath, tenantDFSIdPath, flowGroup.(string), testName.(string), tfmContext.Config.Log)
+								err := dfGroup.RetrieveStatistic(tfContext.GoMod, tenantId.(string), tenantIndexPath, tenantDFSIdPath, flowGroup.(string), testName.(string), tfmContext.DriverConfig.CoreConfig.Log)
 								if err != nil {
 									tfmContext.Log("Failed to retrieve statistic", err)
 								}
@@ -239,7 +239,7 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 					if tfContext.CancelContext != nil {
 						tfContext.CancelContext() //This cancel also pushes any final changes to vault before closing sync cycle.
 						var baseTableTemplate extract.TemplateResultData
-						trcvutils.LoadBaseTemplate(tfmContext.Config, &baseTableTemplate, tfContext.GoMod, tfContext.FlowSource, tfContext.Flow.ServiceName(), tfContext.FlowPath)
+						trcvutils.LoadBaseTemplate(tfmContext.DriverConfig, &baseTableTemplate, tfContext.GoMod, tfContext.FlowSource, tfContext.Flow.ServiceName(), tfContext.FlowPath)
 						tfContext.FlowData = &baseTableTemplate
 					}
 					tfmContext.Log("DataFlowStatistics flow is being stopped...", nil)

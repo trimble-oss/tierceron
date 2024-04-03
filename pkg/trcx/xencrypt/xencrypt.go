@@ -43,9 +43,9 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 
 var encryptSecret = ""
 
-func SetEncryptionSecret(config *eUtils.DriverConfig) error {
+func SetEncryptionSecret(driverConfig *eUtils.DriverConfig) error {
 	var encryptionSecretField = "encryptionSecret"
-	if len(config.Trcxe) > 2 {
+	if len(driverConfig.Trcxe) > 2 {
 		var input, validateInput string
 		fmt.Printf("Enter desired value for '%s': \n", encryptionSecretField)
 		fmt.Scanln(&input)
@@ -56,11 +56,11 @@ func SetEncryptionSecret(config *eUtils.DriverConfig) error {
 		}
 		encryptSecret = input
 	} else {
-		mod, modErr := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.Env, config.Regions, true, config.Log)
+		mod, modErr := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
 		if modErr != nil {
-			eUtils.LogErrorObject(config, modErr, false)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, modErr, false)
 		}
-		mod.Env = strings.Split(config.Env, "_")[0]
+		mod.Env = strings.Split(driverConfig.Env, "_")[0]
 		data, readErr := xencryptopts.BuildOptions.LoadSecretFromSecretStore(mod)
 		if readErr != nil {
 			return readErr
