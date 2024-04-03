@@ -230,10 +230,6 @@ $ ssh-add ~/.ssh/id_rsa_git
 
 ### Automated tests ⚙
 
-In order to run the ```Unit Tests``` or the ```Integration Tests``` for this project, after opening the solution in Visual Studio, you should right click on each project and click on the **Run tests** option or you can use ```dotnet test``` option in the terminal.
+In order to run the ```Unit Tests``` or the ```Integration Tests``` for this project, after opening the solution in Visual Studio...  TODO
 
-### Connecting to the database
-
-In case you would like to interogate the database, you can use the ```NoSQLBooster``` too.
-Then, you need to check the ```ConnectionString``` data from the [Configuration portal](https://portal.trimbleplatform.com/) so you can setup the connections.
 
