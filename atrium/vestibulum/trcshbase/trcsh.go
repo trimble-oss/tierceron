@@ -660,7 +660,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 
 		select {
 		case <-time.After(15 * time.Second):
-			fmt.Println("Agent is not yet ready..")
+			fmt.Println("Kubernetes connection stalled or timed out.  Possible kubernetes ip change")
 			driverConfig.CoreConfig.Log.Println("Timed out waiting for KubeCtl.")
 			os.Exit(-1)
 		case kubeErr := <-kubectlErrChan:
