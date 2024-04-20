@@ -441,121 +441,123 @@ func CommonMain(envPtr *string,
 				fmt.Println("No approles found for namespace: " + *namespaceVariable)
 			} else {
 				for _, approleFile := range approleFiles {
-					for _, roleFilter := range approleFilters {
-						if approleFile != roleFilter {
-							continue
-						}
-						tokenMap := map[string]interface{}{}
-						fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
-						if parseErr != nil {
-							fmt.Println("Read parsing approle yaml file, continuing to next file.")
-							eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
-							continue
-						}
-						if approleName, ok := fileYAML["Approle_Name"].(string); ok {
-							mod.RawEnv = approleName
-							mod.Env = approleName
-						} else {
-							fmt.Println("Read parsing approle name from file, continuing to next file.")
-							eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
-							continue
-						}
-
-						var tokenPerms map[interface{}]interface{}
-						if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
-							tokenPerms = permMap
-						} else {
-							fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
-							eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
-							continue
-						}
-
-						if len(tokenPerms) == 0 {
-							fmt.Println("Completely skipping " + mod.RawEnv + " as there is no token permission for this approle.")
-							continue
-						}
-
-						if *tokenFileFilterPtr != "" && *tokenFileFilterPtr != "*" {
-							// Filter out tokens that
-							if found, ok := tokenPerms[*tokenFileFilterPtr].(bool); !ok && !found {
-								fmt.Println("Skipping " + mod.RawEnv + " as there is no token permission for this approle.")
+					if len(approleFilters) > 0 {
+						for _, roleFilter := range approleFilters {
+							if approleFile != roleFilter {
 								continue
 							}
 						}
+					}
+					tokenMap := map[string]interface{}{}
+					fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
+					if parseErr != nil {
+						fmt.Println("Read parsing approle yaml file, continuing to next file.")
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
+						continue
+					}
+					if approleName, ok := fileYAML["Approle_Name"].(string); ok {
+						mod.RawEnv = approleName
+						mod.Env = approleName
+					} else {
+						fmt.Println("Read parsing approle name from file, continuing to next file.")
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
+						continue
+					}
 
-						existingTokens, err := mod.ReadData("super-secrets/tokens")
-						if err != nil {
-							// TODO: consider scenarios...
-						} else {
-							// We have names of tokens that were referenced in old role.  Ok to delete the role now.
-							//
-							// Merge token data.
-							//
-							// Copy existing, but only if they are still supported... otherwise strip them from the approle.
-							for key, valueObj := range existingTokens {
-								if value, ok := valueObj.(string); ok {
-									if found, ok := tokenPerms[key].(bool); ok && found && key != "admin" && key != "webapp" {
-										tokenMap[key] = value
-									}
-								} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
-									if found, ok := tokenPerms[key].(bool); ok && found && key != "admin" && key != "webapp" {
-										tokenMap[key] = stringer.GoString()
-									}
+					var tokenPerms map[interface{}]interface{}
+					if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
+						tokenPerms = permMap
+					} else {
+						fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, parseErr, false)
+						continue
+					}
+
+					if len(tokenPerms) == 0 {
+						fmt.Println("Completely skipping " + mod.RawEnv + " as there is no token permission for this approle.")
+						continue
+					}
+
+					if *tokenFileFilterPtr != "" && *tokenFileFilterPtr != "*" {
+						// Filter out tokens that
+						if found, ok := tokenPerms[*tokenFileFilterPtr].(bool); !ok && !found {
+							fmt.Println("Skipping " + mod.RawEnv + " as there is no token permission for this approle.")
+							continue
+						}
+					}
+
+					existingTokens, err := mod.ReadData("super-secrets/tokens")
+					if err != nil {
+						// TODO: consider scenarios...
+					} else {
+						// We have names of tokens that were referenced in old role.  Ok to delete the role now.
+						//
+						// Merge token data.
+						//
+						// Copy existing, but only if they are still supported... otherwise strip them from the approle.
+						for key, valueObj := range existingTokens {
+							if value, ok := valueObj.(string); ok {
+								if found, ok := tokenPerms[key].(bool); ok && found && key != "admin" && key != "webapp" {
+									tokenMap[key] = value
+								}
+							} else if stringer, ok := valueObj.(fmt.GoStringer); ok {
+								if found, ok := tokenPerms[key].(bool); ok && found && key != "admin" && key != "webapp" {
+									tokenMap[key] = stringer.GoString()
 								}
 							}
 						}
+					}
 
-						//Overwrite with new tokens.
-						for _, token := range tokens {
-							// Everything but webapp give access by app role and secret.
-							if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
-								tokenMap[token.Name] = token.Value
-							}
+					//Overwrite with new tokens.
+					for _, token := range tokens {
+						// Everything but webapp give access by app role and secret.
+						if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
+							tokenMap[token.Name] = token.Value
+						}
+					}
+
+					if *roleFileFilterPtr != "" && *tokenFileFilterPtr == "" {
+						//
+						// Wipe existing role.
+						// Recreate the role.
+						//
+						resp, role_cleanup := v.DeleteRole(mod.RawEnv)
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, role_cleanup, false)
+
+						if resp.StatusCode == 404 {
+							err = v.EnableAppRole()
+							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 						}
 
-						if *roleFileFilterPtr != "" && *tokenFileFilterPtr == "" {
-							//
-							// Wipe existing role.
-							// Recreate the role.
-							//
-							resp, role_cleanup := v.DeleteRole(mod.RawEnv)
-							eUtils.LogErrorObject(&driverConfig.CoreConfig, role_cleanup, false)
+						err = v.CreateNewRole(mod.RawEnv, &sys.NewRoleOptions{
+							TokenTTL:    "10m",
+							TokenMaxTTL: "15m",
+							Policies:    []string{mod.RawEnv},
+						})
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
-							if resp.StatusCode == 404 {
-								err = v.EnableAppRole()
-								eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
-							}
+						roleID, _, err := v.GetRoleID(mod.RawEnv)
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
-							err = v.CreateNewRole(mod.RawEnv, &sys.NewRoleOptions{
-								TokenTTL:    "10m",
-								TokenMaxTTL: "15m",
-								Policies:    []string{mod.RawEnv},
-							})
-							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
+						secretID, err := v.GetSecretID(mod.RawEnv)
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
-							roleID, _, err := v.GetRoleID(mod.RawEnv)
-							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
+						fmt.Printf("Rotated role id and secret id for %s.\n", mod.RawEnv)
+						fmt.Printf("Role ID: %s\n", roleID)
+						fmt.Printf("Secret ID: %s\n", secretID)
+					} else {
+						fmt.Printf("Existing role token count: %d.\n", len(existingTokens))
+						fmt.Printf("Adding token to role: %s.\n", mod.RawEnv)
+						fmt.Printf("Post add role token count: %d.\n", len(tokenMap))
+					}
 
-							secretID, err := v.GetSecretID(mod.RawEnv)
-							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
-
-							fmt.Printf("Rotated role id and secret id for %s.\n", mod.RawEnv)
-							fmt.Printf("Role ID: %s\n", roleID)
-							fmt.Printf("Secret ID: %s\n", secretID)
-						} else {
-							fmt.Printf("Existing role token count: %d.\n", len(existingTokens))
-							fmt.Printf("Adding token to role: %s.\n", mod.RawEnv)
-							fmt.Printf("Post add role token count: %d.\n", len(tokenMap))
-						}
-
-						// Just update tokens in approle.
-						// This could be adding to an existing approle or re-adding to rotated role...
-						if len(tokenMap) > 0 {
-							warn, err := mod.Write("super-secrets/tokens", tokenMap, driverConfig.CoreConfig.Log)
-							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
-							eUtils.LogWarningsObject(&driverConfig.CoreConfig, warn, true)
-							fmt.Println("Approle tokens refreshed/updated.")
-						}
+					// Just update tokens in approle.
+					// This could be adding to an existing approle or re-adding to rotated role...
+					if len(tokenMap) > 0 {
+						warn, err := mod.Write("super-secrets/tokens", tokenMap, driverConfig.CoreConfig.Log)
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
+						eUtils.LogWarningsObject(&driverConfig.CoreConfig, warn, true)
+						fmt.Println("Approle tokens refreshed/updated.")
 					}
 				}
 			}

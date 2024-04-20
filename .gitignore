@@ -59,3 +59,8 @@ cmd/shell/deploy/trc_seeds/*
 
 go.work*
 .vscode/*
+
+atrium/vestibulum/trcchatproxy/.vscode/*
+atrium/plugins/*
+atrium/.vscode/*
+
