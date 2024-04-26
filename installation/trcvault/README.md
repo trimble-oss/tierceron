@@ -27,3 +27,13 @@ trcinit -tokenExpiration -namespace=vault -addr=https://<vaulthost:vaultport> -t
 ```
 trcinit -rotateTokens -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 ```
+
+# Update roles.
+```
+trcinit -updateRole -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
+```
+
+# Update policies.
+```
+trcinit -updatePolicy -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
+```

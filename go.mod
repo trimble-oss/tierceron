@@ -15,8 +15,8 @@ require (
 	github.com/sergi/go-diff v1.2.0
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	github.com/xo/dburl v0.9.0
-	golang.org/x/crypto v0.17.0
-	golang.org/x/sys v0.15.0
+	golang.org/x/crypto v0.21.0
+	golang.org/x/sys v0.18.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -100,12 +100,12 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
-	golang.org/x/net v0.18.0 // indirect
-	golang.org/x/term v0.15.0
+	golang.org/x/net v0.23.0 // indirect
+	golang.org/x/term v0.18.0
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/grpc v1.59.0
-	google.golang.org/protobuf v1.33.0 // indirect
+	google.golang.org/protobuf v1.33.0
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
 

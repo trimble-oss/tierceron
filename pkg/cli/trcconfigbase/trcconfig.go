@@ -262,7 +262,11 @@ func CommonMain(envPtr *string,
 		if !*noVaultPtr {
 			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
-				driverConfig.CoreConfig.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)
+				if driverConfig != nil {
+					driverConfig.CoreConfig.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)
+				} else {
+					driverConfigBase.CoreConfig.Log.Printf("auth error: %s", autoErr)
+				}
 				fmt.Println("Missing auth components.")
 				return errors.New("missing auth components")
 			}
