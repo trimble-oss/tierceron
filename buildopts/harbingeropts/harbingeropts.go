@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"io"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/insecure"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcutil "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
@@ -154,7 +156,6 @@ func BuildInterface(driverConfig *eUtils.DriverConfig, goMod *kv.Modifier, tfmCo
 	if certPool == nil {
 		certPool = x509.NewCertPool()
 	}
-
 	serverConfig := server.Config{
 		Protocol: "tcp",
 		Address:  ":" + strings.TrimSpace(vaultDatabaseConfig["dbport"].(string)),
@@ -166,6 +167,24 @@ func BuildInterface(driverConfig *eUtils.DriverConfig, goMod *kv.Modifier, tfmCo
 			MinVersion:         tls.VersionTLS12,
 		},
 		RequireSecureTransport: true,
+	}
+
+	if coreopts.BuildOptions.IsLocalEndpoint(vaultDatabaseConfig["vaddress"].(string)) {
+		serverIP := net.ParseIP("127.0.0.1") // Change to local IP for self signed cert local debugging
+		serverConfig.TLSConfig.VerifyPeerCertificate = func(certificates [][]byte, verifiedChains [][]*x509.Certificate) error {
+			for _, certChain := range verifiedChains {
+				for _, cert := range certChain {
+					if cert.IPAddresses != nil {
+						for _, ip := range cert.IPAddresses {
+							if ip.Equal(serverIP) {
+								return nil
+							}
+						}
+					}
+				}
+			}
+			return errors.New("TLS certificate verification failed (IP SAN mismatch)")
+		}
 	}
 
 	dbserver, serverErr := server.NewServer(serverConfig, engine, server.DefaultSessionBuilder, serverListener)

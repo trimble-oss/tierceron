@@ -40,6 +40,7 @@ trcinit/vaultfiles/azure/.terraform.lock.hcl
 trcinit/vaultfiles/aws/.terraform.lock.hcl
 trcinit/vaultfiles/aws/.terraform/providers/registry.terraform.io/hashicorp/aws/4.10.0/linux_amd64/terraform-provider-aws_v4.10.0_x5
 trcinit/vaultfiles/azure/private_key.pem
+installation/trclocal/*.pem
 trcinit/vaultfiles/azure/variables.tf
 trcinit/vaultfiles/azure/.terraform/providers/registry.terraform.io/hashicorp/local/2.2.2/linux_amd64/terraform-provider-local_v2.2.2_x5
 bin/nc.h

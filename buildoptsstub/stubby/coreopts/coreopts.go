@@ -1,12 +1,11 @@
 package coreopts
 
 var supportedEndpoints = []string{
-	"tierceron.com:1234",
-	"tierceron.com:5678",
+	"tierceron.test:1234",
 }
 
 var supportedEndpointsProd = []string{
-	"prodtierceron.com",
+	"prodtierceron.test",
 }
 
 func GetSupportedEndpoints(prod bool) []string {
