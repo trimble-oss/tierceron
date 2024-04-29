@@ -8,10 +8,10 @@ import (
 	"net/http"
 )
 
-func gUnZipData(data []byte) ([]byte, error) {
+func gUnZipData(data *[]byte) ([]byte, error) {
 	var unCompressedBytes []byte
 	newB := bytes.NewBuffer(unCompressedBytes)
-	b := bytes.NewBuffer(data)
+	b := bytes.NewBuffer(*data)
 	zr, err := gzip.NewReader(b)
 	if err != nil {
 		return nil, err
@@ -24,10 +24,10 @@ func gUnZipData(data []byte) ([]byte, error) {
 	return newB.Bytes(), nil
 }
 
-func untarData(data []byte) ([]byte, error) {
+func untarData(data *[]byte) ([]byte, error) {
 	var b bytes.Buffer
 	writer := io.Writer(&b)
-	tarReader := tar.NewReader(bytes.NewReader(data))
+	tarReader := tar.NewReader(bytes.NewReader(*data))
 	for {
 		_, err := tarReader.Next()
 		if err == io.EOF {
@@ -45,7 +45,7 @@ func untarData(data []byte) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func getImage(downloadUrl string) ([]byte, error) {
+func getImage(downloadUrl string) (*[]byte, error) {
 	response, err := http.Get(downloadUrl)
 	if err != nil {
 		return nil, err
@@ -59,5 +59,5 @@ func getImage(downloadUrl string) ([]byte, error) {
 		return nil, err
 	}
 
-	return body, nil
+	return &body, nil
 }
