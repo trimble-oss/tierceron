@@ -120,11 +120,11 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 	if downloadError != nil {
 		return errors.New("Failed to get download from url.")
 	}
-	pluginTarredData, gUnZipError := gUnZipData(pluginImageDataCompressed)
+	pluginTarredData, gUnZipError := gUnZipData(&pluginImageDataCompressed)
 	if gUnZipError != nil {
 		return errors.New("Gunzip failed.")
 	}
-	pluginImage, gUnTarError := untarData(pluginTarredData)
+	pluginImage, gUnTarError := untarData(&pluginTarredData)
 	if gUnTarError != nil {
 		return errors.New("Untarring failed.")
 	}
