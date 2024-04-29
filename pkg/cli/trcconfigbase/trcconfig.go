@@ -200,7 +200,7 @@ func CommonMain(envPtr *string,
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 		driverConfigBase = &eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{ExitOnFailure: true, Log: logger},
-			Insecure:   true,
+			Insecure:   *insecurePtr,
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
 		}

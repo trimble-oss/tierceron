@@ -29,7 +29,7 @@ func GetFolderPrefix(custom []string) string {
 
 // GetSupportedTemplates - override to provide a list of supported certificate templates.
 // This function serves as a gateway so that unintentional certificates or files are not picked
-// up and inadvetently seeded into vault.
+// up and inadvertently seeded into vault.
 // example return value:
 //
 //	return []string{
@@ -40,36 +40,48 @@ func GetSupportedTemplates(custom []string) []string {
 	return []string{}
 }
 
+func IsLocalEndpoint(addr string) bool {
+	return strings.HasPrefix(addr, "https://tierceron.test:1234")
+}
+
 // GetSupportedEndpoints - return a list of supported endpoints.  Override this function to provide
 // a list of supported endpoints.
 func GetSupportedEndpoints(prod bool) []string {
-	return []string{}
+	if prod {
+		return []string{
+			"prodtierceron.test",
+		}
+	} else {
+		return []string{
+			"tierceron.test:1234",
+		}
+	}
 }
 
 // GetSupportedDomains - return a list of supported domains.  Override this function to provide
 // a list of supported domains.
 func GetSupportedDomains(prod bool) []string {
-	return []string{}
+	return []string{"tierceron.test:1234"}
 }
 
 // GetLocalHost - return the local host name.  Override this function to provide a custom local host name.
 func GetLocalHost() string {
-	return ""
+	return "https://tierceron.test:1234"
 }
 
 // GetRegion - return the region.  Override this function to provide default region given a host name.
 func GetRegion(hostName string) string {
-	return ""
+	return "west"
 }
 
 // GetVaultHost - return the vault host.  Override this function to provide a custom vault host.
 func GetVaultHost() string {
-	return ""
+	return "tierceron.test:1234"
 }
 
 // GetVaultHost - return the vault host and port.  Override this function to provide a custom vault host and port.
 func GetVaultHostPort() string {
-	return ""
+	return "tierceron.test:1234"
 }
 
 // GetUserNameField - return the user name field.  Override this function to provide a custom user name field.
@@ -140,7 +152,7 @@ func GetDFSPathName() (string, string) {
 
 // GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
-	return ""
+	return "tiercerondb"
 }
 
 const RFC_ISO_8601 = "2006-01-02 15:04:05 -0700 MST"

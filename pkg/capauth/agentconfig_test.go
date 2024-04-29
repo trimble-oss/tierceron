@@ -15,7 +15,7 @@ func TestValidateVhostInverseProd(t *testing.T) {
 	// Test case 1
 	prod.SetProd(true)
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
-	host := "prodtierceron.com"
+	host := "prodtierceron.test"
 	protocol := ""
 
 	err := ValidateVhostInverse(host, protocol, true)
@@ -23,7 +23,7 @@ func TestValidateVhostInverseProd(t *testing.T) {
 		t.Fatalf("Expected nil, got %v", err)
 	}
 
-	host = "https://prodtierceron.com"
+	host = "https://prodtierceron.test"
 	protocol = "https://"
 
 	err = ValidateVhostInverse(host, protocol, true)
@@ -42,12 +42,38 @@ func TestValidateVhostInverseNonProd(t *testing.T) {
 	// Test case 1
 	prod.SetProd(false)
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
-	server := "tierceron.com:1234"
+	server := "tierceron.test:1234"
 
 	validVhostInverseErr := ValidateVhostInverse(server, "", true)
 
 	if validVhostInverseErr != nil {
 		t.Fatalf("Expected nil, got %v", validVhostInverseErr)
+	}
+}
+
+func TestValidateVhostPortNonProd(t *testing.T) {
+	// Test case 1
+	prod.SetProd(false)
+	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
+	server := "https://tierceron.test:1234"
+
+	validVhostInverseErr := ValidateVhostInverse(server, "https", false)
+
+	if validVhostInverseErr != nil {
+		t.Fatalf("Expected nil, got %v", validVhostInverseErr)
+	}
+}
+
+func TestInvalidValidateVhostPortNonProd(t *testing.T) {
+	// Test case 1
+	prod.SetProd(false)
+	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
+	server := "https://tierceron.bar:1234"
+
+	validVhostInverseErr := ValidateVhostInverse(server, "https", false)
+
+	if validVhostInverseErr == nil || !strings.HasPrefix(validVhostInverseErr.Error(), "Bad host") {
+		t.Fatal("Expected a bad host error, got nil")
 	}
 }
 
@@ -67,7 +93,7 @@ func TestValidateVhost(t *testing.T) {
 func TestValidateVhostProdBadHost(t *testing.T) {
 	prod.SetProd(true)
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
-	address := "https://tierceron.com"
+	address := "https://tierceron.test"
 	validateVhostErr := ValidateVhost(address, "https://")
 	if validateVhostErr != nil {
 		if !strings.HasPrefix(validateVhostErr.Error(), "Bad host:") {
@@ -81,7 +107,7 @@ func TestValidateVhostProdBadHost(t *testing.T) {
 func TestValidateVhostProd(t *testing.T) {
 	prod.SetProd(true)
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
-	address := "https://prodtierceron.com"
+	address := "https://prodtierceron.test"
 	validateVhostErr := ValidateVhost(address, "https://")
 	if validateVhostErr != nil {
 		t.Fatal("Expected no error")
@@ -91,7 +117,7 @@ func TestValidateVhostProd(t *testing.T) {
 func TestValidateVhostNonProd(t *testing.T) {
 	prod.SetProd(false)
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
-	address := "https://tierceron.com"
+	address := "https://tierceron.test"
 	validateVhostErr := ValidateVhost(address, "https://")
 	if validateVhostErr != nil {
 		t.Fatal("Expected no error")

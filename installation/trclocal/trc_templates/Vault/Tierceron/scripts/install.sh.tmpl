@@ -14,7 +14,7 @@ After=systemd-user-sessions.service
 Type=simple
 Environment="VAULT_API_ADDR=https://{{.vault_ip}}:{{.hostport}}"
 Environment="GOMAXPROCS=$(nproc)"
-ExecStart=/usr/local/vault/vault server -config /usr/local/vault/vault_properties.hcl
+ExecStart={{.vault_root_install}}vault server -config {{.vault_root_install}}vault_properties.hcl
 LimitMEMLOCK=infinity
 
 #end script
