@@ -174,7 +174,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			fmt.Println(err)
 			return trcshConfig, err
 		}
-		vAddr := "https://127.0.0.1:" + addrPort
+		vAddr := fmt.Sprintf("https://127.0.0.1:%s", addrPort)
 		trcshConfig.VaultAddress = &vAddr
 
 		driverConfig.Env = env
