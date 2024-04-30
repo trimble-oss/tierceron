@@ -47,8 +47,9 @@ func getImageSHA(driverConfig *eUtils.DriverConfig, svc *azidentity.ClientSecret
 	latestTag := ""
 	pager := client.NewListTagsPager(pluginToolConfig["trcplugin"].(string), &azcontainerregistry.ClientListTagsOptions{
 		MaxNum:  to.Ptr[int32](1),
-		OrderBy: to.Ptr(azcontainerregistry.ArtifactTagOrderByLastUpdatedOnAscending),
+		OrderBy: to.Ptr(azcontainerregistry.ArtifactTagOrderByLastUpdatedOnDescending),
 	})
+foundTag:
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
@@ -57,6 +58,9 @@ func getImageSHA(driverConfig *eUtils.DriverConfig, svc *azidentity.ClientSecret
 		}
 		for _, v := range page.Tags {
 			latestTag = *v.Name //Always only returns 1 tag due to MaxNum being set
+			if latestTag != "" {
+				break foundTag
+			}
 		}
 	}
 
@@ -132,11 +136,11 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 		return "", errors.New("Failed to read config data:" + configErr.Error())
 	}
 
-	pluginTarredData, gUnZipError := gUnZipData(layerData)
+	pluginTarredData, gUnZipError := gUnZipData(&layerData)
 	if gUnZipError != nil {
 		return "", errors.New("gunzip failed")
 	}
-	pluginImage, gUnTarError := untarData(pluginTarredData)
+	pluginImage, gUnTarError := untarData(&pluginTarredData)
 	if gUnTarError != nil {
 		return "", errors.New("untarring failed")
 	}
