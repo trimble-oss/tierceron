@@ -8,7 +8,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/carrierfactory"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"

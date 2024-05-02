@@ -212,7 +212,11 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 }
 
 func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
-	processFlows trcvutils.ProcessFlowFunc,
+	// processFlowInit is a function that initializes the process flow for the backend.
+	// It takes a parameter of type trcvutils.ProcessFlowFunc.
+	// This function is responsible for setting up the necessary configurations and resources
+	// required for the backend to handle the process flow.
+	processFlowInit trcvutils.ProcessFlowFunc,
 	pluginEnvConfig map[string]interface{},
 	configCompleteChan chan bool) error {
 	logger.Println("ProcessPluginEnvConfig begun.")
@@ -269,13 +273,14 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	}
 
 	go func(pec map[string]interface{}, l *log.Logger) {
-		flowErr := processFlows(pec, l)
+		flowErr := processFlowInit(pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
 		}
 		if flowErr != nil {
 			l.Println("Flow had an error: " + flowErr.Error())
 		}
+		pec["pluginName"] = "trc-vault-plugin"
 	}(pluginEnvConfig, logger)
 
 	logger.Println("End processFlows for env: " + env.(string))
