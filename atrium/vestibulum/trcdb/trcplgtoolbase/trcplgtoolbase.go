@@ -84,6 +84,10 @@ func CommonMain(envPtr *string,
 	checkDeployedPtr := flagset.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 	checkCopiedPtr := flagset.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
 
+	// NewRelic flags...
+	newrelicAppNamePtr := flagset.String("newrelicAppName", "", false, "App name for New Relic")
+	newrelicLicenseKeyPtr := flagset.String("newrelicLicenseKey", "", false, "License key for New Relic")
+
 	certifyInit := false
 
 	//APIM flags
@@ -122,6 +126,11 @@ func CommonMain(envPtr *string,
 	if driverConfig != nil && driverConfig.DeploymentConfig["trcpluginalias"] != nil {
 		// Prefer internal definition of alias
 		*pluginNameAliasPtr = driverConfig.DeploymentConfig["trcpluginalias"].(string)
+	}
+
+	if (len(*newrelicAppNamePtr) == 0 && len(*newrelicLicenseKeyPtr) != 0) || (len(*newrelicAppNamePtr) != 0 && len(*newrelicLicenseKeyPtr) == 0) {
+		fmt.Println("Must use -newrelicAppName && -newrelicLicenseKey flags together to use -certify flag")
+		return errors.New("must use -newrelicAppName && -newrelicLicenseKey flags together to use -certify flag")
 	}
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
@@ -371,6 +380,8 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
 	pluginToolConfig["pathParamPtr"] = *pathParamPtr
 	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr //is a bool that gets converted to a string for writeout/certify
+	pluginToolConfig["newrelicAppNamePtr"] = *newrelicAppNamePtr
+	pluginToolConfig["newrelicLicenseKeyPtr"] = *newrelicLicenseKeyPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
@@ -409,6 +420,12 @@ func CommonMain(envPtr *string,
 			if expandTarget, ok := pluginToolConfig["expandTargetPtr"].(bool); ok && expandTarget { //only writes out if expandTarget = true
 				pluginToolConfig["trcexpandtarget"] = "true"
 			}
+			if newRelicAppName, ok := pluginToolConfig["newrelicAppNamePtr"].(string); ok && newRelicAppName != "" {
+				pluginToolConfig["newrelicAppName"] = pluginToolConfig["newrelicAppNamePtr"].(string)
+			}
+			if newRelicLicenseKey, ok := pluginToolConfig["newrelicLicenseKeyPtr"].(string); ok && newRelicLicenseKey != "" {
+				pluginToolConfig["newrelicLicenseKey"] = pluginToolConfig["newrelicLicenseKeyPtr"].(string)
+			}
 		}
 	}
 
@@ -440,6 +457,15 @@ func CommonMain(envPtr *string,
 		if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
 			writeMap["trcexpandtarget"] = expandTarget
 		}
+
+		if newRelicAppName, ok := pluginToolConfig["newrelicAppName"].(string); ok && newRelicAppName == "true" {
+			writeMap["newrelic_license_key"] = newRelicAppName
+		}
+
+		if newRelicLicenseKey, ok := pluginToolConfig["newRelicLicenseKey"].(string); ok && newRelicLicenseKey == "true" {
+			writeMap["newrelic_app_name"] = newRelicLicenseKey
+		}
+
 		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, driverConfigBase.CoreConfig.Log)
 		if err != nil {
 			fmt.Println(err)
@@ -737,6 +763,14 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 	} else if pathParam, pathOK := writeMap["trcpathparam"].(string); pathOK {
 		writeMap["trcpathparam"] = pathParam
 	}
+
+	if newRelicAppName, nameOK := pluginToolConfig["newrelic_app_name"].(string); newRelicAppName != "" && nameOK { //optional if not found.
+		writeMap["newrelic_app_name"] = newRelicAppName
+	}
+	if newRelicLicenseKey, keyOK := pluginToolConfig["newrelic_license_key"].(string); newRelicLicenseKey != "" && keyOK { //optional if not found.
+		writeMap["newrelic_license_key"] = newRelicLicenseKey
+	}
+
 	writeMap["copied"] = false
 	writeMap["deployed"] = false
 	return writeMap
