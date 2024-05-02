@@ -14,7 +14,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/carrierfactory/servercapauth"
+	"github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter"
+	"github.com/newrelic/go-agent/v3/newrelic"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory/servercapauth"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/factory"
 	trcplgtool "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -53,6 +56,30 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		defer vault.Close()
 	}
 
+	certifyConfig, certifyErr := pluginutil.GetPluginCertifyMap(goMod, pluginConfig)
+	if certifyErr != nil {
+		driverConfig.CoreConfig.Log.Println("No certification for plugin:", certifyErr)
+		os.Exit(-1)
+	}
+	if newrelic_app_name, ok := certifyConfig["newrelic_app_name"].(string); ok && len(newrelic_app_name) > 0 {
+		if newrelicLicenseKey, ok := certifyConfig["newrelic_license_key"].(string); ok {
+			driverConfig.CoreConfig.Log.Println("Setting up newrelic...")
+			app, err := newrelic.NewApplication(
+				newrelic.ConfigAppName(newrelic_app_name),
+				newrelic.ConfigLicense(newrelicLicenseKey),
+				newrelic.ConfigDistributedTracerEnabled(true),
+			)
+
+			if err != nil {
+				driverConfig.CoreConfig.Log.Println("Error setting up newrelic:", err)
+				os.Exit(-1)
+			}
+
+			driverConfig.CoreConfig.Log = log.New(logWriter.New(log.Default().Writer(), app), "["+pluginConfig["pluginName"].(string)+"]", log.LstdFlags)
+			driverConfig.CoreConfig.Log.Println("Newrelic configured...")
+		}
+	}
+
 	if goMod != nil {
 		defer goMod.Release()
 	}
@@ -64,7 +91,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		return err
 	}
 
-	if ok, err := servercapauth.ValidatePathSha(goMod, pluginConfig, logger); ok {
+	if ok, err := servercapauth.ValidateTrcshPathSha(goMod, pluginConfig, logger); ok {
 		// Only start up if trcsh is up to date....
 		onceAuth.Do(func() {
 			if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {

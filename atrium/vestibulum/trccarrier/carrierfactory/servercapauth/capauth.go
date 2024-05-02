@@ -26,7 +26,7 @@ type FeatherAuth struct {
 
 var trcshaPath string = "/home/azuredeploy/bin/trcsh"
 
-func ValidatePathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
+func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
 
 	certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcsh/Certify")
 	if err != nil {

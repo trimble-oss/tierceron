@@ -80,6 +80,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 
 					if processFlowInit != nil {
 						processFlowInit(pluginEnvConfig, logger)
+						pluginEnvConfig["pluginName"] = "trc-vault-carrier-plugin"
 					}
 
 					logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
