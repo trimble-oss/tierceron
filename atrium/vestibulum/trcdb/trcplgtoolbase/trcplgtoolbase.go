@@ -458,11 +458,11 @@ func CommonMain(envPtr *string,
 			writeMap["trcexpandtarget"] = expandTarget
 		}
 
-		if newRelicAppName, ok := pluginToolConfig["newrelicAppName"].(string); ok && newRelicAppName == "true" {
+		if newRelicAppName, ok := pluginToolConfig["newrelicAppName"].(string); ok && newRelicAppName != "" {
 			writeMap["newrelic_license_key"] = newRelicAppName
 		}
 
-		if newRelicLicenseKey, ok := pluginToolConfig["newRelicLicenseKey"].(string); ok && newRelicLicenseKey == "true" {
+		if newRelicLicenseKey, ok := pluginToolConfig["newRelicLicenseKey"].(string); ok && newRelicLicenseKey != "" {
 			writeMap["newrelic_app_name"] = newRelicLicenseKey
 		}
 
