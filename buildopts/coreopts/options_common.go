@@ -130,7 +130,13 @@ func GetSyncedTables() []string {
 //		                  installation/trcdb/trc_templates/TrcVault/Certify/config.yml.tmpl
 //		logNamespace - a log namespace to be used by the carrier in logging.
 func ProcessDeployPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
-	return map[string]interface{}{}
+	return map[string]interface{}{
+		"exitOnFailure":  false,
+		"regions":        []string{"west"},
+		"pluginNameList": []string{"trc-vault-plugin"},
+		"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
+		"logNamespace":   "trccarrier",
+	}
 }
 
 // DecryptSecretConfig

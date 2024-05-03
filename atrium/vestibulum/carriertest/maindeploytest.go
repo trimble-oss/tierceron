@@ -44,16 +44,18 @@ func main() {
 		},
 	}
 	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
+	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 
 	//Grabbing configs
 	envMap := buildopts.BuildOptions.GetTestDeployConfig(*tokenPtr)
-	//envMap["vaddress"] = "vaultaddr"
-	//envMap["token"] = "INSERT TOKEN HERE"
+	envMap["vaddress"] = "https://tierceron.test:1234"
+	envMap["token"] = "s.wXjRpHdF5o0DIrdUaOw4suvu"
 	carrierfactory.InitLogger(logger)
 	//go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))
 
 	go carrierfactory.Init(coreopts.BuildOptions.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
-	envMap["env"] = "QA"
+	envMap["env"] = "dev"
 	envMap["insecure"] = true
 	envMap["syncOnce"] = &sync.Once{}
 	carrierfactory.PushEnv(envMap)
