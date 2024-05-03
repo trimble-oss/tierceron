@@ -380,8 +380,8 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
 	pluginToolConfig["pathParamPtr"] = *pathParamPtr
 	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr //is a bool that gets converted to a string for writeout/certify
-	pluginToolConfig["newrelicAppNamePtr"] = *newrelicAppNamePtr
-	pluginToolConfig["newrelicLicenseKeyPtr"] = *newrelicLicenseKeyPtr
+	pluginToolConfig["newrelicAppName"] = *newrelicAppNamePtr
+	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
@@ -420,11 +420,11 @@ func CommonMain(envPtr *string,
 			if expandTarget, ok := pluginToolConfig["expandTargetPtr"].(bool); ok && expandTarget { //only writes out if expandTarget = true
 				pluginToolConfig["trcexpandtarget"] = "true"
 			}
-			if newRelicAppName, ok := pluginToolConfig["newrelicAppNamePtr"].(string); ok && newRelicAppName != "" {
-				pluginToolConfig["newrelicAppName"] = pluginToolConfig["newrelicAppNamePtr"].(string)
+			if newRelicAppName, ok := pluginToolConfig["newrelicAppName"].(string); ok && newRelicAppName != "" {
+				pluginToolConfig["newrelicAppName"] = pluginToolConfig["newrelicAppName"].(string)
 			}
-			if newRelicLicenseKey, ok := pluginToolConfig["newrelicLicenseKeyPtr"].(string); ok && newRelicLicenseKey != "" {
-				pluginToolConfig["newrelicLicenseKey"] = pluginToolConfig["newrelicLicenseKeyPtr"].(string)
+			if newRelicLicenseKey, ok := pluginToolConfig["newrelicLicenseKey"].(string); ok && newRelicLicenseKey != "" {
+				pluginToolConfig["newrelicLicenseKey"] = pluginToolConfig["newrelicLicenseKey"].(string)
 			}
 		}
 	}
@@ -608,8 +608,10 @@ func CommonMain(envPtr *string,
 		}
 	} else if *certifyImagePtr {
 		//Certify Image
+		carrierCertify := false
 		if strings.Contains(pluginToolConfig["trcplugin"].(string), "carrier") {
 			fmt.Println("Skipping checking for existing image due to carrier deployment.")
+			carrierCertify = true
 		} else if !certifyInit {
 			// Already certified...
 			fmt.Println("Checking for existing image.")
@@ -625,8 +627,7 @@ func CommonMain(envPtr *string,
 				return err
 			}
 		}
-		if certifyInit ||
-			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { // Comparing generated sha from image to sha from flag
+		if certifyInit || carrierCertify || pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { // Comparing generated sha from image to sha from flag
 			// ||
 			//(pluginToolConfig["imagesha256"].(string) != "" && pluginToolConfig["trctype"].(string) == "trcshservice") {
 			if !strings.Contains(pluginToolConfig["trcplugin"].(string), "carrier") {
@@ -641,7 +642,15 @@ func CommonMain(envPtr *string,
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
 				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
+				if driverConfig == nil {
+					driverConfig = &eUtils.DriverConfig{
+						CoreConfig: core.CoreConfig{
+							ExitOnFailure: true,
+							Log:           logger,
+						},
+						Insecure: false, StartDir: []string{""}, SubSectionValue: "trc-vault-carrier-plugin"}
 
+				}
 				properties, err := trcvutils.NewProperties(&driverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
 				if err != nil {
 					fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
@@ -659,6 +668,7 @@ func CommonMain(envPtr *string,
 					fmt.Println(writeErr)
 					return err
 				}
+				fmt.Println("Image certified.")
 			} else { //Non region certify
 				writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
 				if readErr != nil {
@@ -767,10 +777,10 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 		writeMap["trcpathparam"] = pathParam
 	}
 
-	if newRelicAppName, nameOK := pluginToolConfig["newrelic_app_name"].(string); newRelicAppName != "" && nameOK { //optional if not found.
+	if newRelicAppName, nameOK := pluginToolConfig["newrelicAppName"].(string); newRelicAppName != "" && nameOK { //optional if not found.
 		writeMap["newrelic_app_name"] = newRelicAppName
 	}
-	if newRelicLicenseKey, keyOK := pluginToolConfig["newrelic_license_key"].(string); newRelicLicenseKey != "" && keyOK { //optional if not found.
+	if newRelicLicenseKey, keyOK := pluginToolConfig["newrelicLicenseKey"].(string); newRelicLicenseKey != "" && keyOK { //optional if not found.
 		writeMap["newrelic_license_key"] = newRelicLicenseKey
 	}
 
