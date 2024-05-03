@@ -87,9 +87,6 @@ func main() {
 		args = append(args, fmt.Sprintf("--client-key=%s", "../certs/serv_key.pem"))
 	}
 
-	args = append(args, fmt.Sprintf("--client-cert=%s", "/etc/opt/vault/certs/serv_cert.pem"))
-	args = append(args, fmt.Sprintf("--client-key=%s", "/etc/opt/vault/certs/serv_key.pem"))
-
 	argErr := flags.Parse(args[1:])
 	if argErr != nil {
 		logger.Fatal(argErr)

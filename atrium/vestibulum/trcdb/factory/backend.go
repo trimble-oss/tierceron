@@ -273,6 +273,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	}
 
 	go func(pec map[string]interface{}, l *log.Logger) {
+		pec["pluginName"] = "trc-vault-plugin"
 		flowErr := processFlowInit(pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
@@ -280,7 +281,6 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		if flowErr != nil {
 			l.Println("Flow had an error: " + flowErr.Error())
 		}
-		pec["pluginName"] = "trc-vault-plugin"
 	}(pluginEnvConfig, logger)
 
 	logger.Println("End processFlows for env: " + env.(string))

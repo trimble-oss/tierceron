@@ -84,6 +84,10 @@ func CommonMain(envPtr *string,
 	checkDeployedPtr := flagset.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 	checkCopiedPtr := flagset.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
 
+	// NewRelic flags...
+	newrelicAppNamePtr := flagset.String("newRelicAppName", "", "App name for New Relic")
+	newrelicLicenseKeyPtr := flagset.String("newRelicLicenseKey", "", "License key for New Relic")
+
 	certifyInit := false
 
 	//APIM flags
@@ -122,6 +126,11 @@ func CommonMain(envPtr *string,
 	if driverConfig != nil && driverConfig.DeploymentConfig["trcpluginalias"] != nil {
 		// Prefer internal definition of alias
 		*pluginNameAliasPtr = driverConfig.DeploymentConfig["trcpluginalias"].(string)
+	}
+
+	if (len(*newrelicAppNamePtr) == 0 && len(*newrelicLicenseKeyPtr) != 0) || (len(*newrelicAppNamePtr) != 0 && len(*newrelicLicenseKeyPtr) == 0) {
+		fmt.Println("Must use -newrelicAppName && -newrelicLicenseKey flags together to use -certify flag")
+		return errors.New("must use -newrelicAppName && -newrelicLicenseKey flags together to use -certify flag")
 	}
 
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
@@ -371,6 +380,8 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
 	pluginToolConfig["pathParamPtr"] = *pathParamPtr
 	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr //is a bool that gets converted to a string for writeout/certify
+	pluginToolConfig["newrelicAppName"] = *newrelicAppNamePtr
+	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
@@ -440,6 +451,7 @@ func CommonMain(envPtr *string,
 		if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
 			writeMap["trcexpandtarget"] = expandTarget
 		}
+
 		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, driverConfigBase.CoreConfig.Log)
 		if err != nil {
 			fmt.Println(err)
@@ -582,7 +594,11 @@ func CommonMain(envPtr *string,
 		}
 	} else if *certifyImagePtr {
 		//Certify Image
-		if !certifyInit {
+		carrierCertify := false
+		if strings.Contains(pluginToolConfig["trcplugin"].(string), "carrier") {
+			fmt.Println("Skipping checking for existing image due to carrier deployment.")
+			carrierCertify = true
+		} else if !certifyInit {
 			// Already certified...
 			fmt.Println("Checking for existing image.")
 			err := repository.GetImageAndShaFromDownload(driverConfigBase, pluginToolConfig)
@@ -597,12 +613,12 @@ func CommonMain(envPtr *string,
 				return err
 			}
 		}
-
-		if certifyInit ||
-			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { // Comparing generated sha from image to sha from flag
+		if certifyInit || carrierCertify || pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { // Comparing generated sha from image to sha from flag
 			// ||
 			//(pluginToolConfig["imagesha256"].(string) != "" && pluginToolConfig["trctype"].(string) == "trcshservice") {
-			fmt.Println("Valid image found.")
+			if !strings.Contains(pluginToolConfig["trcplugin"].(string), "carrier") {
+				fmt.Println("Valid image found.")
+			}
 			//SHA MATCHES
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
@@ -612,7 +628,15 @@ func CommonMain(envPtr *string,
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
 				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
+				if driverConfig == nil {
+					driverConfig = &eUtils.DriverConfig{
+						CoreConfig: core.CoreConfig{
+							ExitOnFailure: true,
+							Log:           logger,
+						},
+						Insecure: false, StartDir: []string{""}, SubSectionValue: "trc-vault-carrier-plugin"}
 
+				}
 				properties, err := trcvutils.NewProperties(&driverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
 				if err != nil {
 					fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
@@ -630,6 +654,7 @@ func CommonMain(envPtr *string,
 					fmt.Println(writeErr)
 					return err
 				}
+				fmt.Println("Image certified.")
 			} else { //Non region certify
 				writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
 				if readErr != nil {
@@ -737,6 +762,14 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 	} else if pathParam, pathOK := writeMap["trcpathparam"].(string); pathOK {
 		writeMap["trcpathparam"] = pathParam
 	}
+
+	if newRelicAppName, nameOK := pluginToolConfig["newrelicAppName"].(string); newRelicAppName != "" && nameOK && pluginTypePtr == "vault" { //optional if not found.
+		writeMap["newrelic_app_name"] = newRelicAppName
+	}
+	if newRelicLicenseKey, keyOK := pluginToolConfig["newrelicLicenseKey"].(string); newRelicLicenseKey != "" && keyOK && pluginTypePtr == "vault" { //optional if not found.
+		writeMap["newrelic_license_key"] = newRelicLicenseKey
+	}
+
 	writeMap["copied"] = false
 	writeMap["deployed"] = false
 	return writeMap

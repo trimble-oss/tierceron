@@ -59,7 +59,6 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 	certifyConfig, certifyErr := pluginutil.GetPluginCertifyMap(goMod, pluginConfig)
 	if certifyErr != nil {
 		driverConfig.CoreConfig.Log.Println("No certification for plugin:", certifyErr)
-		os.Exit(-1)
 	}
 	if newrelic_app_name, ok := certifyConfig["newrelic_app_name"].(string); ok && len(newrelic_app_name) > 0 {
 		if newrelicLicenseKey, ok := certifyConfig["newrelic_license_key"].(string); ok {
@@ -77,7 +76,11 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 
 			driverConfig.CoreConfig.Log = log.New(logWriter.New(log.Default().Writer(), app), "["+pluginConfig["pluginName"].(string)+"]", log.LstdFlags)
 			driverConfig.CoreConfig.Log.Println("Newrelic configured...")
+		} else {
+			driverConfig.CoreConfig.Log.Println("Missing license key for newrelic.  Continue without newrelic.")
 		}
+	} else {
+		driverConfig.CoreConfig.Log.Println("Missing app name for newrelic.  Continue without newrelic.")
 	}
 
 	if goMod != nil {
