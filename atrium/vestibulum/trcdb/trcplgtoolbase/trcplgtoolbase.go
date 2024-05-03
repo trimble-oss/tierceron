@@ -763,10 +763,10 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 		writeMap["trcpathparam"] = pathParam
 	}
 
-	if newRelicAppName, nameOK := pluginToolConfig["newrelicAppName"].(string); newRelicAppName != "" && nameOK { //optional if not found.
+	if newRelicAppName, nameOK := pluginToolConfig["newrelicAppName"].(string); newRelicAppName != "" && nameOK && pluginTypePtr == "vault" { //optional if not found.
 		writeMap["newrelic_app_name"] = newRelicAppName
 	}
-	if newRelicLicenseKey, keyOK := pluginToolConfig["newrelicLicenseKey"].(string); newRelicLicenseKey != "" && keyOK { //optional if not found.
+	if newRelicLicenseKey, keyOK := pluginToolConfig["newrelicLicenseKey"].(string); newRelicLicenseKey != "" && keyOK && pluginTypePtr == "vault" { //optional if not found.
 		writeMap["newrelic_license_key"] = newRelicLicenseKey
 	}
 
