@@ -85,8 +85,8 @@ func CommonMain(envPtr *string,
 	checkCopiedPtr := flagset.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
 
 	// NewRelic flags...
-	newrelicAppNamePtr := flagset.String("newrelicAppName", "", false, "App name for New Relic")
-	newrelicLicenseKeyPtr := flagset.String("newrelicLicenseKey", "", false, "License key for New Relic")
+	newrelicAppNamePtr := flagset.String("newRelicAppName", "", false, "App name for New Relic")
+	newrelicLicenseKeyPtr := flagset.String("newRelicLicenseKey", "", false, "License key for New Relic")
 
 	certifyInit := false
 
@@ -608,7 +608,9 @@ func CommonMain(envPtr *string,
 		}
 	} else if *certifyImagePtr {
 		//Certify Image
-		if !certifyInit {
+		if strings.Contains(pluginToolConfig["trcplugin"].(string), "carrier") {
+			fmt.Println("Skipping checking for existing image due to carrier deployment.")
+		} else if !certifyInit {
 			// Already certified...
 			fmt.Println("Checking for existing image.")
 			err := repository.GetImageAndShaFromDownload(driverConfigBase, pluginToolConfig)
@@ -623,12 +625,13 @@ func CommonMain(envPtr *string,
 				return err
 			}
 		}
-
 		if certifyInit ||
 			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) { // Comparing generated sha from image to sha from flag
 			// ||
 			//(pluginToolConfig["imagesha256"].(string) != "" && pluginToolConfig["trctype"].(string) == "trcshservice") {
-			fmt.Println("Valid image found.")
+			if !strings.Contains(pluginToolConfig["trcplugin"].(string), "carrier") {
+				fmt.Println("Valid image found.")
+			}
 			//SHA MATCHES
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
