@@ -420,6 +420,12 @@ func CommonMain(envPtr *string,
 			if expandTarget, ok := pluginToolConfig["expandTargetPtr"].(bool); ok && expandTarget { //only writes out if expandTarget = true
 				pluginToolConfig["trcexpandtarget"] = "true"
 			}
+			if nrAppName, ok := pluginToolConfig["newrelicAppName"].(string); ok && nrAppName != "" {
+				pluginToolConfig["newrelic_app_name"] = pluginToolConfig["newrelicAppName"].(string)
+			}
+			if nrLicenseKey, ok := pluginToolConfig["newrelicLicenseKey"].(string); ok && nrLicenseKey != "" {
+				pluginToolConfig["newrelic_license_key"] = pluginToolConfig["newrelicLicenseKey"].(string)
+			}
 		}
 	}
 
@@ -450,6 +456,12 @@ func CommonMain(envPtr *string,
 		}
 		if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
 			writeMap["trcexpandtarget"] = expandTarget
+		}
+		if nrAppName, ok := pluginToolConfig["newrelicAppName"].(string); ok && nrAppName != "" {
+			writeMap["newrelic_app_name"] = pluginToolConfig["newrelicAppName"].(string)
+		}
+		if nrLicenseKey, ok := pluginToolConfig["newrelicLicenseKey"].(string); ok && nrLicenseKey != "" {
+			writeMap["newrelic_license_key"] = pluginToolConfig["newrelicLicenseKey"].(string)
 		}
 
 		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, driverConfigBase.CoreConfig.Log)
