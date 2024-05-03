@@ -85,8 +85,8 @@ func CommonMain(envPtr *string,
 	checkCopiedPtr := flagset.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
 
 	// NewRelic flags...
-	newrelicAppNamePtr := flagset.String("newRelicAppName", "", false, "App name for New Relic")
-	newrelicLicenseKeyPtr := flagset.String("newRelicLicenseKey", "", false, "License key for New Relic")
+	newrelicAppNamePtr := flagset.String("newRelicAppName", "", "App name for New Relic")
+	newrelicLicenseKeyPtr := flagset.String("newRelicLicenseKey", "", "License key for New Relic")
 
 	certifyInit := false
 
