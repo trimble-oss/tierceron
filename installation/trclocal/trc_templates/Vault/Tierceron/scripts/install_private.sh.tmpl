@@ -15,7 +15,7 @@ WantedBy=multi-user.target
 WantedBy=sysinit.target
 
 [Service]
-Environment="VAULT_API_ADDR=https://{{.vault_ip}}:{{.hostport}}"
+Environment="VAULT_API_ADDR=https://127.0.0.1:{{.hostport}}"
 Environment="GOMAXPROCS=$(nproc)"
 ExecStart={{.vault_root_install}}vault server -config {{.vault_root_install}}vault_properties.hcl
 LimitMEMLOCK=infinity
