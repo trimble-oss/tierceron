@@ -77,7 +77,11 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 
 			driverConfig.CoreConfig.Log = log.New(logWriter.New(log.Default().Writer(), app), "["+pluginConfig["pluginName"].(string)+"]", log.LstdFlags)
 			driverConfig.CoreConfig.Log.Println("Newrelic configured...")
+		} else {
+			driverConfig.CoreConfig.Log.Println("Missing license key for newrelic.  Continue without newrelic.")
 		}
+	} else {
+		driverConfig.CoreConfig.Log.Println("Missing app name for newrelic.  Continue without newrelic.")
 	}
 
 	if goMod != nil {
