@@ -50,7 +50,7 @@ func main() {
 	//Grabbing configs
 	envMap := buildopts.BuildOptions.GetTestDeployConfig(*tokenPtr)
 	envMap["vaddress"] = "https://tierceron.test:1234"
-	envMap["token"] = "s.wXjRpHdF5o0DIrdUaOw4suvu"
+	envMap["token"] = "<sometoken>"
 	carrierfactory.InitLogger(logger)
 	//go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))
 
