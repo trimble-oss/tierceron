@@ -7,10 +7,12 @@ import (
 )
 
 func GetPluginCertifyMap(mod *kv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
-
-	certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginConfig["pluginName"].(string) + "/Certify")
-	if err != nil {
-		return nil, err
+	if pluginName, ok := pluginConfig["pluginName"].(string); ok && pluginName != "" {
+		certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
+		if err != nil {
+			return nil, err
+		}
+		return certifyMap, nil
 	}
-	return certifyMap, errors.New("missing plugin certification")
+	return nil, errors.New("missing plugin name for configuration")
 }
