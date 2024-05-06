@@ -18,16 +18,10 @@ listener "tcp" {
    address = "127.0.0.1:{{.hostport}}"
    tls_disable = "false"
 
-   tls_cert_file = "{{.vault_root_install}}certs/cert.pem"
-   tls_key_file = "{{.vault_root_install}}certs/key.pem"
+   tls_cert_file = "{{.vault_root_install}}/certs/serv_cert.pem"
+   tls_key_file = "{{.vault_root_install}}/certs/serv_key.pem"
 }
 
-listener "tcp" {
-    address     = "{{.vault_ip}}:{{.hostport}}"
-    tls_disable = "false"
-    tls_cert_file = "{{.vault_root_install}}certs/cert.pem"
-    tls_key_file = "{{.vault_root_install}}certs/key.pem"
-}
 disable_mlock = false
 ui = false
 default_lease_ttl = "1h"
