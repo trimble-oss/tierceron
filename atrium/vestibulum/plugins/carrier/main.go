@@ -8,7 +8,8 @@ import (
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/carrierfactory"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/localopts"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -76,8 +77,15 @@ func main() {
 
 	logger.Println("Running plugin with cert validation...")
 	args := os.Args
-	args = append(args, fmt.Sprintf("--client-cert=%s", "/etc/opt/vault/certs/serv_cert.pem"))
-	args = append(args, fmt.Sprintf("--client-key=%s", "/etc/opt/vault/certs/serv_key.pem"))
+
+	if localopts.IsLocal() {
+		logger.Println("Running in developer mode with self signed certs.")
+		args = append(args, "--tls-skip-verify=true")
+	} else {
+		logger.Println("Running plugin with cert validation...")
+		args = append(args, fmt.Sprintf("--client-cert=%s", "../certs/serv_cert.pem"))
+		args = append(args, fmt.Sprintf("--client-key=%s", "../certs/serv_key.pem"))
+	}
 
 	argErr := flags.Parse(args[1:])
 	if argErr != nil {

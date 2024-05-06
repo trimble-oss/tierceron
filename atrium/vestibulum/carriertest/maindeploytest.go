@@ -8,7 +8,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/carrierfactory"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -44,16 +44,18 @@ func main() {
 		},
 	}
 	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
+	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 
 	//Grabbing configs
 	envMap := buildopts.BuildOptions.GetTestDeployConfig(*tokenPtr)
-	//envMap["vaddress"] = "vaultaddr"
-	//envMap["token"] = "INSERT TOKEN HERE"
+	envMap["vaddress"] = "https://tierceron.test:1234"
+	envMap["token"] = "<sometoken>"
 	carrierfactory.InitLogger(logger)
 	//go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))
 
 	go carrierfactory.Init(coreopts.BuildOptions.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
-	envMap["env"] = "QA"
+	envMap["env"] = "dev"
 	envMap["insecure"] = true
 	envMap["syncOnce"] = &sync.Once{}
 	carrierfactory.PushEnv(envMap)

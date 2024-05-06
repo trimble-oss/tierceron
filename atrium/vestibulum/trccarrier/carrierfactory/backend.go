@@ -671,7 +671,11 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 
 		if !deploy.IsCapInitted() {
 			// Keep trying to initialize capauth whenever there is a refresh...
-			deploy.PluginDeployEnvFlow(tokenEnvMap, logger)
+			tokenEnvMap["pluginName"] = "trc-vault-carrier-plugin"
+			deployEnvFlowErr := deploy.PluginDeployEnvFlow(tokenEnvMap, logger)
+			if deployEnvFlowErr != nil {
+				return nil, fmt.Errorf("Deploy Env Flow error: %v", deployEnvFlowErr)
+			}
 		}
 
 		logger.Println("TrcCarrierUpdate merging tokens.")

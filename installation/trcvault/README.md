@@ -1,9 +1,11 @@
 # Introduction 
-The installation folder for trcdb.  This is responsible for setting up the initial tokens you'll
-need to manage your vault.
+The installation folder for trcvault.  This is responsible for setting up the initial tokens you'll need to manage your vault.
 
 # Prerequisites
-This assumes the existence of a machine or virtual machine (in the cloud) with a reachable ip address and host name.  You should have run either trclocal or trccloud by this point.
+This assumes the existence of a running vault on your local machine or virtual machine (in the cloud) with a reachable ip address and host name running vault.  You should have run either trclocal or trccloud prior to this.
+
+# network setup
+
 
 # Build initial vault.
 ```
@@ -11,6 +13,9 @@ trcinit -new -namespace=vault -addr=https://<vaulthost:vaultport> -totalKeys=3 -
 ```
 
 Note, for local development installs where you may be using a self signed certificate, you can use the --insecure flag to give "flexibility" on certificate validation, meaning you want encrypted communication, but you are flexible on the validation of the certificate.
+
+# Unseal vault (any time you restart vault)
+/usr/local/vault/vault operator unseal -address="https://<vaulthost:vaultport>" -tls-skip-verify
 
 # Additional helpful commands
 For reference, the default token namespaces provided are as follows..
