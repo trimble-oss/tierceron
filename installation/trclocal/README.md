@@ -39,6 +39,16 @@ trcx -env=dev -novault
 At this point you want to edit all seed variables in preparation for publish.
 
 Fill in seed variables in super-secrets section of trc_seeds/dev/dev_seed.yml
+Example secrets follow...
+```
+    adminUser: <youradmin>
+    dbPassword: <yourpassword>
+    dbcert_name: sqlcert.pem
+    dbname: <yourdb>
+    hostport: "1234"
+    vault_ip: 127.0.0.1
+    vault_root_install: "/usr/local/vault"
+```
 
 # Create cert placeholder files
 ```
@@ -56,6 +66,8 @@ sudo cp trc_seeds/certs/* /usr/local/vault/certs/
 trcconfig -env=dev -novault
 sudo cp resources/vault_properties.hcl /usr/local/vault/
 sudo cp trc_seeds/certs/* /usr/local/vault/certs/
+chmod 700 ./scripts/install.sh
+sudo ./scripts/install.sh
 ```
 
 # Start vault as a service.
