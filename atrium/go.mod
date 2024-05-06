@@ -33,7 +33,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.1
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2 v2.1.0
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.3.2
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/newrelic/go-agent/v3 v3.19.1
