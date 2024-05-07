@@ -30,8 +30,8 @@ require (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.9.0
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.4.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.1
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
@@ -40,14 +40,14 @@ require (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.5.0 // indirect
-	github.com/AzureAD/microsoft-authentication-library-for-go v1.1.1 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.5.2 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
 	github.com/klauspost/reedsolomon v1.11.8 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lafriks/go-shamir v1.1.0 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
-	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/templexxx/cpu v0.1.0 // indirect
 	github.com/templexxx/xorsimd v0.4.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
@@ -61,7 +61,7 @@ require (
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/gocraft/dbr/v2 v2.7.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.0 // indirect
 	github.com/google/flatbuffers v2.0.6+incompatible // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -86,7 +86,7 @@ require (
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang-sql/sqlexp v0.0.0-20170517235910-f1bb20e5a188 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/uuid v1.3.1 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
