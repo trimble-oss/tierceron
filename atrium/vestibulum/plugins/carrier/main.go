@@ -100,14 +100,15 @@ func main() {
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
-	tlsProviderOverrideFunc := func() (*tls.Config, error) {
-		logger.Print("Tls providing...")
-		tlsConfigProvidedConfig, err := tlsProviderFunc()
-		if err != nil {
-			return nil, err
-		}
-		logger.Print("Tls provider...")
-		if true {
+	var tlsProviderOverrideFunc func() (*tls.Config, error)
+	if localopts.IsLocal() {
+		tlsProviderOverrideFunc = func() (*tls.Config, error) {
+			logger.Print("Tls providing...")
+			tlsConfigProvidedConfig, err := tlsProviderFunc()
+			if err != nil {
+				return nil, err
+			}
+			logger.Print("Tls provider...")
 			logger.Print("Tls provide local...")
 			serverIP := net.ParseIP("127.0.0.1") // Change to local IP for self signed cert local debugging
 			tlsConfigProvidedConfig.VerifyPeerCertificate = func(certificates [][]byte, verifiedChains [][]*x509.Certificate) error {
@@ -125,8 +126,10 @@ func main() {
 				logger.Print("TLS certificate verification failed (IP SAN mismatch)")
 				return errors.New("TLS certificate verification failed (IP SAN mismatch)")
 			}
+			return tlsConfigProvidedConfig, nil
 		}
-		return tlsConfigProvidedConfig, nil
+	} else {
+		tlsProviderOverrideFunc = tlsProviderFunc()
 	}
 
 	logger.Print("Starting server...")
