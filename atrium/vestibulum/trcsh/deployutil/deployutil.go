@@ -14,30 +14,30 @@ import (
 )
 
 // Loads a plugin's deploy.trc script directly from vault.
-func LoadPluginDeploymentScript(driverConfig *eUtils.DriverConfig, trcshConfig *capauth.TrcShConfig, pwd string) ([]byte, error) {
-	if strings.Contains(pwd, "TrcDeploy") && len(driverConfig.DeploymentConfig) > 0 {
-		if deployment, ok := driverConfig.DeploymentConfig["trcplugin"]; ok {
-			if deploymentAlias, deployAliasOk := driverConfig.DeploymentConfig["trcpluginalias"]; deployAliasOk {
+func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, trcshConfig *capauth.TrcShConfig, pwd string) ([]byte, error) {
+	if strings.Contains(pwd, "TrcDeploy") && len(trcshDriverConfig.DriverConfig.DeploymentConfig) > 0 {
+		if deployment, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+			if deploymentAlias, deployAliasOk := trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"]; deployAliasOk {
 				deployment = deploymentAlias
 			}
-			mergedEnvRaw := driverConfig.EnvRaw
+			mergedEnvRaw := trcshDriverConfig.DriverConfig.EnvRaw
 			// Swapping in project root...
 			configRoleSlice := strings.Split(*trcshConfig.ConfigRole, ":")
-			tokenName := "config_token_" + driverConfig.EnvRaw
+			tokenName := "config_token_" + trcshDriverConfig.DriverConfig.EnvRaw
 			readToken := ""
-			autoErr := eUtils.AutoAuth(driverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &driverConfig.Env, &driverConfig.VaultAddress, &mergedEnvRaw, "config.yml", false)
+			autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &trcshDriverConfig.DriverConfig.Env, &trcshDriverConfig.DriverConfig.VaultAddress, &mergedEnvRaw, "config.yml", false)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				return nil, autoErr
 			}
 
-			mod, err := helperkv.NewModifier(driverConfig.Insecure, readToken, *trcshConfig.VaultAddress, driverConfig.EnvRaw, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
+			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.Insecure, readToken, *trcshConfig.VaultAddress, trcshDriverConfig.DriverConfig.EnvRaw, trcshDriverConfig.DriverConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 			if err != nil {
 				fmt.Println("Unable to obtain resources for deployment")
 				return nil, err
 			}
-			tempEnv := driverConfig.EnvRaw
-			envParts := strings.Split(driverConfig.EnvRaw, "-")
+			tempEnv := trcshDriverConfig.DriverConfig.EnvRaw
+			envParts := strings.Split(trcshDriverConfig.DriverConfig.EnvRaw, "-")
 			mod.Env = envParts[0]
 			fmt.Printf("Loading deployment details for %s and env %s", deployment, mod.Env)
 			deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
@@ -47,20 +47,20 @@ func LoadPluginDeploymentScript(driverConfig *eUtils.DriverConfig, trcshConfig *
 				return nil, err
 			}
 			deploymentConfig["trcpluginalias"] = deployment
-			driverConfig.DeploymentConfig = deploymentConfig
-			if trcDeployRoot, ok := driverConfig.DeploymentConfig["trcdeployroot"]; ok {
-				driverConfig.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
-				driverConfig.EndDir = trcDeployRoot.(string)
+			trcshDriverConfig.DriverConfig.DeploymentConfig = deploymentConfig
+			if trcDeployRoot, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcdeployroot"]; ok {
+				trcshDriverConfig.DriverConfig.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
+				trcshDriverConfig.DriverConfig.EndDir = trcDeployRoot.(string)
 			}
 
-			if trcProjectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
+			if trcProjectService, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
 				var content []byte
 				trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
-				driverConfig.ZeroConfig = true
-				contentArray, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string)), true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
-				driverConfig.ZeroConfig = false
+				trcshDriverConfig.DriverConfig.ZeroConfig = true
+				contentArray, _, _, err := vcutils.ConfigTemplate(&trcshDriverConfig.DriverConfig, mod, fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string)), true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
+				trcshDriverConfig.DriverConfig.ZeroConfig = false
 				if err != nil {
-					eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+					eUtils.LogErrorObject(&trcshDriverConfig.DriverConfig.CoreConfig, err, false)
 					return nil, err
 				}
 				content = []byte(contentArray)
@@ -75,14 +75,14 @@ func LoadPluginDeploymentScript(driverConfig *eUtils.DriverConfig, trcshConfig *
 }
 
 // Gets list of supported deployers for current environment.
-func GetDeployers(driverConfig *eUtils.DriverConfig) ([]string, error) {
+func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig) ([]string, error) {
 
 	// Swapping in project root...
-	configRoleSlice := strings.Split(driverConfig.AppRoleConfig, ":")
-	mergedEnvRaw := driverConfig.EnvRaw
-	tokenName := "config_token_" + driverConfig.Env
+	configRoleSlice := strings.Split(trcshDriverConfig.DriverConfig.AppRoleConfig, ":")
+	mergedEnvRaw := trcshDriverConfig.DriverConfig.EnvRaw
+	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.Env
 	readToken := ""
-	autoErr := eUtils.AutoAuth(driverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &driverConfig.Env, &driverConfig.VaultAddress, &mergedEnvRaw, "config.yml", false)
+	autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &trcshDriverConfig.DriverConfig.Env, &trcshDriverConfig.DriverConfig.VaultAddress, &mergedEnvRaw, "config.yml", false)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return nil, autoErr
@@ -92,19 +92,19 @@ func GetDeployers(driverConfig *eUtils.DriverConfig) ([]string, error) {
 		memprotectopts.MemProtect(nil, &readToken)
 	}
 
-	mod, err := helperkv.NewModifier(driverConfig.Insecure, readToken, driverConfig.VaultAddress, driverConfig.EnvRaw, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.Insecure, readToken, trcshDriverConfig.DriverConfig.VaultAddress, trcshDriverConfig.DriverConfig.EnvRaw, trcshDriverConfig.DriverConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
 	if err != nil {
 		fmt.Println("Failure to init to vault")
-		driverConfig.CoreConfig.Log.Println("Failure to init to vault")
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Failure to init to vault")
 		return nil, err
 	}
-	envParts := strings.Split(driverConfig.EnvRaw, "-")
+	envParts := strings.Split(trcshDriverConfig.DriverConfig.EnvRaw, "-")
 	mod.Env = envParts[0]
 
-	deploymentListData, deploymentListDataErr := mod.List("super-secrets/Index/TrcVault/trcplugin", driverConfig.CoreConfig.Log)
+	deploymentListData, deploymentListDataErr := mod.List("super-secrets/Index/TrcVault/trcplugin", trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if deploymentListDataErr != nil {
 		return nil, deploymentListDataErr
 	}

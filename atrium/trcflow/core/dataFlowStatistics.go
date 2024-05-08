@@ -19,7 +19,7 @@ import (
 
 	"time"
 
-	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
+	trcdbutil "github.com/trimble-oss/tierceron/pkg/core/dbutil"
 
 	dfssql "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/flowsql"
 
@@ -113,7 +113,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 						"dbsourceuser":     data["dbuser"],
 						"dbsourcepassword": data["dbpassword"],
 					}
-					dbsourceConn, err := trcvutils.OpenDirectConnection(&driverConfig.CoreConfig, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+					dbsourceConn, err := trcdbutil.OpenDirectConnection(&driverConfig.CoreConfig, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
 					if err != nil {
 						log.Println(err)
