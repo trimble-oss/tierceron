@@ -60,6 +60,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				newrelic.ConfigAppName(newrelic_app_name),
 				newrelic.ConfigLicense(newrelicLicenseKey),
 				newrelic.ConfigDistributedTracerEnabled(true),
+				newrelic.ConfigAppLogForwardingEnabled(true),
 			)
 
 			if err != nil {
