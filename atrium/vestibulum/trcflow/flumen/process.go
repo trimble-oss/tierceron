@@ -10,9 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -64,7 +67,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				return err
 			}
 
-			driverConfig.CoreConfig.Log = log.New(logWriter.New(log.Default().Writer(), app), "["+pluginConfig["pluginName"].(string)+"]", log.LstdFlags)
+			driverConfig.CoreConfig.Log = log.New(logWriter.New(driverConfig.CoreConfig.Log.Writer(), app), "["+pluginConfig["pluginName"].(string)+"]", log.LstdFlags)
+			logger = driverConfig.CoreConfig.Log
 			driverConfig.CoreConfig.Log.Println("Newrelic configured...")
 		} else {
 			driverConfig.CoreConfig.Log.Println("Missing license key for newrelic.  Continue without newrelic.")
