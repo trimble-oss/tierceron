@@ -129,7 +129,7 @@ func main() {
 			return tlsConfigProvidedConfig, nil
 		}
 	} else {
-		tlsProviderOverrideFunc = tlsProviderFunc()
+		tlsProviderOverrideFunc = tlsProviderFunc
 	}
 
 	logger.Print("Starting server...")
