@@ -335,7 +335,7 @@ func CommonMain(envPtr *string,
 	}
 
 	// Get existing configs if they exist...
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(&trcshDriverConfig.DriverConfig, mod, coreopts.BuildOptions.ProcessDeployPluginEnvConfig(map[string]interface{}{}), *defineServicePtr)
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(&trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.ProcessDeployPluginEnvConfig(map[string]interface{}{}), *defineServicePtr)
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		return plcErr

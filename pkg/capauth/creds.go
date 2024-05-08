@@ -18,10 +18,10 @@ import (
 )
 
 const (
-	ServCert           = "/usr/local/vault/certs/serv_cert.pem"
-	ServCertPrefixPath = "/usr/local/vault/certs/"
+	ServCert           = "/etc/opt/vault/certs/serv_cert.pem"
+	ServCertPrefixPath = "/etc/opt/vault/certs/"
 	ServCertLocal      = "./serv_cert.pem"
-	ServKey            = "/usr/local/vault/certs/serv_key.pem"
+	ServKey            = "/etc/opt/vault/certs/serv_key.pem"
 )
 
 var MashupCertPool *x509.CertPool
