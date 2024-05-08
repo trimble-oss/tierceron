@@ -10,7 +10,6 @@ import (
 	"github.com/go-git/go-billy/v5"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
-	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
 )
@@ -75,8 +74,6 @@ type DriverConfig struct {
 	EndDir         string
 	OutputMemCache bool
 	MemFs          billy.Filesystem
-	FeatherCtx     *cap.FeatherContext
-	FeatherCtlCb   func(*cap.FeatherContext, string) error
 
 	// Config modes....
 	ZeroConfig  bool
