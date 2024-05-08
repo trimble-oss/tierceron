@@ -17,6 +17,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
@@ -35,7 +36,7 @@ func CommonMain(envPtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *eUtils.DriverConfig) error {
+	trcshDriverConfig *capauth.TrcshDriverConfig) error {
 
 	var flagEnvPtr *string
 	// Main functions are as follows:
@@ -93,7 +94,7 @@ func CommonMain(envPtr *string,
 	//APIM flags
 	updateAPIMPtr := flagset.Bool("updateAPIM", false, "Used to update Azure APIM")
 
-	if driverConfig == nil || !driverConfig.IsShellSubProcess {
+	if trcshDriverConfig == nil || !trcshDriverConfig.DriverConfig.IsShellSubProcess {
 		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
@@ -123,9 +124,9 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	if driverConfig != nil && driverConfig.DeploymentConfig["trcpluginalias"] != nil {
+	if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"] != nil {
 		// Prefer internal definition of alias
-		*pluginNameAliasPtr = driverConfig.DeploymentConfig["trcpluginalias"].(string)
+		*pluginNameAliasPtr = trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"].(string)
 	}
 
 	if (len(*newrelicAppNamePtr) == 0 && len(*newrelicLicenseKeyPtr) != 0) || (len(*newrelicAppNamePtr) != 0 && len(*newrelicLicenseKeyPtr) == 0) {
@@ -153,9 +154,9 @@ func CommonMain(envPtr *string,
 		return errors.New("-pluginName cannot contain reserved character '.'")
 	}
 
-	if driverConfig != nil && len(driverConfig.PathParam) > 0 {
+	if trcshDriverConfig != nil && len(trcshDriverConfig.DriverConfig.PathParam) > 0 {
 		// Prefer internal definition of alias
-		*pathParamPtr = driverConfig.PathParam
+		*pathParamPtr = trcshDriverConfig.DriverConfig.PathParam
 	}
 
 	if len(*pathParamPtr) > 0 {
@@ -172,7 +173,7 @@ func CommonMain(envPtr *string,
 	if !*updateAPIMPtr {
 		switch *pluginTypePtr {
 		case "vault": // A vault plugin
-			if driverConfig != nil {
+			if trcshDriverConfig != nil {
 				// TODO: do we want to support Deployment certifications in the pipeline at some point?
 				// If so this is a config check to remove.
 				fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
@@ -184,7 +185,7 @@ func CommonMain(envPtr *string,
 			}
 
 		case "agent": // A deployment agent tool.
-			if driverConfig != nil {
+			if trcshDriverConfig != nil {
 				// TODO: do we want to support Deployment certifications in the pipeline at some point?
 				// If so this is a config check to remove.
 				fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
@@ -210,18 +211,18 @@ func CommonMain(envPtr *string,
 	}
 
 	var appRoleConfigPtr *string
-	var driverConfigBase *eUtils.DriverConfig
+	var trcshDriverConfigBase *capauth.TrcshDriverConfig
 	var logger *log.Logger
-	if driverConfig != nil {
-		driverConfigBase = driverConfig
-		logger = driverConfig.CoreConfig.Log
+	if trcshDriverConfig != nil {
+		trcshDriverConfigBase = trcshDriverConfig
+		logger = trcshDriverConfig.DriverConfig.CoreConfig.Log
 		if *pluginNameAliasPtr != "" {
-			driverConfigBase.SubSectionValue = *pluginNameAliasPtr
+			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
 		} else {
-			driverConfigBase.SubSectionValue = *pluginNamePtr
+			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
 		}
-		appRoleConfigPtr = &(driverConfigBase.AppRoleConfig)
-		*insecurePtr = driverConfigBase.Insecure
+		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.AppRoleConfig)
+		*insecurePtr = trcshDriverConfigBase.DriverConfig.Insecure
 	} else {
 		if *agentdeployPtr {
 			fmt.Println("Unsupported agentdeploy outside trcsh")
@@ -235,12 +236,16 @@ func CommonMain(envPtr *string,
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger = log.New(f, "[INIT]", log.LstdFlags)
 
-		driverConfigBase = &eUtils.DriverConfig{
-			CoreConfig: core.CoreConfig{
-				ExitOnFailure: true,
-				Log:           logger,
+		trcshDriverConfigBase = &capauth.TrcshDriverConfig{
+			DriverConfig: eUtils.DriverConfig{
+				CoreConfig: core.CoreConfig{
+					ExitOnFailure: true,
+					Log:           logger,
+				},
+				Insecure: *insecurePtr, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr,
 			},
-			Insecure: *insecurePtr, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr}
+		}
+
 		appRoleConfigPtr = new(string)
 		if err != nil {
 			return err
@@ -249,9 +254,9 @@ func CommonMain(envPtr *string,
 
 	//
 	if tokenNamePtr == nil || *tokenNamePtr == "" || tokenPtr == nil || *tokenPtr == "" {
-		autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
+		autoErr := eUtils.AutoAuth(&trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
 		if autoErr != nil {
-			eUtils.LogErrorMessage(&driverConfigBase.CoreConfig, "Auth failure: "+autoErr.Error(), false)
+			eUtils.LogErrorMessage(&trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
 		}
 	}
@@ -277,11 +282,14 @@ func CommonMain(envPtr *string,
 		pluginConfig["regions"] = []string{*regionPtr}
 	}
 	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
-	config.FeatherCtlCb = driverConfigBase.FeatherCtlCb
-	config.FeatherCtx = driverConfigBase.FeatherCtx
-	if config.FeatherCtx != nil && flagEnvPtr != nil && strings.HasPrefix(*flagEnvPtr, *config.FeatherCtx.Env) {
+	trcshConfig := &capauth.TrcshDriverConfig{
+		DriverConfig: *config,
+	}
+	trcshConfig.FeatherCtlCb = trcshDriverConfigBase.FeatherCtlCb
+	trcshConfig.FeatherCtx = trcshDriverConfigBase.FeatherCtx
+	if trcshConfig.FeatherCtx != nil && flagEnvPtr != nil && strings.HasPrefix(*flagEnvPtr, *trcshConfig.FeatherCtx.Env) {
 		// take on the environment context of the provided flag... like dev-1
-		config.FeatherCtx.Env = flagEnvPtr
+		trcshConfig.FeatherCtx.Env = flagEnvPtr
 	}
 
 	if err != nil {
@@ -291,9 +299,9 @@ func CommonMain(envPtr *string,
 	}
 	config.StartDir = []string{*startDirPtr}
 	if *pluginNameAliasPtr != "" {
-		driverConfigBase.SubSectionValue = *pluginNameAliasPtr
+		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
 	} else {
-		driverConfigBase.SubSectionValue = *pluginNamePtr
+		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
 	}
 	mod.Env = *envPtr
 	if logger != nil {
@@ -314,7 +322,7 @@ func CommonMain(envPtr *string,
 				return fmt.Errorf("unsupported region: %s", *regionPtr)
 			}
 		}
-		driverConfigBase.Regions = regions
+		trcshDriverConfigBase.DriverConfig.Regions = regions
 	}
 
 	if *updateAPIMPtr {
@@ -327,7 +335,7 @@ func CommonMain(envPtr *string,
 	}
 
 	// Get existing configs if they exist...
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(driverConfigBase, mod, coreopts.BuildOptions.ProcessDeployPluginEnvConfig(map[string]interface{}{}), *defineServicePtr)
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(&trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.ProcessDeployPluginEnvConfig(map[string]interface{}{}), *defineServicePtr)
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		return plcErr
@@ -398,7 +406,7 @@ func CommonMain(envPtr *string,
 			!*codebundledeployPtr &&
 			!*certifyImagePtr {
 
-			if driverConfig != nil {
+			if trcshDriverConfig != nil {
 				fmt.Println("Service definition not supported in trcsh.")
 				os.Exit(-1)
 			}
@@ -464,7 +472,7 @@ func CommonMain(envPtr *string,
 			writeMap["newrelic_license_key"] = pluginToolConfig["newrelicLicenseKey"].(string)
 		}
 
-		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, driverConfigBase.CoreConfig.Log)
+		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
 		if err != nil {
 			fmt.Println(err)
 			return err
@@ -496,16 +504,16 @@ func CommonMain(envPtr *string,
 		fmt.Printf("Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
 		if pluginToolConfig["trcsha256"] == nil || len(pluginToolConfig["trcsha256"].(string)) == 0 {
-			if driverConfigBase.DeploymentConfig != nil && driverConfigBase.DeploymentConfig["trcsha256"] != nil && len(driverConfigBase.DeploymentConfig["trcsha256"].(string)) > 0 {
-				pluginToolConfig["trcsha256"] = driverConfigBase.DeploymentConfig["trcsha256"]
+			if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil && trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"] != nil && len(trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"].(string)) > 0 {
+				pluginToolConfig["trcsha256"] = trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"]
 			}
 		}
 		if pluginToolConfig["trcsha256"] != nil && len(pluginToolConfig["trcsha256"].(string)) > 0 {
-			err := repository.GetImageAndShaFromDownload(driverConfigBase, pluginToolConfig)
+			err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if err != nil {
 				fmt.Println("Image download failure.")
-				if driverConfigBase.FeatherCtx != nil {
-					driverConfigBase.FeatherCtx.Log.Printf("Image download failure: %s", err.Error())
+				if trcshDriverConfigBase.FeatherCtx != nil {
+					trcshDriverConfigBase.FeatherCtx.Log.Printf("Image download failure: %s", err.Error())
 				} else {
 					fmt.Println(err.Error())
 				}
@@ -596,9 +604,9 @@ func CommonMain(envPtr *string,
 			fmt.Printf("Image deployed to: %s\n", deployPath)
 		} else {
 			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
-			if driverConfigBase.FeatherCtx != nil {
+			if trcshDriverConfigBase.FeatherCtx != nil {
 				fmt.Printf("%s\n", errMessage)
-				driverConfigBase.FeatherCtx.Log.Printf(errMessage)
+				trcshDriverConfigBase.FeatherCtx.Log.Printf(errMessage)
 			} else {
 				fmt.Printf("%s\n", errMessage)
 			}
@@ -613,7 +621,7 @@ func CommonMain(envPtr *string,
 		} else if !certifyInit {
 			// Already certified...
 			fmt.Println("Checking for existing image.")
-			err := repository.GetImageAndShaFromDownload(driverConfigBase, pluginToolConfig)
+			err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if _, ok := pluginToolConfig["imagesha256"].(string); err != nil || !ok {
 				fmt.Println("Invalid or nonexistent image on download.")
 				if err != nil {
@@ -640,16 +648,19 @@ func CommonMain(envPtr *string,
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
 				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
-				if driverConfig == nil {
-					driverConfig = &eUtils.DriverConfig{
-						CoreConfig: core.CoreConfig{
-							ExitOnFailure: true,
-							Log:           logger,
+				if trcshDriverConfigBase == nil {
+					trcshDriverConfig = &capauth.TrcshDriverConfig{
+						DriverConfig: eUtils.DriverConfig{
+							CoreConfig: core.CoreConfig{
+								ExitOnFailure: true,
+								Log:           logger,
+							},
+							Insecure: false, StartDir: []string{""}, SubSectionValue: "trc-vault-carrier-plugin",
 						},
-						Insecure: false, StartDir: []string{""}, SubSectionValue: "trc-vault-carrier-plugin"}
+					}
 
 				}
-				properties, err := trcvutils.NewProperties(&driverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
+				properties, err := trcvutils.NewProperties(&trcshDriverConfig.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
 				if err != nil {
 					fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 					return err
@@ -661,7 +672,7 @@ func CommonMain(envPtr *string,
 				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {
 					pluginTarget = *pluginNamePtr
 				}
-				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), replacedFields, mod, driverConfig.CoreConfig.Log, *regionPtr, pluginTarget)
+				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), replacedFields, mod, trcshDriverConfig.DriverConfig.CoreConfig.Log, *regionPtr, pluginTarget)
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					return err
@@ -674,7 +685,7 @@ func CommonMain(envPtr *string,
 					return err
 				}
 
-				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), driverConfigBase.CoreConfig.Log)
+				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
 				if err != nil {
 					fmt.Println(err)
 					return err
@@ -686,8 +697,8 @@ func CommonMain(envPtr *string,
 			return err
 		}
 	} else if *agentdeployPtr {
-		if config.FeatherCtlCb != nil {
-			err := config.FeatherCtlCb(config.FeatherCtx, *pluginNamePtr)
+		if trcshConfig.FeatherCtlCb != nil {
+			err := trcshConfig.FeatherCtlCb(trcshConfig.FeatherCtx, *pluginNamePtr)
 			if err != nil {
 				fmt.Printf("Incorrect installation: %s\n", err.Error())
 				return err
@@ -707,7 +718,7 @@ func CommonMain(envPtr *string,
 			return nil
 		}
 
-		err := repository.GetImageAndShaFromDownload(driverConfigBase, pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			return err
@@ -730,7 +741,7 @@ func CommonMain(envPtr *string,
 			return nil
 		}
 
-		err := repository.GetImageAndShaFromDownload(driverConfigBase, pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			return err

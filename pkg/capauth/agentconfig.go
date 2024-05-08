@@ -32,6 +32,12 @@ type AgentConfigs struct {
 	Env             *string
 }
 
+type TrcshDriverConfig struct {
+	DriverConfig eUtils.DriverConfig
+	FeatherCtx   *cap.FeatherContext
+	FeatherCtlCb func(*cap.FeatherContext, string) error
+}
+
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 var gTrcHatSecretsPort string = ""
@@ -261,7 +267,7 @@ func NewAgentConfig(address string,
 	}
 }
 
-func PenseQuery(driverConfig *eUtils.DriverConfig, pense string) (*string, error) {
+func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, error) {
 	penseCode := randomString(7 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
@@ -290,7 +296,7 @@ func PenseQuery(driverConfig *eUtils.DriverConfig, pense string) (*string, error
 	}
 	dialOptions := grpc.WithTransportCredentials(creds)
 
-	localHost, localHostErr := LocalAddr(driverConfig.EnvRaw)
+	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvRaw)
 	if localHostErr != nil {
 		return nil, localHostErr
 	}
@@ -305,7 +311,7 @@ func PenseQuery(driverConfig *eUtils.DriverConfig, pense string) (*string, error
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	localHostConfirm, localHostConfirmErr := LocalAddr(driverConfig.EnvRaw)
+	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvRaw)
 	if localHostConfirmErr != nil {
 		return nil, localHostConfirmErr
 	}

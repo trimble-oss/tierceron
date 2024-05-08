@@ -24,6 +24,7 @@ import (
 
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
+	trcdbutil "github.com/trimble-oss/tierceron/pkg/core/dbutil"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
@@ -848,7 +849,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 // Open a database connection to the provided source using provided
 // source configurations.
 func (tfmContext *TrcFlowMachineContext) GetDbConn(tfContext *TrcFlowContext, dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
-	return trcvutils.OpenDirectConnection(&tfmContext.DriverConfig.CoreConfig, dbUrl,
+	return trcdbutil.OpenDirectConnection(&tfmContext.DriverConfig.CoreConfig, dbUrl,
 		username,
 		coreopts.BuildOptions.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionsMap[tfContext.RemoteDataSource["dbsourceregion"].(string)]))
 }
@@ -918,7 +919,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 					retryCount := 0
 					eUtils.LogInfo(&driverConfig.CoreConfig, "Obtaining resource connections for : "+flow.ServiceName()+"-"+region)
 				retryConnectionAccess:
-					dbsourceConn, err := trcvutils.OpenDirectConnection(&driverConfig.CoreConfig, sDC["dbsourceurl"].(string), sDC["dbsourceuser"].(string), sDC["dbsourcepassword"].(string))
+					dbsourceConn, err := trcdbutil.OpenDirectConnection(&driverConfig.CoreConfig, sDC["dbsourceurl"].(string), sDC["dbsourceuser"].(string), sDC["dbsourcepassword"].(string))
 					if err != nil && err.Error() != "incorrect URL format" {
 						if retryCount < 3 && err != nil && dbsourceConn == nil {
 							retryCount = retryCount + 1
