@@ -4,7 +4,8 @@
 ## Command line building (via Makefile)
 Install build support (Makefile, gcc, etc...):  
 ```
-sudo apt-get install build-essential  
+sudo apt-get install build-essential
+sudo apt-get install mingw-w64  
 ```
 
 Install g3n support libraries (Required for optional tools spiralis and fenestra):  
