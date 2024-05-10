@@ -5,7 +5,7 @@ To set up tierceron secret and configuration management system you can do any of
 ### Install command line tools.
 See installation/GETTING_STARTED.md
 
-### Setting up local vault
+### Setting up local vault (for new individuals or organizations without a vault set up yet)
 See installation/trclocal/README.md
 
 ### Setting up a cloud hosted vault (needs cleanup)
