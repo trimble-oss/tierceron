@@ -206,7 +206,7 @@ func QueryWithBindings(te *engine.TierceronEngine, query string, bindings map[st
 	schema, r, queryErr := te.Engine.QueryWithBindings(ctx, query, bindings)
 	queryLock.Unlock()
 	if queryErr != nil {
-		if strings.Contains(err.Error(), "duplicate") {
+		if strings.Contains(queryErr.Error(), "duplicate") {
 			return "", nil, nil, errors.New("Duplicate primary key found.")
 		}
 		return "", nil, nil, queryErr
