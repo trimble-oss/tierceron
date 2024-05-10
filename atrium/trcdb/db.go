@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -134,6 +135,9 @@ func Query(te *engine.TierceronEngine, query string, queryLock *sync.Mutex) (str
 	schema, r, err := te.Engine.Query(ctx, query)
 	queryLock.Unlock()
 	if err != nil {
+		if strings.Contains(err.Error(), "duplicate") {
+			return "", nil, nil, errors.New("Duplicate primary key found.")
+		}
 		return "", nil, nil, err
 	}
 
@@ -202,6 +206,9 @@ func QueryWithBindings(te *engine.TierceronEngine, query string, bindings map[st
 	schema, r, queryErr := te.Engine.QueryWithBindings(ctx, query, bindings)
 	queryLock.Unlock()
 	if queryErr != nil {
+		if strings.Contains(err.Error(), "duplicate") {
+			return "", nil, nil, errors.New("Duplicate primary key found.")
+		}
 		return "", nil, nil, queryErr
 	}
 
