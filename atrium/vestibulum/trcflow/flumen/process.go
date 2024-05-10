@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -53,6 +54,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		driverConfig.CoreConfig.Log.Println("No certification for plugin:", certifyErr)
 	}
 
+	w, err := os.OpenFile("/var/log/newrelic_debug.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if newrelic_app_name, ok := certifyConfig["newrelic_app_name"].(string); ok && len(newrelic_app_name) > 0 {
 		if newrelicLicenseKey, ok := certifyConfig["newrelic_license_key"].(string); ok {
 			driverConfig.CoreConfig.Log.Println("Setting up newrelic...")
@@ -60,6 +62,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				newrelic.ConfigAppName(newrelic_app_name),
 				newrelic.ConfigLicense(newrelicLicenseKey),
 				newrelic.ConfigDistributedTracerEnabled(true),
+				newrelic.ConfigAppLogForwardingEnabled(true),
+				newrelic.ConfigDebugLogger(os.Stdout),
+				newrelic.ConfigInfoLogger(w),
 			)
 
 			if err != nil {
