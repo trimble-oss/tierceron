@@ -11,7 +11,7 @@ See installation/trclocal/README.md
 ### Setting up a cloud hosted vault (needs cleanup -- not needed if you have a local vault set up)
 See installation/trccloud/terraform/azure/cloudboot/GETTING_STARTED.md
 
-### Setting up default tokens and approles using example policy, role, and token configuration files.
+### Setting up default tokens and approles using example policy, role, and token configuration files (only needed if you set up local or cloud instance of vault)
 See installation/trcvault/README.md
 
 ### Setting up your very first hello world example application
