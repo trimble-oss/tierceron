@@ -68,6 +68,8 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 				newrelic.ConfigLicense(newrelicLicenseKey),
 				newrelic.ConfigDistributedTracerEnabled(true),
 				newrelic.ConfigAppLogForwardingEnabled(true),
+				newrelic.ConfigDebugLogger(os.Stdout),
+				newrelic.ConfigInfoLogger(os.Stdout),
 			)
 
 			if err != nil {
