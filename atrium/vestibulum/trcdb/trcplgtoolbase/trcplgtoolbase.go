@@ -648,19 +648,7 @@ func CommonMain(envPtr *string,
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
 				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
-				if trcshDriverConfigBase == nil {
-					trcshDriverConfig = &capauth.TrcshDriverConfig{
-						DriverConfig: eUtils.DriverConfig{
-							CoreConfig: core.CoreConfig{
-								ExitOnFailure: true,
-								Log:           logger,
-							},
-							Insecure: false, StartDir: []string{""}, SubSectionValue: "trc-vault-carrier-plugin",
-						},
-					}
-				}
-
-				if trcshDriverConfigBase == nil {
+				if trcshDriverConfig == nil {
 					trcshDriverConfig = &capauth.TrcshDriverConfig{
 						DriverConfig: eUtils.DriverConfig{
 							CoreConfig: core.CoreConfig{
