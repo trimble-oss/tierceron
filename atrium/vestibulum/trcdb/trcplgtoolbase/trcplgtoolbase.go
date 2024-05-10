@@ -659,6 +659,17 @@ func CommonMain(envPtr *string,
 						},
 					}
 
+					if trcshDriverConfigBase == nil {
+						trcshDriverConfig = &capauth.TrcshDriverConfig{
+							DriverConfig: eUtils.DriverConfig{
+								CoreConfig: core.CoreConfig{
+									ExitOnFailure: true,
+									Log:           logger,
+								},
+								Insecure: false, StartDir: []string{""}, SubSectionValue: *pluginNamePtr,
+							},
+						}
+					}
 				}
 				properties, err := trcvutils.NewProperties(&trcshDriverConfig.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
 				if err != nil {
