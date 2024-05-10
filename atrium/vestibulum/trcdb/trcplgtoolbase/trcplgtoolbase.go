@@ -648,18 +648,18 @@ func CommonMain(envPtr *string,
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
 				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
-				if trcshDriverConfigBase == nil {
+				if trcshDriverConfig == nil {
 					trcshDriverConfig = &capauth.TrcshDriverConfig{
 						DriverConfig: eUtils.DriverConfig{
 							CoreConfig: core.CoreConfig{
 								ExitOnFailure: true,
 								Log:           logger,
 							},
-							Insecure: false, StartDir: []string{""}, SubSectionValue: "trc-vault-carrier-plugin",
+							Insecure: false, StartDir: []string{""}, SubSectionValue: *pluginNamePtr,
 						},
 					}
-
 				}
+
 				properties, err := trcvutils.NewProperties(&trcshDriverConfig.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
 				if err != nil {
 					fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
