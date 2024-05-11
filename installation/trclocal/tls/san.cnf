@@ -35,4 +35,4 @@ crlDistributionPoints=@crl_section
 
 # Optional CRL section (replace with your CA's CRL information if needed)
 [ crl_section ]
-URI=https://tierceron.test/nutecrl.crl
+URI=https://tierceron.test/tierceroncrl.crl
