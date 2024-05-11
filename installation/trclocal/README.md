@@ -57,6 +57,10 @@ trcx -env=dev -certs -novault
 
 After running trcx -certs, a certs folder will appear under trc_seeds with placeholder empty certificate files.
 You'll want to replace these placeholder files with the real thing under ./trc_seeds/certs.
+
+You can generate certs using the certs_gen.sh script located in [tls/certs_gen.sh](tls/certs_gen.sh).  Be sure to look at san.cnf before running the script to make
+any desired changes to your self signed certificates.
+
 ```
 sudo cp trc_seeds/certs/* /usr/local/vault/certs/
 ```
