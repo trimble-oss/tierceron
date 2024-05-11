@@ -9,7 +9,7 @@ prompt=no
 C=PW # Country
 ST=Melekeok  # State
 L=Ngerulmud  # Locality
-O=Nute  # Organization
+O=TierceronTest  # Organization
 CN=tierceron.test
 
 [v3_req]

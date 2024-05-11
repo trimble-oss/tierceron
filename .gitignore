@@ -65,4 +65,5 @@ atrium/vestibulum/trcchatproxy/.vscode/*
 atrium/plugins/*
 atrium/.vscode/*
 installation/trclocal/tls/cert.*
+installation/trccarrier/deploy/
 

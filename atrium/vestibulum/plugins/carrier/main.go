@@ -3,10 +3,8 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"strings"
 
@@ -80,16 +78,10 @@ func main() {
 	flags := apiClientMeta.FlagSet()
 
 	logger.Println("Running plugin with cert validation...")
-	args := os.Args
 
-	if localopts.IsLocal() {
-		logger.Println("Running in developer mode with self signed certs.")
-		args = append(args, "--tls-skip-verify=true")
-	} else {
-		logger.Println("Running plugin with cert validation...")
-		args = append(args, fmt.Sprintf("--client-cert=%s", "../certs/serv_cert.pem"))
-		args = append(args, fmt.Sprintf("--client-key=%s", "../certs/serv_key.pem"))
-	}
+	args := os.Args
+	args = append(args, fmt.Sprintf("--client-cert=%s", "../certs/serv_cert.pem"))
+	args = append(args, fmt.Sprintf("--client-key=%s", "../certs/serv_key.pem"))
 
 	argErr := flags.Parse(args[1:])
 	if argErr != nil {
@@ -103,28 +95,24 @@ func main() {
 	var tlsProviderOverrideFunc func() (*tls.Config, error)
 	if localopts.IsLocal() {
 		tlsProviderOverrideFunc = func() (*tls.Config, error) {
+			if tlsProviderFunc == nil {
+				return nil, nil
+			}
 			logger.Print("Tls providing...")
 			tlsConfigProvidedConfig, err := tlsProviderFunc()
 			if err != nil {
 				return nil, err
 			}
-			logger.Print("Tls provider...")
 			logger.Print("Tls provide local...")
-			serverIP := net.ParseIP("127.0.0.1") // Change to local IP for self signed cert local debugging
-			tlsConfigProvidedConfig.VerifyPeerCertificate = func(certificates [][]byte, verifiedChains [][]*x509.Certificate) error {
+			tlsConfigProvidedConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 				for _, certChain := range verifiedChains {
-					for _, cert := range certChain {
-						if cert.IPAddresses != nil {
-							for _, ip := range cert.IPAddresses {
-								if ip.Equal(serverIP) {
-									return nil
-								}
-							}
-						}
+					if len(certChain) > 0 {
+						// TODO: is verifiedChains already verified against private key?
+						// If not, we could possibly validate that here.
+						return nil
 					}
 				}
-				logger.Print("TLS certificate verification failed (IP SAN mismatch)")
-				return errors.New("TLS certificate verification failed (IP SAN mismatch)")
+				return nil
 			}
 			return tlsConfigProvidedConfig, nil
 		}
