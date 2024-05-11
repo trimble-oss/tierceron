@@ -29,13 +29,13 @@ This suite of tools provides functionality for creating, reading, and updating c
             - this has been used successfully for a java microservice to pull in configuration files and public certificates all referenced in memory.  This means there is no configuration footprint on the filesystem.
             -- switching from dev to QA in this setup simply means using a different token.
 
+## Getting started
+If you are a contributor, please have a look on the [getting started](GETTING_STARTED.MD) file. Here you can check the information required and other things before providing a useful contribution.
+
 ## Trusted Committers
 - [Joel Rieke](mailto:joel_rieke@trimble.com)
 - [David Mkrtychyan](mailto:david_mkrtychyan@trimble.com)
 - [Karnveer Gill](mailto:karnveer_gill@trimble.com)
-
-## Getting started
-If you are a contributor, please have a look on the [getting started](GETTING_STARTED.MD) file. Here you can check the information required and other things before providing a useful contribution.
 
 ## Contributing
 Contributions are always welcome, no matter how large or small. Before contributing, please read the [code of conduct](CODE_OF_CONDUCT.MD).
