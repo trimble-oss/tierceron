@@ -94,7 +94,7 @@ You can enter https://<vaulthost:vaultport>/v1/sys/health in your browser to con
 trcinit -rotateTokens -namespace=base -addr=https://<vaulthost:vaultport> -token=<root token>
 ```
 
-# Optional: later, after initializing trcvault, you can perform this step: Publish terraform seed data to vault
+# Optional: later, after initializing trcvault, you can perform this step: Publish installation setup configuration seed data to vault
 ```
 trcpub -env=dev -token=$VAULT_PUB_TOKEN -addr=https://<vaulthost:vaultport>
 ```
@@ -121,7 +121,7 @@ rm -r scripts
 rm *.log
 ```
 
-# Initialze simple secrets to vault
+# Initialize simple secrets to vault
 ```
 cd trchelloworld
 mkdir trc_seeds
@@ -137,7 +137,7 @@ vim trc_seeds/dev/dev_seed.yml
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR
 ```
 
-# Clean up...
+# Clean up after yourself
 ```
 rm -r trc_seeds/dev
 ```

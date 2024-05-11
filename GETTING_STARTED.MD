@@ -8,7 +8,7 @@ See [installation/GETTING_STARTED.md](installation/GETTING_STARTED.md)
 ### Setting up local vault (for new individuals or organizations without a vault set up yet)
 See [installation/trclocal/README.md](installation/trclocal/README.md)
 
-### Setting up a cloud hosted vault (needs cleanup -- not needed if you have a local vault set up)
+### Setting up a cloud hosted vault (skip if using local vault.  only for setting up in cloud -- needs cleanup)
 See [installation/trccloud/terraform/azure/cloudboot/GETTING_STARTED.MD](installation/trccloud/terraform/azure/cloudboot/GETTING_STARTED.MD)
 
 ### Setting up default tokens and approles using example policy, role, and token configuration files (only needed to set up local or cloud instance of vault)

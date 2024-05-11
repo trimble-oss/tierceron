@@ -23,22 +23,22 @@ Namespaces:
 agent - Tokens for deployment agents.
 vault - Env based tokens.
 
-# Get expiration for existing tokens in provided namespace.
+# Get expiration for existing tokens in provided namespace
 ```
 trcinit -tokenExpiration -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 ```
 
-# Rotate tokens in provided namespace.
+# Rotate tokens in provided namespace
 ```
 trcinit -rotateTokens -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 ```
 
-# Update roles.
+# Update roles
 ```
 trcinit -updateRole -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 ```
 
-# Update policies.
+# Update policies
 ```
 trcinit -updatePolicy -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 ```
