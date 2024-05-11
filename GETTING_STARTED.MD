@@ -15,7 +15,7 @@ See [installation/trccloud/terraform/azure/cloudboot/GETTING_STARTED.MD](install
 See [installation/trcvault/README.md](installation/trcvault/README.md)
 
 ### Setting up your very first hello world example application
-See hello world section of [installation/trclocal/README.md](installation/trclocal/README.md)
+See hello world section of [installation/trclocal/trchelloworld/README.md](installation/trclocal/trchelloworld/README.md)
 
 ### Installing collaborative deployment system (trc-vault-carrier and trcsh)
 Run trcconfig under (installation/trccloud/terraform/azure/cloudboot)
