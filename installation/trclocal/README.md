@@ -35,7 +35,7 @@ mkdir trc_seeds
 trcx -env=dev -novault
 ```
 
-# Edit seed files and provide certificates.
+# Edit seed files and provide certificates
 At this point you want to edit all seed variables in preparation for publish.
 
 Fill in seed variables in super-secrets section of trc_seeds/dev/dev_seed.yml
@@ -70,7 +70,7 @@ chmod 700 ./scripts/install.sh
 sudo ./scripts/install.sh
 ```
 
-# Start vault as a service.
+# Start vault as a service
 ```
 sudo service vault start
 ```
@@ -94,7 +94,7 @@ You can enter https://<vaulthost:vaultport>/v1/sys/health in your browser to con
 trcinit -rotateTokens -namespace=base -addr=https://<vaulthost:vaultport> -token=<root token>
 ```
 
-# Optional: later, after initializing trcvault, you can perform this step: Publish terraform seed data to vault.
+# Optional: later, after initializing trcvault, you can perform this step: Publish terraform seed data to vault
 ```
 trcpub -env=dev -token=$VAULT_PUB_TOKEN -addr=https://<vaulthost:vaultport>
 ```
@@ -107,7 +107,7 @@ trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -certs
 ```
 
-# Test your configs are in vault.
+# Test your configs are in vault
 ```
 trcconfig -env=dev -token=$VAULT_CONFIG_TOKEN -addr=https://<vaulthost:vaultport> -insecure 
 ```

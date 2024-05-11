@@ -9,7 +9,7 @@ See [installation/GETTING_STARTED.md](installation/GETTING_STARTED.md)
 See [installation/trclocal/README.md](installation/trclocal/README.md)
 
 ### Setting up a cloud hosted vault (needs cleanup -- not needed if you have a local vault set up)
-See [installation/trccloud/terraform/azure/cloudboot/GETTING_STARTED.md](installation/trccloud/terraform/azure/cloudboot/GETTING_STARTED.md)
+See [installation/trccloud/terraform/azure/cloudboot/GETTING_STARTED.MD](installation/trccloud/terraform/azure/cloudboot/GETTING_STARTED.MD)
 
 ### Setting up default tokens and approles using example policy, role, and token configuration files (only needed to set up local or cloud instance of vault)
 See [installation/trcvault/README.md](installation/trcvault/README.md)
@@ -23,13 +23,13 @@ Run trcconfig under (installation/trccloud/terraform/azure/cloudboot)
 deploycarrier.sh and deploy.sh
 
 TODO: needs more documentation...
-See deploy scripts under (installation/trccloud/terraform/azure/cloudboot/deploy/)
+See deploy scripts under [installation/trccloud/terraform/azure/cloudboot/deploy](installation/trccloud/terraform/azure/cloudboot/deploy/)
 
 deploycarrier.sh (for trc-vault-carrier-plugin)
 deploy.sh (for trcsh)
 
 ### Installing TrcDb atrium for Tierceron Vault
-Run trcconfig under (installation/trccloud/terraform/azure/cloudboot)
+Run trcconfig under [installation/trccloud/terraform/azure/cloudboot](installation/trccloud/terraform/azure/cloudboot)
 
 deploy.sh (for trc-vault-plugin)
 

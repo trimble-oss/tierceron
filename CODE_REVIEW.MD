@@ -1,5 +1,5 @@
 ﻿
-## Code Review 📝
+## Code Review
 
 ### Guidelines ✍ 
 Code review is required to get a second opinion on the chosen solution and

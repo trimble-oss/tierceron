@@ -7,7 +7,7 @@ This assumes the existence of a running vault on your local machine or virtual m
 # network setup
 
 
-# Build initial vault.
+# Build initial vault
 ```
 trcinit -new -namespace=vault -addr=https://<vaulthost:vaultport> -totalKeys=3 -unsealKeys=2 > tokens.txt
 ```
