@@ -35,7 +35,7 @@ mkdir trc_seeds
 trcx -env=dev -novault
 ```
 
-# Edit seed files and provide certificates.
+# Edit seed files and provide certificates
 At this point you want to edit all seed variables in preparation for publish.
 
 Fill in seed variables in super-secrets section of trc_seeds/dev/dev_seed.yml
@@ -57,6 +57,10 @@ trcx -env=dev -certs -novault
 
 After running trcx -certs, a certs folder will appear under trc_seeds with placeholder empty certificate files.
 You'll want to replace these placeholder files with the real thing under ./trc_seeds/certs.
+
+You can generate certs using the certs_gen.sh script located in [tls/certs_gen.sh](tls/certs_gen.sh).  Be sure to look at san.cnf before running the script to make
+any desired changes to your self signed certificates.
+
 ```
 sudo cp trc_seeds/certs/* /usr/local/vault/certs/
 ```
@@ -70,7 +74,7 @@ chmod 700 ./scripts/install.sh
 sudo ./scripts/install.sh
 ```
 
-# Start vault as a service.
+# Start vault as a service
 ```
 sudo service vault start
 ```
@@ -94,7 +98,7 @@ You can enter https://<vaulthost:vaultport>/v1/sys/health in your browser to con
 trcinit -rotateTokens -namespace=base -addr=https://<vaulthost:vaultport> -token=<root token>
 ```
 
-# Optional: later, after initializing trcvault, you can perform this step: Publish terraform seed data to vault.
+# Optional: later, after initializing trcvault, you can perform this step: Publish installation setup configuration seed data to vault
 ```
 trcpub -env=dev -token=$VAULT_PUB_TOKEN -addr=https://<vaulthost:vaultport>
 ```
@@ -107,7 +111,7 @@ trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
 trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -certs
 ```
 
-# Test your configs are in vault.
+# Test your configs are in vault
 ```
 trcconfig -env=dev -token=$VAULT_CONFIG_TOKEN -addr=https://<vaulthost:vaultport> -insecure 
 ```
@@ -121,23 +125,7 @@ rm -r scripts
 rm *.log
 ```
 
-# Initialze simple secrets to vault
+# TrcHelloWorld
 ```
 cd trchelloworld
-mkdir trc_seeds
-trcx -env=dev -novault
-```
-
-# Change some secrets 
-```
-vim trc_seeds/dev/dev_seed.yml
-```
-
-```
-trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR
-```
-
-# Clean up...
-```
-rm -r trc_seeds/dev
 ```

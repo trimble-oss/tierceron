@@ -1,5 +1,5 @@
 ﻿
-## Contributing to the service 🎗️  
+## Contributing to the service
 
 Please take a moment to review this in order to make the contribution process easy and effective.
 
@@ -7,7 +7,7 @@ Following these guidelines helps to communicate that you respect the time of the
 
 Contact the TC (trusted commiters) to join the [```Google Chat```](https://chat.google.com/u/1/room/AAAA5cd_TB0) group to find out more information.
 
-### Issue tracker 🔗
+### Issue tracker
 We use [JIRA issue tracker](
 https://jira.trimble.tools/secure/RapidBoard.jspa?projectKey=HON&rapidView=3367&view=planning), being the preferred channel for bug reports, features requests and submitting pull requests.
 
@@ -15,7 +15,7 @@ Every feature/bug created should contain the MANTA Epic Link [MANTA-2194](https:
 
 <br>
 
-### Bugs reporting 🏮
+### Bugs reporting
 
 A bug is a problem that is caused by the code in the repository. Good bug reports are extremely helpful - but this should be demonstrated.
 
@@ -50,14 +50,14 @@ Example:
 
 <br>
 
-### Feature requests 💡
+### Feature requests
 Feature requests are always welcome, but before doing thing take a moment to find if your idea fits with the scope of the project. 
 It's up to you to make a strong case to convince the project's developers of the merits of this feature. 
 Please provide as much detail and context as possible.
 
 <br>
 
-### Pull requests 🔃
+### Pull requests
 
 Pull requests should be focused in scope and to avoid containing unrelated ```commits```.
 
