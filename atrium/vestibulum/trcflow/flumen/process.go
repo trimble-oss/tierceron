@@ -49,42 +49,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		return err
 	}
 
-	certifyConfig, certifyErr := pluginutil.GetPluginCertifyMap(goMod, pluginConfig)
-	if certifyErr != nil {
-		driverConfig.CoreConfig.Log.Println("No certification for plugin:", certifyErr)
-	}
-
-	if newrelic_app_name, ok := certifyConfig["newrelic_app_name"].(string); ok && len(newrelic_app_name) > 0 {
-		if newrelicLicenseKey, ok := certifyConfig["newrelic_license_key"].(string); ok {
-			driverConfig.CoreConfig.Log.Println("Setting up newrelic...")
-			app, err := newrelic.NewApplication(
-				newrelic.ConfigAppName(newrelic_app_name),
-				newrelic.ConfigLicense(newrelicLicenseKey),
-				newrelic.ConfigDistributedTracerEnabled(true),
-				newrelic.ConfigAppLogForwardingEnabled(true),
-				newrelic.ConfigDebugLogger(os.Stdout),
-				newrelic.ConfigInfoLogger(os.Stdout),
-			)
-
-			if err != nil {
-				driverConfig.CoreConfig.Log.Println("Error setting up newrelic:", err)
-				return err
-			}
-
-			driverConfig.CoreConfig.Log = log.New(logWriter.New(driverConfig.CoreConfig.Log.Writer(), app), "["+pluginConfig["pluginName"].(string)+"]", log.LstdFlags)
-			logger = driverConfig.CoreConfig.Log
-			driverConfig.CoreConfig.Log.Println("Newrelic configured...")
-		} else {
-			driverConfig.CoreConfig.Log.Println("Missing license key for newrelic.  Continue without newrelic.")
-		}
-	} else {
-		driverConfig.CoreConfig.Log.Println("Missing app name for newrelic.  Continue without newrelic.")
-	}
-
 	//Need new function writing to that path using pluginName ->
 	//if not copied -> this plugin should fail to start up
 	//Update deployed status & return if
-	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok || true {
+	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok {
 		tempAddr := pluginConfig["vaddress"]
 		tempToken := pluginConfig["token"]
 		if caddress, cOk := pluginConfig["caddress"]; cOk {
@@ -100,6 +68,39 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
 			return err
 		}
+
+		certifyConfig, certifyErr := pluginutil.GetPluginCertifyMap(cGoMod, pluginConfig)
+		if certifyErr != nil {
+			driverConfig.CoreConfig.Log.Println("No certification for plugin:", certifyErr)
+		}
+
+		if newrelic_app_name, ok := certifyConfig["newrelic_app_name"].(string); ok && len(newrelic_app_name) > 0 {
+			if newrelicLicenseKey, ok := certifyConfig["newrelic_license_key"].(string); ok {
+				driverConfig.CoreConfig.Log.Println("Setting up newrelic...")
+				app, err := newrelic.NewApplication(
+					newrelic.ConfigAppName(newrelic_app_name),
+					newrelic.ConfigLicense(newrelicLicenseKey),
+					newrelic.ConfigDistributedTracerEnabled(true),
+					newrelic.ConfigAppLogForwardingEnabled(true),
+					newrelic.ConfigDebugLogger(os.Stdout),
+					newrelic.ConfigInfoLogger(os.Stdout),
+				)
+
+				if err != nil {
+					driverConfig.CoreConfig.Log.Println("Error setting up newrelic:", err)
+					return err
+				}
+
+				driverConfig.CoreConfig.Log = log.New(logWriter.New(driverConfig.CoreConfig.Log.Writer(), app), "["+pluginConfig["pluginName"].(string)+"]", log.LstdFlags)
+				logger = driverConfig.CoreConfig.Log
+				driverConfig.CoreConfig.Log.Println("Newrelic configured...")
+			} else {
+				driverConfig.CoreConfig.Log.Println("Missing license key for newrelic.  Continue without newrelic.")
+			}
+		} else {
+			driverConfig.CoreConfig.Log.Println("Missing app name for newrelic.  Continue without newrelic.")
+		}
+
 		deployedUpdateErr := deploy.PluginDeployedUpdate(cConfig, cGoMod, cVault, pluginNameList, pluginConfig["certifyPath"].([]string), logger)
 		if deployedUpdateErr != nil {
 			eUtils.LogErrorMessage(&driverConfig.CoreConfig, deployedUpdateErr.Error(), false)
