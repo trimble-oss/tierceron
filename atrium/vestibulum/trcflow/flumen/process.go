@@ -52,7 +52,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	//Need new function writing to that path using pluginName ->
 	//if not copied -> this plugin should fail to start up
 	//Update deployed status & return if
-	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok || true {
+	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok {
 		tempAddr := pluginConfig["vaddress"]
 		tempToken := pluginConfig["token"]
 		if caddress, cOk := pluginConfig["caddress"]; cOk {
