@@ -613,7 +613,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	if tfContext.Init {
+	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
 		if tfContext.FlowState.FlowAlias != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Load complete", "2", 1, tfmContext.Log)
 		} else {
