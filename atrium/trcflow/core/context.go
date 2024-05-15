@@ -582,7 +582,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
 	var df *TTDINode = nil
-	if tfContext.Init {
+	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
 		df = InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
 		if tfContext.FlowState.FlowAlias != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Loading", "1", 1, tfmContext.Log)
@@ -613,7 +613,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	if tfContext.Init {
+	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
 		if tfContext.FlowState.FlowAlias != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Load complete", "2", 1, tfmContext.Log)
 		} else {
@@ -623,7 +623,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 
 	// Second row here
 	// Not sure if necessary to copy entire ReportStatistics method
-	if tfContext.Init {
+	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
 		tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
 		df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, false)
 	}
