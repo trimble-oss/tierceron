@@ -480,6 +480,10 @@ retryVaultAccess:
 		}
 		return data, err
 	}
+
+	if err == nil && secret != nil {
+		return nil, nil //Handle deleted, but not destroyed data from vault.
+	}
 	return nil, errors.New("could not get data from vault response")
 }
 
