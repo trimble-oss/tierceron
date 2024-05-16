@@ -1,6 +1,5 @@
 # Introduction 
-The installation folder for trcfssync.  This is if you want to install blob fusing using tierceron to manage
-secrets.
+The installation folder for trcfssync.  This is if you want to install blob fusing using tierceron to manage secrets.
 
 # Prerequisites
 You *must* have all trc cmd line utilities installed as explained in GETTING_STARTED.md.  You must also have completed

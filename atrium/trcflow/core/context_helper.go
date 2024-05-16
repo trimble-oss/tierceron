@@ -543,7 +543,9 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			continue
 		}
 		if err := inserter.Insert(tfmContext.TierceronEngine.Context, row); err != nil {
-			eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
+			if !strings.Contains(err.Error(), "duplicate primary key") && !strings.Contains(err.Error(), "invalid type") {
+				eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, err, false)
+			}
 			continue
 		}
 	}

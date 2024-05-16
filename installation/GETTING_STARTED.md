@@ -1,4 +1,4 @@
-# Introduction 
+# Introduction
 The folders herein contain templates utilized for installing an active vault instance
 in the cloud or on a machine (anywhere) capable of storing all your secrets.  You could skip
 the trccloud step if you want to install vault yourself on a machine somewhere.  This would
