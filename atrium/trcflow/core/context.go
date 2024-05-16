@@ -783,7 +783,12 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 		if changed && (len(matrix) > 0 || tableName != "") {
 			// If triggers are ever fixed, this can be removed.
 			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"].(string); changeIdValueOk {
-				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), tfContext.ChangeFlowName)
+				var changeQuery string
+				if strings.Contains(tfContext.ChangeFlowName, "TierceronFlow") {
+					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", "FlumeDatabase", tfContext.ChangeFlowName)
+				} else {
+					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), tfContext.ChangeFlowName)
+				}
 				bindings := map[string]sqle.Expression{
 					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 				}
