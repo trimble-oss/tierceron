@@ -62,7 +62,7 @@ go.work*
 .vscode/*
 
 atrium/vestibulum/trcchatproxy/.vscode/*
-atrium/plugins/*
+atrium/plugins/target/*
 atrium/.vscode/*
 installation/trclocal/tls/cert.*
 installation/trccarrier/deploy/

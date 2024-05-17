@@ -95,6 +95,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 
 					// Range over all plugins and init them... but only once!
 					for _, pluginName := range pluginEnvConfig["pluginNameList"].([]string) {
+						logger.Printf("Initializing plugin: %s\n", pluginName)
 						pluginEnvConfigClone := make(map[string]interface{})
 						logger.Printf("Cloning %d..\n", len(pluginEnvConfig))
 						for k, v := range pluginEnvConfig {
@@ -109,10 +110,10 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 						logger.Printf("Cloned %d..\n", len(pluginEnvConfigClone))
 
 						pluginEnvConfigClone["trcplugin"] = pluginName
-						logger.Println("*****Env: " + pluginEnvConfig["env"].(string) + " plugin: " + pluginEnvConfigClone["trcplugin"].(string))
+						logger.Println("*****Env: " + pluginEnvConfigClone["env"].(string) + " plugin: " + pluginEnvConfigClone["trcplugin"].(string))
 						pecError := ProcessPluginEnvConfig(processFlowConfig, processFlow, pluginEnvConfigClone, configCompleteChan)
 						if pecError != nil {
-							logger.Println("Bad configuration data for env: " + pluginEnvConfig["env"].(string) + " and plugin: " + pluginName + " error: " + pecError.Error())
+							logger.Println("Bad configuration data for env: " + pluginEnvConfigClone["env"].(string) + " and plugin: " + pluginName + " error: " + pecError.Error())
 						}
 					}
 
@@ -363,9 +364,10 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			}
 		}
 	}
+	logger.Println("Init: " + pluginEnvConfig["env"].(string) + " plugin: " + pluginEnvConfig["trcplugin"].(string))
 
 	go func(pec map[string]interface{}, l *log.Logger) {
-		logger.Println("Begin processFlows for env: " + pec["env"].(string) + " plugin: " + pec["trcplugin"].(string))
+		logger.Println("Initiate process flow for env: " + pec["env"].(string) + " and plugin: " + pec["trcplugin"].(string))
 
 		flowErr := processPluginFlow(pec, l)
 		if configCompleteChan != nil {
@@ -376,7 +378,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		}
 	}(pluginEnvConfig, logger)
 
-	logger.Println("End processFlows for env: " + env.(string))
+	logger.Println("ProcessPluginEnvConfig ended and initiated for env: " + env.(string))
 
 	return nil
 }

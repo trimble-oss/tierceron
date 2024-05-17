@@ -1,0 +1,1 @@
+../../../installation/trccarrier/deploy/deploy.sh

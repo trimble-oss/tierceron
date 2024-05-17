@@ -1,0 +1,1 @@
+../../../installation/trccarrier/deploy/refreshtoken.sh
