@@ -24,7 +24,6 @@ trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=PluginTool
 # Building the carrier
 cd ../../atrium
 make certify devplugincarrier
-cd plugins/deploy
 
 # Deploy the carrier
 trcplgtool -env=dev -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -pluginName=trc-vault-carrier-plugin -sha256=target/trc-vault-carrier-plugin -pluginType=agent
@@ -34,8 +33,16 @@ sudo setcap cap_ipc_lock=+ep /usr/local/vault/plugins/trc-vault-carrier-plugin
 
 ./deploycarrier.sh [Deploy Carrier](atrium/plugin/deploy)
 
-TODO: Need more initialization from here.......  Carrier doesn't want to start....  and this command
-doesn't want to certify...
+# Trcsh integration (optional)
+To bring carrier fully online, you'll also have to install trcsh as a plugin.  Trcsh only runs as a limited user
+called azuredeploy.
+
+sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/azuredeploy azuredeploy
+sudo mkdir -p /home/azuredeploy/bin
+sudo chmod 1750 /home/azuredeploy/bin
+sudo chown root:azuredeploy /home/azuredeploy/bin
+
+./deploy.sh
+
 
 ./refreshcarriertoken.sh
-./deploy.sh
