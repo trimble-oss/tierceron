@@ -711,6 +711,10 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 //
 //	Nothing.
 func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.TrcshDriverConfig, token string, deployment string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
+	
+	// Verify Billy implementation
+	configMemFs := trcshDriverConfig.DriverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
+	
 	isAgentToken := false
 	if token != "" {
 		isAgentToken = true
@@ -857,8 +861,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 
 		var memFile billy.File
 		var memFileErr error
-		
-		configMemFs := trcshDriverConfig.DriverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
 
 		if memFile, memFileErr = configMemFs.BillyFs.Open(trcPath); memFileErr == nil {
 			// Read the generated .trc code...
@@ -938,7 +940,6 @@ collaboratorReRun:
 	var trcKubeDeploymentConfig *kube.TrcKubeConfig
 	var onceKubeInit sync.Once
 	var PipeOS billy.File
-	var memFs billy.Filesystem = memfs.New()
 
 	for _, deployPipeline := range deployArgLines {
 		deployPipeline = strings.TrimLeft(deployPipeline, " ")
@@ -949,7 +950,7 @@ collaboratorReRun:
 		fmt.Println(deployPipeline)
 		deployPipeSplit := strings.Split(deployPipeline, "|")
 
-		if PipeOS, err = memFs.Create("io/STDIO"); err != nil {
+		if PipeOS, err = configMemFs.BillyFs.Create("io/STDIO"); err != nil {
 			fmt.Println("Failure to open io stream.")
 			os.Exit(-1)
 		}
