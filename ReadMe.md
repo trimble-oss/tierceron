@@ -46,4 +46,4 @@ See [Contributing](CONTRIBUTING.MD).
 Check the [code review](CODE_REVIEW.MD) information to find out how a **Pull Request** is evaluated for this project and what other coding standards you should consider when you want to contribute.
 
 ## Current effort
-Usability enhancements.  Tierceron can do a lot of things.  Some features are very easy to set up and use, others not so much.  Contributions welcomed!
+Titrating.  Tierceron can do a lot of things.  Some features are very easy to set up and use, others not so much.  Contributions welcomed!

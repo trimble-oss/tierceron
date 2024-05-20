@@ -661,7 +661,7 @@ func CommonMain(envPtr *string,
 				}
 
 				properties, err := trcvutils.NewProperties(&trcshDriverConfig.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
-				if err != nil {
+				if err != nil && !strings.Contains(err.Error(), "no data paths found when initing CDS") {
 					fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 					return err
 				}
