@@ -28,6 +28,7 @@ import (
 	"github.com/go-git/go-billy/v5"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/path"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/trccreate"
+	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -245,8 +246,10 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *eUtils.Driver
 	}
 	iostreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 
+	configMemFs := driverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
+
 	configFlags.PathVisitorLoader = func() resource.PathVisitor {
-		return &path.MemPathVisitor{MemFs: driverConfig.MemFs, Iostreams: iostreams}
+		return &path.MemPathVisitor{MemFs: configMemFs.BillyFs, Iostreams: iostreams}
 	}
 
 	configFlags.HandleSecretFromFileSources = func(secret *corev1.Secret, fileSources []string) error {
@@ -260,7 +263,7 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *eUtils.Driver
 			var memFile billy.File
 			var memFileErr error
 
-			if memFile, memFileErr = driverConfig.MemFs.Open(filePath); memFileErr == nil {
+			if memFile, memFileErr = configMemFs.BillyFs.Open(filePath); memFileErr == nil {
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				data = buf.Bytes()
@@ -291,7 +294,7 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *eUtils.Driver
 			var memFile billy.File
 			var memFileErr error
 
-			if memFile, memFileErr = driverConfig.MemFs.Open(fileSource); memFileErr == nil {
+			if memFile, memFileErr = configMemFs.BillyFs.Open(fileSource); memFileErr == nil {
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				data = buf.Bytes()
@@ -313,7 +316,7 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *eUtils.Driver
 			var memFile billy.File
 			var memFileErr error
 
-			if memFile, memFileErr = driverConfig.MemFs.Open(fileSource); memFileErr == nil {
+			if memFile, memFileErr = configMemFs.BillyFs.Open(fileSource); memFileErr == nil {
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				data = buf.Bytes()
@@ -330,11 +333,11 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *eUtils.Driver
 	}
 
 	if trcKubeDeploymentConfig.PipeOS != nil {
-		if iostat, ioerr := driverConfig.MemFs.Stat(trcKubeDeploymentConfig.PipeOS.Name()); ioerr == nil {
+		if iostat, ioerr := configMemFs.BillyFs.Stat(trcKubeDeploymentConfig.PipeOS.Name()); ioerr == nil {
 			if iostat.Size() > 0 {
 				pipeName := trcKubeDeploymentConfig.PipeOS.Name()
 				trcKubeDeploymentConfig.PipeOS.Close()
-				if trcKubeDeploymentConfig.PipeOS, ioerr = driverConfig.MemFs.Open(pipeName); ioerr == nil {
+				if trcKubeDeploymentConfig.PipeOS, ioerr = configMemFs.BillyFs.Open(pipeName); ioerr == nil {
 					iostreams.In = trcKubeDeploymentConfig.PipeOS
 				}
 			} else {
@@ -402,9 +405,11 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *eUtils.Driv
 		return config, nil
 	}
 
+	configMemFs := driverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
+
 	f := cmdutil.NewFactory(
 		cmdutil.NewMatchVersionFlags(configFlags),
-		&path.MemPathVisitor{MemFs: driverConfig.MemFs},
+		&path.MemPathVisitor{MemFs: configMemFs.BillyFs},
 		configFlags.HandleSecretFromFileSources,
 		configFlags.HandleConfigMapFromFileSources,
 		configFlags.HandleConfigMapFromEnvFileSources,

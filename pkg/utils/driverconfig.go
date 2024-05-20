@@ -7,7 +7,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/go-git/go-billy/v5"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -45,6 +44,10 @@ func (cfgContext *ConfigContext) GetDiffFileCount() int32 {
 	return cfgContext.DiffFileCount
 }
 
+type MemoryFileSystem interface {
+	WriteToMemFile(driverConfig *DriverConfig, memCacheLocal *sync.Mutex, byteData *[]byte, path string)
+}
+
 // DriverConfig -- contains many structures necessary for Tierceron tool functionality.
 type DriverConfig struct {
 	CoreConfig core.CoreConfig
@@ -73,7 +76,7 @@ type DriverConfig struct {
 	StartDir       []string // Starting directory. possibly multiple
 	EndDir         string
 	OutputMemCache bool
-	MemFs          billy.Filesystem
+	MemFs          MemoryFileSystem
 
 	// Config modes....
 	ZeroConfig  bool
