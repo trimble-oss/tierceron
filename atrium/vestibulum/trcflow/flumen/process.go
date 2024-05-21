@@ -67,7 +67,9 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 
 		// TODO: should these have capabilities?
-		pluginConfig["pluginName"] = pluginNameList[0]
+		if len(pluginNameList) > 0 {
+			pluginConfig["pluginName"] = pluginNameList[0]
+		}
 		pluginutil.PluginInitNewRelic(driverConfig, cGoMod, pluginConfig)
 		logger = driverConfig.CoreConfig.Log
 
