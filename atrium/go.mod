@@ -33,7 +33,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.1
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2 v2.1.0
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.3.2
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/newrelic/go-agent/v3 v3.33.0
@@ -47,6 +46,7 @@ require (
 	k8s.io/component-base v0.26.1
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/kubectl v0.26.1
+	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70
 )
 
 require (
@@ -131,6 +131,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect
 	k8s.io/metrics v0.26.1 // indirect
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491 // indirect
+	kernel.org/pub/linux/libs/security/libcap/psx v1.2.70 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
 	sigs.k8s.io/kustomize/kustomize/v4 v4.5.7 // indirect
