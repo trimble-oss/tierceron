@@ -273,7 +273,12 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	}
 
 	go func(pec map[string]interface{}, l *log.Logger) {
-		pec["pluginName"] = "trc-vault-plugin"
+		if prod.IsProd() {
+			pec["pluginName"] = "trc-vault-plugin-prod"
+		} else {
+			pec["pluginName"] = "trc-vault-plugin"
+		}
+
 		flowErr := processFlowInit(pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
