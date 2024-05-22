@@ -752,7 +752,7 @@ func SeedVaultFromData(driverConfig *eUtils.DriverConfig, filepath string, fData
 		if len(driverConfig.ServiceFilter) > 0 && isIndexData && !strings.Contains(mod.SectionPath, driverConfig.ServiceFilter[0]) {
 			mod.SectionPath = mod.SectionPath[:strings.LastIndex(mod.SectionPath, "/")+1] + driverConfig.ServiceFilter[0] + mod.SectionPath[strings.LastIndex(mod.SectionPath, "/"):]
 		}
-		driverConfig.CoreConfig.Log.Println("Seeding configuration data for the following templates:" + mod.SectionPath)
+		//driverConfig.CoreConfig.Log.Println("Seeding configuration data for the following templates:" + driverConfig.ServiceFilter[0])
 	} else {
 		driverConfig.CoreConfig.Log.Println("Seeding configuration data for the following templates:" + filepath)
 	}
