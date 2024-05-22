@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"os/user"
 	"regexp"
 	"strconv"
@@ -22,6 +21,7 @@ import (
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -299,17 +299,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				return nil
 			}
 
-			// TODO: setcap more directly using kernel lib if possible...
-			//"kernel.org/pub/linux/libs/security/libcap/cap"
-
-			//				capSet, err := cap.GetFile("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string))
-			//				cap.GetFd
-			//				capSet.SetFlag(cap.Permitted, true)
-			cmd := exec.Command("setcap", "cap_ipc_lock=+ep", agentPath)
-			output, err := cmd.CombinedOutput()
+			ipcLockCapSet, err := cap.FromText("cap_ipc_lock=+ep")
 			if err != nil {
-				eUtils.LogErrorMessage(&carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not set needed capabilities for env: %s and plugin %s error: %s: %s\n", carrierDriverConfig.Env, pluginName, err.Error(), string(output)), false)
+				eUtils.LogErrorMessage(&carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not set needed capabilities for env: %s and plugin %s error: %s\n", carrierDriverConfig.Env, pluginName, err.Error()), false)
 			}
+			ipcLockCapSet.SetFile("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string))
 
 			pluginCopied = true
 			eUtils.LogInfo(&carrierDriverConfig.CoreConfig, fmt.Sprintf("Image has been copied for env: %s and plugin %s\n", carrierDriverConfig.Env, pluginName))
