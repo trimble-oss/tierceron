@@ -2,7 +2,6 @@ package utils
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -10,8 +9,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-
-	"github.com/go-git/go-billy/v5"
 
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -447,25 +444,7 @@ func writeToFile(driverConfig *eUtils.DriverConfig, data string, path string) {
 	var newFile *os.File
 
 	if driverConfig.OutputMemCache {
-		var memFile billy.File
-		memCacheLock.Lock()
-		if _, err := driverConfig.MemFs.Stat(path); errors.Is(err, os.ErrNotExist) {
-			if strings.HasPrefix(path, "./") {
-				path = strings.TrimLeft(path, "./")
-			}
-			memFile, err = driverConfig.MemFs.Create(path)
-			if err != nil {
-				eUtils.CheckError(&driverConfig.CoreConfig, err, true)
-			}
-			memFile.Write(byteData)
-			memFile.Close()
-			memCacheLock.Unlock()
-			eUtils.LogInfo(&driverConfig.CoreConfig, "Wrote memfile:"+path)
-		} else {
-			memCacheLock.Unlock()
-			eUtils.LogInfo(&driverConfig.CoreConfig, "Unexpected memfile exists:"+path)
-			eUtils.CheckError(&driverConfig.CoreConfig, err, true)
-		}
+		driverConfig.MemFs.WriteToMemFile(driverConfig, &memCacheLock, &byteData, path)
 	} else {
 		dirPath := filepath.Dir(path)
 		err := os.MkdirAll(dirPath, os.ModePerm)

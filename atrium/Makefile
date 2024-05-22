@@ -48,9 +48,14 @@ harbingplugintrcdbsha:
 harbinger: harbingplugintrcdbbuild harbingplugintrcdbsha
 
 certify:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -o $(GOBIN)/trcplgtool -tags "memonly azrcr" github.com/trimble-oss/tierceron/atrium/vestibulum/cmd/trcplgtool
-trcshell: 
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -o $(GOBIN)/trcsh -tags "memonly" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(GOBIN)/trcplgtool -tags "memonly azrcr" github.com/trimble-oss/tierceron/atrium/vestibulum/cmd/trcplgtool
+
+trcshellbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o plugins/deploy/target/trcsh -tags "memonly" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
+trcshellsha:
+	sha256sum plugins/deploy/target/trcsh | cut -d' ' -f1 > plugins/deploy/target/trcsh.sha256
+trcshell: trcshellbuild trcshellsha
+
 trcshellwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "tc windows azrcr memonly" -o $(GOBIN)/trcsh.exe github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
 

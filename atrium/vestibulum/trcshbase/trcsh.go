@@ -19,6 +19,7 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
+	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/deployutil"
@@ -104,7 +105,9 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 			EnvRaw:            env,
 			IsShellSubProcess: false,
 			OutputMemCache:    outputMemCache,
-			MemFs:             memfs.New(),
+			MemFs:             &trcshMemFs.TrcshMemFs{
+				BillyFs: 	   memfs.New(),
+			},
 			Regions:           regions,
 			PathParam:         pathParam, // Make available to trcplgtool
 		},
@@ -708,6 +711,10 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 //
 //	Nothing.
 func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.TrcshDriverConfig, token string, deployment string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
+	
+	// Verify Billy implementation
+	configMemFs := trcshDriverConfig.DriverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
+	
 	isAgentToken := false
 	if token != "" {
 		isAgentToken = true
@@ -855,7 +862,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 		var memFile billy.File
 		var memFileErr error
 
-		if memFile, memFileErr = trcshDriverConfig.DriverConfig.MemFs.Open(trcPath); memFileErr == nil {
+		if memFile, memFileErr = configMemFs.BillyFs.Open(trcPath); memFileErr == nil {
 			// Read the generated .trc code...
 			buf := bytes.NewBuffer(nil)
 			io.Copy(buf, memFile) // Error handling elided for brevity.
@@ -864,7 +871,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 			if strings.HasPrefix(trcPath, "./") {
 				trcPath = strings.TrimLeft(trcPath, "./")
 			}
-			if memFile, memFileErr = trcshDriverConfig.DriverConfig.MemFs.Open(trcPath); memFileErr == nil {
+			if memFile, memFileErr = configMemFs.BillyFs.Open(trcPath); memFileErr == nil {
 				// Read the generated .trc code...
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
@@ -943,7 +950,7 @@ collaboratorReRun:
 		fmt.Println(deployPipeline)
 		deployPipeSplit := strings.Split(deployPipeline, "|")
 
-		if PipeOS, err = trcshDriverConfig.DriverConfig.MemFs.Create("io/STDIO"); err != nil {
+		if PipeOS, err = configMemFs.BillyFs.Create("io/STDIO"); err != nil {
 			fmt.Println("Failure to open io stream.")
 			os.Exit(-1)
 		}

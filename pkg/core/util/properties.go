@@ -44,7 +44,7 @@ func NewProperties(config *core.CoreConfig, v *sys.Vault, mod *helperkv.Modifier
 	var commonPaths []string
 	propertyerr := properties.cds.Init(config, properties.mod, true, true, project, commonPaths, service)
 	if propertyerr != nil {
-		return nil, propertyerr
+		return &properties, propertyerr
 	}
 
 	return &properties, nil
@@ -88,6 +88,9 @@ func ResolveTokenName(env string) string {
 
 func (p *Properties) GetPluginData(region string, service string, config string, log *log.Logger) (map[string]interface{}, map[string]interface{}) {
 	valueMap, _ := p.GetConfigValues(service, config)
+	if valueMap == nil {
+		valueMap = make(map[string]interface{})
+	}
 	replacedDefaultFields := make(map[string]interface{})
 	//Grabs region fields and replaces into base fields if region is available.
 	if region != "" {

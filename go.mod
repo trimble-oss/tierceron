@@ -67,7 +67,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/lestrrat-go/strftime v1.0.4 // indirect
 	github.com/mitchellh/hashstructure v1.1.0 // indirect
-	github.com/newrelic/go-agent/v3 v3.32.0 // indirect
+	github.com/newrelic/go-agent/v3 v3.33.0 // indirect
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
@@ -79,6 +79,8 @@ require (
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
+	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70 // indirect
+	kernel.org/pub/linux/libs/security/libcap/psx v1.2.70 // indirect
 )
 
 require (

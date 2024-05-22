@@ -64,6 +64,12 @@ go.work*
 atrium/vestibulum/trcchatproxy/.vscode/*
 atrium/plugins/*
 atrium/.vscode/*
+
 installation/trclocal/tls/cert.*
+
+installation/trclocal/trchelloworld/deploy/*
+
 installation/trccarrier/deploy/
+installation/trccarrier/trc_seeds/
+
 
