@@ -305,12 +305,6 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			}
 			ipcLockCapSet.SetFile("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string))
 
-			// cmd := exec.Command("setcap", "cap_ipc_lock=+ep", agentPath)
-			// output, err := cmd.CombinedOutput()
-			// if err != nil {
-			// 	eUtils.LogErrorMessage(&carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not set needed capabilities for env: %s and plugin %s error: %s: %s\n", carrierDriverConfig.Env, pluginName, err.Error(), string(output)), false)
-			// }
-
 			pluginCopied = true
 			eUtils.LogInfo(&carrierDriverConfig.CoreConfig, fmt.Sprintf("Image has been copied for env: %s and plugin %s\n", carrierDriverConfig.Env, pluginName))
 		} else {
