@@ -14,6 +14,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
+	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -30,6 +31,8 @@ func main() {
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 	eUtils.InitHeadless(true)
+
+	tiercerontls.InitRoot()
 
 	fmt.Println("trcsh Version: " + "1.25")
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)

@@ -29,10 +29,10 @@ var (
 var MashupCertPool *x509.CertPool
 
 func InitRoot() {
-	// TODO: Chewbacca -- this is wonky.
 	ServCert = ServCert + coreopts.BuildOptions.GetVaultInstallRoot()
 	ServCertPrefixPath = ServCertPrefixPath + coreopts.BuildOptions.GetVaultInstallRoot()
 	ServKey = ServKey + coreopts.BuildOptions.GetVaultInstallRoot()
+	initCertificates()
 }
 
 func ReadServerCert(certName string) ([]byte, error) {
@@ -77,9 +77,8 @@ func GetTlsConfig(certName string) (*tls.Config, error) {
 	}, nil
 }
 
-func init() {
+func initCertificates() {
 	rand.Seed(time.Now().UnixNano())
-	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 	mashupCertBytes, err := ReadServerCert("")
 	if err != nil {
 		fmt.Println("Cert read failure.")
