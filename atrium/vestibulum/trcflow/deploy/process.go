@@ -227,7 +227,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	case "agent":
 		agentPath = "/home/azuredeploy/bin/" + vaultPluginSignature["trcplugin"].(string)
 	default:
-		agentPath = "/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string)
+		agentPath = coreopts.BuildOptions.GetVaultInstallRoot() + "/plugins/" + vaultPluginSignature["trcplugin"].(string)
 	}
 
 	if _, err := os.Stat(agentPath); errors.Is(err, os.ErrNotExist) {
@@ -303,7 +303,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			if err != nil {
 				eUtils.LogErrorMessage(&carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not set needed capabilities for env: %s and plugin %s error: %s\n", carrierDriverConfig.Env, pluginName, err.Error()), false)
 			}
-			ipcLockErr := ipcLockCapSet.SetFile("/etc/opt/vault/plugins/" + vaultPluginSignature["trcplugin"].(string))
+			ipcLockErr := ipcLockCapSet.SetFile(coreopts.BuildOptions.GetVaultInstallRoot() + "/plugins/" + vaultPluginSignature["trcplugin"].(string))
 			if ipcLockErr != nil {
 				eUtils.LogErrorMessage(&carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not apply needed capabilities for env: %s and plugin %s error: %s\n", carrierDriverConfig.Env, pluginName, ipcLockErr.Error()), false)
 			}
@@ -416,7 +416,7 @@ func PluginDeployedUpdate(driverConfig *eUtils.DriverConfig, mod *helperkv.Modif
 					if pluginData["trctype"] == "agent" {
 						agentPath = "/home/azuredeploy/bin/" + pluginName
 					} else {
-						agentPath = "/etc/opt/vault/plugins/" + pluginName
+						agentPath = coreopts.BuildOptions.GetVaultInstallRoot() + "/plugins/" + pluginName
 					}
 
 					logger.Println("Checking file.")

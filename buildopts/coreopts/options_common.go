@@ -40,8 +40,14 @@ func GetSupportedTemplates(custom []string) []string {
 	return []string{}
 }
 
+// Determines if running tierceron in the default local development mode
+// with the default test host.
 func IsLocalEndpoint(addr string) bool {
 	return strings.HasPrefix(addr, "https://tierceron.test:1234")
+}
+
+func GetVaultInstallRoot() string {
+	return "/usr/local/vault"
 }
 
 // GetSupportedEndpoints - return a list of supported endpoints.  Override this function to provide
