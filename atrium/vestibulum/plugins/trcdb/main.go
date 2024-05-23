@@ -26,6 +26,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/hashicorp/go-hclog"
@@ -51,6 +52,8 @@ func main() {
 	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
+
+	tiercerontls.InitRoot()
 
 	logFile := "/var/log/trcplugindb.log"
 	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
