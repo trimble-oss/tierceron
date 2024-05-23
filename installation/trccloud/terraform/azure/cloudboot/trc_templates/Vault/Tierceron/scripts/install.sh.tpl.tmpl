@@ -53,24 +53,24 @@ sudo mv vault /usr/src/app/vault
 sudo chmod 0700 /usr/src/app/vault
 sudo chown root:root /usr/src/app/vault
 sudo setcap cap_ipc_lock=+ep /usr/src/app/vault
-sudo mkdir -p /etc/opt/vault/data/
-sudo mkdir -p /etc/opt/vault/plugins/
-sudo chmod 0700 /etc/opt/vault/plugins/
+sudo mkdir -p {{or .vaultRoot "/usr/local/vault"}}/data/
+sudo mkdir -p {{or .vaultRoot "/usr/local/vault"}}/plugins/
+sudo chmod 0700 {{or .vaultRoot "/usr/local/vault"}}/plugins/
 # Download 
 # Manually Download/copy carrier to plugins directory
-# sudo mv trc-vault-carrier-plugin /etc/opt/vault/plugins/
-sudo mkdir -p /etc/opt/vault/certs/
+# sudo mv trc-vault-carrier-plugin {{or .vaultRoot "/usr/local/vault"}}/plugins/
+sudo mkdir -p {{or .vaultRoot "/usr/local/vault"}}/certs/
 #copy everything from /tmp
-sudo mv /tmp/serv_*.pem /etc/opt/vault/certs/
-sudo mv /tmp/Digi*.crt.pem /etc/opt/vault/certs/
-sudo chown -R root:root /etc/opt/vault/certs
-sudo chmod 600 /etc/opt/vault/certs/*.pem
+sudo mv /tmp/serv_*.pem {{or .vaultRoot "/usr/local/vault"}}/certs/
+sudo mv /tmp/Digi*.crt.pem {{or .vaultRoot "/usr/local/vault"}}/certs/
+sudo chown -R root:root {{or .vaultRoot "/usr/local/vault"}}/certs
+sudo chmod 600 {{or .vaultRoot "/usr/local/vault"}}/certs/*.pem
 
 privateip=$(hostname -I | cut -d' ' -f1); sed -i "s/127.0.0.1/$privateip/g" /tmp/vault_properties.hcl
 #get pem files locally 
-sudo mv /tmp/vault_properties.hcl /etc/opt/vault/vault_properties.hcl
-sudo chown root:root /etc/opt/vault/vault_properties.hcl
-sudo chmod -R 0700 /etc/opt/vault/
+sudo mv /tmp/vault_properties.hcl {{or .vaultRoot "/usr/local/vault"}}/vault_properties.hcl
+sudo chown root:root {{or .vaultRoot "/usr/local/vault"}}/vault_properties.hcl
+sudo chmod -R 0700 {{or .vaultRoot "/usr/local/vault"}}/
 
 # AGENT BLOCK: begin
 # When building out TrcDb instances, remove this AGENT BLOCK section from .tpl....
@@ -205,7 +205,7 @@ After=systemd-user-sessions.service
 Type=simple
 Environment="VAULT_API_ADDR=https://${HOST}:${HOSTPORT}"
 Environment="GOMAXPROCS=$(nproc)"
-ExecStart=/usr/src/app/vault server -config /etc/opt/vault/vault_properties.hcl
+ExecStart=/usr/src/app/vault server -config {{or .vaultRoot "/usr/local/vault"}}/vault_properties.hcl
 LimitMEMLOCK=infinity
 
 #end script

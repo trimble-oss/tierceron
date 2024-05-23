@@ -10,6 +10,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/tls"
 	"github.com/trimble-oss/tierceron/pkg/validator"
 
 	"github.com/xo/dburl"
@@ -24,7 +25,7 @@ func OpenDirectConnection(config *core.CoreConfig, url string, username string, 
 	}
 
 	var conn *sql.DB
-	tlsConfig, err := capauth.GetTlsConfig(certName)
+	tlsConfig, err := tls.GetTlsConfig(certName)
 	if err != nil {
 		return nil, err
 	}
