@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
@@ -119,7 +120,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 		return nil, featherErr
 	}
 
-	creds, credErr := GetTransportCredentials()
+	creds, credErr := tls.GetTransportCredentials()
 
 	if credErr != nil {
 		return nil, credErr
@@ -290,7 +291,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	// TODO: add domain if it's missing because that might actually happen...  Pull the domain from
 	// vaddress in config..  that should always be the same...
 
-	creds, err := GetTransportCredentials()
+	creds, err := tls.GetTransportCredentials()
 	if err != nil {
 		return nil, err
 	}

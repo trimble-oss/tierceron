@@ -11,7 +11,9 @@ import (
 
 	"os"
 
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
@@ -37,6 +39,10 @@ func main() {
 	custos := flag.Bool("custos", false, "Run in guardian mode.")
 	headless := flag.Bool("headless", false, "Run headless")
 	flag.Parse()
+
+	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
+	tiercerontls.InitRoot()
+
 	worldLog, err := os.OpenFile("ttdivisualizer.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatal(err)
