@@ -29,9 +29,9 @@ var (
 var MashupCertPool *x509.CertPool
 
 func InitRoot() {
-	ServCert = ServCert + coreopts.BuildOptions.GetVaultInstallRoot()
-	ServCertPrefixPath = ServCertPrefixPath + coreopts.BuildOptions.GetVaultInstallRoot()
-	ServKey = ServKey + coreopts.BuildOptions.GetVaultInstallRoot()
+	ServCert = coreopts.BuildOptions.GetVaultInstallRoot() + ServCert
+	ServCertPrefixPath = coreopts.BuildOptions.GetVaultInstallRoot() + ServCertPrefixPath
+	ServKey = coreopts.BuildOptions.GetVaultInstallRoot() + ServKey
 	initCertificates()
 }
 
