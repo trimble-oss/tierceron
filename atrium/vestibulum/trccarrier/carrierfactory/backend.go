@@ -110,7 +110,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 						logger.Printf("Cloned %d..\n", len(pluginEnvConfigClone))
 
 						pluginEnvConfigClone["trcplugin"] = pluginName
-						logger.Println("*****Env: " + pluginEnvConfigClone["env"].(string) + " plugin: " + pluginEnvConfigClone["trcplugin"].(string))
+						logger.Printf("*****Env: %s plugin: %s\n", pluginEnvConfigClone["env"], pluginEnvConfigClone["trcplugin"])
 						pecError := ProcessPluginEnvConfig(processFlowConfig, processFlow, pluginEnvConfigClone, configCompleteChan)
 						if pecError != nil {
 							logger.Println("Bad configuration data for env: " + pluginEnvConfigClone["env"].(string) + " and plugin: " + pluginName + " error: " + pecError.Error())
@@ -299,7 +299,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	processPluginFlow trcvutils.ProcessFlowFunc,
 	pluginEnvConfig map[string]interface{},
 	configCompleteChan chan bool) error {
-	logger.Println("ProcessPluginEnvConfig begun: " + pluginEnvConfig["env"].(string) + " plugin: " + pluginEnvConfig["trcplugin"].(string))
+	logger.Printf("ProcessPluginEnvConfig begun: %s plugin: %s\n", pluginEnvConfig["env"], pluginEnvConfig["trcplugin"])
 
 	env, eOk := pluginEnvConfig["env"]
 	if !eOk || env.(string) == "" {
@@ -345,8 +345,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 
 	kubeconfig, rOk := pluginEnvConfig["kubeconfig"]
 	if !rOk || kubeconfig.(string) == "" {
-		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing kube config.")
-		return errors.New("missing kube config")
+		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing kube config.  Kubernetes deployments will fail.")
 	}
 
 	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
@@ -364,7 +363,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			}
 		}
 	}
-	logger.Println("Init: " + pluginEnvConfig["env"].(string) + " plugin: " + pluginEnvConfig["trcplugin"].(string))
+	logger.Printf("Init: %s plugin: %s\n", pluginEnvConfig["env"], pluginEnvConfig["trcplugin"])
 
 	go func(pec map[string]interface{}, l *log.Logger) {
 		logger.Println("Initiate process flow for env: " + pec["env"].(string) + " and plugin: " + pec["trcplugin"].(string))
@@ -374,7 +373,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			configCompleteChan <- true
 		}
 		if flowErr != nil {
-			l.Printf("Flow %s had an error: %s\n", pec["trcplugin"].(string), flowErr.Error())
+			l.Printf("Flow %s had an error: %s\n", pec["trcplugin"], flowErr.Error())
 		}
 	}(pluginEnvConfig, logger)
 
