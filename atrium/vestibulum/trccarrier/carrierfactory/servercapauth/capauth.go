@@ -163,11 +163,17 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 			},
 		)
 		logger.Println("Feathered server.")
+	} else {
+		logger.Println("Missing optional feather configuration.  trcsh Windows deployments will be disabled.")
 	}
 
-	logger.Println("Tapping server.")
-	cap.TapServer(fmt.Sprintf("%s:%s", localip, featherAuth.SecretsPort), grpc.Creds(creds))
-	logger.Println("Server tapped.")
+	if featherAuth != nil && len(featherAuth.SecretsPort) > 0 {
+		logger.Println("Tapping server.")
+		cap.TapServer(fmt.Sprintf("%s:%s", localip, featherAuth.SecretsPort), grpc.Creds(creds))
+		logger.Println("Server tapped.")
+	} else {
+		logger.Println("Missing optional detailed feather configuration.  trcsh Windows deployments will be disabled.")
+	}
 
 	return nil
 }
