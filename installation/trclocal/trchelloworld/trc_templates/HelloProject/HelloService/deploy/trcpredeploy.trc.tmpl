@@ -1,0 +1,5 @@
+#!/bin/bash
+
+trcpub
+trcplgtool -env={{.trcdeploy_ENVIRONMENT}} -certify -pluginName=trchelloworld -pluginType=trcshservice -sha256=bin/trchelloworld
+trcplgtool -env={{.trcdeploy_ENVIRONMENT}} -agentdeploy -pluginName=trchelloworld
