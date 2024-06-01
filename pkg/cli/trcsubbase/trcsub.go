@@ -51,7 +51,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	tokenPtr := flagset.String("token", "", "Vault access token")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
-	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
 	projectInfoPtr := flagset.Bool("projectInfo", false, "Lists all project info")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")

@@ -86,7 +86,7 @@ func CommonMain(ctx eUtils.ProcessContext,
 
 	var insecurePtr *bool
 	if insecurePtrIn == nil {
-		insecurePtr = flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+		insecurePtr = flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	} else {
 		insecurePtr = insecurePtrIn
 	}
