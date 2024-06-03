@@ -39,6 +39,9 @@ trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent
 cd ../../atrium
 make certify devplugincarrier
 
+# Generate deployment scripts
+trcconfig -env=dev -startDir=trc_templates/TrcVault/Carrier -novault
+
 # Deploy the carrier
 trcplgtool -env=dev -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -pluginName=trc-vault-carrier-plugin -sha256=target/trc-vault-carrier-plugin -pluginType=agent
 

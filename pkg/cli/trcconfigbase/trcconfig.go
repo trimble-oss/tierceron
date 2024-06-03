@@ -125,7 +125,7 @@ func CommonMain(envPtr *string,
 	fileFilterPtr := flagset.String("filter", "", "Filter files for diff")
 	templateInfoPtr := flagset.Bool("templateInfo", false, "Version information about templates")
 	versionInfoPtr := flagset.Bool("versions", false, "Version information about values")
-	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
 	isShell := false
 
