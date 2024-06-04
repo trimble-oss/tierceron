@@ -31,7 +31,9 @@ ProtectSystem=full
 WantedBy=multi-user.target
 
 EOF
-sudo mv /tmp/upstart /usr/lib/systemd/system/vault.service
+sudo mv /tmp/upstart /lib/systemd/system/vault.service
+sudo chown root:root /lib/systemd/system/vault.service
+sudo chmod 0644 /lib/systemd/system/vault.service
 
 # Start Vault
 #sudo systemctl enable /lib/systemd/system/vault.service
