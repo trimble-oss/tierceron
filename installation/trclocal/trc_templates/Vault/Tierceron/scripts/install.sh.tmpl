@@ -18,18 +18,20 @@ WantedBy=sysinit.target
 Environment="VAULT_API_ADDR=https://{{.vault_ip}}:{{.hostport}}"
 Environment="GOMAXPROCS=$(nproc)"
 ExecStart={{.vault_root_install}}/vault server -config {{.vault_root_install}}/vault_properties.hcl
+User=root
 LimitMEMLOCK=infinity
 Type=simple
 Restart=on-failure
-
 PrivateTmp=true  # Set to false for trcsh
 PrivateDevices=false # Figure out how to make this true...
 PrivateNetwork=false
 ProtectSystem=full
 
-#end script
+[Install]
+WantedBy=multi-user.target
+
 EOF
 sudo mv /tmp/upstart /usr/lib/systemd/system/vault.service
 
 # Start Vault
-#sudo service vault start
+#sudo systemctl enable /lib/systemd/system/vault.service
