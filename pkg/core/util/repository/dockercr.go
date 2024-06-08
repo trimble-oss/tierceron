@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
@@ -22,21 +23,37 @@ func GetImageDownloadUrl(pluginToolConfig map[string]interface{}) (string, error
 func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	// TODO: Chewbacca flush out to pull images and download...
 
-	opts := docker.WithHTTPCredentials(auth.NewAuthConfig(auth.AuthConfig{
+	dockerAuth := registry.AuthConfig{
 		Username: pluginToolConfig["dockerUser"].(string),
 		Password: pluginToolConfig["dockerPassword"].(string),
-	}))
+	}
 
-	cli, err := client.NewClientWithOpts(client.WithHost(pluginToolConfig["dockerRepository"].(string)), opts)
+	cli, err := client.NewClientWithOpts(client.WithHost(pluginToolConfig["dockerRepository"].(string)))
 	if err != nil {
 		panic(err)
+	}
+	//ctx := context.Background()
+	// token, err := cli.RegistryLogin(ctx, dockerAuth)
+	// if err != nil {
+	// 	return err
+	// }
+	// dockerAuth.IdentityToken = token.IdentityToken
+	auth, err := registry.EncodeAuthConfig(dockerAuth)
+
+	opts := &types.ImagePullOptions{
+		RegistryAuth: auth,
 	}
 
 	images, err := cli.ImageList(context.Background(), types.ImageListOptions{})
 	if err != nil {
-		return
+		return err
 	}
 
 	for _, image := range images {
+		_, err := cli.ImagePull(context.Background(), image.ID, *opts)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
