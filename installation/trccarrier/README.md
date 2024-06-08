@@ -10,9 +10,24 @@ This assumes the existence of a vault with tokens.  You also must have installed
 trcconfig
 chmod 700 deploy/*.sh
 
-# Azure container registry configuration setup
+# Container registry configuration setup
+Trcsh utilizes trccarrier and vault managed secrets in order to access a container registry (running in AWS, Azure, or locally) to perform it's deployment responsibilities.  Set up the container configuration secrets with the following command.
+
+Choose one of the 3 following to set up a container registry flavor of your choice...
+
+Local Container Registry Setup (for local development)
+```
+trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=PluginTool -serviceFilter=local-config -indexFilter=local-config -novault
+```
+
+Azure Container Registry Setup
 ```
 trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=PluginTool -serviceFilter=config -indexFilter=config -novault
+```
+
+AWS Container Registry Setup
+```
+trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=PluginTool -serviceFilter=aws-config -indexFilter=aws-config -novault
 ```
 
 ... after making edits to the generated seed file (all values can be TODO for local), init it.
@@ -72,20 +87,6 @@ sudo chown root:azuredeploy /home/azuredeploy/bin
 
 ./refreshcarriertoken.sh
 ```
-
-# Container registry configuration setup
-Trcsh utilizes trccarrier and vault managed secrets in order to access a container registry (running in AWS, Azure, or locally) to perform it's deployment responsibilities.  Set up the container configuration secrets with the following command.
-
-```
-trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=PluginTool -serviceFilter=config -indexFilter=config -novault
-```
-
-... after making edits to the generated seed file (all values can be TODO for local), init it.
-
-```
-trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=PluginTool
-```
-
 
 # Docker registry setup (local development only)
 Trcsh works based on a registry to perform deployments.  For personal use, you can easily
