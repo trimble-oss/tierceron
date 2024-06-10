@@ -35,6 +35,12 @@ devplugincarriersha:
 	sha256sum plugins/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > plugins/deploy/target/trc-vault-carrier-plugin.sha256
 devplugincarrier: devplugincarrierbuild devplugincarriersha
 
+localdevplugincarrierbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -tags "insecure dockercr localbuild" -o plugins/deploy/target/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/carrier
+localdevplugincarriersha:
+	sha256sum plugins/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > plugins/deploy/target/trc-vault-carrier-plugin.sha256
+localdevplugincarrier: localdevplugincarrierbuild localdevplugincarriersha
+
 devplugintrcdbbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -tags "insecure localbuild" -o plugins/deploy/target/trc-vault-plugin github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/trcdb
 devplugintrcdbsha:
@@ -50,6 +56,9 @@ harbinger: harbingplugintrcdbbuild harbingplugintrcdbsha
 certify:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(GOBIN)/trcplgtool -tags "memonly azrcr" github.com/trimble-oss/tierceron/atrium/vestibulum/cmd/trcplgtool
 
+localcertify:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(GOBIN)/trcplgtool -tags "memonly dockercr" github.com/trimble-oss/tierceron/atrium/vestibulum/cmd/trcplgtool
+
 trcshellbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o plugins/deploy/target/trcsh -tags "memonly" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
 trcshellsha:
@@ -58,6 +67,9 @@ trcshell: trcshellbuild trcshellsha
 
 trcshellwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "tc windows azrcr memonly" -o $(GOBIN)/trcsh.exe github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
+
+localtrcshell:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "tc windows dockercr memonly" -o $(GOBIN)/trcsh.exe github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
 
 fenestra:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/fenestra -tags "insecure fyneboot argosystub tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/atrium/speculatio/fenestra
