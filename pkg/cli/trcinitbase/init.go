@@ -62,7 +62,7 @@ func CommonMain(envPtr *string,
 	updateRole := flagset.Bool("updateRole", false, "Update security role")
 	updatePolicy := flagset.Bool("updatePolicy", false, "Update security policy")
 	initNamespace := flagset.Bool("initns", false, "Init namespace (tokens, policy, and role)")
-	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	keyShardPtr := flagset.String("totalKeys", "5", "Total number of key shards to make")
 	unsealShardPtr := flagset.String("unsealKeys", "3", "Number of key shards needed to unseal")
 	tokenFileFilterPtr := flagset.String("filter", "", "Filter files for token rotation.")

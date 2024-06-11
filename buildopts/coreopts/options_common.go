@@ -136,12 +136,22 @@ func GetSyncedTables() []string {
 //		                  installation/trcdb/trc_templates/TrcVault/Certify/config.yml.tmpl
 //		logNamespace - a log namespace to be used by the carrier in logging.
 func ProcessDeployPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"exitOnFailure":  false,
-		"regions":        []string{"west"},
-		"pluginNameList": []string{"trc-vault-plugin"},
-		"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
-		"logNamespace":   "trccarrier",
+	if pluginEnvConfig != nil {
+		pluginEnvConfig["exitOnFailure"] = false
+		pluginEnvConfig["regions"] = []string{"west"}
+		pluginEnvConfig["pluginNameList"] = []string{"trc-vault-plugin"}
+		pluginEnvConfig["templatePath"] = []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"}
+		pluginEnvConfig["logNamespace"] = "trccarrier"
+		return pluginEnvConfig
+	} else {
+		return map[string]interface{}{
+			"env":            "dev",
+			"exitOnFailure":  false,
+			"regions":        []string{"west"},
+			"pluginNameList": []string{"trc-vault-plugin"},
+			"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
+			"logNamespace":   "trccarrier",
+		}
 	}
 }
 

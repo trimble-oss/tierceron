@@ -27,7 +27,7 @@ func getImageSHA(driverConfig *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConf
 			},
 		},
 		RepositoryName: aws.String(pluginToolConfig["trcplugin"].(string)),
-		RegistryId:     aws.String(strings.Split(pluginToolConfig["ecrrepository"].(string), ".")[0]),
+		RegistryId:     aws.String(strings.Split(pluginToolConfig["aws-repository"].(string), ".")[0]),
 	}
 
 	batchImages, err := svc.BatchGetImage(imageInput)
@@ -73,7 +73,7 @@ func getImageSHA(driverConfig *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConf
 func GetImageDownloadUrl(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) (string, error) {
 	svc := ecr.New(session.New(&aws.Config{
 		Region:      aws.String("us-west-2"),
-		Credentials: credentials.NewStaticCredentials(pluginToolConfig["awspassword"].(string), pluginToolConfig["awsaccesskey"].(string), ""),
+		Credentials: credentials.NewStaticCredentials(pluginToolConfig["aws-password"].(string), pluginToolConfig["aws-accesskey"].(string), ""),
 	}))
 
 	err := getImageSHA(driverConfig, svc, pluginToolConfig)
@@ -82,7 +82,7 @@ func GetImageDownloadUrl(driverConfig *eUtils.DriverConfig, pluginToolConfig map
 	}
 	downloadInput := &ecr.GetDownloadUrlForLayerInput{
 		LayerDigest:    aws.String(pluginToolConfig["layerDigest"].(string)),
-		RegistryId:     aws.String(strings.Split(pluginToolConfig["ecrrepository"].(string), ".")[0]),
+		RegistryId:     aws.String(strings.Split(pluginToolConfig["aws-repository"].(string), ".")[0]),
 		RepositoryName: aws.String(pluginToolConfig["trcplugin"].(string)),
 	}
 
