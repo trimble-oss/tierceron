@@ -77,6 +77,8 @@ require (
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
+	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70 // indirect
+	kernel.org/pub/linux/libs/security/libcap/psx v1.2.70 // indirect
 )
 
 require (

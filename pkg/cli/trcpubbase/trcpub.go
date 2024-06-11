@@ -50,7 +50,7 @@ func CommonMain(envPtr *string,
 	}
 	dirPtr := flagset.String("dir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
-	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
 	appRolePtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")

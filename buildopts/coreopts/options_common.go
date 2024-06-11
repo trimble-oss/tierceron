@@ -40,8 +40,14 @@ func GetSupportedTemplates(custom []string) []string {
 	return []string{}
 }
 
+// Determines if running tierceron in the default local development mode
+// with the default test host.
 func IsLocalEndpoint(addr string) bool {
 	return strings.HasPrefix(addr, "https://tierceron.test:1234")
+}
+
+func GetVaultInstallRoot() string {
+	return "/usr/local/vault"
 }
 
 // GetSupportedEndpoints - return a list of supported endpoints.  Override this function to provide
@@ -130,12 +136,22 @@ func GetSyncedTables() []string {
 //		                  installation/trcdb/trc_templates/TrcVault/Certify/config.yml.tmpl
 //		logNamespace - a log namespace to be used by the carrier in logging.
 func ProcessDeployPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"exitOnFailure":  false,
-		"regions":        []string{"west"},
-		"pluginNameList": []string{"trc-vault-plugin"},
-		"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
-		"logNamespace":   "trccarrier",
+	if pluginEnvConfig != nil {
+		pluginEnvConfig["exitOnFailure"] = false
+		pluginEnvConfig["regions"] = []string{"west"}
+		pluginEnvConfig["pluginNameList"] = []string{"trc-vault-plugin"}
+		pluginEnvConfig["templatePath"] = []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"}
+		pluginEnvConfig["logNamespace"] = "trccarrier"
+		return pluginEnvConfig
+	} else {
+		return map[string]interface{}{
+			"env":            "dev",
+			"exitOnFailure":  false,
+			"regions":        []string{"west"},
+			"pluginNameList": []string{"trc-vault-plugin"},
+			"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
+			"logNamespace":   "trccarrier",
+		}
 	}
 }
 

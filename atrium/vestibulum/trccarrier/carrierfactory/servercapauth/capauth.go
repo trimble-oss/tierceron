@@ -10,6 +10,7 @@ import (
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
+	"github.com/trimble-oss/tierceron/pkg/tls"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
 )
@@ -137,7 +138,7 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 	logger.Println("Cap server.")
 
-	creds, credErr := capauth.GetServerCredentials(logger)
+	creds, credErr := tls.GetServerCredentials(logger)
 	if credErr != nil {
 		logger.Printf("Couldn't server creds: %v\n", creds)
 		return credErr
@@ -162,11 +163,17 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 			},
 		)
 		logger.Println("Feathered server.")
+	} else {
+		logger.Println("Missing optional feather configuration.  trcsh virtual machine based service deployments will be disabled.")
 	}
 
-	logger.Println("Tapping server.")
-	cap.TapServer(fmt.Sprintf("%s:%s", localip, featherAuth.SecretsPort), grpc.Creds(creds))
-	logger.Println("Server tapped.")
+	if featherAuth != nil && len(featherAuth.SecretsPort) > 0 {
+		logger.Println("Tapping server.")
+		cap.TapServer(fmt.Sprintf("%s:%s", localip, featherAuth.SecretsPort), grpc.Creds(creds))
+		logger.Println("Server tapped.")
+	} else {
+		logger.Println("Missing optional detailed feather configuration.  trcsh virtual machine based service deployments will be disabled.")
+	}
 
 	return nil
 }
