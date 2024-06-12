@@ -119,7 +119,7 @@ See service running
 docker service ls
 
 Test accessibility
-curl http://<localip>:5019/v2/
+curl http://<localip>:<yourregistryport>/v2/
 ```
 
 # Trcsh client integration
