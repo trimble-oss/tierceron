@@ -89,10 +89,37 @@ sudo chown root:azuredeploy /home/azuredeploy/bin
 ```
 
 # Docker registry setup (local development only)
-Trcsh works based on a registry to perform deployments.  For personal use, you can easily
-install a local docker registry.  Start by installing docker
+Trcsh works based on a registry to perform deployments.  For personal use, you can easily install a local docker registry.  For organizations, a cloud implementation will give you stability, redundancy, and easier accessiblity.  But for development, a local registry is perfect!  Start by installing docker.
 
-https://docs.docker.com/desktop/install/debian/
+https://docs.docker.com/engine/install/debian/#install-using-the-repository
 
+## Create docker swarm
+You'll want a docker swarm to more easily set up and manage a docker registry service.
+
+```
+docker swarm init
+```
+
+This command will output a couple commands to run.  Don't worry about saving the tokens as you can always get one later...
+
+```
+Skip these commands...
+docker swarm join-token worker
+docker swarm join --token <swarm token> <ip>:<port>
+docker swarm join-token manager
+```
+
+The following command(s) will set up the actual registry and test it was
+properly set up.
+
+```
+docker service create --name <yourregistryname> --publish published=<yourregistryport>,target=5000 registry:2
+
+See service running
+docker service ls
+
+Test accessibility
+curl http://<localip>:<yourregistryport>/v2/
+```
 
 # Trcsh client integration
