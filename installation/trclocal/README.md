@@ -38,13 +38,14 @@ trcx -env=dev -novault
 # Edit seed files and provide certificates
 At this point you want to edit all seed variables in preparation for publish.
 
-Fill in seed variables in super-secrets section of trc_seeds/dev/dev_seed.yml
+Fill in seed variables in super-secrets section of trc_seeds/dev/dev_seed.yml, placing TODO for variables you don't care about.
+
 Example secrets follow...
 ```
-    adminUser: <youradmin>
-    dbPassword: <yourpassword>
-    dbcert_name: sqlcert.pem
-    dbname: <yourdb>
+    adminUser: TODO -- only needed if you want mysql backing store.
+    dbPassword: TODO -- only needed if you want mysql backing store.
+    dbcert_name: TODO -- only needed if you want mysql backing store.
+    dbname: TODO -- only needed if you want mysql backing store.
     hostport: "1234"
     vault_ip: 127.0.0.1
     vault_root_install: "/usr/local/vault"
@@ -80,15 +81,6 @@ sudo service vault start
 ```
 
 Continue with the trcvault step to initialize vault and set up some tokens for utilization.
-
-# Rebooting vault (requires unseal)
-You'll need to run the following command once for each unseal key you set up...
-
-```
-VAULT_ADDR=https://<vaulthost:vaultport> /usr/local/vault/vault operator unseal
-```
-
-Note, for local development installs where you may be using a self signed certificate, you can use the --tls-skip-verify
 
 # Confirm vault running
 You can enter https://<vaulthost:vaultport>/v1/sys/health in your browser to confirm vault is running.

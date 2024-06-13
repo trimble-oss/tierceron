@@ -3,7 +3,7 @@
 To set up tierceron secret and configuration management system you can do any of the following...
 
 ### Install command line tools
-See [installation/GETTING_STARTED.md](installation/GETTING_STARTED.md)
+See [installation/README.md](installation/README.md)
 
 ### Setting up local vault (for new individuals or organizations without a vault set up yet)
 See [installation/trclocal/README.md](installation/trclocal/README.md)
@@ -18,35 +18,17 @@ See [installation/trcvault/README.md](installation/trcvault/README.md)
 See hello world section of [installation/trclocal/trchelloworld/README.md](installation/trclocal/trchelloworld/README.md)
 
 ### Installing collaborative deployment system (trc-vault-carrier and trcsh)
-Run trcconfig under (installation/trccloud/terraform/azure/cloudboot)
+See [installation/trccarrier/README.md](installation/trccarrier/README.md)
 
-deploycarrier.sh and deploy.sh
+See [installation/trcsh/README.md](installation/trcsh/README.md)
 
-TODO: needs more documentation...
-See deploy scripts under [installation/trccloud/terraform/azure/cloudboot/deploy](installation/trccloud/terraform/azure/cloudboot/deploy/)
+See [installation/trcagent/README.md](installation/trcagent/README.md)
 
-deploycarrier.sh (for trc-vault-carrier-plugin)
-deploy.sh (for trcsh)
 
-### Installing TrcDb atrium for Tierceron Vault
-Run trcconfig under [installation/trccloud/terraform/azure/cloudboot](installation/trccloud/terraform/azure/cloudboot)
+### Installing TrcDb atrium for Tierceron Vault (OPTIONAL)
+This section is if you would like to develop Tierceron trusted business flows utilizing the Tierceron flume package.  This usually requires extending tierceron to implement your own custom flow extensions.
 
-deploy.sh (for trc-vault-plugin)
-
-TODO: needs more documentation...
-See deploy scripts under (installation/trccloud/terraform/azure/cloudboot/deploy/)
-
-## Command line building (via Makefile)
-Install build support (Makefile, gcc, etc...):  
-```
-sudo apt-get install build-essential mingw-w64 
-```
-
-Install g3n support libraries (Required for optional tools spiralis and fenestra under atrium):  
-```
-sudo apt-get install xorg-dev libgl1-mesa-dev libopenal1 libopenal-dev libvorbis0a libvorbis-dev libvorbisfile3  
-```
-
+See [installation/trcdb/README.md](installation/trcdb/README.md)
 
 ### Automated tests ⚙
 TODO...

@@ -1,8 +1,5 @@
 # Introduction 
-You have found the installation folder for trcsh.  This is a trusted vault
-plugin utilized in the tierceron secure deployment services.  Carrier, working
-in tandem with trcsh will interact with a docker registry and either virtual machines 
-or a kubernetes cluster in order to securely deploy services.
+You have found the installation folder for trcsh.  This is a trusted tierceron secure shell utilized in the tierceron secure deployment services.  Carrier, working in tandem with trcsh will interact with a docker registry and either virtual machines or a kubernetes cluster in order to securely deploy services.
 
 # Prerequisites
 This assumes the existence of a vault with tokens.  You also must have installed the build dependencies under [GETTING_STARTED.MD](../../GETTING_STARTED.MD#command-line-building-via-makefile). You'll need a root and unrestricted token install the carrier.  You should also have already installed trccarrier and set up some kind of container
@@ -42,7 +39,7 @@ trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent
 
 # Trcsh client integration
 To bring deployments fully online, you'll need to install the trcsh script executable on each virtual
-machine you'd like to perform deployments under.
+machine you'd like to perform deployments under.  You will also need to perform additional installation setup under [Agent Config](../trcagent/README.md)
 
 ```
 sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/trcshd trcshd
