@@ -30,14 +30,6 @@ This section is if you would like to develop Tierceron trusted business flows ut
 
 See [installation/trcdb/README.md](installation/trcdb/README.md)
 
-```
-cd atrium
-make devplugintrcdb
-cd ../installation/trccarrier/deploy
-./deploy.sh (for trc-vault-plugin)
-```
-
-
 ### Automated tests ⚙
 TODO...
 
