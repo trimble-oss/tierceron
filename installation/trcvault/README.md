@@ -14,31 +14,43 @@ trcinit -new -namespace=vault -addr=https://<vaulthost:vaultport> -totalKeys=3 -
 
 Note, for local development installs where you may be using a self signed certificate, you can use the --insecure flag to give "flexibility" on certificate validation, meaning you want encrypted communication, but you are flexible on the validation of the certificate.
 
-# Unseal vault (any time you restart vault)
-/usr/local/vault/vault operator unseal -address="https://<vaulthost:vaultport>" -tls-skip-verify
+
+For reference, the default token namespaces provided are as follows..
+
+
+Namespaces:
+* agent - Tokens for deployment agents.
+* vault - Env based tokens.
+
+
+# Rebooting vault (requires unseal with a quorom of unseal keys)
+You'll need to run the following command once for each unseal key you set up...
+
+```
+VAULT_ADDR=https://<vaulthost:vaultport> /usr/local/vault/vault operator unseal
+```
+
+Note, for local development installs where you may be using a self signed certificate, you can use the --tls-skip-verify
 
 # Additional helpful commands
-For reference, the default token namespaces provided are as follows..
-Namespaces:
-agent - Tokens for deployment agents.
-vault - Env based tokens.
+The commands below are helpful commands for managing tokens later on...
 
-# Get expiration for existing tokens in provided namespace
+## Get expiration for existing tokens in provided namespace
 ```
 trcinit -tokenExpiration -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 ```
 
-# Rotate tokens in provided namespace
+## Rotate tokens in provided namespace
 ```
 trcinit -rotateTokens -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 ```
 
-# Update roles
+## Update roles
 ```
 trcinit -updateRole -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 ```
 
-# Update policies
+## Update policies
 ```
 trcinit -updatePolicy -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 ```
