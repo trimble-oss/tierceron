@@ -1,5 +1,5 @@
 # Introduction 
-You have found the installation folder for agent templates and secrets.
+You have found the installation folder for agent templates and secrets.  These secrets are required for running trcsh as a windows or linux daemon running in collaboration with the carrier to perform deployments on a different machine.
 
 # Prerequisites
 This assumes the existence of a vault with tokens.  You'll need a root or unrestricted token to initialize data

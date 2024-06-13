@@ -18,15 +18,12 @@ See [installation/trcvault/README.md](installation/trcvault/README.md)
 See hello world section of [installation/trclocal/trchelloworld/README.md](installation/trclocal/trchelloworld/README.md)
 
 ### Installing collaborative deployment system (trc-vault-carrier and trcsh)
-Run trcconfig under (installation/trccloud/terraform/azure/cloudboot)
+See [installation/trccarrier/README.md](installation/trccarrier/README.md)
 
-deploycarrier.sh and deploy.sh
+See [installation/trcsh/README.md](installation/trcsh/README.md)
 
-TODO: needs more documentation...
-See deploy scripts under [installation/trccloud/terraform/azure/cloudboot/deploy](installation/trccloud/terraform/azure/cloudboot/deploy/)
+See [installation/trcagent/README.md](installation/trcagent/README.md)
 
-deploycarrier.sh (for trc-vault-carrier-plugin)
-deploy.sh (for trcsh)
 
 ### Installing TrcDb atrium for Tierceron Vault
 Run trcconfig under [installation/trccloud/terraform/azure/cloudboot](installation/trccloud/terraform/azure/cloudboot)
