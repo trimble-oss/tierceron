@@ -6,10 +6,6 @@ in tandem with trcsh will interact with a docker registry and either virtual mac
 # Prerequisites
 This assumes the existence of a vault with tokens.  You also must have installed the build dependencies under [GETTING_STARTED.MD](../../GETTING_STARTED.MD#command-line-building-via-makefile). You'll need a root and unrestricted token install the carrier.
 
-# Build carrier deployment scripts
-trcconfig
-chmod 700 deploy/*.sh
-
 # Container registry configuration setup
 Trcsh utilizes trccarrier and vault managed secrets in order to access a container registry (running in AWS, Azure, or locally) to perform it's deployment responsibilities.  Set up the container configuration secrets with the following command.
 
@@ -60,7 +56,9 @@ popd
 
 # Generate deployment scripts
 ```
-trcconfig -env=dev -startDir=trc_templates/TrcVault/Carrier -novault
+trcpub -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
+trcconfig -env=dev -startDir=trc_templates/TrcVault/Carrier
+chmod 700 deploy/*.sh
 ```
 
 # Deploy the carrier
