@@ -38,13 +38,14 @@ trcx -env=dev -novault
 # Edit seed files and provide certificates
 At this point you want to edit all seed variables in preparation for publish.
 
-Fill in seed variables in super-secrets section of trc_seeds/dev/dev_seed.yml
+Fill in seed variables in super-secrets section of trc_seeds/dev/dev_seed.yml, placing TODO for variables you don't care about.
+
 Example secrets follow...
 ```
-    adminUser: <youradmin>
-    dbPassword: <yourpassword>
-    dbcert_name: sqlcert.pem
-    dbname: <yourdb>
+    adminUser: TODO -- only needed if you want mysql backing store.
+    dbPassword: TODO -- only needed if you want mysql backing store.
+    dbcert_name: TODO -- only needed if you want mysql backing store.
+    dbname: TODO -- only needed if you want mysql backing store.
     hostport: "1234"
     vault_ip: 127.0.0.1
     vault_root_install: "/usr/local/vault"
