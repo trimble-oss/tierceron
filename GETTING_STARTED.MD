@@ -25,13 +25,18 @@ See [installation/trcsh/README.md](installation/trcsh/README.md)
 See [installation/trcagent/README.md](installation/trcagent/README.md)
 
 
-### Installing TrcDb atrium for Tierceron Vault
-Run trcconfig under [installation/trccloud/terraform/azure/cloudboot](installation/trccloud/terraform/azure/cloudboot)
+### Installing TrcDb atrium for Tierceron Vault (OPTIONAL)
+This section is if you would like to develop Tierceron trusted business flows utilizing the Tierceron flume package.  This usually requires extending tierceron to implement your own custom flow extensions.
 
-deploy.sh (for trc-vault-plugin)
+See [installation/trcdb/README.md](installation/trcdb/README.md)
 
-TODO: needs more documentation...
-See deploy scripts under (installation/trccloud/terraform/azure/cloudboot/deploy/)
+```
+cd atrium
+make devplugintrcdb
+cd ../installation/trccarrier/deploy
+./deploy.sh (for trc-vault-plugin)
+```
+
 
 ### Automated tests ⚙
 TODO...
