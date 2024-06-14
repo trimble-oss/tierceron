@@ -118,6 +118,19 @@ docker service ls
 
 Test accessibility
 curl http://<localip>:<yourregistryport>/v2/
+
+# Add any users to the docker group
+usermod -a -G docker <username>
+
+# Add an image to docker repository
+docker build -t <imagename> .
+
+# List images
+docker images
+
+# Delete an image
+docker rmi <image id>
+
 ```
 
 # Trcsh client integration
