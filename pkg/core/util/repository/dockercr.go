@@ -5,6 +5,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/registry"
@@ -56,4 +57,9 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 		}
 	}
 	return nil
+}
+
+// Pushes image to docker registry from: "rawImageFile", and "pluginname" in the map pluginToolConfig.
+func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+	return errors.New("Not defined")
 }
