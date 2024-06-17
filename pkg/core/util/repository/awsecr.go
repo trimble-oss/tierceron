@@ -133,3 +133,8 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 	pluginToolConfig["imagesha256"] = fmt.Sprintf("%x", pluginSha)
 	return nil
 }
+
+// Pushes image to docker registry from: "rawImageFile", and "pluginname" in the map pluginToolConfig.
+func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+	return errors.New("Not defined")
+}

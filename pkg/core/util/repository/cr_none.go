@@ -20,3 +20,9 @@ func GetImageDownloadUrl(pluginToolConfig map[string]interface{}) (string, error
 func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	return errors.New("Not defined")
 }
+
+// Pushes image to docker registry from: "rawImageFile", and "pluginname" in the map pluginToolConfig.
+func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+	// TODO: implement push image to registry.
+	return errors.New("Not defined")
+}
