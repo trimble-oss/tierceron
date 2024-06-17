@@ -1,5 +1,7 @@
 #!/bin/bash
 
 trcpub
+# Pulls image and certifies it with Tierceron for use.  trcsh agent only deploys certified images.
 trcplgtool -env={{.trcdeploy_ENVIRONMENT}} -certify -pluginName=trchelloworld -pluginType=trcshservice -sha256=bin/trchelloworld
+# Remotely applies deploy.trc template/script to agent registered to trchelloworld
 trcplgtool -env={{.trcdeploy_ENVIRONMENT}} -agentdeploy -pluginName=trchelloworld
