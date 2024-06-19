@@ -223,7 +223,7 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 	} else {
 		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.Env + "/" + driverConfig.Env + "_seed.yml")
 		if err != nil {
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("unable to open seed file for -novault: "+err.Error()), false)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("unable to open seed file for -novault: " + err.Error()), false)
 		}
 
 		var rawYaml interface{}
