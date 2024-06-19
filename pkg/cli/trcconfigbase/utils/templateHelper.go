@@ -220,9 +220,9 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 	if driverConfig.Token != "novault" {
 		cds.Init(&driverConfig.CoreConfig, modifier, secretMode, true, project, nil, service)
 	} else {
-		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.EnvRaw + "/" + driverConfig.Env + "_seed.yml")
+		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.Env + "/" + driverConfig.Env + "_seed.yml")
 		if err != nil {
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("unable to open seed file for -novault"), false)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("unable to open seed file for -novault: "+err.Error()), false)
 		}
 
 		var rawYaml interface{}
@@ -293,7 +293,6 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 							valueData[baseKey] = valueEntry
 						}
 					}
-
 				}
 			}
 		}
@@ -353,6 +352,7 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 				}
 			}
 		}
+
 		err = t.Execute(&doc, values[filename])
 		str = doc.String()
 		if err != nil {
