@@ -1,9 +1,7 @@
-//go:build azrcr
-// +build azrcr
-
 package repository
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -21,19 +19,9 @@ import (
 
 func getImageSHA(driverConfig *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
 
-	if pluginToolConfig["acrrepository"] != nil && len(pluginToolConfig["acrrepository"].(string)) == 0 {
-		driverConfig.CoreConfig.Log.Printf("Acr repository undefined.  Refusing to continue.\n")
-		return errors.New("undefined acr repository")
-	}
-
-	if !strings.HasPrefix(pluginToolConfig["acrrepository"].(string), "https://") {
-		driverConfig.CoreConfig.Log.Printf("Malformed Acr repository.  https:// required.  Refusing to continue.\n")
-		return errors.New("malformed acr repository - https:// required")
-	}
-
-	if pluginToolConfig["trcplugin"] != nil && len(pluginToolConfig["trcplugin"].(string)) == 0 {
-		driverConfig.CoreConfig.Log.Printf("Trcplugin undefined.  Refusing to continue.\n")
-		return errors.New("undefined trcplugin")
+	err := ValidateRepository(driverConfig, pluginToolConfig)
+	if err != nil {
+		return err
 	}
 
 	client, err := azcontainerregistry.NewClient(
@@ -180,6 +168,75 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 }
 
 // Pushes image to docker registry from: "rawImageFile", and "pluginname" in the map pluginToolConfig.
+// https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry#readme-examples
 func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
-	return errors.New("Not defined")
+	err := ValidateRepository(driverConfig, pluginToolConfig)
+
+	if err != nil {
+		return err
+	}
+
+	svc, err := azidentity.NewClientSecretCredential(
+		pluginToolConfig["azureTenantId"].(string),
+		pluginToolConfig["azureClientId"].(string),
+		pluginToolConfig["azureClientSecret"].(string),
+		nil)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = azcontainerregistry.NewClient(
+		pluginToolConfig["acrrepository"].(string),
+		svc, nil)
+
+	if err != nil {
+		driverConfig.CoreConfig.Log.Printf("failed to create client: %v", err)
+		return err
+	}
+
+	blobClient, err := azcontainerregistry.NewBlobClient(
+		pluginToolConfig["acrrepository"].(string),
+		svc, nil)
+
+	ctx := context.Background()
+	startRes, err := blobClient.StartUpload(ctx, pluginToolConfig["pluginname"].(string), nil)
+
+	if err != nil {
+		return errors.New("failed to start upload layer: " + err.Error())
+	}
+
+	layer := pluginToolConfig["rawImageFile"].([]byte)
+
+	calculator := azcontainerregistry.NewBlobDigestCalculator()
+	uploadResp, err := blobClient.UploadChunk(ctx, *startRes.Location, bytes.NewReader(layer), calculator, nil)
+
+	if err != nil {
+		return errors.New("failed to upload layer: " + err.Error())
+	}
+
+	_, err = blobClient.CompleteUpload(ctx, *uploadResp.Location, calculator, nil)
+	if err != nil {
+		return errors.New("failed to complete layer upload: " + err.Error())
+	}
+
+	// TODO: Upload layer digest and corresponding config
+	return nil
+}
+
+func ValidateRepository(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+	if pluginToolConfig["acrrepository"] != nil && len(pluginToolConfig["acrrepository"].(string)) == 0 {
+		driverConfig.CoreConfig.Log.Printf("Acr repository undefined.  Refusing to continue.\n")
+		return errors.New("undefined acr repository")
+	}
+
+	if !strings.HasPrefix(pluginToolConfig["acrrepository"].(string), "https://") {
+		driverConfig.CoreConfig.Log.Printf("Malformed Acr repository.  https:// required.  Refusing to continue.\n")
+		return errors.New("malformed acr repository - https:// required")
+	}
+
+	if pluginToolConfig["trcplugin"] != nil && len(pluginToolConfig["trcplugin"].(string)) == 0 {
+		driverConfig.CoreConfig.Log.Printf("Trcplugin undefined.  Refusing to continue.\n")
+		return errors.New("undefined trcplugin")
+	}
 }
