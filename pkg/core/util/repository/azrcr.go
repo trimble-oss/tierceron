@@ -1,3 +1,6 @@
+//go:build azrcr
+// +build azrcr
+
 package repository
 
 import (
@@ -10,6 +13,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry"
@@ -186,7 +190,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return err
 	}
 
-	_, err = azcontainerregistry.NewClient(
+	client, err := azcontainerregistry.NewClient(
 		pluginToolConfig["acrrepository"].(string),
 		svc, nil)
 
@@ -215,12 +219,68 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return errors.New("failed to upload layer: " + err.Error())
 	}
 
-	_, err = blobClient.CompleteUpload(ctx, *uploadResp.Location, calculator, nil)
+	completeResp, err := blobClient.CompleteUpload(ctx, *uploadResp.Location, calculator, nil)
 	if err != nil {
 		return errors.New("failed to complete layer upload: " + err.Error())
 	}
 
-	// TODO: Upload layer digest and corresponding config
+	layerDigest := *completeResp.DockerContentDigest
+	config := []byte(fmt.Sprintf(`{
+  architecture: "amd64",
+  os: "windows",
+  rootfs: {
+	type: "layers",
+	diff_ids: [%s],
+  },
+}`, layerDigest))
+
+	startRes, err = blobClient.StartUpload(ctx, pluginToolConfig["pluginname"].(string), nil)
+
+	if err != nil {
+		return errors.New("failed to start upload config: " + err.Error())
+	}
+
+	calculator = azcontainerregistry.NewBlobDigestCalculator()
+	uploadResp, err = blobClient.UploadChunk(ctx, *startRes.Location, bytes.NewReader(config), calculator, nil)
+	if err != nil {
+		return errors.New("failed to upload config: " + err.Error())
+	}
+
+	completeResp, err = blobClient.CompleteUpload(ctx, *uploadResp.Location, calculator, nil)
+
+	if err != nil {
+		return errors.New("failed to complete upload config: " + err.Error())
+	}
+
+	manifest := fmt.Sprintf(`
+{
+	"schemaVersion": 2,
+	"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+	"config": {
+		"mediaType": "application/vnd.oci.image.config.v1+json",
+		"digest": "%s",
+		"size": %d
+	},
+	"layers": [
+		{
+			"mediaType": "application/vnd.oci.image.layer.v1.tar",
+			"digest": "%s",
+			"size": %d,
+			"annotations": {
+				"title": "artifact.txt"
+		 	}
+		}
+	]
+}`, layerDigest, len(config), *completeResp.DockerContentDigest, len(layer))
+
+	uploadManifestRes, err := client.UploadManifest(ctx, pluginToolConfig["pluginname"].(string), "1.0.0",
+		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader([]byte(manifest))), nil)
+
+	if err != nil {
+		return errors.New("failed to upload manifest: " + err.Error())
+	}
+
+	driverConfig.CoreConfig.Log.Printf("digest of uploaded manifest: %s", *uploadManifestRes.DockerContentDigest)
 	return nil
 }
 
