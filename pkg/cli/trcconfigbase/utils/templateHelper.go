@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -350,6 +351,15 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 					certData[2] = certSourcePath.(string)
 					return "", certData, nil
 				}
+			}
+		}
+
+		if !prod.IsProd() {
+			// Override trcenvparam if it was specified in original call
+			data, exists := values[filename].(map[string]interface{})
+			if exists {
+				data["trcenvparam"] = &driverConfig.Env
+				values[filename] = data
 			}
 		}
 
