@@ -1,3 +1,6 @@
+//go:build azrcr
+// +build azrcr
+
 package repository
 
 import (
