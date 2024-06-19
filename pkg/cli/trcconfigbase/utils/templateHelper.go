@@ -355,10 +355,10 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 		}
 
 		if !prod.IsProd() {
-			// Override trcenvparam if it was specified in original call
+			// Override trcEnvParam if it was specified in original call
 			data, exists := values[filename].(map[string]interface{})
 			if exists {
-				data["trcenvparam"] = &driverConfig.Env
+				data["trcEnvParam"] = &driverConfig.Env
 				values[filename] = data
 			}
 		}
