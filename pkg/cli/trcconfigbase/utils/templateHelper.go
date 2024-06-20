@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -220,9 +221,9 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 	if driverConfig.Token != "novault" {
 		cds.Init(&driverConfig.CoreConfig, modifier, secretMode, true, project, nil, service)
 	} else {
-		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.EnvRaw + "/" + driverConfig.Env + "_seed.yml")
+		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.Env + "/" + driverConfig.Env + "_seed.yml")
 		if err != nil {
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("unable to open seed file for -novault"), false)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("unable to open seed file for -novault: " + err.Error()), false)
 		}
 
 		var rawYaml interface{}
@@ -293,7 +294,6 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 							valueData[baseKey] = valueEntry
 						}
 					}
-
 				}
 			}
 		}
@@ -353,6 +353,16 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 				}
 			}
 		}
+
+		if !prod.IsProd() {
+			// Override trcEnvParam if it was specified in original call
+			data, exists := values[filename].(map[string]interface{})
+			if exists {
+				data["trcEnvParam"] = &driverConfig.Env
+				values[filename] = data
+			}
+		}
+
 		err = t.Execute(&doc, values[filename])
 		str = doc.String()
 		if err != nil {

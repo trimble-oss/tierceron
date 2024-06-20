@@ -62,6 +62,7 @@ func CommonMain(envPtr *string,
 	agentdeployPtr := flagset.Bool("agentdeploy", false, "To initiate deployment on agent.")
 	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
 	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
+	pushimagePtr := flagset.Bool("pushimage", false, "Push an image to the registry.")
 
 	// Common flags...
 	startDirPtr := flagset.String("startDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Template directory")
@@ -147,6 +148,11 @@ func CommonMain(envPtr *string,
 	if *defineServicePtr && (len(*pluginNamePtr) == 0) {
 		fmt.Println("Must use -pluginName flag to use -defineService flag")
 		return errors.New("must use -pluginName flag to use -defineService flag")
+	}
+
+	if *pushimagePtr && (len(*pluginNamePtr) == 0) {
+		fmt.Println("Must use -pluginName flag to use -pushimage flag")
+		return errors.New("must use -pluginName flag to use -pushimage flag")
 	}
 
 	if strings.Contains(*pluginNamePtr, ".") {
@@ -706,6 +712,12 @@ func CommonMain(envPtr *string,
 		} else {
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
+		}
+	} else if *pushimagePtr {
+		fmt.Println("Pushing image to registry.")
+		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		if err != nil {
+			fmt.Println(err.Error())
 		}
 	}
 
