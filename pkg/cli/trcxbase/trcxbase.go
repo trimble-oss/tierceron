@@ -342,9 +342,11 @@ skipDiff:
 			fmt.Println("Missing required start template folder: " + *startDirPtr)
 			os.Exit(1)
 		}
-		if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
-			fmt.Println("Missing required start seed folder: " + *endDirPtr)
-			os.Exit(1)
+		if !*diffPtr { // -diff doesn't require seed folder
+			if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
+				fmt.Println("Missing required start seed folder: " + *endDirPtr)
+				os.Exit(1)
+			}
 		}
 	}
 
