@@ -69,7 +69,9 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 			for retryCap < 5 {
 				//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
 				//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
-				err := tap.Tap("/home/azuredeploy/bin/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", false)
+				tapMap := map[string]string{"/home/azuredeploy/bin/trcsh": certifyMap["trcsha256"].(string)}
+
+				err := tap.Tap(tapMap, "azuredeploy", false)
 				if err != nil {
 					logger.Println("Cap failure with error: " + err.Error())
 					retryCap++
