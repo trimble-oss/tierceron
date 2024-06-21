@@ -117,6 +117,7 @@ func CommonMain(envPtr *string,
 	secretMode := flagset.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flagset.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	wantCertsPtr := flagset.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
+	certDestPathPtr := flagset.String("certDestPath", "", "Override templated cert destination paths")
 	keyStorePtr := flagset.String("keystore", "", "Put certificates into this keystore file.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
@@ -127,6 +128,7 @@ func CommonMain(envPtr *string,
 	versionInfoPtr := flagset.Bool("versions", false, "Version information about values")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
+
 	isShell := false
 
 	if driverConfig != nil {
@@ -219,6 +221,12 @@ func CommonMain(envPtr *string,
 	} else if *versionInfoPtr && *diffPtr {
 		fmt.Println("Cannot use -diff flag and -versionInfo flag together")
 		return errors.New("cannot use -diff flag and -versionInfo flag together")
+	} else if *wantCertsPtr && *diffPtr {
+		fmt.Println("Cannot use -diff flag and -certs flag together")
+		return errors.New("cannot use -diff flag and -certs flag together")
+	} else if *certDestPathPtr != "" && !*wantCertsPtr {
+		fmt.Println("Cannot use -certDestPath flag without including -certs flag")
+		return errors.New("Cannot use -certDestPath flag without including -certs flag")
 	} else if *versionInfoPtr && *templateInfoPtr {
 		fmt.Println("Cannot use -templateInfo flag and -versionInfo flag together")
 		return errors.New("cannot use -templateInfo flag and -versionInfo flag together")
@@ -354,6 +362,23 @@ func CommonMain(envPtr *string,
 		fileFilterSlice[0] = *fileFilterPtr
 	}
 
+	certOverrides := make(map[string]string, strings.Count(*certDestPathPtr, ",")+1)
+	if *certDestPathPtr != "" {
+		for _, rebind := range strings.Split(*certDestPathPtr, ",") {
+			split := strings.Split(rebind, ":")
+			if len(split) != 2 {
+				fmt.Println("Incorrect format for certDestPath: " + rebind)
+				return fmt.Errorf("Incorrect format for certDestPath: " + rebind)
+			}
+			certFileName, certFileDest := split[0], split[1]
+			if split[0] == "" || split[1] == "" {
+				fmt.Println("Incorrect format for certDestPath: " + rebind)
+				return fmt.Errorf("Incorrect format for certDestPath: " + rebind)
+			}
+			certOverrides[certFileName] = certFileDest
+		}
+	}
+
 	//channel receiver
 	go receiver(configCtx)
 	if *diffPtr {
@@ -411,6 +436,7 @@ func CommonMain(envPtr *string,
 				GenAuth:           false,
 				OutputMemCache:    driverConfigBase.OutputMemCache,
 				MemFs:             driverConfigBase.MemFs,
+				CertPathOverrides: certOverrides,
 				Diff:              *diffPtr,
 				Update:            messenger,
 				FileFilter:        fileFilterSlice,
@@ -466,6 +492,7 @@ func CommonMain(envPtr *string,
 			GenAuth:           false,
 			OutputMemCache:    driverConfigBase.OutputMemCache,
 			MemFs:             driverConfigBase.MemFs,
+			CertPathOverrides: certOverrides,
 			Diff:              *diffPtr,
 			FileFilter:        fileFilterSlice,
 			VersionInfo:       eUtils.VersionHelper,

@@ -73,10 +73,11 @@ type DriverConfig struct {
 
 	SecretMode bool
 	// Tierceron source and destination I/O
-	StartDir       []string // Starting directory. possibly multiple
-	EndDir         string
-	OutputMemCache bool
-	MemFs          MemoryFileSystem
+	StartDir          []string // Starting directory. possibly multiple
+	EndDir            string
+	OutputMemCache    bool
+	MemFs             MemoryFileSystem
+	CertPathOverrides map[string]string // certFileName -> certDest
 
 	// Config modes....
 	ZeroConfig  bool
