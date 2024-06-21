@@ -290,7 +290,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		ProcessDeploy(nil, config, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
 		//Replace dev-1 with DEPLOYMENTS-1
-		deploymentsKey := strings.Replace(*envPtr, c.EnvRaw, "DEPLOYMENTS", 1)
+		deploymentsKey := "DEPLOYMENTS"
+		subDeploymentIndex := strings.Index(*envPtr, "-")
+		if subDeploymentIndex != -1 {
+			deploymentsKey += (*envPtr)[subDeploymentIndex:]
+		}
 		deploymentsShard := os.Getenv(deploymentsKey)
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
