@@ -19,9 +19,9 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
-	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
+	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/deployutil"
 	kube "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshauth"
@@ -105,11 +105,11 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 			EnvRaw:            env,
 			IsShellSubProcess: false,
 			OutputMemCache:    outputMemCache,
-			MemFs:             &trcshMemFs.TrcshMemFs{
-				BillyFs: 	   memfs.New(),
+			MemFs: &trcshMemFs.TrcshMemFs{
+				BillyFs: memfs.New(),
 			},
-			Regions:           regions,
-			PathParam:         pathParam, // Make available to trcplgtool
+			Regions:   regions,
+			PathParam: pathParam, // Make available to trcplgtool
 		},
 	}
 	return trcshDriverConfig, nil
@@ -289,7 +289,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		//Open deploy script and parse it.
 		ProcessDeploy(nil, config, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
-		deploymentsShard := os.Getenv("DEPLOYMENTS")
+		//Replace dev-1 with DEPLOYMENTS-1
+		deploymentsKey := strings.Replace(*envPtr, c.EnvRaw, "DEPLOYMENTS", 1)
+		deploymentsShard := os.Getenv(deploymentsKey)
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
@@ -711,10 +713,10 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 //
 //	Nothing.
 func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.TrcshDriverConfig, token string, deployment string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
-	
+
 	// Verify Billy implementation
 	configMemFs := trcshDriverConfig.DriverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
-	
+
 	isAgentToken := false
 	if token != "" {
 		isAgentToken = true
