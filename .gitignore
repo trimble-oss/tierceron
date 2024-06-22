@@ -73,6 +73,7 @@ installation/trccarrier/deploy/
 installation/trccarrier/trc_seeds/
 installation/trcagent/trc_seeds/
 installation/trcagent/setup.cmd
+installation/trcagent/install.sh
 installation/trccloud/terraform/azure/kubeboot/*.tf
 installation/trccloud/terraform/azure/kubeboot/*.sh
 installation/trccloud/terraform/azure/kubeboot/scripts/
