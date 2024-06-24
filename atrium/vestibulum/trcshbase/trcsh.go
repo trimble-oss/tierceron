@@ -289,13 +289,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		//Open deploy script and parse it.
 		ProcessDeploy(nil, config, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
-		//Replace dev-1 with DEPLOYMENTS-1
-		deploymentsKey := "DEPLOYMENTS"
-		subDeploymentIndex := strings.Index(*envPtr, "-")
-		if subDeploymentIndex != -1 {
-			deploymentsKey += (*envPtr)[subDeploymentIndex:]
-		}
-		deploymentsShard := os.Getenv(deploymentsKey)
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
@@ -303,6 +296,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 		flagset.Parse(argLines[1:])
+
+		//Replace dev-1 with DEPLOYMENTS-1
+		deploymentsKey := "DEPLOYMENTS"
+		subDeploymentIndex := strings.Index(*envPtr, "-")
+		if subDeploymentIndex != -1 {
+			deploymentsKey += (*envPtr)[subDeploymentIndex:]
+		}
+		deploymentsShard := os.Getenv(deploymentsKey)
 
 		if len(deploymentsShard) == 0 {
 			fmt.Println("trcsh on windows requires a DEPLOYMENTS.")
