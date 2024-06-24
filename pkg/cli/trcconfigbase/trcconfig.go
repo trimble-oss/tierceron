@@ -117,7 +117,7 @@ func CommonMain(envPtr *string,
 	secretMode := flagset.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flagset.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	wantCertsPtr := flagset.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
-  certDestPathPtr := flagset.String("certDestPath", "", "Override templated cert destination paths. Format of tmplFileName:certDestination/file.pfx")
+	certDestPathPtr := flagset.String("certDestPath", "", "Override templated cert destination paths. Format of tmplFileName:certDestination/file.pfx")
 	keyStorePtr := flagset.String("keystore", "", "Put certificates into this keystore file.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
