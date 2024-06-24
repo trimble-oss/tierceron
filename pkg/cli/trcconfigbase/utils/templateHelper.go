@@ -306,6 +306,10 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 				certPasswordVaultPath, hasCertPasswordVaultPath := valueData["certPasswordVaultPath"]
 				certBundleJks, hasCertBundleJks := valueData["certBundleJks"]
 
+				if driverConfig.CertPathOverrides[filename] != "" {
+					certDestPath = driverConfig.CertPathOverrides[filename]
+				}
+
 				if hasCertDefinition && hasCertSourcePath {
 					if !ok {
 						vaultCertErr := errors.New("No certDestPath in config template section of seed for this service. Unable to generate: " + certDestPath.(string))

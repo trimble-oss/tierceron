@@ -20,14 +20,38 @@ At this point you want to edit all seed variables in preparation for publish.
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent
 ```
 
+
+# Trcsh client integration
+To bring deployments fully online, you'll need to install the trcsh script executable on each virtual machine you'd like to perform deployments under.  The following creates a dedicated trcshd user for performing deployments.  A trcshd daemon or service will run and wait for deployment commands initiated by the carrier.
+
+```
+sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/trcshd trcshd
+sudo mkdir -p /home/trcshd/bin
+sudo chmod 1750 /home/trcshd/bin
+sudo chown root:trcshd /home/trcshd/bin
+
+cp ../trccarrier/deploy/target/trcsh /home/trcshd/bin
+sudo chown root:trcshd /home/trcshd/bin/trcsh
+sudo setcap cap_ipc_lock=+ep /home/trcshd/bin/trcsh
+
+```
+
+
 # Agent machine setup
-In order to set up trcsh to run as a remote agent, you'll need to specify a list of one or more deployments, a supported environment, and optionally, a script deployment path.  Each agent presently is only capable of referencing a single deployment script path.  In order to support multiple deployments in a single project/service, you need to create separate project/service template sets each including their own deploy/deploy.trc.tmpl templates.
+In addition to setting up trcsh to run as a remote agent, you'll need to specify a list of one or more deployments, a supported environment, and optionally, a script deployment path.  Each agent presently is only capable of referencing a single deployment script path.  In order to support multiple deployments in a single project/service, you need to create separate project/service template sets each including their own deploy/deploy.trc.tmpl templates.
 
 
 In order to remote deploy the script, trcsh running in the context of an agent in the Tierceron agent pool, trcsh will execute the trcplgtool with a -agentdeploy command.  This command will trigger any listening agents for the specified environment to wake up and execute the deployment script stored in the vault.  Each running agent *must* have a dedicated environment (env or env-x where env is one of dev, QA, RQA, etc… and x is a number from 1…max(int))
 
 
-On a target machine, the above variables are defined using the following:
+On a target machine, execute setup.cmd for a Windows environment, or install.sh for a linux environment.  These scripts will install a service that will run with the following environment variables.
+
+```
+chmod 700 install.sh
+./install.sh
+
+```
+
 Required environment variables:
 DEPLOYMENTS=a,b,c
 VAULT_ADDR=

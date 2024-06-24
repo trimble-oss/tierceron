@@ -47,8 +47,11 @@ sudo mkdir -p /home/trcshd/bin
 sudo chmod 1750 /home/trcshd/bin
 sudo chown root:trcshd /home/trcshd/bin
 
-cp trcsh /home/trcshd/bin
+cp ../trccarrier/deploy/target/trcsh /home/trcshd/bin
+sudo chown root:trcshd /home/trcshd/bin/trcsh
+sudo setcap cap_ipc_lock=+ep /home/trcshd/bin/trcsh
 
 ```
 
+Install the trcshd service (Linux)
 TODO: create install script to run trcsh as a service on linux... or windows...
