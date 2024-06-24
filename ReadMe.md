@@ -5,7 +5,7 @@
 # Tierceron
 
 ## What is it?
-Tierceron is a [encrypted configuration management system](https://en.wikipedia.org/wiki/Microservices) created for managing configurations and secrets used in microservices in Vault (by Hashicorp).  It is written in [Go](https://go.dev/), using Apache [Dolthub](https://github.com/dolthub/go-mysql-server) (Tierceron Flume: provides integrated flows), [G3n](http://g3n.rocks/) (integrated visualization), [Kubernetes](https://kubernetes.io/) (Tierceron Shell: integrated cloud agent secure shell), and Hashicorp [Vault](https://www.hashicorp.com/products/vault) (data and secrets encryption).
+Tierceron is an [encrypted configuration management system](https://en.wikipedia.org/wiki/Microservices) created for managing configurations and secrets used in microservices in Vault (by Hashicorp).  It is written in [Go](https://go.dev/), using Apache [Dolthub](https://github.com/dolthub/go-mysql-server) (Tierceron Flume: provides integrated flows), [G3n](http://g3n.rocks/) (integrated visualization), [Kubernetes](https://kubernetes.io/) (Tierceron Shell: integrated cloud agent secure shell), and Hashicorp [Vault](https://www.hashicorp.com/products/vault) (data and secrets encryption).
 
 This suite of tools provides functionality for creating, reading, and updating configurations over multiple environments (presently dev, QA, RQA, and staging).  If you have a Vault token with the right permissions for the right environment, you can read configurations for that environment.  Presently, only the root token can be used to actually create and update changes to the stored configurations (this should probably be changed).  Support has also been recently prototyped (2019 hackathon) to provide in memory configurations via a supporting shared library, dll, or dynamic library.
 
@@ -18,7 +18,7 @@ This suite of tools provides functionality for creating, reading, and updating c
 
 ## Key Features
 - This project follows a [GitFlow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow) model for development and release.
-- Encrypted configurations store in Vault backed by encrypted mysql.
+- Encrypted configurations stored in Vault backed by encrypted mysql.
 - Highly stable Vault service that can run on something as small as a t2 micro in AWS or something similar in Azure for example.
 - Tools: 
     * trcconfig -- for reading configurations
