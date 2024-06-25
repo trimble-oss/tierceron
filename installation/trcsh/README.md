@@ -29,29 +29,13 @@ This allows trcsh to run both as a client and a server to perform deployments.
 trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent -serviceFilter=config -indexFilter=config -novault
 ```
 
-... after making edits to the generated seed file (all values can be TODO for local), init it.
+... after making edits to the generated seed file (all values can be TODO for local), init it.  Hint, you can use pwgen to generate some good passwords.
 
 ```
+trcpub -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent
 ```
 
-
-
-# Trcsh client integration
-To bring deployments fully online, you'll need to install the trcsh script executable on each virtual
-machine you'd like to perform deployments under.  You will also need to perform additional installation setup under [Agent Config](../trcagent/README.md)
-
-```
-sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/trcshd trcshd
-sudo mkdir -p /home/trcshd/bin
-sudo chmod 1750 /home/trcshd/bin
-sudo chown root:trcshd /home/trcshd/bin
-
-cp ../trccarrier/deploy/target/trcsh /home/trcshd/bin
-sudo chown root:trcshd /home/trcshd/bin/trcsh
-sudo setcap cap_ipc_lock=+ep /home/trcshd/bin/trcsh
-
-```
 
 Install the trcshd service (Linux)
 TODO: create install script to run trcsh as a service on linux... or windows...
