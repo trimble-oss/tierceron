@@ -215,6 +215,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
+	projectServicePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	c *eUtils.DriverConfig) error {
@@ -265,6 +266,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
+		projectServicePtr := flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
+
 		flagset.Parse(argLines[1:])
 
 		if len(*appRoleIDPtr) == 0 {
@@ -287,7 +290,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		//Open deploy script and parse it.
-		ProcessDeploy(nil, config, "", "", *trcPathPtr, secretIDPtr, appRoleIDPtr, true)
+		ProcessDeploy(nil, config, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true)
 	} else {
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
@@ -717,7 +720,7 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 // Returns:
 //
 //	Nothing.
-func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.TrcshDriverConfig, token string, deployment string, trcPath string, secretId *string, approleId *string, outputMemCache bool) {
+func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.TrcshDriverConfig, token string, deployment string, trcPath string, projectServicePtr *string, secretId *string, approleId *string, outputMemCache bool) {
 
 	// Verify Billy implementation
 	configMemFs := trcshDriverConfig.DriverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
@@ -888,7 +891,25 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 					trcPath = strings.TrimLeft(trcPath, "./")
 				}
 
+				// TODO: Move this out into its own function
 				fmt.Println("Trcsh - Error could not find " + trcPath + " for deployment instructions")
+				if *projectServicePtr != "" {
+					fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + *projectServicePtr)
+					// Run trcsub with same params as trcsh, using -c as the templatePaths, and projectServicePtr as our templateFilter
+					err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.Env, &trcshDriverConfig.DriverConfig.VaultAddress,
+						&trcshDriverConfig.DriverConfig.EnvRaw, secretId, approleId, nil, []string{"-templateFilter=" + *projectServicePtr}, &trcshDriverConfig.DriverConfig)
+					if err != nil {
+						fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
+					} else {
+						// trcconfig to populate the templates in case they contain variables
+						configErr := trcconfigbase.CommonMain(&trcshDriverConfig.DriverConfig.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, secretId, approleId, &tokenName, &region,
+							nil, []string{"-filter=" + trcPath}, &trcshDriverConfig.DriverConfig)
+
+						if configErr != nil {
+							fmt.Println("Trcsh - Failed to trcconfig fetched templates " + configErr.Error())
+						}
+					}
+				}
 			}
 		}
 
