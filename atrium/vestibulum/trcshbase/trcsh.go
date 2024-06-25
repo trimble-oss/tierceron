@@ -206,7 +206,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 
 	go captiplib.FeatherCtlEmitter(trcshDriverConfig.FeatherCtx, trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan, deployerEmote, nil)
 
-	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, "", deployment, trcPath, secretId, approleId, false)
+	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, "", deployment, trcPath, "", secretId, approleId, false)
 }
 
 // This is a controller program that can act as any command line utility.
@@ -719,7 +719,7 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 // Returns:
 //
 //	Nothing.
-func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.TrcshDriverConfig, token string, deployment string, trcPath string, projectServicePtr *string, secretId *string, approleId *string, outputMemCache bool) {
+func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.TrcshDriverConfig, token string, deployment string, trcPath string, projectServicePtr string, secretId *string, approleId *string, outputMemCache bool) {
 
 	// Verify Billy implementation
 	configMemFs := trcshDriverConfig.DriverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
@@ -892,11 +892,11 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 
 				// TODO: Move this out into its own function
 				fmt.Println("Trcsh - Error could not find " + trcPath + " for deployment instructions")
-				if *projectServicePtr != "" {
-					fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + *projectServicePtr)
+				if projectServicePtr != "" {
+					fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectServicePtr)
 					// Run trcsub with same params as trcsh, using -c as the templatePaths, and projectServicePtr as our templateFilter
 					err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.Env, &trcshDriverConfig.DriverConfig.VaultAddress,
-						&trcshDriverConfig.DriverConfig.EnvRaw, secretId, approleId, nil, []string{"-templateFilter=" + *projectServicePtr}, &trcshDriverConfig.DriverConfig)
+						&trcshDriverConfig.DriverConfig.EnvRaw, secretId, approleId, nil, []string{"-templateFilter=" + projectServicePtr}, &trcshDriverConfig.DriverConfig)
 					if err != nil {
 						fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
 					} else {
