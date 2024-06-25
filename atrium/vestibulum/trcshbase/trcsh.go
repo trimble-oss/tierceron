@@ -215,7 +215,6 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
-	projectServicePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	c *eUtils.DriverConfig) error {
