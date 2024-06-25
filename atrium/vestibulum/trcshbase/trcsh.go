@@ -34,7 +34,6 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -255,7 +254,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
 		} else {
-			util.CheckNotSudo()
+			// util.CheckNotSudo()
 		}
 		if len(os.Args) > 1 {
 			if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
@@ -761,9 +760,9 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 	// 	PubRole:    &pubRole,
 	// 	KubeConfig: &kc,
 	// }
-	// config.VaultAddress = ""
-	// gTrcshConfig.VaultAddress = &config.VaultAddress
-	// config.Token = ""
+	// trcshDriverConfig.DriverConfig.VaultAddress = ""
+	// gTrcshConfig.VaultAddress = &trcshDriverConfig.DriverConfig.VaultAddress
+	// trcshDriverConfig.DriverConfig.Token = ""
 	//	Chewbacca: end scrub
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
 
