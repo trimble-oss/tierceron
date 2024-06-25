@@ -94,6 +94,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 		return nil, nil
 	}
 
+	logger.Println("Feathering check.")
 	featherMap, _ := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
 	// TODO: enable error validation when secrets are stored...
 	// if err != nil {
@@ -105,6 +106,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 				if _, ok := featherMap["trcHatHandshakePort"]; ok {
 					if _, ok := featherMap["trcHatHandshakeCode"]; ok {
 						if _, ok := featherMap["trcHatSecretsPort"]; ok {
+							logger.Println("Feathering provided.")
 							featherAuth := &FeatherAuth{EncryptPass: featherMap["trcHatEncryptPass"].(string), EncryptSalt: featherMap["trcHatEncryptSalt"].(string), HandshakePort: featherMap["trcHatHandshakePort"].(string), SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: featherMap["trcHatHandshakeCode"].(string)}
 							return featherAuth, nil
 						}
@@ -112,6 +114,8 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 				}
 			}
 		}
+	} else {
+		logger.Println("Feathering skipped.")
 	}
 
 	return nil, nil
