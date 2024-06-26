@@ -846,16 +846,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 			os.Exit(124)
 		}
 
-		tokenName := "config_token_" + trcshDriverConfig.DriverConfig.EnvRaw
-		trcshDriverConfig.DriverConfig.OutputMemCache = true
-		trcshDriverConfig.DriverConfig.StartDir = []string{"trc_templates"}
-		trcshDriverConfig.DriverConfig.EndDir = "."
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preloading path %s env %s\n", trcPath, trcshDriverConfig.DriverConfig.EnvRaw)
-		region := ""
-		if len(trcshDriverConfig.DriverConfig.Regions) > 0 {
-			region = trcshDriverConfig.DriverConfig.Regions[0]
-		}
-
 		if projectServicePtr != "" {
 			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectServicePtr)
 			templatePathsPtr := projectServicePtr + strings.Split(trcPath, ".")[1]
@@ -867,6 +857,16 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
 				return
 			}
+		}
+
+		tokenName := "config_token_" + trcshDriverConfig.DriverConfig.EnvRaw
+		trcshDriverConfig.DriverConfig.OutputMemCache = true
+		trcshDriverConfig.DriverConfig.StartDir = []string{"trc_templates"}
+		trcshDriverConfig.DriverConfig.EndDir = "."
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preloading path %s env %s\n", trcPath, trcshDriverConfig.DriverConfig.EnvRaw)
+		region := ""
+		if len(trcshDriverConfig.DriverConfig.Regions) > 0 {
+			region = trcshDriverConfig.DriverConfig.Regions[0]
 		}
 
 		configErr := trcconfigbase.CommonMain(&trcshDriverConfig.DriverConfig.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, &trcshDriverConfig.DriverConfig)
