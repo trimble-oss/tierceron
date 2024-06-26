@@ -856,6 +856,19 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 			region = trcshDriverConfig.DriverConfig.Regions[0]
 		}
 
+		if projectServicePtr != "" {
+			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectServicePtr)
+			templatePathsPtr := projectServicePtr + strings.Split(trcPath, ".")[1]
+			trcshDriverConfig.DriverConfig.EndDir = "./trc_templates"
+
+			err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.Env, &mergedVaultAddress,
+				&trcshDriverConfig.DriverConfig.EnvRaw, &configRoleSlice[1], &configRoleSlice[0], nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, &trcshDriverConfig.DriverConfig)
+			if err != nil {
+				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
+				return
+			}
+		}
+
 		configErr := trcconfigbase.CommonMain(&trcshDriverConfig.DriverConfig.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, &trcshDriverConfig.DriverConfig)
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")
@@ -870,30 +883,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 
 		var memFile billy.File
 		var memFileErr error
-
-		if projectServicePtr != "" {
-			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectServicePtr)
-			templatePathsPtr := projectServicePtr + strings.Split(trcPath, ".")[1]
-			// Run trcsub with same params as trcsh, using -c as the templatePaths, and projectServicePtr as our templateFilter
-			err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.Env, &mergedVaultAddress,
-				&trcshDriverConfig.DriverConfig.EnvRaw, &configRoleSlice[1], &configRoleSlice[0], nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, &trcshDriverConfig.DriverConfig)
-			if err != nil {
-				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
-				return
-			} else {
-				// trcconfig to populate the templates in case they contain variables
-				configErr := trcconfigbase.CommonMain(&trcshDriverConfig.DriverConfig.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region,
-					nil, []string{"trcsh"}, &trcshDriverConfig.DriverConfig)
-
-				if configErr != nil {
-					fmt.Println("Trcsh - Failed to trcconfig fetched templates " + configErr.Error())
-					return
-				}
-
-				// TODO: Improve logic / pathing hack
-				trcPath = projectServicePtr + "/" + trcPath
-			}
-		}
 
 		if memFile, memFileErr = configMemFs.BillyFs.Open(trcPath); memFileErr == nil {
 			// Read the generated .trc code...
