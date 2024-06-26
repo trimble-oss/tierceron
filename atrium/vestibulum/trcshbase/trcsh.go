@@ -875,15 +875,15 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectServicePtr)
 			templatePathsPtr := projectServicePtr + strings.Split(trcPath, ".")[1]
 			// Run trcsub with same params as trcsh, using -c as the templatePaths, and projectServicePtr as our templateFilter
-			err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.Env, &trcshDriverConfig.DriverConfig.VaultAddress,
-				&trcshDriverConfig.DriverConfig.EnvRaw, secretId, approleId, nil, []string{"", "-templatePaths=" + templatePathsPtr}, &trcshDriverConfig.DriverConfig)
+			err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.Env, &mergedVaultAddress,
+				&trcshDriverConfig.DriverConfig.EnvRaw, &configRoleSlice[1], &configRoleSlice[0], nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, &trcshDriverConfig.DriverConfig)
 			if err != nil {
 				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
 				return
 			} else {
 				// trcconfig to populate the templates in case they contain variables
-				configErr := trcconfigbase.CommonMain(&trcshDriverConfig.DriverConfig.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, secretId, approleId, &tokenName, &region,
-					nil, []string{""}, &trcshDriverConfig.DriverConfig)
+				configErr := trcconfigbase.CommonMain(&trcshDriverConfig.DriverConfig.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region,
+					nil, []string{"trcsh"}, &trcshDriverConfig.DriverConfig)
 
 				if configErr != nil {
 					fmt.Println("Trcsh - Failed to trcconfig fetched templates " + configErr.Error())
