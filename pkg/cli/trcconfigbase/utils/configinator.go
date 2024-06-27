@@ -75,7 +75,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 	for _, startDir := range driverConfig.StartDir {
 		//get files from directory
 		tp, ep := getDirFiles(startDir, driverConfig.EndDir)
-		if trcProjectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
+		if trcProjectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") || len(driverConfig.ServicesWanted) == 1 {
 			epScrubbed := []string{}
 			// Do some scrubbing...
 			for _, e := range ep {

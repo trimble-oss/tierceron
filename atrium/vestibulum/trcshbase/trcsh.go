@@ -308,7 +308,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		deploymentsShard := os.Getenv(deploymentsKey)
 
 		if len(deploymentsShard) == 0 {
-			fmt.Println("trcsh on windows requires a DEPLOYMENTS.")
+			fmt.Printf("trcsh on windows requires a %s.\n", deploymentsShard)
 			os.Exit(-1)
 		}
 
