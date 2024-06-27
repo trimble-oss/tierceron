@@ -889,6 +889,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 			buf := bytes.NewBuffer(nil)
 			io.Copy(buf, memFile) // Error handling elided for brevity.
 			content = buf.Bytes()
+			configMemFs.BillyFs.Remove(trcPath)
 		} else {
 			if strings.HasPrefix(trcPath, "./") {
 				trcPath = strings.TrimLeft(trcPath, "./")
@@ -898,6 +899,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				content = buf.Bytes()
+				configMemFs.BillyFs.Remove(trcPath)
 			} else {
 				if strings.HasPrefix(trcPath, "./") {
 					trcPath = strings.TrimLeft(trcPath, "./")
