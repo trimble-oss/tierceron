@@ -137,7 +137,7 @@ func SeedVault(driverConfig *eUtils.DriverConfig) error {
 		var tempPaths []string
 		for _, templatePath := range templatePaths {
 			var err error
-			mod, err := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.EnvRaw, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
+			mod, err := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.EnvBasis, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
 			if err != nil {
 				eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 			}
@@ -145,7 +145,7 @@ func SeedVault(driverConfig *eUtils.DriverConfig) error {
 			mod.Env = driverConfig.Env
 			if len(driverConfig.ProjectSections) > 0 {
 				mod.ProjectIndex = driverConfig.ProjectSections
-				mod.RawEnv = strings.Split(driverConfig.EnvRaw, "_")[0]
+				mod.EnvBasis = strings.Split(driverConfig.EnvBasis, "_")[0]
 				mod.SectionName = driverConfig.SectionName
 				mod.SubSectionValue = driverConfig.SubSectionValue
 			}
@@ -155,10 +155,10 @@ func SeedVault(driverConfig *eUtils.DriverConfig) error {
 				continue
 			}
 
-			if driverConfig.EnvRaw == "" {
-				driverConfig.EnvRaw = strings.Split(driverConfig.Env, "_")[0]
+			if driverConfig.EnvBasis == "" {
+				driverConfig.EnvBasis = strings.Split(driverConfig.Env, "_")[0]
 			}
-			templateParam = strings.Replace(templateParam, "ENV", driverConfig.EnvRaw, -1)
+			templateParam = strings.Replace(templateParam, "ENV", driverConfig.EnvBasis, -1)
 			wd, err := os.Getwd()
 			if err != nil {
 				eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("could not get working directory for cert existence verification"), false)
@@ -208,7 +208,7 @@ func SeedVault(driverConfig *eUtils.DriverConfig) error {
 	}
 	for _, envDir := range files {
 		if strings.HasPrefix(driverConfig.Env, envDir.Name()) || (strings.HasPrefix(driverConfig.Env, "local") && envDir.Name() == "local") || (driverConfig.CoreConfig.WantCerts && strings.HasPrefix(envDir.Name(), "certs")) {
-			if driverConfig.Env != driverConfig.EnvRaw && driverConfig.Env != envDir.Name() { //If raw & env don't match -> current env is env-* so env will be skipped
+			if driverConfig.Env != driverConfig.EnvBasis && driverConfig.Env != envDir.Name() { //If raw & env don't match -> current env is env-* so env will be skipped
 				continue
 			}
 
@@ -464,11 +464,11 @@ func seedVaultWithCertsFromEntry(driverConfig *eUtils.DriverConfig, mod *helperk
 	certPath := fmt.Sprintf("%s", certPathData)
 
 	if strings.Contains(certPath, "ENV") {
-		if len(driverConfig.EnvRaw) >= 5 && (driverConfig.EnvRaw)[:5] == "local" {
+		if len(driverConfig.EnvBasis) >= 5 && (driverConfig.EnvBasis)[:5] == "local" {
 			envParts := strings.SplitN(driverConfig.Env, "/", 3)
 			certPath = strings.Replace(certPath, "ENV", envParts[1], 1)
 		} else {
-			certPath = strings.Replace(certPath, "ENV", driverConfig.EnvRaw, 1)
+			certPath = strings.Replace(certPath, "ENV", driverConfig.EnvBasis, 1)
 		}
 	}
 	if strings.Contains(certPath, "..") {
@@ -512,7 +512,7 @@ func seedVaultWithCertsFromEntry(driverConfig *eUtils.DriverConfig, mod *helperk
 				eUtils.LogInfo(&driverConfig.CoreConfig, "Missing certHost, cannot validate cert.  Not written to vault")
 				return
 			}
-			switch driverConfig.EnvRaw {
+			switch driverConfig.EnvBasis {
 			case "itdev":
 				fallthrough
 			case "dev":

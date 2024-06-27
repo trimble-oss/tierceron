@@ -119,7 +119,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	trcshConfig := &capauth.TrcShConfig{}
 	var err error
 
-	if trcshDriverConfig.DriverConfig.EnvRaw == "staging" || trcshDriverConfig.DriverConfig.EnvRaw == "prod" || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
+	if trcshDriverConfig.DriverConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.EnvBasis == "prod" || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
 		dir, err := os.UserHomeDir()
 		if err != nil {
 			fmt.Println("No homedir for current user")
@@ -177,7 +177,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		trcshConfig.VaultAddress = &vAddr
 
 		trcshDriverConfig.DriverConfig.Env = env
-		trcshDriverConfig.DriverConfig.EnvRaw = env
+		trcshDriverConfig.DriverConfig.EnvBasis = env
 	}
 
 	trcshDriverConfig.DriverConfig.VaultAddress = *trcshConfig.VaultAddress

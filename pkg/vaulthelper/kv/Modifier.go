@@ -42,7 +42,7 @@ type Modifier struct {
 	SecretDictionary *api.Secret  // Current Secret Dictionary Cache -- populated by mod.List("templates"
 
 	Env             string // Environment (local/dev/QA; Initialized to secrets)
-	RawEnv          string
+	EnvBasis        string
 	Regions         []string // Supported regions
 	Version         string   // Version for data
 	VersionFilter   []string // Used to filter vault paths
@@ -100,7 +100,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 		checkoutModifier, err := cachedModifierHelper(env, address)
 		if err == nil && checkoutModifier != nil {
 			checkoutModifier.Insecure = insecure
-			checkoutModifier.RawEnv = env
+			checkoutModifier.EnvBasis = env
 			checkoutModifier.Regions = regions
 			checkoutModifier.Version = ""               // Version for data
 			checkoutModifier.VersionFilter = []string{} // Used to filter vault paths
@@ -139,7 +139,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	modClient.SetToken(token)
 
 	// Return the modifier
-	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", RawEnv: env, Regions: regions, Version: "", Insecure: insecure}
+	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", EnvBasis: env, Regions: regions, Version: "", Insecure: insecure}
 	return newModifier, nil
 }
 
@@ -175,7 +175,7 @@ func (m *Modifier) Release() {
 	if _, ok := modifierCache[m.Env]; ok {
 		m.releaseHelper(m.Env)
 	} else {
-		m.releaseHelper(m.RawEnv)
+		m.releaseHelper(m.EnvBasis)
 	}
 }
 
@@ -228,7 +228,7 @@ func (m *Modifier) CleanCache(limit uint64) {
 	if _, ok := modifierCache[m.Env]; ok {
 		cleanCacheHelper(m.Env, m.client.Address(), limit)
 	} else {
-		cleanCacheHelper(m.RawEnv, m.client.Address(), limit)
+		cleanCacheHelper(m.EnvBasis, m.client.Address(), limit)
 	}
 }
 
@@ -749,7 +749,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 
 	if len(mod.ProjectIndex) > 0 {
 		enginePath = enginePath + "/Index/" + mod.ProjectIndex[0] + "/" + mod.SectionName + "/" + mod.SubSectionValue
-		mod.Env = mod.RawEnv
+		mod.Env = mod.EnvBasis
 	}
 	userPaths, err := mod.List(enginePath+"/", logger)
 	versionDataMap := make(map[string]map[string]interface{}, 0)

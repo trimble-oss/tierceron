@@ -20,24 +20,24 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			if deploymentAlias, deployAliasOk := trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"]; deployAliasOk {
 				deployment = deploymentAlias
 			}
-			mergedEnvRaw := trcshDriverConfig.DriverConfig.EnvRaw
+			mergedEnvBasis := trcshDriverConfig.DriverConfig.EnvBasis
 			// Swapping in project root...
 			configRoleSlice := strings.Split(*trcshConfig.ConfigRole, ":")
-			tokenName := "config_token_" + trcshDriverConfig.DriverConfig.EnvRaw
+			tokenName := "config_token_" + trcshDriverConfig.DriverConfig.EnvBasis
 			readToken := ""
-			autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &trcshDriverConfig.DriverConfig.Env, &trcshDriverConfig.DriverConfig.VaultAddress, &mergedEnvRaw, "config.yml", false)
+			autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &trcshDriverConfig.DriverConfig.Env, &trcshDriverConfig.DriverConfig.VaultAddress, &mergedEnvBasis, "config.yml", false)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				return nil, autoErr
 			}
 
-			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.Insecure, readToken, *trcshConfig.VaultAddress, trcshDriverConfig.DriverConfig.EnvRaw, trcshDriverConfig.DriverConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.Insecure, readToken, *trcshConfig.VaultAddress, trcshDriverConfig.DriverConfig.EnvBasis, trcshDriverConfig.DriverConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 			if err != nil {
 				fmt.Println("Unable to obtain resources for deployment")
 				return nil, err
 			}
-			tempEnv := trcshDriverConfig.DriverConfig.EnvRaw
-			envParts := strings.Split(trcshDriverConfig.DriverConfig.EnvRaw, "-")
+			tempEnv := trcshDriverConfig.DriverConfig.EnvBasis
+			envParts := strings.Split(trcshDriverConfig.DriverConfig.EnvBasis, "-")
 			mod.Env = envParts[0]
 			fmt.Printf("Loading deployment details for %s and env %s", deployment, mod.Env)
 			deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
@@ -79,10 +79,10 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig) ([]string, error
 
 	// Swapping in project root...
 	configRoleSlice := strings.Split(trcshDriverConfig.DriverConfig.AppRoleConfig, ":")
-	mergedEnvRaw := trcshDriverConfig.DriverConfig.EnvRaw
+	mergedEnvBasis := trcshDriverConfig.DriverConfig.EnvBasis
 	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.Env
 	readToken := ""
-	autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &trcshDriverConfig.DriverConfig.Env, &trcshDriverConfig.DriverConfig.VaultAddress, &mergedEnvRaw, "config.yml", false)
+	autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &trcshDriverConfig.DriverConfig.Env, &trcshDriverConfig.DriverConfig.VaultAddress, &mergedEnvBasis, "config.yml", false)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return nil, autoErr
@@ -92,7 +92,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig) ([]string, error
 		memprotectopts.MemProtect(nil, &readToken)
 	}
 
-	mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.Insecure, readToken, trcshDriverConfig.DriverConfig.VaultAddress, trcshDriverConfig.DriverConfig.EnvRaw, trcshDriverConfig.DriverConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.Insecure, readToken, trcshDriverConfig.DriverConfig.VaultAddress, trcshDriverConfig.DriverConfig.EnvBasis, trcshDriverConfig.DriverConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
@@ -101,7 +101,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig) ([]string, error
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Failure to init to vault")
 		return nil, err
 	}
-	envParts := strings.Split(trcshDriverConfig.DriverConfig.EnvRaw, "-")
+	envParts := strings.Split(trcshDriverConfig.DriverConfig.EnvBasis, "-")
 	mod.Env = envParts[0]
 
 	deploymentListData, deploymentListDataErr := mod.List("super-secrets/Index/TrcVault/trcplugin", trcshDriverConfig.DriverConfig.CoreConfig.Log)

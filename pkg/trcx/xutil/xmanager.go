@@ -100,7 +100,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 		mod.Version = version
 		if len(driverConfig.ProjectSections) > 0 {
 			mod.ProjectIndex = driverConfig.ProjectSections
-			mod.RawEnv = strings.Split(driverConfig.EnvRaw, "_")[0]
+			mod.EnvBasis = strings.Split(driverConfig.EnvBasis, "_")[0]
 			mod.SectionName = driverConfig.SectionName
 			mod.SubSectionValue = driverConfig.SubSectionValue
 		}
@@ -225,7 +225,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 	if driverConfig.Token != "" && commonPathFound {
 		var commonMod *helperkv.Modifier
 		var err error
-		commonMod, err = helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.EnvRaw, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
+		commonMod, err = helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.EnvBasis, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
 		commonMod.Env = driverConfig.Env
 		if err != nil {
 			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
@@ -254,7 +254,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 		//
 		// Checking for existence of values for service in vault.
 		//
-		if strings.Contains(driverConfig.EnvRaw, ".*") || len(driverConfig.ProjectSections) > 0 {
+		if strings.Contains(driverConfig.EnvBasis, ".*") || len(driverConfig.ProjectSections) > 0 {
 			anyServiceFound := false
 			serviceFound := false
 			var acceptedTemplatePaths []string
@@ -266,11 +266,11 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 					var listValues *api.Secret
 					var err error
 					if driverConfig.SectionKey == "/Index/" && len(driverConfig.ProjectSections) > 0 {
-						listValues, err = mod.ListEnv("super-secrets/"+strings.Split(driverConfig.EnvRaw, ".")[0]+driverConfig.SectionKey+driverConfig.ProjectSections[0]+"/"+driverConfig.SectionName+"/"+driverConfig.SubSectionValue+"/", driverConfig.CoreConfig.Log)
+						listValues, err = mod.ListEnv("super-secrets/"+strings.Split(driverConfig.EnvBasis, ".")[0]+driverConfig.SectionKey+driverConfig.ProjectSections[0]+"/"+driverConfig.SectionName+"/"+driverConfig.SubSectionValue+"/", driverConfig.CoreConfig.Log)
 					} else if len(driverConfig.ProjectSections) > 0 { //If eid -> look inside Index and grab all environments
-						listValues, err = mod.ListEnv("super-secrets/"+strings.Split(driverConfig.EnvRaw, ".")[0]+driverConfig.SectionKey+driverConfig.ProjectSections[0]+"/"+driverConfig.SectionName, driverConfig.CoreConfig.Log)
+						listValues, err = mod.ListEnv("super-secrets/"+strings.Split(driverConfig.EnvBasis, ".")[0]+driverConfig.SectionKey+driverConfig.ProjectSections[0]+"/"+driverConfig.SectionName, driverConfig.CoreConfig.Log)
 						if listValues == nil {
-							listValues, err = mod.ListEnv("super-secrets/"+strings.Split(driverConfig.EnvRaw, ".")[0]+driverConfig.SectionKey+driverConfig.ProjectSections[0], driverConfig.CoreConfig.Log)
+							listValues, err = mod.ListEnv("super-secrets/"+strings.Split(driverConfig.EnvBasis, ".")[0]+driverConfig.SectionKey+driverConfig.ProjectSections[0], driverConfig.CoreConfig.Log)
 						}
 					} else if indexed {
 						listValues, err = mod.ListEnv("super-secrets/"+mod.Env+"/", driverConfig.CoreConfig.Log)
@@ -287,7 +287,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 							for _, serviceInterface := range valuesPath.([]interface{}) {
 								serviceFace := serviceInterface.(string)
 								if version != "0" {
-									versionMap := eUtils.GetProjectVersionInfo(driverConfig, mod) //("super-secrets/" + strings.Split(config.EnvRaw, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/" + serviceFace)
+									versionMap := eUtils.GetProjectVersionInfo(driverConfig, mod) //("super-secrets/" + strings.Split(config.EnvBasis, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/" + serviceFace)
 									versionNumbers := eUtils.GetProjectVersions(driverConfig, versionMap)
 									eUtils.BoundCheck(driverConfig, versionNumbers, version)
 								}
@@ -389,7 +389,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 				goMod.Version = version
 				goMod.ProjectIndex = dc.ProjectSections
 				if len(goMod.ProjectIndex) > 0 {
-					goMod.RawEnv = strings.Split(dc.EnvRaw, "_")[0]
+					goMod.EnvBasis = strings.Split(dc.EnvBasis, "_")[0]
 					goMod.SectionKey = dc.SectionKey
 					goMod.SectionName = dc.SectionName
 					goMod.SubSectionValue = dc.SubSectionValue
@@ -715,7 +715,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigC
 		if pathInclude {
 			endPath = driverConfig.EndDir + envBasePath + "/" + pathPart + "/" + driverConfig.Env + "_seed.yml"
 		} else if len(driverConfig.ProjectSections) > 0 {
-			envBasePath, _, _, _ := helperkv.PreCheckEnvironment(driverConfig.EnvRaw)
+			envBasePath, _, _, _ := helperkv.PreCheckEnvironment(driverConfig.EnvBasis)
 			sectionNamePath := "/"
 			subSectionValuePath := ""
 			switch driverConfig.SectionKey {
