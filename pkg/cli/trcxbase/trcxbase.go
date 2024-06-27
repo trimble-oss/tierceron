@@ -134,7 +134,7 @@ func CommonMain(ctx eUtils.ProcessContext,
 	logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"x]", log.LstdFlags)
 	driverConfig.CoreConfig.Log = logger
 
-	envRaw := *envPtr
+	envBasis := *envPtr
 
 	Yellow := "\033[33m"
 	Reset := "\033[0m"
@@ -485,7 +485,7 @@ skipDiff:
 						Insecure:      *insecurePtr,
 						Token:         *tokenPtr,
 						VaultAddress:  *addrPtr,
-						EnvRaw:        envRaw,
+						EnvBasis:      envBasis,
 						Env:           *envPtr,
 						Regions:       regions,
 						SecretMode:    *secretMode,
@@ -761,7 +761,7 @@ skipDiff:
 					Insecure:        *insecurePtr,
 					Token:           *tokenPtr,
 					VaultAddress:    *addrPtr,
-					EnvRaw:          envRaw,
+					EnvBasis:        envBasis,
 					Env:             *envPtr,
 					SectionKey:      sectionKey,
 					SectionName:     subSectionName,

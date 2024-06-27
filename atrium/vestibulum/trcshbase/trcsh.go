@@ -102,7 +102,7 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 			},
 			Insecure:          true,
 			Env:               env,
-			EnvRaw:            env,
+			EnvBasis:          eUtils.GetEnvBasis(env),
 			IsShellSubProcess: false,
 			OutputMemCache:    outputMemCache,
 			MemFs: &trcshMemFs.TrcshMemFs{
@@ -493,7 +493,7 @@ func roleBasedRunner(env string,
 	*configCount -= 1
 	trcshDriverConfig.DriverConfig.AppRoleConfig = "config.yml"
 	trcshDriverConfig.DriverConfig.FileFilter = nil
-	trcshDriverConfig.DriverConfig.EnvRaw = env
+	trcshDriverConfig.DriverConfig.EnvBasis = env
 	trcshDriverConfig.DriverConfig.CoreConfig.WantCerts = false
 	trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Role runner init: %s\n", control)
@@ -520,7 +520,7 @@ func roleBasedRunner(env string,
 		tokenConfig := token
 		err = trcplgtoolbase.CommonMain(&configEnv, &trcshDriverConfig.DriverConfig.VaultAddress, &tokenConfig, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
 	case "trcconfig":
-		if trcshDriverConfig.DriverConfig.EnvRaw == "itdev" || trcshDriverConfig.DriverConfig.EnvRaw == "staging" || trcshDriverConfig.DriverConfig.EnvRaw == "prod" ||
+		if trcshDriverConfig.DriverConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.EnvBasis == "prod" ||
 			trcshDriverConfig.DriverConfig.Env == "itdev" || trcshDriverConfig.DriverConfig.Env == "staging" || trcshDriverConfig.DriverConfig.Env == "prod" {
 			trcshDriverConfig.DriverConfig.OutputMemCache = false
 		}
@@ -557,7 +557,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	case "trcpub":
 		ResetModifier(&trcshDriverConfig.DriverConfig) //Resetting modifier cache to avoid token conflicts.
 		trcshDriverConfig.DriverConfig.AppRoleConfig = "configpub.yml"
-		trcshDriverConfig.DriverConfig.EnvRaw = env
+		trcshDriverConfig.DriverConfig.EnvBasis = env
 		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 
 		pubRoleSlice := strings.Split(*gTrcshConfig.PubRole, ":")
@@ -606,7 +606,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 							}
 							continue
 						}
-						trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.EnvRaw)
+						trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.EnvBasis)
 					} else {
 						break
 					}
@@ -731,11 +731,11 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 	pwd, _ := os.Getwd()
 	var content []byte
 
-	if trcshDriverConfig.DriverConfig.EnvRaw == "itdev" {
+	if trcshDriverConfig.DriverConfig.EnvBasis == "itdev" {
 		trcshDriverConfig.DriverConfig.OutputMemCache = false
 	}
 	fmt.Println("Logging initialized.")
-	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Logging initialized for env:%s\n", trcshDriverConfig.DriverConfig.EnvRaw)
+	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Logging initialized for env:%s\n", trcshDriverConfig.DriverConfig.EnvBasis)
 
 	var err error
 	vaultAddress, err := trcshauth.TrcshVAddress(featherCtx, gAgentConfig, trcshDriverConfig)
@@ -767,7 +767,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 	//	Chewbacca: end scrub
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
 
-	trcshEnvRaw := trcshDriverConfig.DriverConfig.EnvRaw
+	trcshEnvBasis := trcshDriverConfig.DriverConfig.EnvBasis
 	tokenPtr := new(string)
 	authTokenEnv := "azuredeploy"
 	appRoleConfig := "deployauth"
@@ -776,7 +776,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 		appRoleConfig = "none"
 	}
 	authTokenName := "vault_token_azuredeploy"
-	autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, secretId, approleId, tokenPtr, &authTokenName, &authTokenEnv, &trcshDriverConfig.DriverConfig.VaultAddress, &trcshEnvRaw, appRoleConfig, false)
+	autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, secretId, approleId, tokenPtr, &authTokenName, &authTokenEnv, &trcshDriverConfig.DriverConfig.VaultAddress, &trcshEnvBasis, appRoleConfig, false)
 	if autoErr != nil || tokenPtr == nil || *tokenPtr == "" {
 		fmt.Println("Unable to auth.")
 		if autoErr != nil {
@@ -794,14 +794,14 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 				time.Sleep(time.Second)
 				continue
 			}
-			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.EnvRaw)
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.EnvBasis)
 		} else {
 			break
 		}
 	}
 	// Chewbacca: Begin dbg comment
 	mergedVaultAddress := trcshDriverConfig.DriverConfig.VaultAddress
-	mergedEnvRaw := trcshDriverConfig.DriverConfig.EnvRaw
+	mergedEnvBasis := trcshDriverConfig.DriverConfig.EnvBasis
 
 	// Chewbacca: Wipe this next section out 731-739.  Code analysis indicates it's not used.
 	if (approleId != nil && len(*approleId) == 0) || (secretId != nil && len(*secretId) == 0) {
@@ -820,10 +820,10 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 		}
 	}
 
-	if len(mergedEnvRaw) == 0 {
+	if len(mergedEnvBasis) == 0 {
 		// If in context of trcsh, utilize CToken to auth...
 		if gTrcshConfig != nil {
-			mergedEnvRaw = gTrcshConfig.EnvContext
+			mergedEnvBasis = gTrcshConfig.EnvContext
 		}
 	}
 
@@ -846,17 +846,30 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 			os.Exit(124)
 		}
 
-		tokenName := "config_token_" + trcshDriverConfig.DriverConfig.EnvRaw
+		if projectServicePtr != "" {
+			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectServicePtr)
+			templatePathsPtr := projectServicePtr + strings.Split(trcPath, ".")[1]
+			trcshDriverConfig.DriverConfig.EndDir = "./trc_templates"
+
+			err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.EnvBasis, &mergedVaultAddress,
+				&mergedEnvBasis, &configRoleSlice[1], &configRoleSlice[0], nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, &trcshDriverConfig.DriverConfig)
+			if err != nil {
+				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
+				return
+			}
+		}
+
+		tokenName := "config_token_" + trcshDriverConfig.DriverConfig.EnvBasis
 		trcshDriverConfig.DriverConfig.OutputMemCache = true
 		trcshDriverConfig.DriverConfig.StartDir = []string{"trc_templates"}
 		trcshDriverConfig.DriverConfig.EndDir = "."
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preloading path %s env %s\n", trcPath, trcshDriverConfig.DriverConfig.EnvRaw)
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preloading path %s env %s\n", trcPath, trcshDriverConfig.DriverConfig.EnvBasis)
 		region := ""
 		if len(trcshDriverConfig.DriverConfig.Regions) > 0 {
 			region = trcshDriverConfig.DriverConfig.Regions[0]
 		}
 
-		configErr := trcconfigbase.CommonMain(&trcshDriverConfig.DriverConfig.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, &trcshDriverConfig.DriverConfig)
+		configErr := trcconfigbase.CommonMain(&trcshDriverConfig.DriverConfig.EnvBasis, &mergedVaultAddress, &token, &mergedEnvBasis, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, &trcshDriverConfig.DriverConfig)
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preload Error %s\n", configErr.Error())
@@ -870,30 +883,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 
 		var memFile billy.File
 		var memFileErr error
-
-		if projectServicePtr != "" {
-			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectServicePtr)
-			templatePathsPtr := projectServicePtr + strings.Split(trcPath, ".")[1]
-			// Run trcsub with same params as trcsh, using -c as the templatePaths, and projectServicePtr as our templateFilter
-			err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.Env, &trcshDriverConfig.DriverConfig.VaultAddress,
-				&trcshDriverConfig.DriverConfig.EnvRaw, secretId, approleId, nil, []string{"", "-templatePaths=" + templatePathsPtr}, &trcshDriverConfig.DriverConfig)
-			if err != nil {
-				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
-				return
-			} else {
-				// trcconfig to populate the templates in case they contain variables
-				configErr := trcconfigbase.CommonMain(&trcshDriverConfig.DriverConfig.EnvRaw, &mergedVaultAddress, &token, &mergedEnvRaw, secretId, approleId, &tokenName, &region,
-					nil, []string{""}, &trcshDriverConfig.DriverConfig)
-
-				if configErr != nil {
-					fmt.Println("Trcsh - Failed to trcconfig fetched templates " + configErr.Error())
-					return
-				}
-
-				// TODO: Improve logic / pathing hack
-				trcPath = projectServicePtr + "/" + trcPath
-			}
-		}
 
 		if memFile, memFileErr = configMemFs.BillyFs.Open(trcPath); memFileErr == nil {
 			// Read the generated .trc code...
@@ -923,14 +912,14 @@ func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.Tr
 			token = ""
 			trcshDriverConfig.DriverConfig.Token = token
 		}
-		if trcshDriverConfig.DriverConfig.EnvRaw == "itdev" || trcshDriverConfig.DriverConfig.EnvRaw == "staging" || trcshDriverConfig.DriverConfig.EnvRaw == "prod" {
+		if trcshDriverConfig.DriverConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.EnvBasis == "prod" {
 			trcshDriverConfig.DriverConfig.OutputMemCache = false
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Processing trcshell")
 	} else {
 		if !strings.Contains(pwd, "TrcDeploy") || len(trcshDriverConfig.DriverConfig.DeploymentConfig) == 0 {
 			fmt.Println("Processing manual trcshell")
-			if trcshDriverConfig.DriverConfig.EnvRaw == "itdev" {
+			if trcshDriverConfig.DriverConfig.EnvBasis == "itdev" {
 				content, err = os.ReadFile(pwd + "/deploy/buildtest.trc")
 				if err != nil {
 					fmt.Println("Trcsh - Error could not find /deploy/buildtest.trc for deployment instructions")
@@ -1115,7 +1104,7 @@ collaboratorReRun:
 
 func ResetModifier(driverConfig *eUtils.DriverConfig) {
 	//Resetting modifier cache to be used again.
-	mod, err := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.EnvRaw, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.EnvBasis, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
 	if err != nil {
 		eUtils.CheckError(&driverConfig.CoreConfig, err, true)
 	}

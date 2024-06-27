@@ -297,7 +297,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	}
 	dialOptions := grpc.WithTransportCredentials(creds)
 
-	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvRaw)
+	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvBasis)
 	if localHostErr != nil {
 		return nil, localHostErr
 	}
@@ -312,7 +312,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvRaw)
+	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvBasis)
 	if localHostConfirmErr != nil {
 		return nil, localHostConfirmErr
 	}

@@ -456,7 +456,7 @@ func CommonMain(envPtr *string,
 						continue
 					}
 					if approleName, ok := fileYAML["Approle_Name"].(string); ok {
-						mod.RawEnv = approleName
+						mod.EnvBasis = approleName
 						mod.Env = approleName
 					} else {
 						fmt.Println("Read parsing approle name from file, continuing to next file.")
@@ -474,14 +474,14 @@ func CommonMain(envPtr *string,
 					}
 
 					if len(tokenPerms) == 0 {
-						fmt.Println("Completely skipping " + mod.RawEnv + " as there is no token permission for this approle.")
+						fmt.Println("Completely skipping " + mod.EnvBasis + " as there is no token permission for this approle.")
 						continue
 					}
 
 					if *tokenFileFilterPtr != "" && *tokenFileFilterPtr != "*" {
 						// Filter out tokens that
 						if found, ok := tokenPerms[*tokenFileFilterPtr].(bool); !ok && !found {
-							fmt.Println("Skipping " + mod.RawEnv + " as there is no token permission for this approle.")
+							fmt.Println("Skipping " + mod.EnvBasis + " as there is no token permission for this approle.")
 							continue
 						}
 					}
@@ -521,7 +521,7 @@ func CommonMain(envPtr *string,
 						// Wipe existing role.
 						// Recreate the role.
 						//
-						resp, role_cleanup := v.DeleteRole(mod.RawEnv)
+						resp, role_cleanup := v.DeleteRole(mod.EnvBasis)
 						eUtils.LogErrorObject(&driverConfig.CoreConfig, role_cleanup, false)
 
 						if resp.StatusCode == 404 {
@@ -529,25 +529,25 @@ func CommonMain(envPtr *string,
 							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 						}
 
-						err = v.CreateNewRole(mod.RawEnv, &sys.NewRoleOptions{
+						err = v.CreateNewRole(mod.EnvBasis, &sys.NewRoleOptions{
 							TokenTTL:    "10m",
 							TokenMaxTTL: "15m",
-							Policies:    []string{mod.RawEnv},
+							Policies:    []string{mod.EnvBasis},
 						})
 						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
-						roleID, _, err := v.GetRoleID(mod.RawEnv)
+						roleID, _, err := v.GetRoleID(mod.EnvBasis)
 						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
-						secretID, err := v.GetSecretID(mod.RawEnv)
+						secretID, err := v.GetSecretID(mod.EnvBasis)
 						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
-						fmt.Printf("Rotated role id and secret id for %s.\n", mod.RawEnv)
+						fmt.Printf("Rotated role id and secret id for %s.\n", mod.EnvBasis)
 						fmt.Printf("Role ID: %s\n", roleID)
 						fmt.Printf("Secret ID: %s\n", secretID)
 					} else {
 						fmt.Printf("Existing role token count: %d.\n", len(existingTokens))
-						fmt.Printf("Adding token to role: %s.\n", mod.RawEnv)
+						fmt.Printf("Adding token to role: %s.\n", mod.EnvBasis)
 						fmt.Printf("Post add role token count: %d.\n", len(tokenMap))
 					}
 
@@ -712,9 +712,9 @@ func CommonMain(envPtr *string,
 			defer mod.Release()
 		}
 		mod.Env = *envPtr
-		mod.RawEnv = eUtils.GetRawEnv(*envPtr)
-		if valid, baseDesiredPolicy, errValidateEnvironment := mod.ValidateEnvironment(mod.RawEnv, *uploadCertPtr, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
-			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.RawEnv, false, "_unrestricted", driverConfig.CoreConfig.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+		mod.EnvBasis = eUtils.GetEnvBasis(*envPtr)
+		if valid, baseDesiredPolicy, errValidateEnvironment := mod.ValidateEnvironment(mod.EnvBasis, *uploadCertPtr, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
+			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.EnvBasis, false, "_unrestricted", driverConfig.CoreConfig.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
 				eUtils.LogAndSafeExit(&driverConfig.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", mod.Env, baseDesiredPolicy, desiredPolicy), 1)
 				return
 			}
@@ -789,7 +789,7 @@ func CommonMain(envPtr *string,
 			Token:           v.GetToken(),
 			VaultAddress:    *addrPtr,
 			Env:             *envPtr,
-			EnvRaw:          eUtils.GetRawEnv(*envPtr),
+			EnvBasis:        eUtils.GetEnvBasis(*envPtr),
 			SectionKey:      sectionKey,
 			SectionName:     subSectionName,
 			SubSectionValue: *eUtils.IndexValueFilterPtr,

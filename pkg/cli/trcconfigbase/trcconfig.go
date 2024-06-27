@@ -157,6 +157,11 @@ func CommonMain(envPtr *string,
 				if len(endDir) > 1 {
 					*endDirPtr = endDir[1]
 				}
+			} else if strings.HasPrefix(args, "-certDestPath") {
+				certDestPath := strings.Split(args, "=")
+				if len(certDestPath) > 1 {
+					*certDestPathPtr = certDestPath[1]
+				}
 			}
 		}
 		flagset.Parse(nil)
@@ -422,7 +427,7 @@ func CommonMain(envPtr *string,
 				Token:             *tokenPtr,
 				VaultAddress:      *addrPtr,
 				Env:               *envPtr,
-				EnvRaw:            eUtils.GetRawEnv(*envPtr),
+				EnvBasis:          eUtils.GetEnvBasis(*envPtr),
 				Regions:           regions,
 				SecretMode:        *secretMode,
 				ServicesWanted:    services,
@@ -478,7 +483,7 @@ func CommonMain(envPtr *string,
 			Token:             *tokenPtr,
 			VaultAddress:      *addrPtr,
 			Env:               *envPtr,
-			EnvRaw:            eUtils.GetRawEnv(*envPtr),
+			EnvBasis:          eUtils.GetEnvBasis(*envPtr),
 			Regions:           regions,
 			SecretMode:        *secretMode,
 			ServicesWanted:    services,
