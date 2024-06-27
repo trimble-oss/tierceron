@@ -24,7 +24,7 @@ func SplitEnv(env string) []string {
 	return envVersion
 }
 
-func GetRawEnv(env string) string {
+func GetEnvBasis(env string) string {
 	if strings.HasPrefix(env, "dev") {
 		return "dev"
 	} else if strings.HasPrefix(env, "QA") {
@@ -47,7 +47,7 @@ func GetProjectVersionInfo(driverConfig *DriverConfig, mod *helperkv.Modifier) m
 	var err error
 	mod.SectionKey = driverConfig.SectionKey
 	mod.SubSectionName = driverConfig.SubSectionName
-	mod.RawEnv = strings.Split(driverConfig.EnvRaw, ".")[0]
+	mod.EnvBasis = strings.Split(driverConfig.EnvBasis, ".")[0]
 	if !driverConfig.CoreConfig.WantCerts {
 		secretMetadataMap, err = mod.GetVersionValues(mod, driverConfig.CoreConfig.WantCerts, "super-secrets", driverConfig.CoreConfig.Log)
 		if secretMetadataMap == nil {

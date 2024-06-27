@@ -78,7 +78,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
-	mod.RawEnv = "bamboo"
+	mod.EnvBasis = "bamboo"
 	mod.Env = "bamboo"
 
 	data, err := mod.ReadData("super-secrets/tokens")

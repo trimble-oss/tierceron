@@ -308,7 +308,7 @@ func AutoAuth(driverConfig *DriverConfig,
 			tokenNamePrefix = "vault_token_azuredeploy"
 			goto skipswitch
 		}
-		switch GetRawEnv(env) {
+		switch GetEnvBasis(env) {
 		case "dev":
 			*tokenNamePtr = tokenNamePrefix + "_token_dev"
 		case "QA":
@@ -346,7 +346,7 @@ func AutoAuth(driverConfig *DriverConfig,
 		//check that token matches environment
 		tokenParts := strings.Split(*tokenNamePtr, "_")
 		tokenEnv := tokenParts[len(tokenParts)-1]
-		if GetRawEnv(env) != tokenEnv {
+		if GetEnvBasis(env) != tokenEnv {
 			return LogAndSafeExit(&driverConfig.CoreConfig, "Token doesn't match environment", 1)
 		}
 	}
@@ -372,17 +372,17 @@ func AutoAuth(driverConfig *DriverConfig,
 		if err != nil {
 			return err
 		}
-		mod.RawEnv = "bamboo"
+		mod.EnvBasis = "bamboo"
 		mod.Env = "bamboo"
 		switch appRoleConfig {
 		case "configpub.yml":
-			mod.RawEnv = "pub"
+			mod.EnvBasis = "pub"
 			mod.Env = "pub"
 		case "configdeploy.yml":
-			mod.RawEnv = "deploy"
+			mod.EnvBasis = "deploy"
 			mod.Env = "deploy"
 		case "deployauth":
-			mod.RawEnv = "azuredeploy"
+			mod.EnvBasis = "azuredeploy"
 			mod.Env = "azuredeploy"
 		}
 		LogInfo(&driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)

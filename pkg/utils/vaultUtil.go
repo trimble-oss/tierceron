@@ -47,8 +47,8 @@ func GetAcceptedTemplatePaths(driverConfig *DriverConfig, modCheck *helperkv.Mod
 	var acceptedTemplatePaths []string
 	var templateName string = coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_templates"
 
-	if strings.Contains(driverConfig.EnvRaw, "_") {
-		driverConfig.EnvRaw = strings.Split(driverConfig.EnvRaw, "_")[0]
+	if strings.Contains(driverConfig.EnvBasis, "_") {
+		driverConfig.EnvBasis = strings.Split(driverConfig.EnvBasis, "_")[0]
 	}
 	var wantedTemplatePaths []string
 
