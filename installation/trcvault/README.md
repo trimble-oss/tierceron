@@ -45,6 +45,11 @@ trcinit -tokenExpiration -namespace=vault -addr=https://<vaulthost:vaultport> -t
 trcinit -rotateTokens -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
 ```
 
+The following creates roles for deploy and azuredeploy.
+```
+trcinit -rotateTokens -approle=deploy -namespace=agent -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
+```
+
 ## Update roles
 ```
 trcinit -updateRole -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
