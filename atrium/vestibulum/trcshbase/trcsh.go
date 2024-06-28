@@ -309,8 +309,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		deploymentsShard := os.Getenv(deploymentsKey)
 
 		if len(deploymentsShard) == 0 {
-			fmt.Printf("drone trcsh requires a %s.\n", deploymentsShard)
-			os.Exit(-1)
+			deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
+			if len(deploymentsShard) == 0 {
+				fmt.Printf("drone trcsh requires a %s.\n", deploymentsShard)
+				os.Exit(-1)
+			}
 		}
 
 		if len(agentToken) == 0 {
