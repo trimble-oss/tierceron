@@ -309,17 +309,20 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		deploymentsShard := os.Getenv(deploymentsKey)
 
 		if len(deploymentsShard) == 0 {
-			fmt.Printf("trcsh on windows requires a %s.\n", deploymentsShard)
-			os.Exit(-1)
+			deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
+			if len(deploymentsShard) == 0 {
+				fmt.Printf("drone trcsh requires a %s.\n", deploymentsShard)
+				os.Exit(-1)
+			}
 		}
 
 		if len(agentToken) == 0 {
-			fmt.Println("trcsh on windows requires AGENT_TOKEN.")
+			fmt.Println("drone trcsh requires AGENT_TOKEN.")
 			os.Exit(-1)
 		}
 
 		if len(agentEnv) == 0 {
-			fmt.Println("trcsh on windows requires AGENT_ENV.")
+			fmt.Println("drone trcsh requires AGENT_ENV.")
 			os.Exit(-1)
 		}
 
@@ -328,40 +331,40 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		if len(address) == 0 {
-			fmt.Println("trcsh on windows requires VAULT_ADDR address.")
+			fmt.Println("drone trcsh requires VAULT_ADDR address.")
 			os.Exit(-1)
 		}
 		if err := capauth.ValidateVhost(address, "https://"); err != nil {
-			fmt.Printf("trcsh on windows requires supported VAULT_ADDR address: %s\n", err.Error())
+			fmt.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
 			os.Exit(124)
 		}
 		memprotectopts.MemProtect(nil, &agentToken)
 		memprotectopts.MemProtect(nil, &address)
 		shutdown := make(chan bool)
 
-		fmt.Printf("trcsh beginning new agent configuration sequence.\n")
+		fmt.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		// Preload agent synchronization configs...
 		var errAgentLoad error
 		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, nil)
 		if errAgentLoad != nil {
-			fmt.Printf("trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
+			fmt.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
 			os.Exit(124)
 		}
 
-		fmt.Printf("trcsh beginning initialization sequence.\n")
+		fmt.Printf("drone trcsh beginning initialization sequence.\n")
 		// Initialize deployers.
 		trcshDriverConfig, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, "", true)
 		if err != nil {
-			fmt.Printf("trcsh agent bootstrap init config failure: %s\n", err.Error())
+			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
 			os.Exit(124)
 		}
 		trcshDriverConfig.DriverConfig.AppRoleConfig = *gTrcshConfig.ConfigRole
 		trcshDriverConfig.DriverConfig.VaultAddress = *gTrcshConfig.VaultAddress
 		serviceDeployments, err := deployutil.GetDeployers(trcshDriverConfig)
 		if err != nil {
-			fmt.Printf("trcsh agent bootstrap get deployers failure: %s\n", err.Error())
+			fmt.Printf("drone trcsh agent bootstrap get deployers failure: %s\n", err.Error())
 			os.Exit(124)
 		}
 		deploymentShards := strings.Split(deploymentsShard, ",")
