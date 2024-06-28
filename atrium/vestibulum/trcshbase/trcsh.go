@@ -315,18 +315,18 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		if len(deploymentsShard) == 0 {
 			deploymentsKey = strings.Replace(deploymentsKey, "-", "_", 1)
 			if len(deploymentsKey) == 0 {
-				fmt.Printf("%strcsh on windows requires a %s.\n", droneName, deploymentsKey)
+				fmt.Printf("%strcsh requires a %s.\n", droneName, deploymentsKey)
 				os.Exit(-1)
 			}
 		}
 
 		if len(agentToken) == 0 {
-			fmt.Println(droneName + "trcsh on windows requires AGENT_TOKEN.")
+			fmt.Println(droneName + "trcsh requires AGENT_TOKEN.")
 			os.Exit(-1)
 		}
 
 		if len(agentEnv) == 0 {
-			fmt.Println(droneName + "trcsh on windows requires AGENT_ENV.")
+			fmt.Println(droneName + "trcsh requires AGENT_ENV.")
 			os.Exit(-1)
 		}
 
@@ -335,11 +335,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		if len(address) == 0 {
-			fmt.Println(droneName + "trcsh on windows requires VAULT_ADDR address.")
+			fmt.Println(droneName + "trcsh requires VAULT_ADDR address.")
 			os.Exit(-1)
 		}
 		if err := capauth.ValidateVhost(address, "https://"); err != nil {
-			fmt.Printf(droneName+"trcsh on windows requires supported VAULT_ADDR address: %s\n", err.Error())
+			fmt.Printf(droneName+"trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
 			os.Exit(124)
 		}
 		memprotectopts.MemProtect(nil, &agentToken)
