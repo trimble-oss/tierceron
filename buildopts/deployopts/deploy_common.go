@@ -37,6 +37,7 @@ func GetDecodedDeployerId(deployerCode string) (string, bool) {
 // Override if you wish to provide a different encoding.
 func GetEncodedDeployerId(deployer string, env string) (string, bool) {
 	if code, ok := succinctly.QCode(deployer); ok {
+		env = strings.Split(env, "_")[0]
 		return fmt.Sprintf("%s.%s", code, env), true
 	} else {
 		return "", false
