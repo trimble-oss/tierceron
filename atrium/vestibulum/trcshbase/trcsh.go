@@ -235,28 +235,19 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtectInit(nil)
 	}
 	eUtils.InitHeadless(true)
-	var regionPtr, trcPathPtr *string
+	var regionPtr, trcPathPtr, projectServicePtr *string
+	var dronePtr *bool
 	// Initiate signal handling.
 	var ic chan os.Signal = make(chan os.Signal, 5)
 
 	if !eUtils.IsWindows() {
-		signal.Notify(ic, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGABRT)
-	} else {
-		signal.Notify(ic, os.Interrupt)
-	}
-	go func() {
-		x := <-ic
-		interruptChan <- x
-	}()
-
-	if !eUtils.IsWindows() {
-		var pathParam string
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
 		} else {
 			util.CheckNotSudo()
 		}
+
 		if len(os.Args) > 1 {
 			if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
 				// Running as shell.
@@ -265,10 +256,25 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
-		projectServicePtr := flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
+		projectServicePtr = flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
+		dronePtr = flagset.Bool("drone", false, "Run as drone.")
+		signal.Notify(ic, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGABRT)
+	} else {
+		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
+		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
+		dronePtr = new(bool)
+		*dronePtr = false
 
-		flagset.Parse(argLines[1:])
+		signal.Notify(ic, os.Interrupt)
+	}
+	go func() {
+		x := <-ic
+		interruptChan <- x
+	}()
 
+	flagset.Parse(argLines[1:])
+
+	if !eUtils.IsWindows() && !*dronePtr {
 		if len(*appRoleIDPtr) == 0 {
 			*appRoleIDPtr = os.Getenv("DEPLOY_ROLE")
 		}
@@ -277,7 +283,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			*secretIDPtr = os.Getenv("DEPLOY_SECRET")
 		}
 
-		pathParam = os.Getenv("PATH_PARAM")
+		var pathParam = os.Getenv("PATH_PARAM")
 
 		memprotectopts.MemProtect(nil, secretIDPtr)
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
@@ -294,10 +300,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
-
-		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
-		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
-		flagset.Parse(argLines[1:])
 
 		//Replace dev-1 with DEPLOYMENTS-1
 		deploymentsKey := "DEPLOYMENTS"
