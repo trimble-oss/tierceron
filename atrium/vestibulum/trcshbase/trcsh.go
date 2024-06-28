@@ -165,7 +165,7 @@ func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 }
 
 // EnableDeploy - initializes and starts running deployer for provided deployment and environment.
-func EnableDeployer(env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string) {
+func EnableDeployer(env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string, dronePtr *bool) {
 	trcshDriverConfig, err := TrcshInitConfig(env, region, "", outputMemCache)
 	if err != nil {
 		fmt.Printf("Initialization setup error: %s\n", err.Error())
@@ -206,7 +206,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 
 	go captiplib.FeatherCtlEmitter(trcshDriverConfig.FeatherCtx, trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan, deployerEmote, nil)
 
-	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, "", deployment, trcPath, "", secretId, approleId, false)
+	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, "", deployment, trcPath, "", secretId, approleId, false, dronePtr)
 }
 
 // This is a controller program that can act as any command line utility.
@@ -294,7 +294,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		//Open deploy script and parse it.
-		ProcessDeploy(nil, config, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true)
+		ProcessDeploy(nil, config, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
 	} else {
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
@@ -387,7 +387,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		deployopts.BuildOptions.InitSupportedDeployers(deployments)
 
 		for _, deployment := range deployments {
-			EnableDeployer(*gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, false, deployment)
+			EnableDeployer(*gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, false, deployment, dronePtr)
 		}
 
 		<-shutdown
@@ -691,7 +691,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	}
 }
 
-func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
+func processDroneCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	onceKubeInit *sync.Once,
 	PipeOS billy.File,
 	env string,
@@ -723,7 +723,16 @@ func processWindowsCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 // Returns:
 //
 //	Nothing.
-func ProcessDeploy(featherCtx *cap.FeatherContext, trcshDriverConfig *capauth.TrcshDriverConfig, token string, deployment string, trcPath string, projectServicePtr string, secretId *string, approleId *string, outputMemCache bool) {
+func ProcessDeploy(featherCtx *cap.FeatherContext,
+	trcshDriverConfig *capauth.TrcshDriverConfig,
+	token string,
+	deployment string,
+	trcPath string,
+	projectServicePtr string,
+	secretId *string,
+	approleId *string,
+	outputMemCache bool,
+	dronePtr *bool) {
 
 	// Verify Billy implementation
 	configMemFs := trcshDriverConfig.DriverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
@@ -1028,14 +1037,14 @@ collaboratorReRun:
 					os.Args = deployArgs
 				}
 			}
-			if eUtils.IsWindows() {
+			if eUtils.IsWindows() || *dronePtr {
 				// Log for traceability.
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(deployLine)
 				region := ""
 				if len(trcshDriverConfig.DriverConfig.Regions) > 0 {
 					region = trcshDriverConfig.DriverConfig.Regions[0]
 				}
-				err := processWindowsCmds(
+				err := processDroneCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
 					PipeOS,
@@ -1091,7 +1100,7 @@ collaboratorReRun:
 			}
 		}
 	}
-	if eUtils.IsWindows() {
+	if eUtils.IsWindows() || *dronePtr {
 		for {
 			completeOnce := false
 			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
