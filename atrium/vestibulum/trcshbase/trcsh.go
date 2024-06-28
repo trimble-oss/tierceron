@@ -262,7 +262,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		signal.Notify(ic, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGABRT)
 	} else {
 		dronePtr = new(bool)
-		*dronePtr = false
+		*dronePtr = true
 
 		signal.Notify(ic, os.Interrupt)
 	}
@@ -273,7 +273,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 	flagset.Parse(argLines[1:])
 
-	if !eUtils.IsWindows() && !*dronePtr {
+	if !*dronePtr {
 		if len(*appRoleIDPtr) == 0 {
 			*appRoleIDPtr = os.Getenv("DEPLOY_ROLE")
 		}
@@ -1037,7 +1037,7 @@ collaboratorReRun:
 					os.Args = deployArgs
 				}
 			}
-			if eUtils.IsWindows() || *dronePtr {
+			if *dronePtr {
 				// Log for traceability.
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(deployLine)
 				region := ""
@@ -1100,7 +1100,7 @@ collaboratorReRun:
 			}
 		}
 	}
-	if eUtils.IsWindows() || *dronePtr {
+	if *dronePtr {
 		for {
 			completeOnce := false
 			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
