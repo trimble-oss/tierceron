@@ -240,6 +240,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	// Initiate signal handling.
 	var ic chan os.Signal = make(chan os.Signal, 5)
 
+	regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
+	trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
+
 	if !eUtils.IsWindows() {
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
@@ -254,14 +257,10 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				os.Args[1] = "-c=" + os.Args[1]
 			}
 		}
-		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
-		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 		projectServicePtr = flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
 		dronePtr = flagset.Bool("drone", false, "Run as drone.")
 		signal.Notify(ic, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGABRT)
 	} else {
-		regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
-		trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 		dronePtr = new(bool)
 		*dronePtr = false
 
