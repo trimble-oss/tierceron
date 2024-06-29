@@ -56,9 +56,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			if trcProjectService, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
 				var content []byte
 				trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
-				trcshDriverConfig.DriverConfig.ZeroConfig = true
 				contentArray, _, _, err := vcutils.ConfigTemplate(&trcshDriverConfig.DriverConfig, mod, fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string)), true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
-				trcshDriverConfig.DriverConfig.ZeroConfig = false
 				if err != nil {
 					eUtils.LogErrorObject(&trcshDriverConfig.DriverConfig.CoreConfig, err, false)
 					return nil, err

@@ -259,7 +259,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 			serviceFound := false
 			var acceptedTemplatePaths []string
 			for _, templatePath := range templatePaths {
-				_, _, templatePath = vcutils.GetProjectService(driverConfig, templatePath)
+				_, _, _, templatePath = vcutils.GetProjectService(driverConfig, templatePath)
 				_, _, indexed, _ := helperkv.PreCheckEnvironment(mod.Env)
 				//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
 				if (strings.Contains(mod.Env, ".") || len(driverConfig.ProjectSections) > 0) && !serviceFound {
@@ -369,7 +369,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 			env = envVersion[0]
 			version = envVersion[1]
 			//check for template_files directory here
-			project, service, tp = vcutils.GetProjectService(dc, tp)
+			project, service, _, tp = vcutils.GetProjectService(dc, tp)
 			useCache := true
 
 			if dc.Token != "" && dc.Token != "novault" {
@@ -748,7 +748,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigC
 
 		for _, templatePath := range tempTemplatePaths {
 
-			project, service, templatePath := vcutils.GetProjectService(driverConfig, templatePath)
+			project, service, _, templatePath := vcutils.GetProjectService(driverConfig, templatePath)
 
 			envVersion := eUtils.SplitEnv(driverConfig.Env)
 

@@ -108,8 +108,9 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 			MemFs: &trcshMemFs.TrcshMemFs{
 				BillyFs: memfs.New(),
 			},
-			Regions:   regions,
-			PathParam: pathParam, // Make available to trcplgtool
+			ZeroConfig: true,
+			Regions:    regions,
+			PathParam:  pathParam, // Make available to trcplgtool
 		},
 	}
 	return trcshDriverConfig, nil
@@ -287,14 +288,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtect(nil, secretIDPtr)
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
 
-		config, err := TrcshInitConfig(*envPtr, *regionPtr, pathParam, true)
+		trcshDriverConfig, err := TrcshInitConfig(*envPtr, *regionPtr, pathParam, true)
 		if err != nil {
 			fmt.Printf("trcsh config setup failure: %s\n", err.Error())
 			os.Exit(124)
 		}
 
 		//Open deploy script and parse it.
-		ProcessDeploy(nil, config, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
+		ProcessDeploy(nil, trcshDriverConfig, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
 	} else {
 		agentToken := os.Getenv("AGENT_TOKEN")
 		agentEnv := os.Getenv("AGENT_ENV")
@@ -485,7 +486,7 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 	return nil
 }
 
-func roleBasedRunner(env string,
+func roleBasedRunner(
 	region string,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	control string,
@@ -497,7 +498,6 @@ func roleBasedRunner(env string,
 	*configCount -= 1
 	trcshDriverConfig.DriverConfig.AppRoleConfig = "config.yml"
 	trcshDriverConfig.DriverConfig.FileFilter = nil
-	trcshDriverConfig.DriverConfig.EnvBasis = env
 	trcshDriverConfig.DriverConfig.CoreConfig.WantCerts = false
 	trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Role runner init: %s\n", control)
@@ -513,15 +513,16 @@ func roleBasedRunner(env string,
 		trcshDriverConfig.DriverConfig.EndDir = "."
 	}
 	configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
-	tokenName := "config_token_" + env
+	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.EnvBasis
 	tokenConfig := ""
-	configEnv := env
+	configEnv := trcshDriverConfig.DriverConfig.EnvBasis
 	var err error
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Role runner complete: %s\n", control)
 
 	switch control {
 	case "trcplgtool":
 		tokenConfig := token
+		configEnv = trcshDriverConfig.DriverConfig.Env
 		err = trcplgtoolbase.CommonMain(&configEnv, &trcshDriverConfig.DriverConfig.VaultAddress, &tokenConfig, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
 	case "trcconfig":
 		if trcshDriverConfig.DriverConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.EnvBasis == "prod" ||
@@ -576,7 +577,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			trcshDriverConfig.DriverConfig.Token = token
 		}
 	case "trcconfig":
-		err := roleBasedRunner(env, region, trcshDriverConfig, control, isAgentToken, token, argsOrig, deployArgLines, configCount)
+		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, token, argsOrig, deployArgLines, configCount)
 		if err != nil {
 			os.Exit(1)
 		}
@@ -651,7 +652,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
 		}
 
-		err := roleBasedRunner(env, region, trcshDriverConfig, control, isAgentToken, *gTrcshConfig.CToken, argsOrig, deployArgLines, configCount)
+		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, *gTrcshConfig.CToken, argsOrig, deployArgLines, configCount)
 		if err != nil {
 			os.Exit(1)
 		}
@@ -694,7 +695,6 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 func processDroneCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	onceKubeInit *sync.Once,
 	PipeOS billy.File,
-	env string,
 	region string,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	control string,
@@ -704,7 +704,7 @@ func processDroneCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	deployArgLines []string,
 	configCount *int) error {
 
-	err := roleBasedRunner(env, region, trcshDriverConfig, control, isAgentToken, token, argsOrig, deployArgLines, configCount)
+	err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, token, argsOrig, deployArgLines, configCount)
 	return err
 }
 
@@ -1048,7 +1048,6 @@ collaboratorReRun:
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
 					PipeOS,
-					trcshDriverConfig.DriverConfig.Env,
 					region,
 					trcshDriverConfig,
 					control,

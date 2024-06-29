@@ -227,7 +227,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 			mod.Env = driverConfig.Env
 			mod.Version = version
 			//check for template_files directory here
-			project, service, templatePath := GetProjectService(driverConfig, templatePath)
+			project, service, _, templatePath := GetProjectService(driverConfig, templatePath)
 
 			var isCert bool
 			if service != "" {
@@ -249,18 +249,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 					goto wait
 				}
 
-				if strings.HasSuffix(templatePath, ".tmpl") {
-					if !driverConfig.ZeroConfig {
-						if strings.HasSuffix(templatePath, "nc.properties.tmpl") {
-							goto wait
-						}
-					} else {
-						if !strings.HasSuffix(templatePath, "nc.properties.tmpl") {
-							goto wait
-						}
-					}
-				}
-
 				var configuredTemplate string
 				var certData map[int]string
 				certLoaded := false
@@ -279,7 +267,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 					goto wait
 				} else {
 					var ctErr error
-					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, false)
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, driverConfig.ZeroConfig)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
 							if !driverConfig.CoreConfig.WantCerts || strings.Contains(templatePath, "Common") {

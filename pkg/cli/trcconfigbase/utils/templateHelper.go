@@ -22,7 +22,7 @@ import (
 // GetProjectService - returns project, service, and path to template on filesystem.
 // templateFile - full path to template file
 // returns project, service, templatePath
-func GetProjectService(driverConfig *eUtils.DriverConfig, templateFile string) (string, string, string) {
+func GetProjectService(driverConfig *eUtils.DriverConfig, templateFile string) (string, string, int, string) {
 	templateFile = strings.ReplaceAll(templateFile, "\\", "/")
 	splitDir := strings.Split(templateFile, "/")
 	var project, service string
@@ -37,6 +37,7 @@ func GetProjectService(driverConfig *eUtils.DriverConfig, templateFile string) (
 
 	project = splitDir[offsetBase+1]
 	service = splitDir[offsetBase+2]
+	serviceIndex := offsetBase + 2
 
 	// Clean up service naming (Everything after '.' removed)
 	dotIndex := strings.Index(service, ".")
@@ -44,7 +45,7 @@ func GetProjectService(driverConfig *eUtils.DriverConfig, templateFile string) (
 		service = service[0:dotIndex]
 	}
 
-	return project, service, templateFile
+	return project, service, serviceIndex, templateFile
 }
 
 // GetTemplate makes a request to the vault for the template found in <project>/<service>/<file>/template-file
@@ -52,11 +53,16 @@ func GetProjectService(driverConfig *eUtils.DriverConfig, templateFile string) (
 func GetTemplate(driverConfig *eUtils.DriverConfig, modifier *helperkv.Modifier, templatePath string) (string, error) {
 	// Get template data from information in request.
 	//  ./trc_templates/Project/Service/configfile.yml.tmpl
-	project, service, templateFile := GetProjectService(driverConfig, templatePath)
+	project, service, serviceIndex, templateFile := GetProjectService(driverConfig, templatePath)
 
 	// templateFile currently has full path, but we don't want all that...  Scrub it down.
 	splitDir := strings.Split(templateFile, "/")
-	templateFile = splitDir[len(splitDir)-1]
+	if serviceIndex < len(splitDir)-1 {
+		templateFile = strings.Join(splitDir[serviceIndex+1:], "/")
+	} else {
+		// Just last entry...
+		templateFile = splitDir[len(splitDir)-1]
+	}
 
 	if strings.Contains(templateFile, ".tmpl") {
 		templateFile = templateFile[0 : len(templateFile)-len(".tmpl")]

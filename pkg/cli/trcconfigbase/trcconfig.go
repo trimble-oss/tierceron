@@ -213,6 +213,7 @@ func CommonMain(envPtr *string,
 			Insecure:   *insecurePtr,
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
+			ZeroConfig: *zcPtr,
 		}
 
 		appRoleConfigPtr = new(string)
@@ -493,7 +494,7 @@ func CommonMain(envPtr *string,
 			StartDir:          driverConfigBase.StartDir,
 			EndDir:            driverConfigBase.EndDir,
 			WantKeystore:      *keyStorePtr,
-			ZeroConfig:        *zcPtr,
+			ZeroConfig:        driverConfigBase.ZeroConfig,
 			GenAuth:           false,
 			OutputMemCache:    driverConfigBase.OutputMemCache,
 			MemFs:             driverConfigBase.MemFs,
