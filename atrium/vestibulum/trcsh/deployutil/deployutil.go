@@ -39,7 +39,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			tempEnv := trcshDriverConfig.DriverConfig.EnvBasis
 			envParts := strings.Split(trcshDriverConfig.DriverConfig.EnvBasis, "-")
 			mod.Env = envParts[0]
-			fmt.Printf("Loading deployment details for %s and env %s", deployment, mod.Env)
+			fmt.Printf("Loading deployment details for %s and env %s\n", deployment, mod.Env)
 			deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
 			mod.Env = tempEnv
 			if err != nil {

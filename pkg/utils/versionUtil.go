@@ -143,13 +143,13 @@ func BoundCheck(driverConfig *DriverConfig, versionNumbers []int, version string
 	}
 }
 
-func GetProjectServices(templateFiles []string) ([]string, []string, []string) {
+func GetProjectServices(driverConfig *DriverConfig, templateFiles []string) ([]string, []string, []string) {
 	projects := []string{}
 	services := []string{}
 	templateFilesContents := []string{}
 
 	for _, templateFile := range templateFiles {
-		project, service, templateFileContent := GetProjectService(templateFile)
+		project, service, _, templateFileContent := GetProjectService(driverConfig, templateFile)
 
 		projects = append(projects, project)
 		services = append(services, service)
@@ -159,33 +159,52 @@ func GetProjectServices(templateFiles []string) ([]string, []string, []string) {
 	return projects, services, templateFilesContents
 }
 
-func GetProjectService(templateFile string) (string, string, string) {
+// GetProjectService - returns project, service, and path to template on filesystem.
+// driverConfig - driver configuration
+// templateFile - full path to template file
+// returns project, service, templatePath
+func GetProjectService(driverConfig *DriverConfig, templateFile string) (string, string, int, string) {
 	templateFile = strings.ReplaceAll(strings.ReplaceAll(templateFile, "\\\\", "/"), "\\", "/")
 	splitDir := strings.Split(templateFile, "/")
 	var project, service string
 	offsetBase := 0
+	var startDir []string = nil
+	if driverConfig != nil {
+		startDir = driverConfig.StartDir
+	}
 
 	for i, component := range splitDir {
-		if component == coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates" {
+		if component == coreopts.BuildOptions.GetFolderPrefix(startDir)+"_templates" {
 			offsetBase = i
 			break
 		}
 	}
 
 	project = splitDir[offsetBase+1]
-	service = splitDir[offsetBase+2]
-
-	// Clean up service naming (Everything after '.' removed)
-	if !strings.Contains(templateFile, "Common") {
-		dotIndex := strings.Index(service, ".")
-		if dotIndex > 0 && dotIndex <= len(service) {
-			service = service[0:dotIndex]
+	var serviceIndex int
+	if len(project) == 0 && len(driverConfig.DeploymentConfig) > 0 {
+		if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok {
+			projectServiceParts := strings.Split(projectService.(string), "/")
+			project = projectServiceParts[0]
+			service = projectServiceParts[1]
+			serviceIndex = 0
 		}
-	} else if strings.Contains(service, ".mf.tmpl") {
-		service = strings.Split(service, ".mf.tmpl")[0]
+	} else {
+		service = splitDir[offsetBase+2]
+		serviceIndex = offsetBase + 2
+
+		// Clean up service naming (Everything after '.' removed)
+		if !strings.Contains(templateFile, "Common") {
+			dotIndex := strings.Index(service, ".")
+			if dotIndex > 0 && dotIndex <= len(service) {
+				service = service[0:dotIndex]
+			}
+		} else if strings.Contains(service, ".mf.tmpl") {
+			service = strings.Split(service, ".mf.tmpl")[0]
+		}
 	}
 
-	return project, service, templateFile
+	return project, service, serviceIndex, templateFile
 }
 
 func GetTemplateFileName(templateFile string, service string) string {

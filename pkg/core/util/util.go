@@ -310,7 +310,8 @@ func GetPluginToolConfig(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifi
 
 	driverConfig.CoreConfig.Log.Println("GetPluginToolConfig loading plugin data.")
 	for _, templatePath := range templatePaths {
-		project, service, _ := eUtils.GetProjectService(templatePath)
+		// TODO: Chewbacca -- could pass in driverConfig but we didn't before...
+		project, service, _, _ := eUtils.GetProjectService(nil, templatePath)
 		driverConfig.CoreConfig.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + driverConfig.SubSectionValue + " service: " + service)
 
 		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 {
