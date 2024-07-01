@@ -41,6 +41,7 @@ func main() {
 	flagset.Usage = func() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
 		flagset.PrintDefaults()
+		fmt.Fprintf(flagset.Output(), "\nexample: trcctl {pub, sub, init, config, x} {flags}\n")
 	}
 	envPtr := flagset.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 	tokenPtr := flagset.String("token", "", "Vault access token")
