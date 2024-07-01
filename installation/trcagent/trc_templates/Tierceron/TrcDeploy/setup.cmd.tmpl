@@ -1,3 +1,14 @@
+REM Installation instructions:
+REM 1. This script expects the following files in them same directory as itself:
+REM   - nssm.exe
+REM   - serv_cert.pem
+REM   - trcsh.exe
+REM 2. Copy this script alongside the above files into the Windows machine you wish to deploy it on
+REM 3. Run this script as administrator (Right Click -> Run as Administrator)
+REM 4. Answer the prompts as needed.
+REM 5. The script should complete successfully, moving the above files and opening File Explorer at the install directory.
+REM 6. Verify the TrcAgent is running successfully by examining the log file.
+
 @echo off
 @setlocal enableextensions
 @cd /d "%~dp0"
