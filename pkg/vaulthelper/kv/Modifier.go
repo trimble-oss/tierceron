@@ -679,7 +679,7 @@ func (m *Modifier) AdjustValue(path string, data map[string]interface{}, n int, 
 			// Convert from stored string value to int
 			oldValue, err := strconv.Atoi(oldData[metricsKey].(string))
 			if err != nil {
-				logger.Printf("Could not convert value to int at: " + metricsKey)
+				logger.Printf("Could not convert value to int at: " + strings.ReplaceAll(metricsKey, "\n", ""))
 				continue
 			}
 			newValue := strconv.Itoa(oldValue + n)
