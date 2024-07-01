@@ -1,6 +1,3 @@
-//go:build azrcr
-// +build azrcr
-
 package repository
 
 import (
@@ -299,4 +296,6 @@ func ValidateRepository(driverConfig *eUtils.DriverConfig, pluginToolConfig map[
 		driverConfig.CoreConfig.Log.Printf("Trcplugin undefined.  Refusing to continue.\n")
 		return errors.New("undefined trcplugin")
 	}
+
+  return nil
 }
