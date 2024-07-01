@@ -52,9 +52,9 @@ if exist .\nssm.exe (
 
   if exist %startDirTrailing%\nssm.exe" (
     echo Installing service
-    %startDirTrailing%nssm.exe" install TrcDeploy "trcsh.exe"
-    %startDirTrailing%nssm.exe" set TrcDeploy AppDirectory %startDir%
-    %startDirTrailing%nssm.exe" set TrcDeploy AppParameters "-env=%combined%"
+    %startDirTrailing%\nssm.exe" install TrcDeploy "trcsh.exe"
+    %startDirTrailing%\nssm.exe" set TrcDeploy AppDirectory %startDir%
+    %startDirTrailing%\nssm.exe" set TrcDeploy AppParameters "-env=%combined%"
 
     echo Starting TrcDeploy...
     %startDirTrailing%\nssm.exe" start TrcDeploy
