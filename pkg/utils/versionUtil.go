@@ -173,8 +173,10 @@ func GetProjectService(driverConfig *DriverConfig, templateFile string) (string,
 		startDir = driverConfig.StartDir
 	}
 
+	trcTemplateParam := coreopts.BuildOptions.GetFolderPrefix(startDir) + "_templates"
+
 	for i, component := range splitDir {
-		if component == coreopts.BuildOptions.GetFolderPrefix(startDir)+"_templates" {
+		if component == trcTemplateParam {
 			offsetBase = i
 			break
 		}
@@ -190,8 +192,8 @@ func GetProjectService(driverConfig *DriverConfig, templateFile string) (string,
 			serviceIndex = 0
 		}
 	} else {
-		service = splitDir[offsetBase+2]
 		serviceIndex = offsetBase + 2
+		service = splitDir[serviceIndex]
 
 		// Clean up service naming (Everything after '.' removed)
 		if !strings.Contains(templateFile, "Common") {

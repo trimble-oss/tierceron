@@ -515,24 +515,24 @@ func roleBasedRunner(
 	configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
 	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.EnvBasis
 	tokenConfig := ""
-	configEnv := trcshDriverConfig.DriverConfig.EnvBasis
+	envDefaultPtr := trcshDriverConfig.DriverConfig.EnvBasis
 	var err error
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Role runner complete: %s\n", control)
 
 	switch control {
 	case "trcplgtool":
 		tokenConfig := token
-		configEnv = trcshDriverConfig.DriverConfig.Env
-		err = trcplgtoolbase.CommonMain(&configEnv, &trcshDriverConfig.DriverConfig.VaultAddress, &tokenConfig, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
+		envDefaultPtr = trcshDriverConfig.DriverConfig.Env
+		err = trcplgtoolbase.CommonMain(&envDefaultPtr, &trcshDriverConfig.DriverConfig.VaultAddress, &tokenConfig, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
 	case "trcconfig":
 		if trcshDriverConfig.DriverConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.EnvBasis == "prod" ||
 			trcshDriverConfig.DriverConfig.Env == "itdev" || trcshDriverConfig.DriverConfig.Env == "staging" || trcshDriverConfig.DriverConfig.Env == "prod" {
 			trcshDriverConfig.DriverConfig.OutputMemCache = false
 		}
-		err = trcconfigbase.CommonMain(&configEnv, &trcshDriverConfig.DriverConfig.VaultAddress, &tokenConfig, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, &trcshDriverConfig.DriverConfig)
+		err = trcconfigbase.CommonMain(&envDefaultPtr, &trcshDriverConfig.DriverConfig.VaultAddress, &tokenConfig, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, &trcshDriverConfig.DriverConfig)
 	case "trcsub":
 		trcshDriverConfig.DriverConfig.EndDir = trcshDriverConfig.DriverConfig.EndDir + "/trc_templates"
-		err = trcsubbase.CommonMain(&configEnv, &trcshDriverConfig.DriverConfig.VaultAddress, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], nil, deployArgLines, &trcshDriverConfig.DriverConfig)
+		err = trcsubbase.CommonMain(&envDefaultPtr, &trcshDriverConfig.DriverConfig.VaultAddress, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], nil, deployArgLines, &trcshDriverConfig.DriverConfig)
 	}
 	ResetModifier(&trcshDriverConfig.DriverConfig) //Resetting modifier cache to avoid token conflicts.
 
