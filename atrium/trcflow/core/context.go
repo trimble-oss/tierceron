@@ -397,7 +397,7 @@ func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(trcfc *TrcF
 }
 
 func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(trcfc *TrcFlowContext, flowTemplatePath string) (map[string]interface{}, bool) {
-	flowProject, flowService, flowConfigTemplatePath := eUtils.GetProjectService(flowTemplatePath)
+	flowProject, flowService, _, flowConfigTemplatePath := eUtils.GetProjectService(nil, flowTemplatePath)
 	flowConfigTemplateName := eUtils.GetTemplateFileName(flowConfigTemplatePath, flowService)
 	trcfc.GoMod.SectionKey = "/Restricted/"
 	trcfc.GoMod.SectionName = flowService

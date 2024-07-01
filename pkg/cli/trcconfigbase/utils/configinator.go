@@ -71,24 +71,72 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 	templatePaths := []string{}
 	endPaths := []string{}
 
+	var trcProjectService string = ""
+	var dosProjectService string = ""
+	var trcService string = ""
+	var dosService string = ""
+
+	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && strings.Contains(projectService.(string), "/") || len(driverConfig.ServicesWanted) == 1 {
+		if ok && len(driverConfig.ServicesWanted) == 0 {
+			trcProjectService = projectService.(string)
+		} else {
+			trcProjectService = driverConfig.ServicesWanted[0]
+		}
+		if !strings.HasSuffix(trcProjectService, "/") {
+			trcProjectService = trcProjectService + "/"
+		}
+		dosProjectService = strings.Replace(trcProjectService, "/", "\\", 1)
+
+		if len(driverConfig.StartDir) > 1 {
+			trcProjectServiceParts := strings.Split(trcProjectService, "/")
+			project := trcProjectServiceParts[0] + "/"
+			trcService = "/" + trcProjectServiceParts[1] + "/"
+			dosService = strings.Replace(trcService, "/", "\\", 1)
+			startDirFiltered := []string{}
+			for _, startDir := range driverConfig.StartDir {
+				if strings.HasSuffix(startDir, project) {
+					startDirFiltered = append(startDirFiltered, startDir)
+				}
+			}
+			driverConfig.StartDir = startDirFiltered
+		}
+	}
+
 	//templatePaths
 	for _, startDir := range driverConfig.StartDir {
 		//get files from directory
 		tp, ep := getDirFiles(startDir, driverConfig.EndDir)
-		if trcProjectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && strings.Contains(trcProjectService.(string), "/") || len(driverConfig.ServicesWanted) == 1 {
-			if trcProjectService == nil {
-				// Chewbacca: Fix duplicate /'s
-				trcProjectService = driverConfig.ServicesWanted[0]
-			}
+		if len(trcProjectService) > 0 {
 			epScrubbed := []string{}
+			tpScrubbed := []string{}
 			// Do some scrubbing...
-			for _, e := range ep {
-				e = strings.Replace(e, trcProjectService.(string), "/", 1)
-				projectService := strings.Replace(trcProjectService.(string), "/", "\\", 1)
-				e = strings.Replace(e, projectService, "\\", 1)
-				epScrubbed = append(epScrubbed, e)
+			for ie, e := range ep {
+				matched := false
+				if strings.Contains(e, trcProjectService) {
+					e = strings.Replace(e, trcProjectService, "/", 1)
+					matched = true
+				} else if strings.Contains(e, trcService) {
+					e = strings.Replace(e, trcService, "/", 1)
+					matched = true
+				} else if strings.Contains(e, dosProjectService) {
+					e = strings.Replace(e, dosProjectService, "\\", 1)
+					matched = true
+				} else {
+					if strings.Contains(e, dosService) {
+						e = strings.Replace(e, dosService, "\\", 1)
+						matched = true
+					}
+				}
+				if matched {
+					epScrubbed = append(epScrubbed, e)
+					tpScrubbed = append(tpScrubbed, tp[ie])
+				}
 			}
-			ep = epScrubbed
+			if len(epScrubbed) > 0 {
+				// Only overwrite if something
+				ep = epScrubbed
+				tp = tpScrubbed
+			}
 		}
 
 		templatePaths = append(templatePaths, tp...)
@@ -116,7 +164,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 		if !driverConfig.CoreConfig.WantCerts && strings.Contains(templatePath, "Common") {
 			continue
 		}
-		_, service, _ := eUtils.GetProjectService(templatePath)                  //This checks for nested project names
+		_, service, _, _ := eUtils.GetProjectService(driverConfig, templatePath) //This checks for nested project names
 		driverConfig.VersionFilter = append(driverConfig.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 	}
 
@@ -227,7 +275,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 			mod.Env = driverConfig.Env
 			mod.Version = version
 			//check for template_files directory here
-			project, service, templatePath := GetProjectService(driverConfig, templatePath)
+			project, service, _, templatePath := eUtils.GetProjectService(driverConfig, templatePath)
 
 			var isCert bool
 			if service != "" {
@@ -249,18 +297,6 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 					goto wait
 				}
 
-				if strings.HasSuffix(templatePath, ".tmpl") {
-					if !driverConfig.ZeroConfig {
-						if strings.HasSuffix(templatePath, "nc.properties.tmpl") {
-							goto wait
-						}
-					} else {
-						if !strings.HasSuffix(templatePath, "nc.properties.tmpl") {
-							goto wait
-						}
-					}
-				}
-
 				var configuredTemplate string
 				var certData map[int]string
 				certLoaded := false
@@ -279,7 +315,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 					goto wait
 				} else {
 					var ctErr error
-					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, false)
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, driverConfig.ZeroConfig)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
 							if !driverConfig.CoreConfig.WantCerts || strings.Contains(templatePath, "Common") {

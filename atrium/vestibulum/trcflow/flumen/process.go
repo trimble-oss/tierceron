@@ -90,7 +90,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
 		FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
 	}
-	projects, services, _ := eUtils.GetProjectServices(pluginConfig["connectionPath"].([]string))
+	projects, services, _ := eUtils.GetProjectServices(nil, pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
 	var vaultDatabaseConfig map[string]interface{}
 	var spiralDatabaseConfig map[string]interface{}
@@ -198,7 +198,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	flowStateReceiverMap := map[string]chan flowcorehelper.FlowStateUpdate{}
 
 	for _, template := range templateList {
-		source, service, tableTemplateName := eUtils.GetProjectService(template)
+		source, service, _, tableTemplateName := eUtils.GetProjectService(nil, template)
 		tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
 		if tableName != flowcorehelper.TierceronFlowConfigurationTableName {
 			driverConfigBasis.VersionFilter = append(driverConfigBasis.VersionFilter, tableName)

@@ -23,7 +23,7 @@ import (
 // The file is saved under the data key, and the extension under the ext key
 // Vault automatically encodes the file into base64
 
-func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
+func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
 	flagset *flag.FlagSet,
@@ -32,6 +32,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
+	var envPtr *string = nil
 
 	exitOnFailure := false
 	if flagset == nil {
@@ -41,7 +42,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
 			flagset.PrintDefaults()
 		}
-		flagset.String("env", "dev", "Environment to configure")
+		envPtr = flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("secretID", "", "Secret for app role ID")
 		flagset.String("appRoleID", "", "Public app role ID")
@@ -58,6 +59,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
 
 	flagset.Parse(argLines[1:])
+	if envPtr == nil {
+		envPtr = envDefaultPtr
+	}
 
 	if len(*filterTemplatePtr) == 0 && !*projectInfoPtr && *templatePathsPtr == "" {
 		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")

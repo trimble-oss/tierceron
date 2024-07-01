@@ -393,7 +393,7 @@ func PluginDeployedUpdate(driverConfig *eUtils.DriverConfig, mod *helperkv.Modif
 
 	hostRegion := coreopts.BuildOptions.GetRegion(hostName)
 	mod.Regions = append(mod.Regions, hostRegion)
-	projects, services, _ := eUtils.GetProjectServices(cPath)
+	projects, services, _ := eUtils.GetProjectServices(nil, cPath)
 	for _, pluginName := range pluginNameList {
 		for i := 0; i < len(projects); i++ {
 			if services[i] == "Certify" {

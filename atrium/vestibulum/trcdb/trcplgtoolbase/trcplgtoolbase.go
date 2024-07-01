@@ -26,7 +26,7 @@ import (
 	trcapimgmtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcapimgmtbase"
 )
 
-func CommonMain(envPtr *string,
+func CommonMain(envDefaultPtr *string,
 	addrPtr *string,
 	tokenPtr *string,
 	envCtxPtr *string,
@@ -260,7 +260,7 @@ func CommonMain(envPtr *string,
 
 	//
 	if tokenNamePtr == nil || *tokenNamePtr == "" || tokenPtr == nil || *tokenPtr == "" {
-		autoErr := eUtils.AutoAuth(&trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
+		autoErr := eUtils.AutoAuth(&trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
 		if autoErr != nil {
 			eUtils.LogErrorMessage(&trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
@@ -278,7 +278,7 @@ func CommonMain(envPtr *string,
 		fmt.Println("Error: Could not find plugin config")
 		return errors.New("could not find plugin config")
 	}
-	pluginConfig["env"] = *envPtr
+	pluginConfig["env"] = *envDefaultPtr
 	pluginConfig["vaddress"] = *addrPtr
 	if tokenPtr != nil {
 		pluginConfig["token"] = *tokenPtr
@@ -309,12 +309,12 @@ func CommonMain(envPtr *string,
 	} else {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
 	}
-	mod.Env = *envPtr
+	mod.Env = *envDefaultPtr
 	if logger != nil {
 		logger.Printf("Certify mod initialized\n")
 	}
 
-	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
+	if strings.HasPrefix(*envDefaultPtr, "staging") || strings.HasPrefix(*envDefaultPtr, "prod") || strings.HasPrefix(*envDefaultPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
 		if *regionPtr != "" {
 			for _, supportedRegion := range supportedRegions {
@@ -332,7 +332,7 @@ func CommonMain(envPtr *string,
 	}
 
 	if *updateAPIMPtr {
-		updateAPIMError := trcapimgmtbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
+		updateAPIMError := trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
 		if updateAPIMError != nil {
 			fmt.Println(updateAPIMError.Error())
 			fmt.Println("Couldn't update APIM...proceeding with build")

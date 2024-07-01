@@ -41,6 +41,7 @@ func main() {
 	flagset.Usage = func() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
 		flagset.PrintDefaults()
+		fmt.Fprintf(flagset.Output(), "\nexample: trcctl {pub, sub, init, config, x} {flags}\n")
 	}
 	envPtr := flagset.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 	tokenPtr := flagset.String("token", "", "Vault access token")
@@ -108,9 +109,9 @@ func main() {
 		case "init":
 			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext, flagset, os.Args)
 		case "config":
-			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil, nil, os.Args, nil)
+			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil, flagset, os.Args, nil)
 		case "x":
-			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil, nil, os.Args)
+			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil, flagset, os.Args)
 		}
 	}
 }

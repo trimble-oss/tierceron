@@ -141,7 +141,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 			project = driverConfig.VersionFilter[0]
 		}
 		for _, templatePath := range templatePaths {
-			_, service, _ := eUtils.GetProjectService(templatePath) //This checks for nested project names
+			_, service, _, _ := eUtils.GetProjectService(nil, templatePath) //This checks for nested project names
 
 			driverConfig.VersionFilter = append(driverConfig.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 		}
@@ -259,7 +259,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 			serviceFound := false
 			var acceptedTemplatePaths []string
 			for _, templatePath := range templatePaths {
-				_, _, templatePath = vcutils.GetProjectService(driverConfig, templatePath)
+				_, _, _, templatePath = eUtils.GetProjectService(driverConfig, templatePath)
 				_, _, indexed, _ := helperkv.PreCheckEnvironment(mod.Env)
 				//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
 				if (strings.Contains(mod.Env, ".") || len(driverConfig.ProjectSections) > 0) && !serviceFound {
@@ -369,7 +369,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 			env = envVersion[0]
 			version = envVersion[1]
 			//check for template_files directory here
-			project, service, tp = vcutils.GetProjectService(dc, tp)
+			project, service, _, tp = eUtils.GetProjectService(dc, tp)
 			useCache := true
 
 			if dc.Token != "" && dc.Token != "novault" {
@@ -748,7 +748,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigC
 
 		for _, templatePath := range tempTemplatePaths {
 
-			project, service, templatePath := vcutils.GetProjectService(driverConfig, templatePath)
+			project, service, _, templatePath := eUtils.GetProjectService(driverConfig, templatePath)
 
 			envVersion := eUtils.SplitEnv(driverConfig.Env)
 

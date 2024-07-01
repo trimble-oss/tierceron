@@ -72,7 +72,7 @@ var (
 	ENDDIR_DEFAULT = "."
 )
 
-func CommonMain(envPtr *string,
+func CommonMain(envDefaultPtr *string,
 	addrPtr *string,
 	tokenPtr *string,
 	envCtxPtr *string,
@@ -96,6 +96,7 @@ func CommonMain(envPtr *string,
 		ConfigWg:      sync.WaitGroup{},
 		Mutex:         &sync.Mutex{},
 	}
+	var envPtr *string = nil
 
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
@@ -104,7 +105,7 @@ func CommonMain(envPtr *string,
 			flagset.PrintDefaults()
 		}
 
-		flagset.String("env", "dev", "Environment to configure")
+		envPtr = flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.String("secretID", "", "Secret for app role ID")
@@ -172,6 +173,9 @@ func CommonMain(envPtr *string,
 			*wantCertsPtr = true
 		}
 	}
+	if envPtr == nil {
+		envPtr = envDefaultPtr
+	}
 	if !isShell {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 			fmt.Println("Missing required template folder: " + *startDirPtr)
@@ -213,6 +217,7 @@ func CommonMain(envPtr *string,
 			Insecure:   *insecurePtr,
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
+			ZeroConfig: *zcPtr,
 		}
 
 		appRoleConfigPtr = new(string)
@@ -493,7 +498,7 @@ func CommonMain(envPtr *string,
 			StartDir:          driverConfigBase.StartDir,
 			EndDir:            driverConfigBase.EndDir,
 			WantKeystore:      *keyStorePtr,
-			ZeroConfig:        *zcPtr,
+			ZeroConfig:        driverConfigBase.ZeroConfig,
 			GenAuth:           false,
 			OutputMemCache:    driverConfigBase.OutputMemCache,
 			MemFs:             driverConfigBase.MemFs,
