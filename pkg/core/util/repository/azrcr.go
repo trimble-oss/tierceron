@@ -203,8 +203,13 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		pluginToolConfig["acrrepository"].(string),
 		svc, nil)
 
+	if err != nil {
+		driverConfig.CoreConfig.Log.Printf("failed to create blob client: %v", err)
+		return err
+	}
+
 	ctx := context.Background()
-	startRes, err := blobClient.StartUpload(ctx, pluginToolConfig["pluginname"].(string), nil)
+	startRes, err := blobClient.StartUpload(ctx, pluginToolConfig["trcplugin"].(string), nil)
 
 	if err != nil {
 		return errors.New("failed to start upload layer: " + err.Error())
@@ -234,7 +239,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
   },
 }`, layerDigest))
 
-	startRes, err = blobClient.StartUpload(ctx, pluginToolConfig["pluginname"].(string), nil)
+	startRes, err = blobClient.StartUpload(ctx, pluginToolConfig["trcplugin"].(string), nil)
 
 	if err != nil {
 		return errors.New("failed to start upload config: " + err.Error())
@@ -273,7 +278,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	]
 }`, layerDigest, len(config), *completeResp.DockerContentDigest, len(layer))
 
-	uploadManifestRes, err := client.UploadManifest(ctx, pluginToolConfig["pluginname"].(string), "1.0.0",
+	uploadManifestRes, err := client.UploadManifest(ctx, pluginToolConfig["trcplugin"].(string), "1.0.0",
 		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader([]byte(manifest))), nil)
 
 	if err != nil {
@@ -300,5 +305,5 @@ func ValidateRepository(driverConfig *eUtils.DriverConfig, pluginToolConfig map[
 		return errors.New("undefined trcplugin")
 	}
 
-  return nil
+	return nil
 }
