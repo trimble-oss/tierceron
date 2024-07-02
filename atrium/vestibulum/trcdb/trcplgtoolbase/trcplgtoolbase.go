@@ -95,6 +95,9 @@ func CommonMain(envDefaultPtr *string,
 	//APIM flags
 	updateAPIMPtr := flagset.Bool("updateAPIM", false, "Used to update Azure APIM")
 
+	// Cert flags
+	// certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
+
 	if trcshDriverConfig == nil || !trcshDriverConfig.DriverConfig.IsShellSubProcess {
 		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
