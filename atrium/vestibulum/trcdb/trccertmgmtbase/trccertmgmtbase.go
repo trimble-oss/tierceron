@@ -12,8 +12,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
@@ -21,10 +19,6 @@ import (
 func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.Modifier) error {
 	if len(*certPathPtr) == 0 {
 		return errors.New("certPath flag is empty, expected path to cert")
-	}
-
-	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
 	}
 
 	certBytes, err := os.ReadFile(*certPathPtr)
@@ -61,11 +55,19 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 		return err
 	}
 
-	resourceGroupName := apimConfigMap["RESOURCE_GROUP_NAME"]
-	serviceName := apimConfigMap["SERVICE_NAME"]
+	resourceGroupName, exists := apimConfigMap["RESOURCE_GROUP_NAME"]
+	if !exists {
+		return errors.New("RESOURCE_GROUP_NAME is not populated in apimConfigMap")
+	}
+
+	serviceName, exists := apimConfigMap["SERVICE_NAME"]
+	if !exists {
+		return errors.New("SERVICE_NAME is not populated in apimConfigMap")
+	}
+
 	certificateId := time.Now().UTC().Format(strings.ReplaceAll(time.RFC3339, ":", "-"))
 
-	etag := "*" //Wildcard match on eTag, otherwise it doesn't match from command above.
+	etag := "*"
 
 	_, err = clientFactory.NewCertificateClient().CreateOrUpdate(ctx, resourceGroupName, serviceName, certificateId, armapimanagement.CertificateCreateOrUpdateParameters{
 		Properties: &armapimanagement.CertificateCreateOrUpdateProperties{
@@ -79,6 +81,6 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 		return err
 	}
 
-	fmt.Println("Success!")
+	fmt.Printf("Certificate %v successfully deployed\n", certificateId)
 	return nil
 }
