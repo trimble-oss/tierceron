@@ -2,17 +2,16 @@ package trccertmgmtbase
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2"
-	"github.com/getkin/kin-openapi/openapi2"
-	"github.com/getkin/kin-openapi/openapi2conv"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -33,24 +32,8 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 		return err
 	}
 
-	path, pathErr := os.Getwd()
-	if pathErr != nil {
-		return pathErr
-	}
-
-	swaggerBytes, fileErr := os.ReadFile(path + "/target/swagger.json")
-	if fileErr != nil {
-		return fileErr
-	}
-
-	var swaggerDoc openapi2.T
-	swaggerErr := json.Unmarshal(swaggerBytes, &swaggerDoc)
-	if swaggerErr != nil {
-		return swaggerErr
-	}
-
 	apimConfigMap := make(map[string]string)
-	tempMap, readErr := mod.ReadData("super-secrets/Restricted/APIMCertConfig/config")
+	tempMap, readErr := mod.ReadData("super-secrets/Restricted/APIMConfig/config")
 	if readErr != nil {
 		return readErr
 	} else if len(tempMap) == 0 {
@@ -61,26 +44,6 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 		apimConfigMap[fmt.Sprintf("%v", key)] = fmt.Sprintf("%v", value)
 	}
 
-	openapi, convertErr := openapi2conv.ToV3(&swaggerDoc)
-	if convertErr != nil {
-		return convertErr
-	}
-
-	validateErr := openapi.Validate(context.Background())
-	if validateErr != nil {
-		return validateErr
-	}
-
-	openapiByteArray, err := json.Marshal(openapi)
-	openApiString := string(openapiByteArray)
-	openApiString = strings.Replace(openApiString, "alpha", "1.0", 1)
-
-	if !strings.Contains(openApiString, `"openapi":"3.0.3","servers": [{"url":"`+apimConfigMap["API_URL"]+`"}]`) {
-		openApiString = strings.Replace(openApiString, `"openapi":"3.0.3"`, `"openapi":"3.0.3","servers":[{"url":"`+apimConfigMap["API_URL"]+`"}]`, 1)
-		if !strings.Contains(openApiString, apimConfigMap["API_URL"]) {
-			return errors.New("Unable to insert server url into apim update.")
-		}
-	}
 	svc, err := azidentity.NewClientSecretCredential(
 		apimConfigMap["azureTenantId"],
 		apimConfigMap["azureClientId"],
@@ -100,25 +63,13 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 
 	resourceGroupName := apimConfigMap["RESOURCE_GROUP_NAME"]
 	serviceName := apimConfigMap["SERVICE_NAME"]
-	certificateId := apimConfigMap["CERTIFICATE_ID"]
-
-	_, eTagErr := clientFactory.NewCertificateClient().GetEntityTag(ctx, resourceGroupName, serviceName, certificateId, nil)
-	if eTagErr != nil {
-		driverConfig.CoreConfig.Log.Fatalf("failed to finish the request: %v", eTagErr)
-		return eTagErr
-	}
+	certificateId := time.Now().UTC().Format(strings.ReplaceAll(time.RFC3339, ":", "-"))
 
 	etag := "*" //Wildcard match on eTag, otherwise it doesn't match from command above.
 
-	keyVault := &armapimanagement.KeyVaultContractCreateProperties{
-		IdentityClientID: nil,
-		SecretIdentifier: nil,
-	}
-
 	_, err = clientFactory.NewCertificateClient().CreateOrUpdate(ctx, resourceGroupName, serviceName, certificateId, armapimanagement.CertificateCreateOrUpdateParameters{
 		Properties: &armapimanagement.CertificateCreateOrUpdateProperties{
-			Data:     to.Ptr(string(certBytes)),
-			KeyVault: keyVault,
+			Data:     to.Ptr(base64.StdEncoding.EncodeToString(certBytes)),
 			Password: to.Ptr(apimConfigMap["CERTIFICATE_PASSWORD"]),
 		},
 	}, &armapimanagement.CertificateClientCreateOrUpdateOptions{IfMatch: &etag})
