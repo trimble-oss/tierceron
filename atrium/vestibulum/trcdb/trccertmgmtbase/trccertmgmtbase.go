@@ -69,7 +69,7 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 			}, &armapimanagement.CertificateClientCreateOrUpdateOptions{IfMatch: &etag})
 
 			if err != nil {
-				driverConfig.CoreConfig.Log.Fatalf("failed to finish the request: %v", err)
+				driverConfig.CoreConfig.Log.Printf("failed to finish certificate request")
 				return err
 			}
 
