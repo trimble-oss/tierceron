@@ -347,7 +347,6 @@ func CommonMain(envDefaultPtr *string,
 	if len(*certPathPtr) > 0 {
 		updateCertError := trccertmgmtbase.CommonMain(certPathPtr, config, mod)
 		if updateCertError != nil {
-			fmt.Println(updateCertError.Error())
 			fmt.Println("Couldn't update Cert...proceeding with build")
 		}
 		return nil

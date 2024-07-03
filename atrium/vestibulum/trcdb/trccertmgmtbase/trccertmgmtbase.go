@@ -44,14 +44,14 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 		apimConfigMap["azureClientSecret"],
 		nil)
 	if err != nil {
-		driverConfig.CoreConfig.Log.Fatalf("failed to obtain a credential: %v", err)
+		driverConfig.CoreConfig.Log.Printf("failed to obtain a credential: %v", err)
 		return err
 	}
 
 	ctx, _ := context.WithCancel(context.Background())
 	clientFactory, err := armapimanagement.NewClientFactory(apimConfigMap["SUBSCRIPTION_ID"], svc, nil)
 	if err != nil {
-		driverConfig.CoreConfig.Log.Fatalf("failed to create client: %v", err)
+		driverConfig.CoreConfig.Log.Printf("failed to create client: %v", err)
 		return err
 	}
 
