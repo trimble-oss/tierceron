@@ -342,9 +342,8 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
-	services := []string{}
 	if *servicesWanted != "" {
-		services = strings.Split(*servicesWanted, ",")
+		driverConfigBase.ServicesWanted = strings.Split(*servicesWanted, ",")
 	}
 
 	regions := []string{}
@@ -438,7 +437,7 @@ func CommonMain(envDefaultPtr *string,
 				EnvBasis:          eUtils.GetEnvBasis(*envPtr),
 				Regions:           regions,
 				SecretMode:        *secretMode,
-				ServicesWanted:    services,
+				ServicesWanted:    driverConfigBase.ServicesWanted,
 				StartDir:          driverConfigBase.StartDir,
 				EndDir:            driverConfigBase.EndDir,
 				WantKeystore:      *keyStorePtr,
@@ -494,7 +493,7 @@ func CommonMain(envDefaultPtr *string,
 			EnvBasis:          eUtils.GetEnvBasis(*envPtr),
 			Regions:           regions,
 			SecretMode:        *secretMode,
-			ServicesWanted:    services,
+			ServicesWanted:    driverConfigBase.ServicesWanted,
 			StartDir:          driverConfigBase.StartDir,
 			EndDir:            driverConfigBase.EndDir,
 			WantKeystore:      *keyStorePtr,
