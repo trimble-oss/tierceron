@@ -62,7 +62,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		}, err
 	}
 
-	logger.Printf("Succesfully connected to vault at %s\n", s.VaultAddr)
+	logger.Printf("Successfully connected to vault at %s\n", s.VaultAddr)
 
 	// Create engines
 	il.CreateEngines(config, v)
