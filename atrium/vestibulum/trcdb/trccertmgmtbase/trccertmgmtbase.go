@@ -119,7 +119,7 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 		Properties: &armapimanagement.CertificateCreateOrUpdateProperties{
 			Data:     to.Ptr(string(certBytes)),
 			KeyVault: keyVault,
-			Password: nil,
+			Password: to.Ptr(apimConfigMap["CERTIFICATE_PASSWORD"]),
 		},
 	}, &armapimanagement.CertificateClientCreateOrUpdateOptions{IfMatch: &etag})
 
