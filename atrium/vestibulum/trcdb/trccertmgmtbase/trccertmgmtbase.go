@@ -55,32 +55,30 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 		return err
 	}
 
-	resourceGroupName, exists := apimConfigMap["RESOURCE_GROUP_NAME"]
-	if !exists {
+	if resourceGroupName, exists := apimConfigMap["RESOURCE_GROUP_NAME"]; !exists {
+		if serviceName, exists := apimConfigMap["SERVICE_NAME"]; !exists {
+			certificateId := time.Now().UTC().Format(strings.ReplaceAll(time.RFC3339, ":", "-"))
+
+			etag := "*"
+
+			_, err = clientFactory.NewCertificateClient().CreateOrUpdate(ctx, resourceGroupName, serviceName, certificateId, armapimanagement.CertificateCreateOrUpdateParameters{
+				Properties: &armapimanagement.CertificateCreateOrUpdateProperties{
+					Data:     to.Ptr(base64.StdEncoding.EncodeToString(certBytes)),
+					Password: to.Ptr(apimConfigMap["CERTIFICATE_PASSWORD"]),
+				},
+			}, &armapimanagement.CertificateClientCreateOrUpdateOptions{IfMatch: &etag})
+
+			if err != nil {
+				driverConfig.CoreConfig.Log.Fatalf("failed to finish the request: %v", err)
+				return err
+			}
+
+			fmt.Printf("Certificate %v successfully deployed\n", certificateId)
+		} else {
+			return errors.New("SERVICE_NAME is not populated in apimConfigMap")
+		}
+	} else {
 		return errors.New("RESOURCE_GROUP_NAME is not populated in apimConfigMap")
 	}
-
-	serviceName, exists := apimConfigMap["SERVICE_NAME"]
-	if !exists {
-		return errors.New("SERVICE_NAME is not populated in apimConfigMap")
-	}
-
-	certificateId := time.Now().UTC().Format(strings.ReplaceAll(time.RFC3339, ":", "-"))
-
-	etag := "*"
-
-	_, err = clientFactory.NewCertificateClient().CreateOrUpdate(ctx, resourceGroupName, serviceName, certificateId, armapimanagement.CertificateCreateOrUpdateParameters{
-		Properties: &armapimanagement.CertificateCreateOrUpdateProperties{
-			Data:     to.Ptr(base64.StdEncoding.EncodeToString(certBytes)),
-			Password: to.Ptr(apimConfigMap["CERTIFICATE_PASSWORD"]),
-		},
-	}, &armapimanagement.CertificateClientCreateOrUpdateOptions{IfMatch: &etag})
-
-	if err != nil {
-		driverConfig.CoreConfig.Log.Fatalf("failed to finish the request: %v", err)
-		return err
-	}
-
-	fmt.Printf("Certificate %v successfully deployed\n", certificateId)
 	return nil
 }
