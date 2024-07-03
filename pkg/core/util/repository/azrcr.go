@@ -4,11 +4,13 @@
 package repository
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
@@ -131,31 +133,18 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 		return "", errors.New("Failed to create validation reader" + readErr.Error())
 	}
 
-	layerData, configErr := io.ReadAll(reader)
-	if configErr != nil {
-		return "", errors.New("Failed to read config data:" + configErr.Error())
-	}
-
-	pluginTarredData, gUnZipError := gUnZipData(&layerData)
+	gzipReader, gUnZipError := gzip.NewReader(reader)
 	if gUnZipError != nil {
 		return "", errors.New("gunzip failed")
 	}
-	pluginImage, gUnTarError := untarData(&pluginTarredData)
-	if gUnTarError != nil {
-		return "", errors.New("untarring failed")
+
+	tarReader := tar.NewReader(gzipReader)
+	hash := sha256.New()
+	if _, err := io.Copy(hash, tarReader); err != nil {
+		return "", err
 	}
-	pluginSha := sha256.Sum256(pluginImage)
-	sha256 := fmt.Sprintf("%x", pluginSha)
-	if pluginToolConfig != nil {
-		if _, ok := pluginToolConfig["trcsha256"]; !ok {
-			// Not looking for anything in particular so just grab the last image.
-			pluginToolConfig["rawImageFile"] = pluginImage
-		} else {
-			if pluginToolConfig["trcsha256"].(string) == sha256 {
-				pluginToolConfig["rawImageFile"] = pluginImage
-			}
-		}
-	}
+
+	sha256 := hex.EncodeToString(hash.Sum(nil))
 
 	return sha256, nil
 }
