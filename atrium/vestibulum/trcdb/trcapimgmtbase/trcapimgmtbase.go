@@ -129,7 +129,7 @@ func CommonMain(envPtr *string,
 		return err
 	}
 
-	//Adding a 3 minute timeout on APIM Update.
+	//Adding a 2 minute timeout on APIM Update.
 	go func(ctxC context.CancelFunc) {
 		time.Sleep(time.Second * 120)
 		ctxC()

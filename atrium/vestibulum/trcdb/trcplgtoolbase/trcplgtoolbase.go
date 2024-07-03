@@ -24,6 +24,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	trcapimgmtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcapimgmtbase"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trccertmgmtbase"
 )
 
 func CommonMain(envDefaultPtr *string,
@@ -94,6 +95,9 @@ func CommonMain(envDefaultPtr *string,
 
 	//APIM flags
 	updateAPIMPtr := flagset.Bool("updateAPIM", false, "Used to update Azure APIM")
+
+	// Cert flags
+	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
 
 	if trcshDriverConfig == nil || !trcshDriverConfig.DriverConfig.IsShellSubProcess {
 		args := argLines[1:]
@@ -336,6 +340,14 @@ func CommonMain(envDefaultPtr *string,
 		if updateAPIMError != nil {
 			fmt.Println(updateAPIMError.Error())
 			fmt.Println("Couldn't update APIM...proceeding with build")
+		}
+		return nil
+	}
+
+	if len(*certPathPtr) > 0 {
+		updateCertError := trccertmgmtbase.CommonMain(certPathPtr, config, mod)
+		if updateCertError != nil {
+			fmt.Println("Couldn't update Cert...proceeding with build")
 		}
 		return nil
 	}
