@@ -55,8 +55,8 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 		return err
 	}
 
-	if resourceGroupName, exists := apimConfigMap["RESOURCE_GROUP_NAME"]; !exists {
-		if serviceName, exists := apimConfigMap["SERVICE_NAME"]; !exists {
+	if resourceGroupName, exists := apimConfigMap["RESOURCE_GROUP_NAME"]; exists {
+		if serviceName, exists := apimConfigMap["SERVICE_NAME"]; exists {
 			certificateId := time.Now().UTC().Format(strings.ReplaceAll(time.RFC3339, ":", "-"))
 
 			etag := "*"
