@@ -18,7 +18,7 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 	for _, valueField := range valueFields {
 		valFieldMap[valueField] = false
 	}
-	for valueField, _ := range valFieldMap {
+	for valueField := range valFieldMap {
 		for secretSectionMap := range secSection["super-secrets"] {
 			if _, ok := secSection["super-secrets"][secretSectionMap][valueField]; ok {
 				valFieldMap[valueField] = true
@@ -108,7 +108,7 @@ func CreateEncryptedReadMap(encryptedKeys string) map[string]interface{} {
 }
 
 func FieldReader(encryptedMap map[string]interface{}, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string, decryption map[string]interface{}) error {
-	for field, _ := range encryptedMap {
+	for field := range encryptedMap {
 		found := false
 		for secretSectionMap := range secSection["super-secrets"] {
 			if secretVal, ok := secSection["super-secrets"][secretSectionMap][field]; ok {

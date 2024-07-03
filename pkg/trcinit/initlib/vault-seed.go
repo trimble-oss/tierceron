@@ -678,8 +678,8 @@ func SeedVaultFromData(driverConfig *eUtils.DriverConfig, filepath string, fData
 		return eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
 	}
 
-	mapStack := []seedCollection{seedCollection{"", seed}} // Begin with root of yaml file
-	writeStack := make([]writeCollection, 0)               // List of all values to write to the vault with p
+	mapStack := []seedCollection{{"", seed}} // Begin with root of yaml file
+	writeStack := make([]writeCollection, 0) // List of all values to write to the vault with p
 
 	// While the stack is not empty
 	for len(mapStack) > 0 {
