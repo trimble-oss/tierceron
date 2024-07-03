@@ -539,6 +539,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 		}
 
+		// Move into function (both if and else) in ecrcommon... and call directly from azrcr..
 		if pluginToolConfig["trcsha256"] != nil &&
 			pluginToolConfig["imagesha256"] != nil &&
 			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) {
@@ -577,6 +578,7 @@ func CommonMain(envDefaultPtr *string,
 				}
 			}
 
+			// Create a file from deployPath and make copy the reader directly into file pointing at deployPath...
 			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
 			if err != nil {
 				fmt.Println(err.Error())

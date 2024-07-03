@@ -146,6 +146,10 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 
 	sha256 := hex.EncodeToString(hash.Sum(nil))
 
+	// Do sha256 here...   If it matches and wantblob is set on the map, then goto 131.... repeat and write to file....
+	// If we do want the blob, pull deploypath logic from trcplgtool.  and write to the expected location...
+	// Call new function with reader and pluginToolConfig to make the file...
+
 	return sha256, nil
 }
 
