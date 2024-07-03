@@ -301,7 +301,7 @@ func CommonMain(envPtr *string,
 		_, _, _, err = v.Unseal()
 		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 	}
-	logger.Printf("Succesfully connected to vault at %s\n", *addrPtr)
+	logger.Printf("Successfully connected to vault at %s\n", *addrPtr)
 
 	if !*newPtr && *namespaceVariable != "" && *namespaceVariable != "vault" && !(*rotateTokens || *updatePolicy || *updateRole || *tokenExpiration) {
 		if *initNamespace {

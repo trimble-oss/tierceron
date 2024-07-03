@@ -50,17 +50,17 @@ func NewProperties(config *core.CoreConfig, v *sys.Vault, mod *helperkv.Modifier
 	return &properties, nil
 }
 
-// GetValue gets an invididual configuration value for a service from the data store.
+// GetValue gets an individal configuration value for a service from the data store.
 func (p *Properties) GetValue(service string, keyPath []string, key string) (string, error) {
 	return p.cds.GetValue(service, keyPath, key)
 }
 
-// GetConfigValue gets an invididual configuration value for a service from the data store.
+// GetConfigValue gets an individal configuration value for a service from the data store.
 func (p *Properties) GetConfigValue(service string, config string, key string) (string, bool) {
 	return p.cds.GetConfigValue(service, config, key)
 }
 
-// GetConfigValues gets an invididual configuration value for a service from the data store.
+// GetConfigValues gets an individal configuration value for a service from the data store.
 func (p *Properties) GetConfigValues(service string, config string) (map[string]interface{}, bool) {
 	return p.cds.GetConfigValues(service, config)
 }

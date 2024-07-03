@@ -122,7 +122,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 	if driverConfig.Token != "novault" && mod.Version != "0" { //If version isn't latest or is a flag
 		var noCertPaths []string
 		var certPaths []string
-		for _, templatePath := range templatePaths { //Seperate cert vs normal paths
+		for _, templatePath := range templatePaths { //Separate cert vs normal paths
 			if !strings.Contains(templatePath, "Common") {
 				noCertPaths = append(noCertPaths, templatePath)
 			} else {
