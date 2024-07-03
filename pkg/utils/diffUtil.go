@@ -422,7 +422,7 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 
 	if config {
 		//Make fileList
-		for key, _ := range configCtx.ResultMap {
+		for key := range configCtx.ResultMap {
 			found := false
 			keySplit := strings.Split(key, "||")
 
