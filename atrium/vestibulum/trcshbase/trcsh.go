@@ -870,6 +870,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
 				return
 			}
+			trcshDriverConfig.DriverConfig.ServicesWanted = strings.Split(projectServicePtr, ",")
 		}
 
 		tokenName := "config_token_" + trcshDriverConfig.DriverConfig.EnvBasis
