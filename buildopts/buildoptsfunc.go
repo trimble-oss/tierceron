@@ -10,7 +10,7 @@ import (
 // SetLogger is called by TrcDb and other utilities to provide the extensions
 // a handle to the error logger for custom libraries that need a hook into the
 // logging infrastructure.  In extension implementation,
-// set global variables iwth type func(string, ...interface{})
+// set global variables with type func(string, ...interface{})
 // assign the globals to the return value of convLogger...
 // You'll have to copy convLogger into your custom library implementation.
 func SetLogger(logger interface{}) {
@@ -20,7 +20,7 @@ func SetLogger(logger interface{}) {
 // SetErrorLogger is called by TrcDb and other utilities to provide the extensions
 // a handle to the error logger for custom libraries that need a hook into the
 // logging infrastructure.  In extension implementation,
-// set global variables iwth type func(string, ...interface{})
+// set global variables with type func(string, ...interface{})
 // assign the globals to the return value of convLogger...
 // You'll have to copy convLogger into your custom library implementation.
 func SetErrorLogger(logger interface{}) {

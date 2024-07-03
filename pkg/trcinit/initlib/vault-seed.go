@@ -762,7 +762,7 @@ func SeedVaultFromData(driverConfig *eUtils.DriverConfig, filepath string, fData
 	for _, entry := range writeStack {
 		seedCert := false
 		// Output data being written
-		// Write data and ouput any errors
+		// Write data and output any errors
 		_, isCertData := entry.data["certData"]
 
 		seedData := !driverConfig.CoreConfig.WantCerts && !isCertData

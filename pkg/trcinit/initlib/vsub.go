@@ -25,7 +25,7 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 		if !strings.HasSuffix(filterTemplatePath, "/") {
 			path = filterTemplatePath + "/"
 		}
-		tfMap, err := mod.ReadData(fmt.Sprintf("templates/%stemplate-file", path)) //Grab extention of file
+		tfMap, err := mod.ReadData(fmt.Sprintf("templates/%stemplate-file", path)) //Grab extension of file
 		if err != nil {
 			eUtils.LogErrorMessage(config, "Skipping template: "+path+" Error: "+err.Error(), false)
 			continue
@@ -80,7 +80,7 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 			eUtils.LogErrorMessage(config, fmt.Sprintf("Couldn't sync file: %s", templateFile), false)
 			continue
 		}
-		fmt.Printf("File has been writen to %s\n", templateFile)
+		fmt.Printf("File has been written to %s\n", templateFile)
 	}
 }
 
@@ -153,7 +153,7 @@ func DownloadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, 
 					continue
 				}
 				ext := ""
-				tfMap, err := mod.ReadData(path + "template-file") //Grab extention of file
+				tfMap, err := mod.ReadData(path + "template-file") //Grab extension of file
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Skipping template: "+path+" Error: "+err.Error(), false)
 					continue
@@ -210,7 +210,7 @@ func DownloadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, 
 					eUtils.LogErrorMessage(config, "Couldn't sync file: "+dirPath+file+ext+".tmpl", false)
 					continue
 				}
-				fmt.Println("File has been writen to " + dirPath + file + ext + ".tmpl")
+				fmt.Println("File has been written to " + dirPath + file + ext + ".tmpl")
 			}
 		}
 	}

@@ -77,23 +77,23 @@ func SetEncryptionSecret(driverConfig *eUtils.DriverConfig) error {
 }
 
 func GetEncryptors(secSection map[string]map[string]map[string]string) (map[string]interface{}, error) {
-	encrpytion := map[string]interface{}{}
-	encrpytionList := []string{"salt", "initial_value"}
-	for _, encryptionField := range encrpytionList {
+	encryption := map[string]interface{}{}
+	encryptionList := []string{"salt", "initial_value"}
+	for _, encryptionField := range encryptionList {
 		for secretSectionMap := range secSection["super-secrets"] {
 			if value, ok := secSection["super-secrets"][secretSectionMap][encryptionField]; ok {
 				if value != "" {
-					encrpytion[encryptionField] = value
+					encryption[encryptionField] = value
 				}
 			}
 		}
 	}
 
-	if ok, ok1 := encrpytion["salt"], encrpytion["initial_value"]; ok == nil || ok1 == nil {
+	if ok, ok1 := encryption["salt"], encryption["initial_value"]; ok == nil || ok1 == nil {
 		return nil, errors.New("could not find encryption values")
 	}
 
-	return encrpytion, nil
+	return encryption, nil
 }
 
 func CreateEncryptedReadMap(encryptedKeys string) map[string]interface{} {
