@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -21,12 +19,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
-func CommonMain(flagset *flag.FlagSet, driverConfig *eUtils.DriverConfig, mod *kv.Modifier) error {
-	if flagset == nil {
-		flagset = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	}
-	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
-
+func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.Modifier) error {
 	if len(*certPathPtr) == 0 {
 		return errors.New("certPath flag is empty, expected path to cert")
 	}
@@ -98,48 +91,43 @@ func CommonMain(flagset *flag.FlagSet, driverConfig *eUtils.DriverConfig, mod *k
 		return err
 	}
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
+	ctx, _ := context.WithCancel(context.Background())
 	clientFactory, err := armapimanagement.NewClientFactory(apimConfigMap["SUBSCRIPTION_ID"], svc, nil)
 	if err != nil {
 		driverConfig.CoreConfig.Log.Fatalf("failed to create client: %v", err)
 		return err
 	}
 
-	_, eTagErr := clientFactory.NewAPIPolicyClient().GetEntityTag(ctx, apimConfigMap["RESOURCE_GROUP_NAME"], apimConfigMap["SERVICE_NAME"], apimConfigMap["API_NAME"], armapimanagement.PolicyIDNamePolicy, nil)
+	resourceGroupName := apimConfigMap["RESOURCE_GROUP_NAME"]
+	serviceName := apimConfigMap["SERVICE_NAME"]
+	certificateId := apimConfigMap["CERTIFICATE_ID"]
+
+	_, eTagErr := clientFactory.NewCertificateClient().GetEntityTag(ctx, resourceGroupName, serviceName, certificateId, nil)
 	if eTagErr != nil {
 		driverConfig.CoreConfig.Log.Fatalf("failed to finish the request: %v", eTagErr)
 		return eTagErr
 	}
 
-	t := time.Now().UTC().Format("Monday, 02-Jan-06 15:04:05 MST")
-
 	etag := "*" //Wildcard match on eTag, otherwise it doesn't match from command above.
-	poller, err := clientFactory.NewAPIClient().BeginCreateOrUpdate(ctx, apimConfigMap["RESOURCE_GROUP_NAME"], apimConfigMap["SERVICE_NAME"], apimConfigMap["API_NAME"], armapimanagement.APICreateOrUpdateParameter{
-		Properties: &armapimanagement.APICreateOrUpdateProperties{
-			Path:                   to.Ptr(apimConfigMap["API_PATH"]), //API URL Suffix in portal
-			Format:                 to.Ptr(armapimanagement.ContentFormatOpenapiJSON),
-			Value:                  to.Ptr(openApiString),
-			APIRevisionDescription: to.Ptr(t), //This updates the revision description with current time.
+
+	keyVault := &armapimanagement.KeyVaultContractCreateProperties{
+		IdentityClientID: nil,
+		SecretIdentifier: nil,
+	}
+
+	_, err = clientFactory.NewCertificateClient().CreateOrUpdate(ctx, resourceGroupName, serviceName, certificateId, armapimanagement.CertificateCreateOrUpdateParameters{
+		Properties: &armapimanagement.CertificateCreateOrUpdateProperties{
+			Data:     to.Ptr(string(certBytes)),
+			KeyVault: keyVault,
+			Password: nil,
 		},
-	}, &armapimanagement.APIClientBeginCreateOrUpdateOptions{IfMatch: &etag})
+	}, &armapimanagement.CertificateClientCreateOrUpdateOptions{IfMatch: &etag})
+
 	if err != nil {
 		driverConfig.CoreConfig.Log.Fatalf("failed to finish the request: %v", err)
 		return err
 	}
 
-	//Adding a 2 minute timeout on APIM Update.
-	go func(ctxC context.CancelFunc) {
-		time.Sleep(time.Second * 120)
-		ctxC()
-	}(ctxCancel)
-
-	resp, err := poller.PollUntilDone(ctx, nil)
-	if err != nil {
-		driverConfig.CoreConfig.Log.Fatalf("failed to pull the result: %v", err)
-		return err
-	}
-
 	fmt.Println("Success!")
-	_ = resp
 	return nil
 }
