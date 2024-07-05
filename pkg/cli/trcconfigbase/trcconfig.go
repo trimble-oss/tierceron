@@ -166,6 +166,11 @@ func CommonMain(envDefaultPtr *string,
 				if len(certDestPath) > 1 {
 					*certDestPathPtr = certDestPath[1]
 				}
+			} else if strings.HasPrefix(args, "-env") {
+				envArgs := strings.Split(args, "=")
+				if len(envArgs) > 1 {
+					*envPtr = envArgs[1]
+				}
 			}
 		}
 		flagset.Parse(nil)
