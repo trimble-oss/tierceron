@@ -105,7 +105,7 @@ func CommonMain(envDefaultPtr *string,
 			flagset.PrintDefaults()
 		}
 
-		envPtr = flagset.String("env", "dev", "Environment to configure")
+		envPtr = flagset.String("env", "", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.String("secretID", "", "Secret for app role ID")
@@ -178,7 +178,7 @@ func CommonMain(envDefaultPtr *string,
 			*wantCertsPtr = true
 		}
 	}
-	if envPtr == nil {
+	if envPtr == nil || len(*envPtr) == 0 {
 		envPtr = envDefaultPtr
 	}
 	if !isShell {
