@@ -24,8 +24,8 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 		ext := ""
 		if strings.Contains(path, "Common") {
 			if !strings.Contains(path, ".") {
-				eUtils.LogErrorMessage(config, "Argument passed in incorrectly", false)
-				fmt.Println("Argument passed in incorrectly for template path: " + path)
+				eUtils.LogErrorMessage(config, "Expecting file extension with filepath", false)
+				fmt.Println("Expecting file extension with filepath: " + path)
 			}
 		}
 		if !strings.HasSuffix(filterTemplatePath, "/") {
