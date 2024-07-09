@@ -22,6 +22,12 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 	for _, filterTemplatePath := range filterTemplatePathSlice {
 		path := filterTemplatePath
 		ext := ""
+		if strings.Contains(path, "Common") {
+			if !strings.Contains(path, ".") {
+				eUtils.LogErrorMessage(config, "Expecting file extension with filepath", false)
+				fmt.Println("Expecting file extension with filepath: " + path)
+			}
+		}
 		if !strings.HasSuffix(filterTemplatePath, "/") {
 			path = filterTemplatePath + "/"
 		}
@@ -85,7 +91,6 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 }
 
 func DownloadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templateFilter *string) ([]string, error) {
-
 	var filterTemplateSlice []string
 	if len(*templateFilter) > 0 {
 		filterTemplateSlice = strings.Split(*templateFilter, ",")
