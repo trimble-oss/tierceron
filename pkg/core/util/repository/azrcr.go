@@ -122,12 +122,6 @@ foundTag:
 	if pluginToolConfig["imagesha256"] == nil || pluginToolConfig["trcsha256"] == nil || pluginToolConfig["imagesha256"].(string) != pluginToolConfig["trcsha256"].(string) {
 		if pluginToolConfig["codebundledeployPtr"] != nil && pluginToolConfig["codebundledeployPtr"].(bool) {
 			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
-			// if trcshDriverConfigBase.FeatherCtx != nil {
-			// 	fmt.Printf("%s\n", errMessage)
-			// 	trcshDriverConfigBase.FeatherCtx.Log.Printf(errMessage)
-			// } else {
-			// 	fmt.Printf("%s\n", errMessage)
-			// }
 			return errors.New(errMessage)
 		}
 	}
@@ -135,7 +129,6 @@ foundTag:
 }
 
 func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name string, digest string, pluginToolConfig map[string]interface{}) (string, error) {
-
 	configRes, err := blobClient.GetBlob(context.Background(), name, digest, nil)
 	if err != nil {
 		return "", errors.New("Failed to get config:" + err.Error())
@@ -168,13 +161,8 @@ writeToFile:
 		if _, err := io.Copy(hash, tarReader); err != nil {
 			return "", err
 		}
-
 		sha = hex.EncodeToString(hash.Sum(nil))
 	}
-
-	// Do sha256 here...   If it matches and wantblob is set on the map, then goto 131.... repeat and write to file....
-	// If we do want the blob, pull deploypath logic from trcplgtool.  and write to the expected location...
-	// Call new function with reader and pluginToolConfig to make the file...
 
 	if pluginToolConfig["trcsha256"] != nil && pluginToolConfig["trcsha256"].(string) == sha {
 		if pluginToolConfig["codebundledeployPtr"] != nil && pluginToolConfig["codebundledeployPtr"].(bool) {

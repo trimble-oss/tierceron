@@ -107,8 +107,6 @@ func deployImage(reader *tar.Reader, pluginToolConfig map[string]interface{}) er
 		}
 	}
 
-	// Create a file from deployPath and make copy the reader directly into file pointing at deployPath...
-	// err := os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
 	f, err := os.OpenFile(deployPath, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		fmt.Println("Could not create file for deployment.")
@@ -171,8 +169,6 @@ func deployImage(reader *tar.Reader, pluginToolConfig map[string]interface{}) er
 			}
 		}
 	}
-
 	fmt.Printf("Image deployed to: %s\n", deployPath)
-
 	return nil
 }
