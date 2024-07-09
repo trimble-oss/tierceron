@@ -178,7 +178,7 @@ func CommonMain(envDefaultPtr *string,
 			*wantCertsPtr = true
 		}
 	}
-	if envPtr == nil || len(*envPtr) == 0 {
+	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
 		envPtr = envDefaultPtr
 	}
 	if !isShell {

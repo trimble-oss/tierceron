@@ -36,12 +36,13 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				fmt.Println("Unable to obtain resources for deployment")
 				return nil, err
 			}
-			tempEnv := trcshDriverConfig.DriverConfig.EnvBasis
-			envParts := strings.Split(trcshDriverConfig.DriverConfig.EnvBasis, "-")
-			mod.Env = envParts[0]
-			fmt.Printf("Loading deployment details for %s and env %s\n", deployment, mod.Env)
+			mod.Env = trcshDriverConfig.DriverConfig.EnvBasis
+			fmt.Printf("Loading deployer details for %s and env %s\n", deployment, mod.EnvBasis)
 			deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
-			mod.Env = tempEnv
+			if !trcshDriverConfig.DriverConfig.LoadFromBasis {
+				// By default, we always use agent provided env to load the script.
+				mod.Env = trcshDriverConfig.DriverConfig.Env
+			}
 			if err != nil {
 				fmt.Println("Unable to obtain config for deployment")
 				return nil, err
@@ -56,6 +57,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			if trcProjectService, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
 				var content []byte
 				trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
+				fmt.Printf("Loading deployment script for %s and env %s\n", deployment, mod.Env)
 				contentArray, _, _, err := vcutils.ConfigTemplate(&trcshDriverConfig.DriverConfig, mod, fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string)), true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
 				if err != nil {
 					eUtils.LogErrorObject(&trcshDriverConfig.DriverConfig.CoreConfig, err, false)
