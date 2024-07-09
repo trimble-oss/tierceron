@@ -112,17 +112,17 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 			// Do some scrubbing...
 			for ie, e := range ep {
 				matched := false
-				if strings.Contains(e, trcProjectService) {
+				if len(trcProjectService) > 0 && strings.Contains(e, trcProjectService) {
 					e = strings.Replace(e, trcProjectService, "/", 1)
 					matched = true
-				} else if strings.Contains(e, trcService) {
+				} else if len(trcService) > 0 && strings.Contains(e, trcService) {
 					e = strings.Replace(e, trcService, "/", 1)
 					matched = true
-				} else if strings.Contains(e, dosProjectService) {
+				} else if len(dosProjectService) > 0 && strings.Contains(e, dosProjectService) {
 					e = strings.Replace(e, dosProjectService, "\\", 1)
 					matched = true
 				} else {
-					if strings.Contains(e, dosService) {
+					if len(dosService) > 0 && strings.Contains(e, dosService) {
 						e = strings.Replace(e, dosService, "\\", 1)
 						matched = true
 					}

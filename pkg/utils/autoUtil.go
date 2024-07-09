@@ -202,7 +202,7 @@ func AutoAuth(driverConfig *DriverConfig,
 			}
 		}
 		if driverConfig.CoreConfig.IsShell {
-			driverConfig.CoreConfig.Log.Printf("Auth connecting to vault @ %s\n", *addrPtr)
+			driverConfig.CoreConfig.Log.Printf("Auth connecting to vault @ %s and env: %s\n", *addrPtr, *envPtr)
 		} else {
 			fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
 		}
