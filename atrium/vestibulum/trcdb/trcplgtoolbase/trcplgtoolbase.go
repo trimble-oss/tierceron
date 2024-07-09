@@ -10,10 +10,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -376,6 +374,7 @@ func CommonMain(envDefaultPtr *string,
 				defer file.Close()
 
 				// Create a reader to the file.
+				//Could change to hash method
 				reader := bufio.NewReader(file)
 
 				pluginImage, imageErr := io.ReadAll(reader)
@@ -408,6 +407,7 @@ func CommonMain(envDefaultPtr *string,
 	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr //is a bool that gets converted to a string for writeout/certify
 	pluginToolConfig["newrelicAppName"] = *newrelicAppNamePtr
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
+	pluginToolConfig["codebundledeployPtr"] = *codebundledeployPtr //for optimization change in certify
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
@@ -540,98 +540,98 @@ func CommonMain(envDefaultPtr *string,
 		}
 
 		// Move into function (both if and else) in ecrcommon... and call directly from azrcr..
-		if pluginToolConfig["trcsha256"] != nil &&
-			pluginToolConfig["imagesha256"] != nil &&
-			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) {
-			// Write the image to the destination...
-			var deployPath string
-			var deployRoot string
-			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
-				deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
-			} else {
-				deployRoot = pluginToolConfig["trcdeployroot"].(string)
-			}
+		// if pluginToolConfig["trcsha256"] != nil &&
+		// 	pluginToolConfig["imagesha256"] != nil &&
+		// 	pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) {
+		// 	// Write the image to the destination...
+		// 	var deployPath string
+		// 	var deployRoot string
+		// 	if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+		// 		deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
+		// 	} else {
+		// 		deployRoot = pluginToolConfig["trcdeployroot"].(string)
+		// 	}
 
-			//check if there is a place holder, if there is replace it
-			if strings.Contains(deployRoot, "{{.trcpathparam}}") {
-				if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
-					r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
-					if !r.MatchString(pathParam) {
-						fmt.Println("trcpathparam can only contain alphanumberic characters or underscores")
-						return errors.New("trcpathparam can only contain alphanumberic characters or underscores")
-					}
-					deployRoot = strings.Replace(deployRoot, "{{.trcpathparam}}", pathParam, -1)
-				} else {
-					return errors.New("Unable to replace path placeholder with pathParam.")
-				}
-			}
-			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
+		// 	//check if there is a place holder, if there is replace it
+		// 	if strings.Contains(deployRoot, "{{.trcpathparam}}") {
+		// 		if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
+		// 			r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
+		// 			if !r.MatchString(pathParam) {
+		// 				fmt.Println("trcpathparam can only contain alphanumberic characters or underscores")
+		// 				return errors.New("trcpathparam can only contain alphanumberic characters or underscores")
+		// 			}
+		// 			deployRoot = strings.Replace(deployRoot, "{{.trcpathparam}}", pathParam, -1)
+		// 		} else {
+		// 			return errors.New("Unable to replace path placeholder with pathParam.")
+		// 		}
+		// 	}
+		// 	deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
 
-			fmt.Printf("Deploying image to: %s\n", deployPath)
+		// 	fmt.Printf("Deploying image to: %s\n", deployPath)
 
-			if _, err = os.Stat(deployRoot); err != nil {
-				err = os.MkdirAll(deployRoot, 0644)
-				if err != nil {
-					fmt.Println(err.Error())
-					fmt.Println("Could not prepare needed directory for deployment.")
-					return err
-				}
-			}
+		// 	if _, err = os.Stat(deployRoot); err != nil {
+		// 		err = os.MkdirAll(deployRoot, 0644)
+		// 		if err != nil {
+		// 			fmt.Println(err.Error())
+		// 			fmt.Println("Could not prepare needed directory for deployment.")
+		// 			return err
+		// 		}
+		// 	}
 
-			// Create a file from deployPath and make copy the reader directly into file pointing at deployPath...
-			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
-			if err != nil {
-				fmt.Println(err.Error())
-				fmt.Println("Image write failure.")
-				return err
-			}
+		// 	// Create a file from deployPath and make copy the reader directly into file pointing at deployPath...
+		// 	err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
+		// 	if err != nil {
+		// 		fmt.Println(err.Error())
+		// 		fmt.Println("Image write failure.")
+		// 		return err
+		// 	}
 
-			if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
-				// TODO: provide archival of existing directory.
-				if ok, errList := trcvutils.UncompressZipFile(deployPath); !ok {
-					fmt.Printf("Uncompressing zip file in place failed. %v\n", errList)
-					return errList[0]
-				} else {
-					os.Remove(deployPath)
-				}
-			} else {
-				if strings.HasSuffix(deployPath, ".war") {
-					explodedWarPath := strings.TrimSuffix(deployPath, ".war")
-					fmt.Printf("Checking exploded war path: %s\n", explodedWarPath)
-					if _, err := os.Stat(explodedWarPath); err == nil {
-						if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
-							archiveDirPath := filepath.Join(deployRoot, "archive")
-							fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
-							err := os.MkdirAll(archiveDirPath, 0700)
-							if err == nil {
-								currentTime := time.Now()
-								formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
-								archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), "archive", formattedTime)
-								fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
-								err := os.MkdirAll(archiveRoot, 0700)
-								if err == nil {
-									archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
-									archivePath = strings.TrimSuffix(archivePath, ".war")
-									fmt.Printf("Archiving: %s to %s\n", explodedWarPath, archivePath)
-									os.Rename(explodedWarPath, archivePath)
-								}
-							}
-						}
-					}
-				}
-			}
+		// 	if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
+		// 		// TODO: provide archival of existing directory.
+		// 		if ok, errList := trcvutils.UncompressZipFile(deployPath); !ok {
+		// 			fmt.Printf("Uncompressing zip file in place failed. %v\n", errList)
+		// 			return errList[0]
+		// 		} else {
+		// 			os.Remove(deployPath)
+		// 		}
+		// 	} else {
+		// 		if strings.HasSuffix(deployPath, ".war") {
+		// 			explodedWarPath := strings.TrimSuffix(deployPath, ".war")
+		// 			fmt.Printf("Checking exploded war path: %s\n", explodedWarPath)
+		// 			if _, err := os.Stat(explodedWarPath); err == nil {
+		// 				if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+		// 					archiveDirPath := filepath.Join(deployRoot, "archive")
+		// 					fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
+		// 					err := os.MkdirAll(archiveDirPath, 0700)
+		// 					if err == nil {
+		// 						currentTime := time.Now()
+		// 						formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
+		// 						archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), "archive", formattedTime)
+		// 						fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
+		// 						err := os.MkdirAll(archiveRoot, 0700)
+		// 						if err == nil {
+		// 							archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
+		// 							archivePath = strings.TrimSuffix(archivePath, ".war")
+		// 							fmt.Printf("Archiving: %s to %s\n", explodedWarPath, archivePath)
+		// 							os.Rename(explodedWarPath, archivePath)
+		// 						}
+		// 					}
+		// 				}
+		// 			}
+		// 		}
+		// 	}
 
-			fmt.Printf("Image deployed to: %s\n", deployPath)
-		} else {
-			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
-			if trcshDriverConfigBase.FeatherCtx != nil {
-				fmt.Printf("%s\n", errMessage)
-				trcshDriverConfigBase.FeatherCtx.Log.Printf(errMessage)
-			} else {
-				fmt.Printf("%s\n", errMessage)
-			}
-			return errors.New(errMessage)
-		}
+		// 	fmt.Printf("Image deployed to: %s\n", deployPath)
+		// } else {
+		// 	errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
+		// 	if trcshDriverConfigBase.FeatherCtx != nil {
+		// 		fmt.Printf("%s\n", errMessage)
+		// 		trcshDriverConfigBase.FeatherCtx.Log.Printf(errMessage)
+		// 	} else {
+		// 		fmt.Printf("%s\n", errMessage)
+		// 	}
+		// 	return errors.New(errMessage)
+		// }
 	} else if *certifyImagePtr {
 		//Certify Image
 		carrierCertify := false
@@ -744,7 +744,7 @@ func CommonMain(envDefaultPtr *string,
 			return nil
 		}
 
-		err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig) //Is this a problem?*
 		if err != nil {
 			fmt.Println(err.Error())
 			return err
@@ -767,7 +767,7 @@ func CommonMain(envDefaultPtr *string,
 			return nil
 		}
 
-		err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig) //?*
 		if err != nil {
 			fmt.Println(err.Error())
 			return err

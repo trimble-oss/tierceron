@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
@@ -118,6 +119,18 @@ foundTag:
 		}
 	}
 
+	if pluginToolConfig["imagesha256"] == nil || pluginToolConfig["trcsha256"] == nil || pluginToolConfig["imagesha256"].(string) != pluginToolConfig["trcsha256"].(string) {
+		if pluginToolConfig["codebundledeployPtr"] != nil && pluginToolConfig["codebundledeployPtr"].(bool) {
+			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
+			// if trcshDriverConfigBase.FeatherCtx != nil {
+			// 	fmt.Printf("%s\n", errMessage)
+			// 	trcshDriverConfigBase.FeatherCtx.Log.Printf(errMessage)
+			// } else {
+			// 	fmt.Printf("%s\n", errMessage)
+			// }
+			return errors.New(errMessage)
+		}
+	}
 	return nil
 }
 
@@ -127,7 +140,9 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 	if err != nil {
 		return "", errors.New("Failed to get config:" + err.Error())
 	}
-
+	writingFile := false
+	sha := ""
+writeToFile:
 	reader, readErr := azcontainerregistry.NewDigestValidationReader(digest, configRes.BlobData)
 	if readErr != nil {
 		return "", errors.New("Failed to create validation reader" + readErr.Error())
@@ -139,18 +154,36 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 	}
 
 	tarReader := tar.NewReader(gzipReader)
-	hash := sha256.New()
-	if _, err := io.Copy(hash, tarReader); err != nil {
-		return "", err
-	}
+	if writingFile {
+		writingFile = false
+		err := deployImage(tarReader, pluginToolConfig)
+		if err != nil {
+			fmt.Println("Unable to deploy image.")
+			return sha, err
+		} else {
+			return sha, nil
+		}
+	} else {
+		hash := sha256.New()
+		if _, err := io.Copy(hash, tarReader); err != nil {
+			return "", err
+		}
 
-	sha256 := hex.EncodeToString(hash.Sum(nil))
+		sha = hex.EncodeToString(hash.Sum(nil))
+	}
 
 	// Do sha256 here...   If it matches and wantblob is set on the map, then goto 131.... repeat and write to file....
 	// If we do want the blob, pull deploypath logic from trcplgtool.  and write to the expected location...
 	// Call new function with reader and pluginToolConfig to make the file...
 
-	return sha256, nil
+	if pluginToolConfig["trcsha256"] != nil && pluginToolConfig["trcsha256"].(string) == sha {
+		if pluginToolConfig["codebundledeployPtr"] != nil && pluginToolConfig["codebundledeployPtr"].(bool) {
+			writingFile = true
+			goto writeToFile
+		}
+	}
+
+	return sha, nil
 }
 
 // Return url to the image to be used for download.
