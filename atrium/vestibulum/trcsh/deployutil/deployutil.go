@@ -39,7 +39,10 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			mod.Env = trcshDriverConfig.DriverConfig.EnvBasis
 			fmt.Printf("Loading deployer details for %s and env %s\n", deployment, mod.EnvBasis)
 			deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
-			mod.Env = trcshDriverConfig.DriverConfig.Env
+			if !trcshDriverConfig.DriverConfig.LoadFromBasis {
+				// By default, we always use agent provided env to load the script.
+				mod.Env = trcshDriverConfig.DriverConfig.Env
+			}
 			if err != nil {
 				fmt.Println("Unable to obtain config for deployment")
 				return nil, err
