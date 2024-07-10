@@ -196,13 +196,14 @@ func GetProjectService(driverConfig *DriverConfig, templateFile string) (string,
 		service = splitDir[serviceIndex]
 
 		// Clean up service naming (Everything after '.' removed)
-		if !strings.Contains(templateFile, "Common") {
-			dotIndex := strings.Index(service, ".")
-			if dotIndex > 0 && dotIndex <= len(service) {
-				service = service[0:dotIndex]
-			}
-		} else if strings.Contains(service, ".mf.tmpl") {
+		if strings.Contains(templateFile, "Common") &&
+			strings.Contains(service, ".mf.tmpl") {
 			service = strings.Split(service, ".mf.tmpl")[0]
+		}
+
+		dotIndex := strings.Index(service, ".")
+		if dotIndex > 0 && dotIndex <= len(service) {
+			service = service[0:dotIndex]
 		}
 	}
 
