@@ -18,7 +18,6 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 	if len(*templatePaths) > 0 {
 		filterTemplatePathSlice = strings.Split(*templatePaths, ",")
 	}
-
 	for _, filterTemplatePath := range filterTemplatePathSlice {
 		path := filterTemplatePath
 		ext := ""
@@ -26,6 +25,9 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 			if !strings.Contains(path, ".") {
 				eUtils.LogErrorMessage(config, "Expecting file extension with filepath", false)
 				fmt.Println("Expecting file extension with filepath: " + path)
+				if eUtils.IsWindows() {
+					fmt.Println("Make sure filepath is in quotes.")
+				}
 			}
 		}
 		if !strings.HasSuffix(filterTemplatePath, "/") {
@@ -69,6 +71,9 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 		}
 		//create new file
 		templateFile := fmt.Sprintf("%s/%s%s.tmpl", dirPath, file, ext)
+		if eUtils.IsWindows() {
+			templateFile = fmt.Sprintf("%s\\%s%s.tmpl", dirPath, file, ext)
+		}
 		newFile, err := os.Create(templateFile)
 		if err != nil {
 			eUtils.LogErrorMessage(config, fmt.Sprintf("Couldn't create file: %s", templateFile), false)
