@@ -112,10 +112,15 @@ func deployImage(reader *tar.Reader, pluginToolConfig map[string]interface{}) er
 		fmt.Println("Could not create file for deployment.")
 		return err
 	}
-	if err := f.Close(); err != nil {
-		fmt.Println("Could not create file for deployment.")
-		return err
-	}
+
+	defer func(f *os.File) {
+		close_err := f.Close()
+		if err == nil && close_err != nil {
+			fmt.Println("Error closing file for deployment")
+			err = close_err
+		}
+	}(f)
+
 	for {
 		_, err := reader.Next()
 		if err == io.EOF {
