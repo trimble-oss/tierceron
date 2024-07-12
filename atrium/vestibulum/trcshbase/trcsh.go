@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/danieljoos/wincred"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
@@ -297,7 +298,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		//Open deploy script and parse it.
 		ProcessDeploy(nil, trcshDriverConfig, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
 	} else {
-		agentToken := os.Getenv("AGENT_TOKEN")
+		//Before:
+		// agentToken := os.Getenv("AGENT_TOKEN")
+		agentToken, err := wincred.GetGenericCredential("AGENT_TOKEN")
+		if err != nil {
+			fmt.Println("Error loading authentication from Credential Manager")
+			agentToken = ""
+		}
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
 
@@ -317,9 +324,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			}
 		}
 
+		// How to handle case where nothing loads from wincred???
 		if len(agentToken) == 0 {
-			fmt.Println("drone trcsh requires AGENT_TOKEN.")
-			os.Exit(-1)
+			if len(os.Getenv("AGENT_TOKEN")) != 0 {
+				agentToken = os.Getenv("AGENT_TOKEN")
+			} else {
+				fmt.Println("drone trcsh requires AGENT_TOKEN.")
+				os.Exit(-1)
+			}
 		}
 
 		if len(agentEnv) == 0 {
@@ -335,10 +347,35 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			fmt.Println("drone trcsh requires VAULT_ADDR address.")
 			os.Exit(-1)
 		}
+
 		if err := capauth.ValidateVhost(address, "https://"); err != nil {
-			fmt.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
-			os.Exit(124)
+			// check os.env for another token
+			if len(os.Getenv("AGENT_TOKEN")) > 0 {
+				agentToken = os.Getenv("AGENT_TOKEN")
+				if err := capauth.ValidateVhost(address, "https://"); err != nil {
+					fmt.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
+					os.Exit(124)
+				} else {
+					//migrate token to wincred
+					cred := wincred.NewGenericCredential("AGENT_TOKEN")
+					cred.CredentialBlob = []byte(agentToken)
+					err := cred.Write()
+					if err != nil {
+						fmt.Println("Error migrating updated token.")
+						fmt.Println(err)
+					}
+				}
+			} else {
+				fmt.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
+				os.Exit(124)
+			}
 		}
+		//delete os.env token
+		err = os.Unsetenv("AGENT_TOKEN")
+		if err != nil || len(os.Getenv("AGENT_TOKEN")) != 0 {
+			fmt.Println("Error removing agent token from environment.")
+		}
+
 		memprotectopts.MemProtect(nil, &agentToken)
 		memprotectopts.MemProtect(nil, &address)
 		shutdown := make(chan bool)
