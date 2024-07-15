@@ -68,6 +68,7 @@ atrium/.vscode/*
 installation/trclocal/tls/cert.*
 
 installation/trclocal/trchelloworld/deploy/*
+installation/trcsh/trc_seeds/*
 
 installation/trccarrier/deploy/
 installation/trccarrier/trc_seeds/
