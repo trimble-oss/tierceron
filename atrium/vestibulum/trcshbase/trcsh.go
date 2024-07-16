@@ -300,14 +300,18 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		ProcessDeploy(nil, trcshDriverConfig, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
 	} else {
 		agentToken := ""
-		agentCred, err := wincred.GetGenericCredential("AGENT_TOKEN")
-		if err != nil {
-			fmt.Println("Error loading authentication from Credential Manager")
+		fromWinCred := false
+		if eUtils.IsWindows() {
+			agentCred, err := wincred.GetGenericCredential("AGENT_TOKEN")
+			if err != nil {
+				fmt.Println("Error loading authentication from Credential Manager")
+			} else {
+				agentToken = string(agentCred.CredentialBlob)
+			}
+			fromWinCred = true
 		} else {
-			agentToken = string(agentCred.CredentialBlob)
+			agentToken = os.Getenv("AGENT_TOKEN")
 		}
-		fromWinCred := true
-
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
 
@@ -325,6 +329,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				fmt.Printf("drone trcsh requires a %s.\n", deploymentsShard)
 				os.Exit(-1)
 			}
+		}
+
+		if len(agentToken) == 0 && !eUtils.IsWindows() {
+			fmt.Println("drone trcsh requires AGENT_TOKEN.")
+			os.Exit(-1)
 		}
 
 		if len(agentEnv) == 0 {
@@ -359,7 +368,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, nil)
 		if errAgentLoad != nil {
 			// check os.env for another token
-			if agentToken != os.Getenv("AGENT_TOKEN") {
+			if agentToken != os.Getenv("AGENT_TOKEN") && eUtils.IsWindows() {
 				agentToken = os.Getenv("AGENT_TOKEN")
 				fromWinCred = false
 				goto ValidateAgent
@@ -371,22 +380,25 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		fmt.Println("Drone trcsh agent bootstrap successful.")
 
-		if !fromWinCred {
-			//migrate token to wincred
-			cred := wincred.NewGenericCredential("AGENT_TOKEN")
-			cred.CredentialBlob = []byte(agentToken)
-			err := cred.Write()
-			if err != nil {
-				fmt.Println("Error migrating updated token.")
-				fmt.Println(err)
+		if eUtils.IsWindows() {
+			if !fromWinCred {
+				// migrate token to wincred
+				cred := wincred.NewGenericCredential("AGENT_TOKEN")
+				cred.CredentialBlob = []byte(agentToken)
+				err := cred.Write()
+				if err != nil {
+					fmt.Println("Error migrating updated token.")
+					fmt.Println(err)
+				}
 			}
-		}
-
-		//delete os.env token
-		command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_TOKEN", "UNSET")
-		_, err = command.CombinedOutput()
-		if err != nil {
-			fmt.Println(err)
+			//delete os.env token
+			if os.Getenv("AGENT_TOKEN") != "" {
+				command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_TOKEN", "UNSET")
+				_, err := command.CombinedOutput()
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
 		}
 
 		fmt.Printf("drone trcsh beginning initialization sequence.\n")
