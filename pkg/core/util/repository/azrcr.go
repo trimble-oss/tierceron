@@ -158,8 +158,17 @@ writeToFile:
 		}
 	} else {
 		hash := sha256.New()
-		if _, err := io.Copy(hash, tarReader); err != nil {
-			return "", err
+		for {
+			_, err := tarReader.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return "", err
+			}
+			if _, err := io.Copy(hash, tarReader); err != nil {
+				return "", err
+			}
 		}
 		sha = hex.EncodeToString(hash.Sum(nil))
 	}
