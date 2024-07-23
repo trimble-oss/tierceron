@@ -665,7 +665,13 @@ func CommonMain(envDefaultPtr *string,
 			if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { //If region is set
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
-				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
+
+				pluginSource := pluginToolConfig["trcplugin"].(string)
+				if strings.HasPrefix(*pluginNamePtr, pluginSource) {
+					pluginSource = *pluginNamePtr
+				}
+				mod.SubSectionValue = pluginSource
+
 				if trcshDriverConfig == nil {
 					trcshDriverConfig = &capauth.TrcshDriverConfig{
 						DriverConfig: eUtils.DriverConfig{
@@ -673,7 +679,7 @@ func CommonMain(envDefaultPtr *string,
 								ExitOnFailure: true,
 								Log:           logger,
 							},
-							Insecure: false, StartDir: []string{""}, SubSectionValue: *pluginNamePtr,
+							Insecure: false, StartDir: []string{""}, SubSectionValue: pluginSource,
 						},
 					}
 				}
