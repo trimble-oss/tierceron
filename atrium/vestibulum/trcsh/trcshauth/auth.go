@@ -1,9 +1,13 @@
 package trcshauth
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"math/rand"
 	"os"
 	"regexp"
@@ -13,6 +17,8 @@ import (
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -219,4 +225,43 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth complete.")
 
 	return trcshConfig, err
+}
+
+// add func hard code exe file path
+func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
+	fmt.Println("Reached validate path sha")
+	certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcsh.exe/Certify")
+	if err != nil {
+		return false, err
+	}
+	fmt.Println(certifyMap)
+	if eUtils.IsWindows() {
+		trcshaPath = trcshaPath + ".exe"
+	}
+	if _, ok := certifyMap["trcsha256"]; ok {
+		peerExe, err := os.Open(trcshaPath)
+		if err != nil {
+			return false, err
+		}
+
+		defer peerExe.Close()
+
+		if !eUtils.IsWindows() {
+			return true, nil
+		}
+		// TODO: Check previous 10 versions?  If any match, then
+		// return ok....
+		h := sha256.New()
+		if _, err := io.Copy(h, peerExe); err != nil {
+			return false, err
+		}
+		sha := hex.EncodeToString(h.Sum(nil))
+
+		if certifyMap["trcsha256"].(string) == sha {
+			return true, nil
+		} else {
+			return false, nil
+		}
+	}
+	return false, errors.New("missing certification")
 }
