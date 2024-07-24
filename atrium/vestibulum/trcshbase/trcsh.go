@@ -307,8 +307,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				fmt.Println("Error loading authentication from Credential Manager")
 			} else {
 				agentToken = string(agentCred.CredentialBlob)
+				fromWinCred = true
 			}
-			fromWinCred = true
 		} else {
 			agentToken = os.Getenv("AGENT_TOKEN")
 		}
