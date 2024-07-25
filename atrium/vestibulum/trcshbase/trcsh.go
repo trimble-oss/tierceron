@@ -339,6 +339,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			fmt.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
 			os.Exit(124)
 		}
+
 		memprotectopts.MemProtect(nil, &agentToken)
 		memprotectopts.MemProtect(nil, &address)
 		shutdown := make(chan bool)
@@ -361,6 +362,27 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
 			os.Exit(124)
 		}
+		//Validate agent sha path
+		pluginConfig := make(map[string]interface{})
+		pluginConfig["vaddress"] = address
+		pluginConfig["token"] = agentToken
+		pluginConfig["env"] = "dev"
+		//Is this right mod initialization? - same one as used by server side
+		_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+		if err != nil {
+			fmt.Println("Problem initializing mod")
+			fmt.Println(err)
+		}
+		if vault != nil {
+			defer vault.Close()
+		}
+		// mod initialization used in trcsh.go
+		// mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.Insecure, trcshDriverConfig.DriverConfig.Token, trcshDriverConfig.DriverConfig.VaultAddress, trcshDriverConfig.DriverConfig.EnvBasis, trcshDriverConfig.DriverConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+		// if err != nil {
+		// 	eUtils.CheckError(&trcshDriverConfig.DriverConfig.CoreConfig, err, true)
+		// }
+		trcshauth.ValidateTrcshPathSha(mod, pluginConfig, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+
 		trcshDriverConfig.DriverConfig.AppRoleConfig = *gTrcshConfig.ConfigRole
 		trcshDriverConfig.DriverConfig.VaultAddress = *gTrcshConfig.VaultAddress
 		serviceDeployments, err := deployutil.GetDeployers(trcshDriverConfig)

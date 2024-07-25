@@ -14,10 +14,11 @@ import (
 	"strings"
 	"time"
 
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -229,39 +230,45 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 // add func hard code exe file path
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
-	fmt.Println("Reached validate path sha")
 	certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcsh.exe/Certify")
+	fmt.Println(certifyMap)
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+	var trcshaPath string
+	if eUtils.IsWindows() {
+		trcshaPath = "C:\\Program Files\\Dexter + Chaney\\TrcDeploy\\trcsh.exe"
+	} else {
+		// what path for non windows? - is there a way to make it more general?
+		trcshaPath = "~/workspace/pendentive/tierceron/installation/trccarrier/deploy/target/trcsh.exe"
+	}
+	//certifyMap returns empty...
+	// if _, ok := certifyMap["trcsha256"]; ok {
+	peerExe, err := os.Open(trcshaPath)
 	if err != nil {
 		return false, err
 	}
-	fmt.Println(certifyMap)
-	if eUtils.IsWindows() {
-		trcshaPath = trcshaPath + ".exe"
+
+	defer peerExe.Close()
+
+	if !eUtils.IsWindows() {
+		return true, nil
 	}
-	if _, ok := certifyMap["trcsha256"]; ok {
-		peerExe, err := os.Open(trcshaPath)
-		if err != nil {
-			return false, err
-		}
-
-		defer peerExe.Close()
-
-		if !eUtils.IsWindows() {
-			return true, nil
-		}
-		// TODO: Check previous 10 versions?  If any match, then
-		// return ok....
-		h := sha256.New()
-		if _, err := io.Copy(h, peerExe); err != nil {
-			return false, err
-		}
-		sha := hex.EncodeToString(h.Sum(nil))
-
-		if certifyMap["trcsha256"].(string) == sha {
-			return true, nil
-		} else {
-			return false, nil
-		}
+	// TODO: Check previous 10 versions?  If any match, then
+	// return ok....
+	h := sha256.New()
+	if _, err := io.Copy(h, peerExe); err != nil {
+		return false, err
 	}
+	sha := hex.EncodeToString(h.Sum(nil))
+	fmt.Println(sha)
+
+	// if certifyMap["trcsha256"].(string) == sha {
+	// 	return true, nil
+	// } else {
+	// 	return false, nil
+	// }
+	// }
 	return false, errors.New("missing certification")
 }
