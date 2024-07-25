@@ -17,6 +17,21 @@ import (
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 )
 
+type StreamingTarReader struct {
+	tarReader *tar.Reader
+}
+
+func NewStreamingTarReader(tr *tar.Reader) *StreamingTarReader {
+	return &StreamingTarReader{tr}
+}
+
+// change type of data for gzip reader
+func (str *StreamingTarReader) read(data []byte) error {
+	for {
+		// read until eof --> then call tr.Next() and repeat
+	}
+}
+
 func gUnZipData(data *[]byte) ([]byte, error) {
 	var unCompressedBytes []byte
 	newB := bytes.NewBuffer(unCompressedBytes)
