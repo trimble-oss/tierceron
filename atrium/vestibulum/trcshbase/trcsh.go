@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/danieljoos/wincred"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
@@ -297,7 +299,19 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		//Open deploy script and parse it.
 		ProcessDeploy(nil, trcshDriverConfig, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
 	} else {
-		agentToken := os.Getenv("AGENT_TOKEN")
+		agentToken := ""
+		fromWinCred := false
+		if eUtils.IsWindows() {
+			agentCred, err := wincred.GetGenericCredential("AGENT_TOKEN")
+			if err != nil {
+				fmt.Println("Error loading authentication from Credential Manager")
+			} else {
+				agentToken = string(agentCred.CredentialBlob)
+				fromWinCred = true
+			}
+		} else {
+			agentToken = os.Getenv("AGENT_TOKEN")
+		}
 		agentEnv := os.Getenv("AGENT_ENV")
 		address := os.Getenv("VAULT_ADDR")
 
@@ -317,7 +331,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			}
 		}
 
-		if len(agentToken) == 0 {
+		if len(agentToken) == 0 && !eUtils.IsWindows() {
 			fmt.Println("drone trcsh requires AGENT_TOKEN.")
 			os.Exit(-1)
 		}
@@ -335,10 +349,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			fmt.Println("drone trcsh requires VAULT_ADDR address.")
 			os.Exit(-1)
 		}
+
 		if err := capauth.ValidateVhost(address, "https://"); err != nil {
 			fmt.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
 			os.Exit(124)
 		}
+
 		memprotectopts.MemProtect(nil, &agentToken)
 		memprotectopts.MemProtect(nil, &address)
 		shutdown := make(chan bool)
@@ -346,12 +362,43 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		// Preload agent synchronization configs...
 		var errAgentLoad error
+	ValidateAgent:
 		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, nil)
 		if errAgentLoad != nil {
-			fmt.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
-			os.Exit(124)
+			// check os.env for another token
+			if agentToken != os.Getenv("AGENT_TOKEN") && eUtils.IsWindows() {
+				agentToken = os.Getenv("AGENT_TOKEN")
+				fromWinCred = false
+				goto ValidateAgent
+			} else {
+				fmt.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
+				os.Exit(124)
+			}
+		}
+
+		fmt.Println("Drone trcsh agent bootstrap successful.")
+
+		if eUtils.IsWindows() {
+			if !fromWinCred {
+				// migrate token to wincred
+				cred := wincred.NewGenericCredential("AGENT_TOKEN")
+				cred.CredentialBlob = []byte(agentToken)
+				err := cred.Write()
+				if err != nil {
+					fmt.Println("Error migrating updated token.")
+					fmt.Println(err)
+				}
+			}
+			//delete os.env token
+			if os.Getenv("AGENT_TOKEN") != "" {
+				command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_TOKEN", "UNSET")
+				_, err := command.CombinedOutput()
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
 		}
 
 		fmt.Printf("drone trcsh beginning initialization sequence.\n")
@@ -361,6 +408,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
 			os.Exit(124)
 		}
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Completed bootstrapping and continuing to initialize services.")
 		trcshDriverConfig.DriverConfig.AppRoleConfig = *gTrcshConfig.ConfigRole
 		trcshDriverConfig.DriverConfig.VaultAddress = *gTrcshConfig.VaultAddress
 		serviceDeployments, err := deployutil.GetDeployers(trcshDriverConfig)
