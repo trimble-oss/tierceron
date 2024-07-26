@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -69,27 +70,57 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	if !strings.HasPrefix(host, protocol) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
+
+	var ip string
+	hostname := host
+	if strings.HasPrefix(host, "https://") {
+		hostname = host[8:]
+		if strings.Contains(hostname, ":") {
+			hostname = hostname[:strings.Index(hostname, ":")]
+		}
+	}
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		// should exit???
+		fmt.Println("Error looking up host ip address")
+		return err
+	}
+	if len(ips) > 0 {
+		ip = ips[0].String()
+	}
 	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if inverse {
-			if len(protocol) > 0 {
-				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint), host) {
+			if endpoint[1] == "n/a" || endpoint[1] == ip {
+				if len(protocol) > 0 {
+					if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint[0]), host) {
+						return nil
+					}
+				}
+				if strings.Contains(endpoint[0], host) {
 					return nil
 				}
-			}
-			if strings.Contains(endpoint, host) {
-				return nil
+			} else {
+				//log error -- log not created yet
+				fmt.Printf("Invalid IP address of supported domain: %s", ip)
+				fmt.Println()
 			}
 		} else {
 			var protocolHost = host
 			if !strings.HasPrefix(host, "https://") {
 				protocolHost = fmt.Sprintf("https://%s", host)
 			}
-			var protocolEndpoint = endpoint
-			if !strings.HasPrefix(endpoint, "https://") {
-				protocolEndpoint = fmt.Sprintf("https://%s", endpoint)
+			var protocolEndpoint = endpoint[0]
+			if !strings.HasPrefix(endpoint[0], "https://") {
+				protocolEndpoint = fmt.Sprintf("https://%s", endpoint[0])
 			}
 			if strings.HasPrefix(protocolEndpoint, protocolHost) {
-				return nil
+				if endpoint[1] == "n/a" || endpoint[1] == ip {
+					return nil
+				} else {
+					//log error -- log not created yet
+					fmt.Printf("Invalid IP address of supported domain: %s", ip)
+					fmt.Println()
+				}
 			}
 		}
 	}
