@@ -31,6 +31,7 @@ type AgentConfigs struct {
 	DeployRoleID    *string
 	Deployments     *string
 	Env             *string
+	Drone           *bool
 }
 
 type TrcshDriverConfig struct {
@@ -111,7 +112,7 @@ func (agentconfig *AgentConfigs) RetryingPenseFeatherQuery(pense string) (*strin
 }
 
 func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
-	penseCode := randomString(7 + rand.Intn(7))
+	penseCode := randomString(12 + rand.Intn(12)) //could make rand.Intn(7) instead...
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
@@ -120,7 +121,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 		return nil, featherErr
 	}
 
-	creds, credErr := tls.GetTransportCredentials()
+	creds, credErr := tls.GetTransportCredentials(agentconfig.Drone)
 
 	if credErr != nil {
 		return nil, credErr
@@ -154,7 +155,8 @@ func NewAgentConfig(address string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error,
-	logger *log.Logger) (*AgentConfigs, *TrcShConfig, error) {
+	logger *log.Logger,
+	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
 	if logger != nil {
 		logger.Printf(".")
 	} else {
@@ -222,6 +224,10 @@ func NewAgentConfig(address string,
 		}
 
 		deployments := "bootstrap"
+		isDrone := false
+		if len(drone) > 0 {
+			isDrone = *drone[0]
+		}
 		agentconfig := &AgentConfigs{
 			captiplib.FeatherCtlInit(nil,
 				trcHatHostLocal,
@@ -237,6 +243,7 @@ func NewAgentConfig(address string,
 			new(string),
 			&deployments,
 			&trcHatEnv,
+			&isDrone,
 		}
 
 		trcshConfig := &TrcShConfig{Env: trcHatEnv,
@@ -269,7 +276,7 @@ func NewAgentConfig(address string,
 }
 
 func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, error) {
-	penseCode := randomString(7 + rand.Intn(7))
+	penseCode := randomString(12 + rand.Intn(12))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
