@@ -7,7 +7,7 @@ Agent *requires* trcsh to be set up prior to use.  Trcsh running on the server c
 
 # Agent installation
 ```
-trcpub -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
+trcpub -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport>
 trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcshAgent -serviceFilter=config -indexFilter=config -addr=$VAULT_ADDR -novault
 
 ```

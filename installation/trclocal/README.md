@@ -96,11 +96,11 @@ trcpub -env=dev -token=$VAULT_PUB_TOKEN -addr=https://<vaulthost:vaultport>
 ```
 
 ```
-trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
+trcinit -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport>
 ```
 
 ```
-trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -certs
+trcinit -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport> -certs
 ```
 
 # Test your configs are in vault
