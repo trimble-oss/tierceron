@@ -69,8 +69,8 @@ sudo cp trc_seeds/certs/* /usr/local/vault/certs/
 # Generate vault properties configuration
 ```
 trcconfig -env=dev -novault
-sudo cp resources/vault_properties.hcl /usr/local/vault/
-sudo cp trc_seeds/certs/* /usr/local/vault/certs/
+chmod 700 ./scripts/installconfigs.sh
+sudo ./scripts/installconfigs.sh
 chmod 700 ./scripts/install.sh
 sudo ./scripts/install.sh
 ```
