@@ -88,21 +88,21 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 			if !strings.HasSuffix(trcProjectService, "/") {
 				trcProjectService = trcProjectService + "/"
 			}
-			dosProjectService = strings.Replace(trcProjectService, "/", "\\", 1)
+		}
+		dosProjectService = strings.Replace(trcProjectService, "/", "\\", 1)
 
-			if len(driverConfig.StartDir) > 1 {
-				trcProjectServiceParts := strings.Split(trcProjectService, "/")
-				project := trcProjectServiceParts[0] + "/"
-				trcService = "/" + trcProjectServiceParts[1] + "/"
-				dosService = strings.Replace(trcService, "/", "\\", 1)
-				startDirFiltered := []string{}
-				for _, startDir := range driverConfig.StartDir {
-					if strings.HasSuffix(startDir, project) {
-						startDirFiltered = append(startDirFiltered, startDir)
-					}
+		if len(driverConfig.StartDir) > 1 {
+			trcProjectServiceParts := strings.Split(trcProjectService, "/")
+			project := trcProjectServiceParts[0] + "/"
+			trcService = "/" + trcProjectServiceParts[1] + "/"
+			dosService = strings.Replace(trcService, "/", "\\", 1)
+			startDirFiltered := []string{}
+			for _, startDir := range driverConfig.StartDir {
+				if strings.HasSuffix(startDir, project) {
+					startDirFiltered = append(startDirFiltered, startDir)
 				}
-				driverConfig.StartDir = startDirFiltered
 			}
+			driverConfig.StartDir = startDirFiltered
 		}
 	}
 
