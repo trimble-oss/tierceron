@@ -76,10 +76,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 	var trcService string = ""
 	var dosService string = ""
 
-	if driverConfig.CoreConfig.WantCerts {
-		trcProjectService = "Common"
-	} else {
-		if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && strings.Contains(projectService.(string), "/") || len(driverConfig.ServicesWanted) == 1 {
+	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && strings.Contains(projectService.(string), "/") || len(driverConfig.ServicesWanted) == 1 {
+		if driverConfig.CoreConfig.WantCerts {
+			trcProjectService = "Common"
+		} else {
 			if ok && len(driverConfig.ServicesWanted) == 0 {
 				trcProjectService = projectService.(string)
 			} else {
