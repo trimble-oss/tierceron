@@ -53,7 +53,7 @@ func randomString(n int) string {
 	return string(b)
 }
 
-func ValidateVhost(host string, protocol string) error {
+func ValidateVhost(host string, protocol string, drone ...*bool) error {
 	return ValidateVhostInverse(host, protocol, false)
 }
 
@@ -66,31 +66,55 @@ func ValidateVhostDomain(host string) error {
 	return errors.New("Bad host: " + host)
 }
 
-func ValidateVhostInverse(host string, protocol string, inverse bool) error {
-	if !strings.HasPrefix(host, protocol) {
+func ValidateVhostInverse(host string, protocol string, inverse bool, drone ...*bool) error {
+	if !strings.HasPrefix(host, protocol) || (protocol == "http" && strings.HasPrefix(host, "https")) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
-	//need to figure out what to do for testcases - net.LookupIP for tests returns nothing
 	var ip string
+	isDrone := false
+	if len(drone) > 0 {
+		isDrone = *drone[0]
+	}
 	hostname := host
-	if strings.HasPrefix(host, "https://") {
-		hostname = host[8:]
+	if !prod.IsProd() && isDrone {
+		hostname = host[len(protocol):]
+		// Remove remaining invalid characters from host
+		// Note: will fail if protocol is "http" and host starts with "https:// so added check above"
+		for {
+			if strings.HasPrefix(hostname, ":") {
+				hostname = hostname[strings.Index(hostname, ":")+1:]
+			} else if strings.HasPrefix(hostname, "/") {
+				hostname = hostname[strings.Index(hostname, "/")+1:]
+			} else {
+				break
+			}
+		}
+		if strings.Contains(hostname, ":") {
+			hostname = hostname[:strings.Index(hostname, ":")]
+			fmt.Println(hostname)
+		} else if strings.Contains(hostname, "/") {
+			fmt.Println(hostname)
+			hostname = hostname[:strings.Index(hostname, "/")]
+			fmt.Println(hostname)
+		}
+		ips, err := net.LookupIP(hostname)
+		if err != nil {
+			if len(ips) == 0 && strings.Contains(hostname, ".test") {
+				ip = "127.0.0.1"
+			} else {
+				fmt.Println("Error looking up host ip address")
+				fmt.Println(err)
+				return errors.New("Bad host: " + host)
+			}
+		}
+		if len(ips) > 0 {
+			ip = ips[0].String()
+		}
 	}
-	if strings.Contains(hostname, ":") {
-		hostname = hostname[:strings.Index(hostname, ":")]
-	}
-	ips, err := net.LookupIP(hostname)
-	if err != nil {
-		// should exit???
-		fmt.Println("Error looking up host ip address")
-		return errors.New("Bad host: " + host)
-	}
-	if len(ips) > 0 {
-		ip = ips[0].String()
-	}
+
 	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if inverse {
-			if endpoint[1] == "n/a" || endpoint[1] == ip {
+			if prod.IsProd() || !isDrone || endpoint[1] == ip {
 				if len(protocol) > 0 {
 					if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint[0]), host) {
 						return nil
@@ -103,6 +127,7 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 				//log error -- log not created yet
 				fmt.Printf("Invalid IP address of supported domain: %s", ip)
 				fmt.Println()
+				return errors.New("Bad host: " + host)
 			}
 		} else {
 			var protocolHost = host
@@ -114,12 +139,13 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 				protocolEndpoint = fmt.Sprintf("https://%s", endpoint[0])
 			}
 			if strings.HasPrefix(protocolEndpoint, protocolHost) {
-				if endpoint[1] == "n/a" || endpoint[1] == ip {
+				if prod.IsProd() || !isDrone || endpoint[1] == ip {
 					return nil
 				} else {
 					//log error -- log not created yet
 					fmt.Printf("Invalid IP address of supported domain: %s", ip)
 					fmt.Println()
+					return errors.New("Bad host: " + host)
 				}
 			}
 		}

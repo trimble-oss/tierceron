@@ -350,7 +350,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			os.Exit(-1)
 		}
 
-		if err := capauth.ValidateVhost(address, "https://"); err != nil {
+		if err := capauth.ValidateVhost(address, "https://", dronePtr); err != nil {
 			fmt.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
 			os.Exit(124)
 		}
