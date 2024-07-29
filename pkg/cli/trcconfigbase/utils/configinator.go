@@ -76,35 +76,35 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 	var trcService string = ""
 	var dosService string = ""
 
-  if driverConfig.CoreConfig.WantCerts {
-    trcProjectService = "Common"
-  } else {
-    if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && strings.Contains(projectService.(string), "/") || len(driverConfig.ServicesWanted) == 1 {
-  		if ok && len(driverConfig.ServicesWanted) == 0 {
-  			trcProjectService = projectService.(string)
-  		} else {
-  			trcProjectService = driverConfig.ServicesWanted[0]
-  		}
-  		if !strings.HasSuffix(trcProjectService, "/") {
-  			trcProjectService = trcProjectService + "/"
-  		}
-  		dosProjectService = strings.Replace(trcProjectService, "/", "\\", 1)
-  
-  		if len(driverConfig.StartDir) > 1 {
-  			trcProjectServiceParts := strings.Split(trcProjectService, "/")
-  			project := trcProjectServiceParts[0] + "/"
-  			trcService = "/" + trcProjectServiceParts[1] + "/"
-  			dosService = strings.Replace(trcService, "/", "\\", 1)
-  			startDirFiltered := []string{}
-  			for _, startDir := range driverConfig.StartDir {
-  				if strings.HasSuffix(startDir, project) {
-  					startDirFiltered = append(startDirFiltered, startDir)
-  				}
-  			}
-  			driverConfig.StartDir = startDirFiltered
-  		}
-  	}
-  }
+	if driverConfig.CoreConfig.WantCerts {
+		trcProjectService = "Common"
+	} else {
+		if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && strings.Contains(projectService.(string), "/") || len(driverConfig.ServicesWanted) == 1 {
+			if ok && len(driverConfig.ServicesWanted) == 0 {
+				trcProjectService = projectService.(string)
+			} else {
+				trcProjectService = driverConfig.ServicesWanted[0]
+			}
+			if !strings.HasSuffix(trcProjectService, "/") {
+				trcProjectService = trcProjectService + "/"
+			}
+			dosProjectService = strings.Replace(trcProjectService, "/", "\\", 1)
+
+			if len(driverConfig.StartDir) > 1 {
+				trcProjectServiceParts := strings.Split(trcProjectService, "/")
+				project := trcProjectServiceParts[0] + "/"
+				trcService = "/" + trcProjectServiceParts[1] + "/"
+				dosService = strings.Replace(trcService, "/", "\\", 1)
+				startDirFiltered := []string{}
+				for _, startDir := range driverConfig.StartDir {
+					if strings.HasSuffix(startDir, project) {
+						startDirFiltered = append(startDirFiltered, startDir)
+					}
+				}
+				driverConfig.StartDir = startDirFiltered
+			}
+		}
+	}
 
 	//templatePaths
 	for _, startDir := range driverConfig.StartDir {
