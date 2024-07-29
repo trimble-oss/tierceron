@@ -70,20 +70,20 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	if !strings.HasPrefix(host, protocol) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
-
+	//need to figure out what to do for testcases - net.LookupIP for tests returns nothing
 	var ip string
 	hostname := host
 	if strings.HasPrefix(host, "https://") {
 		hostname = host[8:]
-		if strings.Contains(hostname, ":") {
-			hostname = hostname[:strings.Index(hostname, ":")]
-		}
+	}
+	if strings.Contains(hostname, ":") {
+		hostname = hostname[:strings.Index(hostname, ":")]
 	}
 	ips, err := net.LookupIP(hostname)
 	if err != nil {
 		// should exit???
 		fmt.Println("Error looking up host ip address")
-		return err
+		return errors.New("Bad host: " + host)
 	}
 	if len(ips) > 0 {
 		ip = ips[0].String()
