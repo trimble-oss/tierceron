@@ -56,7 +56,7 @@ func SetEncryptionSecret(driverConfig *eUtils.DriverConfig) error {
 		}
 		encryptSecret = input
 	} else {
-		mod, modErr := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
+		mod, modErr := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.Env, true)
 		if modErr != nil {
 			eUtils.LogErrorObject(&driverConfig.CoreConfig, modErr, false)
 		}
