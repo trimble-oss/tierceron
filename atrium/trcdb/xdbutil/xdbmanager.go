@@ -11,8 +11,8 @@ import (
 // GenerateSeedsFromVaultToDb pulls all data from vault for each template into a database
 func GenerateSeedsFromVaultToDb(driverConfig *eUtils.DriverConfig) (interface{}, error) {
 	if driverConfig.Diff { //Clean flag in trcx
-		_, err1 := os.Stat(driverConfig.EndDir + driverConfig.Env)
-		err := os.RemoveAll(driverConfig.EndDir + driverConfig.Env)
+		_, err1 := os.Stat(driverConfig.EndDir + driverConfig.CoreConfig.Env)
+		err := os.RemoveAll(driverConfig.EndDir + driverConfig.CoreConfig.Env)
 
 		if err != nil {
 			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
@@ -20,7 +20,7 @@ func GenerateSeedsFromVaultToDb(driverConfig *eUtils.DriverConfig) (interface{},
 		}
 
 		if err1 == nil {
-			eUtils.LogInfo(&driverConfig.CoreConfig, "Seed removed from"+driverConfig.EndDir+driverConfig.Env)
+			eUtils.LogInfo(&driverConfig.CoreConfig, "Seed removed from"+driverConfig.EndDir+driverConfig.CoreConfig.Env)
 		}
 		return nil, nil
 	}
@@ -44,7 +44,7 @@ func GenerateSeedsFromVaultToDb(driverConfig *eUtils.DriverConfig) (interface{},
 	}
 
 	tierceronEngine, err := trcdb.CreateEngine(driverConfig,
-		templatePaths, driverConfig.Env, driverConfig.VersionFilter[0])
+		templatePaths, driverConfig.CoreConfig.Env, driverConfig.VersionFilter[0])
 	if err != nil {
 		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 		return nil, err

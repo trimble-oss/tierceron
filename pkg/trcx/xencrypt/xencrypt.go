@@ -56,11 +56,11 @@ func SetEncryptionSecret(driverConfig *eUtils.DriverConfig) error {
 		}
 		encryptSecret = input
 	} else {
-		mod, modErr := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
+		mod, modErr := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
 		if modErr != nil {
 			eUtils.LogErrorObject(&driverConfig.CoreConfig, modErr, false)
 		}
-		mod.Env = strings.Split(driverConfig.Env, "_")[0]
+		mod.Env = strings.Split(driverConfig.CoreConfig.Env, "_")[0]
 		data, readErr := xencryptopts.BuildOptions.LoadSecretFromSecretStore(mod)
 		if readErr != nil {
 			return readErr

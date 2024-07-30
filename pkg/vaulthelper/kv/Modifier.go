@@ -19,6 +19,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -83,6 +84,16 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 	}
 
 	return environment, "", false, nil
+}
+
+// NewModifierFromCoreConfig Constructs a new modifier struct and connects to the vault
+// @param coreConfig 	core config containing components necessary to connect to vault.
+// @param useCache Whether to use the modcache or not.
+// @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
+//
+//	Any errors generated in creating the client
+func NewModifierFromCoreConfig(coreConfig *core.CoreConfig, useCache bool) (*Modifier, error) {
+	return NewModifier(coreConfig.Insecure, coreConfig.Token, coreConfig.VaultAddress, coreConfig.Env, coreConfig.Regions, useCache, coreConfig.Log)
 }
 
 // NewModifier Constructs a new modifier struct and connects to the vault

@@ -223,9 +223,9 @@ func CommonMain(envPtr *string,
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			ExitOnFailure: true,
+			Insecure:      true,
 			Log:           logger,
 		},
-		Insecure: true,
 	}
 	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
 
@@ -241,9 +241,9 @@ func CommonMain(envPtr *string,
 		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: true,
+				Insecure:      *insecurePtr,
 				Log:           logger,
 			},
-			Insecure: *insecurePtr,
 		}, nil, nil, tokenPtr, nil, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
 		if autoErr != nil {
 			fmt.Println("Auth failure: " + autoErr.Error())
@@ -782,14 +782,14 @@ func CommonMain(envPtr *string,
 		dConfig := &eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				DynamicPathFilter: *dynamicPathPtr,
+				Insecure:          *insecurePtr,
+				Token:             v.GetToken(),
+				VaultAddress:      *addrPtr,
+				Env:               *envPtr,
+				EnvBasis:          eUtils.GetEnvBasis(*envPtr),
 				WantCerts:         *uploadCertPtr, // TODO: this was false...
 				Log:               logger,
 			},
-			Insecure:        *insecurePtr,
-			Token:           v.GetToken(),
-			VaultAddress:    *addrPtr,
-			Env:             *envPtr,
-			EnvBasis:        eUtils.GetEnvBasis(*envPtr),
 			SectionKey:      sectionKey,
 			SectionName:     subSectionName,
 			SubSectionValue: *eUtils.IndexValueFilterPtr,
