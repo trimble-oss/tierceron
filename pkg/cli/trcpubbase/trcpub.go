@@ -64,7 +64,7 @@ func CommonMain(envPtr *string,
 	var driverConfigBase *eUtils.DriverConfig
 	if driverConfig != nil {
 		driverConfigBase = driverConfig
-		*insecurePtr = driverConfigBase.Insecure
+		*insecurePtr = driverConfigBase.CoreConfig.Insecure
 		*appRolePtr = driverConfigBase.AppRoleConfig
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
@@ -76,9 +76,9 @@ func CommonMain(envPtr *string,
 		driverConfigBase = &eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: true,
+				Insecure:      true,
 				Log:           logger,
 			},
-			Insecure: true,
 		}
 
 		eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)

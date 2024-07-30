@@ -80,10 +80,14 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		il.SeedVaultFromData(&eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				WantCerts:     true,
+				Insecure:      false,
+				VaultAddress:  s.VaultAddr,
+				Token:         s.VaultToken,
+				Env:           seed.Env,
 				ExitOnFailure: true,
 				Log:           logger,
 			},
-			Insecure: false, VaultAddress: s.VaultAddr, Token: s.VaultToken, Env: seed.Env, ServicesWanted: []string{""}}, "", fBytes)
+			ServicesWanted: []string{""}}, "", fBytes)
 	}
 
 	il.UploadPolicies(config, policyPath, v, false)
