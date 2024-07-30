@@ -73,6 +73,7 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, drone ...*
 	var ip string
 	isDrone := false
 	if len(drone) > 0 {
+		fmt.Println(*drone[0])
 		isDrone = *drone[0]
 	}
 	hostname := host
@@ -91,7 +92,8 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, drone ...*
 		}
 		if strings.Contains(hostname, ":") {
 			hostname = hostname[:strings.Index(hostname, ":")]
-		} else if strings.Contains(hostname, "/") {
+		}
+		if strings.Contains(hostname, "/") {
 			hostname = hostname[:strings.Index(hostname, "/")]
 		}
 		ips, err := net.LookupIP(hostname)
