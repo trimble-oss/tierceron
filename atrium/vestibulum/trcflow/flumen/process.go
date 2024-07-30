@@ -180,14 +180,14 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	driverConfigBasis := eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
+			Regions:       emptySlice,
+			Token:         pluginConfig["token"].(string),
+			VaultAddress:  pluginConfig["vaddress"].(string),
+			Insecure:      true, // Always local...
+			Env:           pluginConfig["env"].(string),
 			ExitOnFailure: false,
 			Log:           driverConfig.CoreConfig.Log,
 		},
-		Regions:      emptySlice,
-		Token:        pluginConfig["token"].(string),
-		VaultAddress: pluginConfig["vaddress"].(string),
-		Insecure:     true, // Always local...
-		Env:          pluginConfig["env"].(string),
 	}
 
 	// Need to create askflumeflow template --> fill with default vals

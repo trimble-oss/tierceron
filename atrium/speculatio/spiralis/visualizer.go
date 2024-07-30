@@ -85,9 +85,10 @@ func main() {
 		driverConfig := eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: true,
+				Insecure:      *insecure,
 				Log:           logger,
 			},
-			Insecure: *insecure}
+		}
 		ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil, logger)
 		eUtils.CheckError(&driverConfig.CoreConfig, argosyErr, true)
 

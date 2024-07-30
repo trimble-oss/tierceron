@@ -231,8 +231,8 @@ func CommonMain(envDefaultPtr *string,
 		} else {
 			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
 		}
-		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.AppRoleConfig)
-		*insecurePtr = trcshDriverConfigBase.DriverConfig.Insecure
+		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfig)
+		*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
 	} else {
 		if *agentdeployPtr {
 			fmt.Println("Unsupported agentdeploy outside trcsh")
@@ -250,9 +250,11 @@ func CommonMain(envDefaultPtr *string,
 			DriverConfig: eUtils.DriverConfig{
 				CoreConfig: core.CoreConfig{
 					ExitOnFailure: true,
+					Insecure:      *insecurePtr,
 					Log:           logger,
 				},
-				Insecure: *insecurePtr, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr,
+				StartDir:        []string{*startDirPtr},
+				SubSectionValue: *pluginNamePtr,
 			},
 		}
 
@@ -332,7 +334,7 @@ func CommonMain(envDefaultPtr *string,
 				return fmt.Errorf("unsupported region: %s", *regionPtr)
 			}
 		}
-		trcshDriverConfigBase.DriverConfig.Regions = regions
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Regions = regions
 	}
 
 	if *updateAPIMPtr {
@@ -677,9 +679,11 @@ func CommonMain(envDefaultPtr *string,
 						DriverConfig: eUtils.DriverConfig{
 							CoreConfig: core.CoreConfig{
 								ExitOnFailure: true,
+								Insecure:      false,
 								Log:           logger,
 							},
-							Insecure: false, StartDir: []string{""}, SubSectionValue: pluginSource,
+							StartDir:        []string{""},
+							SubSectionValue: pluginSource,
 						},
 					}
 				}

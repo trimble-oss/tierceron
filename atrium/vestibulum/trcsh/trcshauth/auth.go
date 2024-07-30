@@ -119,7 +119,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	trcshConfig := &capauth.TrcShConfig{}
 	var err error
 
-	if trcshDriverConfig.DriverConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.EnvBasis == "prod" || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
+	if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
 		dir, err := os.UserHomeDir()
 		if err != nil {
 			fmt.Println("No homedir for current user")
@@ -176,12 +176,12 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		vAddr := fmt.Sprintf("https://127.0.0.1:%s", addrPort)
 		trcshConfig.VaultAddress = &vAddr
 
-		trcshDriverConfig.DriverConfig.Env = env
-		trcshDriverConfig.DriverConfig.EnvBasis = env
+		trcshDriverConfig.DriverConfig.CoreConfig.Env = env
+		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 	}
 
-	trcshDriverConfig.DriverConfig.VaultAddress = *trcshConfig.VaultAddress
-	memprotectopts.MemProtect(nil, &trcshDriverConfig.DriverConfig.VaultAddress)
+	trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress = *trcshConfig.VaultAddress
+	memprotectopts.MemProtect(nil, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress)
 
 	if featherCtx != nil {
 		trcshConfig.ConfigRole, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")

@@ -167,7 +167,7 @@ func (agentconfig *AgentConfigs) RetryingPenseFeatherQuery(pense string) (*strin
 }
 
 func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
-	penseCode := randomString(12 + rand.Intn(12)) //could make rand.Intn(7) instead...
+	penseCode := randomString(12 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
@@ -331,7 +331,7 @@ func NewAgentConfig(address string,
 }
 
 func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, error) {
-	penseCode := randomString(12 + rand.Intn(12))
+	penseCode := randomString(12 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
@@ -359,7 +359,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	}
 	dialOptions := grpc.WithTransportCredentials(creds)
 
-	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvBasis)
+	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 	if localHostErr != nil {
 		return nil, localHostErr
 	}
@@ -374,7 +374,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvBasis)
+	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 	if localHostConfirmErr != nil {
 		return nil, localHostConfirmErr
 	}

@@ -22,20 +22,20 @@ func InitVaultMod(driverConfig *DriverConfig) (*DriverConfig, *helperkv.Modifier
 		return driverConfig, nil, nil, errors.New("invalid nil driverConfig")
 	}
 
-	vault, err := sys.NewVault(driverConfig.Insecure, driverConfig.VaultAddress, driverConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
+	vault, err := sys.NewVault(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
 	if err != nil {
 		LogInfo(&driverConfig.CoreConfig, "Failure to connect to vault..")
 		LogErrorObject(&driverConfig.CoreConfig, err, false)
 		return driverConfig, nil, nil, err
 	}
-	vault.SetToken(driverConfig.Token)
+	vault.SetToken(driverConfig.CoreConfig.Token)
 	LogInfo(&driverConfig.CoreConfig, "InitVaultMod - Initializing Modifier")
-	mod, err := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, driverConfig.Regions, false, driverConfig.CoreConfig.Log)
+	mod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, false)
 	if err != nil {
 		LogErrorObject(&driverConfig.CoreConfig, err, false)
 		return driverConfig, nil, nil, err
 	}
-	mod.Env = driverConfig.Env
+	mod.Env = driverConfig.CoreConfig.Env
 	mod.Version = "0"
 	mod.VersionFilter = driverConfig.VersionFilter
 	LogInfo(&driverConfig.CoreConfig, "InitVaultMod complete..")
@@ -47,8 +47,8 @@ func GetAcceptedTemplatePaths(driverConfig *DriverConfig, modCheck *helperkv.Mod
 	var acceptedTemplatePaths []string
 	var templateName string = coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_templates"
 
-	if strings.Contains(driverConfig.EnvBasis, "_") {
-		driverConfig.EnvBasis = strings.Split(driverConfig.EnvBasis, "_")[0]
+	if strings.Contains(driverConfig.CoreConfig.EnvBasis, "_") {
+		driverConfig.CoreConfig.EnvBasis = strings.Split(driverConfig.CoreConfig.EnvBasis, "_")[0]
 	}
 	var wantedTemplatePaths []string
 
@@ -175,14 +175,14 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	driverConfig := DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts:     false,
+			Insecure:      !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
+			Token:         pluginConfig["token"].(string),
+			VaultAddress:  pluginConfig["vaddress"].(string),
+			Env:           pluginConfig["env"].(string),
+			Regions:       regions,
 			ExitOnFailure: exitOnFailure,
 			Log:           trcdbEnvLogger,
 		},
-		Insecure:       !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
-		Token:          pluginConfig["token"].(string),
-		VaultAddress:   pluginConfig["vaddress"].(string),
-		Env:            pluginConfig["env"].(string),
-		Regions:        regions,
 		SecretMode:     true, //  "Only override secret values in templates?"
 		ServicesWanted: []string{},
 		StartDir:       append([]string{}, ""),
