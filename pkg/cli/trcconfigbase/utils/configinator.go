@@ -26,7 +26,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 		Reset = ""
 		Cyan = ""
 	}*/
-	modCheck, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
+	modCheck, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.EnvBasis, true)
 	modCheck.Env = driverConfig.CoreConfig.Env
 	version := ""
 	if err != nil {
@@ -275,7 +275,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
-			mod, _ := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
+			mod, _ := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.EnvBasis, true)
 			mod.Env = driverConfig.CoreConfig.Env
 			mod.Version = version
 			//check for template_files directory here

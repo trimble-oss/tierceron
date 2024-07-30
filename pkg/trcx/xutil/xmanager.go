@@ -225,7 +225,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 	if driverConfig.CoreConfig.Token != "" && commonPathFound {
 		var commonMod *helperkv.Modifier
 		var err error
-		commonMod, err = helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
+		commonMod, err = helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.EnvBasis, true)
 		commonMod.Env = driverConfig.CoreConfig.Env
 		if err != nil {
 			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
@@ -752,7 +752,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigC
 
 			envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)
 
-			certMod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
+			certMod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.Env, true)
 
 			if err != nil {
 				eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
