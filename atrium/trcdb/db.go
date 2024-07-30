@@ -28,7 +28,7 @@ func CreateEngine(driverConfig *eUtils.DriverConfig,
 	te := &engine.TierceronEngine{Database: sqlememory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*engine.TierceronTable{}, Context: sqles.NewEmptyContext(), Config: *driverConfig}
 
 	var goMod *helperkv.Modifier
-	goMod, errModInit := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, false)
+	goMod, errModInit := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.Env, false)
 	if errModInit != nil {
 		return nil, errModInit
 	}

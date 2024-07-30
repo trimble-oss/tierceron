@@ -1175,7 +1175,7 @@ collaboratorReRun:
 
 func ResetModifier(coreConfig *core.CoreConfig) {
 	//Resetting modifier cache to be used again.
-	mod, err := helperkv.NewModifierFromCoreConfig(coreConfig, true)
+	mod, err := helperkv.NewModifierFromCoreConfig(coreConfig, coreConfig.EnvBasis, true)
 	if err != nil {
 		eUtils.CheckError(coreConfig, err, true)
 	}

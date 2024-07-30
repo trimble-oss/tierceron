@@ -92,8 +92,8 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 //
 //	Any errors generated in creating the client
-func NewModifierFromCoreConfig(coreConfig *core.CoreConfig, useCache bool) (*Modifier, error) {
-	return NewModifier(coreConfig.Insecure, coreConfig.Token, coreConfig.VaultAddress, coreConfig.Env, coreConfig.Regions, useCache, coreConfig.Log)
+func NewModifierFromCoreConfig(coreConfig *core.CoreConfig, env string, useCache bool) (*Modifier, error) {
+	return NewModifier(coreConfig.Insecure, coreConfig.Token, coreConfig.VaultAddress, env, coreConfig.Regions, useCache, coreConfig.Log)
 }
 
 // NewModifier Constructs a new modifier struct and connects to the vault
