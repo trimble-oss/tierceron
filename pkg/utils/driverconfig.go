@@ -95,7 +95,6 @@ type DriverConfig struct {
 
 	// Vault Pathing....
 	// This section stores information useful in directing I/O with Vault.
-	AppRoleConfig   string
 	ServicesWanted  []string
 	ProjectSections []string
 	SectionKey      string // Restricted or Index

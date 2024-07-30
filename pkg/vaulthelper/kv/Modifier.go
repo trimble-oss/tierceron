@@ -87,7 +87,7 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 }
 
 // NewModifierFromCoreConfig Constructs a new modifier struct and connects to the vault
-// @param coreConfig 	The access token needed to connect to the vault
+// @param coreConfig 	core config containing components necessary to connect to vault.
 // @param useCache Whether to use the modcache or not.
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 //
