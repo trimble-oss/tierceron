@@ -73,7 +73,6 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, drone ...*
 	var ip string
 	isDrone := false
 	if len(drone) > 0 {
-		fmt.Println(*drone[0])
 		isDrone = *drone[0]
 	}
 	hostname := host
