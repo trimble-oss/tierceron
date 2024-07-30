@@ -210,7 +210,7 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
 		}
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		appRoleConfigPtr = &(driverConfigBase.AppRoleConfig)
+		appRoleConfigPtr = &(driverConfigBase.CoreConfig.AppRoleConfig)
 		if driverConfigBase.FileFilter != nil {
 			fileFilterPtr = &(driverConfigBase.FileFilter[0])
 		}

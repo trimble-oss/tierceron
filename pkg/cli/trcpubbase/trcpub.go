@@ -65,7 +65,7 @@ func CommonMain(envPtr *string,
 	if driverConfig != nil {
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		*appRolePtr = driverConfigBase.AppRoleConfig
+		*appRolePtr = driverConfigBase.CoreConfig.AppRoleConfig
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log" {
