@@ -30,7 +30,7 @@ func InitVaultMod(driverConfig *DriverConfig) (*DriverConfig, *helperkv.Modifier
 	}
 	vault.SetToken(driverConfig.CoreConfig.Token)
 	LogInfo(&driverConfig.CoreConfig, "InitVaultMod - Initializing Modifier")
-	mod, err := helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.Env, driverConfig.CoreConfig.Regions, false, driverConfig.CoreConfig.Log)
+	mod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, false)
 	if err != nil {
 		LogErrorObject(&driverConfig.CoreConfig, err, false)
 		return driverConfig, nil, nil, err

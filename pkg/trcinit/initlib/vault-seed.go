@@ -137,7 +137,7 @@ func SeedVault(driverConfig *eUtils.DriverConfig) error {
 		var tempPaths []string
 		for _, templatePath := range templatePaths {
 			var err error
-			mod, err := helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.EnvBasis, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
+			mod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
 			if err != nil {
 				eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 			}
@@ -730,12 +730,12 @@ func SeedVaultFromData(driverConfig *eUtils.DriverConfig, filepath string, fData
 		}
 	}
 
-	mod, err := helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.Env, nil, true, driverConfig.CoreConfig.Log) // Connect to vault
+	mod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true) // Connect to vault
 	if mod != nil {
 		defer mod.Release()
 	}
 	if err != nil {
-		mod, err = helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.Env, nil, false, driverConfig.CoreConfig.Log) // Connect to vault
+		mod, err = helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, false) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -849,9 +849,9 @@ func WriteData(driverConfig *eUtils.DriverConfig, path string, data map[string]i
 	}
 	warn, err := mod.Write(path, data, driverConfig.CoreConfig.Log)
 	if err != nil {
-		mod, err = helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.Env, nil, true, driverConfig.CoreConfig.Log) // Connect to vault
+		mod, err = helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true) // Connect to vault
 		if err != nil {
-			mod, err = helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.Env, nil, false, driverConfig.CoreConfig.Log) // Connect to vault
+			mod, err = helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, false) // Connect to vault
 			if err != nil {
 				// Panic scenario...  Can't reach secrets engine
 				eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, err, 1)

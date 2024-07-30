@@ -91,7 +91,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 
 	if driverConfig.CoreConfig.Token != "" && driverConfig.CoreConfig.Token != "novault" {
 		var err error
-		mod, err = helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, env, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
+		mod, err = helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
 		if err != nil {
 			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 		}
@@ -225,7 +225,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 	if driverConfig.CoreConfig.Token != "" && commonPathFound {
 		var commonMod *helperkv.Modifier
 		var err error
-		commonMod, err = helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.EnvBasis, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
+		commonMod, err = helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
 		commonMod.Env = driverConfig.CoreConfig.Env
 		if err != nil {
 			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
@@ -374,7 +374,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 
 			if dc.CoreConfig.Token != "" && dc.CoreConfig.Token != "novault" {
 				var err error
-				goMod, err = helperkv.NewModifier(dc.CoreConfig.Insecure, dc.CoreConfig.Token, dc.CoreConfig.VaultAddress, env, dc.CoreConfig.Regions, useCache, dc.CoreConfig.Log)
+				goMod, err = helperkv.NewModifierFromCoreConfig(&dc.CoreConfig, useCache)
 				goMod.Env = dc.CoreConfig.Env
 				if err != nil {
 					if useCache && goMod != nil {
@@ -503,7 +503,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 	// Add special auth section.
 	if driverConfig.GenAuth {
 		if mod != nil {
-			authMod, authErr := helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, env, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
+			authMod, authErr := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
 			eUtils.LogAndSafeExit(&driverConfig.CoreConfig, authErr.Error(), -1)
 
 			connInfo, err := authMod.ReadData("apiLogins/meta")
@@ -752,7 +752,7 @@ func GenerateSeedsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigC
 
 			envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)
 
-			certMod, err := helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.Env, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
+			certMod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
 
 			if err != nil {
 				eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)

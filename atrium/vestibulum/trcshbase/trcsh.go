@@ -1175,7 +1175,7 @@ collaboratorReRun:
 
 func ResetModifier(driverConfig *eUtils.DriverConfig) {
 	//Resetting modifier cache to be used again.
-	mod, err := helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.Token, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.EnvBasis, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
+	mod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
 	if err != nil {
 		eUtils.CheckError(&driverConfig.CoreConfig, err, true)
 	}
