@@ -54,7 +54,7 @@ func randomString(n int) string {
 }
 
 func ValidateVhost(host string, protocol string, drone ...*bool) error {
-	return ValidateVhostInverse(host, protocol, false)
+	return ValidateVhostInverse(host, protocol, false, drone...)
 }
 
 func ValidateVhostDomain(host string) error {
@@ -91,11 +91,8 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, drone ...*
 		}
 		if strings.Contains(hostname, ":") {
 			hostname = hostname[:strings.Index(hostname, ":")]
-			fmt.Println(hostname)
 		} else if strings.Contains(hostname, "/") {
-			fmt.Println(hostname)
 			hostname = hostname[:strings.Index(hostname, "/")]
-			fmt.Println(hostname)
 		}
 		ips, err := net.LookupIP(hostname)
 		if err != nil {
