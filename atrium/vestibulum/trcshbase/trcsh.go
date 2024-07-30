@@ -585,7 +585,7 @@ func roleBasedRunner(
 		trcshDriverConfig.DriverConfig.EndDir = trcshDriverConfig.DriverConfig.EndDir + "/trc_templates"
 		err = trcsubbase.CommonMain(&envDefaultPtr, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], nil, deployArgLines, &trcshDriverConfig.DriverConfig)
 	}
-	ResetModifier(&trcshDriverConfig.DriverConfig) //Resetting modifier cache to avoid token conflicts.
+	ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
 
 	if !isAgentToken {
 		token = ""
@@ -611,7 +611,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 
 	switch control {
 	case "trcpub":
-		ResetModifier(&trcshDriverConfig.DriverConfig) //Resetting modifier cache to avoid token conflicts.
+		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
 		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig = "configpub.yml"
 		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
@@ -622,7 +622,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		pubEnv := env
 
 		trcpubbase.CommonMain(&pubEnv, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &tokenPub, &gTrcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, nil, deployArgLines, &trcshDriverConfig.DriverConfig)
-		ResetModifier(&trcshDriverConfig.DriverConfig) //Resetting modifier cache to avoid token conflicts.
+		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
 		if !isAgentToken {
 			token = ""
 			trcshDriverConfig.DriverConfig.CoreConfig.Token = token
@@ -945,7 +945,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preload Error %s\n", configErr.Error())
 			os.Exit(123)
 		}
-		ResetModifier(&trcshDriverConfig.DriverConfig) //Resetting modifier cache to avoid token conflicts.
+		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
 		if !isAgentToken {
 			token = ""
 			trcshDriverConfig.DriverConfig.CoreConfig.Token = token
@@ -1173,11 +1173,11 @@ collaboratorReRun:
 
 }
 
-func ResetModifier(driverConfig *eUtils.DriverConfig) {
+func ResetModifier(coreConfig *core.CoreConfig) {
 	//Resetting modifier cache to be used again.
-	mod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, true)
+	mod, err := helperkv.NewModifierFromCoreConfig(coreConfig, true)
 	if err != nil {
-		eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+		eUtils.CheckError(coreConfig, err, true)
 	}
 	mod.RemoveFromCache()
 }

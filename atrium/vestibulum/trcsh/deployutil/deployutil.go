@@ -31,7 +31,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				return nil, autoErr
 			}
 
-			mod, err := helperkv.NewModifierFromCoreConfig(&trcshDriverConfig.DriverConfig.CoreConfig, true)
+			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, readToken, *trcshConfig.VaultAddress, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 			if err != nil {
 				fmt.Println("Unable to obtain resources for deployment")
 				return nil, err
@@ -94,7 +94,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig) ([]string, error
 		memprotectopts.MemProtect(nil, &readToken)
 	}
 
-	mod, err := helperkv.NewModifierFromCoreConfig(&trcshDriverConfig.DriverConfig.CoreConfig, true)
+	mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, readToken, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
