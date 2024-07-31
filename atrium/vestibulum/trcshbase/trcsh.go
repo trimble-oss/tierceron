@@ -365,7 +365,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	ValidateAgent:
 		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
-			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, nil)
+			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, nil, dronePtr)
 		if errAgentLoad != nil {
 			// check os.env for another token
 			if agentToken != os.Getenv("AGENT_TOKEN") && eUtils.IsWindows() {
