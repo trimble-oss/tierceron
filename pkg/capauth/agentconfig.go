@@ -72,42 +72,40 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	}
 	var ip string
 	hostname := host
-	if !prod.IsProd() {
-		hostname = host[len(protocol):]
-		// Remove remaining invalid characters from host
-		for {
-			if strings.HasPrefix(hostname, ":") {
-				hostname = hostname[strings.Index(hostname, ":")+1:]
-			} else if strings.HasPrefix(hostname, "/") {
-				hostname = hostname[strings.Index(hostname, "/")+1:]
-			} else {
-				break
-			}
+	hostname = host[len(protocol):]
+	// Remove remaining invalid characters from host
+	for {
+		if strings.HasPrefix(hostname, ":") {
+			hostname = hostname[strings.Index(hostname, ":")+1:]
+		} else if strings.HasPrefix(hostname, "/") {
+			hostname = hostname[strings.Index(hostname, "/")+1:]
+		} else {
+			break
 		}
-		if strings.Contains(hostname, ":") {
-			hostname = hostname[:strings.Index(hostname, ":")]
+	}
+	if strings.Contains(hostname, ":") {
+		hostname = hostname[:strings.Index(hostname, ":")]
+	}
+	if strings.Contains(hostname, "/") {
+		hostname = hostname[:strings.Index(hostname, "/")]
+	}
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		if len(ips) == 0 && strings.Contains(hostname, ".test") {
+			ip = "127.0.0.1"
+		} else {
+			fmt.Println("Error looking up host ip address")
+			fmt.Println(err)
+			return errors.New("Bad host: " + host)
 		}
-		if strings.Contains(hostname, "/") {
-			hostname = hostname[:strings.Index(hostname, "/")]
-		}
-		ips, err := net.LookupIP(hostname)
-		if err != nil {
-			if len(ips) == 0 && strings.Contains(hostname, ".test") {
-				ip = "127.0.0.1"
-			} else {
-				fmt.Println("Error looking up host ip address")
-				fmt.Println(err)
-				return errors.New("Bad host: " + host)
-			}
-		}
-		if len(ips) > 0 {
-			ip = ips[0].String()
-		}
+	}
+	if len(ips) > 0 {
+		ip = ips[0].String()
 	}
 
 	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if inverse {
-			if prod.IsProd() || endpoint[1] == ip {
+			if endpoint[1] == "n/a" || endpoint[1] == ip {
 				// format protocol if non-empty
 				if len(protocol) > 0 && !strings.HasSuffix(protocol, "://") {
 					if strings.Contains(protocol, ":") {
@@ -134,7 +132,7 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 				protocolEndpoint = fmt.Sprintf("https://%s", endpoint[0])
 			}
 			if strings.HasPrefix(protocolEndpoint, protocolHost) {
-				if prod.IsProd() || endpoint[1] == ip {
+				if endpoint[1] == "n/a" || endpoint[1] == ip {
 					return nil
 				} else {
 					//log error -- log not created yet
