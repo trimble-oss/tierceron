@@ -195,10 +195,10 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 	ok := false
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
-	if driverConfig.Token != "novault" {
+	if driverConfig.CoreConfig.Token != "novault" {
 		cds.Init(&driverConfig.CoreConfig, modifier, secretMode, true, project, nil, service)
 	} else {
-		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.Env + "/" + driverConfig.Env + "_seed.yml")
+		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.CoreConfig.Env + "/" + driverConfig.CoreConfig.Env + "_seed.yml")
 		if err != nil {
 			eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("unable to open seed file for -novault: "+err.Error()), false)
 		}
@@ -339,7 +339,7 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 			// Override trcEnvParam if it was specified in original call
 			data, exists := values[filename].(map[string]interface{})
 			if exists {
-				data["trcEnvParam"] = &driverConfig.Env
+				data["trcEnvParam"] = &driverConfig.CoreConfig.Env
 				values[filename] = data
 			}
 		}
