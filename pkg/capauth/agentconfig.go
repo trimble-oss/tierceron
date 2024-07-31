@@ -67,15 +67,14 @@ func ValidateVhostDomain(host string) error {
 }
 
 func ValidateVhostInverse(host string, protocol string, inverse bool) error {
-	if !strings.HasPrefix(host, protocol) || (protocol == "http" && strings.HasPrefix(host, "https")) {
+	if !strings.HasPrefix(host, protocol) || (len(protocol) > 0 && !strings.HasPrefix(protocol, "https")) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
 	var ip string
 	hostname := host
-	if !prod.IsProd() { // && isDrone
+	if !prod.IsProd() {
 		hostname = host[len(protocol):]
 		// Remove remaining invalid characters from host
-		// Note: will fail if protocol is "http" and host starts with "https:// so added check above"
 		for {
 			if strings.HasPrefix(hostname, ":") {
 				hostname = hostname[strings.Index(hostname, ":")+1:]
@@ -109,7 +108,8 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if inverse {
 			if prod.IsProd() || endpoint[1] == ip {
-				if !strings.HasSuffix(protocol, "/") {
+				// format protocol if non-empty
+				if len(protocol) > 0 && !strings.HasSuffix(protocol, "/") {
 					if !strings.HasSuffix(protocol, "/") {
 						if !strings.HasSuffix(protocol, ":") {
 							protocol = protocol + ":"

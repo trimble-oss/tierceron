@@ -97,11 +97,7 @@ func initCertificates() {
 }
 
 func GetTransportCredentials(drone ...*bool) (credentials.TransportCredentials, error) {
-	isDrone := false
-	if len(drone) > 0 {
-		isDrone = *drone[0]
-	}
-	mashupKeyBytes, err := ReadServerCert("", &isDrone)
+	mashupKeyBytes, err := ReadServerCert("", drone...)
 	if err != nil {
 		return nil, err
 	}
