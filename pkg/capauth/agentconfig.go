@@ -53,8 +53,8 @@ func randomString(n int) string {
 	return string(b)
 }
 
-func ValidateVhost(host string, protocol string, drone ...*bool) error {
-	return ValidateVhostInverse(host, protocol, false, drone...)
+func ValidateVhost(host string, protocol string) error {
+	return ValidateVhostInverse(host, protocol, false)
 }
 
 func ValidateVhostDomain(host string) error {
@@ -66,17 +66,13 @@ func ValidateVhostDomain(host string) error {
 	return errors.New("Bad host: " + host)
 }
 
-func ValidateVhostInverse(host string, protocol string, inverse bool, drone ...*bool) error {
+func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 	if !strings.HasPrefix(host, protocol) || (protocol == "http" && strings.HasPrefix(host, "https")) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
 	var ip string
-	isDrone := false
-	if len(drone) > 0 {
-		isDrone = *drone[0]
-	}
 	hostname := host
-	if !prod.IsProd() && isDrone {
+	if !prod.IsProd() { // && isDrone
 		hostname = host[len(protocol):]
 		// Remove remaining invalid characters from host
 		// Note: will fail if protocol is "http" and host starts with "https:// so added check above"
@@ -112,13 +108,17 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, drone ...*
 
 	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if inverse {
-			if prod.IsProd() || !isDrone || endpoint[1] == ip {
-				if len(protocol) > 0 {
-					if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint[0]), host) {
-						return nil
+			if prod.IsProd() || endpoint[1] == ip {
+				if !strings.HasSuffix(protocol, "/") {
+					if !strings.HasSuffix(protocol, "/") {
+						if !strings.HasSuffix(protocol, ":") {
+							protocol = protocol + ":"
+						}
+						protocol = protocol + "/"
 					}
+					protocol = protocol + "/"
 				}
-				if strings.Contains(endpoint[0], host) {
+				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint[0]), host) {
 					return nil
 				}
 			} else {
@@ -137,7 +137,7 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, drone ...*
 				protocolEndpoint = fmt.Sprintf("https://%s", endpoint[0])
 			}
 			if strings.HasPrefix(protocolEndpoint, protocolHost) {
-				if prod.IsProd() || !isDrone || endpoint[1] == ip {
+				if prod.IsProd() || endpoint[1] == ip {
 					return nil
 				} else {
 					//log error -- log not created yet
