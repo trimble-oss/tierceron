@@ -94,7 +94,7 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 		if len(ips) == 0 && strings.Contains(hostname, ".test") {
 			ip = "127.0.0.1"
 		} else {
-			fmt.Println("Error looking up host ip address")
+			fmt.Println("Error looking up host ip address, please confirm current tierceron vault host name and ip.")
 			fmt.Println(err)
 			return errors.New("Bad host: " + host)
 		}
@@ -118,8 +118,8 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 				}
 			} else {
 				//log error -- log not created yet
-				fmt.Printf("Invalid IP address of supported domain: %s", ip)
-				fmt.Println()
+				fmt.Printf("Invalid IP address of supported domain: %s \n", ip)
+				fmt.Println("Please confirm current tierceron vault host name and ip.")
 				return errors.New("Bad host: " + host)
 			}
 		} else {
@@ -136,8 +136,8 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 					return nil
 				} else {
 					//log error -- log not created yet
-					fmt.Printf("Invalid IP address of supported domain: %s", ip)
-					fmt.Println()
+					fmt.Printf("Invalid IP address of supported domain: %s \n", ip)
+					fmt.Println("Please confirm current tierceron vault host name and ip.")
 					return errors.New("Bad host: " + host)
 				}
 			}
