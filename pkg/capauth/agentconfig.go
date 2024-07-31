@@ -109,14 +109,11 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 		if inverse {
 			if prod.IsProd() || endpoint[1] == ip {
 				// format protocol if non-empty
-				if len(protocol) > 0 && !strings.HasSuffix(protocol, "/") {
-					if !strings.HasSuffix(protocol, "/") {
-						if !strings.HasSuffix(protocol, ":") {
-							protocol = protocol + ":"
-						}
-						protocol = protocol + "/"
+				if len(protocol) > 0 && !strings.HasSuffix(protocol, "://") {
+					if strings.Contains(protocol, ":") {
+						protocol = protocol[:strings.Index(protocol, ":")]
 					}
-					protocol = protocol + "/"
+					protocol = protocol + "://"
 				}
 				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint[0]), host) {
 					return nil
