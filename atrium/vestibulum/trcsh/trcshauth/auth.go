@@ -235,19 +235,27 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 
 	if err != nil {
 		fmt.Println(err)
+		logger.Println(err)
 		return false, err
 	}
 
 	ex, err := os.Executable()
 	if err != nil {
 		fmt.Println(err)
+		logger.Println(err)
 	}
 	exPath := filepath.Dir(ex)
 	trcshaPath := exPath
-	//certifyMap returns empty...
+	if eUtils.IsWindows() {
+		trcshaPath = trcshaPath + "\\trcsh.exe"
+	} else {
+		trcshaPath = trcshaPath + "/trcsh"
+	}
+
 	if _, ok := certifyMap["trcsha256"]; ok {
 		peerExe, err := os.Open(trcshaPath)
 		if err != nil {
+			logger.Printf("unable to open executable: %s\n", err)
 			return false, err
 		}
 
@@ -260,15 +268,16 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 		// return ok....
 		h := sha256.New()
 		if _, err := io.Copy(h, peerExe); err != nil {
+			logger.Printf("unable to copy file: %s\n", err)
 			return false, err
 		}
 		sha := hex.EncodeToString(h.Sum(nil))
-		fmt.Println(sha)
-
 		if certifyMap["trcsha256"].(string) == sha {
+			logger.Println("Validated agent")
 			return true, nil
 		} else {
-			return false, nil
+			logger.Printf("error obtaining authorization components: %s\n", errors.New("missing certification"))
+			return false, errors.New("missing certification")
 		}
 	}
 	return false, errors.New("missing certification")

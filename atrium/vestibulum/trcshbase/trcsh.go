@@ -411,6 +411,28 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Completed bootstrapping and continuing to initialize services.")
 		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig = *gTrcshConfig.ConfigRole
 		trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress = *gTrcshConfig.VaultAddress
+
+		//Validate agent sha path
+		pluginConfig := make(map[string]interface{})
+		pluginConfig["vaddress"] = address
+		pluginConfig["token"] = agentToken
+		pluginConfig["env"] = "dev"
+
+		_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+		if err != nil {
+			fmt.Printf("Problem initializing mod: %s\n", err)
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
+		}
+		if vault != nil {
+			defer vault.Close()
+		}
+
+		isValid, err := trcshauth.ValidateTrcshPathSha(mod, pluginConfig, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+		if err != nil || !isValid {
+			fmt.Printf("error obtaining authorization components: %s\n", err)
+			os.Exit(124)
+		}
+
 		serviceDeployments, err := deployutil.GetDeployers(trcshDriverConfig)
 		if err != nil {
 			fmt.Printf("drone trcsh agent bootstrap get deployers failure: %s\n", err.Error())
