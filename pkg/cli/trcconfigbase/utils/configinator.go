@@ -18,55 +18,7 @@ import (
 
 var mutex = &sync.Mutex{}
 
-// GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigContext, driverConfig *eUtils.DriverConfig) (interface{}, error) {
-	/*Cyan := "\033[36m"
-	Reset := "\033[0m"
-	if utils.IsWindows() {
-		Reset = ""
-		Cyan = ""
-	}*/
-	modCheck, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.EnvBasis, true)
-	modCheck.Env = driverConfig.CoreConfig.Env
-	version := ""
-	if err != nil {
-		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
-		return nil, err
-	}
-	modCheck.VersionFilter = driverConfig.VersionFilter
-
-	//Check if templateInfo is selected for template or values
-	templateInfo := false
-	versionInfo := false
-	if strings.Contains(driverConfig.CoreConfig.Env, "_") {
-		envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)
-
-		driverConfig.CoreConfig.Env = envVersion[0]
-		version = envVersion[1]
-		switch version {
-		case "versionInfo":
-			versionInfo = true
-		case "templateInfo":
-			templateInfo = true
-		}
-	}
-	versionData := make(map[string]interface{})
-	if driverConfig.CoreConfig.Token != "novault" {
-		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
-			if errValidateEnvironment != nil {
-				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
-					if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
-						return nil, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Invalid certificate.", 1)
-					}
-				}
-			}
-
-			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "_unrestricted", driverConfig.CoreConfig.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-				return nil, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", driverConfig.CoreConfig.Env, baseDesiredPolicy, desiredPolicy), 1)
-			}
-		}
-	}
-
+func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error) {
 	//initialized := false
 	templatePaths := []string{}
 	endPaths := []string{}
@@ -145,6 +97,63 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 
 		templatePaths = append(templatePaths, tp...)
 		endPaths = append(endPaths, ep...)
+	}
+	return templatePaths, endPaths, nil
+}
+
+// GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
+func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigContext, driverConfig *eUtils.DriverConfig) (interface{}, error) {
+	/*Cyan := "\033[36m"
+	Reset := "\033[0m"
+	if utils.IsWindows() {
+		Reset = ""
+		Cyan = ""
+	}*/
+	//Should check if driverConfig is nil here...
+	modCheck, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.EnvBasis, true)
+	modCheck.Env = driverConfig.CoreConfig.Env
+	version := ""
+	if err != nil {
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+		return nil, err
+	}
+	modCheck.VersionFilter = driverConfig.VersionFilter
+
+	//Check if templateInfo is selected for template or values
+	templateInfo := false
+	versionInfo := false
+	if strings.Contains(driverConfig.CoreConfig.Env, "_") {
+		envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)
+
+		driverConfig.CoreConfig.Env = envVersion[0]
+		version = envVersion[1]
+		switch version {
+		case "versionInfo":
+			versionInfo = true
+		case "templateInfo":
+			templateInfo = true
+		}
+	}
+	versionData := make(map[string]interface{})
+	if driverConfig.CoreConfig.Token != "novault" {
+		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
+			if errValidateEnvironment != nil {
+				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
+					if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
+						return nil, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Invalid certificate.", 1)
+					}
+				}
+			}
+
+			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "_unrestricted", driverConfig.CoreConfig.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+				return nil, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", driverConfig.CoreConfig.Env, baseDesiredPolicy, desiredPolicy), 1)
+			}
+		}
+	}
+
+	templatePaths, endPaths, err := generatePaths(driverConfig)
+	if err != nil {
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 	}
 
 	_, _, indexedEnv, _ := helperkv.PreCheckEnvironment(driverConfig.CoreConfig.Env)
