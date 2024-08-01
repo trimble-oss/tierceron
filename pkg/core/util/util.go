@@ -67,7 +67,8 @@ func GetJSONFromClientByGet(config *core.CoreConfig, httpClient *http.Client, he
 		defer response.Body.Close()
 	}
 
-	if response.StatusCode == http.StatusOK {
+	switch response.StatusCode {
+	case http.StatusOK:
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
@@ -81,7 +82,7 @@ func GetJSONFromClientByGet(config *core.CoreConfig, httpClient *http.Client, he
 		}
 
 		return jsonData, response.StatusCode, nil
-	} else if response.StatusCode == http.StatusNoContent {
+	case http.StatusNoContent:
 		return jsonData, response.StatusCode, nil
 	}
 
@@ -112,9 +113,10 @@ func GetJSONFromClientByPost(config *core.CoreConfig, httpClient *http.Client, h
 		defer response.Body.Close()
 	}
 
-	if response.StatusCode == http.StatusUnauthorized {
+	switch response.StatusCode {
+	case http.StatusUnauthorized:
 		return nil, response.StatusCode, fmt.Errorf("http auth failure: %d", response.StatusCode)
-	} else if response.StatusCode == http.StatusOK {
+	case http.StatusOK:
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
@@ -345,7 +347,7 @@ func GetPluginToolConfig(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifi
 	driverConfig.CoreConfig.Log.Println("GetPluginToolConfig plugin data load process complete.")
 	mod.Env = tempEnv
 
-	if pluginEnvConfigClone == nil {
+	if len(pluginEnvConfigClone) == 0 {
 		driverConfig.CoreConfig.Log.Println("No data found for plugin.")
 		if err == nil {
 			err = errors.New("no data and unexpected error")
