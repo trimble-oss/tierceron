@@ -90,6 +90,9 @@ if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = 
         certifystatus=$?
         if [ $certifystatus -eq 0 ]; then
            echo "No certification problems encountered."
+            if [[$TRC_PLUGIN_NAME == *exe]]; then 
+                exit $certifystatus
+            fi
         else
            echo "Unexpected certification error."
            exit $certifystatus
