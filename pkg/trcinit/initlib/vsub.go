@@ -18,14 +18,22 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 	if len(*templatePaths) > 0 {
 		filterTemplatePathSlice = strings.Split(*templatePaths, ",")
 	}
-
 	for _, filterTemplatePath := range filterTemplatePathSlice {
 		path := filterTemplatePath
 		ext := ""
+		if strings.Contains(path, "Common") {
+			if !strings.Contains(path, ".") {
+				eUtils.LogErrorMessage(config, "Expecting file extension with filepath", false)
+				fmt.Println("Expecting file extension with filepath: " + path)
+				if eUtils.IsWindows() {
+					fmt.Println("Make sure filepath is in quotes.")
+				}
+			}
+		}
 		if !strings.HasSuffix(filterTemplatePath, "/") {
 			path = filterTemplatePath + "/"
 		}
-		tfMap, err := mod.ReadData(fmt.Sprintf("templates/%stemplate-file", path)) //Grab extention of file
+		tfMap, err := mod.ReadData(fmt.Sprintf("templates/%stemplate-file", path)) //Grab extension of file
 		if err != nil {
 			eUtils.LogErrorMessage(config, "Skipping template: "+path+" Error: "+err.Error(), false)
 			continue
@@ -63,6 +71,9 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 		}
 		//create new file
 		templateFile := fmt.Sprintf("%s/%s%s.tmpl", dirPath, file, ext)
+		if eUtils.IsWindows() {
+			templateFile = fmt.Sprintf("%s\\%s%s.tmpl", dirPath, file, ext)
+		}
 		newFile, err := os.Create(templateFile)
 		if err != nil {
 			eUtils.LogErrorMessage(config, fmt.Sprintf("Couldn't create file: %s", templateFile), false)
@@ -80,12 +91,11 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 			eUtils.LogErrorMessage(config, fmt.Sprintf("Couldn't sync file: %s", templateFile), false)
 			continue
 		}
-		fmt.Printf("File has been writen to %s\n", templateFile)
+		fmt.Printf("File has been written to %s\n", templateFile)
 	}
 }
 
 func DownloadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, dirName string, logger *log.Logger, templateFilter *string) ([]string, error) {
-
 	var filterTemplateSlice []string
 	if len(*templateFilter) > 0 {
 		filterTemplateSlice = strings.Split(*templateFilter, ",")
@@ -153,7 +163,7 @@ func DownloadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, 
 					continue
 				}
 				ext := ""
-				tfMap, err := mod.ReadData(path + "template-file") //Grab extention of file
+				tfMap, err := mod.ReadData(path + "template-file") //Grab extension of file
 				if err != nil {
 					eUtils.LogErrorMessage(config, "Skipping template: "+path+" Error: "+err.Error(), false)
 					continue
@@ -210,7 +220,7 @@ func DownloadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, 
 					eUtils.LogErrorMessage(config, "Couldn't sync file: "+dirPath+file+ext+".tmpl", false)
 					continue
 				}
-				fmt.Println("File has been writen to " + dirPath + file + ext + ".tmpl")
+				fmt.Println("File has been written to " + dirPath + file + ext + ".tmpl")
 			}
 		}
 	}

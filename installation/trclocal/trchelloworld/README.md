@@ -39,7 +39,7 @@ You can define a serivce for the trcsh drone to deploy by executing the script: 
 Alternatively you can directly define the service below.
 
 ```
-trcplgtool -addr=$VAULT_ADDR -token=$VAULT_TOKEN -env=dev -defineService -pluginName=trchelloworld -projectservice="HelloProject/HelloService" -pluginType=trcshservice -serviceName="TomcatMain" -codeBundle=trchelloworld -deployroot=/usr/local/hello -deploysubpath=bin
+trcplgtool -addr=$VAULT_ADDR -token=$VAULT_TOKEN -env=dev -defineService -pluginName=trchelloworld -projectservice="HelloProject/HelloService" -pluginType=trcshservice -serviceName="trchelloworld" -codeBundle=trchelloworld -deployroot=/usr/local/hello -deploysubpath=bin
 ```
 
 

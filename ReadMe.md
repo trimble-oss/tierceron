@@ -4,6 +4,10 @@
 
 # Tierceron
 
+[![GitHub release](https://img.shields.io/github/release/trimble-oss/tierceron.svg?style=flat-square)](https://github.com/trimble-oss/tierceron/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/trimble-oss/tierceron)](https://goreportcard.com/report/github.com/trimble-oss/tierceron)
+[![PkgGoDev](https://img.shields.io/badge/go.dev-docs-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/trimble-oss/tierceron)
+
 ## What is it?
 Tierceron is a [encrypted configuration management system](https://en.wikipedia.org/wiki/Microservices) created for managing configurations and secrets used in microservices in Vault (by Hashicorp).  It is written in [Go](https://go.dev/), using Apache [Dolthub](https://github.com/dolthub/go-mysql-server) (Tierceron Flume: provides integrated flows), [G3n](http://g3n.rocks/) (integrated visualization), [Kubernetes](https://kubernetes.io/) (Tierceron Shell: integrated cloud agent secure shell), and Hashicorp [Vault](https://www.hashicorp.com/products/vault) (data and secrets encryption).
 

@@ -23,6 +23,11 @@ func TestValidateVhostInverseProd(t *testing.T) {
 		t.Fatalf("Expected nil, got %v", err)
 	}
 
+	err = ValidateVhostInverse(host, protocol, false)
+	if err != nil {
+		t.Fatalf("Expected nil, got %v", err)
+	}
+
 	host = "https://prodtierceron.test"
 	protocol = "https://"
 
@@ -39,7 +44,7 @@ func TestValidateVhostInverseProd(t *testing.T) {
 }
 
 func TestValidateVhostInverseNonProd(t *testing.T) {
-	// Test case 1
+	// Test case - Not prod, empty protocol, inverse, valid endpoint + ip
 	prod.SetProd(false)
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
 	server := "tierceron.test:1234"
@@ -51,8 +56,21 @@ func TestValidateVhostInverseNonProd(t *testing.T) {
 	}
 }
 
+func TestValidateVhostInverseNonProd_NonEmptyProto(t *testing.T) {
+	// Test case - Not prod, https as protocol, inverse
+	prod.SetProd(false)
+	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
+	server := "https://tierceron.test:1234"
+
+	validVhostInverseErr := ValidateVhostInverse(server, "https", true)
+
+	if validVhostInverseErr != nil {
+		t.Fatalf("Expected nil, got %v", validVhostInverseErr)
+	}
+}
+
 func TestValidateVhostPortNonProd(t *testing.T) {
-	// Test case 1
+	// Test case - Not prod, protocol is https, not inverse, valid endpt
 	prod.SetProd(false)
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
 	server := "https://tierceron.test:1234"
@@ -65,7 +83,7 @@ func TestValidateVhostPortNonProd(t *testing.T) {
 }
 
 func TestInvalidValidateVhostPortNonProd(t *testing.T) {
-	// Test case 1
+	// Test case - Not prod, Protocol is https, invalid endpoint, not inverse
 	prod.SetProd(false)
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
 	server := "https://tierceron.bar:1234"
@@ -77,13 +95,60 @@ func TestInvalidValidateVhostPortNonProd(t *testing.T) {
 	}
 }
 
-func TestValidateVhost(t *testing.T) {
+func TestValidateVhostMissingProtoProd_EmptyAddr(t *testing.T) {
+	// Test case - prod, empty host, protocol is https://, not inverse
+	prod.SetProd(true)
 	address := ""
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
 	validateVhostErr := ValidateVhost(address, "https://")
 	if validateVhostErr != nil {
 		if !strings.HasPrefix(validateVhostErr.Error(), "missing required protocol") {
-			t.Fatalf("Expected nil, got %v", validateVhostErr)
+			t.Fatalf("Expected missing required protocol error, got %v", validateVhostErr)
+		}
+	} else {
+		t.Fatal("Expected error")
+	}
+}
+
+func TestValidateVhostMissingProtoProd(t *testing.T) {
+	// Test case - prod, protocol is not prefix
+	prod.SetProd(true)
+	address := "http://prodtierceron.test"
+	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
+	validateVhostErr := ValidateVhost(address, "https://")
+	if validateVhostErr != nil {
+		if !strings.HasPrefix(validateVhostErr.Error(), "missing required protocol") {
+			t.Fatalf("Expected missing required protocol error, got %v", validateVhostErr)
+		}
+	} else {
+		t.Fatal("Expected error")
+	}
+}
+
+func TestValidateVhostMissingProtoNonProd_EmptyAddr(t *testing.T) {
+	// Test case - Not prod, protocol is not prefix
+	prod.SetProd(false)
+	address := ""
+	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
+	validateVhostErr := ValidateVhost(address, "https://")
+	if validateVhostErr != nil {
+		if !strings.HasPrefix(validateVhostErr.Error(), "missing required protocol") {
+			t.Fatalf("Expected missing required protocol error, got %v", validateVhostErr)
+		}
+	} else {
+		t.Fatal("Expected error")
+	}
+}
+
+func TestValidateVhostMissingProtoNonProd(t *testing.T) {
+	// Test case - not prod, protocol is not prefix of host
+	prod.SetProd(false)
+	address := "http://tierceron.test"
+	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
+	validateVhostErr := ValidateVhost(address, "https://")
+	if validateVhostErr != nil {
+		if !strings.HasPrefix(validateVhostErr.Error(), "missing required protocol") {
+			t.Fatalf("Expected missing required protocol error, got %v", validateVhostErr)
 		}
 	} else {
 		t.Fatal("Expected error")
@@ -91,13 +156,14 @@ func TestValidateVhost(t *testing.T) {
 }
 
 func TestValidateVhostProdBadHost(t *testing.T) {
+	// Test case - prod, not supported endpoint, protocol is prefix
 	prod.SetProd(true)
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
 	address := "https://tierceron.test"
 	validateVhostErr := ValidateVhost(address, "https://")
 	if validateVhostErr != nil {
 		if !strings.HasPrefix(validateVhostErr.Error(), "Bad host:") {
-			t.Fatalf("Expected nil, got %v", validateVhostErr)
+			t.Fatalf("Expected Bad host error, got %v", validateVhostErr)
 		}
 	} else {
 		t.Fatal("Expected error")
@@ -105,12 +171,35 @@ func TestValidateVhostProdBadHost(t *testing.T) {
 }
 
 func TestValidateVhostProd(t *testing.T) {
+	// Test case - prod, valid endpoint, protocol is prefix
 	prod.SetProd(true)
 	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
 	address := "https://prodtierceron.test"
 	validateVhostErr := ValidateVhost(address, "https://")
 	if validateVhostErr != nil {
 		t.Fatal("Expected no error")
+	}
+}
+
+func TestValidateVhostProd_InsecureCheck(t *testing.T) {
+	// Test case - prod, valid endpoint, protocol is prefix, attempting http instead of https
+	prod.SetProd(true)
+	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
+	address := "http://prodtierceron.test"
+	validateVhostErr := ValidateVhost(address, "http://")
+	if validateVhostErr == nil {
+		t.Fatal("Expected error")
+	}
+}
+
+func TestValidateVhostProd_InsecureCheck_Inverse(t *testing.T) {
+	// Test case - prod, inverse, valid endpoint, protocol is prefix, attempting http instead of https
+	prod.SetProd(true)
+	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
+	address := "http://prodtierceron.test"
+	validateVhostErr := ValidateVhostInverse(address, "http://", true)
+	if validateVhostErr == nil {
+		t.Fatal("Expected error")
 	}
 }
 
@@ -121,5 +210,27 @@ func TestValidateVhostNonProd(t *testing.T) {
 	validateVhostErr := ValidateVhost(address, "https://")
 	if validateVhostErr != nil {
 		t.Fatal("Expected no error")
+	}
+}
+
+func TestValidateVhostNonProd_Insecure(t *testing.T) {
+	// Test case - not prod, valid endpoint, protocol is prefix, http not https
+	prod.SetProd(false)
+	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
+	address := "http://tierceron.test"
+	validateVhostErr := ValidateVhost(address, "http://")
+	if validateVhostErr == nil {
+		t.Fatal("Expected an error")
+	}
+}
+
+func TestValidateVhostNonProd_Insecure_Inverse(t *testing.T) {
+	// Test case - not prod, inverse, valid endpoint, protocol is prefix, http not https
+	prod.SetProd(false)
+	coreopts.NewOptionsBuilder(coreoptsloader.LoadOptions())
+	address := "http://tierceron.test"
+	validateVhostErr := ValidateVhostInverse(address, "http://", true)
+	if validateVhostErr == nil {
+		t.Fatal("Expected an error")
 	}
 }

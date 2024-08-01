@@ -12,7 +12,7 @@ import (
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 )
 
-// UploadTokens accepts a file directory and vault object to upload tokens to. Logs to pased logger
+// UploadTokens accepts a file directory and vault object to upload tokens to. Logs to passed logger
 func UploadTokens(config *core.CoreConfig, dir string, fileFilterPtr *string, v *sys.Vault) []*pb.InitResp_Token {
 	tokens := []*pb.InitResp_Token{}
 	config.Log.SetPrefix("[TOKEN]")

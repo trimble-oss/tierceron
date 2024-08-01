@@ -58,15 +58,8 @@ type DriverConfig struct {
 	Context ProcessContext
 
 	// Internal systems...
-	Insecure          bool
 	IsShellSubProcess bool // If subshell
 
-	// Vault Configurations...
-	Token         string
-	VaultAddress  string
-	EnvBasis      string // May change depending on tool running...
-	Env           string // Immutable...
-	Regions       []string
 	FileFilter    []string // Which systems to operate on.
 	SubPathFilter []string // Which subpaths to operate on.
 	PathParam     string   // Path parameter for dynamic pathing...
@@ -102,7 +95,6 @@ type DriverConfig struct {
 
 	// Vault Pathing....
 	// This section stores information useful in directing I/O with Vault.
-	AppRoleConfig   string
 	ServicesWanted  []string
 	ProjectSections []string
 	SectionKey      string // Restricted or Index

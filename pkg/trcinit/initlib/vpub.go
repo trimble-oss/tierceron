@@ -75,7 +75,7 @@ func UploadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName st
 				}
 			}
 
-			// Seperate name and extension one more time for saving to vault
+			// Separate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
 			name = name[0 : len(name)-len(ext)]
 			config.Log.Printf("dirName: %s\n", dirName)

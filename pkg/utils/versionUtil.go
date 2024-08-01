@@ -47,7 +47,7 @@ func GetProjectVersionInfo(driverConfig *DriverConfig, mod *helperkv.Modifier) m
 	var err error
 	mod.SectionKey = driverConfig.SectionKey
 	mod.SubSectionName = driverConfig.SubSectionName
-	mod.EnvBasis = strings.Split(driverConfig.EnvBasis, ".")[0]
+	mod.EnvBasis = strings.Split(driverConfig.CoreConfig.EnvBasis, ".")[0]
 	if !driverConfig.CoreConfig.WantCerts {
 		secretMetadataMap, err = mod.GetVersionValues(mod, driverConfig.CoreConfig.WantCerts, "super-secrets", driverConfig.CoreConfig.Log)
 		if secretMetadataMap == nil {
@@ -136,7 +136,7 @@ func BoundCheck(driverConfig *DriverConfig, versionNumbers []int, version string
 		oldestVersion := versionNumbers[0]
 		userVersion, _ := strconv.Atoi(version)
 		if userVersion > latestVersion || userVersion < oldestVersion && len(versionNumbers) != 1 {
-			LogAndSafeExit(&driverConfig.CoreConfig, Cyan+"This version "+driverConfig.Env+" is not available as the latest version is "+strconv.Itoa(versionNumbers[len(versionNumbers)-1])+" and oldest version available is "+strconv.Itoa(versionNumbers[0])+Reset, 1)
+			LogAndSafeExit(&driverConfig.CoreConfig, Cyan+"This version "+driverConfig.CoreConfig.Env+" is not available as the latest version is "+strconv.Itoa(versionNumbers[len(versionNumbers)-1])+" and oldest version available is "+strconv.Itoa(versionNumbers[0])+Reset, 1)
 		}
 	} else {
 		LogAndSafeExit(&driverConfig.CoreConfig, Cyan+"No version data found"+Reset, 1)
@@ -196,13 +196,14 @@ func GetProjectService(driverConfig *DriverConfig, templateFile string) (string,
 		service = splitDir[serviceIndex]
 
 		// Clean up service naming (Everything after '.' removed)
-		if !strings.Contains(templateFile, "Common") {
-			dotIndex := strings.Index(service, ".")
-			if dotIndex > 0 && dotIndex <= len(service) {
-				service = service[0:dotIndex]
-			}
-		} else if strings.Contains(service, ".mf.tmpl") {
+		if strings.Contains(templateFile, "Common") &&
+			strings.Contains(service, ".mf.tmpl") {
 			service = strings.Split(service, ".mf.tmpl")[0]
+		}
+
+		dotIndex := strings.Index(service, ".")
+		if dotIndex > 0 && dotIndex <= len(service) {
+			service = service[0:dotIndex]
 		}
 	}
 

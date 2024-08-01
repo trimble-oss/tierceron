@@ -375,7 +375,7 @@ func (cds *ConfigDataStore) GetConfigValues(service string, config string) (map[
 	return nil, false
 }
 
-// GetConfigValue gets an invididual configuration value for a service from the data store.
+// GetConfigValue gets an individual configuration value for a service from the data store.
 func (cds *ConfigDataStore) GetConfigValue(service string, config string, key string) (string, bool) {
 	key = strings.Replace(key, ".", "_", -1)
 	if serviceValues, okServiceValues := cds.dataMap[service].(map[string]interface{}); okServiceValues {

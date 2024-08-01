@@ -12,7 +12,7 @@ type OptionsBuilder struct {
 	GetVaultInstallRoot          func() string
 	IsLocalEndpoint              func(addr string) bool
 	GetSupportedDomains          func(bool) []string
-	GetSupportedEndpoints        func(bool) []string
+	GetSupportedEndpoints        func(bool) [][]string
 	GetLocalHost                 func() string
 	GetRegion                    func(hostName string) string
 	GetVaultHost                 func() string
