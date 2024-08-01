@@ -229,7 +229,6 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	return trcshConfig, err
 }
 
-// add func hard code exe file path
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
 	certifyPath := "super-secrets/Index/TrcVault/trcplugin/trcsh/Certify"
 	if plugin, ok := pluginConfig["plugin"].(string); ok {
