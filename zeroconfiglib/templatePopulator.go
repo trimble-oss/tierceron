@@ -26,11 +26,11 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
-			Insecure:  false,
 			Log:       logger,
 		},
 		ZeroConfig: true,
 		StartDir:   append([]string{}, "trc_templates"),
+		Insecure:   false,
 	}
 
 	if err != nil {
@@ -56,12 +56,12 @@ func ConfigCertLib(token string, address string, env string, templatePath string
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: true,
-			Insecure:  false,
 			Log:       logger,
 		},
 
 		ZeroConfig: true,
 		StartDir:   append([]string{}, "trc_templates"),
+		Insecure:   false,
 	}
 	if err != nil {
 		eUtils.LogErrorMessage(&driverConfig.CoreConfig, err.Error(), false)

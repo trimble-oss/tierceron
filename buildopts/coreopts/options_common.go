@@ -52,20 +52,14 @@ func GetVaultInstallRoot() string {
 
 // GetSupportedEndpoints - return a list of supported endpoints.  Override this function to provide
 // a list of supported endpoints.
-func GetSupportedEndpoints(prod bool) [][]string {
+func GetSupportedEndpoints(prod bool) []string {
 	if prod {
-		return [][]string{
-			{
-				"prodtierceron.test",
-				"n/a",
-			},
+		return []string{
+			"prodtierceron.test",
 		}
 	} else {
-		return [][]string{
-			{
-				"tierceron.test:1234",
-				"127.0.0.1",
-			},
+		return []string{
+			"tierceron.test:1234",
 		}
 	}
 }

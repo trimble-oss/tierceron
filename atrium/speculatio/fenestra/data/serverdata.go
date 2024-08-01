@@ -86,9 +86,9 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			ExitOnFailure: true,
-			Insecure:      *insecure,
 			Log:           logger,
 		},
+		Insecure: *insecure,
 	}
 	secretID := ""
 	appRoleID := ""

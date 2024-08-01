@@ -24,7 +24,6 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	trcapimgmtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcapimgmtbase"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trccertmgmtbase"
 )
 
 func CommonMain(envDefaultPtr *string,
@@ -95,9 +94,6 @@ func CommonMain(envDefaultPtr *string,
 
 	//APIM flags
 	updateAPIMPtr := flagset.Bool("updateAPIM", false, "Used to update Azure APIM")
-
-	// Cert flags
-	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
 
 	if trcshDriverConfig == nil || !trcshDriverConfig.DriverConfig.IsShellSubProcess {
 		args := argLines[1:]
@@ -231,8 +227,8 @@ func CommonMain(envDefaultPtr *string,
 		} else {
 			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
 		}
-		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfig)
-		*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
+		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.AppRoleConfig)
+		*insecurePtr = trcshDriverConfigBase.DriverConfig.Insecure
 	} else {
 		if *agentdeployPtr {
 			fmt.Println("Unsupported agentdeploy outside trcsh")
@@ -250,11 +246,9 @@ func CommonMain(envDefaultPtr *string,
 			DriverConfig: eUtils.DriverConfig{
 				CoreConfig: core.CoreConfig{
 					ExitOnFailure: true,
-					Insecure:      *insecurePtr,
 					Log:           logger,
 				},
-				StartDir:        []string{*startDirPtr},
-				SubSectionValue: *pluginNamePtr,
+				Insecure: *insecurePtr, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr,
 			},
 		}
 
@@ -334,7 +328,7 @@ func CommonMain(envDefaultPtr *string,
 				return fmt.Errorf("unsupported region: %s", *regionPtr)
 			}
 		}
-		trcshDriverConfigBase.DriverConfig.CoreConfig.Regions = regions
+		trcshDriverConfigBase.DriverConfig.Regions = regions
 	}
 
 	if *updateAPIMPtr {
@@ -342,14 +336,6 @@ func CommonMain(envDefaultPtr *string,
 		if updateAPIMError != nil {
 			fmt.Println(updateAPIMError.Error())
 			fmt.Println("Couldn't update APIM...proceeding with build")
-		}
-		return nil
-	}
-
-	if len(*certPathPtr) > 0 {
-		updateCertError := trccertmgmtbase.CommonMain(certPathPtr, config, mod)
-		if updateCertError != nil {
-			fmt.Println("Couldn't update Cert...proceeding with build")
 		}
 		return nil
 	}
@@ -667,23 +653,15 @@ func CommonMain(envDefaultPtr *string,
 			if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { //If region is set
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
-
-				pluginSource := pluginToolConfig["trcplugin"].(string)
-				if strings.HasPrefix(*pluginNamePtr, pluginSource) {
-					pluginSource = *pluginNamePtr
-				}
-				mod.SubSectionValue = pluginSource
-
+				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
 				if trcshDriverConfig == nil {
 					trcshDriverConfig = &capauth.TrcshDriverConfig{
 						DriverConfig: eUtils.DriverConfig{
 							CoreConfig: core.CoreConfig{
 								ExitOnFailure: true,
-								Insecure:      false,
 								Log:           logger,
 							},
-							StartDir:        []string{""},
-							SubSectionValue: pluginSource,
+							Insecure: false, StartDir: []string{""}, SubSectionValue: *pluginNamePtr,
 						},
 					}
 				}

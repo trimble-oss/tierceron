@@ -26,8 +26,8 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 		Reset = ""
 		Cyan = ""
 	}*/
-	modCheck, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.EnvBasis, true)
-	modCheck.Env = driverConfig.CoreConfig.Env
+	modCheck, err := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.EnvBasis, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
+	modCheck.Env = driverConfig.Env
 	version := ""
 	if err != nil {
 		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
@@ -38,10 +38,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 	//Check if templateInfo is selected for template or values
 	templateInfo := false
 	versionInfo := false
-	if strings.Contains(driverConfig.CoreConfig.Env, "_") {
-		envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)
+	if strings.Contains(driverConfig.Env, "_") {
+		envVersion := eUtils.SplitEnv(driverConfig.Env)
 
-		driverConfig.CoreConfig.Env = envVersion[0]
+		driverConfig.Env = envVersion[0]
 		version = envVersion[1]
 		switch version {
 		case "versionInfo":
@@ -51,7 +51,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 		}
 	}
 	versionData := make(map[string]interface{})
-	if driverConfig.CoreConfig.Token != "novault" {
+	if driverConfig.Token != "novault" {
 		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
 			if errValidateEnvironment != nil {
 				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
@@ -62,7 +62,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 			}
 
 			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "_unrestricted", driverConfig.CoreConfig.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-				return nil, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", driverConfig.CoreConfig.Env, baseDesiredPolicy, desiredPolicy), 1)
+				return nil, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", driverConfig.Env, baseDesiredPolicy, desiredPolicy), 1)
 			}
 		}
 	}
@@ -77,17 +77,13 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 	var dosService string = ""
 
 	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && strings.Contains(projectService.(string), "/") || len(driverConfig.ServicesWanted) == 1 {
-		if driverConfig.CoreConfig.WantCerts {
-			trcProjectService = "Common"
+		if ok && len(driverConfig.ServicesWanted) == 0 {
+			trcProjectService = projectService.(string)
 		} else {
-			if ok && len(driverConfig.ServicesWanted) == 0 {
-				trcProjectService = projectService.(string)
-			} else {
-				trcProjectService = driverConfig.ServicesWanted[0]
-			}
-			if !strings.HasSuffix(trcProjectService, "/") {
-				trcProjectService = trcProjectService + "/"
-			}
+			trcProjectService = driverConfig.ServicesWanted[0]
+		}
+		if !strings.HasSuffix(trcProjectService, "/") {
+			trcProjectService = trcProjectService + "/"
 		}
 		dosProjectService = strings.Replace(trcProjectService, "/", "\\", 1)
 
@@ -116,17 +112,17 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 			// Do some scrubbing...
 			for ie, e := range ep {
 				matched := false
-				if len(trcProjectService) > 0 && strings.Contains(e, trcProjectService) {
+				if strings.Contains(e, trcProjectService) {
 					e = strings.Replace(e, trcProjectService, "/", 1)
 					matched = true
-				} else if len(trcService) > 0 && strings.Contains(e, trcService) {
+				} else if strings.Contains(e, trcService) {
 					e = strings.Replace(e, trcService, "/", 1)
 					matched = true
-				} else if len(dosProjectService) > 0 && strings.Contains(e, dosProjectService) {
+				} else if strings.Contains(e, dosProjectService) {
 					e = strings.Replace(e, dosProjectService, "\\", 1)
 					matched = true
 				} else {
-					if len(dosService) > 0 && strings.Contains(e, dosService) {
+					if strings.Contains(e, dosService) {
 						e = strings.Replace(e, dosService, "\\", 1)
 						matched = true
 					}
@@ -147,7 +143,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 		endPaths = append(endPaths, ep...)
 	}
 
-	_, _, indexedEnv, _ := helperkv.PreCheckEnvironment(driverConfig.CoreConfig.Env)
+	_, _, indexedEnv, _ := helperkv.PreCheckEnvironment(driverConfig.Env)
 	if indexedEnv {
 		templatePaths, err = eUtils.GetAcceptedTemplatePaths(driverConfig, modCheck, templatePaths)
 		if err != nil {
@@ -275,8 +271,8 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
-			mod, _ := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.EnvBasis, true)
-			mod.Env = driverConfig.CoreConfig.Env
+			mod, _ := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.EnvBasis, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
+			mod.Env = driverConfig.Env
 			mod.Version = version
 			//check for template_files directory here
 			project, service, _, templatePath := eUtils.GetProjectService(driverConfig, templatePath)
@@ -362,9 +358,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 				} else {
 					if driverConfig.Diff {
 						if version != "" {
-							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.CoreConfig.Env+"_"+version+"||"+endPaths[i])
+							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.Env+"_"+version+"||"+endPaths[i])
 						} else {
-							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.CoreConfig.Env+"||"+endPaths[i])
+							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.Env+"||"+endPaths[i])
 						}
 					} else {
 						writeToFile(driverConfig, configuredTemplate, endPaths[i])
@@ -418,9 +414,9 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 				} else {
 					if driverConfig.Diff {
 						if version != "" {
-							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.CoreConfig.Env+"_"+version+"||"+endPaths[i])
+							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.Env+"_"+version+"||"+endPaths[i])
 						} else {
-							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.CoreConfig.Env+"||"+endPaths[i])
+							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.Env+"||"+endPaths[i])
 						}
 					} else {
 						writeToFile(driverConfig, configuredTemplate, endPaths[i])
@@ -473,7 +469,7 @@ func writeToFile(driverConfig *eUtils.DriverConfig, data string, path string) {
 		if len(tag) > 0 {
 			var matched bool
 			var err error
-			if driverConfig.CoreConfig.Env == "staging" || driverConfig.CoreConfig.Env == "prod" {
+			if driverConfig.Env == "staging" || driverConfig.Env == "prod" {
 				matched, err = regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
 			} else {
 				matched, err = regexp.MatchString("^[a-fA-F0-9]{40}$", tag)

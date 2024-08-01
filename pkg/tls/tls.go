@@ -35,10 +35,10 @@ func InitRoot() {
 	initCertificates()
 }
 
-func ReadServerCert(certName string, drone ...*bool) ([]byte, error) {
+func ReadServerCert(certName string) ([]byte, error) {
 	var err error
 	if len(certName) == 0 {
-		if utils.IsWindows() || (len(drone) > 0 && *drone[0]) {
+		if utils.IsWindows() {
 			return os.ReadFile(ServCertLocal)
 		}
 		if _, err = os.Stat(ServCert); err == nil {
@@ -47,7 +47,7 @@ func ReadServerCert(certName string, drone ...*bool) ([]byte, error) {
 	} else if _, err = os.Stat(ServCertPrefixPath + certName); err == nil { //To support &certName=??
 		return os.ReadFile(ServCertPrefixPath + certName)
 	} else {
-		if utils.IsWindows() || (len(drone) > 0 && *drone[0]) {
+		if utils.IsWindows() {
 			return os.ReadFile(ServCertLocal)
 		}
 	}
@@ -96,8 +96,9 @@ func initCertificates() {
 	MashupCertPool.AddCert(mashupClientCert)
 }
 
-func GetTransportCredentials(drone ...*bool) (credentials.TransportCredentials, error) {
-	mashupKeyBytes, err := ReadServerCert("", drone...)
+func GetTransportCredentials() (credentials.TransportCredentials, error) {
+
+	mashupKeyBytes, err := ReadServerCert("")
 	if err != nil {
 		return nil, err
 	}

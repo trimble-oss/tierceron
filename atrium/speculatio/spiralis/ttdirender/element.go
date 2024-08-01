@@ -246,7 +246,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		for k, v := range er.LocationCache {
 			copyCache[k] = v
 		}
-		for key := range copyCache {
+		for key, _ := range copyCache {
 			element := worldApp.ConcreteElements[key]
 			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
 				er.initLocnCache(worldApp, element)

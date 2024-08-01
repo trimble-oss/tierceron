@@ -111,7 +111,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 		diffs = diffs[:0]
 	}
 
-	//Separates diff into red and green lines
+	//Seperates diff into red and green lines
 	var redBuffer bytes.Buffer
 	var greenBuffer bytes.Buffer
 	for _, diff := range diffs {
@@ -422,7 +422,7 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 
 	if config {
 		//Make fileList
-		for key := range configCtx.ResultMap {
+		for key, _ := range configCtx.ResultMap {
 			found := false
 			keySplit := strings.Split(key, "||")
 

@@ -26,9 +26,9 @@ import (
 	kubectlutil "k8s.io/kubectl/pkg/util"
 
 	"github.com/go-git/go-billy/v5"
-	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/path"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/trccreate"
+	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -125,7 +125,7 @@ func ParseTrcKubeContext(trcKubeContext *TrcKubeContext, deployArgs []string) *T
 		trcKubeContext = &TrcKubeContext{}
 	}
 
-	for i := range deployArgs {
+	for i, _ := range deployArgs {
 		if deployArgs[i] == "set-context" {
 			if i+1 < len(deployArgs) {
 				trcKubeContext.Context = deployArgs[i+1]
@@ -161,7 +161,7 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 	trcKubeDirective.Action = deployArgs[0]
 	deployArgs = deployArgs[1:]
 
-	for i := range deployArgs {
+	for i, _ := range deployArgs {
 		if trcKubeDirective.Action == "create" && (deployArgs[i] == "secret" || deployArgs[i] == "configmap") {
 			trcKubeDirective.Object = deployArgs[i]
 			if i+1 < len(deployArgs) {

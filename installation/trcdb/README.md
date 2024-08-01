@@ -6,7 +6,7 @@ This assumes the existence of a vault with tokens.  You'll need a root or unrest
 
 # Generating empty seed files
 ```
-trcpub -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport>
+trcpub -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
 ```
 
 ```
@@ -24,11 +24,11 @@ You'll want to replace these placeholder files with the real thing.
 
 # Publish initial trcdb seed data
 ```
-trcinit -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport> -indexed=TrcVault
+trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -indexed=TrcVault
 ```
 
 ```
-trcinit -env=dev -certs -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport>
+trcinit -env=dev -certs -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
 ```
 
 # TrcDb installation
@@ -39,16 +39,4 @@ cd atrium
 make devplugintrcdb
 cd ../installation/trccarrier/deploy
 ./deploy.sh (for trc-vault-plugin)
-```
-
-# TrcDb refresh Vault Database access restrictions
-Access to trcdb is ip controlled via cidr block using the seed k/v cidrblock.
-
-```
-trcx -env=dev -token=$VAULT_TOKEN -restricted=VaultDatabase -serviceFilter=config -indexFilter=config
-```
-
-```
-trcinit -env=dev -token=$VAULT_TOKEN  -addr=$VAULT_ADDR -restricted=VaultDatabase
-
 ```

@@ -124,7 +124,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 							continue
 
 						} else {
-							// Construct a string -> bool map to track accessible environments
+							// Construct a string -> bool map to track accessable environments
 
 							if vDataKeys, ok := vSecret.Data["keys"]; ok {
 								if vKeys, okKeys := vDataKeys.([]interface{}); okKeys {

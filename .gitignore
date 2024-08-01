@@ -67,12 +67,7 @@ atrium/.vscode/*
 
 installation/trclocal/tls/cert.*
 
-installation/trclocal/trchelloworld/deploy/*.trc
-installation/trclocal/trchelloworld/deploy/*.yaml
-installation/trclocal/trchelloworld/deploy/*/*.trc
-
-installation/trcsh/trc_seeds/*
-installation/trcsh/scripts/*.sh
+installation/trclocal/trchelloworld/deploy/*
 
 installation/trccarrier/deploy/
 installation/trccarrier/trc_seeds/
@@ -82,5 +77,4 @@ installation/trcagent/install.sh
 installation/trccloud/terraform/azure/kubeboot/*.tf
 installation/trccloud/terraform/azure/kubeboot/*.sh
 installation/trccloud/terraform/azure/kubeboot/scripts/
-
 

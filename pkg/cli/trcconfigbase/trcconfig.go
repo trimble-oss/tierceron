@@ -105,7 +105,7 @@ func CommonMain(envDefaultPtr *string,
 			flagset.PrintDefaults()
 		}
 
-		envPtr = flagset.String("env", "", "Environment to configure")
+		envPtr = flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.String("secretID", "", "Secret for app role ID")
@@ -166,11 +166,6 @@ func CommonMain(envDefaultPtr *string,
 				if len(certDestPath) > 1 {
 					*certDestPathPtr = certDestPath[1]
 				}
-			} else if strings.HasPrefix(args, "-env") {
-				envArgs := strings.Split(args, "=")
-				if len(envArgs) > 1 {
-					*envPtr = envArgs[1]
-				}
 			}
 		}
 		flagset.Parse(nil)
@@ -178,7 +173,7 @@ func CommonMain(envDefaultPtr *string,
 			*wantCertsPtr = true
 		}
 	}
-	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
+	if envPtr == nil {
 		envPtr = envDefaultPtr
 	}
 	if !isShell {
@@ -209,8 +204,8 @@ func CommonMain(envDefaultPtr *string,
 			// Bad inputs... use default.
 			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
 		}
-		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		appRoleConfigPtr = &(driverConfigBase.CoreConfig.AppRoleConfig)
+		*insecurePtr = driverConfigBase.Insecure
+		appRoleConfigPtr = &(driverConfigBase.AppRoleConfig)
 		if driverConfigBase.FileFilter != nil {
 			fileFilterPtr = &(driverConfigBase.FileFilter[0])
 		}
@@ -218,7 +213,8 @@ func CommonMain(envDefaultPtr *string,
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 		driverConfigBase = &eUtils.DriverConfig{
-			CoreConfig: core.CoreConfig{ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
+			CoreConfig: core.CoreConfig{ExitOnFailure: true, Log: logger},
+			Insecure:   *insecurePtr,
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
 			ZeroConfig: *zcPtr,
@@ -346,8 +342,9 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
+	services := []string{}
 	if *servicesWanted != "" {
-		driverConfigBase.ServicesWanted = strings.Split(*servicesWanted, ",")
+		services = strings.Split(*servicesWanted, ",")
 	}
 
 	regions := []string{}
@@ -429,19 +426,19 @@ func CommonMain(envDefaultPtr *string,
 			driverConfig := eUtils.DriverConfig{
 				CoreConfig: core.CoreConfig{
 					IsShell:       isShell,
-					Insecure:      *insecurePtr,
-					Token:         *tokenPtr,
-					VaultAddress:  *addrPtr,
-					Env:           *envPtr,
-					EnvBasis:      eUtils.GetEnvBasis(*envPtr),
-					Regions:       regions,
 					WantCerts:     *wantCertsPtr,
 					ExitOnFailure: driverConfigBase.CoreConfig.ExitOnFailure,
 					Log:           driverConfigBase.CoreConfig.Log,
 				},
 				IsShellSubProcess: driverConfigBase.IsShellSubProcess,
+				Insecure:          *insecurePtr,
+				Token:             *tokenPtr,
+				VaultAddress:      *addrPtr,
+				Env:               *envPtr,
+				EnvBasis:          eUtils.GetEnvBasis(*envPtr),
+				Regions:           regions,
 				SecretMode:        *secretMode,
-				ServicesWanted:    driverConfigBase.ServicesWanted,
+				ServicesWanted:    services,
 				StartDir:          driverConfigBase.StartDir,
 				EndDir:            driverConfigBase.EndDir,
 				WantKeystore:      *keyStorePtr,
@@ -486,18 +483,18 @@ func CommonMain(envDefaultPtr *string,
 			CoreConfig: core.CoreConfig{
 				IsShell:       isShell,
 				WantCerts:     *wantCertsPtr,
-				Insecure:      *insecurePtr,
-				Token:         *tokenPtr,
-				VaultAddress:  *addrPtr,
-				Env:           *envPtr,
-				EnvBasis:      eUtils.GetEnvBasis(*envPtr),
-				Regions:       regions,
 				ExitOnFailure: driverConfigBase.CoreConfig.ExitOnFailure,
 				Log:           driverConfigBase.CoreConfig.Log,
 			},
 			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
+			Insecure:          *insecurePtr,
+			Token:             *tokenPtr,
+			VaultAddress:      *addrPtr,
+			Env:               *envPtr,
+			EnvBasis:          eUtils.GetEnvBasis(*envPtr),
+			Regions:           regions,
 			SecretMode:        *secretMode,
-			ServicesWanted:    driverConfigBase.ServicesWanted,
+			ServicesWanted:    services,
 			StartDir:          driverConfigBase.StartDir,
 			EndDir:            driverConfigBase.EndDir,
 			WantKeystore:      *keyStorePtr,

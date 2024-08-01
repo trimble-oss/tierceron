@@ -76,7 +76,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 			// Bad inputs... use default.
 			driverConfigBase.EndDir = *endDirPtr
 		}
-		appRoleConfigPtr = &driverConfig.CoreConfig.AppRoleConfig
+		appRoleConfigPtr = &driverConfig.AppRoleConfig
 
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
@@ -93,10 +93,10 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		driverConfigBase = &eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: exitOnFailure,
-				Insecure:      *insecurePtr,
 				Log:           logger,
 			},
-			EndDir: *endDirPtr,
+			Insecure: *insecurePtr,
+			EndDir:   *endDirPtr,
 		}
 		appRoleConfigPtr = new(string)
 	}

@@ -73,12 +73,12 @@ Tokens can only be created when logged in to the vault with token creation permi
 
 ## Create Seed Files
 Seed files are written in a YAML format. Each seed file is seeded under a single environment. 
-Separate values for different environments in different files. [Example](tierceron/trc_seeds/seed.yml)
+Seperate values for different environments in different files. [Example](tierceron/trc_seeds/seed.yml)
 Data is organized in the vault as key-values pairs in a file system. The seed file should reflect this organization. 
 All values in the seed fall under 5 'root' categories.
 
 ### templates
-The templates folder should be separated by service, then file. The keys match the name of what is being substituted in the 
+The templates folder should be seperated by service, then file. The keys match the name of what is being substituted in the 
 template file (e.g. `{{.username}}`). The value for each key provides a reference to where the secret is stored in the vault. 
 This allows viewing what's stored in the vault without seeing the actual value. The value is a 2 element array. The first 
 entry is the location of the secret in the vault, the second entry is the key for the secret.

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -32,7 +31,6 @@ type AgentConfigs struct {
 	DeployRoleID    *string
 	Deployments     *string
 	Env             *string
-	Drone           *bool
 }
 
 type TrcshDriverConfig struct {
@@ -67,79 +65,30 @@ func ValidateVhostDomain(host string) error {
 }
 
 func ValidateVhostInverse(host string, protocol string, inverse bool) error {
-	if !strings.HasPrefix(host, protocol) || (len(protocol) > 0 && !strings.HasPrefix(protocol, "https")) {
+	if !strings.HasPrefix(host, protocol) {
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
-	var ip string
-	hostname := host
-	hostname = host[len(protocol):]
-	// Remove remaining invalid characters from host
-	for {
-		if strings.HasPrefix(hostname, ":") {
-			hostname = hostname[strings.Index(hostname, ":")+1:]
-		} else if strings.HasPrefix(hostname, "/") {
-			hostname = hostname[strings.Index(hostname, "/")+1:]
-		} else {
-			break
-		}
-	}
-	if strings.Contains(hostname, ":") {
-		hostname = hostname[:strings.Index(hostname, ":")]
-	}
-	if strings.Contains(hostname, "/") {
-		hostname = hostname[:strings.Index(hostname, "/")]
-	}
-	ips, err := net.LookupIP(hostname)
-	if err != nil {
-		if len(ips) == 0 && strings.Contains(hostname, ".test") {
-			ip = "127.0.0.1"
-		} else {
-			fmt.Println("Error looking up host ip address, please confirm current tierceron vault host name and ip.")
-			fmt.Println(err)
-			return errors.New("Bad host: " + host)
-		}
-	}
-	if len(ips) > 0 {
-		ip = ips[0].String()
-	}
-
 	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if inverse {
-			if endpoint[1] == "n/a" || endpoint[1] == ip {
-				// format protocol if non-empty
-				if len(protocol) > 0 && !strings.HasSuffix(protocol, "://") {
-					if strings.Contains(protocol, ":") {
-						protocol = protocol[:strings.Index(protocol, ":")]
-					}
-					protocol = protocol + "://"
-				}
-				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint[0]), host) {
+			if len(protocol) > 0 {
+				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint), host) {
 					return nil
 				}
-			} else {
-				//log error -- log not created yet
-				fmt.Printf("Invalid IP address of supported domain: %s \n", ip)
-				fmt.Println("Please confirm current tierceron vault host name and ip.")
-				return errors.New("Bad host: " + host)
+			}
+			if strings.Contains(endpoint, host) {
+				return nil
 			}
 		} else {
 			var protocolHost = host
 			if !strings.HasPrefix(host, "https://") {
 				protocolHost = fmt.Sprintf("https://%s", host)
 			}
-			var protocolEndpoint = endpoint[0]
-			if !strings.HasPrefix(endpoint[0], "https://") {
-				protocolEndpoint = fmt.Sprintf("https://%s", endpoint[0])
+			var protocolEndpoint = endpoint
+			if !strings.HasPrefix(endpoint, "https://") {
+				protocolEndpoint = fmt.Sprintf("https://%s", endpoint)
 			}
 			if strings.HasPrefix(protocolEndpoint, protocolHost) {
-				if endpoint[1] == "n/a" || endpoint[1] == ip {
-					return nil
-				} else {
-					//log error -- log not created yet
-					fmt.Printf("Invalid IP address of supported domain: %s \n", ip)
-					fmt.Println("Please confirm current tierceron vault host name and ip.")
-					return errors.New("Bad host: " + host)
-				}
+				return nil
 			}
 		}
 	}
@@ -162,7 +111,7 @@ func (agentconfig *AgentConfigs) RetryingPenseFeatherQuery(pense string) (*strin
 }
 
 func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
-	penseCode := randomString(12 + rand.Intn(7))
+	penseCode := randomString(7 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
@@ -171,7 +120,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 		return nil, featherErr
 	}
 
-	creds, credErr := tls.GetTransportCredentials(agentconfig.Drone)
+	creds, credErr := tls.GetTransportCredentials()
 
 	if credErr != nil {
 		return nil, credErr
@@ -205,8 +154,7 @@ func NewAgentConfig(address string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error,
-	logger *log.Logger,
-	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
+	logger *log.Logger) (*AgentConfigs, *TrcShConfig, error) {
 	if logger != nil {
 		logger.Printf(".")
 	} else {
@@ -274,10 +222,6 @@ func NewAgentConfig(address string,
 		}
 
 		deployments := "bootstrap"
-		isDrone := false
-		if len(drone) > 0 {
-			isDrone = *drone[0]
-		}
 		agentconfig := &AgentConfigs{
 			captiplib.FeatherCtlInit(nil,
 				trcHatHostLocal,
@@ -293,7 +237,6 @@ func NewAgentConfig(address string,
 			new(string),
 			&deployments,
 			&trcHatEnv,
-			&isDrone,
 		}
 
 		trcshConfig := &TrcShConfig{Env: trcHatEnv,
@@ -326,7 +269,7 @@ func NewAgentConfig(address string,
 }
 
 func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, error) {
-	penseCode := randomString(12 + rand.Intn(7))
+	penseCode := randomString(7 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
@@ -354,7 +297,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	}
 	dialOptions := grpc.WithTransportCredentials(creds)
 
-	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
+	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvBasis)
 	if localHostErr != nil {
 		return nil, localHostErr
 	}
@@ -369,7 +312,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
+	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvBasis)
 	if localHostConfirmErr != nil {
 		return nil, localHostConfirmErr
 	}

@@ -62,7 +62,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		}, err
 	}
 
-	logger.Printf("Successfully connected to vault at %s\n", s.VaultAddr)
+	logger.Printf("Succesfully connected to vault at %s\n", s.VaultAddr)
 
 	// Create engines
 	il.CreateEngines(config, v)
@@ -80,14 +80,10 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		il.SeedVaultFromData(&eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				WantCerts:     true,
-				Insecure:      false,
-				VaultAddress:  s.VaultAddr,
-				Token:         s.VaultToken,
-				Env:           seed.Env,
 				ExitOnFailure: true,
 				Log:           logger,
 			},
-			ServicesWanted: []string{""}}, "", fBytes)
+			Insecure: false, VaultAddress: s.VaultAddr, Token: s.VaultToken, Env: seed.Env, ServicesWanted: []string{""}}, "", fBytes)
 	}
 
 	il.UploadPolicies(config, policyPath, v, false)

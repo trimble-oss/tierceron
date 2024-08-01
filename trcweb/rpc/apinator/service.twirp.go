@@ -6,7 +6,6 @@ Package apinator is a generated twirp stub package.
 This code was generated with github.com/twitchtv/twirp/protoc-gen-twirp v5.7.0.
 
 It is generated from these files:
-
 	rpc/apinator/service.proto
 */
 package apinator
@@ -520,7 +519,7 @@ type enterpriseServiceBrokerServer struct {
 func NewEnterpriseServiceBrokerServer(svc EnterpriseServiceBroker, hooks *twirp.ServerHooks) TwirpServer {
 	return &enterpriseServiceBrokerServer{
 		EnterpriseServiceBroker: svc,
-		hooks:                   hooks,
+		hooks: hooks,
 	}
 }
 
@@ -2909,7 +2908,7 @@ func doProtobufRequest(ctx context.Context, client HTTPClient, url string, in, o
 		return wrapInternal(err, "could not build request")
 	}
 	response, err := client.Do(req)
-
+	
 	if err != nil {
 		return wrapInternal(err, "failed to do request")
 	}

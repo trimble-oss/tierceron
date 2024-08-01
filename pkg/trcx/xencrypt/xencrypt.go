@@ -18,7 +18,7 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 	for _, valueField := range valueFields {
 		valFieldMap[valueField] = false
 	}
-	for valueField := range valFieldMap {
+	for valueField, _ := range valFieldMap {
 		for secretSectionMap := range secSection["super-secrets"] {
 			if _, ok := secSection["super-secrets"][secretSectionMap][valueField]; ok {
 				valFieldMap[valueField] = true
@@ -56,11 +56,11 @@ func SetEncryptionSecret(driverConfig *eUtils.DriverConfig) error {
 		}
 		encryptSecret = input
 	} else {
-		mod, modErr := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.Env, true)
+		mod, modErr := helperkv.NewModifier(driverConfig.Insecure, driverConfig.Token, driverConfig.VaultAddress, driverConfig.Env, driverConfig.Regions, true, driverConfig.CoreConfig.Log)
 		if modErr != nil {
 			eUtils.LogErrorObject(&driverConfig.CoreConfig, modErr, false)
 		}
-		mod.Env = strings.Split(driverConfig.CoreConfig.Env, "_")[0]
+		mod.Env = strings.Split(driverConfig.Env, "_")[0]
 		data, readErr := xencryptopts.BuildOptions.LoadSecretFromSecretStore(mod)
 		if readErr != nil {
 			return readErr
@@ -77,23 +77,23 @@ func SetEncryptionSecret(driverConfig *eUtils.DriverConfig) error {
 }
 
 func GetEncryptors(secSection map[string]map[string]map[string]string) (map[string]interface{}, error) {
-	encryption := map[string]interface{}{}
-	encryptionList := []string{"salt", "initial_value"}
-	for _, encryptionField := range encryptionList {
+	encrpytion := map[string]interface{}{}
+	encrpytionList := []string{"salt", "initial_value"}
+	for _, encryptionField := range encrpytionList {
 		for secretSectionMap := range secSection["super-secrets"] {
 			if value, ok := secSection["super-secrets"][secretSectionMap][encryptionField]; ok {
 				if value != "" {
-					encryption[encryptionField] = value
+					encrpytion[encryptionField] = value
 				}
 			}
 		}
 	}
 
-	if ok, ok1 := encryption["salt"], encryption["initial_value"]; ok == nil || ok1 == nil {
+	if ok, ok1 := encrpytion["salt"], encrpytion["initial_value"]; ok == nil || ok1 == nil {
 		return nil, errors.New("could not find encryption values")
 	}
 
-	return encryption, nil
+	return encrpytion, nil
 }
 
 func CreateEncryptedReadMap(encryptedKeys string) map[string]interface{} {
@@ -108,7 +108,7 @@ func CreateEncryptedReadMap(encryptedKeys string) map[string]interface{} {
 }
 
 func FieldReader(encryptedMap map[string]interface{}, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string, decryption map[string]interface{}) error {
-	for field := range encryptedMap {
+	for field, _ := range encryptedMap {
 		found := false
 		for secretSectionMap := range secSection["super-secrets"] {
 			if secretVal, ok := secSection["super-secrets"][secretSectionMap][field]; ok {

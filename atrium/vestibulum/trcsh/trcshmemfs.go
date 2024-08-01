@@ -15,7 +15,7 @@ type TrcshMemFs struct {
 	BillyFs billy.Filesystem
 }
 
-func (t *TrcshMemFs) WriteToMemFile(driverConfig *eUtils.DriverConfig, memCacheLocal *sync.Mutex, byteData *[]byte, path string) {
+func (t *TrcshMemFs)WriteToMemFile(driverConfig *eUtils.DriverConfig, memCacheLocal *sync.Mutex, byteData *[]byte, path string){
 
 	configMemFs := driverConfig.MemFs.(*TrcshMemFs)
 
