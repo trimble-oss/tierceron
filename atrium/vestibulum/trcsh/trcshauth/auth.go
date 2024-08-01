@@ -231,54 +231,58 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 // add func hard code exe file path
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
-	certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcsh/Certify") //need trcsh --> trcsh.exe for Windows
-
+	certifyPath := "super-secrets/Index/TrcVault/trcplugin/trcsh/Certify"
+	if plugin, ok := pluginConfig["plugin"].(string); ok {
+		certifyPath = "super-secrets/Index/TrcVault/trcplugin/" + plugin + "/Certify"
+	}
+	certifyMap, err := mod.ReadData(certifyPath)
 	if err != nil {
-		fmt.Println(err)
-		logger.Println(err)
+		fmt.Printf("Error reading data from vault: %s\n", err)
+		logger.Printf("Error reading data from vault: %s\n", err)
 		return false, err
 	}
 
 	ex, err := os.Executable()
 	if err != nil {
-		fmt.Println(err)
-		logger.Println(err)
+		fmt.Printf("Unable to access executable: %s\n", err)
+		logger.Printf("Unable to access executable: %s\n", err)
+		return false, err
 	}
 	exPath := filepath.Dir(ex)
-	trcshaPath := exPath
+	trcshaPath := exPath + string(os.PathSeparator)
 	if eUtils.IsWindows() {
-		trcshaPath = trcshaPath + "\\trcsh.exe"
+		trcshaPath = trcshaPath + "trcsh.exe"
 	} else {
-		trcshaPath = trcshaPath + "/trcsh"
+		trcshaPath = trcshaPath + "trcsh"
 	}
 
 	if _, ok := certifyMap["trcsha256"]; ok {
 		peerExe, err := os.Open(trcshaPath)
 		if err != nil {
-			logger.Printf("unable to open executable: %s\n", err)
+			fmt.Printf("Unable to open executable: %s\n", err)
+			logger.Printf("Unable to open executable: %s\n", err)
 			return false, err
 		}
 
 		defer peerExe.Close()
 
-		if !eUtils.IsWindows() {
-			return true, nil
-		}
 		// TODO: Check previous 10 versions?  If any match, then
 		// return ok....
 		h := sha256.New()
 		if _, err := io.Copy(h, peerExe); err != nil {
-			logger.Printf("unable to copy file: %s\n", err)
+			fmt.Printf("Unable to copy file: %s\n", err)
+			logger.Printf("Unable to copy file: %s\n", err)
 			return false, err
 		}
 		sha := hex.EncodeToString(h.Sum(nil))
 		if certifyMap["trcsha256"].(string) == sha {
-			logger.Println("Validated agent")
+			logger.Println("Validated drone")
 			return true, nil
 		} else {
-			logger.Printf("error obtaining authorization components: %s\n", errors.New("missing certification"))
-			return false, errors.New("missing certification")
+			logger.Printf("Error obtaining authorization components from drone: %s\n", errors.New("missing certification"))
+			return false, errors.New("missing certification from drone")
 		}
 	}
-	return false, errors.New("missing certification")
+	logger.Printf("Missing certification from Vault")
+	return false, errors.New("missing certification from Vault")
 }
