@@ -53,7 +53,20 @@ const (
 	YOU_SHALL_NOT_PASS = "you shall not pass"
 )
 
-func TrcshInitConfig(env string, region string, pathParam string, outputMemCache bool) (*capauth.TrcshDriverConfig, error) {
+func createLogFile() (*log.Logger, error) {
+	logFile := "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"deploy.log" {
+		logFile = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
+	}
+	f, errOpenFile := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	if errOpenFile != nil {
+		return nil, errOpenFile
+	}
+	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
+	return logger, nil
+}
+
+func TrcshInitConfig(env string, region string, pathParam string, outputMemCache bool, logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
 	}
@@ -85,15 +98,17 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 	fmt.Println("trcsh env: " + env)
 	fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
 
-	logFile := "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"deploy.log" {
-		logFile = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
+	//Check if logfile passed in - if not call create log method that does following below...
+	var logFile *log.Logger
+	var err error
+	if len(logger) == 0 {
+		logFile, err = createLogFile()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		logFile = logger[0]
 	}
-	f, errOpenFile := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-	if errOpenFile != nil {
-		return nil, errOpenFile
-	}
-	logger := log.New(f, "[DEPLOY]", log.LstdFlags)
 
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: eUtils.DriverConfig{
@@ -104,7 +119,7 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 				EnvBasis:      eUtils.GetEnvBasis(env),
 				Regions:       regions,
 				ExitOnFailure: true,
-				Log:           logger,
+				Log:           logFile,
 			},
 			IsShellSubProcess: false,
 			OutputMemCache:    outputMemCache,
@@ -299,12 +314,17 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		//Open deploy script and parse it.
 		ProcessDeploy(nil, trcshDriverConfig, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
 	} else {
+		logger, err := createLogFile()
+		if err != nil {
+			fmt.Printf("Error initializing log file: %s\n", err)
+		}
 		agentToken := ""
 		fromWinCred := false
 		if eUtils.IsWindows() {
 			agentCred, err := wincred.GetGenericCredential("AGENT_TOKEN")
 			if err != nil {
 				fmt.Println("Error loading authentication from Credential Manager")
+				logger.Println("Error loading authentication from Credential Manager")
 			} else {
 				agentToken = string(agentCred.CredentialBlob)
 				fromWinCred = true
@@ -327,17 +347,20 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
 			if len(deploymentsShard) == 0 {
 				fmt.Printf("drone trcsh requires a %s.\n", deploymentsShard)
+				logger.Printf("drone trcsh requires a %s.\n", deploymentsShard)
 				os.Exit(-1)
 			}
 		}
 
 		if len(agentToken) == 0 && !eUtils.IsWindows() {
 			fmt.Println("drone trcsh requires AGENT_TOKEN.")
+			logger.Println("drone trcsh requires AGENT_TOKEN.")
 			os.Exit(-1)
 		}
 
 		if len(agentEnv) == 0 {
 			fmt.Println("drone trcsh requires AGENT_ENV.")
+			logger.Println("drone trcsh requires AGENT_ENV.")
 			os.Exit(-1)
 		}
 
@@ -347,11 +370,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		if len(address) == 0 {
 			fmt.Println("drone trcsh requires VAULT_ADDR address.")
+			logger.Println("drone trcsh requires VAULT_ADDR address.")
 			os.Exit(-1)
 		}
 
-		if err := capauth.ValidateVhost(address, "https://"); err != nil {
+		if err := capauth.ValidateVhost(address, "https://", logger); err != nil {
 			fmt.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
+			logger.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
 			os.Exit(124)
 		}
 
@@ -360,12 +385,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		shutdown := make(chan bool)
 
 		fmt.Printf("drone trcsh beginning new agent configuration sequence.\n")
+		logger.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		// Preload agent synchronization configs...
 		var errAgentLoad error
 	ValidateAgent:
 		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
-			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, nil, dronePtr)
+			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, logger, dronePtr)
 		if errAgentLoad != nil {
 			// check os.env for another token
 			if agentToken != os.Getenv("AGENT_TOKEN") && eUtils.IsWindows() {
@@ -374,11 +400,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				goto ValidateAgent
 			} else {
 				fmt.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
+				logger.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
 				os.Exit(124)
 			}
 		}
 
 		fmt.Println("Drone trcsh agent bootstrap successful.")
+		logger.Println("Drone trcsh agent bootstrap successful.")
 
 		if eUtils.IsWindows() {
 			if !fromWinCred {
@@ -387,8 +415,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				cred.CredentialBlob = []byte(agentToken)
 				err := cred.Write()
 				if err != nil {
-					fmt.Println("Error migrating updated token.")
-					fmt.Println(err)
+					fmt.Printf("Error migrating updated token: %s\n", err)
+					logger.Printf("Error migrating updated token: %s\n", err)
 				}
 			}
 			//delete os.env token
@@ -397,20 +425,50 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				_, err := command.CombinedOutput()
 				if err != nil {
 					fmt.Println(err)
+					logger.Println(err)
 				}
 			}
 		}
 
+		// Validate drone sha path
+		pluginConfig := make(map[string]interface{})
+		pluginConfig["vaddress"] = address
+		pluginConfig["token"] = agentToken
+		pluginConfig["env"] = "dev"
+		if eUtils.IsWindows() {
+			pluginConfig["plugin"] = "trcsh.exe"
+		} else {
+			pluginConfig["plugin"] = "trcsh"
+		}
+
+		_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+		if err != nil {
+			fmt.Printf("Problem initializing mod: %s\n", err)
+			logger.Printf("Problem initializing mod: %s\n", err)
+		}
+		if vault != nil {
+			defer vault.Close()
+		}
+
+		isValid, err := trcshauth.ValidateTrcshPathSha(mod, pluginConfig, logger)
+		if err != nil || !isValid {
+			fmt.Printf("Error obtaining authorization components: %s\n", err)
+			os.Exit(124)
+		}
+
 		fmt.Printf("drone trcsh beginning initialization sequence.\n")
+		logger.Printf("drone trcsh beginning initialization sequence.\n")
 		// Initialize deployers.
-		trcshDriverConfig, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, "", true)
+		trcshDriverConfig, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, "", true, logger)
 		if err != nil {
 			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
+			logger.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
 			os.Exit(124)
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Completed bootstrapping and continuing to initialize services.")
 		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig = *gTrcshConfig.ConfigRole
 		trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress = *gTrcshConfig.VaultAddress
+
 		serviceDeployments, err := deployutil.GetDeployers(trcshDriverConfig)
 		if err != nil {
 			fmt.Printf("drone trcsh agent bootstrap get deployers failure: %s\n", err.Error())

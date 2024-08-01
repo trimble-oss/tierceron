@@ -53,8 +53,8 @@ func randomString(n int) string {
 	return string(b)
 }
 
-func ValidateVhost(host string, protocol string) error {
-	return ValidateVhostInverse(host, protocol, false)
+func ValidateVhost(host string, protocol string, logger ...*log.Logger) error {
+	return ValidateVhostInverse(host, protocol, false, logger...)
 }
 
 func ValidateVhostDomain(host string) error {
@@ -66,8 +66,11 @@ func ValidateVhostDomain(host string) error {
 	return errors.New("Bad host: " + host)
 }
 
-func ValidateVhostInverse(host string, protocol string, inverse bool) error {
+func ValidateVhostInverse(host string, protocol string, inverse bool, logger ...*log.Logger) error {
 	if !strings.HasPrefix(host, protocol) || (len(protocol) > 0 && !strings.HasPrefix(protocol, "https")) {
+		if len(logger) > 0 {
+			logger[0].Printf("missing required protocol: %s", protocol)
+		}
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
 	var ip string
@@ -96,6 +99,10 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 		} else {
 			fmt.Println("Error looking up host ip address, please confirm current tierceron vault host name and ip.")
 			fmt.Println(err)
+			if len(logger) > 0 {
+				logger[0].Println("Error looking up host ip address, please confirm current tierceron vault host name and ip.")
+				logger[0].Println(err)
+			}
 			return errors.New("Bad host: " + host)
 		}
 	}
@@ -117,9 +124,11 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 					return nil
 				}
 			} else {
-				//log error -- log not created yet
 				fmt.Printf("Invalid IP address of supported domain: %s \n", ip)
 				fmt.Println("Please confirm current tierceron vault host name and ip.")
+				if len(logger) > 0 {
+					logger[0].Printf("Invalid IP address of supported domain: %s Please confirm current tierceron vault host name and ip.\n", ip)
+				}
 				return errors.New("Bad host: " + host)
 			}
 		} else {
@@ -135,9 +144,12 @@ func ValidateVhostInverse(host string, protocol string, inverse bool) error {
 				if endpoint[1] == "n/a" || endpoint[1] == ip {
 					return nil
 				} else {
-					//log error -- log not created yet
 					fmt.Printf("Invalid IP address of supported domain: %s \n", ip)
 					fmt.Println("Please confirm current tierceron vault host name and ip.")
+					if len(logger) > 0 {
+						logger[0].Printf("Invalid IP address of supported domain: %s \n", ip)
+						logger[0].Println("Please confirm current tierceron vault host name and ip.")
+					}
 					return errors.New("Bad host: " + host)
 				}
 			}

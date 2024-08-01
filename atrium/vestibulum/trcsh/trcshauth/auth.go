@@ -1,18 +1,26 @@
 package trcshauth
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -219,4 +227,61 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth complete.")
 
 	return trcshConfig, err
+}
+
+func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
+	certifyPath := "super-secrets/Index/TrcVault/trcplugin/trcsh/Certify"
+	if plugin, ok := pluginConfig["plugin"].(string); ok {
+		certifyPath = "super-secrets/Index/TrcVault/trcplugin/" + plugin + "/Certify"
+	}
+	certifyMap, err := mod.ReadData(certifyPath)
+	if err != nil {
+		fmt.Printf("Error reading data from vault: %s\n", err)
+		logger.Printf("Error reading data from vault: %s\n", err)
+		return false, err
+	}
+
+	ex, err := os.Executable()
+	if err != nil {
+		fmt.Printf("Unable to access executable: %s\n", err)
+		logger.Printf("Unable to access executable: %s\n", err)
+		return false, err
+	}
+	exPath := filepath.Dir(ex)
+	trcshaPath := exPath + string(os.PathSeparator)
+	if eUtils.IsWindows() {
+		trcshaPath = trcshaPath + "trcsh.exe"
+	} else {
+		trcshaPath = trcshaPath + "trcsh"
+	}
+
+	if _, ok := certifyMap["trcsha256"]; ok {
+		peerExe, err := os.Open(trcshaPath)
+		if err != nil {
+			fmt.Printf("Unable to open executable: %s\n", err)
+			logger.Printf("Unable to open executable: %s\n", err)
+			return false, err
+		}
+
+		defer peerExe.Close()
+
+		// TODO: Check previous 10 versions?  If any match, then
+		// return ok....
+		h := sha256.New()
+		if _, err := io.Copy(h, peerExe); err != nil {
+			fmt.Printf("Unable to copy file: %s\n", err)
+			logger.Printf("Unable to copy file: %s\n", err)
+			return false, err
+		}
+		sha := hex.EncodeToString(h.Sum(nil))
+		if certifyMap["trcsha256"].(string) == sha {
+			logger.Println("Validated drone")
+			return true, nil
+		} else {
+			logger.Printf("Error obtaining authorization components from drone: %s\n", errors.New("missing certification"))
+			return false, errors.New("missing certification from drone")
+		}
+	}
+	logger.Printf("Missing certification from Vault")
+	return false, errors.New("missing certification from Vault")
 }
