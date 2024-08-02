@@ -430,11 +430,21 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			}
 		}
 
+		fmt.Printf("drone trcsh beginning initialization sequence.\n")
+		logger.Printf("drone trcsh beginning initialization sequence.\n")
+		// Initialize deployers.
+		trcshDriverConfig, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, "", true, logger)
+		if err != nil {
+			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
+			logger.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
+			os.Exit(124)
+		}
+
 		// Validate drone sha path
 		pluginConfig := make(map[string]interface{})
 		pluginConfig["vaddress"] = address
 		pluginConfig["token"] = agentToken
-		pluginConfig["env"] = "dev"
+		pluginConfig["env"] = trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 		if eUtils.IsWindows() {
 			pluginConfig["plugin"] = "trcsh.exe"
 		} else {
@@ -456,15 +466,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			os.Exit(124)
 		}
 
-		fmt.Printf("drone trcsh beginning initialization sequence.\n")
-		logger.Printf("drone trcsh beginning initialization sequence.\n")
-		// Initialize deployers.
-		trcshDriverConfig, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, "", true, logger)
-		if err != nil {
-			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
-			logger.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
-			os.Exit(124)
-		}
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Completed bootstrapping and continuing to initialize services.")
 		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig = *gTrcshConfig.ConfigRole
 		trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress = *gTrcshConfig.VaultAddress
