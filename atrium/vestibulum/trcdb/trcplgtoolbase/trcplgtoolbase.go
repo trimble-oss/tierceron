@@ -159,11 +159,6 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("must use -pluginName flag to use -pushimage flag")
 	}
 
-	if strings.Contains(*pluginNamePtr, ".") {
-		fmt.Println("-pluginName cannot contain reserved character '.'")
-		return errors.New("-pluginName cannot contain reserved character '.'")
-	}
-
 	if trcshDriverConfig != nil && len(trcshDriverConfig.DriverConfig.PathParam) > 0 {
 		// Prefer internal definition of alias
 		*pathParamPtr = trcshDriverConfig.DriverConfig.PathParam
