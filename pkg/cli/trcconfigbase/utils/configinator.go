@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -22,6 +23,10 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 	//initialized := false
 	templatePaths := []string{}
 	endPaths := []string{}
+
+	if driverConfig == nil {
+		return nil, nil, errors.New("empty configuration passed in")
+	}
 
 	var trcProjectService string = ""
 	var dosProjectService string = ""

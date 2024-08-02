@@ -7,8 +7,8 @@ import (
 
 func TestGeneratePaths(t *testing.T) {
 	_, _, err := generatePaths(nil)
-	if err != nil {
-		fmt.Println(err)
-		t.Fatalf("Expected no error, got %v", err)
+	if err == nil {
+		fmt.Printf("Expected nil config error, got %s\n", err)
+		t.Fatalf("Expected nil config error, got %v", err)
 	}
 }
