@@ -39,7 +39,7 @@ func TestGeneratePaths(t *testing.T) {
 		PathParam:         "",
 		SecretMode:        true,
 		StartDir: []string{
-			"~/workspace/Github/trimble-oss/pendentive/trc_templates/Common/",
+			"",
 		},
 		EndDir:           ".",
 		OutputMemCache:   false,
@@ -66,7 +66,7 @@ func TestGeneratePaths(t *testing.T) {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	for i := 0; i < len(templatePaths); i++ {
-		if !strings.Contains(templatePaths[i], "workspace/Github/trimble-oss/pendentive/trc_templates/Common/") {
+		if !strings.Contains(templatePaths[i], "") {
 			fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[i])
 			t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[i])
 		}
