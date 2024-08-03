@@ -52,7 +52,7 @@ func TestGeneratePaths(t *testing.T) {
 		WantKeystore:     "",
 		Diff:             false,
 		DiffCounter:      0,
-		ServicesWanted:   []string{"Spectrum/SpectrumAurora"},
+		ServicesWanted:   []string{"Project/Service"},
 		SectionKey:       "",
 		SectionName:      "",
 		SubSectionName:   "",
