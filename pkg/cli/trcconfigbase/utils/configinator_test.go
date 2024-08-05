@@ -18,7 +18,7 @@ func TestGeneratePaths_nil(t *testing.T) {
 }
 
 func TestGeneratePaths_BaseCase(t *testing.T) {
-	// var driverConfig *eUtils.DriverConfig
+	// Single starting Dir, ServicesWanted
 
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
@@ -81,7 +81,7 @@ func TestGeneratePaths_BaseCase(t *testing.T) {
 }
 
 func TestGeneratePaths_CaseOne(t *testing.T) {
-
+	// Multiple starting directories, multiple project/services defined, ServicesWanted specified
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			IsShell:           false,
@@ -125,7 +125,6 @@ func TestGeneratePaths_CaseOne(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project1/Service1"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-	fmt.Println(templatePaths)
 	if err != nil {
 		fmt.Printf("Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
