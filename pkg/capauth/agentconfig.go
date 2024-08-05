@@ -23,6 +23,8 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type AgentConfigs struct {
@@ -178,17 +180,13 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
-	_, featherErr := cap.FeatherWriter(featherCtx, penseSum)
-	if featherErr != nil {
-		return nil, featherErr
-	}
-
 	creds, credErr := tls.GetTransportCredentials(agentconfig.Drone)
 
 	if credErr != nil {
 		return nil, credErr
 	}
 
+	// TODO: add confirmation to next line...
 	conn, err := grpc.Dial(*agentconfig.FeatherHostPort, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, err
@@ -200,10 +198,46 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
-	if err != nil {
-		return nil, err
+	var r *cap.PenseReply
+	retry := 0
+
+	for {
+		_, err := c.Pense(ctx, &cap.PenseRequest{Pense: "", PenseIndex: ""})
+		if err != nil {
+			st, ok := status.FromError(err)
+
+			if ok && (retry < 5) && st.Code() == codes.Unavailable {
+				retry = retry + 1
+				continue
+			} else {
+				return nil, err
+			}
+		} else {
+			break
+		}
 	}
+
+	_, featherErr := cap.FeatherWriter(featherCtx, penseSum)
+	if featherErr != nil {
+		return nil, featherErr
+	}
+
+	for {
+		r, err = c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
+		if err != nil {
+			st, ok := status.FromError(err)
+
+			if ok && (retry < 5) && st.Code() == codes.Unavailable {
+				retry = retry + 1
+				continue
+			} else {
+				return nil, err
+			}
+		} else {
+			break
+		}
+	}
+
 	var penseProtect *string
 	rPense := r.GetPense()
 	penseProtect = &rPense
