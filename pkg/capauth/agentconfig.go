@@ -55,8 +55,8 @@ func randomString(n int) string {
 	return string(b)
 }
 
-func ValidateVhost(host string, protocol string, logger ...*log.Logger) error {
-	return ValidateVhostInverse(host, protocol, false, logger...)
+func ValidateVhost(host string, protocol string, skipPort bool, logger ...*log.Logger) error {
+	return ValidateVhostInverse(host, protocol, false, skipPort, logger...)
 }
 
 func ValidateVhostDomain(host string) error {
@@ -68,7 +68,7 @@ func ValidateVhostDomain(host string) error {
 	return errors.New("Bad host: " + host)
 }
 
-func ValidateVhostInverse(host string, protocol string, inverse bool, logger ...*log.Logger) error {
+func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort bool, logger ...*log.Logger) error {
 	if !strings.HasPrefix(host, protocol) || (len(protocol) > 0 && !strings.HasPrefix(protocol, "https")) {
 		if len(logger) > 0 {
 			logger[0].Printf("missing required protocol: %s", protocol)
@@ -122,7 +122,7 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, logger ...
 					}
 					protocol = protocol + "://"
 				}
-				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint[0]), host) {
+				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint[0]), host) || (skipPort && strings.Contains(endpoint[0], hostname)) {
 					return nil
 				}
 			} else {
@@ -142,7 +142,7 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, logger ...
 			if !strings.HasPrefix(endpoint[0], "https://") {
 				protocolEndpoint = fmt.Sprintf("https://%s", endpoint[0])
 			}
-			if strings.HasPrefix(protocolEndpoint, protocolHost) {
+			if strings.HasPrefix(protocolEndpoint, protocolHost) || (skipPort && strings.Contains(protocolEndpoint, hostname)) {
 				if endpoint[1] == "n/a" || endpoint[1] == ip {
 					return nil
 				} else {
@@ -186,7 +186,11 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 		return nil, credErr
 	}
 
-	// TODO: add confirmation to next line...
+	err := ValidateVhost(*agentconfig.FeatherHostPort, "", true)
+	if err != nil {
+		return nil, err
+	}
+
 	conn, err := grpc.Dial(*agentconfig.FeatherHostPort, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, err

@@ -48,7 +48,7 @@ func OpenDirectConnection(config *core.CoreConfig, url string, username string, 
 		}
 	} else {
 		if net.ParseIP(server) == nil {
-			err = capauth.ValidateVhostInverse(server, "", true)
+			err = capauth.ValidateVhostInverse(server, "", true, false)
 			if err != nil {
 				return nil, err
 			}
