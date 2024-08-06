@@ -24,16 +24,22 @@ func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.
 		return errors.New("certPath flag is empty, expected path to cert")
 	}
 
-	certBytes, err := os.ReadFile(*certPathPtr)
-	if err != nil {
+	var certBytes []byte
+	var err error
+
+	if driverConfig.CoreConfig.IsShell {
 		memFs := driverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
-		billyFile, err := memFs.BillyFs.Open(*certPathPtr)
-		if err != nil {
-			return err
-		}
+		billyFile, billyErr := memFs.BillyFs.Open(*certPathPtr)
 		buffer := bytes.NewBuffer(nil)
 		io.Copy(buffer, billyFile)
 		certBytes = buffer.Bytes()
+		err = billyErr
+	} else {
+		certBytes, err = os.ReadFile(*certPathPtr)
+	}
+
+	if err != nil {
+		return err
 	}
 
 	apimConfigMap := make(map[string]string)
