@@ -14,10 +14,15 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2"
+	"github.com/go-git/go-billy/v5"
 	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
+
+type TrcshMemFs struct {
+	BillyFs billy.Filesystem
+}
 
 func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.Modifier) error {
 	if len(*certPathPtr) == 0 {
