@@ -23,7 +23,7 @@ func trimPath(e string, toReplace string) (string, bool) {
 	if len(toReplace) == 0 || !strings.Contains(e, toReplace) {
 		return e, false
 	}
-	if e[strings.Index(e, toReplace)-1] == os.PathSeparator {
+	if strings.HasPrefix(e, toReplace) || strings.Index(e, toReplace) != 0 && e[strings.Index(e, toReplace)-1] == os.PathSeparator {
 		e = strings.Replace(e, toReplace, "", 1)
 	} else {
 		e = strings.Replace(e, toReplace, string(os.PathSeparator), 1)
