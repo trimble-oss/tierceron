@@ -159,6 +159,11 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("must use -pluginName flag to use -pushimage flag")
 	}
 
+	if len(*certPathPtr) > 0 && !*updateAPIMPtr {
+		fmt.Println("Must use -updateAPIM flag to use -certPath flag")
+		return errors.New("must use -updateAPIM flag to use -certPath flag")
+	}
+
 	if trcshDriverConfig != nil && len(trcshDriverConfig.DriverConfig.PathParam) > 0 {
 		// Prefer internal definition of alias
 		*pathParamPtr = trcshDriverConfig.DriverConfig.PathParam
@@ -333,18 +338,15 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if *updateAPIMPtr {
-		updateAPIMError := trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
-		if updateAPIMError != nil {
-			fmt.Println(updateAPIMError.Error())
-			fmt.Println("Couldn't update APIM...proceeding with build")
+		var apimError error
+		if len(*certPathPtr) > 0 {
+			apimError = trccertmgmtbase.CommonMain(certPathPtr, config, mod)
+		} else {
+			apimError = trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
 		}
-		return nil
-	}
-
-	if len(*certPathPtr) > 0 {
-		updateCertError := trccertmgmtbase.CommonMain(certPathPtr, config, mod)
-		if updateCertError != nil {
-			fmt.Println("Couldn't update Cert...proceeding with build")
+		if apimError != nil {
+			fmt.Println(apimError.Error())
+			fmt.Println("Couldn't update APIM...proceeding with build")
 		}
 		return nil
 	}
