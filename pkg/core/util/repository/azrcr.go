@@ -249,13 +249,11 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 
 	layerDigest := *completeResp.DockerContentDigest
 	config := []byte(fmt.Sprintf(`{
-  architecture: "amd64",
-  os: "windows",
-  rootfs: {
-	type: "layers",
-	diff_ids: [%s],
-  },
-}`, layerDigest))
+	  rootfs: {
+		type: "layers",
+		diff_ids: [%s],
+	  },
+	}`, layerDigest))
 
 	startRes, err = blobClient.StartUpload(ctx, pluginToolConfig["trcplugin"].(string), nil)
 

@@ -166,11 +166,6 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("must use -pluginName flag to use -buildImage flag")
 	}
 
-	if len(*buildImagePtr) > 0 && len(*pluginNamePtr) == 0 {
-		fmt.Println("Must use -pluginName flag to use -buildImage flag")
-		return errors.New("must use -pluginName flag to use -buildImage flag")
-	}
-
 	if len(*certPathPtr) > 0 && !*updateAPIMPtr {
 		fmt.Println("Must use -updateAPIM flag to use -certPath flag")
 		return errors.New("must use -updateAPIM flag to use -certPath flag")
