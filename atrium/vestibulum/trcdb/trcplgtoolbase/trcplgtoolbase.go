@@ -65,7 +65,7 @@ func CommonMain(envDefaultPtr *string,
 	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
 	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
 	buildImagePtr := flagset.String("buildImage", "", "Path to Dockerfile to build")
-	pushimagePtr := flagset.Bool("pushimage", false, "Push an image to the registry.")
+	pushimagePtr := flagset.Bool("pushImage", false, "Push an image to the registry.")
 
 	// Common flags...
 	startDirPtr := flagset.String("startDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Template directory")
@@ -742,15 +742,17 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if *pushimagePtr {
-		fmt.Println("Pushing image to registry.")
-		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
 	} else if len(*buildImagePtr) > 0 {
 		fmt.Println("Building image...")
 		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}
+
+	if *pushimagePtr {
+		fmt.Println("Pushing image to registry.")
+		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 		}
