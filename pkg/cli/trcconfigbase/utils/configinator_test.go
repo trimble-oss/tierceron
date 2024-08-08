@@ -119,7 +119,7 @@ func TestGeneratePaths_CaseOne(t *testing.T) {
 }
 
 func TestGeneratePaths_BadProjServ(t *testing.T) {
-	// Multiple invalid starting directories, multiple project/services defined, ServicesWanted specified
+	// Multiple invalid starting directories, multiple project/services defined, ServicesWanted specified incorrectly
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
@@ -267,24 +267,11 @@ func TestGeneratePaths_CaseFive(t *testing.T) {
 	}
 	driverConfig.DeploymentConfig["trcprojectservice"] = "ProjectService"
 
-	templatePaths, endPaths, err := generatePaths(driverConfig)
+	_, _, err := generatePaths(driverConfig)
 
-	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if len(templatePaths) != 1 || len(endPaths) != 1 {
-		fmt.Println("Expected different amount of paths returned")
-		t.Fatal("Expected different amount of paths returned\n")
-	}
-	if !strings.Contains(templatePaths[0], "hello/bonjour") {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
-		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
-	}
-	if !strings.Contains(endPaths[0], "hello/bonjour") {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
-		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
+	if err == nil {
+		fmt.Printf("Expected project and service specified incorrecly error, instead got %s\n", err)
+		t.Fatalf("Expected project and service specified incorrecly error, instead got %s\n", err)
 	}
 }
 
@@ -323,7 +310,7 @@ func TestGeneratePaths_CaseSix(t *testing.T) {
 		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[1])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[1])
 	}
-	if !strings.Contains(templatePaths[2], "~\\hello\\/Project") {
+	if !strings.Contains(templatePaths[2], "~/hello//Project") {
 		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[2])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[2])
 	}

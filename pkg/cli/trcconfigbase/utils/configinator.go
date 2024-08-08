@@ -43,43 +43,42 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 	}
 
 	var trcProjectService string = ""
-	var dosProjectService string = ""
 	var trcService string = ""
-	var dosService string = ""
 
-	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && (strings.Contains(projectService.(string), "/") || strings.Contains(projectService.(string), "\\")) || len(driverConfig.ServicesWanted) == 1 {
+	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 || len(driverConfig.ServicesWanted) == 1 {
 		if driverConfig.CoreConfig.WantCerts {
 			trcProjectService = "Common"
 		} else {
 			if ok && len(driverConfig.ServicesWanted) == 0 {
-				trcProjectService = projectService.(string)
+				trcProjectService = strings.ReplaceAll(projectService.(string), "\\", "/")
 			} else {
-				trcProjectService = driverConfig.ServicesWanted[0]
+				trcProjectService = strings.ReplaceAll(driverConfig.ServicesWanted[0], "\\", "/")
 			}
-			if !strings.HasSuffix(trcProjectService, "/") && !strings.HasSuffix(trcProjectService, "\\") {
+			if !strings.Contains(trcProjectService, "/") {
+				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
+				return templatePaths, endPaths, errors.New("project and service specified without slash")
+			}
+			if !strings.HasSuffix(trcProjectService, "/") {
 				trcProjectService = trcProjectService + "/"
 			}
 		}
 
-		dosProjectService = strings.ReplaceAll(trcProjectService, "/", "\\")
-		trcProjectService = strings.ReplaceAll(trcProjectService, "\\", "/")
-		if len(driverConfig.StartDir) > 1 {
+		if len(driverConfig.StartDir) > 1 && trcProjectService != "Common" {
 			trcProjectServiceParts := strings.Split(trcProjectService, "/")
-			if len(trcProjectServiceParts) < 2 || (len(trcProjectServiceParts) == 2 && len(trcProjectServiceParts[1]) == 0) {
+			if len(trcProjectServiceParts) < 2 {
 				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
-				return templatePaths, endPaths, errors.New("project and service specified without slash")
+				return templatePaths, endPaths, errors.New("project and service not specified correctly")
 			}
-			project := trcProjectServiceParts[0] + string(os.PathSeparator)
+			project := trcProjectServiceParts[0] + "/"
 			trcService = "/" + trcProjectServiceParts[1] + "/"
-			dosService = strings.ReplaceAll(trcService, "/", "\\")
 			startDirFiltered := []string{}
 			for _, startDir := range driverConfig.StartDir {
-				startDir = strings.ReplaceAll(startDir, "/", string(os.PathSeparator))
-				if !strings.HasSuffix(startDir, string(os.PathSeparator)) {
-					startDir = startDir + string(os.PathSeparator)
+				startDir = strings.ReplaceAll(startDir, "\\", "/")
+				if !strings.HasSuffix(startDir, "/") {
+					startDir = startDir + "/"
 				}
-				if strings.Index(startDir, project) != 0 && !strings.HasPrefix(project, string(os.PathSeparator)) {
-					project = string(os.PathSeparator) + project
+				if strings.Index(startDir, project) != 0 && !strings.HasPrefix(project, "/") {
+					project = "/" + project
 				}
 				if strings.HasSuffix(startDir, project) {
 					startDirFiltered = append(startDirFiltered, startDir)
@@ -94,13 +93,13 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 	}
 
 	for _, startDir := range driverConfig.StartDir {
-		separator := "/"
 		if eUtils.IsWindows() {
-			separator = string(os.PathSeparator)
-			startDir = strings.ReplaceAll(startDir, "/", separator)
+			startDir = strings.ReplaceAll(startDir, "/", "\\")
+			trcProjectService = strings.ReplaceAll(trcProjectService, "/", "\\")
+			trcService = strings.ReplaceAll(trcService, "/", "\\")
 		}
-		if !strings.HasSuffix(startDir, separator) {
-			startDir = startDir + separator
+		if !strings.HasSuffix(startDir, string(os.PathSeparator)) {
+			startDir = startDir + string(os.PathSeparator)
 		}
 
 		//get files from directory
@@ -110,18 +109,11 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 			tpScrubbed := []string{}
 			// Do some scrubbing...
 			for ie, e := range ep {
-				if eUtils.IsWindows() {
-					e = strings.ReplaceAll(e, "/", separator)
-				}
 				matched := false
 				if len(trcProjectService) > 0 && strings.Contains(e, trcProjectService) {
 					e, matched = trimPath(e, trcProjectService)
 				} else if len(trcService) > 0 && strings.Contains(e, trcService) {
 					e, matched = trimPath(e, trcService)
-				} else if len(dosProjectService) > 0 && strings.Contains(e, dosProjectService) {
-					e, matched = trimPath(e, dosProjectService)
-				} else if len(dosService) > 0 && strings.Contains(e, dosService) {
-					e, matched = trimPath(e, dosService)
 				}
 
 				if matched {
