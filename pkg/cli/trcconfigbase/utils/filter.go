@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"os"
 	"strings"
+
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // FilterPaths -- filters based on provided fileFilter
@@ -11,6 +14,10 @@ func FilterPaths(templatePaths []string, endPaths []string, fileFilter []string,
 
 	if len(fileFilter) != 0 && fileFilter[0] != "" {
 		for _, FileFilter := range fileFilter {
+			if eUtils.IsWindows() {
+				FileFilter = strings.ReplaceAll(FileFilter, "/", string(os.PathSeparator))
+			}
+
 			for i, templatePath := range templatePaths {
 				if !prefix {
 					ii := -1
