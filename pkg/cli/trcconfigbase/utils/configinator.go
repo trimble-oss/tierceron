@@ -19,52 +19,89 @@ import (
 
 var mutex = &sync.Mutex{}
 
+func trimPath(e string, toReplace string) (string, bool) {
+	if len(toReplace) == 0 || !strings.Contains(e, toReplace) {
+		return e, false
+	}
+	if strings.HasPrefix(e, toReplace) && !strings.HasSuffix(toReplace, string(os.PathSeparator)) {
+		toReplace = toReplace + string(os.PathSeparator)
+	}
+	if strings.HasPrefix(e, toReplace) || strings.Index(e, toReplace) != 0 && e[strings.Index(e, toReplace)-1] == os.PathSeparator {
+		e = strings.Replace(e, toReplace, "", 1)
+	} else {
+		e = strings.Replace(e, toReplace, string(os.PathSeparator), 1)
+	}
+	return e, true
+}
+
 func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error) {
 	//initialized := false
 	templatePaths := []string{}
 	endPaths := []string{}
-
 	if driverConfig == nil {
-		return nil, nil, errors.New("empty configuration passed in")
+		return templatePaths, endPaths, errors.New("empty configuration passed in")
 	}
 
 	var trcProjectService string = ""
-	var dosProjectService string = ""
 	var trcService string = ""
-	var dosService string = ""
 
-	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && strings.Contains(projectService.(string), "/") || len(driverConfig.ServicesWanted) == 1 {
+	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 || len(driverConfig.ServicesWanted) == 1 {
 		if driverConfig.CoreConfig.WantCerts {
 			trcProjectService = "Common"
 		} else {
 			if ok && len(driverConfig.ServicesWanted) == 0 {
-				trcProjectService = projectService.(string)
+				trcProjectService = strings.ReplaceAll(projectService.(string), "\\", "/")
 			} else {
-				trcProjectService = driverConfig.ServicesWanted[0]
+				trcProjectService = strings.ReplaceAll(driverConfig.ServicesWanted[0], "\\", "/")
+			}
+			if !strings.Contains(trcProjectService, "/") {
+				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
+				return templatePaths, endPaths, errors.New("project and service specified without slash")
 			}
 			if !strings.HasSuffix(trcProjectService, "/") {
 				trcProjectService = trcProjectService + "/"
 			}
 		}
-		dosProjectService = strings.Replace(trcProjectService, "/", "\\", 1)
 
-		if len(driverConfig.StartDir) > 1 {
+		if len(driverConfig.StartDir) > 1 && trcProjectService != "Common" {
 			trcProjectServiceParts := strings.Split(trcProjectService, "/")
+			if len(trcProjectServiceParts) < 2 {
+				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
+				return templatePaths, endPaths, errors.New("project and service not specified correctly")
+			}
 			project := trcProjectServiceParts[0] + "/"
 			trcService = "/" + trcProjectServiceParts[1] + "/"
-			dosService = strings.Replace(trcService, "/", "\\", 1)
 			startDirFiltered := []string{}
 			for _, startDir := range driverConfig.StartDir {
+				startDir = strings.ReplaceAll(startDir, "\\", "/")
+				if !strings.HasSuffix(startDir, "/") {
+					startDir = startDir + "/"
+				}
+				if strings.Index(startDir, project) != 0 && !strings.HasPrefix(project, "/") {
+					project = "/" + project
+				}
 				if strings.HasSuffix(startDir, project) {
 					startDirFiltered = append(startDirFiltered, startDir)
 				}
 			}
 			driverConfig.StartDir = startDirFiltered
+			if len(driverConfig.StartDir) == 0 {
+				fmt.Println("Invalid starting directory, ensure directory includes project name.")
+				return templatePaths, endPaths, errors.New("invalid starting directory passed in")
+			}
 		}
 	}
 
-	//templatePaths
 	for _, startDir := range driverConfig.StartDir {
+		if eUtils.IsWindows() {
+			startDir = strings.ReplaceAll(startDir, "/", "\\")
+			trcProjectService = strings.ReplaceAll(trcProjectService, "/", "\\")
+			trcService = strings.ReplaceAll(trcService, "/", "\\")
+		}
+		if !strings.HasSuffix(startDir, string(os.PathSeparator)) {
+			startDir = startDir + string(os.PathSeparator)
+		}
+
 		//get files from directory
 		tp, ep := getDirFiles(startDir, driverConfig.EndDir)
 		if len(trcProjectService) > 0 {
@@ -74,20 +111,11 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 			for ie, e := range ep {
 				matched := false
 				if len(trcProjectService) > 0 && strings.Contains(e, trcProjectService) {
-					e = strings.Replace(e, trcProjectService, "/", 1)
-					matched = true
+					e, matched = trimPath(e, trcProjectService)
 				} else if len(trcService) > 0 && strings.Contains(e, trcService) {
-					e = strings.Replace(e, trcService, "/", 1)
-					matched = true
-				} else if len(dosProjectService) > 0 && strings.Contains(e, dosProjectService) {
-					e = strings.Replace(e, dosProjectService, "\\", 1)
-					matched = true
-				} else {
-					if len(dosService) > 0 && strings.Contains(e, dosService) {
-						e = strings.Replace(e, dosService, "\\", 1)
-						matched = true
-					}
+					e, matched = trimPath(e, trcService)
 				}
+
 				if matched {
 					epScrubbed = append(epScrubbed, e)
 					tpScrubbed = append(tpScrubbed, tp[ie])
@@ -99,7 +127,6 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 				tp = tpScrubbed
 			}
 		}
-
 		templatePaths = append(templatePaths, tp...)
 		endPaths = append(endPaths, ep...)
 	}
@@ -534,12 +561,11 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 	}
 	for _, file := range files {
 		//add this directory to path names
-		if dir[len(dir)-1] != '/' {
-			dir = dir + "/"
+		if dir[len(dir)-1] != os.PathSeparator {
+			dir = dir + string(os.PathSeparator)
 		}
 
 		filePath := dir + file.Name()
-
 		//take off .tmpl extension
 		filename := file.Name()
 		if strings.HasSuffix(filename, ".DS_Store") {
@@ -549,9 +575,9 @@ func getDirFiles(dir string, endDir string) ([]string, []string) {
 		endPath := ""
 		if extension == ".tmpl" {
 			name := filename[0 : len(filename)-len(extension)]
-			endPath = endDir + "/" + name
+			endPath = endDir + string(os.PathSeparator) + name
 		} else {
-			endPath = endDir + "/" + filename
+			endPath = endDir + string(os.PathSeparator) + filename
 		}
 		//recurse to next level
 		newPaths, newEndPaths := getDirFiles(filePath, endPath)
