@@ -16,6 +16,8 @@ func FilterPaths(templatePaths []string, endPaths []string, fileFilter []string,
 		for _, FileFilter := range fileFilter {
 			if eUtils.IsWindows() {
 				FileFilter = strings.ReplaceAll(FileFilter, "/", string(os.PathSeparator))
+			} else {
+				FileFilter = strings.ReplaceAll(FileFilter, "\\", string(os.PathSeparator))
 			}
 
 			for i, templatePath := range templatePaths {

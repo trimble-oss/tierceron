@@ -23,6 +23,9 @@ func trimPath(e string, toReplace string) (string, bool) {
 	if len(toReplace) == 0 || !strings.Contains(e, toReplace) {
 		return e, false
 	}
+	if strings.HasPrefix(e, toReplace) && !strings.HasSuffix(toReplace, string(os.PathSeparator)) {
+		toReplace = toReplace + string(os.PathSeparator)
+	}
 	if strings.HasPrefix(e, toReplace) || strings.Index(e, toReplace) != 0 && e[strings.Index(e, toReplace)-1] == os.PathSeparator {
 		e = strings.Replace(e, toReplace, "", 1)
 	} else {
@@ -44,7 +47,7 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 	var trcService string = ""
 	var dosService string = ""
 
-	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && strings.Contains(projectService.(string), "/") || len(driverConfig.ServicesWanted) == 1 {
+	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 && (strings.Contains(projectService.(string), "/") || strings.Contains(projectService.(string), "\\")) || len(driverConfig.ServicesWanted) == 1 {
 		if driverConfig.CoreConfig.WantCerts {
 			trcProjectService = "Common"
 		} else {
@@ -53,15 +56,19 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 			} else {
 				trcProjectService = driverConfig.ServicesWanted[0]
 			}
-			if !strings.HasSuffix(trcProjectService, "/") {
+			if !strings.HasSuffix(trcProjectService, "/") && !strings.HasSuffix(trcProjectService, "\\") {
 				trcProjectService = trcProjectService + "/"
 			}
 		}
 
 		dosProjectService = strings.ReplaceAll(trcProjectService, "/", "\\")
-
+		trcProjectService = strings.ReplaceAll(trcProjectService, "\\", "/")
 		if len(driverConfig.StartDir) > 1 {
 			trcProjectServiceParts := strings.Split(trcProjectService, "/")
+			if len(trcProjectServiceParts) < 2 || (len(trcProjectServiceParts) == 2 && len(trcProjectServiceParts[1]) == 0) {
+				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
+				return templatePaths, endPaths, errors.New("project and service specified without slash")
+			}
 			project := trcProjectServiceParts[0] + string(os.PathSeparator)
 			trcService = "/" + trcProjectServiceParts[1] + "/"
 			dosService = strings.ReplaceAll(trcService, "/", "\\")

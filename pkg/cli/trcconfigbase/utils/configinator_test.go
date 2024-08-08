@@ -118,6 +118,33 @@ func TestGeneratePaths_CaseOne(t *testing.T) {
 	}
 }
 
+func TestGeneratePaths_BadProjServ(t *testing.T) {
+	// Multiple invalid starting directories, multiple project/services defined, ServicesWanted specified
+	driverConfig := &eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			WantCerts: false,
+		},
+		StartDir: []string{
+			"foo/project/",
+			"bar/notProject/",
+			"hello/Project ",
+			"aijfiosdfc/Project /",
+			".Project/",
+			"foo/Project/Service",
+		},
+		DeploymentConfig: make(map[string]interface{}),
+		EndDir:           "~/checking...if\\other characters _/will_cause_panic-!",
+		ServicesWanted:   []string{"ProjectService"},
+	}
+	driverConfig.DeploymentConfig["trcprojectservice"] = "Project1/Service1"
+
+	_, _, err := generatePaths(driverConfig)
+	if err == nil {
+		fmt.Printf("Expected Project/Service formatting error, got %s\n", err)
+		t.Fatalf("Expected Project/Service formatting error, got %v", err)
+	}
+}
+
 func TestGeneratePaths_CaseTwo(t *testing.T) {
 	// Multiple starting directories, multiple project/services defined, ServicesWanted specified
 	driverConfig := &eUtils.DriverConfig{
