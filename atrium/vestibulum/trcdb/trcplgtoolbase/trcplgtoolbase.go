@@ -747,6 +747,8 @@ func CommonMain(envDefaultPtr *string,
 		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
 		if err != nil {
 			fmt.Println(err.Error())
+		} else {
+			fmt.Println("Image successfully built")
 		}
 	}
 
@@ -755,6 +757,8 @@ func CommonMain(envDefaultPtr *string,
 		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
+		} else {
+			fmt.Println("Image successfully pushed")
 		}
 	}
 

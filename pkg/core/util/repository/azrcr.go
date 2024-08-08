@@ -1,6 +1,3 @@
-//go:build azrcr
-// +build azrcr
-
 package repository
 
 import (
@@ -17,6 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry"
+	"github.com/docker/docker/client"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
@@ -190,7 +188,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return err
 	}
 
-	client, err := azcontainerregistry.NewClient(
+	azrClient, err := azcontainerregistry.NewClient(
 		pluginToolConfig["acrrepository"].(string),
 		svc, nil)
 
@@ -208,14 +206,34 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return err
 	}
 
-	ctx := context.Background()
-	startRes, err := blobClient.StartUpload(ctx, pluginToolConfig["trcplugin"].(string), nil)
-
 	if err != nil {
 		return errors.New("failed to start upload layer: " + err.Error())
 	}
 
-	layer := pluginToolConfig["rawImageFile"].([]byte)
+	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+
+	if err != nil {
+		return errors.New("failed to create docker client: " + err.Error())
+	}
+
+	imageName := pluginToolConfig["trcplugin"].(string)
+
+	imageReader, err := dockerCli.ImageSave(context.Background(), []string{imageName})
+	if err != nil {
+		return errors.New("failed to save docker image: " + err.Error())
+	}
+
+	layer, err := io.ReadAll(imageReader)
+	if err != nil {
+		return errors.New("failed to read docker image: " + err.Error())
+	}
+
+	ctx := context.Background()
+	startRes, err := blobClient.StartUpload(ctx, pluginToolConfig["trcplugin"].(string), nil)
+
+	if err != nil {
+		return errors.New("failed to upload layer: " + err.Error())
+	}
 
 	calculator := azcontainerregistry.NewBlobDigestCalculator()
 	uploadResp, err := blobClient.UploadChunk(ctx, *startRes.Location, bytes.NewReader(layer), calculator, nil)
@@ -278,7 +296,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	]
 }`, layerDigest, len(config), *completeResp.DockerContentDigest, len(layer))
 
-	uploadManifestRes, err := client.UploadManifest(ctx, pluginToolConfig["trcplugin"].(string), "1.0.0",
+	uploadManifestRes, err := azrClient.UploadManifest(ctx, pluginToolConfig["trcplugin"].(string), "1.0.0",
 		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader([]byte(manifest))), nil)
 
 	if err != nil {
