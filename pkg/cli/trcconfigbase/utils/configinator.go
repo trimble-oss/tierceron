@@ -18,6 +18,7 @@ import (
 )
 
 var mutex = &sync.Mutex{}
+var ConfiginatorOsPathSeparator string = string(os.PathSeparator)
 
 func trimPath(e string, toReplace string) (string, bool) {
 	if len(toReplace) == 0 || !strings.Contains(e, toReplace) {
@@ -96,13 +97,13 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 	}
 
 	for _, startDir := range driverConfig.StartDir {
-		if eUtils.IsWindows() {
-			startDir = strings.ReplaceAll(startDir, "/", "\\")
-			trcProjectService = strings.ReplaceAll(trcProjectService, "/", "\\")
-			trcService = strings.ReplaceAll(trcService, "/", "\\")
+		if ConfiginatorOsPathSeparator == "\\" { //eUtils.IsWindows()
+			startDir = strings.ReplaceAll(startDir, "/", ConfiginatorOsPathSeparator)
+			trcProjectService = strings.ReplaceAll(trcProjectService, "/", ConfiginatorOsPathSeparator)
+			trcService = strings.ReplaceAll(trcService, "/", ConfiginatorOsPathSeparator)
 		}
-		if !strings.HasSuffix(startDir, string(os.PathSeparator)) {
-			startDir = startDir + string(os.PathSeparator)
+		if !strings.HasSuffix(startDir, ConfiginatorOsPathSeparator) {
+			startDir = startDir + ConfiginatorOsPathSeparator
 		}
 
 		//get files from directory
