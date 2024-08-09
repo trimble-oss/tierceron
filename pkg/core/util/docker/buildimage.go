@@ -21,7 +21,7 @@ func BuildDockerImage(driverConfig *eUtils.DriverConfig, dockerfilePath, imageNa
 	}
 
 	// Create a tar archive of the Dockerfile
-	dockerfileTar, err := createTar(dockerfilePath)
+	dockerfileTar, err := createTarContext(filepath.Dir(dockerfilePath))
 	if err != nil {
 		return err
 	}
@@ -46,32 +46,50 @@ func BuildDockerImage(driverConfig *eUtils.DriverConfig, dockerfilePath, imageNa
 	return nil
 }
 
-func createTar(dockerfilePath string) (io.Reader, error) {
+func createTarContext(contextDir string) (io.Reader, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
 
-	dockerfile, err := os.Open(dockerfilePath)
+	err := filepath.Walk(contextDir, func(file string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Create a new header from the file info
+		header, err := tar.FileInfoHeader(fi, fi.Name())
+		if err != nil {
+			return err
+		}
+
+		// Update the header name to the relative path
+		header.Name, err = filepath.Rel(contextDir, file)
+		if err != nil {
+			return err
+		}
+
+		// Write the header to the tarball
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+
+		// If the file is not a directory, write its content to the tarball
+		if !fi.IsDir() {
+			data, err := os.Open(file)
+			if err != nil {
+				return err
+			}
+			defer data.Close()
+
+			if _, err := io.Copy(tw, data); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return nil, err
-	}
-	defer dockerfile.Close()
-
-	stat, err := dockerfile.Stat()
-	if err != nil {
-		return nil, err
-	}
-
-	header := &tar.Header{
-		Name: filepath.Base(dockerfilePath),
-		Size: stat.Size(),
-	}
-
-	if err := tw.WriteHeader(header); err != nil {
-		return nil, err
-	}
-
-	if _, err := io.Copy(tw, dockerfile); err != nil {
 		return nil, err
 	}
 
