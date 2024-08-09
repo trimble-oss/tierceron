@@ -744,6 +744,7 @@ func CommonMain(envDefaultPtr *string,
 		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
 		if err != nil {
 			fmt.Println(err.Error())
+      return err
 		} else {
 			fmt.Println("Image successfully built")
 		}
