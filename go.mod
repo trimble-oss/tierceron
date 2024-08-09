@@ -33,7 +33,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
-	github.com/docker/docker v26.1.4+incompatible
+	github.com/docker/docker v26.1.5+incompatible
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-hat v1.1.2
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20240326213127-e85d6193e1c6
