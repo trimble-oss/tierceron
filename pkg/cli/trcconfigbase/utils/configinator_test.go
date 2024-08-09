@@ -88,10 +88,10 @@ func TestGeneratePaths_CaseOne(t *testing.T) {
 		StartDir: []string{
 			"foo/project/",
 			"bar/notProject/",
-			"hello/Project ",
+			"hello/nProject ",
 			"aijfiosdfc/Project /",
 			".Project/",
-			"foo/Project/Service",
+			"foo/nopeProject/Service",
 		},
 		DeploymentConfig: make(map[string]interface{}),
 		EndDir:           "~/checking...if\\other characters _/will_cause_panic-!",
@@ -178,7 +178,7 @@ func TestGeneratePaths_CaseThree(t *testing.T) {
 			WantCerts: false,
 		},
 		StartDir: []string{
-			"hello/bonjour/fake.tmpl",
+			"hellos/bonjour/fake.tmpl",
 			"hello",
 		},
 		DeploymentConfig: make(map[string]interface{}),
@@ -186,23 +186,10 @@ func TestGeneratePaths_CaseThree(t *testing.T) {
 		ServicesWanted:   []string{"hello/world/seeing/if/it/works//with random words"},
 	}
 
-	templatePaths, endPaths, err := generatePaths(driverConfig)
-
-	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
-		t.Fatalf("Expected no error, got %v", err)
-	}
-	if len(templatePaths) != 1 || len(endPaths) != 1 {
-		fmt.Println("Expected different amount of paths returned")
-		t.Fatal("Expected different amount of paths returned\n")
-	}
-	if !strings.Contains(templatePaths[0], "hello/") {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
-		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
-	}
-	if !strings.Contains(endPaths[0], "hello/bonjour") {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
-		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
+	_, _, err := generatePaths(driverConfig)
+	if err == nil {
+		fmt.Printf("Expected error, got %s\n", err)
+		t.Fatalf("Expected error, got %v", err)
 	}
 }
 

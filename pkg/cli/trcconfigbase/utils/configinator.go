@@ -79,7 +79,7 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 				if strings.Index(startDir, project) != 0 && !strings.HasPrefix(project, "/") {
 					project = "/" + project
 				}
-				if strings.HasSuffix(startDir, project) {
+				if strings.Contains(startDir, project) { //HasSuffix
 					startDirFiltered = append(startDirFiltered, startDir)
 				}
 			}
