@@ -32,9 +32,9 @@ func TestGeneratePaths_BaseCase(t *testing.T) {
 
 	_, _, err := generatePaths(driverConfig)
 
-	if err == nil {
-		fmt.Printf("Expected error, got %s\n", err)
-		t.Fatalf("Expected error, got %v", err)
+	if err != nil {
+		fmt.Printf("Expected no error, got %s\n", err)
+		t.Fatalf("Expected no error, got %v", err)
 	}
 }
 
