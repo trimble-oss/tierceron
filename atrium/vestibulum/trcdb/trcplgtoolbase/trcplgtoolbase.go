@@ -740,18 +740,18 @@ func CommonMain(envDefaultPtr *string,
 			return err
 		}
 	} else if len(*buildImagePtr) > 0 {
-		fmt.Println("Building image...")
+		fmt.Println("Building image using local docker repository...")
 		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
 		if err != nil {
 			fmt.Println(err.Error())
-      return err
+			return err
 		} else {
 			fmt.Println("Image successfully built")
 		}
 	}
 
 	if *pushimagePtr {
-		fmt.Println("Pushing image to registry.")
+		fmt.Println("Pushing image to registry...")
 		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
