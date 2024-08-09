@@ -1,5 +1,5 @@
-//go:build !gcr && !azrcr && !awsecr && !dockercr && none
-// +build !gcr,!azrcr,!awsecr,!dockercr,none
+//go:build !gcr && !azrcr && !awsecr && !dockercr
+// +build !gcr,!azrcr,!awsecr,!dockercr
 
 package repository
 
