@@ -182,6 +182,19 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return err
 	}
 
+	if pluginToolConfig["azureTenantId"] == nil || len(pluginToolConfig["azureTenantId"]) == 0 {
+		driverConfig.CoreConfig.Log.Printf("Acr tenant id undefined.  Refusing to continue.\n")
+		return errors.New("undefined acr tenent id")
+	}
+	if pluginToolConfig["azureClientId"] == nil || len(pluginToolConfig["azureClientId"]) == 0 {
+		driverConfig.CoreConfig.Log.Printf("Acr client id undefined.  Refusing to continue.\n")
+		return errors.New("undefined acr client id")
+	}
+	if pluginToolConfig["azureClientSecret"] == nil || len(pluginToolConfig["azureClientSecret"]) == 0 {
+		driverConfig.CoreConfig.Log.Printf("Acr client id undefined.  Refusing to continue.\n")
+		return errors.New("undefined acr client secret")
+	}
+
 	svc, err := azidentity.NewClientSecretCredential(
 		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureClientId"].(string),
