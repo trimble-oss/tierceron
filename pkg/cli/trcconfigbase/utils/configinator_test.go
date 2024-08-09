@@ -19,6 +19,7 @@ func TestGeneratePaths_nil(t *testing.T) {
 
 func TestGeneratePaths_BaseCase(t *testing.T) {
 	// Single starting Dir, ServicesWanted
+	// If this test fails, drone will fail
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
