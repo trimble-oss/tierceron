@@ -4,7 +4,17 @@ import "log"
 
 // This structure contains core properties central to Secrets engine access
 type CoreConfig struct {
-	IsShell           bool   // If tool running in shell.
+	IsShell bool // If tool running in shell.
+
+	// Vault Configurations...
+	Insecure      bool
+	Token         string
+	AppRoleConfig string
+	VaultAddress  string
+	EnvBasis      string // dev,QA, etc....
+	Env           string // dev-1, dev-2, etc...
+	Regions       []string
+
 	DynamicPathFilter string // Seeds from a specific path.
 	WantCerts         bool
 	ExitOnFailure     bool // Exit on a failure or try to continue

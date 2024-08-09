@@ -51,7 +51,7 @@ func LocalAddr(env string) (string, error) {
 		}
 		for _, addr := range addrs {
 			localHost = strings.TrimRight(addr, ".")
-			if validErr := ValidateVhost(localHost, ""); validErr != nil {
+			if validErr := ValidateVhost(localHost, "", false); validErr != nil {
 				localHost = ""
 				continue
 			} else {

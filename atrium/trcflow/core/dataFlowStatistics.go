@@ -103,9 +103,9 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*TTD
 					driverConfig := &eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
 							ExitOnFailure: true,
+							Insecure:      mod.Insecure,
 							Log:           logger,
 						},
-						Insecure: mod.Insecure,
 					}
 
 					sourceDatabaseConnectionMap := map[string]interface{}{

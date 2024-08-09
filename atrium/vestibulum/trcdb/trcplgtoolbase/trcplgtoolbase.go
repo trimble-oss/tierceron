@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
+	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
@@ -61,7 +62,8 @@ func CommonMain(envDefaultPtr *string,
 	agentdeployPtr := flagset.Bool("agentdeploy", false, "To initiate deployment on agent.")
 	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
 	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
-	pushimagePtr := flagset.Bool("pushimage", false, "Push an image to the registry.")
+	buildImagePtr := flagset.String("buildImage", "", "Path to Dockerfile to build")
+	pushimagePtr := flagset.Bool("pushImage", false, "Push an image to the registry.")
 
 	// Common flags...
 	startDirPtr := flagset.String("startDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Template directory")
@@ -157,9 +159,14 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("must use -pluginName flag to use -pushimage flag")
 	}
 
-	if strings.Contains(*pluginNamePtr, ".") {
-		fmt.Println("-pluginName cannot contain reserved character '.'")
-		return errors.New("-pluginName cannot contain reserved character '.'")
+	if len(*buildImagePtr) > 0 && len(*pluginNamePtr) == 0 {
+		fmt.Println("Must use -pluginName flag to use -buildImage flag")
+		return errors.New("must use -pluginName flag to use -buildImage flag")
+	}
+
+	if len(*certPathPtr) > 0 && !*updateAPIMPtr {
+		fmt.Println("Must use -updateAPIM flag to use -certPath flag")
+		return errors.New("must use -updateAPIM flag to use -certPath flag")
 	}
 
 	if trcshDriverConfig != nil && len(trcshDriverConfig.DriverConfig.PathParam) > 0 {
@@ -229,8 +236,8 @@ func CommonMain(envDefaultPtr *string,
 		} else {
 			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
 		}
-		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.AppRoleConfig)
-		*insecurePtr = trcshDriverConfigBase.DriverConfig.Insecure
+		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfig)
+		*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
 	} else {
 		if *agentdeployPtr {
 			fmt.Println("Unsupported agentdeploy outside trcsh")
@@ -248,9 +255,11 @@ func CommonMain(envDefaultPtr *string,
 			DriverConfig: eUtils.DriverConfig{
 				CoreConfig: core.CoreConfig{
 					ExitOnFailure: true,
+					Insecure:      *insecurePtr,
 					Log:           logger,
 				},
-				Insecure: *insecurePtr, StartDir: []string{*startDirPtr}, SubSectionValue: *pluginNamePtr,
+				StartDir:        []string{*startDirPtr},
+				SubSectionValue: *pluginNamePtr,
 			},
 		}
 
@@ -330,22 +339,19 @@ func CommonMain(envDefaultPtr *string,
 				return fmt.Errorf("unsupported region: %s", *regionPtr)
 			}
 		}
-		trcshDriverConfigBase.DriverConfig.Regions = regions
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Regions = regions
 	}
 
 	if *updateAPIMPtr {
-		updateAPIMError := trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
-		if updateAPIMError != nil {
-			fmt.Println(updateAPIMError.Error())
-			fmt.Println("Couldn't update APIM...proceeding with build")
+		var apimError error
+		if len(*certPathPtr) > 0 {
+			apimError = trccertmgmtbase.CommonMain(certPathPtr, config, mod)
+		} else {
+			apimError = trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
 		}
-		return nil
-	}
-
-	if len(*certPathPtr) > 0 {
-		updateCertError := trccertmgmtbase.CommonMain(certPathPtr, config, mod)
-		if updateCertError != nil {
-			fmt.Println("Couldn't update Cert...proceeding with build")
+		if apimError != nil {
+			fmt.Println(apimError.Error())
+			fmt.Println("Couldn't update APIM...proceeding with build")
 		}
 		return nil
 	}
@@ -572,15 +578,23 @@ func CommonMain(envDefaultPtr *string,
 			if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { //If region is set
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
-				mod.SubSectionValue = pluginToolConfig["trcplugin"].(string)
+
+				pluginSource := pluginToolConfig["trcplugin"].(string)
+				if strings.HasPrefix(*pluginNamePtr, pluginSource) {
+					pluginSource = *pluginNamePtr
+				}
+				mod.SubSectionValue = pluginSource
+
 				if trcshDriverConfig == nil {
 					trcshDriverConfig = &capauth.TrcshDriverConfig{
 						DriverConfig: eUtils.DriverConfig{
 							CoreConfig: core.CoreConfig{
 								ExitOnFailure: true,
+								Insecure:      false,
 								Log:           logger,
 							},
-							Insecure: false, StartDir: []string{""}, SubSectionValue: *pluginNamePtr,
+							StartDir:        []string{""},
+							SubSectionValue: pluginSource,
 						},
 					}
 				}
@@ -632,11 +646,24 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if *pushimagePtr {
-		fmt.Println("Pushing image to registry.")
+	} else if len(*buildImagePtr) > 0 {
+		fmt.Println("Building image using local docker repository...")
+		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		} else {
+			fmt.Println("Image successfully built")
+		}
+	}
+
+	if *pushimagePtr {
+		fmt.Println("Pushing image to registry...")
 		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
+		} else {
+			fmt.Println("Image successfully pushed")
 		}
 	}
 

@@ -206,7 +206,7 @@ func AutoAuth(driverConfig *DriverConfig,
 		} else {
 			fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
 		}
-		v, err = sys.NewVault(driverConfig.Insecure, *addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
+		v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, *addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
 		if v != nil {
 			defer v.Close()
 		} else {
@@ -270,7 +270,7 @@ func AutoAuth(driverConfig *DriverConfig,
 		}
 	} else {
 		fmt.Printf("No override auth connecting to vault @ %s\n", *addrPtr)
-		v, err = sys.NewVault(driverConfig.Insecure, *addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
+		v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, *addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
 
 		if v != nil {
 			defer v.Close()
@@ -365,7 +365,7 @@ func AutoAuth(driverConfig *DriverConfig,
 			return err
 		}
 
-		mod, err := helperkv.NewModifier(driverConfig.Insecure, roleToken, *addrPtr, *envPtr, nil, false, driverConfig.CoreConfig.Log)
+		mod, err := helperkv.NewModifier(driverConfig.CoreConfig.Insecure, roleToken, *addrPtr, *envPtr, nil, false, driverConfig.CoreConfig.Log)
 		if mod != nil {
 			defer mod.Release()
 		}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -22,6 +23,8 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type AgentConfigs struct {
@@ -31,6 +34,7 @@ type AgentConfigs struct {
 	DeployRoleID    *string
 	Deployments     *string
 	Env             *string
+	Drone           *bool
 }
 
 type TrcshDriverConfig struct {
@@ -51,8 +55,8 @@ func randomString(n int) string {
 	return string(b)
 }
 
-func ValidateVhost(host string, protocol string) error {
-	return ValidateVhostInverse(host, protocol, false)
+func ValidateVhost(host string, protocol string, skipPort bool, logger ...*log.Logger) error {
+	return ValidateVhostInverse(host, protocol, false, skipPort, logger...)
 }
 
 func ValidateVhostDomain(host string) error {
@@ -64,31 +68,92 @@ func ValidateVhostDomain(host string) error {
 	return errors.New("Bad host: " + host)
 }
 
-func ValidateVhostInverse(host string, protocol string, inverse bool) error {
-	if !strings.HasPrefix(host, protocol) {
+func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort bool, logger ...*log.Logger) error {
+	if !strings.HasPrefix(host, protocol) || (len(protocol) > 0 && !strings.HasPrefix(protocol, "https")) {
+		if len(logger) > 0 {
+			logger[0].Printf("missing required protocol: %s", protocol)
+		}
 		return fmt.Errorf("missing required protocol: %s", protocol)
 	}
+	var ip string
+	hostname := host
+	hostname = host[len(protocol):]
+	// Remove remaining invalid characters from host
+	for {
+		if strings.HasPrefix(hostname, ":") {
+			hostname = hostname[strings.Index(hostname, ":")+1:]
+		} else if strings.HasPrefix(hostname, "/") {
+			hostname = hostname[strings.Index(hostname, "/")+1:]
+		} else {
+			break
+		}
+	}
+	if strings.Contains(hostname, ":") {
+		hostname = hostname[:strings.Index(hostname, ":")]
+	}
+	if strings.Contains(hostname, "/") {
+		hostname = hostname[:strings.Index(hostname, "/")]
+	}
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		if len(ips) == 0 && strings.Contains(hostname, ".test") {
+			ip = "127.0.0.1"
+		} else {
+			fmt.Println("Error looking up host ip address, please confirm current tierceron vault host name and ip.")
+			fmt.Println(err)
+			if len(logger) > 0 {
+				logger[0].Println("Error looking up host ip address, please confirm current tierceron vault host name and ip.")
+				logger[0].Println(err)
+			}
+			return errors.New("Bad host: " + host)
+		}
+	}
+	if len(ips) > 0 {
+		ip = ips[0].String()
+	}
+
 	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
 		if inverse {
-			if len(protocol) > 0 {
-				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint), host) {
+			if endpoint[1] == "n/a" || endpoint[1] == ip {
+				// format protocol if non-empty
+				if len(protocol) > 0 && !strings.HasSuffix(protocol, "://") {
+					if strings.Contains(protocol, ":") {
+						protocol = protocol[:strings.Index(protocol, ":")]
+					}
+					protocol = protocol + "://"
+				}
+				if strings.Contains(fmt.Sprintf("%s%s", protocol, endpoint[0]), host) || (skipPort && strings.Contains(endpoint[0], hostname)) {
 					return nil
 				}
-			}
-			if strings.Contains(endpoint, host) {
-				return nil
+			} else {
+				fmt.Printf("Invalid IP address of supported domain: %s \n", ip)
+				fmt.Println("Please confirm current tierceron vault host name and ip.")
+				if len(logger) > 0 {
+					logger[0].Printf("Invalid IP address of supported domain: %s Please confirm current tierceron vault host name and ip.\n", ip)
+				}
+				return errors.New("Bad host: " + host)
 			}
 		} else {
 			var protocolHost = host
 			if !strings.HasPrefix(host, "https://") {
 				protocolHost = fmt.Sprintf("https://%s", host)
 			}
-			var protocolEndpoint = endpoint
-			if !strings.HasPrefix(endpoint, "https://") {
-				protocolEndpoint = fmt.Sprintf("https://%s", endpoint)
+			var protocolEndpoint = endpoint[0]
+			if !strings.HasPrefix(endpoint[0], "https://") {
+				protocolEndpoint = fmt.Sprintf("https://%s", endpoint[0])
 			}
-			if strings.HasPrefix(protocolEndpoint, protocolHost) {
-				return nil
+			if strings.HasPrefix(protocolEndpoint, protocolHost) || (skipPort && strings.Contains(protocolEndpoint, hostname)) {
+				if endpoint[1] == "n/a" || endpoint[1] == ip {
+					return nil
+				} else {
+					fmt.Printf("Invalid IP address of supported domain: %s \n", ip)
+					fmt.Println("Please confirm current tierceron vault host name and ip.")
+					if len(logger) > 0 {
+						logger[0].Printf("Invalid IP address of supported domain: %s \n", ip)
+						logger[0].Println("Please confirm current tierceron vault host name and ip.")
+					}
+					return errors.New("Bad host: " + host)
+				}
 			}
 		}
 	}
@@ -111,19 +176,19 @@ func (agentconfig *AgentConfigs) RetryingPenseFeatherQuery(pense string) (*strin
 }
 
 func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
-	penseCode := randomString(7 + rand.Intn(7))
+	penseCode := randomString(12 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
-	_, featherErr := cap.FeatherWriter(featherCtx, penseSum)
-	if featherErr != nil {
-		return nil, featherErr
-	}
-
-	creds, credErr := tls.GetTransportCredentials()
+	creds, credErr := tls.GetTransportCredentials(agentconfig.Drone)
 
 	if credErr != nil {
 		return nil, credErr
+	}
+
+	err := ValidateVhost(*agentconfig.FeatherHostPort, "", true)
+	if err != nil {
+		return nil, err
 	}
 
 	conn, err := grpc.Dial(*agentconfig.FeatherHostPort, grpc.WithTransportCredentials(creds))
@@ -137,10 +202,46 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	r, err := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
-	if err != nil {
-		return nil, err
+	var r *cap.PenseReply
+	retry := 0
+
+	for {
+		_, err := c.Pense(ctx, &cap.PenseRequest{Pense: "", PenseIndex: ""})
+		if err != nil {
+			st, ok := status.FromError(err)
+
+			if ok && (retry < 5) && st.Code() == codes.Unavailable {
+				retry = retry + 1
+				continue
+			} else {
+				return nil, err
+			}
+		} else {
+			break
+		}
 	}
+
+	_, featherErr := cap.FeatherWriter(featherCtx, penseSum)
+	if featherErr != nil {
+		return nil, featherErr
+	}
+
+	for {
+		r, err = c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
+		if err != nil {
+			st, ok := status.FromError(err)
+
+			if ok && (retry < 5) && st.Code() == codes.Unavailable {
+				retry = retry + 1
+				continue
+			} else {
+				return nil, err
+			}
+		} else {
+			break
+		}
+	}
+
 	var penseProtect *string
 	rPense := r.GetPense()
 	penseProtect = &rPense
@@ -154,7 +255,8 @@ func NewAgentConfig(address string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error,
-	logger *log.Logger) (*AgentConfigs, *TrcShConfig, error) {
+	logger *log.Logger,
+	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
 	if logger != nil {
 		logger.Printf(".")
 	} else {
@@ -222,6 +324,10 @@ func NewAgentConfig(address string,
 		}
 
 		deployments := "bootstrap"
+		isDrone := false
+		if len(drone) > 0 {
+			isDrone = *drone[0]
+		}
 		agentconfig := &AgentConfigs{
 			captiplib.FeatherCtlInit(nil,
 				trcHatHostLocal,
@@ -237,6 +343,7 @@ func NewAgentConfig(address string,
 			new(string),
 			&deployments,
 			&trcHatEnv,
+			&isDrone,
 		}
 
 		trcshConfig := &TrcShConfig{Env: trcHatEnv,
@@ -269,7 +376,7 @@ func NewAgentConfig(address string,
 }
 
 func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, error) {
-	penseCode := randomString(7 + rand.Intn(7))
+	penseCode := randomString(12 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
@@ -297,7 +404,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	}
 	dialOptions := grpc.WithTransportCredentials(creds)
 
-	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvBasis)
+	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 	if localHostErr != nil {
 		return nil, localHostErr
 	}
@@ -312,7 +419,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.EnvBasis)
+	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 	if localHostConfirmErr != nil {
 		return nil, localHostConfirmErr
 	}

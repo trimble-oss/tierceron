@@ -56,7 +56,7 @@ popd
 
 # Generate deployment scripts
 ```
-trcpub -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
+trcpub -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport>
 trcconfig -env=dev -startDir=trc_templates/TrcVault/Carrier
 chmod 700 deploy/*.sh
 ```
