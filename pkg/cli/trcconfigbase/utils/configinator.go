@@ -62,8 +62,7 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 				trcProjectService = trcProjectService + "/"
 			}
 		}
-
-		if len(driverConfig.StartDir) > 1 && trcProjectService != "Common" {
+		if len(driverConfig.StartDir) > 0 && trcProjectService != "Common" {
 			trcProjectServiceParts := strings.Split(trcProjectService, "/")
 			if len(trcProjectServiceParts) < 2 {
 				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
