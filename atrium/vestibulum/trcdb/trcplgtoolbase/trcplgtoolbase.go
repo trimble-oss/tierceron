@@ -20,6 +20,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
+	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
@@ -63,7 +64,8 @@ func CommonMain(envDefaultPtr *string,
 	agentdeployPtr := flagset.Bool("agentdeploy", false, "To initiate deployment on agent.")
 	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
 	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
-	pushimagePtr := flagset.Bool("pushimage", false, "Push an image to the registry.")
+	buildImagePtr := flagset.String("buildImage", "", "Path to Dockerfile to build")
+	pushimagePtr := flagset.Bool("pushImage", false, "Push an image to the registry.")
 
 	// Common flags...
 	startDirPtr := flagset.String("startDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Template directory")
@@ -157,6 +159,11 @@ func CommonMain(envDefaultPtr *string,
 	if *pushimagePtr && (len(*pluginNamePtr) == 0) {
 		fmt.Println("Must use -pluginName flag to use -pushimage flag")
 		return errors.New("must use -pluginName flag to use -pushimage flag")
+	}
+
+	if len(*buildImagePtr) > 0 && len(*pluginNamePtr) == 0 {
+		fmt.Println("Must use -pluginName flag to use -buildImage flag")
+		return errors.New("must use -pluginName flag to use -buildImage flag")
 	}
 
 	if len(*certPathPtr) > 0 && !*updateAPIMPtr {
@@ -732,11 +739,24 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if *pushimagePtr {
-		fmt.Println("Pushing image to registry.")
+	} else if len(*buildImagePtr) > 0 {
+		fmt.Println("Building image using local docker repository...")
+		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		} else {
+			fmt.Println("Image successfully built")
+		}
+	}
+
+	if *pushimagePtr {
+		fmt.Println("Pushing image to registry...")
 		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
+		} else {
+			fmt.Println("Image successfully pushed")
 		}
 	}
 
