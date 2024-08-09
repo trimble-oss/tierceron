@@ -44,6 +44,7 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 
 	var trcProjectService string = ""
 	var trcService string = ""
+	var project string = ""
 
 	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 || len(driverConfig.ServicesWanted) == 1 {
 		if driverConfig.CoreConfig.WantCerts {
@@ -62,14 +63,17 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 				trcProjectService = trcProjectService + "/"
 			}
 		}
-		if len(driverConfig.StartDir) > 0 && trcProjectService != "Common" {
+		if trcProjectService != "Common" {
 			trcProjectServiceParts := strings.Split(trcProjectService, "/")
 			if len(trcProjectServiceParts) < 2 {
 				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
 				return templatePaths, endPaths, errors.New("project and service not specified correctly")
 			}
-			project := trcProjectServiceParts[0] + "/"
+			project = trcProjectServiceParts[0] + "/"
 			trcService = "/" + trcProjectServiceParts[1] + "/"
+		}
+		if len(driverConfig.StartDir) > 1 {
+			// If multiple starting directories, filter starting directories based on project name
 			startDirFiltered := []string{}
 			for _, startDir := range driverConfig.StartDir {
 				startDir = strings.ReplaceAll(startDir, "\\", "/")
