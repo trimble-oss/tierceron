@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -209,10 +210,6 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return err
 	}
 
-	if err != nil {
-		return errors.New("failed to start upload layer: " + err.Error())
-	}
-
 	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 
 	if err != nil {
@@ -305,7 +302,22 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	}
 
 	driverConfig.CoreConfig.Log.Printf("digest of uploaded manifest: %s", *uploadManifestRes.DockerContentDigest)
+	deleteDockerImage(imageName)
 	return nil
+}
+
+func deleteDockerImage(imageName string) error {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return err
+	}
+
+	_, err = cli.ImageRemove(ctx, imageName, image.RemoveOptions{
+		Force:         false,
+		PruneChildren: true,
+	})
+	return err
 }
 
 func ValidateRepository(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
