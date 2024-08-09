@@ -191,7 +191,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return errors.New("undefined acr client id")
 	}
 	if pluginToolConfig["azureClientSecret"] == nil || len(pluginToolConfig["azureClientSecret"]) == 0 {
-		driverConfig.CoreConfig.Log.Printf("Acr client id undefined.  Refusing to continue.\n")
+		driverConfig.CoreConfig.Log.Printf("Acr client secret undefined.  Refusing to continue.\n")
 		return errors.New("undefined acr client secret")
 	}
 
