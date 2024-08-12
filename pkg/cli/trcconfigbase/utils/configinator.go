@@ -24,13 +24,13 @@ func trimPath(e string, toReplace string) (string, bool) {
 	if len(toReplace) == 0 || !strings.Contains(e, toReplace) {
 		return e, false
 	}
-	if strings.HasPrefix(e, toReplace) && !strings.HasSuffix(toReplace, string(os.PathSeparator)) {
-		toReplace = toReplace + string(os.PathSeparator)
+	if strings.HasPrefix(e, toReplace) && !strings.HasSuffix(toReplace, ConfiginatorOsPathSeparator) {
+		toReplace = toReplace + ConfiginatorOsPathSeparator
 	}
-	if strings.HasPrefix(e, toReplace) || strings.Index(e, toReplace) != 0 && e[strings.Index(e, toReplace)-1] == os.PathSeparator {
+	if strings.HasPrefix(e, toReplace) || strings.Index(e, toReplace) != 0 && string(e[strings.Index(e, toReplace)-1]) == ConfiginatorOsPathSeparator {
 		e = strings.Replace(e, toReplace, "", 1)
 	} else {
-		e = strings.Replace(e, toReplace, string(os.PathSeparator), 1)
+		e = strings.Replace(e, toReplace, ConfiginatorOsPathSeparator, 1)
 	}
 	return e, true
 }
