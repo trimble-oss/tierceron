@@ -97,7 +97,8 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 	}
 
 	for _, startDir := range driverConfig.StartDir {
-		if ConfiginatorOsPathSeparator == "\\" { //eUtils.IsWindows()
+		if ConfiginatorOsPathSeparator == "\\" || eUtils.IsWindows() {
+			// Note: Checking path separator for testing and keeping IsWindows to be safe
 			startDir = strings.ReplaceAll(startDir, "/", ConfiginatorOsPathSeparator)
 			trcProjectService = strings.ReplaceAll(trcProjectService, "/", ConfiginatorOsPathSeparator)
 			trcService = strings.ReplaceAll(trcService, "/", ConfiginatorOsPathSeparator)
