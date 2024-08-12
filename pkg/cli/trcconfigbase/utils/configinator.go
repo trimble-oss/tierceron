@@ -18,18 +18,19 @@ import (
 )
 
 var mutex = &sync.Mutex{}
+var ConfiginatorOsPathSeparator string = string(os.PathSeparator)
 
 func trimPath(e string, toReplace string) (string, bool) {
 	if len(toReplace) == 0 || !strings.Contains(e, toReplace) {
 		return e, false
 	}
-	if strings.HasPrefix(e, toReplace) && !strings.HasSuffix(toReplace, string(os.PathSeparator)) {
-		toReplace = toReplace + string(os.PathSeparator)
+	if strings.HasPrefix(e, toReplace) && !strings.HasSuffix(toReplace, ConfiginatorOsPathSeparator) {
+		toReplace = toReplace + ConfiginatorOsPathSeparator
 	}
-	if strings.HasPrefix(e, toReplace) || strings.Index(e, toReplace) != 0 && e[strings.Index(e, toReplace)-1] == os.PathSeparator {
+	if strings.HasPrefix(e, toReplace) || strings.Index(e, toReplace) != 0 && string(e[strings.Index(e, toReplace)-1]) == ConfiginatorOsPathSeparator {
 		e = strings.Replace(e, toReplace, "", 1)
 	} else {
-		e = strings.Replace(e, toReplace, string(os.PathSeparator), 1)
+		e = strings.Replace(e, toReplace, ConfiginatorOsPathSeparator, 1)
 	}
 	return e, true
 }
@@ -96,13 +97,14 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 	}
 
 	for _, startDir := range driverConfig.StartDir {
-		if eUtils.IsWindows() {
-			startDir = strings.ReplaceAll(startDir, "/", "\\")
-			trcProjectService = strings.ReplaceAll(trcProjectService, "/", "\\")
-			trcService = strings.ReplaceAll(trcService, "/", "\\")
+		if ConfiginatorOsPathSeparator == "\\" || eUtils.IsWindows() {
+			// Note: Checking path separator for testing and keeping IsWindows to be safe
+			startDir = strings.ReplaceAll(startDir, "/", ConfiginatorOsPathSeparator)
+			trcProjectService = strings.ReplaceAll(trcProjectService, "/", ConfiginatorOsPathSeparator)
+			trcService = strings.ReplaceAll(trcService, "/", ConfiginatorOsPathSeparator)
 		}
-		if !strings.HasSuffix(startDir, string(os.PathSeparator)) {
-			startDir = startDir + string(os.PathSeparator)
+		if !strings.HasSuffix(startDir, ConfiginatorOsPathSeparator) {
+			startDir = startDir + ConfiginatorOsPathSeparator
 		}
 
 		//get files from directory
