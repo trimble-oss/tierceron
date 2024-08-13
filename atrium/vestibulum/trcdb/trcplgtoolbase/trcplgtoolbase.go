@@ -478,6 +478,11 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if *pushimagePtr {
+		if len(pluginToolConfig["trcplugin"].(string)) == 0 {
+			err := errors.New("trcplugin not defined, can not continue")
+			fmt.Println(err)
+			return err
+		}
 		fmt.Println("Pushing image to registry...")
 		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
