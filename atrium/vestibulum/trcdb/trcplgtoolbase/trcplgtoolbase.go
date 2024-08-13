@@ -461,6 +461,33 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
+	if len(*buildImagePtr) > 0 {
+		fmt.Println("Building image using local docker repository...")
+		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		} else {
+			fmt.Println("Image successfully built")
+		}
+	}
+
+	if *pushimagePtr {
+		fmt.Println("Pushing image to registry...")
+		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		if err != nil {
+			fmt.Println(err.Error())
+		} else {
+			fmt.Println("Image successfully pushed")
+		}
+	}
+
+	if len(*buildImagePtr) > 0 {
+		// We don't want to allow other functionality due to us not validating the
+		// plugintype
+		return nil
+	}
+
 	//Define Service Image
 	if *defineServicePtr {
 		fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
@@ -739,27 +766,7 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if len(*buildImagePtr) > 0 {
-		fmt.Println("Building image using local docker repository...")
-		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
-		if err != nil {
-			fmt.Println(err.Error())
-			return err
-		} else {
-			fmt.Println("Image successfully built")
-		}
 	}
-
-	if *pushimagePtr {
-		fmt.Println("Pushing image to registry...")
-		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
-		if err != nil {
-			fmt.Println(err.Error())
-		} else {
-			fmt.Println("Image successfully pushed")
-		}
-	}
-
 	//Checks if image has been copied & deployed
 	if *checkDeployedPtr {
 		if (pluginToolConfig["copied"] != nil && pluginToolConfig["copied"].(bool)) &&
