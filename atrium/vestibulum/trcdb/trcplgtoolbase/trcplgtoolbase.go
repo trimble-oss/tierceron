@@ -187,7 +187,7 @@ func CommonMain(envDefaultPtr *string,
 		*pluginTypePtr = "trcshservice"
 	}
 
-	if !*updateAPIMPtr {
+	if !*updateAPIMPtr && len(*buildImagePtr) == 0 {
 		switch *pluginTypePtr {
 		case "vault": // A vault plugin
 			if trcshDriverConfig != nil {
@@ -459,6 +459,43 @@ func CommonMain(envDefaultPtr *string,
 				pluginToolConfig["newrelic_license_key"] = pluginToolConfig["newrelicLicenseKey"].(string)
 			}
 		}
+	}
+
+	if len(*buildImagePtr) > 0 {
+		if len(pluginToolConfig["trcplugin"].(string)) == 0 {
+			err := errors.New("trcplugin not defined, can not continue")
+			fmt.Println(err)
+			return err
+		}
+		fmt.Println("Building image using local docker repository...")
+		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		} else {
+			fmt.Println("Image successfully built")
+		}
+	}
+
+	if *pushimagePtr {
+		if len(pluginToolConfig["trcplugin"].(string)) == 0 {
+			err := errors.New("trcplugin not defined, can not continue")
+			fmt.Println(err)
+			return err
+		}
+		fmt.Println("Pushing image to registry...")
+		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		if err != nil {
+			fmt.Println(err.Error())
+		} else {
+			fmt.Println("Image successfully pushed")
+		}
+	}
+
+	if len(*buildImagePtr) > 0 {
+		// We don't want to allow other functionality due to us not validating the
+		// plugintype
+		return nil
 	}
 
 	//Define Service Image
@@ -739,27 +776,7 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if len(*buildImagePtr) > 0 {
-		fmt.Println("Building image using local docker repository...")
-		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
-		if err != nil {
-			fmt.Println(err.Error())
-			return err
-		} else {
-			fmt.Println("Image successfully built")
-		}
 	}
-
-	if *pushimagePtr {
-		fmt.Println("Pushing image to registry...")
-		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
-		if err != nil {
-			fmt.Println(err.Error())
-		} else {
-			fmt.Println("Image successfully pushed")
-		}
-	}
-
 	//Checks if image has been copied & deployed
 	if *checkDeployedPtr {
 		if (pluginToolConfig["copied"] != nil && pluginToolConfig["copied"].(bool)) &&
