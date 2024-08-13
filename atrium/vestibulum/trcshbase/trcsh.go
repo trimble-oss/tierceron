@@ -971,7 +971,12 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 
 		if projectServicePtr != "" {
 			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectServicePtr)
-			templatePathsPtr := projectServicePtr + strings.Split(trcPath, ".")[1]
+			if !strings.Contains(trcPath, "/deploy/") {
+				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/")
+				return
+			}
+			deployTrcPath := trcPath[strings.LastIndex(trcPath, "/deploy/"):]
+			templatePathsPtr := projectServicePtr + strings.TrimRight(deployTrcPath, ".trc") // get rid of trailing .trc
 			trcshDriverConfig.DriverConfig.EndDir = "./trc_templates"
 
 			err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, &mergedVaultAddress,
