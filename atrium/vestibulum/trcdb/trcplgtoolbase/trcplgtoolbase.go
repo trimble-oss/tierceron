@@ -462,6 +462,11 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if len(*buildImagePtr) > 0 {
+		if len(pluginToolConfig["trcplugin"].(string)) == 0 {
+			err := errors.New("invalid trc plugin build request")
+			fmt.Println(err)
+			return err
+		}
 		fmt.Println("Building image using local docker repository...")
 		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
 		if err != nil {
