@@ -463,7 +463,7 @@ func CommonMain(envDefaultPtr *string,
 
 	if len(*buildImagePtr) > 0 {
 		if len(pluginToolConfig["trcplugin"].(string)) == 0 {
-			err := errors.New("invalid trc plugin build request")
+			err := errors.New("trcplugin not defined, can not continue")
 			fmt.Println(err)
 			return err
 		}
