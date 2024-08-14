@@ -166,6 +166,11 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("must use -pluginName flag to use -buildImage flag")
 	}
 
+	if len(*buildImagePtr) > 0 && len(strings.Split(*pluginNamePtr, ":")[0]) > 128 {
+		fmt.Println("Image tag cannot be longer than 128 characters")
+		return errors.New("image tag cannot be longer than 128 characters")
+	}
+
 	if len(*certPathPtr) > 0 && !*updateAPIMPtr {
 		fmt.Println("Must use -updateAPIM flag to use -certPath flag")
 		return errors.New("must use -updateAPIM flag to use -certPath flag")
