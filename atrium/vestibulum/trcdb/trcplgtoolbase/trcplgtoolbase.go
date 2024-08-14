@@ -218,6 +218,7 @@ func CommonMain(envDefaultPtr *string,
 				return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
 			}
 		case "trcshservice": // A trcshservice managed microservice
+		case "trcshkubeservice":
 		default:
 			if !*agentdeployPtr {
 				fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
