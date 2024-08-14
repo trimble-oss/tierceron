@@ -166,6 +166,11 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("must use -pluginName flag to use -buildImage flag")
 	}
 
+	if len(*buildImagePtr) > 0 && len(strings.Split(*pluginNamePtr, ":")[0]) > 128 {
+		fmt.Println("Image tag cannot be longer than 128 characters")
+		return errors.New("image tag cannot be longer than 128 characters")
+	}
+
 	if len(*certPathPtr) > 0 && !*updateAPIMPtr {
 		fmt.Println("Must use -updateAPIM flag to use -certPath flag")
 		return errors.New("must use -updateAPIM flag to use -certPath flag")
@@ -213,6 +218,7 @@ func CommonMain(envDefaultPtr *string,
 				return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
 			}
 		case "trcshservice": // A trcshservice managed microservice
+		case "trcshkubeservice":
 		default:
 			if !*agentdeployPtr {
 				fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
@@ -236,7 +242,7 @@ func CommonMain(envDefaultPtr *string,
 		if *pluginNameAliasPtr != "" {
 			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
 		} else {
-			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
+			trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
 		}
 		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfig)
 		*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
@@ -261,7 +267,7 @@ func CommonMain(envDefaultPtr *string,
 					Log:           logger,
 				},
 				StartDir:        []string{*startDirPtr},
-				SubSectionValue: *pluginNamePtr,
+				SubSectionValue: strings.Split(*pluginNamePtr, ":")[0],
 			},
 		}
 
@@ -320,7 +326,7 @@ func CommonMain(envDefaultPtr *string,
 	if *pluginNameAliasPtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
 	} else {
-		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
+		trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
 	}
 	mod.Env = *envDefaultPtr
 	if logger != nil {

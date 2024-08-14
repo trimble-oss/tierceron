@@ -223,10 +223,6 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return err
 	}
 
-	if getImageSHA(driverConfig, svc, pluginToolConfig) != nil {
-		return errors.New(fmt.Sprintf("can not create new image (%s), pushImage may only be used to update pre-existing images", pluginToolConfig["trcplugin"]))
-	}
-
 	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 
 	if err != nil {
