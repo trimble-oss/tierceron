@@ -17,7 +17,7 @@ WantedBy=sysinit.target
 [Service]
 Environment="GOMAXPROCS=$(nproc)"
 ExecStart={{.trcDeployStartDirectory}}{{.trcDeployExecutable}} -env=$AGENT_ENV
-User=trcshd
+User=trcshk
 LimitMEMLOCK=infinity
 Type=simple
 Restart=on-failure
@@ -30,12 +30,12 @@ ProtectSystem=full
 WantedBy=multi-user.target
 
 EOF
-sudo mv /tmp/upstart /lib/systemd/system/trcshd.service
-sudo chown root:root /lib/systemd/system/trcshd.service
-sudo chmod 0644 /lib/systemd/system/trcshd.service
+sudo mv /tmp/upstart /lib/systemd/system/trcshk.service
+sudo chown root:root /lib/systemd/system/trcshk.service
+sudo chmod 0644 /lib/systemd/system/trcshk.service
 
 # Set up environment variables.
-cat << BASHEOF >> /home/trcshd/.bashrc
+cat << BASHEOF >> /home/trcshk/.bashrc
 export AGENT_ENV={{.trcDeployAgentEnv}}
 export AGENT_TOKEN={{.trcDeployAgentToken}}
 export DEPLOYMENTS={{.trcDeployDeployments}}
@@ -43,8 +43,8 @@ export VAULT_ADDR={{.trcDeployVaultAddr}}
 
 BASHEOF
 
-sudo chown trcshd:trcshd /home/trcshd/.bashrc
-sudo chmod 700 /home/trcshd/.bashrc
+sudo chown trcshk:trcshk /home/trcshk/.bashrc
+sudo chmod 700 /home/trcshk/.bashrc
 
-# Start trcshd
-#sudo systemctl enable /lib/systemd/system/trcshd.service
+# Start trcshk
+#sudo systemctl enable /lib/systemd/system/trcshk.service
