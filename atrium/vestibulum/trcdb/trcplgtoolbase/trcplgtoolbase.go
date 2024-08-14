@@ -422,7 +422,9 @@ func CommonMain(envDefaultPtr *string,
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
-		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
+    if *defineServicePtr {
+		  pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
+    }
 		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
 			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
 		}
