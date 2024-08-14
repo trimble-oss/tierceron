@@ -236,7 +236,7 @@ func CommonMain(envDefaultPtr *string,
 		if *pluginNameAliasPtr != "" {
 			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
 		} else {
-			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
+			trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
 		}
 		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfig)
 		*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
@@ -261,7 +261,7 @@ func CommonMain(envDefaultPtr *string,
 					Log:           logger,
 				},
 				StartDir:        []string{*startDirPtr},
-				SubSectionValue: *pluginNamePtr,
+				SubSectionValue: strings.Split(*pluginNamePtr, ":")[0],
 			},
 		}
 
@@ -320,7 +320,7 @@ func CommonMain(envDefaultPtr *string,
 	if *pluginNameAliasPtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
 	} else {
-		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
+		trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
 	}
 	mod.Env = *envDefaultPtr
 	if logger != nil {
