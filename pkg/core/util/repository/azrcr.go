@@ -307,7 +307,12 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	]
 }`, layerDigest, len(config), *completeResp.DockerContentDigest, len(layer))
 
-	uploadManifestRes, err := azrClient.UploadManifest(ctx, pluginToolConfig["trcplugin"].(string), "1.0.0",
+	tag := "latest"
+	nameParts := strings.Split(pluginToolConfig["pluginNamePtr"].(string), ":")
+	if len(nameParts) == 2 {
+		tag = nameParts[1]
+	}
+	uploadManifestRes, err := azrClient.UploadManifest(ctx, pluginToolConfig["trcplugin"].(string), tag,
 		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader([]byte(manifest))), nil)
 
 	if err != nil {
