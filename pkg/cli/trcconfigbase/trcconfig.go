@@ -346,7 +346,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
-	if *servicesWanted != "" {
+	if *servicesWanted != "" && !*wantCertsPtr {
 		driverConfigBase.ServicesWanted = strings.Split(*servicesWanted, ",")
 	}
 
