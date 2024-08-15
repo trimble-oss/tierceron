@@ -186,6 +186,10 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		driverConfig.CoreConfig.Log.Printf("ACR credentials undefined. Refusing to continue.\n")
 		return errors.New("undefined ACR credentials")
 	}
+	if len(pluginToolConfig["azureTenantId"].(string)) == 0 || len(pluginToolConfig["azureClientId"].(string)) == 0 || len(pluginToolConfig["azureClientSecret"].(string)) == 0 {
+		driverConfig.CoreConfig.Log.Printf("ACR credentials undefined. Refusing to continue.\n")
+		return errors.New("undefined ACR credentials")
+	}
 
 	cred, err := azidentity.NewClientSecretCredential(
 		pluginToolConfig["azureTenantId"].(string),
