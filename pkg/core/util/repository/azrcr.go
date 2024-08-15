@@ -308,7 +308,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 }`, layerDigest, len(config), *completeResp.DockerContentDigest, len(layer))
 
 	tag := "latest"
-	nameParts := strings.Split(pluginToolConfig["trcplugin"].(string), ":")
+	nameParts := strings.Split(pluginToolConfig["pluginNamePtr"].(string), ":")
 	if len(nameParts) == 2 {
 		tag = nameParts[1]
 	}
