@@ -177,80 +177,69 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 // https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry#readme-examples
 func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	err := ValidateRepository(driverConfig, pluginToolConfig)
-
 	if err != nil {
 		return err
 	}
 
-	if pluginToolConfig["azureTenantId"] == nil || len(pluginToolConfig["azureTenantId"].(string)) == 0 {
-		driverConfig.CoreConfig.Log.Printf("Acr tenant id undefined.  Refusing to continue.\n")
-		return errors.New("undefined acr tenent id")
+	// Check for required ACR credentials
+	if pluginToolConfig["azureTenantId"] == nil || pluginToolConfig["azureClientId"] == nil || pluginToolConfig["azureClientSecret"] == nil {
+		driverConfig.CoreConfig.Log.Printf("ACR credentials undefined. Refusing to continue.\n")
+		return errors.New("undefined ACR credentials")
 	}
-	if pluginToolConfig["azureClientId"] == nil || len(pluginToolConfig["azureClientId"].(string)) == 0 {
-		driverConfig.CoreConfig.Log.Printf("Acr client id undefined.  Refusing to continue.\n")
-		return errors.New("undefined acr client id")
-	}
-	if pluginToolConfig["azureClientSecret"] == nil || len(pluginToolConfig["azureClientSecret"].(string)) == 0 {
-		driverConfig.CoreConfig.Log.Printf("Acr client secret undefined.  Refusing to continue.\n")
-		return errors.New("undefined acr client secret")
+	if len(pluginToolConfig["azureTenantId"].(string)) == 0 || len(pluginToolConfig["azureClientId"].(string)) == 0 || len(pluginToolConfig["azureClientSecret"].(string)) == 0 {
+		driverConfig.CoreConfig.Log.Printf("ACR credentials undefined. Refusing to continue.\n")
+		return errors.New("undefined ACR credentials")
 	}
 
-	svc, err := azidentity.NewClientSecretCredential(
+	cred, err := azidentity.NewClientSecretCredential(
 		pluginToolConfig["azureTenantId"].(string),
 		pluginToolConfig["azureClientId"].(string),
 		pluginToolConfig["azureClientSecret"].(string),
-		nil)
-
+		nil,
+	)
 	if err != nil {
+		driverConfig.CoreConfig.Log.Printf("Failed to authenticate with Azure: %v\n", err)
 		return err
 	}
 
-	azrClient, err := azcontainerregistry.NewClient(
-		pluginToolConfig["acrrepository"].(string),
-		svc, nil)
-
+	azrClient, err := azcontainerregistry.NewClient(pluginToolConfig["acrrepository"].(string), cred, nil)
 	if err != nil {
-		driverConfig.CoreConfig.Log.Printf("failed to create client: %v", err)
+		driverConfig.CoreConfig.Log.Printf("Failed to create ACR client: %v\n", err)
 		return err
 	}
 
-	blobClient, err := azcontainerregistry.NewBlobClient(
-		pluginToolConfig["acrrepository"].(string),
-		svc, nil)
-
+	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), cred, nil)
 	if err != nil {
-		driverConfig.CoreConfig.Log.Printf("failed to create blob client: %v", err)
+		driverConfig.CoreConfig.Log.Printf("Failed to create ACR Blob client: %v\n", err)
 		return err
 	}
 
 	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-
 	if err != nil {
-		return errors.New("failed to create docker client: " + err.Error())
+		return errors.New("failed to create Docker client: " + err.Error())
 	}
 
-	imageName := pluginToolConfig["trcplugin"].(string)
+	imageName := pluginToolConfig["pluginNamePtr"].(string)
 
 	imageReader, err := dockerCli.ImageSave(context.Background(), []string{imageName})
 	if err != nil {
-		return errors.New("failed to save docker image: " + err.Error())
+		return errors.New("failed to save Docker image: " + err.Error())
 	}
+	defer imageReader.Close()
 
 	layer, err := io.ReadAll(imageReader)
 	if err != nil {
-		return errors.New("failed to read docker image: " + err.Error())
+		return errors.New("failed to read Docker image: " + err.Error())
 	}
 
 	ctx := context.Background()
-	startRes, err := blobClient.StartUpload(ctx, pluginToolConfig["trcplugin"].(string), nil)
-
+	startRes, err := blobClient.StartUpload(ctx, pluginToolConfig["pluginNamePtr"].(string), nil)
 	if err != nil {
-		return errors.New("failed to upload layer: " + err.Error())
+		return errors.New("failed to start layer upload: " + err.Error())
 	}
 
 	calculator := azcontainerregistry.NewBlobDigestCalculator()
 	uploadResp, err := blobClient.UploadChunk(ctx, *startRes.Location, bytes.NewReader(layer), calculator, nil)
-
 	if err != nil {
 		return errors.New("failed to upload layer: " + err.Error())
 	}
@@ -261,66 +250,69 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	}
 
 	layerDigest := *completeResp.DockerContentDigest
-	config := []byte(fmt.Sprintf(`{
-	  rootfs: {
-		type: "layers",
-		diff_ids: [%s],
-	  },
-	}`, layerDigest))
 
-	startRes, err = blobClient.StartUpload(ctx, pluginToolConfig["trcplugin"].(string), nil)
+	config := fmt.Sprintf(`{
+		"rootfs": {
+			"type": "layers",
+			"diff_ids": ["%s"]
+		}
+	}`, layerDigest)
 
+	startRes, err = blobClient.StartUpload(ctx, pluginToolConfig["pluginNamePtr"].(string), nil)
 	if err != nil {
-		return errors.New("failed to start upload config: " + err.Error())
+		return errors.New("failed to start config upload: " + err.Error())
 	}
 
 	calculator = azcontainerregistry.NewBlobDigestCalculator()
-	uploadResp, err = blobClient.UploadChunk(ctx, *startRes.Location, bytes.NewReader(config), calculator, nil)
+	uploadResp, err = blobClient.UploadChunk(ctx, *startRes.Location, bytes.NewReader([]byte(config)), calculator, nil)
 	if err != nil {
 		return errors.New("failed to upload config: " + err.Error())
 	}
 
 	completeResp, err = blobClient.CompleteUpload(ctx, *uploadResp.Location, calculator, nil)
-
 	if err != nil {
-		return errors.New("failed to complete upload config: " + err.Error())
+		return errors.New("failed to complete config upload: " + err.Error())
 	}
 
-	manifest := fmt.Sprintf(`
-{
-	"schemaVersion": 2,
-	"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-	"config": {
-		"mediaType": "application/vnd.oci.image.config.v1+json",
-		"digest": "%s",
-		"size": %d
-	},
-	"layers": [
-		{
-			"mediaType": "application/vnd.oci.image.layer.v1.tar",
+	configDigest := *completeResp.DockerContentDigest
+
+	manifest := fmt.Sprintf(`{
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		"config": {
+			"mediaType": "application/vnd.oci.image.config.v1+json",
 			"digest": "%s",
-			"size": %d,
-			"annotations": {
-				"title": "artifact.txt"
-		 	}
-		}
-	]
-}`, layerDigest, len(config), *completeResp.DockerContentDigest, len(layer))
+			"size": %d
+		},
+		"layers": [
+			{
+				"mediaType": "application/vnd.oci.image.layer.v1.tar",
+				"digest": "%s",
+				"size": %d
+			}
+		]
+	}`, configDigest, len(config), layerDigest, len(layer))
 
 	tag := "latest"
 	nameParts := strings.Split(pluginToolConfig["pluginNamePtr"].(string), ":")
 	if len(nameParts) == 2 {
 		tag = nameParts[1]
 	}
-	uploadManifestRes, err := azrClient.UploadManifest(ctx, pluginToolConfig["trcplugin"].(string), tag,
-		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader([]byte(manifest))), nil)
 
+	uploadManifestRes, err := azrClient.UploadManifest(ctx, pluginToolConfig["pluginNamePtr"].(string), tag,
+		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader([]byte(manifest))), nil)
 	if err != nil {
 		return errors.New("failed to upload manifest: " + err.Error())
 	}
 
-	driverConfig.CoreConfig.Log.Printf("digest of uploaded manifest: %s", *uploadManifestRes.DockerContentDigest)
-	deleteDockerImage(imageName)
+	driverConfig.CoreConfig.Log.Printf("Digest of uploaded manifest: %s", *uploadManifestRes.DockerContentDigest)
+
+	// Step 9: Clean up local Docker image
+	err = deleteDockerImage(imageName)
+	if err != nil {
+		return errors.New("failed to delete local Docker image: " + err.Error())
+	}
+
 	return nil
 }
 
@@ -339,7 +331,7 @@ func deleteDockerImage(imageName string) error {
 }
 
 func ValidateRepository(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
-	if pluginToolConfig["acrrepository"] != nil && len(pluginToolConfig["acrrepository"].(string)) == 0 {
+	if val, ok := pluginToolConfig["acrrepository"]; !ok || len(val.(string)) == 0 {
 		driverConfig.CoreConfig.Log.Printf("Acr repository undefined.  Refusing to continue.\n")
 		return errors.New("undefined acr repository")
 	}
@@ -349,10 +341,9 @@ func ValidateRepository(driverConfig *eUtils.DriverConfig, pluginToolConfig map[
 		return errors.New("malformed acr repository - https:// required")
 	}
 
-	if pluginToolConfig["trcplugin"] != nil && len(pluginToolConfig["trcplugin"].(string)) == 0 {
-		driverConfig.CoreConfig.Log.Printf("Trcplugin undefined.  Refusing to continue.\n")
-		return errors.New("undefined trcplugin")
+	if val, ok := pluginToolConfig["pluginNamePtr"]; !ok || len(val.(string)) == 0 {
+		driverConfig.CoreConfig.Log.Printf("pluginNamePtr undefined.  Refusing to continue.\n")
+		return errors.New("undefined pluginNamePtr")
 	}
-
 	return nil
 }
