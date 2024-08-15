@@ -210,6 +210,10 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 
 	templatePaths, endPaths = FilterPaths(templatePaths, endPaths, driverConfig.ServicesWanted, false)
 
+	if len(templatePaths) == 0 || len(endPaths) == 0 {
+		eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("filtered paths returned empty template or end paths"), false)
+	}
+
 	for _, templatePath := range templatePaths {
 		if !driverConfig.CoreConfig.WantCerts && strings.Contains(templatePath, "Common") {
 			continue
