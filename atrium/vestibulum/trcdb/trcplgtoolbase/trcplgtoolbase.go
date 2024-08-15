@@ -422,9 +422,9 @@ func CommonMain(envDefaultPtr *string,
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
-    if *defineServicePtr {
-		  pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
-    }
+		if *defineServicePtr {
+			pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
+		}
 		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
 			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
 		}
@@ -470,11 +470,11 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if len(*buildImagePtr) > 0 {
-		if len(pluginToolConfig["trcplugin"].(string)) == 0 {
-			err := errors.New("trcplugin not defined, can not continue")
-			fmt.Println(err)
-			return err
-		}
+		// if val, ok := pluginToolConfig["trcplugin"]; !ok || len(val.(string)) == 0 {
+		// 	err := errors.New("trcplugin not defined, can not continue")
+		// 	fmt.Println(err)
+		// 	return err
+		// }
 		fmt.Println("Building image using local docker repository...")
 		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
 		if err != nil {
@@ -486,11 +486,11 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if *pushimagePtr {
-		if len(pluginToolConfig["trcplugin"].(string)) == 0 {
-			err := errors.New("trcplugin not defined, can not continue")
-			fmt.Println(err)
-			return err
-		}
+		// if val, ok := pluginToolConfig["trcplugin"]; !ok || len(val.(string)) == 0 {
+		// 	err := errors.New("trcplugin not defined, can not continue")
+		// 	fmt.Println(err)
+		// 	return err
+		// }
 		fmt.Println("Pushing image to registry...")
 		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {

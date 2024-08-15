@@ -215,7 +215,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return errors.New("failed to create Docker client: " + err.Error())
 	}
 
-	imageName := pluginToolConfig["trcplugin"].(string)
+	imageName := pluginToolConfig["pluginNamePtr"].(string)
 
 	imageReader, err := dockerCli.ImageSave(context.Background(), []string{imageName})
 	if err != nil {
@@ -229,7 +229,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	}
 
 	ctx := context.Background()
-	startRes, err := blobClient.StartUpload(ctx, pluginToolConfig["trcplugin"].(string), nil)
+	startRes, err := blobClient.StartUpload(ctx, pluginToolConfig["pluginNamePtr"].(string), nil)
 	if err != nil {
 		return errors.New("failed to start layer upload: " + err.Error())
 	}
@@ -254,7 +254,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		}
 	}`, layerDigest)
 
-	startRes, err = blobClient.StartUpload(ctx, pluginToolConfig["trcplugin"].(string), nil)
+	startRes, err = blobClient.StartUpload(ctx, pluginToolConfig["pluginNamePtr"].(string), nil)
 	if err != nil {
 		return errors.New("failed to start config upload: " + err.Error())
 	}
@@ -295,7 +295,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		tag = nameParts[1]
 	}
 
-	uploadManifestRes, err := azrClient.UploadManifest(ctx, pluginToolConfig["trcplugin"].(string), tag,
+	uploadManifestRes, err := azrClient.UploadManifest(ctx, pluginToolConfig["pluginNamePtr"].(string), tag,
 		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader([]byte(manifest))), nil)
 	if err != nil {
 		return errors.New("failed to upload manifest: " + err.Error())
@@ -327,7 +327,7 @@ func deleteDockerImage(imageName string) error {
 }
 
 func ValidateRepository(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
-	if pluginToolConfig["acrrepository"] != nil && len(pluginToolConfig["acrrepository"].(string)) == 0 {
+	if val, ok := pluginToolConfig["acrrepository"]; !ok || len(val.(string)) == 0 {
 		driverConfig.CoreConfig.Log.Printf("Acr repository undefined.  Refusing to continue.\n")
 		return errors.New("undefined acr repository")
 	}
@@ -337,10 +337,9 @@ func ValidateRepository(driverConfig *eUtils.DriverConfig, pluginToolConfig map[
 		return errors.New("malformed acr repository - https:// required")
 	}
 
-	if pluginToolConfig["trcplugin"] != nil && len(pluginToolConfig["trcplugin"].(string)) == 0 {
-		driverConfig.CoreConfig.Log.Printf("Trcplugin undefined.  Refusing to continue.\n")
-		return errors.New("undefined trcplugin")
+	if val, ok := pluginToolConfig["pluginNamePtr"]; !ok || len(val.(string)) == 0 {
+		driverConfig.CoreConfig.Log.Printf("pluginNamePtr undefined.  Refusing to continue.\n")
+		return errors.New("undefined pluginNamePtr")
 	}
-
 	return nil
 }
