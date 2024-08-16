@@ -976,7 +976,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				return
 			}
 			deployTrcPath := trcPath[strings.LastIndex(trcPath, "/deploy/"):]
-			templatePathsPtr := projectServicePtr + strings.TrimRight(deployTrcPath, ".trc") // get rid of trailing .trc
+			templatePathsPtr := projectServicePtr + strings.TrimSuffix(deployTrcPath, ".trc") // get rid of trailing .trc
 			trcshDriverConfig.DriverConfig.EndDir = "./trc_templates"
 
 			err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, &mergedVaultAddress,
