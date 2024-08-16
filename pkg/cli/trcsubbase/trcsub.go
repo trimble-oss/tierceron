@@ -17,6 +17,10 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
+func PrintVersion() {
+	fmt.Println("Version: " + "1.27")
+}
+
 // Reads in template files in specified directory
 // Template directory should contain directories for each service
 // Templates are uploaded to templates/<service>/<file name>/template-file
@@ -42,7 +46,12 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
 			flagset.PrintDefaults()
 		}
-		envPtr = flagset.String("env", "dev", "Environment to configure")
+		if envDefaultPtr != nil {
+			envPtr = flagset.String("env", *envDefaultPtr, "Environment to configure")
+		} else {
+			envPtr = flagset.String("env", "dev", "Environment to configure")
+		}
+
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("secretID", "", "Secret for app role ID")
 		flagset.String("appRoleID", "", "Public app role ID")

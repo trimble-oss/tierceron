@@ -16,6 +16,10 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
+func PrintVersion() {
+	fmt.Println("Version: " + "1.27")
+}
+
 // Reads in template files in specified directory
 // Template directory should contain directories for each service
 // Templates are uploaded to templates/<service>/<file name>/template-file
@@ -36,6 +40,7 @@ func CommonMain(envPtr *string,
 		memprotectopts.MemProtectInit(nil)
 	}
 	if flagset == nil {
+		PrintVersion()
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])

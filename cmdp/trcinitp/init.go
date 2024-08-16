@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -29,8 +30,15 @@ func main() {
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 
-	fmt.Println("Version: " + "1.6")
+	trcinitbase.PrintVersion()
+	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flagset.Usage = func() {
+		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
+		flagset.PrintDefaults()
+	}
 	env := "local"
 	addr := coreopts.BuildOptions.GetVaultHostPort()
-	trcinitbase.CommonMain(&env, &addr, nil, nil, os.Args)
+	tokenPtr := flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
+	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
+	trcinitbase.CommonMain(&env, &addr, tokenPtr, nil, nil, nil, nil, uploadCertPtr, flagset, os.Args, nil)
 }
