@@ -107,7 +107,7 @@ func main() {
 		case "sub":
 			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, secretIDPtr, appRoleIDPtr, flagset, os.Args, nil)
 		case "init":
-			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext, flagset, os.Args)
+			trcinitbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, nil, nil, nil, nil, flagset, os.Args, nil)
 		case "config":
 			trcconfigbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, nil, flagset, os.Args, nil)
 		case "x":

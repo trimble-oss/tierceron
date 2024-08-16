@@ -122,6 +122,10 @@ func SeedVault(driverConfig *eUtils.DriverConfig) error {
 	// For general certificate loading (where templates may not have yet been pushed to vault)
 	// a separate path deeper into the code is used for certificate loading.
 	//
+	if driverConfig.IsShellSubProcess && driverConfig.CoreConfig.WantCerts && len(files) > 1 {
+		fmt.Println("Unusual deployment cert configuration.  Refusing to continue...")
+		return eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, errors.New("Invalid deployment cert configuration.  Refusing to continue..."), -1)
+	}
 	if len(files) == 1 && files[0].Name() == "certs" && driverConfig.CoreConfig.WantCerts {
 		// Cert rotation support without templates
 		driverConfig.CoreConfig.Log.Printf("Initializing certificates.  Common service requested.: %s\n", driverConfig.StartDir[0])

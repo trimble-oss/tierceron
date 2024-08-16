@@ -35,5 +35,8 @@ func main() {
 	}
 
 	envPtr := flagset.String("env", "dev", "Environment to be seeded")
-	trcinitbase.CommonMain(envPtr, nil, nil, flagset, os.Args)
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
+	tokenPtr := flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
+	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
+	trcinitbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, nil, nil, nil, uploadCertPtr, flagset, os.Args, nil)
 }
