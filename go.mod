@@ -15,8 +15,8 @@ require (
 	github.com/sergi/go-diff v1.2.0
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	github.com/xo/dburl v0.9.0
-	golang.org/x/crypto v0.24.0
-	golang.org/x/sys v0.21.0
+	golang.org/x/crypto v0.25.0
+	golang.org/x/sys v0.22.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -52,7 +52,7 @@ require (
 	github.com/templexxx/xorsimd v0.4.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240701130421-f6361c86f094 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240730163845-b1a4ccb954bf // indirect
 )
 
 require (
@@ -117,8 +117,8 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
-	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/term v0.21.0
+	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/term v0.22.0
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/grpc v1.64.1
