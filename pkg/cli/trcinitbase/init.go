@@ -32,6 +32,10 @@ func defaultEmpty() *string {
 	return &emptyVar
 }
 
+func PrintVersion() {
+	fmt.Println("Version: " + "1.36")
+}
+
 // This assumes that the vault is completely new, and should only be run for the purpose
 // of automating setup and initial seeding
 
@@ -72,6 +76,7 @@ func CommonMain(envPtr *string,
 	var devPtr *bool = defaultFalse()
 
 	if flagset == nil {
+		PrintVersion()
 		// Restricted trcinit and trcsh
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
