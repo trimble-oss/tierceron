@@ -998,12 +998,12 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			region = trcshDriverConfig.DriverConfig.CoreConfig.Regions[0]
 		}
 
-		envConfig := &trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+		envConfig := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 		if strings.Contains(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-") {
-			envConfig = &trcshDriverConfig.DriverConfig.CoreConfig.Env
+			envConfig = trcshDriverConfig.DriverConfig.CoreConfig.Env
 		}
 
-		configErr := trcconfigbase.CommonMain(envConfig, &mergedVaultAddress, &token, &mergedEnvBasis, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, &trcshDriverConfig.DriverConfig)
+		configErr := trcconfigbase.CommonMain(&envConfig, &mergedVaultAddress, &token, &mergedEnvBasis, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, &trcshDriverConfig.DriverConfig)
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preload Error %s\n", configErr.Error())

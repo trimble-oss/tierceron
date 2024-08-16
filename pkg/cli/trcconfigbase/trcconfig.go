@@ -123,12 +123,12 @@ func CommonMain(envDefaultPtr *string,
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	zcPtr := flagset.Bool("zc", false, "Zero config (no configuration option).")
-	diffPtr := flagset.Bool("diff", false, "Diff files")
 	fileFilterPtr := flagset.String("filter", "", "Filter files for diff")
 	templateInfoPtr := flagset.Bool("templateInfo", false, "Version information about templates")
-	versionInfoPtr := flagset.Bool("versions", false, "Version information about values")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
+	var versionInfoPtr *bool
+	var diffPtr *bool
 
 	isShell := false
 
@@ -145,8 +145,14 @@ func CommonMain(envDefaultPtr *string,
 				return fmt.Errorf("wrong flag syntax: %s", s)
 			}
 		}
+		diffPtr = flagset.Bool("diff", false, "Diff files")
+		versionInfoPtr = flagset.Bool("versions", false, "Version information about values")
 		flagset.Parse(argLines[1:])
 	} else {
+		versionInfo := false
+		versionInfoPtr = &versionInfo
+		diff := false
+		diffPtr = &diff
 		// TODO: rework to support standard arg parsing...
 		for _, args := range argLines {
 			if args == "-certs" {
@@ -346,12 +352,6 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
-	if *wantCertsPtr {
-		driverConfigBase.ServicesWanted = nil
-	} else if *servicesWanted != "" {
-		driverConfigBase.ServicesWanted = strings.Split(*servicesWanted, ",")
-	}
-
 	regions := []string{}
 
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
@@ -396,7 +396,7 @@ func CommonMain(envDefaultPtr *string,
 
 	//channel receiver
 	go receiver(configCtx)
-	if *diffPtr {
+	if *diffPtr && !driverConfigBase.CoreConfig.IsShell {
 		configSlice := make([]eUtils.DriverConfig, 0, len(configCtx.EnvSlice)-1)
 		for _, env := range configCtx.EnvSlice {
 			envVersion := eUtils.SplitEnv(env)
@@ -511,6 +511,12 @@ func CommonMain(envDefaultPtr *string,
 			Diff:              *diffPtr,
 			FileFilter:        fileFilterSlice,
 			VersionInfo:       eUtils.VersionHelper,
+		}
+
+		if *wantCertsPtr {
+			dConfig.ServicesWanted = nil
+		} else if *servicesWanted != "" {
+			dConfig.ServicesWanted = strings.Split(*servicesWanted, ",")
 		}
 
 		if len(driverConfigBase.DeploymentConfig) > 0 {

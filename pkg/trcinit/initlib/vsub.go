@@ -48,7 +48,7 @@ func DownloadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName 
 		} else {
 			// TODO: In recent run in prod, sub was printing an annoying warning here
 			// and yet correct templates seem to have gotten created...
-			fmt.Println("No data found for: " + filterTemplatePath + "template-file")
+			fmt.Println("No data found for: " + path + "template-file")
 			continue
 		}
 		templateBytes, decodeErr := base64.StdEncoding.DecodeString(data)
