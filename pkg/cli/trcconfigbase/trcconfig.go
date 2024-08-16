@@ -346,12 +346,6 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
-	if *wantCertsPtr {
-		driverConfigBase.ServicesWanted = nil
-	} else if *servicesWanted != "" {
-		driverConfigBase.ServicesWanted = strings.Split(*servicesWanted, ",")
-	}
-
 	regions := []string{}
 
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
@@ -511,6 +505,12 @@ func CommonMain(envDefaultPtr *string,
 			Diff:              *diffPtr,
 			FileFilter:        fileFilterSlice,
 			VersionInfo:       eUtils.VersionHelper,
+		}
+
+		if *wantCertsPtr {
+			dConfig.ServicesWanted = nil
+		} else if *servicesWanted != "" {
+			dConfig.ServicesWanted = strings.Split(*servicesWanted, ",")
 		}
 
 		if len(driverConfigBase.DeploymentConfig) > 0 {

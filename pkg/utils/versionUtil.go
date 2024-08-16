@@ -29,6 +29,8 @@ func GetEnvBasis(env string) string {
 		return "dev"
 	} else if strings.HasPrefix(env, "QA") {
 		return "QA"
+	} else if strings.HasPrefix(env, "itdev") {
+		return "itdev"
 	} else if strings.HasPrefix(env, "RQA") {
 		return "RQA"
 	} else if strings.HasPrefix(env, "staging") {
