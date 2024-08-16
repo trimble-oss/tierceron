@@ -33,6 +33,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -114,7 +115,7 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 		DriverConfig: eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				IsShell:       true,
-				Insecure:      true,
+				Insecure:      false,
 				Env:           env,
 				EnvBasis:      eUtils.GetEnvBasis(env),
 				Regions:       regions,
@@ -669,6 +670,28 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Processing control: %s\n", control)
 
 	switch control {
+	case "trccertinit":
+		if prod.IsProd() {
+			fmt.Printf("trccertinit unsupported in production\n")
+			os.Exit(125) // Running functionality not supported in prod.
+		}
+		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
+		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig = "configpub.yml"
+		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
+		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
+		trcshDriverConfig.DriverConfig.CoreConfig.WantCerts = true
+
+		pubRoleSlice := strings.Split(*gTrcshConfig.PubRole, ":")
+		tokenName := "vault_pub_token_" + env
+		tokenPub := ""
+		pubEnv := env
+
+		trcinitbase.CommonMain(&pubEnv, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &tokenPub, &gTrcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.WantCerts, nil, deployArgLines, &trcshDriverConfig.DriverConfig)
+		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
+		if !isAgentToken {
+			token = ""
+			trcshDriverConfig.DriverConfig.CoreConfig.Token = token
+		}
 	case "trcpub":
 		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
 		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig = "configpub.yml"
@@ -926,16 +949,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	mergedVaultAddress := trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress
 	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 
-	// Chewbacca: Wipe this next section out 731-739.  Code analysis indicates it's not used.
-	if (approleId != nil && len(*approleId) == 0) || (secretId != nil && len(*secretId) == 0) {
-		// If in context of trcsh, utilize CToken to auth...
-		if gTrcshConfig != nil && gTrcshConfig.CToken != nil {
-			tokenPtr = gTrcshConfig.CToken
-		} else if gAgentConfig.AgentToken != nil {
-			tokenPtr = gAgentConfig.AgentToken
-		}
-	}
-
 	if len(mergedVaultAddress) == 0 {
 		// If in context of trcsh, utilize CToken to auth...
 		if gTrcshConfig != nil && gTrcshConfig.VaultAddress != nil {
@@ -1101,7 +1114,7 @@ collaboratorReRun:
 	var PipeOS billy.File
 
 	for _, deployPipeline := range deployArgLines {
-		deployPipeline = strings.TrimLeft(deployPipeline, " ")
+		deployPipeline = strings.TrimLeft(deployPipeline, " \t\r\n")
 		if strings.HasPrefix(deployPipeline, "#") || deployPipeline == "" {
 			continue
 		}
