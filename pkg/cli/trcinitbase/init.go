@@ -134,11 +134,18 @@ func CommonMain(envPtr *string,
 		*appRolePtr = driverConfigBase.CoreConfig.AppRoleConfig
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
-		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log" {
-			*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "pub.log"
+		if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"init.log" && os.IsNotExist(err) {
+			*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "init.log"
 		}
+
+		// Initialize logging
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		if f != nil {
+			defer f.Close()
+		}
 		logger := log.New(f, "[INIT]", log.LstdFlags)
+		logger.Println("==========Beginning Vault Initialization==========")
+
 		driverConfigBase = &eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: true,
@@ -273,18 +280,6 @@ func CommonMain(envPtr *string,
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"init.log" && os.IsNotExist(err) {
-		*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "init.log"
-	}
-
-	// Initialize logging
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	if f != nil {
-		defer f.Close()
-	}
-	logger := log.New(f, "[INIT]", log.LstdFlags)
-	logger.Println("==========Beginning Vault Initialization==========")
-
 	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRolePtr, *pingPtr)
 	eUtils.CheckError(&driverConfigBase.CoreConfig, autoErr, true)
 
@@ -298,7 +293,7 @@ func CommonMain(envPtr *string,
 	}
 
 	// Create a new vault system connection
-	v, err := sys.NewVaultWithNonlocal(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr, false, allowNonLocal, logger)
+	v, err := sys.NewVaultWithNonlocal(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr, false, allowNonLocal, driverConfigBase.CoreConfig.Log)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
 			fmt.Printf("Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
@@ -323,7 +318,7 @@ func CommonMain(envPtr *string,
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		*envPtr, err = eUtils.LoginToLocal()
 		eUtils.LogErrorObject(&driverConfigBase.CoreConfig, err, true)
-		logger.Printf("Login successful, using local envronment: %s\n", *envPtr)
+		driverConfigBase.CoreConfig.Log.Printf("Login successful, using local envronment: %s\n", *envPtr)
 	}
 
 	if *devPtr || !*newPtr { // Dev server, initialization taken care of, get root token
@@ -347,7 +342,7 @@ func CommonMain(envPtr *string,
 		_, _, _, err = v.Unseal()
 		eUtils.LogErrorObject(&driverConfigBase.CoreConfig, err, true)
 	}
-	logger.Printf("Successfully connected to vault at %s\n", *addrPtr)
+	driverConfigBase.CoreConfig.Log.Printf("Successfully connected to vault at %s\n", *addrPtr)
 
 	if !*newPtr && *namespaceVariable != "" && *namespaceVariable != "vault" && !(*rotateTokens || *updatePolicy || *updateRole || *tokenExpiration) {
 		if *initNamespace {
@@ -391,9 +386,9 @@ func CommonMain(envPtr *string,
 			fmt.Println("Creating tokens")
 			tokens := il.UploadTokens(&driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFilterPtr, v)
 			if len(tokens) > 0 {
-				logger.Println(*namespaceVariable + " tokens successfully created.")
+				driverConfigBase.CoreConfig.Log.Println(*namespaceVariable + " tokens successfully created.")
 			} else {
-				logger.Println(*namespaceVariable + " tokens failed to create.")
+				driverConfigBase.CoreConfig.Log.Println(*namespaceVariable + " tokens failed to create.")
 			}
 			os.Exit(0)
 		} else {
@@ -420,7 +415,7 @@ func CommonMain(envPtr *string,
 		}
 
 		if (*rotateTokens || *tokenExpiration) && (*roleFileFilterPtr == "" || *tokenFileFilterPtr != "") {
-			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenFileFilterPtr, *tokenExpiration, logger)
+			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenFileFilterPtr, *tokenExpiration, driverConfigBase.CoreConfig.Log)
 			if getOrRevokeError != nil {
 				fmt.Println("Token revocation or access failure.  Cannot continue.")
 				os.Exit(-1)
@@ -461,7 +456,7 @@ func CommonMain(envPtr *string,
 			fmt.Println("Creating new tokens")
 			tokens = il.UploadTokens(&driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFilterPtr, v)
 
-			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
+			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 			if mod != nil {
 				defer mod.Release()
 			}
@@ -617,16 +612,16 @@ func CommonMain(envPtr *string,
 		prog, t, success, err := v.Unseal()
 		eUtils.LogErrorObject(&driverConfigBase.CoreConfig, err, true)
 		if !success {
-			logger.Printf("Vault unseal progress: %d/%d key shards\n", prog, t)
-			logger.Println("============End Initialization Attempt============")
+			driverConfigBase.CoreConfig.Log.Printf("Vault unseal progress: %d/%d key shards\n", prog, t)
+			driverConfigBase.CoreConfig.Log.Println("============End Initialization Attempt============")
 		} else {
-			logger.Println("Vault successfully unsealed")
+			driverConfigBase.CoreConfig.Log.Println("Vault successfully unsealed")
 		}
 	}
 
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
-		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, logger) // Connect to vault
+		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -753,7 +748,7 @@ func CommonMain(envPtr *string,
 	// because you first need tokens to do so.  Only seed if !new.
 	if !*newPtr {
 		// Seed the vault with given seed directory
-		mod, _ := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, logger) // Connect to vault
+		mod, _ := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -839,7 +834,7 @@ func CommonMain(envPtr *string,
 				Env:               *envPtr,
 				EnvBasis:          eUtils.GetEnvBasis(*envPtr),
 				WantCerts:         *uploadCertPtr, // TODO: this was false...
-				Log:               logger,
+				Log:               driverConfigBase.CoreConfig.Log,
 			},
 			SectionKey:      sectionKey,
 			SectionName:     subSectionName,
@@ -863,9 +858,9 @@ func CommonMain(envPtr *string,
 		il.SeedVault(dConfig)
 	}
 
-	logger.SetPrefix("[INIT]")
-	logger.Println("=============End Vault Initialization=============")
-	logger.Println()
+	driverConfigBase.CoreConfig.Log.SetPrefix("[INIT]")
+	driverConfigBase.CoreConfig.Log.Println("=============End Vault Initialization=============")
+	driverConfigBase.CoreConfig.Log.Println()
 
 	// Uncomment this when deployed to avoid a hanging root token
 	// v.RevokeSelf()
