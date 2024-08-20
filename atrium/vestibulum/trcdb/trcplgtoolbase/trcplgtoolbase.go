@@ -38,7 +38,7 @@ func CommonMain(envDefaultPtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	trcshDriverConfig *capauth.TrcshDriverConfig) error {
+	trcshDriverConfig *capauth.TrcshDriverConfig) error { //pluginHandler ...*hive.PluginHandler
 
 	var flagEnvPtr *string
 	// Main functions are as follows:
@@ -58,6 +58,8 @@ func CommonMain(envDefaultPtr *string,
 	defineServicePtr := flagset.Bool("defineService", false, "Service is defined.")
 	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
 	// These functions only valid for pluginType trcshservice
+	pluginservicestartPtr := flagset.Bool("pluginservicestart", false, "To start a trcshell kernel service for a particular plugin.")
+	pluginservicestopPtr := flagset.Bool("pluginservicestop", false, "To stop a trcshell kernel service for a particular plugin.")
 	winservicestopPtr := flagset.Bool("winservicestop", false, "To stop a windows service for a particular plugin.")
 	winservicestartPtr := flagset.Bool("winservicestart", false, "To start a windows service for a particular plugin.")
 	codebundledeployPtr := flagset.Bool("codebundledeploy", false, "To deploy a code bundle.")
@@ -188,7 +190,7 @@ func CommonMain(envDefaultPtr *string,
 			return errors.New("-pathParam can only contain alphanumberic characters or underscores")
 		}
 	}
-	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr {
+	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr || *pluginservicestopPtr || *pluginservicestartPtr {
 		*pluginTypePtr = "trcshservice"
 	}
 
@@ -219,6 +221,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 		case "trcshservice": // A trcshservice managed microservice
 		case "trcshkubeservice":
+		case "trcshpluginservice":
 		default:
 			if !*agentdeployPtr {
 				fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
@@ -283,6 +286,9 @@ func CommonMain(envDefaultPtr *string,
 		if autoErr != nil {
 			eUtils.LogErrorMessage(&trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
+		}
+		if len(*tokenPtr) > 0 {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Token = *tokenPtr
 		}
 	}
 	if logger != nil {
@@ -425,7 +431,7 @@ func CommonMain(envDefaultPtr *string,
 		if *defineServicePtr {
 			pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
 		}
-		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
+		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok && len(pluginToolConfig["serviceNamePtr"].(string)) > 0 {
 			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
 		}
 		if *certifyImagePtr {
@@ -784,6 +790,18 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
 		}
+		// } else if *pluginservicestartPtr && coreopts.BuildOptions.IsKernel() {
+		// 	if len(pluginHandler) > 0 {
+		// 		pluginHandler[0].PluginserviceStart(&trcshDriverConfigBase.DriverConfig)
+		// 	} else {
+		// 		fmt.Println("No handler provided for plugin service startup.")
+		// 	}
+		// } else if *pluginservicestopPtr && coreopts.BuildOptions.IsKernel() {
+		// 	if len(pluginHandler) > 0 {
+		// 		pluginHandler[0].PluginserviceStop()
+		// 	} else {
+		// 		fmt.Println("No handler provided for plugin service startup.")
+		// 	}
 	}
 	//Checks if image has been copied & deployed
 	if *checkDeployedPtr {
