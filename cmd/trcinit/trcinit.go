@@ -27,7 +27,7 @@ func main() {
 	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
-	fmt.Println("Version: " + "1.35")
+	trcinitbase.PrintVersion()
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
@@ -35,5 +35,8 @@ func main() {
 	}
 
 	envPtr := flagset.String("env", "dev", "Environment to be seeded")
-	trcinitbase.CommonMain(envPtr, nil, nil, flagset, os.Args)
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
+	tokenPtr := flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
+	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
+	trcinitbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, nil, nil, nil, uploadCertPtr, flagset, os.Args, nil)
 }

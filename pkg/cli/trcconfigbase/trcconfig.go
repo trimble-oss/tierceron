@@ -72,6 +72,10 @@ var (
 	ENDDIR_DEFAULT = "."
 )
 
+func PrintVersion() {
+	fmt.Println("Version: " + "1.31")
+}
+
 func CommonMain(envDefaultPtr *string,
 	addrPtr *string,
 	tokenPtr *string,
@@ -99,6 +103,7 @@ func CommonMain(envDefaultPtr *string,
 	var envPtr *string = nil
 
 	if flagset == nil {
+		PrintVersion() // For trcsh
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])

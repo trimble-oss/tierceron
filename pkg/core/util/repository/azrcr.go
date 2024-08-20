@@ -219,9 +219,10 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return errors.New("failed to create Docker client: " + err.Error())
 	}
 
-	imageName := pluginToolConfig["pluginNamePtr"].(string)
+	imageNameTag := pluginToolConfig["pluginNamePtr"].(string)
+	imageName := strings.Split(imageNameTag, ":")[0]
 
-	imageReader, err := dockerCli.ImageSave(context.Background(), []string{imageName})
+	imageReader, err := dockerCli.ImageSave(context.Background(), []string{imageNameTag})
 	if err != nil {
 		return errors.New("failed to save Docker image: " + err.Error())
 	}
@@ -233,7 +234,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	}
 
 	ctx := context.Background()
-	startRes, err := blobClient.StartUpload(ctx, pluginToolConfig["pluginNamePtr"].(string), nil)
+	startRes, err := blobClient.StartUpload(ctx, imageName, nil)
 	if err != nil {
 		return errors.New("failed to start layer upload: " + err.Error())
 	}
@@ -258,7 +259,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		}
 	}`, layerDigest)
 
-	startRes, err = blobClient.StartUpload(ctx, pluginToolConfig["pluginNamePtr"].(string), nil)
+	startRes, err = blobClient.StartUpload(ctx, imageName, nil)
 	if err != nil {
 		return errors.New("failed to start config upload: " + err.Error())
 	}
@@ -299,7 +300,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		tag = nameParts[1]
 	}
 
-	uploadManifestRes, err := azrClient.UploadManifest(ctx, pluginToolConfig["pluginNamePtr"].(string), tag,
+	uploadManifestRes, err := azrClient.UploadManifest(ctx, imageName, tag,
 		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader([]byte(manifest))), nil)
 	if err != nil {
 		return errors.New("failed to upload manifest: " + err.Error())
@@ -308,7 +309,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	driverConfig.CoreConfig.Log.Printf("Digest of uploaded manifest: %s", *uploadManifestRes.DockerContentDigest)
 
 	// Step 9: Clean up local Docker image
-	err = deleteDockerImage(imageName)
+	err = deleteDockerImage(imageNameTag)
 	if err != nil {
 		return errors.New("failed to delete local Docker image: " + err.Error())
 	}
