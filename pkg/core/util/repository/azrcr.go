@@ -4,6 +4,7 @@
 package repository
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -228,71 +229,110 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	}
 	defer imageReader.Close()
 
-	layer, err := io.ReadAll(imageReader)
-	if err != nil {
-		return errors.New("failed to read Docker image: " + err.Error())
-	}
+	// Read the tarball and process layers
+	tarReader := tar.NewReader(imageReader)
 
-	ctx := context.Background()
-	startRes, err := blobClient.StartUpload(ctx, imageName, nil)
-	if err != nil {
-		return errors.New("failed to start layer upload: " + err.Error())
-	}
+	layerDigests := []string{}
+	layerSizes := []int64{}
+	var configData []byte
 
-	calculator := azcontainerregistry.NewBlobDigestCalculator()
-	uploadResp, err := blobClient.UploadChunk(ctx, *startRes.Location, bytes.NewReader(layer), calculator, nil)
-	if err != nil {
-		return errors.New("failed to upload layer: " + err.Error())
-	}
-
-	completeResp, err := blobClient.CompleteUpload(ctx, *uploadResp.Location, calculator, nil)
-	if err != nil {
-		return errors.New("failed to complete layer upload: " + err.Error())
-	}
-
-	layerDigest := *completeResp.DockerContentDigest
-
-	config := fmt.Sprintf(`{
-		"rootfs": {
-			"type": "layers",
-			"diff_ids": ["%s"]
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
 		}
-	}`, layerDigest)
+		if err != nil {
+			return errors.New("failed to read Docker image tarball: " + err.Error())
+		}
 
-	startRes, err = blobClient.StartUpload(ctx, imageName, nil)
+		driverConfig.CoreConfig.Log.Printf("Processing header %v", header.Name)
+		// Process layers
+		if strings.HasSuffix(header.Name, "/layer.tar") {
+			layerData, err := io.ReadAll(tarReader)
+			if err != nil {
+				return errors.New("failed to read layer data: " + err.Error())
+			}
+
+			ctx := context.Background()
+			startRes, err := blobClient.StartUpload(ctx, imageName, nil)
+			if err != nil {
+				return errors.New("failed to start layer upload: " + err.Error())
+			}
+
+			calculator := azcontainerregistry.NewBlobDigestCalculator()
+			uploadResp, err := blobClient.UploadChunk(ctx, *startRes.Location, bytes.NewReader(layerData), calculator, nil)
+			if err != nil {
+				return errors.New("failed to upload layer: " + err.Error())
+			}
+
+			completeResp, err := blobClient.CompleteUpload(ctx, *uploadResp.Location, calculator, nil)
+			if err != nil {
+				return errors.New("failed to complete layer upload: " + err.Error())
+			}
+
+			layerDigests = append(layerDigests, *completeResp.DockerContentDigest)
+			layerSizes = append(layerSizes, header.Size)
+		} else {
+			driverConfig.CoreConfig.Log.Printf("Skipping non-tar header %v", header.Name)
+		}
+
+		// Process config
+		if strings.HasSuffix(header.Name, ".json") && strings.Contains(header.Name, "config") {
+			configData, err = io.ReadAll(tarReader)
+			if err != nil {
+				return errors.New("failed to read config data: " + err.Error())
+			}
+		}
+	}
+
+	if len(layerSizes) == 0 || len(layerSizes) != len(layerDigests) {
+		return fmt.Errorf("unsupported # of layer sizes / digest array, %d %d", len(layerSizes), len(layerDigests))
+	}
+
+	// Upload config
+	startRes, err := blobClient.StartUpload(context.Background(), imageName, nil)
 	if err != nil {
 		return errors.New("failed to start config upload: " + err.Error())
 	}
 
-	calculator = azcontainerregistry.NewBlobDigestCalculator()
-	uploadResp, err = blobClient.UploadChunk(ctx, *startRes.Location, bytes.NewReader([]byte(config)), calculator, nil)
+	calculator := azcontainerregistry.NewBlobDigestCalculator()
+	uploadResp, err := blobClient.UploadChunk(context.Background(), *startRes.Location, bytes.NewReader(configData), calculator, nil)
 	if err != nil {
 		return errors.New("failed to upload config: " + err.Error())
 	}
 
-	completeResp, err = blobClient.CompleteUpload(ctx, *uploadResp.Location, calculator, nil)
+	completeResp, err := blobClient.CompleteUpload(context.Background(), *uploadResp.Location, calculator, nil)
 	if err != nil {
 		return errors.New("failed to complete config upload: " + err.Error())
 	}
 
 	configDigest := *completeResp.DockerContentDigest
 
-	manifest := fmt.Sprintf(`{
+	// Generate the manifest
+	layers := []map[string]interface{}{}
+	for i, digest := range layerDigests {
+		layers = append(layers, map[string]interface{}{
+			"mediaType": "application/vnd.oci.image.layer.v1.tar",
+			"digest":    digest,
+			"size":      layerSizes[i],
+		})
+	}
+
+	manifest := map[string]interface{}{
 		"schemaVersion": 2,
-		"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-		"config": {
+		"mediaType":     "application/vnd.docker.distribution.manifest.v2+json",
+		"config": map[string]interface{}{
 			"mediaType": "application/vnd.oci.image.config.v1+json",
-			"digest": "%s",
-			"size": %d
+			"digest":    configDigest,
+			"size":      len(configData),
 		},
-		"layers": [
-			{
-				"mediaType": "application/vnd.oci.image.layer.v1.tar",
-				"digest": "%s",
-				"size": %d
-			}
-		]
-	}`, configDigest, len(config), layerDigest, len(layer))
+		"layers": layers,
+	}
+
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		return errors.New("failed to marshal manifest: " + err.Error())
+	}
 
 	tag := "latest"
 	nameParts := strings.Split(pluginToolConfig["pluginNamePtr"].(string), ":")
@@ -300,15 +340,15 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		tag = nameParts[1]
 	}
 
-	uploadManifestRes, err := azrClient.UploadManifest(ctx, imageName, tag,
-		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader([]byte(manifest))), nil)
+	uploadManifestRes, err := azrClient.UploadManifest(context.Background(), imageName, tag,
+		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader(manifestData)), nil)
 	if err != nil {
 		return errors.New("failed to upload manifest: " + err.Error())
 	}
 
 	driverConfig.CoreConfig.Log.Printf("Digest of uploaded manifest: %s", *uploadManifestRes.DockerContentDigest)
 
-	// Step 9: Clean up local Docker image
+	// Clean up local Docker image
 	err = deleteDockerImage(imageNameTag)
 	if err != nil {
 		return errors.New("failed to delete local Docker image: " + err.Error())
