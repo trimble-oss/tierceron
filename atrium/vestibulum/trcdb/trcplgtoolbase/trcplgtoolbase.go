@@ -21,6 +21,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
+	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
@@ -38,7 +39,8 @@ func CommonMain(envDefaultPtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	trcshDriverConfig *capauth.TrcshDriverConfig) error { //pluginHandler ...*hive.PluginHandler
+	trcshDriverConfig *capauth.TrcshDriverConfig,
+	pluginHandler ...*hive.PluginHandler) error {
 
 	var flagEnvPtr *string
 	// Main functions are as follows:
@@ -280,7 +282,6 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
-	//
 	if tokenNamePtr == nil || *tokenNamePtr == "" || tokenPtr == nil || *tokenPtr == "" {
 		autoErr := eUtils.AutoAuth(&trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
 		if autoErr != nil {
@@ -577,7 +578,7 @@ func CommonMain(envDefaultPtr *string,
 			return err
 		}
 		fmt.Printf("Service started: %s\n", pluginToolConfig["trcservicename"].(string))
-	} else if *codebundledeployPtr {
+	} else if *codebundledeployPtr && !coreopts.BuildOptions.IsKernel() { //Not implemented yet for kernel
 		if pluginToolConfig["trcsha256"] == nil || len(pluginToolConfig["trcsha256"].(string)) == 0 {
 			if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil && trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"] != nil && len(trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"].(string)) > 0 {
 				pluginToolConfig["trcsha256"] = trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"]
@@ -790,18 +791,18 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
 		}
-		// } else if *pluginservicestartPtr && coreopts.BuildOptions.IsKernel() {
-		// 	if len(pluginHandler) > 0 {
-		// 		pluginHandler[0].PluginserviceStart(&trcshDriverConfigBase.DriverConfig)
-		// 	} else {
-		// 		fmt.Println("No handler provided for plugin service startup.")
-		// 	}
-		// } else if *pluginservicestopPtr && coreopts.BuildOptions.IsKernel() {
-		// 	if len(pluginHandler) > 0 {
-		// 		pluginHandler[0].PluginserviceStop()
-		// 	} else {
-		// 		fmt.Println("No handler provided for plugin service startup.")
-		// 	}
+	} else if *pluginservicestartPtr && coreopts.BuildOptions.IsKernel() {
+		if len(pluginHandler) > 0 {
+			pluginHandler[0].PluginserviceStart(&trcshDriverConfigBase.DriverConfig)
+		} else {
+			fmt.Println("No handler provided for plugin service startup.")
+		}
+	} else if *pluginservicestopPtr && coreopts.BuildOptions.IsKernel() {
+		if len(pluginHandler) > 0 {
+			pluginHandler[0].PluginserviceStop()
+		} else {
+			fmt.Println("No handler provided for plugin service startup.")
+		}
 	}
 	//Checks if image has been copied & deployed
 	if *checkDeployedPtr {

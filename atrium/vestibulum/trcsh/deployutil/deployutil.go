@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -125,7 +126,11 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig) ([]string, error
 				continue
 			}
 
-			if deploymentConfig["trctype"].(string) == "trcshservice" {
+			if coreopts.BuildOptions.IsKernel() {
+				if deploymentConfig["trctype"].(string) == "trcshpluginservice" {
+					deploymentList = append(deploymentList, deployment)
+				}
+			} else if deploymentConfig["trctype"].(string) == "trcshservice" {
 				deploymentList = append(deploymentList, deployment)
 			}
 		}

@@ -15,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
-
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -231,8 +229,10 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
 	certifyPath := "super-secrets/Index/TrcVault/trcplugin/trcsh/Certify"
+	var pluginName string
 	if plugin, ok := pluginConfig["plugin"].(string); ok {
 		certifyPath = "super-secrets/Index/TrcVault/trcplugin/" + plugin + "/Certify"
+		pluginName = plugin
 	}
 	certifyMap, err := mod.ReadData(certifyPath)
 	if err != nil {
@@ -249,11 +249,12 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 	}
 	exPath := filepath.Dir(ex)
 	trcshaPath := exPath + string(os.PathSeparator)
-	if eUtils.IsWindows() {
-		trcshaPath = trcshaPath + "trcsh.exe"
-	} else {
-		trcshaPath = trcshaPath + "trcsh"
-	}
+	// if eUtils.IsWindows() {
+	// 	trcshaPath = trcshaPath + "trcsh.exe"
+	// } else {
+	// 	trcshaPath = trcshaPath + "trcsh"
+	// }
+	trcshaPath = trcshaPath + pluginName //added this here -- need to see if it breaks or not...
 
 	if _, ok := certifyMap["trcsha256"]; ok {
 		peerExe, err := os.Open(trcshaPath)
