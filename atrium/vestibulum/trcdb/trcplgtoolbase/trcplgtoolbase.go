@@ -799,7 +799,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 	} else if *pluginservicestopPtr && coreopts.BuildOptions.IsKernel() {
 		if len(pluginHandler) > 0 {
-			pluginHandler[0].PluginserviceStop()
+			pluginHandler[0].PluginserviceStop(&trcshDriverConfigBase.DriverConfig)
 		} else {
 			fmt.Println("No handler provided for plugin service startup.")
 		}
