@@ -21,7 +21,13 @@ func BuildDockerImage(driverConfig *eUtils.DriverConfig, dockerfilePath, imageNa
 	}
 
 	// Create a tar archive of the Dockerfile
-	dockerfileTar, err := createTarContext(filepath.Dir(dockerfilePath))
+	cwd, err := os.Getwd()
+
+	if err != nil {
+		return err
+	}
+
+	dockerfileTar, err := createTarContext(cwd)
 	if err != nil {
 		return err
 	}
