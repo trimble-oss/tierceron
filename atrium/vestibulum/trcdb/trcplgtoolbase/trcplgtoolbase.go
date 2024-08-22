@@ -3,6 +3,7 @@ package trcplgtoolbase
 import (
 	"bufio"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
@@ -332,8 +334,12 @@ func CommonMain(envDefaultPtr *string,
 	config.StartDir = []string{*startDirPtr}
 	if *pluginNameAliasPtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
-	} else {
+	} else if *pluginNamePtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
+	} else if deploy_plugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+		if subsv, k := deploy_plugin.(string); k {
+			trcshDriverConfigBase.DriverConfig.SubSectionValue = subsv
+		}
 	}
 	mod.Env = *envDefaultPtr
 	if logger != nil {
@@ -578,12 +584,13 @@ func CommonMain(envDefaultPtr *string,
 			return err
 		}
 		fmt.Printf("Service started: %s\n", pluginToolConfig["trcservicename"].(string))
-	} else if *codebundledeployPtr && !coreopts.BuildOptions.IsKernel() { //Not implemented yet for kernel
+	} else if *codebundledeployPtr {
 		if pluginToolConfig["trcsha256"] == nil || len(pluginToolConfig["trcsha256"].(string)) == 0 {
 			if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil && trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"] != nil && len(trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"].(string)) > 0 {
 				pluginToolConfig["trcsha256"] = trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"]
 			}
 		}
+
 		if pluginToolConfig["trcsha256"] != nil && len(pluginToolConfig["trcsha256"].(string)) > 0 {
 			err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if err != nil {
@@ -634,12 +641,13 @@ func CommonMain(envDefaultPtr *string,
 					return err
 				}
 			}
-
-			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
-			if err != nil {
-				fmt.Println(err.Error())
-				fmt.Println("Image write failure.")
-				return err
+			if rif, ok := pluginToolConfig["rawImageFile"]; ok {
+				err = os.WriteFile(deployPath, rif.([]byte), 0644)
+				if err != nil {
+					fmt.Println(err.Error())
+					fmt.Println("Image write failure.")
+					return err
+				}
 			}
 
 			if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
@@ -687,6 +695,30 @@ func CommonMain(envDefaultPtr *string,
 				fmt.Printf("%s\n", errMessage)
 			}
 			return errors.New(errMessage)
+		}
+		if coreopts.BuildOptions.IsKernel() { //ptcsha256, ok := pluginToolConfig["trcsha256"]; ok &&
+			h := sha256.New()
+			pathToSO := hive.LoadPluginPath(&trcshDriverConfigBase.DriverConfig)
+			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0666)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			err = memprotectopts.SetChattr(f)
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			if _, err := io.Copy(h, f); err != nil {
+				fmt.Printf("Unable to copy file: %s\n", err)
+				logger.Printf("Unable to copy file: %s\n", err)
+				return err
+			}
+			sha := hex.EncodeToString(h.Sum(nil))
+			if pluginToolConfig["trcsha256"].(string) == sha {
+				err = memprotectopts.UnsetChattr(f)
+				hive.LoadPluginMod(&trcshDriverConfigBase.DriverConfig, pathToSO)
+			}
 		}
 	} else if *certifyImagePtr {
 		//Certify Image
@@ -793,7 +825,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 	} else if *pluginservicestartPtr && coreopts.BuildOptions.IsKernel() {
 		if len(pluginHandler) > 0 {
-			pluginHandler[0].PluginserviceStart(&trcshDriverConfigBase.DriverConfig)
+			pluginHandler[0].PluginserviceStart(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		} else {
 			fmt.Println("No handler provided for plugin service startup.")
 		}
