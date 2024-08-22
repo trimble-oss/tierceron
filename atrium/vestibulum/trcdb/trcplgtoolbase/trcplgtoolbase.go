@@ -223,6 +223,7 @@ func CommonMain(envDefaultPtr *string,
 				fmt.Printf("codebundledeploy not supported for plugin type %s in trcsh\n", *pluginTypePtr)
 				return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
 			}
+		case "trccmdtool": // A trc command line tool.
 		case "trcshservice": // A trcshservice managed microservice
 		case "trcshkubeservice":
 		case "trcshpluginservice":
