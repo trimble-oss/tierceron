@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
@@ -25,7 +26,6 @@ import (
 )
 
 func getImageSHA(driverConfig *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
-
 	err := ValidateRepository(driverConfig, pluginToolConfig)
 	if err != nil {
 		return err
@@ -115,7 +115,6 @@ foundTag:
 }
 
 func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name string, digest string, pluginToolConfig map[string]interface{}) (string, error) {
-
 	configRes, err := blobClient.GetBlob(context.Background(), name, digest, nil)
 	if err != nil {
 		return "", errors.New("Failed to get config:" + err.Error())
@@ -175,7 +174,6 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 }
 
 // Pushes image to docker registry from: "rawImageFile", and "pluginname" in the map pluginToolConfig.
-// https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry#readme-examples
 func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	err := ValidateRepository(driverConfig, pluginToolConfig)
 	if err != nil {
@@ -195,16 +193,88 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return errors.New("failed to create Docker client: " + err.Error())
 	}
 
-	imageNameTag := pluginToolConfig["pluginNamePtr"].(string)
 	repo := strings.TrimPrefix(pluginToolConfig["acrrepository"].(string), "https://")
-	qualifiedName := fmt.Sprintf("%s/%s", repo, imageNameTag)
+	sourceName := pluginToolConfig["pluginNamePtr"].(string)
+	aliases := strings.Split(pluginToolConfig["pushAliasPtr"].(string), ",")
 
-	err = dockerCli.ImageTag(context.Background(), imageNameTag, qualifiedName)
+	if len(pluginToolConfig["pushAliasPtr"].(string)) == 0 {
+		// If we did not specify any aliases, default to the plugin's name
+		aliases = []string{pluginToolConfig["pluginNamePtr"].(string)}
+	}
+
+	// If we're building our image, it doesn't necessarily exist on remote
+	// and either way, we don't need to pull it.
+	if len(pluginToolConfig["buildImagePtr"].(string)) == 0 {
+		summary, err := dockerCli.ImageList(context.Background(), image.ListOptions{
+			Filters: filters.NewArgs(filters.Arg("reference", sourceName)),
+		})
+
+		if err != nil {
+			return errors.New("Failed to list existing images: " + err.Error())
+		}
+
+		if len(summary) == 0 {
+			driverConfig.CoreConfig.Log.Printf("Pulling %v from remote\n", sourceName)
+			sourceName = repo + "/" + sourceName
+			err = pullQualifiedName(*dockerCli, driverConfig, pluginToolConfig, sourceName)
+
+			if err != nil {
+				driverConfig.CoreConfig.Log.Printf("Failed to pull image %v from remote, is this image built and pushed?", sourceName)
+				return err
+			}
+		} else {
+			driverConfig.CoreConfig.Log.Printf("Discovered already existing %v image, will remove it upon successful push.", sourceName)
+		}
+	}
+
+	for _, alias := range aliases {
+		qualifiedAlias := repo + "/" + alias // Prepend repo URL to all aliases
+		err = dockerCli.ImageTag(context.Background(), sourceName, qualifiedAlias)
+		if err != nil {
+			driverConfig.CoreConfig.Log.Printf("Failed to tag image to %v: %v\n", qualifiedAlias, err)
+			return err
+		}
+
+		pushQualifiedName(*dockerCli, driverConfig, pluginToolConfig, qualifiedAlias)
+		deleteDockerImage(qualifiedAlias) // Remove registry-tagged image
+	}
+
+	deleteDockerImage(sourceName) // Remove locally-tagged image
+	return nil
+}
+
+func pullQualifiedName(dockerCli client.Client, driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}, qualifiedName string) error {
+	authConfig := registry.AuthConfig{
+		Username: pluginToolConfig["azureClientId"].(string),
+		Password: pluginToolConfig["azureClientSecret"].(string),
+	}
+	encodedJSON, err := json.Marshal(authConfig)
 	if err != nil {
-		driverConfig.CoreConfig.Log.Printf("Failed to tag image: %v\n", err)
+		driverConfig.CoreConfig.Log.Printf("Failed to encode Docker auth configuration: %v\n", err)
+		return err
+	}
+	authStr := base64.URLEncoding.EncodeToString(encodedJSON)
+	pullResponse, err := dockerCli.ImagePull(context.Background(), qualifiedName, image.PullOptions{
+		RegistryAuth: authStr,
+	})
+
+	if err != nil {
+		driverConfig.CoreConfig.Log.Printf("Failed to pull image from ACR: %v\n", err)
 		return err
 	}
 
+	defer pullResponse.Close()
+	_, err = io.Copy(os.Stdout, pullResponse)
+	if err != nil {
+		driverConfig.CoreConfig.Log.Printf("Failed to read pull response: %v\n", err)
+		return err
+	}
+
+	driverConfig.CoreConfig.Log.Printf("Pulled %v from ACR successfully.\n", qualifiedName)
+	return nil
+}
+
+func pushQualifiedName(dockerCli client.Client, driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}, qualifiedName string) error {
 	authConfig := registry.AuthConfig{
 		Username: pluginToolConfig["azureClientId"].(string),
 		Password: pluginToolConfig["azureClientSecret"].(string),
@@ -231,9 +301,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 		return err
 	}
 
-	driverConfig.CoreConfig.Log.Printf("Image %s pushed to ACR successfully.\n", imageNameTag)
-
-	deleteDockerImage(imageNameTag)
+	driverConfig.CoreConfig.Log.Printf("Image %s pushed to ACR successfully.\n", qualifiedName)
 	return nil
 }
 
@@ -245,7 +313,7 @@ func deleteDockerImage(imageName string) error {
 	}
 
 	_, err = cli.ImageRemove(ctx, imageName, image.RemoveOptions{
-		Force:         false,
+		Force:         true,
 		PruneChildren: true,
 	})
 	return err
