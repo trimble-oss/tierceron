@@ -425,6 +425,7 @@ func CommonMain(envDefaultPtr *string,
 	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr //is a bool that gets converted to a string for writeout/certify
 	pluginToolConfig["newrelicAppName"] = *newrelicAppNamePtr
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
+	pluginToolConfig["buildImagePtr"] = *buildImagePtr
 	pluginToolConfig["pushAliasPtr"] = *pushAliasPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
@@ -495,12 +496,14 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if *pushImagePtr {
-		aliases := strings.Split(pluginToolConfig["pushAliasPtr"].(string), ",")
-		for _, alias := range aliases {
-			if strings.Split(alias, ":")[0] != pluginToolConfig["trcplugin"].(string) {
-				err := errors.New("pushAlias can only alias image tags, not image names")
-				fmt.Println(err)
-				return err
+		if len(pluginToolConfig["pushAliasPtr"].(string)) > 0 {
+			aliases := strings.Split(pluginToolConfig["pushAliasPtr"].(string), ",")
+			for _, alias := range aliases {
+				if strings.Split(alias, ":")[0] != strings.Split(pluginToolConfig["pluginNamePtr"].(string), ":")[0] {
+					err := errors.New("pushAlias can only alias image tags, not image names")
+					fmt.Println(err)
+					return err
+				}
 			}
 		}
 
