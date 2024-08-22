@@ -30,6 +30,7 @@ func BuildDockerImage(driverConfig *eUtils.DriverConfig, dockerfilePath, imageNa
 		Context:    dockerfileTar,
 		Dockerfile: filepath.Base(dockerfilePath),
 		Tags:       []string{imageName},
+		NoCache:    true,
 	}
 
 	response, err := cli.ImageBuild(ctx, dockerfileTar, buildOptions)

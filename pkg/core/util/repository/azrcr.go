@@ -4,21 +4,21 @@
 package repository
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -183,36 +183,11 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	}
 
 	// Check for required ACR credentials
-	if pluginToolConfig["azureTenantId"] == nil || pluginToolConfig["azureClientId"] == nil || pluginToolConfig["azureClientSecret"] == nil {
-		driverConfig.CoreConfig.Log.Printf("ACR credentials undefined. Refusing to continue.\n")
-		return errors.New("undefined ACR credentials")
-	}
-	if len(pluginToolConfig["azureTenantId"].(string)) == 0 || len(pluginToolConfig["azureClientId"].(string)) == 0 || len(pluginToolConfig["azureClientSecret"].(string)) == 0 {
-		driverConfig.CoreConfig.Log.Printf("ACR credentials undefined. Refusing to continue.\n")
-		return errors.New("undefined ACR credentials")
-	}
-
-	cred, err := azidentity.NewClientSecretCredential(
-		pluginToolConfig["azureTenantId"].(string),
-		pluginToolConfig["azureClientId"].(string),
-		pluginToolConfig["azureClientSecret"].(string),
-		nil,
-	)
-	if err != nil {
-		driverConfig.CoreConfig.Log.Printf("Failed to authenticate with Azure: %v\n", err)
-		return err
-	}
-
-	azrClient, err := azcontainerregistry.NewClient(pluginToolConfig["acrrepository"].(string), cred, nil)
-	if err != nil {
-		driverConfig.CoreConfig.Log.Printf("Failed to create ACR client: %v\n", err)
-		return err
-	}
-
-	blobClient, err := azcontainerregistry.NewBlobClient(pluginToolConfig["acrrepository"].(string), cred, nil)
-	if err != nil {
-		driverConfig.CoreConfig.Log.Printf("Failed to create ACR Blob client: %v\n", err)
-		return err
+	for _, key := range []string{"azureTenantId", "azureClientId", "azureClientSecret"} {
+		if val, ok := pluginToolConfig[key]; !ok || len(val.(string)) == 0 {
+			driverConfig.CoreConfig.Log.Printf("ACR credential %v undefined. Refusing to continue.\n", key)
+			return fmt.Errorf("undefined ACR credential: %v", key)
+		}
 	}
 
 	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -221,139 +196,44 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	}
 
 	imageNameTag := pluginToolConfig["pluginNamePtr"].(string)
-	imageName := strings.Split(imageNameTag, ":")[0]
+	repo := strings.TrimPrefix(pluginToolConfig["acrrepository"].(string), "https://")
+	qualifiedName := fmt.Sprintf("%s/%s", repo, imageNameTag)
 
-	imageReader, err := dockerCli.ImageSave(context.Background(), []string{imageNameTag})
+	err = dockerCli.ImageTag(context.Background(), imageNameTag, qualifiedName)
 	if err != nil {
-		return errors.New("failed to save Docker image: " + err.Error())
-	}
-	defer imageReader.Close()
-
-	// Read the tarball and process layers
-	tarReader := tar.NewReader(imageReader)
-
-	layerDigests := []string{}
-	layerSizes := []int64{}
-	var configData []byte
-
-	for {
-		header, err := tarReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return errors.New("failed to read Docker image tarball: " + err.Error())
-		}
-
-		driverConfig.CoreConfig.Log.Printf("Processing header %v", header.Name)
-		// Process layers
-		if strings.HasSuffix(header.Name, "/layer.tar") {
-			layerData, err := io.ReadAll(tarReader)
-			if err != nil {
-				return errors.New("failed to read layer data: " + err.Error())
-			}
-
-			ctx := context.Background()
-			startRes, err := blobClient.StartUpload(ctx, imageName, nil)
-			if err != nil {
-				return errors.New("failed to start layer upload: " + err.Error())
-			}
-
-			calculator := azcontainerregistry.NewBlobDigestCalculator()
-			uploadResp, err := blobClient.UploadChunk(ctx, *startRes.Location, bytes.NewReader(layerData), calculator, nil)
-			if err != nil {
-				return errors.New("failed to upload layer: " + err.Error())
-			}
-
-			completeResp, err := blobClient.CompleteUpload(ctx, *uploadResp.Location, calculator, nil)
-			if err != nil {
-				return errors.New("failed to complete layer upload: " + err.Error())
-			}
-
-			layerDigests = append(layerDigests, *completeResp.DockerContentDigest)
-			layerSizes = append(layerSizes, header.Size)
-		} else {
-			driverConfig.CoreConfig.Log.Printf("Skipping non-tar header %v", header.Name)
-		}
-
-		// Process config
-		if strings.HasSuffix(header.Name, ".json") && strings.Contains(header.Name, "config") {
-			configData, err = io.ReadAll(tarReader)
-			if err != nil {
-				return errors.New("failed to read config data: " + err.Error())
-			}
-		}
+		driverConfig.CoreConfig.Log.Printf("Failed to tag image: %v\n", err)
+		return err
 	}
 
-	if len(layerSizes) == 0 || len(layerSizes) != len(layerDigests) {
-		return fmt.Errorf("unsupported # of layer sizes / digest array, %d %d", len(layerSizes), len(layerDigests))
+	authConfig := registry.AuthConfig{
+		Username: pluginToolConfig["azureClientId"].(string),
+		Password: pluginToolConfig["azureClientSecret"].(string),
 	}
-
-	// Upload config
-	startRes, err := blobClient.StartUpload(context.Background(), imageName, nil)
+	encodedJSON, err := json.Marshal(authConfig)
 	if err != nil {
-		return errors.New("failed to start config upload: " + err.Error())
+		driverConfig.CoreConfig.Log.Printf("Failed to encode Docker auth configuration: %v\n", err)
+		return err
 	}
+	authStr := base64.URLEncoding.EncodeToString(encodedJSON)
 
-	calculator := azcontainerregistry.NewBlobDigestCalculator()
-	uploadResp, err := blobClient.UploadChunk(context.Background(), *startRes.Location, bytes.NewReader(configData), calculator, nil)
+	pushResponse, err := dockerCli.ImagePush(context.Background(), qualifiedName, image.PushOptions{
+		RegistryAuth: authStr,
+	})
 	if err != nil {
-		return errors.New("failed to upload config: " + err.Error())
+		driverConfig.CoreConfig.Log.Printf("Failed to push image to ACR: %v\n", err)
+		return err
 	}
+	defer pushResponse.Close()
 
-	completeResp, err := blobClient.CompleteUpload(context.Background(), *uploadResp.Location, calculator, nil)
+	_, err = io.Copy(os.Stdout, pushResponse)
 	if err != nil {
-		return errors.New("failed to complete config upload: " + err.Error())
+		driverConfig.CoreConfig.Log.Printf("Failed to read push response: %v\n", err)
+		return err
 	}
 
-	configDigest := *completeResp.DockerContentDigest
+	driverConfig.CoreConfig.Log.Printf("Image %s pushed to ACR successfully.\n", imageNameTag)
 
-	// Generate the manifest
-	layers := []map[string]interface{}{}
-	for i, digest := range layerDigests {
-		layers = append(layers, map[string]interface{}{
-			"mediaType": "application/vnd.oci.image.layer.v1.tar",
-			"digest":    digest,
-			"size":      layerSizes[i],
-		})
-	}
-
-	manifest := map[string]interface{}{
-		"schemaVersion": 2,
-		"mediaType":     "application/vnd.docker.distribution.manifest.v2+json",
-		"config": map[string]interface{}{
-			"mediaType": "application/vnd.oci.image.config.v1+json",
-			"digest":    configDigest,
-			"size":      len(configData),
-		},
-		"layers": layers,
-	}
-
-	manifestData, err := json.Marshal(manifest)
-	if err != nil {
-		return errors.New("failed to marshal manifest: " + err.Error())
-	}
-
-	tag := "latest"
-	nameParts := strings.Split(pluginToolConfig["pluginNamePtr"].(string), ":")
-	if len(nameParts) == 2 {
-		tag = nameParts[1]
-	}
-
-	uploadManifestRes, err := azrClient.UploadManifest(context.Background(), imageName, tag,
-		azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON, streaming.NopCloser(bytes.NewReader(manifestData)), nil)
-	if err != nil {
-		return errors.New("failed to upload manifest: " + err.Error())
-	}
-
-	driverConfig.CoreConfig.Log.Printf("Digest of uploaded manifest: %s", *uploadManifestRes.DockerContentDigest)
-
-	// Clean up local Docker image
-	err = deleteDockerImage(imageNameTag)
-	if err != nil {
-		return errors.New("failed to delete local Docker image: " + err.Error())
-	}
-
+	deleteDockerImage(imageNameTag)
 	return nil
 }
 
