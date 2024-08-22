@@ -73,6 +73,7 @@ type DriverConfig struct {
 	CertPathOverrides map[string]string // certFileName -> certDest
 
 	// Config modes....
+	NoVault     bool //Working straight from seed files
 	ZeroConfig  bool
 	GenAuth     bool
 	TrcShellRaw string   //Used for TrcShell
