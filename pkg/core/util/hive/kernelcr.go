@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/core"
+	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
@@ -16,31 +18,9 @@ var logger *log.Logger
 
 type PluginHandler struct {
 	IsRunning bool
-	shutdown  chan *bool
+	sender    chan int
+	receiver  chan error
 	Services  *[]string
-}
-
-func (pluginHandler *PluginHandler) Start() {
-	symbol, err := pluginMod.Lookup("Start")
-	if err != nil {
-		fmt.Println(err)
-		logger.Printf("Unable to lookup plugin export: %s\n", err)
-	}
-	go reflect.ValueOf(symbol).Call(nil)
-	go func(plugin *PluginHandler) {
-		shutdownMsg := true
-		plugin.shutdown <- &shutdownMsg
-	}(pluginHandler)
-}
-
-func Stop() {
-	symbol, err := pluginMod.Lookup("Stop")
-	if err != nil {
-		fmt.Println(err)
-		logger.Printf("Unable to lookup plugin export: %s\n", err)
-	}
-	go reflect.ValueOf(symbol).Call(nil)
-	pluginMod = nil
 }
 
 func Init(properties *map[string]interface{}) {
@@ -98,8 +78,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 				fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 				return
 			}
-			var configPath string
-			symbol, err := pluginMod.Lookup("Config")
+			getConfigPaths, err := pluginMod.Lookup("GetConfigPaths")
 			if err != nil {
 				driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
 				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
@@ -107,39 +86,58 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 				fmt.Printf("Returned with %v\n", err)
 				return
 			}
-			var checkPathType *string
-			if reflect.TypeOf(checkPathType) != reflect.TypeOf(symbol) {
-				fmt.Printf("Wrong type returned for config path for %s\n", service)
-				driverConfig.CoreConfig.Log.Printf("Wrong type returned for config path for %s\n", service)
-				return
-			} else {
-				configPath = *symbol.(*string)
+			pluginConfigPaths := getConfigPaths.(func() map[string]string)
+			paths := pluginConfigPaths()
+			var serviceConfig map[string]interface{}
+			for _, path := range paths {
+				if strings.HasPrefix(path, "Common") {
+					cert_ps := strings.Split(path, "/")
+					if len(cert_ps) != 2 {
+
+					}
+					templatePath := "./trc_templates/" + path
+					_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, cert_ps[0], cert_ps[1], true, true)
+					if err != nil {
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+					}
+					serviceConfig[path] = []byte(configuredCert[1])
+				} else {
+					sc, ok := properties.GetConfigValues(projServ[1], path)
+					if !ok {
+						fmt.Printf("Unable to access configuration data for %s\n", service)
+						driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+						return
+					}
+					serviceConfig[path] = &sc
+				}
 			}
-			serviceConfig, ok := properties.GetConfigValues(projServ[1], configPath)
-			if !ok {
-				fmt.Printf("Unable to access configuration data for %s\n", service)
-				driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
-				return
-			}
+			//make channels and add via tierceron-core map constant
+			pluginHandler.sender = make(chan int)
+			pluginHandler.receiver = make(chan error)
+			// instead of start go func() send to channel and listen on this end for finishing start
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			Init(&serviceConfig)
-			pluginHandler.Start()
+			pluginHandler.sender <- core.PLUGIN_EVENT_START
+			result := <-pluginHandler.receiver
+			if result != nil {
+				driverConfig.CoreConfig.Log.Println(result)
+			}
 		}
 	}
 	pluginHandler.IsRunning = true
-	pluginHandler.shutdown = make(chan *bool)
 }
 
 func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *eUtils.DriverConfig) {
 	if pluginMod == nil {
 		return
 	}
-	go func(plugin *PluginHandler) {
-		isDone := <-plugin.shutdown
-		if *isDone {
-			Stop()
-		}
-	}(pluginHandler)
+	pluginHandler.sender <- core.PLUGIN_EVENT_STOP
+	result := <-pluginHandler.receiver
+	if result != nil {
+		driverConfig.CoreConfig.Log.Println(result)
+	} else {
+		pluginMod = nil
+	}
 	pluginHandler.IsRunning = false
 }
 
