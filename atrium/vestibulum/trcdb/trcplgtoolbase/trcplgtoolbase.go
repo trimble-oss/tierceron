@@ -480,7 +480,7 @@ func CommonMain(envDefaultPtr *string,
 		if val, ok := pluginToolConfig["trcplugin"]; !ok || len(val.(string)) == 0 {
 			err := errors.New("trcplugin not defined, can not continue")
 			fmt.Println(err)
-			// return err
+			return err
 		}
 	}
 
