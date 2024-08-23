@@ -34,7 +34,7 @@ func BuildDockerImage(driverConfig *eUtils.DriverConfig, dockerfilePath, imageNa
 
 	buildOptions := types.ImageBuildOptions{
 		Context:    dockerfileTar,
-		Dockerfile: filepath.Base(dockerfilePath),
+		Dockerfile: dockerfilePath,
 		Tags:       []string{imageName},
 		Remove:     true,
 	}
