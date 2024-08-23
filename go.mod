@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron
 
-go 1.21.6
+go 1.21.12
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
@@ -83,6 +83,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/trimble-oss/tierceron-core v0.0.0-20240823174133-24e6eec65804 // indirect
 	github.com/trimble-oss/tierceron-nute v1.0.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.44.0 // indirect
 	go.opentelemetry.io/otel v1.27.0 // indirect
