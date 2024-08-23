@@ -198,7 +198,7 @@ func CommonMain(envDefaultPtr *string,
 		*pluginTypePtr = "trcshservice"
 	}
 
-	if !*updateAPIMPtr && len(*buildImagePtr) == 0 {
+	if !*updateAPIMPtr && len(*buildImagePtr) == 0 && !*pushImagePtr {
 		switch *pluginTypePtr {
 		case "vault": // A vault plugin
 			if trcshDriverConfig != nil {
