@@ -537,6 +537,10 @@ func writeToFile(driverConfig *eUtils.DriverConfig, data string, path string) {
 		}
 		data = strings.Replace(data, "${TAG}", tag, -1)
 	}
+	if strings.Contains(data, "${RELEASE}") {
+		release := os.Getenv("RELEASE")
+		data = strings.Replace(data, "${RELEASE}", release, -1)
+	}
 
 	byteData := []byte(data)
 	//Ensure directory has been created
