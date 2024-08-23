@@ -71,7 +71,8 @@ func CommonMain(envDefaultPtr *string,
 	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
 	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
 	buildImagePtr := flagset.String("buildImage", "", "Path to Dockerfile to build")
-	pushimagePtr := flagset.Bool("pushImage", false, "Push an image to the registry.")
+	pushImagePtr := flagset.Bool("pushImage", false, "Push an image to the registry.")
+	pushAliasPtr := flagset.String("pushAlias", "", "Image name:tag to push to registry, separated by commas (eg: egg:plant,egg:salad,egg:bar).")
 
 	// Common flags...
 	startDirPtr := flagset.String("startDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Template directory")
@@ -162,7 +163,7 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("must use -pluginName flag to use -defineService flag")
 	}
 
-	if *pushimagePtr && (len(*pluginNamePtr) == 0) {
+	if *pushImagePtr && (len(*pluginNamePtr) == 0) {
 		fmt.Println("Must use -pluginName flag to use -pushimage flag")
 		return errors.New("must use -pluginName flag to use -pushimage flag")
 	}
@@ -175,6 +176,11 @@ func CommonMain(envDefaultPtr *string,
 	if len(*buildImagePtr) > 0 && len(strings.Split(*pluginNamePtr, ":")[0]) > 128 {
 		fmt.Println("Image tag cannot be longer than 128 characters")
 		return errors.New("image tag cannot be longer than 128 characters")
+	}
+
+	if len(*pushAliasPtr) > 0 && !*pushImagePtr {
+		fmt.Println("Must use -pushImage flag to use -pushAlias flag")
+		return errors.New("must use -pushImage flag to use -pushAlias flag")
 	}
 
 	if len(*certPathPtr) > 0 && !*updateAPIMPtr {
@@ -198,7 +204,7 @@ func CommonMain(envDefaultPtr *string,
 		*pluginTypePtr = "trcshservice"
 	}
 
-	if !*updateAPIMPtr && len(*buildImagePtr) == 0 {
+	if !*updateAPIMPtr && len(*buildImagePtr) == 0 && !*pushImagePtr {
 		switch *pluginTypePtr {
 		case "vault": // A vault plugin
 			if trcshDriverConfig != nil {
@@ -434,6 +440,8 @@ func CommonMain(envDefaultPtr *string,
 	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr //is a bool that gets converted to a string for writeout/certify
 	pluginToolConfig["newrelicAppName"] = *newrelicAppNamePtr
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
+	pluginToolConfig["buildImagePtr"] = *buildImagePtr
+	pluginToolConfig["pushAliasPtr"] = *pushAliasPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		if *defineServicePtr {
@@ -483,12 +491,15 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
-	if len(*buildImagePtr) > 0 {
+	if len(*buildImagePtr) > 0 || *pushImagePtr {
 		if val, ok := pluginToolConfig["trcplugin"]; !ok || len(val.(string)) == 0 {
 			err := errors.New("trcplugin not defined, can not continue")
 			fmt.Println(err)
 			return err
 		}
+	}
+
+	if len(*buildImagePtr) > 0 {
 		fmt.Println("Building image using local docker repository...")
 		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
 		if err != nil {
@@ -499,12 +510,18 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
-	if *pushimagePtr {
-		if val, ok := pluginToolConfig["trcplugin"]; !ok || len(val.(string)) == 0 {
-			err := errors.New("trcplugin not defined, can not continue")
-			fmt.Println(err)
-			return err
+	if *pushImagePtr {
+		if len(pluginToolConfig["pushAliasPtr"].(string)) > 0 {
+			aliases := strings.Split(pluginToolConfig["pushAliasPtr"].(string), ",")
+			for _, alias := range aliases {
+				if strings.Split(alias, ":")[0] != strings.Split(pluginToolConfig["pluginNamePtr"].(string), ":")[0] {
+					err := errors.New("pushAlias can only alias image tags, not image names")
+					fmt.Println(err)
+					return err
+				}
+			}
 		}
+
 		fmt.Println("Pushing image to registry...")
 		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {

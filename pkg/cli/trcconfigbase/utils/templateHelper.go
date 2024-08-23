@@ -211,7 +211,12 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 
 		seed, seedOk := rawYaml.(map[interface{}]interface{})
 		if !seedOk {
-			eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
+			if driverConfig.NoVault {
+				driverConfig.CoreConfig.ExitOnFailure = true
+				eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "novault option requires a seed file for trcconfig to function", 1)
+			} else {
+				eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
+			}
 		}
 		tempMap := make(map[string]interface{}, 0)
 		for seedSectionKey, seedSection := range seed {
