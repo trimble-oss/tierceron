@@ -249,12 +249,7 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 	}
 	exPath := filepath.Dir(ex)
 	trcshaPath := exPath + string(os.PathSeparator)
-	// if eUtils.IsWindows() {
-	// 	trcshaPath = trcshaPath + "trcsh.exe"
-	// } else {
-	// 	trcshaPath = trcshaPath + "trcsh"
-	// }
-	trcshaPath = trcshaPath + pluginName //added this here -- need to see if it breaks or not...
+	trcshaPath = trcshaPath + pluginName
 
 	if _, ok := certifyMap["trcsha256"]; ok {
 		peerExe, err := os.Open(trcshaPath)
@@ -266,8 +261,6 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 
 		defer peerExe.Close()
 
-		// TODO: Check previous 10 versions?  If any match, then
-		// return ok....
 		h := sha256.New()
 		if _, err := io.Copy(h, peerExe); err != nil {
 			fmt.Printf("Unable to copy file: %s\n", err)

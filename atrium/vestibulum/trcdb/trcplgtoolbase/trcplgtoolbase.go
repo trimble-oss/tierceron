@@ -714,7 +714,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 			return errors.New(errMessage)
 		}
-		if coreopts.BuildOptions.IsKernel() { //ptcsha256, ok := pluginToolConfig["trcsha256"]; ok &&
+		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && coreopts.BuildOptions.IsKernel() {
 			h := sha256.New()
 			pathToSO := hive.LoadPluginPath(&trcshDriverConfigBase.DriverConfig)
 			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0666)
@@ -733,9 +733,12 @@ func CommonMain(envDefaultPtr *string,
 				return err
 			}
 			sha := hex.EncodeToString(h.Sum(nil))
-			if pluginToolConfig["trcsha256"].(string) == sha {
+			if ptcsha256.(string) == sha {
 				err = memprotectopts.UnsetChattr(f)
-				hive.LoadPluginMod(&trcshDriverConfigBase.DriverConfig, pathToSO)
+				if err != nil {
+					return err
+				}
+				hive.PluginMod = hive.LoadPluginMod(&trcshDriverConfigBase.DriverConfig, pathToSO)
 			}
 		}
 	} else if *certifyImagePtr {

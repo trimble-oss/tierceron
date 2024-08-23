@@ -1,6 +1,7 @@
 package hive
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"plugin"
@@ -13,7 +14,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
-var pluginMod *plugin.Plugin
+var PluginMod *plugin.Plugin
 var logger *log.Logger
 
 type PluginHandler struct {
@@ -24,7 +25,7 @@ type PluginHandler struct {
 }
 
 func Init(properties *map[string]interface{}) {
-	symbol, err := pluginMod.Lookup("Init")
+	symbol, err := PluginMod.Lookup("Init")
 	if err != nil {
 		fmt.Println(err)
 		logger.Printf("Unable to lookup plugin export: %s\n", err)
@@ -34,7 +35,7 @@ func Init(properties *map[string]interface{}) {
 }
 
 func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) {
-	if pluginMod == nil {
+	if PluginMod == nil {
 		return
 	}
 	if logger == nil && driverConfig.CoreConfig.Log != nil {
@@ -78,7 +79,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 				fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 				return
 			}
-			getConfigPaths, err := pluginMod.Lookup("GetConfigPaths")
+			getConfigPaths, err := PluginMod.Lookup("GetConfigPaths")
 			if err != nil {
 				driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
 				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
@@ -86,20 +87,22 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 				fmt.Printf("Returned with %v\n", err)
 				return
 			}
-			pluginConfigPaths := getConfigPaths.(func() map[string]string)
+			pluginConfigPaths := getConfigPaths.(func() []string)
 			paths := pluginConfigPaths()
-			var serviceConfig map[string]interface{}
+			serviceConfig := make(map[string]interface{})
 			for _, path := range paths {
 				if strings.HasPrefix(path, "Common") {
 					cert_ps := strings.Split(path, "/")
 					if len(cert_ps) != 2 {
-
+						eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("unable to process cert"), false)
 					}
 					templatePath := "./trc_templates/" + path
+					driverConfig.CoreConfig.WantCerts = true
 					_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, cert_ps[0], cert_ps[1], true, true)
 					if err != nil {
 						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 					}
+					driverConfig.CoreConfig.WantCerts = false
 					serviceConfig[path] = []byte(configuredCert[1])
 				} else {
 					sc, ok := properties.GetConfigValues(projServ[1], path)
@@ -111,33 +114,38 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 					serviceConfig[path] = &sc
 				}
 			}
-			//make channels and add via tierceron-core map constant
 			pluginHandler.sender = make(chan int)
 			pluginHandler.receiver = make(chan error)
-			// instead of start go func() send to channel and listen on this end for finishing start
+			chan_map := make(map[string]interface{})
+			chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = pluginHandler.sender
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = pluginHandler.receiver
+			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			Init(&serviceConfig)
 			pluginHandler.sender <- core.PLUGIN_EVENT_START
-			result := <-pluginHandler.receiver
-			if result != nil {
-				driverConfig.CoreConfig.Log.Println(result)
-			}
+			go pluginHandler.handle_errors(driverConfig)
+			pluginHandler.IsRunning = true
 		}
 	}
-	pluginHandler.IsRunning = true
+}
+
+func (pluginHandler *PluginHandler) handle_errors(driverConfig *eUtils.DriverConfig) {
+	for {
+		result := <-pluginHandler.receiver
+		switch {
+		case result != nil:
+			fmt.Println(result)
+			eUtils.LogErrorObject(&driverConfig.CoreConfig, result, false)
+			return
+		}
+	}
 }
 
 func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *eUtils.DriverConfig) {
-	if pluginMod == nil {
+	if PluginMod == nil {
 		return
 	}
 	pluginHandler.sender <- core.PLUGIN_EVENT_STOP
-	result := <-pluginHandler.receiver
-	if result != nil {
-		driverConfig.CoreConfig.Log.Println(result)
-	} else {
-		pluginMod = nil
-	}
 	pluginHandler.IsRunning = false
 }
 
@@ -154,11 +162,12 @@ func LoadPluginPath(driverConfig *eUtils.DriverConfig) string {
 	return pluginPath
 }
 
-func LoadPluginMod(driverConfig *eUtils.DriverConfig, pluginPath string) {
+func LoadPluginMod(driverConfig *eUtils.DriverConfig, pluginPath string) *plugin.Plugin {
 	pluginM, err := plugin.Open(pluginPath)
 	if err != nil {
 		fmt.Println("Unable to open plugin module for service.")
-		return
+		return nil
 	}
-	pluginMod = pluginM
+	PluginMod = pluginM
+	return pluginM
 }
