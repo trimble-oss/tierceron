@@ -69,7 +69,7 @@ trcshellwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "tc windows azrcr memonly" -o plugins/deploy/target/trcsh.exe github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
 
 trcshellkernelbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -trimpath -tags "tc azrcr memonly kernel" github.com/trimble-oss/pendentive/atrium/vestibulum/shell/trcsh
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -trimpath -tags "tc azrcr memonly kernel" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
 trcshellkernelsha:
 	sha256sum plugins/deploy/target/trcshk | cut -d' ' -f1 > plugins/deploy/target/trcshk.sha256
 trcshellkernel: trcshellkernelbuild trcshellkernelsha
