@@ -149,6 +149,7 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]i
 	pluginEnvConfig["exitOnFailure"] = false
 	pluginEnvConfig["pluginNameList"] = []string{
 		"trc-vault-plugin",
+		"trcsh",
 	}
 	pluginEnvConfig["logNamespace"] = "db"
 
