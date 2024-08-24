@@ -54,6 +54,8 @@ spec:
           volumeMounts:
             - name: trcshk-data-volume
               mountPath: /usr/local/trcshk/data
+            - name: trcshk-plugins-volume
+              mountPath: /usr/local/trcshk/plugins
             - name: trcshk-app-volume
               mountPath: /usr/local/trcshk/config.yml
               subPath: config.yml
@@ -67,7 +69,9 @@ spec:
                 - CAP_IPC_LOCK
       volumes:
         - name: trcshk-data-volume
-          emptyDir: {} 
+          emptyDir: {}
+        - name: trcshk-plugins-volume
+          emptyDir: {}
         - name: trcshk-app-volume
           configMap:
             name: trcshk-application-config
