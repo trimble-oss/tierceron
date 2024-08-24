@@ -34,7 +34,6 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
-	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/core/util"
@@ -755,23 +754,24 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			token = ""
 			trcshDriverConfig.DriverConfig.CoreConfig.Token = token
 		}
-	case "trcpub":
-		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
-		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig = "configpub.yml"
-		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
-		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
+		// Release pipelines shouldn't need this level of access.
+	// case "trcpub":
+	// 	ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
+	// 	trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig = "configpub.yml"
+	// 	trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
+	// 	trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 
-		pubRoleSlice := strings.Split(*gTrcshConfig.PubRole, ":")
-		tokenName := "vault_pub_token_" + env
-		tokenPub := ""
-		pubEnv := env
+	// 	pubRoleSlice := strings.Split(*gTrcshConfig.PubRole, ":")
+	// 	tokenName := "vault_pub_token_" + env
+	// 	tokenPub := ""
+	// 	pubEnv := env
 
-		trcpubbase.CommonMain(&pubEnv, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &tokenPub, &gTrcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, nil, deployArgLines, &trcshDriverConfig.DriverConfig)
-		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
-		if !isAgentToken {
-			token = ""
-			trcshDriverConfig.DriverConfig.CoreConfig.Token = token
-		}
+	// 	trcpubbase.CommonMain(&pubEnv, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &tokenPub, &gTrcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, nil, deployArgLines, &trcshDriverConfig.DriverConfig)
+	// 	ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
+	// 	if !isAgentToken {
+	// 		token = ""
+	// 		trcshDriverConfig.DriverConfig.CoreConfig.Token = token
+	// 	}
 	case "trcconfig":
 		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, token, argsOrig, deployArgLines, configCount)
 		if err != nil {

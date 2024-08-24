@@ -201,14 +201,15 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 	memprotectopts.MemProtect(nil, trcshConfig.ConfigRole)
 
-	if featherCtx == nil {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 4")
-		trcshConfig.PubRole, err = capauth.PenseQuery(trcshDriverConfig, "pubrole")
-		if err != nil {
-			return trcshConfig, err
-		}
-		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
-	}
+	// trcsh doesn't need this level of access
+	// if featherCtx == nil {
+	// 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 4")
+	// 	trcshConfig.PubRole, err = capauth.PenseQuery(trcshDriverConfig, "pubrole")
+	// 	if err != nil {
+	// 		return trcshConfig, err
+	// 	}
+	// 	memprotectopts.MemProtect(nil, trcshConfig.PubRole)
+	// }
 
 	if featherCtx == nil {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 5")
