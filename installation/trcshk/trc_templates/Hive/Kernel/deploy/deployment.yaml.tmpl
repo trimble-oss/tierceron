@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trcshk
+  annotations:
+    seccomp.security.alpha.kubernetes.io/trcshk: runtime/default
+
+spec:
+  replicas: {{.deploy_REPLICAS}}
+  selector:
+    matchLabels:
+      app: trcshk
+      namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+  template:
+    metadata:
+      labels:
+        app: trcshk
+        namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: {{.deploy_node_pool}}
+                  operator: In
+                  values:
+                  - trcshk
+      containers:
+        - name: trcshk
+          image: {{.deploy_REGISTRY_URL}}/trcshk:${TAG}
+          imagePullPolicy: Always
+          readinessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:{{.deploy_trcshk_PORT}}", "-tls", "-tls-no-verify"]
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:{{.deploy_trcshk_PORT}}", "-tls", "-tls-no-verify"]
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 5
+          ports:
+            - containerPort: {{.deploy_trcshk_PORT}}
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          workingDir: /usr/local/trcshk
+          volumeMounts:
+            - name: trcshk-data-volume
+              mountPath: /usr/local/trcshk/data
+            - name: trcshk-app-volume
+              mountPath: /usr/local/trcshk/config.yml
+              subPath: config.yml
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsGroup: 1575
+            runAsNonRoot: true
+            runAsUser: 1575
+            capabilities:
+              add:
+                - CAP_IPC_LOCK
+      volumes:
+        - name: trcshk-data-volume
+          emptyDir: {} 
+        - name: trcshk-app-volume
+          configMap:
+            name: trcshk-application-config
+        - name: trcshk-newrelic-volume
+          configMap:
+            name: trcshk-newrelic-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trcshk
+  namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-ipv4: {{.deploy_LB_IP}}
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+    service.beta.kubernetes.io/azure-pls-create: "true"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  ports:
+  - port: {{.deploy_trcshk_PORT}}
+  selector:
+    app: trcshk
+    namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+
