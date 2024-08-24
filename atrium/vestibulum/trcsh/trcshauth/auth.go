@@ -15,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
-
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -231,8 +229,10 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
 	certifyPath := "super-secrets/Index/TrcVault/trcplugin/trcsh/Certify"
+	var pluginName string
 	if plugin, ok := pluginConfig["plugin"].(string); ok {
 		certifyPath = "super-secrets/Index/TrcVault/trcplugin/" + plugin + "/Certify"
+		pluginName = plugin
 	}
 	certifyMap, err := mod.ReadData(certifyPath)
 	if err != nil {
@@ -249,11 +249,7 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 	}
 	exPath := filepath.Dir(ex)
 	trcshaPath := exPath + string(os.PathSeparator)
-	if eUtils.IsWindows() {
-		trcshaPath = trcshaPath + "trcsh.exe"
-	} else {
-		trcshaPath = trcshaPath + "trcsh"
-	}
+	trcshaPath = trcshaPath + pluginName
 
 	if _, ok := certifyMap["trcsha256"]; ok {
 		peerExe, err := os.Open(trcshaPath)
@@ -265,8 +261,6 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 
 		defer peerExe.Close()
 
-		// TODO: Check previous 10 versions?  If any match, then
-		// return ok....
 		h := sha256.New()
 		if _, err := io.Copy(h, peerExe); err != nil {
 			fmt.Printf("Unable to copy file: %s\n", err)

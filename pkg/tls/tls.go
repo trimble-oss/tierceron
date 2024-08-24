@@ -38,7 +38,7 @@ func InitRoot() {
 func ReadServerCert(certName string, drone ...*bool) ([]byte, error) {
 	var err error
 	if len(certName) == 0 {
-		if utils.IsWindows() || (len(drone) > 0 && *drone[0]) {
+		if _, err = os.Stat(ServCertLocal); err == nil && (utils.IsWindows() || (len(drone) > 0 && *drone[0])) {
 			return os.ReadFile(ServCertLocal)
 		}
 		if _, err = os.Stat(ServCert); err == nil {

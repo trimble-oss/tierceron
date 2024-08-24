@@ -6,6 +6,7 @@ package memprotectopts
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"reflect"
 	"syscall"
@@ -25,6 +26,14 @@ func MemProtectInit(logger *log.Logger) error {
 
 // MemUnprotectAll -- not implemented on Windows
 func MemUnprotectAll(logger *log.Logger) error {
+	return nil
+}
+
+func SetChattr(f *os.File) error {
+	return nil
+}
+
+func UnsetChattr(f *os.File) error {
 	return nil
 }
 

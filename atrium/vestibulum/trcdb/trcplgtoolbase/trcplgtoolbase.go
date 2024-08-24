@@ -3,6 +3,7 @@ package trcplgtoolbase
 import (
 	"bufio"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,10 +18,12 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
+	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
@@ -38,7 +41,8 @@ func CommonMain(envDefaultPtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	trcshDriverConfig *capauth.TrcshDriverConfig) error {
+	trcshDriverConfig *capauth.TrcshDriverConfig,
+	pluginHandler ...*hive.PluginHandler) error {
 
 	var flagEnvPtr *string
 	// Main functions are as follows:
@@ -58,6 +62,8 @@ func CommonMain(envDefaultPtr *string,
 	defineServicePtr := flagset.Bool("defineService", false, "Service is defined.")
 	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
 	// These functions only valid for pluginType trcshservice
+	pluginservicestartPtr := flagset.Bool("pluginservicestart", false, "To start a trcshell kernel service for a particular plugin.")
+	pluginservicestopPtr := flagset.Bool("pluginservicestop", false, "To stop a trcshell kernel service for a particular plugin.")
 	winservicestopPtr := flagset.Bool("winservicestop", false, "To stop a windows service for a particular plugin.")
 	winservicestartPtr := flagset.Bool("winservicestart", false, "To start a windows service for a particular plugin.")
 	codebundledeployPtr := flagset.Bool("codebundledeploy", false, "To deploy a code bundle.")
@@ -194,7 +200,7 @@ func CommonMain(envDefaultPtr *string,
 			return errors.New("-pathParam can only contain alphanumberic characters or underscores")
 		}
 	}
-	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr {
+	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr || *pluginservicestopPtr || *pluginservicestartPtr {
 		*pluginTypePtr = "trcshservice"
 	}
 
@@ -223,8 +229,10 @@ func CommonMain(envDefaultPtr *string,
 				fmt.Printf("codebundledeploy not supported for plugin type %s in trcsh\n", *pluginTypePtr)
 				return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
 			}
+		case "trccmdtool": // A trc command line tool.
 		case "trcshservice": // A trcshservice managed microservice
 		case "trcshkubeservice":
+		case "trcshpluginservice":
 		default:
 			if !*agentdeployPtr {
 				fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
@@ -289,6 +297,9 @@ func CommonMain(envDefaultPtr *string,
 			eUtils.LogErrorMessage(&trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
 		}
+		if len(*tokenPtr) > 0 {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Token = *tokenPtr
+		}
 	}
 	if logger != nil {
 		logger.Printf("Certify begin gathering certify configs\n")
@@ -330,8 +341,12 @@ func CommonMain(envDefaultPtr *string,
 	config.StartDir = []string{*startDirPtr}
 	if *pluginNameAliasPtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
-	} else {
+	} else if *pluginNamePtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
+	} else if deploy_plugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+		if subsv, k := deploy_plugin.(string); k {
+			trcshDriverConfigBase.DriverConfig.SubSectionValue = subsv
+		}
 	}
 	mod.Env = *envDefaultPtr
 	if logger != nil {
@@ -432,7 +447,7 @@ func CommonMain(envDefaultPtr *string,
 		if *defineServicePtr {
 			pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
 		}
-		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
+		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok && len(pluginToolConfig["serviceNamePtr"].(string)) > 0 {
 			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
 		}
 		if *certifyImagePtr {
@@ -593,6 +608,7 @@ func CommonMain(envDefaultPtr *string,
 				pluginToolConfig["trcsha256"] = trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"]
 			}
 		}
+
 		if pluginToolConfig["trcsha256"] != nil && len(pluginToolConfig["trcsha256"].(string)) > 0 {
 			err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if err != nil {
@@ -643,12 +659,13 @@ func CommonMain(envDefaultPtr *string,
 					return err
 				}
 			}
-
-			err = os.WriteFile(deployPath, pluginToolConfig["rawImageFile"].([]byte), 0644)
-			if err != nil {
-				fmt.Println(err.Error())
-				fmt.Println("Image write failure.")
-				return err
+			if rif, ok := pluginToolConfig["rawImageFile"]; ok {
+				err = os.WriteFile(deployPath, rif.([]byte), 0644)
+				if err != nil {
+					fmt.Println(err.Error())
+					fmt.Println("Image write failure.")
+					return err
+				}
 			}
 
 			if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
@@ -696,6 +713,33 @@ func CommonMain(envDefaultPtr *string,
 				fmt.Printf("%s\n", errMessage)
 			}
 			return errors.New(errMessage)
+		}
+		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && coreopts.BuildOptions.IsKernel() {
+			h := sha256.New()
+			pathToSO := hive.LoadPluginPath(&trcshDriverConfigBase.DriverConfig)
+			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0666)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			err = memprotectopts.SetChattr(f)
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			if _, err := io.Copy(h, f); err != nil {
+				fmt.Printf("Unable to copy file: %s\n", err)
+				logger.Printf("Unable to copy file: %s\n", err)
+				return err
+			}
+			sha := hex.EncodeToString(h.Sum(nil))
+			if ptcsha256.(string) == sha {
+				err = memprotectopts.UnsetChattr(f)
+				if err != nil {
+					return err
+				}
+				hive.PluginMod = hive.LoadPluginMod(&trcshDriverConfigBase.DriverConfig, pathToSO)
+			}
 		}
 	} else if *certifyImagePtr {
 		//Certify Image
@@ -799,6 +843,18 @@ func CommonMain(envDefaultPtr *string,
 		} else {
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
+		}
+	} else if *pluginservicestartPtr && coreopts.BuildOptions.IsKernel() {
+		if len(pluginHandler) > 0 {
+			pluginHandler[0].PluginserviceStart(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		} else {
+			fmt.Println("No handler provided for plugin service startup.")
+		}
+	} else if *pluginservicestopPtr && coreopts.BuildOptions.IsKernel() {
+		if len(pluginHandler) > 0 {
+			pluginHandler[0].PluginserviceStop(&trcshDriverConfigBase.DriverConfig)
+		} else {
+			fmt.Println("No handler provided for plugin service startup.")
 		}
 	}
 	//Checks if image has been copied & deployed
