@@ -165,7 +165,7 @@ func LoadPluginPath(driverConfig *eUtils.DriverConfig) string {
 func LoadPluginMod(driverConfig *eUtils.DriverConfig, pluginPath string) *plugin.Plugin {
 	pluginM, err := plugin.Open(pluginPath)
 	if err != nil {
-		fmt.Println("Unable to open plugin module for service.")
+		fmt.Printf("Unable to open plugin module for service: %s\n", pluginPath)
 		return nil
 	}
 	PluginMod = pluginM
