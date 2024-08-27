@@ -21,6 +21,7 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
@@ -1032,12 +1033,59 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		fmt.Println("Session Authorized")
 	}
 
-	if (len(os.Args) > 1 && len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
+	if coreopts.IsKernel() || ((len(os.Args) > 1) && len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
 		// Generate trc code...
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Preload setup")
+		configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
+		tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+
+		if coreopts.IsKernel() {
+			pluginMap := map[string]interface{}{"pluginName": deployment}
+
+			var configToken string
+
+			autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &configToken, &tokenName, &mergedEnvBasis, &mergedVaultAddress, &mergedEnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig, false)
+			if autoErr != nil {
+				fmt.Println("Kernel Missing auth components.")
+				return
+			}
+			if memonly.IsMemonly() {
+				memprotectopts.MemUnprotectAll(nil)
+				memprotectopts.MemProtect(nil, tokenPtr)
+			}
+
+			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, *tokenPtr, mergedVaultAddress, mergedEnvBasis, nil, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+			if mod != nil {
+				defer mod.Release()
+			}
+			if err != nil {
+				fmt.Println("Kernel Missing mod components.")
+				return
+			}
+
+			certifyMap, err := pluginutil.GetPluginCertifyMap(mod, pluginMap)
+			if err != nil {
+				fmt.Println("Kernel Missing plugin certification.")
+				return
+			}
+			if pjService, ok := certifyMap["trcprojectservice"]; ok {
+				projectServicePtr = pjService.(string)
+			} else {
+				fmt.Println("Kernel Missing plugin component project service.")
+				return
+			}
+
+			if trcBootstrap, ok := certifyMap["trcbootstrap"]; ok && strings.Contains(trcBootstrap.(string), "/deploy/") {
+				trcPath = trcBootstrap.(string)
+			} else {
+				fmt.Println("Kernel Missing plugin component bootstrap.")
+				return
+			}
+		}
+
 		trcPathParts := strings.Split(trcPath, "/")
 		trcshDriverConfig.DriverConfig.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
-		configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
+
 		if len(configRoleSlice) != 2 {
 			fmt.Println("Preload failed.  Couldn't load required resource.")
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Couldn't config auth required resource.\n")
@@ -1062,7 +1110,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			trcshDriverConfig.DriverConfig.ServicesWanted = strings.Split(projectServicePtr, ",")
 		}
 
-		tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 		trcshDriverConfig.DriverConfig.OutputMemCache = true
 		trcshDriverConfig.DriverConfig.StartDir = []string{"trc_templates"}
 		trcshDriverConfig.DriverConfig.EndDir = "."
@@ -1113,7 +1160,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				}
 
 				// TODO: Move this out into its own function
-				fmt.Println("Trcsh - Error could not find " + trcPath + " for deployment instructions")
+				fmt.Println("Trcsh - Error could not find " + trcPath + " for deployment instructions..")
 			}
 		}
 
