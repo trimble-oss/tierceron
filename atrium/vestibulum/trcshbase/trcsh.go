@@ -1046,7 +1046,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 
 			autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &configToken, &tokenName, &mergedEnvBasis, &mergedVaultAddress, &mergedEnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig, false)
 			if autoErr != nil {
-				fmt.Println("Kernel Missing auth components.")
+				fmt.Printf("Kernel Missing auth components: %s.\n", deployment)
 				return
 			}
 			if memonly.IsMemonly() {
@@ -1059,19 +1059,20 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				defer mod.Release()
 			}
 			if err != nil {
-				fmt.Println("Kernel Missing mod components.")
+				fmt.Printf("Kernel Missing mod components: %s.\n", deployment)
 				return
 			}
+			mod.Env = trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 
 			certifyMap, err := pluginutil.GetPluginCertifyMap(mod, pluginMap)
 			if err != nil {
-				fmt.Println("Kernel Missing plugin certification.")
+				fmt.Printf("Kernel Missing plugin certification: %s.\n", deployment)
 				return
 			}
 			if pjService, ok := certifyMap["trcprojectservice"]; ok {
 				projectServicePtr = pjService.(string)
 			} else {
-				fmt.Println("Kernel Missing plugin component project service.")
+				fmt.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
 				return
 			}
 
