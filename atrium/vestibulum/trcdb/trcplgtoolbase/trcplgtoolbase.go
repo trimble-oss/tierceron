@@ -346,6 +346,7 @@ func CommonMain(envDefaultPtr *string,
 	} else if deploy_plugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
 		if subsv, k := deploy_plugin.(string); k {
 			trcshDriverConfigBase.DriverConfig.SubSectionValue = subsv
+			*pluginNamePtr = subsv
 		}
 	}
 	mod.Env = *envDefaultPtr
