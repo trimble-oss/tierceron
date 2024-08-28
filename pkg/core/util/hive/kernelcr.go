@@ -38,8 +38,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 	if PluginMod == nil {
 		return
 	}
-	if logger == nil && driverConfig.CoreConfig.Log != nil {
-		logger = driverConfig.CoreConfig.Log
+	if driverConfig.CoreConfig.Log != nil {
+		if logger == nil {
+			logger = driverConfig.CoreConfig.Log
+		}
 	} else {
 		fmt.Println("No logger passed in to plugin service")
 		return //or set log to fmt?

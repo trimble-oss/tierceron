@@ -101,30 +101,34 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 	// 	return nil, err
 	// }
 	if featherMap != nil {
-		if _, ok := featherMap["trcHatEncryptPass"].(string); ok {
-			if _, ok := featherMap["trcHatEncryptSalt"].(string); ok {
-				if _, ok := featherMap["trcHatHandshakePort"].(string); ok {
-					if _, ok := featherMap["trcHatHandshakeCode"].(string); ok {
-						if _, ok := featherMap["trcHatSecretsPort"].(string); ok {
-							logger.Println("Feathering provided.")
-							featherAuth := &FeatherAuth{EncryptPass: featherMap["trcHatEncryptPass"].(string), EncryptSalt: featherMap["trcHatEncryptSalt"].(string), HandshakePort: featherMap["trcHatHandshakePort"].(string), SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: featherMap["trcHatHandshakeCode"].(string)}
-							return featherAuth, nil
-						} else {
-							logger.Println("Bad trcHatSecretsPort")
-						}
-					} else {
-						logger.Println("Bad trcHatHandshakeCode")
-					}
-				} else {
-					logger.Println("Bad trcHatHandshakePort")
+		okMap := true
+		for _, key := range []string{
+			"trcHatEncryptPass",
+			"trcHatEncryptSalt",
+			"trcHatHandshakePort",
+			"trcHatHandshakeCode",
+			"trcHatSecretsPort"} {
+			if keyI, ok := featherMap[key]; ok {
+				if _, ok := keyI.(string); !ok {
+					logger.Printf("Bad %s\n", key)
+					okMap = false
+					break
 				}
 			} else {
-				logger.Println("Bad trcHatEncryptSalt")
+				logger.Printf("Bad %s\n", key)
+				okMap = false
+				break
 			}
-		} else {
-			logger.Println("Bad trcHatEncryptPass")
 		}
-		logger.Println("Feathering skipped.  Misconfigured.")
+
+		if okMap {
+			logger.Println("Feathering provided.")
+			featherAuth := &FeatherAuth{EncryptPass: featherMap["trcHatEncryptPass"].(string), EncryptSalt: featherMap["trcHatEncryptSalt"].(string), HandshakePort: featherMap["trcHatHandshakePort"].(string), SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: featherMap["trcHatHandshakeCode"].(string)}
+			return featherAuth, nil
+		} else {
+			logger.Println("Feathering skipped.  Misconfigured.")
+		}
+
 	} else {
 		logger.Println("Feathering skipped.")
 	}
