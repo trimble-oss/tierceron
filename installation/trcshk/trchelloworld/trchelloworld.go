@@ -115,7 +115,7 @@ func start() {
 			}
 		}
 
-		fmt.Printf("Server listening on :%d", helloPort)
+		fmt.Printf("Server listening on :%d\n", helloPort)
 		lis, gServer, err := InitServer(helloPort, configContext.Cert, configContext.Key)
 		if err != nil {
 			configContext.Log.Printf("Failed to start server: %v", err)

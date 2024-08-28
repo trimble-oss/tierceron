@@ -232,7 +232,12 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	if len(projectService) > 0 && coreopts.BuildOptions.IsKernel() {
 		projServ = *projectService[0]
 	}
-	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, "", deployment, trcPath, projServ, secretId, approleId, false, dronePtr)
+	if deployment == "healthcheck" {
+		// Healthcheck gets priority.
+		ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, "", deployment, trcPath, projServ, secretId, approleId, false, dronePtr)
+	} else {
+		go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, "", deployment, trcPath, projServ, secretId, approleId, false, dronePtr)
+	}
 }
 
 // This is a controller program that can act as any command line utility.
