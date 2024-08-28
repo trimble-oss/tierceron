@@ -187,8 +187,6 @@ func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 	return nil
 }
 
-var healthCheckInitiated int32
-
 // EnableDeploy - initializes and starts running deployer for provided deployment and environment.
 func EnableDeployer(env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string, dronePtr *bool, projectService ...*string) {
 	trcshDriverConfig, err := TrcshInitConfig(env, region, "", outputMemCache)
@@ -233,22 +231,6 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	var projServ = ""
 	if len(projectService) > 0 && coreopts.BuildOptions.IsKernel() {
 		projServ = *projectService[0]
-	}
-
-	if coreopts.IsKernel() {
-		if deployment == "healthcheck" {
-			// Healthcheck gets priority.  healthcheck should always be the
-			// first plugin in the deployment list.
-			atomic.AddInt32(&healthCheckInitiated, 1)
-		} else {
-			for {
-				if atomic.LoadInt32(&healthCheckInitiated) > 1 {
-					time.Sleep(time.Second)
-				} else {
-					break
-				}
-			}
-		}
 	}
 
 	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, "", deployment, trcPath, projServ, secretId, approleId, false, dronePtr)
@@ -1355,13 +1337,6 @@ collaboratorReRun:
 		}
 	}
 	if *dronePtr {
-		if coreopts.IsKernel() {
-			if deployment == "healthcheck" {
-				if atomic.LoadInt32(&healthCheckInitiated) > 1 {
-					atomic.AddInt32(&healthCheckInitiated, -1)
-				}
-			}
-		}
 		for {
 			completeOnce := false
 			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {

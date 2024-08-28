@@ -739,7 +739,7 @@ func CommonMain(envDefaultPtr *string,
 				if err != nil {
 					return err
 				}
-				hive.PluginMod = hive.LoadPluginMod(&trcshDriverConfigBase.DriverConfig, pathToSO)
+				hive.LoadPluginMod(&trcshDriverConfigBase.DriverConfig, pathToSO)
 			}
 		}
 	} else if *certifyImagePtr {
