@@ -7,7 +7,6 @@ import (
 	"plugin"
 	"reflect"
 	"strings"
-	"sync"
 
 	"github.com/trimble-oss/tierceron-core/core"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
@@ -15,7 +14,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
-var PluginMod *plugin.Plugin
+var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
 var logger *log.Logger
 
 type PluginHandler struct {
@@ -25,8 +24,11 @@ type PluginHandler struct {
 	Services  *[]string
 }
 
-func Init(properties *map[string]interface{}) {
-	symbol, err := PluginMod.Lookup("Init")
+func Init(pluginName string, properties *map[string]interface{}) {
+	if PluginMods == nil || PluginMods[pluginName] == nil {
+		return
+	}
+	symbol, err := PluginMods[pluginName].Lookup("Init")
 	if err != nil {
 		fmt.Println(err)
 		logger.Printf("Unable to lookup plugin export: %s\n", err)
@@ -35,10 +37,12 @@ func Init(properties *map[string]interface{}) {
 	reflect.ValueOf(symbol).Call([]reflect.Value{reflect.ValueOf(properties)})
 }
 
-var mutexStart sync.Mutex
-
 func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) {
-	if PluginMod == nil {
+	pluginName := driverConfig.SubSectionValue
+	if len(pluginName) == 0 {
+		return
+	}
+	if PluginMods == nil || PluginMods[pluginName] == nil {
 		return
 	}
 	if driverConfig.CoreConfig.Log != nil {
@@ -62,14 +66,13 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 	pluginConfig["token"] = driverConfig.CoreConfig.Token
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
-	mutexStart.Lock()
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, driverConfig.CoreConfig.Log)
 	if err != nil {
 		fmt.Printf("Problem initializing mod: %s\n", err)
 		driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
-		mutexStart.Unlock()
 		return
 	}
+
 	if vault != nil {
 		defer vault.Close()
 	}
@@ -79,22 +82,19 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 			if len(projServ) != 2 {
 				fmt.Printf("Improper formatting of project/service for %s\n", service)
 				driverConfig.CoreConfig.Log.Printf("Improper formatting of project/service for %s\n", service)
-				mutexStart.Unlock()
 				return
 			}
 			properties, err := trcvutils.NewProperties(&driverConfig.CoreConfig, vault, mod, mod.Env, projServ[0], projServ[1])
 			if err != nil && !strings.Contains(err.Error(), "no data paths found when initing CDS") {
 				fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
-				mutexStart.Unlock()
 				return
 			}
-			getConfigPaths, err := PluginMod.Lookup("GetConfigPaths")
+			getConfigPaths, err := PluginMods[pluginName].Lookup("GetConfigPaths")
 			if err != nil {
 				driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
 				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
 				fmt.Printf("Unable to access config for %s\n", service)
 				fmt.Printf("Returned with %v\n", err)
-				mutexStart.Unlock()
 				return
 			}
 			pluginConfigPaths := getConfigPaths.(func() []string)
@@ -119,13 +119,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 					if !ok {
 						fmt.Printf("Unable to access configuration data for %s\n", service)
 						driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
-						mutexStart.Unlock()
 						return
 					}
 					serviceConfig[path] = &sc
 				}
 			}
-			mutexStart.Unlock()
 			pluginHandler.sender = make(chan int)
 			pluginHandler.receiver = make(chan error)
 			chan_map := make(map[string]interface{})
@@ -133,7 +131,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = pluginHandler.receiver
 			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
-			Init(&serviceConfig)
+			Init(pluginName, &serviceConfig)
 			pluginHandler.sender <- core.PLUGIN_EVENT_START
 			go pluginHandler.handle_errors(driverConfig)
 			pluginHandler.IsRunning = true
@@ -154,9 +152,15 @@ func (pluginHandler *PluginHandler) handle_errors(driverConfig *eUtils.DriverCon
 }
 
 func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *eUtils.DriverConfig) {
-	if PluginMod == nil {
+	pluginName := driverConfig.SubSectionValue
+	if len(pluginName) == 0 {
 		return
 	}
+	if PluginMods == nil || PluginMods[pluginName] == nil {
+		return
+	}
+	PluginMods[pluginName] = nil
+
 	pluginHandler.sender <- core.PLUGIN_EVENT_STOP
 	pluginHandler.IsRunning = false
 }
@@ -174,12 +178,17 @@ func LoadPluginPath(driverConfig *eUtils.DriverConfig) string {
 	return pluginPath
 }
 
-func LoadPluginMod(driverConfig *eUtils.DriverConfig, pluginPath string) *plugin.Plugin {
+func LoadPluginMod(driverConfig *eUtils.DriverConfig, pluginPath string) {
 	pluginM, err := plugin.Open(pluginPath)
 	if err != nil {
 		fmt.Printf("Unable to open plugin module for service: %s\n", pluginPath)
-		return nil
+		return
 	}
-	PluginMod = pluginM
-	return pluginM
+	pluginName := driverConfig.SubSectionValue
+	if len(pluginName) > 0 {
+		PluginMods[pluginName] = pluginM
+	} else {
+		fmt.Printf("Missing pluginName for LoadPlugin: %s\n", pluginName)
+		return
+	}
 }
