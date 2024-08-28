@@ -235,16 +235,18 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 		projServ = *projectService[0]
 	}
 
-	if deployment == "healthcheck" {
-		// Healthcheck gets priority.  healthcheck should always be the
-		// first plugin in the deployment list.
-		atomic.AddInt32(&healthCheckInitiated, 1)
-	} else {
-		for {
-			if atomic.LoadInt32(&healthCheckInitiated) > 1 {
-				time.Sleep(time.Second)
-			} else {
-				break
+	if coreopts.IsKernel() {
+		if deployment == "healthcheck" {
+			// Healthcheck gets priority.  healthcheck should always be the
+			// first plugin in the deployment list.
+			atomic.AddInt32(&healthCheckInitiated, 1)
+		} else {
+			for {
+				if atomic.LoadInt32(&healthCheckInitiated) > 1 {
+					time.Sleep(time.Second)
+				} else {
+					break
+				}
 			}
 		}
 	}
@@ -1353,9 +1355,11 @@ collaboratorReRun:
 		}
 	}
 	if *dronePtr {
-		if deployment == "healthcheck" {
-			if atomic.LoadInt32(&healthCheckInitiated) > 1 {
-				atomic.AddInt32(&healthCheckInitiated, -1)
+		if coreopts.IsKernel() {
+			if deployment == "healthcheck" {
+				if atomic.LoadInt32(&healthCheckInitiated) > 1 {
+					atomic.AddInt32(&healthCheckInitiated, -1)
+				}
 			}
 		}
 		for {
