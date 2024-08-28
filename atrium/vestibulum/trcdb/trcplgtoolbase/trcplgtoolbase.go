@@ -492,7 +492,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
-	if len(*buildImagePtr) > 0 || *pushImagePtr {
+	if len(*buildImagePtr) > 0 || *pushImagePtr || *certifyImagePtr {
 		if val, ok := pluginToolConfig["trcplugin"]; !ok || len(val.(string)) == 0 {
 			err := errors.New("trcplugin not defined, can not continue")
 			fmt.Println(err)
@@ -745,7 +745,7 @@ func CommonMain(envDefaultPtr *string,
 	} else if *certifyImagePtr {
 		//Certify Image
 		carrierCertify := false
-		if strings.Contains(pluginToolConfig["trcplugin"].(string), "carrier") {
+		if ptc, ok := pluginToolConfig["trcplugin"].(string); ok && strings.Contains(ptc, "carrier") {
 			fmt.Println("Skipping checking for existing image due to carrier deployment.")
 			carrierCertify = true
 		} else if !certifyInit {
