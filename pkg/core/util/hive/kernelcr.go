@@ -159,6 +159,8 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *eUtils.Drive
 	if PluginMods == nil || PluginMods[pluginName] == nil {
 		return
 	}
+	PluginMods[pluginName] = nil
+
 	pluginHandler.sender <- core.PLUGIN_EVENT_STOP
 	pluginHandler.IsRunning = false
 }
