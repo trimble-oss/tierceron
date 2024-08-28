@@ -95,6 +95,10 @@ type ConfigContext struct {
 }
 
 func start() {
+	if configContext == nil {
+		fmt.Println("no config context initialized for healthcheck")
+		return
+	}
 	if portInterface, ok := (*configContext.Config)["grpc_server_port"]; ok {
 		var helloPort int
 		if port, ok := portInterface.(int); ok {
@@ -176,6 +180,9 @@ func Init(properties *map[string]interface{}) {
 	}
 	if common, ok := (*properties)[COMMON_PATH]; ok {
 		config_properties = common.(*map[string]interface{})
+	} else {
+		fmt.Println("Missing common config components")
+		return
 	}
 
 	configContext = &ConfigContext{
