@@ -7,6 +7,7 @@ import (
 	"plugin"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/trimble-oss/tierceron-core/core"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
@@ -34,6 +35,8 @@ func Init(properties *map[string]interface{}) {
 	reflect.ValueOf(symbol).Call([]reflect.Value{reflect.ValueOf(properties)})
 }
 
+var mutexStart sync.Mutex
+
 func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) {
 	if PluginMod == nil {
 		return
@@ -59,10 +62,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 	pluginConfig["token"] = driverConfig.CoreConfig.Token
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
+	mutexStart.Lock()
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, driverConfig.CoreConfig.Log)
 	if err != nil {
 		fmt.Printf("Problem initializing mod: %s\n", err)
 		driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
+		mutexStart.Unlock()
 		return
 	}
 	if vault != nil {
@@ -74,11 +79,13 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 			if len(projServ) != 2 {
 				fmt.Printf("Improper formatting of project/service for %s\n", service)
 				driverConfig.CoreConfig.Log.Printf("Improper formatting of project/service for %s\n", service)
+				mutexStart.Unlock()
 				return
 			}
 			properties, err := trcvutils.NewProperties(&driverConfig.CoreConfig, vault, mod, mod.Env, projServ[0], projServ[1])
 			if err != nil && !strings.Contains(err.Error(), "no data paths found when initing CDS") {
 				fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
+				mutexStart.Unlock()
 				return
 			}
 			getConfigPaths, err := PluginMod.Lookup("GetConfigPaths")
@@ -87,6 +94,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
 				fmt.Printf("Unable to access config for %s\n", service)
 				fmt.Printf("Returned with %v\n", err)
+				mutexStart.Unlock()
 				return
 			}
 			pluginConfigPaths := getConfigPaths.(func() []string)
@@ -111,11 +119,13 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 					if !ok {
 						fmt.Printf("Unable to access configuration data for %s\n", service)
 						driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+						mutexStart.Unlock()
 						return
 					}
 					serviceConfig[path] = &sc
 				}
 			}
+			mutexStart.Unlock()
 			pluginHandler.sender = make(chan int)
 			pluginHandler.receiver = make(chan error)
 			chan_map := make(map[string]interface{})
