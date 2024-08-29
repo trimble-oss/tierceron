@@ -159,14 +159,11 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 						return nil, errors.New("unexpected type of deployer addresses returned from vault for " + deployment)
 					}
 				}
-
-				// if  {
 				if coreopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" {
 					deploymentList = append(deploymentList, deployment)
 				} else if deploymentConfig["trctype"].(string) == "trcshservice" && len(valid_ip) > 0 && valid_ip == ip_addr {
 					deploymentList = append(deploymentList, deployment)
 				}
-				// }
 			}
 		}
 	}
