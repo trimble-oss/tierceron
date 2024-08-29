@@ -9,6 +9,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
+	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/tls"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -190,6 +191,7 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 
 	if featherAuth != nil && len(featherAuth.SecretsPort) > 0 {
 		logger.Println("Tapping server.")
+		cap.TapInitCodeSaltGuard(saltyopts.BuildOptions.GetSaltyGuardian)
 		cap.TapServer(fmt.Sprintf("%s:%s", localip, featherAuth.SecretsPort), grpc.Creds(creds))
 		logger.Println("Server tapped.")
 	} else {

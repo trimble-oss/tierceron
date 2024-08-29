@@ -12,6 +12,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
@@ -30,6 +31,7 @@ func main() {
 	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
+	saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
 	eUtils.InitHeadless(true)
 
 	tiercerontls.InitRoot()
