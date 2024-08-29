@@ -536,7 +536,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig = *gTrcshConfig.ConfigRole
 		trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress = *gTrcshConfig.VaultAddress
 
-		serviceDeployments, err := deployutil.GetDeployers(trcshDriverConfig)
+		serviceDeployments, err := deployutil.GetDeployers(trcshDriverConfig, dronePtr)
 		if err != nil {
 			fmt.Printf("drone trcsh agent bootstrap get deployers failure: %s\n", err.Error())
 			os.Exit(124)
@@ -559,6 +559,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		gAgentConfig.Deployments = &deploymentsCDL
 
 		deployopts.BuildOptions.InitSupportedDeployers(deployments)
+
+		if len(deployments) == 0 {
+			fmt.Println("No valid deployments for trcshell, entering hibernate mode.")
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("No valid deployments for trcshell, entering hibernate mode.")
+			hibernate := make(chan bool)
+			hibernate <- true
+		}
 
 		for _, deployment := range deployments {
 			EnableDeployer(*gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, false, deployment, dronePtr, projectServicePtr)
