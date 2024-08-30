@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/trimble-oss/tierceron/pkg/trcnet"
 )
 
 // Folder prefix for _seed and _templates.  This function takes a list of paths and looking
@@ -239,4 +241,12 @@ func PreviousStateCheck(currentState int) int {
 	default:
 		return 3
 	}
+}
+
+func GetMachineID() string {
+	localip, err := trcnet.LocalIp()
+	if err != nil {
+		return ""
+	}
+	return localip
 }
