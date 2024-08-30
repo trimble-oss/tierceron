@@ -3,7 +3,6 @@ package deployutil
 import (
 	"errors"
 	"fmt"
-	"net"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -120,7 +119,13 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 		return nil, errors.New("no plugins available")
 	}
 	deploymentList := []string{}
-
+	var machineID string
+	if isDrone {
+		machineID = coreopts.BuildOptions.GetMachineID()
+		if len(machineID) == 0 {
+			return nil, errors.New("unable to access ip address of machine")
+		}
+	}
 	for _, deploymentInterface := range deploymentListData.Data {
 		for _, deploymentPath := range deploymentInterface.([]interface{}) {
 			deployment := strings.TrimSuffix(deploymentPath.(string), "/")
@@ -130,12 +135,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 				continue
 			}
 			if isDrone {
-				ip_address, err := getLocalIP()
-				if err != nil {
-					return nil, errors.New("unable to access ip address of machine")
-				}
-				ip_addr := ip_address.String()
-				var valid_ip string
+				var valid_id string
 				if addresses, ok := deploymentConfig["trcdeployeraddr"]; ok {
 					if addrs, ok := addresses.(string); ok {
 						splitAddrs := strings.Split(addrs, ",")
@@ -143,16 +143,16 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 							splitAddr := strings.Split(addr, ":")
 							splitEnv := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-")
 							if len(splitAddr) == 1 && len(splitEnv) == 1 && len(splitAddr[0]) > 0 && len(splitEnv[0]) > 0 {
-								valid_ip = splitAddr[0]
+								valid_id = splitAddr[0]
 								break
 							} else if len(splitAddr) != 2 && len(splitEnv) != 2 && len(splitAddr[1]) > 0 && len(splitEnv[1]) > 0 {
 								return nil, errors.New("unexpected type of deployer addresses returned from vault for " + deployment)
 							} else if splitEnv[1] == splitAddr[0] {
-								valid_ip = splitAddr[1]
+								valid_id = splitAddr[1]
 								break
 							}
 						}
-						if len(valid_ip) == 0 {
+						if len(valid_id) == 0 {
 							return nil, errors.New("no deployer address specified for environment from vault for " + deployment)
 						}
 					} else {
@@ -161,23 +161,11 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 				}
 				if coreopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" {
 					deploymentList = append(deploymentList, deployment)
-				} else if deploymentConfig["trctype"].(string) == "trcshservice" && len(valid_ip) > 0 && valid_ip == ip_addr {
+				} else if deploymentConfig["trctype"].(string) == "trcshservice" && len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, deployment)
 				}
 			}
 		}
 	}
 	return deploymentList, nil
-}
-
-func getLocalIP() (net.IP, error) {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	localAddress := conn.LocalAddr().(*net.UDPAddr)
-
-	return localAddress.IP, nil
 }
