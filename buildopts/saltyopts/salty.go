@@ -1,3 +1,6 @@
 package saltyopts
 
-var SaltGuard string
+import "embed"
+
+//go:embed saltguard.txt
+var SaltGuard embed.FS

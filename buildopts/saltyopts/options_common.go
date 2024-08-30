@@ -5,5 +5,5 @@ package saltyopts
 
 // Returns the salty guardian
 func GetSaltyGuardian() string {
-	return SaltGuard
+	return "NotSalty"
 }
