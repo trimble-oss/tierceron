@@ -10,8 +10,8 @@ import (
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
-	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/tls"
+	"github.com/trimble-oss/tierceron/pkg/trcnet"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
 )
@@ -168,7 +168,7 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 
 	logger.Println("Cap creds.")
 
-	localip, err := capauth.LocalIp(env)
+	localip, err := trcnet.LocalIp()
 	if err != nil {
 		logger.Printf("Couldn't load ip: %v\n", err)
 		return err

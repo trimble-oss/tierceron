@@ -78,8 +78,11 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 }
 
 // Gets list of supported deployers for current environment.
-func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig) ([]string, error) {
-
+func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*bool) ([]string, error) {
+	isDrone := false
+	if len(dronePtr) > 0 {
+		isDrone = *dronePtr[0]
+	}
 	// Swapping in project root...
 	configRoleSlice := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfig, ":")
 	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
@@ -116,7 +119,13 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig) ([]string, error
 		return nil, errors.New("no plugins available")
 	}
 	deploymentList := []string{}
-
+	var machineID string
+	if isDrone && !coreopts.BuildOptions.IsKernel() {
+		machineID = coreopts.BuildOptions.GetMachineID()
+		if len(machineID) == 0 {
+			return nil, errors.New("unable to access id of machine")
+		}
+	}
 	for _, deploymentInterface := range deploymentListData.Data {
 		for _, deploymentPath := range deploymentInterface.([]interface{}) {
 			deployment := strings.TrimSuffix(deploymentPath.(string), "/")
@@ -125,16 +134,38 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig) ([]string, error
 			if deploymentConfigErr != nil || deploymentConfig == nil {
 				continue
 			}
-
-			if coreopts.BuildOptions.IsKernel() {
-				if deploymentConfig["trctype"].(string) == "trcshpluginservice" {
+			if isDrone {
+				var valid_id string
+				if deployerids, ok := deploymentConfig["trcdeployerids"]; ok {
+					if ids, ok := deployerids.(string); ok {
+						splitIds := strings.Split(ids, ",")
+						for _, id := range splitIds {
+							splitId := strings.Split(id, ":")
+							splitEnv := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-")
+							if len(splitId) == 1 && len(splitEnv) == 1 && len(splitId[0]) > 0 && len(splitEnv[0]) > 0 {
+								valid_id = splitId[0]
+								break
+							} else if len(splitId) != 2 && len(splitEnv) != 2 && len(splitId[1]) > 0 && len(splitEnv[1]) > 0 {
+								return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
+							} else if splitEnv[1] == splitId[0] {
+								valid_id = splitId[1]
+								break
+							}
+						}
+						if len(valid_id) == 0 {
+							return nil, errors.New("no deployer id specified for environment from vault for " + deployment)
+						}
+					} else {
+						return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
+					}
+				}
+				if coreopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" {
+					deploymentList = append(deploymentList, deployment)
+				} else if deploymentConfig["trctype"].(string) == "trcshservice" && len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, deployment)
 				}
-			} else if deploymentConfig["trctype"].(string) == "trcshservice" {
-				deploymentList = append(deploymentList, deployment)
 			}
 		}
 	}
-
 	return deploymentList, nil
 }
