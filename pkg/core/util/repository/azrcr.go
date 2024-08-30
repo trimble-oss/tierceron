@@ -330,9 +330,5 @@ func ValidateRepository(driverConfig *eUtils.DriverConfig, pluginToolConfig map[
 		return errors.New("malformed acr repository - https:// required")
 	}
 
-	if val, ok := pluginToolConfig["pluginNamePtr"]; !ok || len(val.(string)) == 0 {
-		driverConfig.CoreConfig.Log.Printf("pluginNamePtr undefined.  Refusing to continue.\n")
-		return errors.New("undefined pluginNamePtr")
-	}
 	return nil
 }
