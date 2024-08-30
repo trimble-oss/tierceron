@@ -25,7 +25,8 @@ Install build support (Makefile, gcc, etc...):
 ```
 sudo apt-get install build-essential mingw-w64
 
-sudo apt-get install uuid
+sudo apt-get install uuid-runtime
+
 ```
 
 Install g3n support libraries (Required for optional tools spiralis and fenestra under atrium):
