@@ -120,10 +120,10 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 	}
 	deploymentList := []string{}
 	var machineID string
-	if isDrone {
+	if isDrone && !coreopts.BuildOptions.IsKernel() {
 		machineID = coreopts.BuildOptions.GetMachineID()
 		if len(machineID) == 0 {
-			return nil, errors.New("unable to access ip address of machine")
+			return nil, errors.New("unable to access id of machine")
 		}
 	}
 	for _, deploymentInterface := range deploymentListData.Data {
@@ -136,27 +136,27 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 			}
 			if isDrone {
 				var valid_id string
-				if addresses, ok := deploymentConfig["trcdeployeraddr"]; ok {
-					if addrs, ok := addresses.(string); ok {
-						splitAddrs := strings.Split(addrs, ",")
-						for _, addr := range splitAddrs {
-							splitAddr := strings.Split(addr, ":")
+				if deployerids, ok := deploymentConfig["trcdeployerids"]; ok {
+					if ids, ok := deployerids.(string); ok {
+						splitIds := strings.Split(ids, ",")
+						for _, id := range splitIds {
+							splitId := strings.Split(id, ":")
 							splitEnv := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-")
-							if len(splitAddr) == 1 && len(splitEnv) == 1 && len(splitAddr[0]) > 0 && len(splitEnv[0]) > 0 {
-								valid_id = splitAddr[0]
+							if len(splitId) == 1 && len(splitEnv) == 1 && len(splitId[0]) > 0 && len(splitEnv[0]) > 0 {
+								valid_id = splitId[0]
 								break
-							} else if len(splitAddr) != 2 && len(splitEnv) != 2 && len(splitAddr[1]) > 0 && len(splitEnv[1]) > 0 {
-								return nil, errors.New("unexpected type of deployer addresses returned from vault for " + deployment)
-							} else if splitEnv[1] == splitAddr[0] {
-								valid_id = splitAddr[1]
+							} else if len(splitId) != 2 && len(splitEnv) != 2 && len(splitId[1]) > 0 && len(splitEnv[1]) > 0 {
+								return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
+							} else if splitEnv[1] == splitId[0] {
+								valid_id = splitId[1]
 								break
 							}
 						}
 						if len(valid_id) == 0 {
-							return nil, errors.New("no deployer address specified for environment from vault for " + deployment)
+							return nil, errors.New("no deployer id specified for environment from vault for " + deployment)
 						}
 					} else {
-						return nil, errors.New("unexpected type of deployer addresses returned from vault for " + deployment)
+						return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
 					}
 				}
 				if coreopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" {
