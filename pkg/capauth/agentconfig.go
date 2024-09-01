@@ -180,7 +180,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	penseCode := randomString(12 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
-	penseSum = penseSum + saltyopts.GetSaltyGuardian()
+	penseSum = penseSum + saltyopts.BuildOptions.GetSaltyGuardian()
 
 	creds, credErr := tls.GetTransportCredentials(agentconfig.Drone)
 
