@@ -130,6 +130,10 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 		for _, deploymentPath := range deploymentInterface.([]interface{}) {
 			deployment := strings.TrimSuffix(deploymentPath.(string), "/")
 
+			if len(deployment) == 0 {
+				continue
+			}
+
 			deploymentConfig, deploymentConfigErr := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
 			if deploymentConfigErr != nil || deploymentConfig == nil {
 				continue
@@ -138,6 +142,10 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 				var valid_id string
 				if deployerids, ok := deploymentConfig["trcdeployerids"]; ok {
 					if ids, ok := deployerids.(string); ok {
+						if len(ids) == 0 {
+							trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Deployment %s lacks deployer ids\n", deployment)
+							continue
+						}
 						splitIds := strings.Split(ids, ",")
 						for _, id := range splitIds {
 							splitId := strings.Split(id, ":")
