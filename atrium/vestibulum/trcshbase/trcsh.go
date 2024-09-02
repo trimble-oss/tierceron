@@ -402,8 +402,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			if len(deploymentsShard) == 0 {
 				deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
 				if len(deploymentsShard) == 0 {
-					fmt.Printf("drone trcsh requires a %s.\n", deploymentsShard)
-					logger.Printf("drone trcsh requires a %s.\n", deploymentsShard)
+					fmt.Printf("drone trcsh requires a %s.\n", deploymentsKey)
+					logger.Printf("drone trcsh requires a %s.\n", deploymentsKey)
 					os.Exit(-1)
 				}
 			}
