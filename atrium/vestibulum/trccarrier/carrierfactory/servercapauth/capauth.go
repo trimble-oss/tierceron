@@ -147,7 +147,7 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 		case "vaddress", "caddress", "configrole":
 			cap.TapFeather(key, value.(string))
 			fallthrough
-		case "pubrole", "ctoken", "kubeconfig":
+		case "pubrole", "token", "kubeconfig":
 			logger.Println("Memorizing: " + key)
 			cap.TapMemorize(key, value.(string))
 		default:
