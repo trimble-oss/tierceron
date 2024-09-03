@@ -4,7 +4,7 @@ type TrcShConfig struct {
 	Env          string
 	EnvContext   string // Current env context...
 	VaultAddress *string
-	CToken       *string
+	Token        *string // Plugin token for read only access to plugin data
 	ConfigRole   *string
 	PubRole      *string
 	KubeConfig   *string

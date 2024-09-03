@@ -827,7 +827,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
 			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(*gTrcshConfig.VaultAddress,
-				*gTrcshConfig.CToken,
+				*gTrcshConfig.Token,
 				env,
 				deployCtlAcceptRemote,
 				deployCtlInterrupted,
@@ -858,7 +858,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
 		}
 
-		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, *gTrcshConfig.CToken, argsOrig, deployArgLines, configCount)
+		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, *gTrcshConfig.Token, argsOrig, deployArgLines, configCount)
 		if err != nil {
 			os.Exit(1)
 		}
