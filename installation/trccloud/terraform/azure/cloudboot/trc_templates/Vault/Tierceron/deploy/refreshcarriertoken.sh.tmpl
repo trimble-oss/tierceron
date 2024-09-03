@@ -25,7 +25,7 @@ exit -1
 fi
 
 if [[ -z "${SECRET_VAULT_PLUGIN_TOKEN}" ]]; then
-echo "Enter organization vault plugin token for certification(config_token_pluginany): "
+echo "Enter organization vault plugin token for certification(config_token_ $VAULT_ENV _unrestricted): "
 read SECRET_VAULT_PLUGIN_TOKEN
 fi
 
