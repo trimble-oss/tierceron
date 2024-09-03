@@ -448,7 +448,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	ValidateAgent:
 		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
-			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, logger, dronePtr)
+			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, true, logger, dronePtr)
 		if errAgentLoad != nil {
 			// check os.env for another token
 			if agentToken != os.Getenv("AGENT_TOKEN") && eUtils.IsWindows() {
@@ -831,6 +831,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 				env,
 				deployCtlAcceptRemote,
 				deployCtlInterrupted,
+				false,
 				trcshDriverConfig.DriverConfig.CoreConfig.Log)
 			if errAgentLoad != nil {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Permissions failure.  Incorrect deployment\n")

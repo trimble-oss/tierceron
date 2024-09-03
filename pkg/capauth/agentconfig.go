@@ -257,6 +257,7 @@ func NewAgentConfig(address string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error,
+	initNewTrcsh bool,
 	logger *log.Logger,
 	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
 	if logger != nil {
@@ -346,6 +347,10 @@ func NewAgentConfig(address string,
 			&deployments,
 			&trcHatEnv,
 			&isDrone,
+		}
+
+		if !initNewTrcsh {
+			return agentconfig, nil, nil
 		}
 
 		trcshConfig := &TrcShConfig{Env: trcHatEnv,
