@@ -174,6 +174,10 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 		return err
 	}
 
+	if featherAuth != nil && (len(featherAuth.EncryptPass) > 0 || len(featherAuth.SecretsPort) > 0) {
+		cap.TapInitCodeSaltGuard(saltyopts.BuildOptions.GetSaltyGuardian)
+	}
+
 	if featherAuth != nil && len(featherAuth.EncryptPass) > 0 {
 		logger.Println("Feathering server.")
 		go cap.Feather(featherAuth.EncryptPass,
@@ -191,7 +195,6 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 
 	if featherAuth != nil && len(featherAuth.SecretsPort) > 0 {
 		logger.Println("Tapping server.")
-		cap.TapInitCodeSaltGuard(saltyopts.BuildOptions.GetSaltyGuardian)
 		cap.TapServer(fmt.Sprintf("%s:%s", localip, featherAuth.SecretsPort), grpc.Creds(creds))
 		logger.Println("Server tapped.")
 	} else {
