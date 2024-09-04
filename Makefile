@@ -35,7 +35,7 @@ api:
 fiddler:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly"  github.com/trimble-oss/tierceron/cmd/trcfiddler
 config:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly"  github.com/trimble-oss/tierceron/cmd/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "azure memonly"  github.com/trimble-oss/tierceron/cmd/trcconfig
 configwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "windows azure memonly" -o $(GOBIN)/trcconfig.exe github.com/trimble-oss/tierceron/cmd/trcconfig
 seed:
@@ -43,7 +43,7 @@ seed:
 seedp:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH)go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmdp/trcinitp
 x:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmd/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "azure memonly" github.com/trimble-oss/tierceron/cmd/trcx
 xlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build   -buildmode=c-shared -a -ldflags '-w' -tags "azure memonly" -o $(GOBIN)/nc.so github.com/trimble-oss/tierceron/zeroconfiglib
 maclib:
@@ -55,7 +55,7 @@ pub:
 sub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmd/trcsub
 ctl:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "memonly tc" github.com/trimble-oss/tierceron/cmd/trcctl
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "memonly tc" github.com/trimble-oss/tierceron/cmd/trcctl
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
