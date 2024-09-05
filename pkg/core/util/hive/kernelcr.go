@@ -200,8 +200,8 @@ func LoadPluginMod(driverConfig *eUtils.DriverConfig, pluginPath string) {
 		driverConfig.CoreConfig.Log.Printf("Successfully opened plugin module for %s\n", pluginName)
 		PluginMods[pluginName] = pluginM
 	} else {
-		fmt.Printf("Missing pluginName for LoadPlugin: %s\n", pluginName)
-		driverConfig.CoreConfig.Log.Printf("Missing pluginName for LoadPlugin: %s\n", pluginName)
+		fmt.Println("Unable to load plugin module because missing plugin name")
+		driverConfig.CoreConfig.Log.Println("Unable to load plugin module because missing plugin name")
 		return
 	}
 }
