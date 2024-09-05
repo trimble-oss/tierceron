@@ -26,7 +26,7 @@ type PluginHandler struct {
 
 func Init(pluginName string, properties *map[string]interface{}) {
 	if PluginMods == nil || PluginMods[pluginName] == nil {
-		logger.Printf("No plugin module set for initializing plugin service.")
+		logger.Println("No plugin module set for initializing plugin service.")
 		return
 	}
 	symbol, err := PluginMods[pluginName].Lookup("Init")
