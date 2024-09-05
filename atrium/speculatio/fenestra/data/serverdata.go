@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strconv"
 
+	tccore "github.com/trimble-oss/tierceron-core/core"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -24,7 +24,7 @@ var count int
 
 // Collects time data from DataFlowStatistics layer and adds data to DataFlow object
 // Returns updated DetailedElements array and an array of time data from DataFlowStatistics
-func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement, node *flowcore.TTDINode, testTimes []float64, depth int) ([]*mashupsdk.MashupDetailedElement, []float64) {
+func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement, node *tccore.TTDINode, testTimes []float64, depth int) ([]*mashupsdk.MashupDetailedElement, []float64) {
 	for _, child_node := range node.ChildNodes {
 		if child_node.MashupDetailedElement.Genre == "DataFlowStatistic" {
 			node.MashupDetailedElement.Genre = "DataFlow"

@@ -38,6 +38,7 @@ import (
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
+	tccore "github.com/trimble-oss/tierceron-core/core"
 )
 
 type FlowType int64
@@ -581,9 +582,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	// tfContext.DataFlowStatistic["flume"] = "" //Used to be argosid
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
-	var df *TTDINode = nil
+	var df *tccore.TTDINode = nil
 	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
-		df = InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
+		df = tccore.InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
 		if tfContext.FlowState.FlowAlias != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Loading", "1", 1, tfmContext.Log)
 		} else {
