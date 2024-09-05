@@ -34,24 +34,21 @@ if [ "$PROD_ENV" = 'Y' ] || [ "$PROD_ENV" = 'y' ]; then
         echo "Enter organization/agent environment: "
         read VAULT_ENV
     fi
-fi
-
 
 PROD_EXT=""
-for x in "staging" "prod"; do
-    if [ $x = $VAULT_ENV ]; then
-       PROD_EXT="-prod"
-    fi
-done
+    for x in "staging" "prod"; do
+        if [ $x = $VAULT_ENV ]; then
+           PROD_EXT="-prod"
+        fi
+    done
+fi
 
 if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
 echo "Enter agent vault *plugin* environment token with tightly confined write permissions(config_token_pluginany): "
 read VAULT_ENV_TOKEN
 fi
 
-SECRET_VAULT_ENV_TOKEN = VAULT_ENV_TOKEN
-
-if [ -z "${PROD_EXT}" ];
+if [ -z "${PROD_EXT}" ]; then
     if [[ -z "${SECRET_VAULT__DEV_PLUGIN_TOKEN}" ]]; then
     echo "Enter organization vault plugin token for certification(config_token_dev_unrestricted): "
     read SECRET_VAULT_DEV_PLUGIN_TOKEN
@@ -83,14 +80,15 @@ echo "Enter organization kube config path: "
 read KUBE_PATH
 fi
 
-VAULT_TOKEN=AGENT_VAULT_TOKEN
-VAULT_API_ADDR=AGENT_VAULT_ADDR
-VAULT_ADDR=AGENT_VAULT_ADDR
+VAULT_TOKEN=$AGENT_VAULT_TOKEN
+VAULT_API_ADDR=$SECRET_VAULT_ADDR
+VAULT_ADDR=$AGENT_VAULT_ADDR
+SECRET_VAULT_ENV_TOKEN=$VAULT_ENV_TOKEN
 
 export VAULT_ADDR
 export VAULT_TOKEN
 export VAULT_API_ADDR
-
+export SECRET_VAULT_ENV_TOKEN
 #===============================================================================
 #carrier undeploy
 #===============================================================================
@@ -136,7 +134,7 @@ export TRC_KUBE_CONFIG=`cat $KUBE_PATH | base64 --wrap=0`
 VAULT_API_ADDR=VAULT_ADDR
 echo $VAULT_ADDR
 
-if [ -z "${PROD_EXT}" ];
+if [ -z "${PROD_EXT}" ]; then
     if [[ -z "${SECRET_VAULT_DEV_PLUGIN_TOKEN}" ]]; then
       vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT__DEV_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
 
@@ -156,7 +154,7 @@ echo "Deployment and refresh of carrier successful"
 #trcsh deployment
 #================================================================
 echo "Deploying trcsh agent"
-TRC_PLUGIN_NAME = "trcsh"
+TRC_PLUGIN_NAME="trcsh"
 
 FILE="target/$TRC_PLUGIN_NAME"
 if [ ! -f "$FILE" ]; then
@@ -172,15 +170,15 @@ fi
 
 FILESHAVAL=$(cat $FILESHA)
 
-if [[ -z "${SECRET_VAULT_ENV_TOKEN}" ]]; then
-   SECRET_VAULT_ENV_TOKEN = SECRET_VAULT_DEV_PLUGIN_TOKEN
-fi
-
 if [ -z "${PROD_EXT}" ]; then
-   VAULT_ENV="dev"
+    VAULT_ENV="dev"
+    if [[ -z "${SECRET_VAULT_ENV_TOKEN}" ]]; then
+       SECRET_VAULT_ENV_TOKEN=$SECRET_VAULT_DEV_PLUGIN_TOKEN
+    fi
 fi
 
 echo "Certifying agent deployment tool plugin..."
+
 trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=target/$TRC_PLUGIN_NAME -pluginType=agent
         certifystatus=$?
     if [ $certifystatus -eq 0 ]; then
