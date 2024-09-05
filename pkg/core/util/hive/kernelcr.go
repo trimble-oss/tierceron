@@ -26,6 +26,7 @@ type PluginHandler struct {
 
 func Init(pluginName string, properties *map[string]interface{}) {
 	if PluginMods == nil || PluginMods[pluginName] == nil {
+		logger.Println("No plugin module set for initializing plugin service.")
 		return
 	}
 	symbol, err := PluginMods[pluginName].Lookup("Init")
@@ -33,18 +34,11 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		fmt.Println(err)
 		logger.Printf("Unable to lookup plugin export: %s\n", err)
 	}
-
+	logger.Printf("Initializing plugin module for %s\n", pluginName)
 	reflect.ValueOf(symbol).Call([]reflect.Value{reflect.ValueOf(properties)})
 }
 
 func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) {
-	pluginName := driverConfig.SubSectionValue
-	if len(pluginName) == 0 {
-		return
-	}
-	if PluginMods == nil || PluginMods[pluginName] == nil {
-		return
-	}
 	if driverConfig.CoreConfig.Log != nil {
 		if logger == nil {
 			logger = driverConfig.CoreConfig.Log
@@ -52,6 +46,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 	} else {
 		fmt.Println("No logger passed in to plugin service")
 		return //or set log to fmt?
+	}
+	pluginName := driverConfig.SubSectionValue
+	if len(pluginName) == 0 {
+		driverConfig.CoreConfig.Log.Println("No plugin name specified to start plugin service.")
+		return
+	}
+	if PluginMods == nil || PluginMods[pluginName] == nil {
+		driverConfig.CoreConfig.Log.Printf("No plugin module initialized to start plugin service: %s\n", pluginName)
+		return
 	}
 	var service string
 	if s, ok := driverConfig.DeploymentConfig["trcplugin"].(string); ok {
@@ -61,6 +64,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 		driverConfig.CoreConfig.Log.Println("Unable to process plugin service.")
 		return
 	}
+	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s\n", service)
 	pluginConfig := make(map[string]interface{})
 	pluginConfig["vaddress"] = driverConfig.CoreConfig.VaultAddress
 	pluginConfig["token"] = driverConfig.CoreConfig.Token
@@ -131,10 +135,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = pluginHandler.receiver
 			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
-			Init(pluginName, &serviceConfig)
-			pluginHandler.sender <- core.PLUGIN_EVENT_START
 			go pluginHandler.handle_errors(driverConfig)
+			Init(pluginName, &serviceConfig)
+			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
+			pluginHandler.sender <- core.PLUGIN_EVENT_START
 			pluginHandler.IsRunning = true
+			driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 		}
 	}
 }
@@ -154,20 +160,24 @@ func (pluginHandler *PluginHandler) handle_errors(driverConfig *eUtils.DriverCon
 func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *eUtils.DriverConfig) {
 	pluginName := driverConfig.SubSectionValue
 	if len(pluginName) == 0 {
+		driverConfig.CoreConfig.Log.Printf("No plugin name provided to stop plugin service.\n")
 		return
 	}
 	if PluginMods == nil || PluginMods[pluginName] == nil {
+		driverConfig.CoreConfig.Log.Printf("No plugin mod initialized or set for %s to stop plugin\n", pluginName)
 		return
 	}
-	PluginMods[pluginName] = nil
-
+	driverConfig.CoreConfig.Log.Printf("Sending stop message to plugin: %s\n", pluginName)
 	pluginHandler.sender <- core.PLUGIN_EVENT_STOP
+	PluginMods[pluginName] = nil
 	pluginHandler.IsRunning = false
+	driverConfig.CoreConfig.Log.Printf("Stop message successfully sent to plugin: %s\n", pluginName)
 }
 
 func LoadPluginPath(driverConfig *eUtils.DriverConfig) string {
 	var service string
 	if s, ok := driverConfig.DeploymentConfig["trcplugin"].(string); ok {
+		driverConfig.CoreConfig.Log.Printf("Loading plugin path for service: %s\n", s)
 		service = s
 	} else {
 		fmt.Println("Unable to stop plugin service.")
@@ -182,13 +192,16 @@ func LoadPluginMod(driverConfig *eUtils.DriverConfig, pluginPath string) {
 	pluginM, err := plugin.Open(pluginPath)
 	if err != nil {
 		fmt.Printf("Unable to open plugin module for service: %s\n", pluginPath)
+		driverConfig.CoreConfig.Log.Printf("Unable to open plugin module for service: %s\n", pluginPath)
 		return
 	}
 	pluginName := driverConfig.SubSectionValue
 	if len(pluginName) > 0 {
+		driverConfig.CoreConfig.Log.Printf("Successfully opened plugin module for %s\n", pluginName)
 		PluginMods[pluginName] = pluginM
 	} else {
-		fmt.Printf("Missing pluginName for LoadPlugin: %s\n", pluginName)
+		fmt.Println("Unable to load plugin module because missing plugin name")
+		driverConfig.CoreConfig.Log.Println("Unable to load plugin module because missing plugin name")
 		return
 	}
 }

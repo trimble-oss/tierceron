@@ -716,6 +716,7 @@ func CommonMain(envDefaultPtr *string,
 			return errors.New(errMessage)
 		}
 		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && coreopts.BuildOptions.IsKernel() {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Starting verification of plugin module.")
 			h := sha256.New()
 			pathToSO := hive.LoadPluginPath(&trcshDriverConfigBase.DriverConfig)
 			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0666)
@@ -735,6 +736,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 			sha := hex.EncodeToString(h.Sum(nil))
 			if ptcsha256.(string) == sha {
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Verified plugin module sha.")
 				err = memprotectopts.UnsetChattr(f)
 				if err != nil {
 					return err
@@ -850,12 +852,14 @@ func CommonMain(envDefaultPtr *string,
 			pluginHandler[0].PluginserviceStart(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		} else {
 			fmt.Println("No handler provided for plugin service startup.")
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("No handler provided for plugin service startup.")
 		}
 	} else if *pluginservicestopPtr && coreopts.BuildOptions.IsKernel() {
 		if len(pluginHandler) > 0 {
 			pluginHandler[0].PluginserviceStop(&trcshDriverConfigBase.DriverConfig)
 		} else {
-			fmt.Println("No handler provided for plugin service startup.")
+			fmt.Println("No handler provided for plugin service shutdown.")
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("No handler provided for plugin service shutdown.")
 		}
 	}
 	//Checks if image has been copied & deployed
