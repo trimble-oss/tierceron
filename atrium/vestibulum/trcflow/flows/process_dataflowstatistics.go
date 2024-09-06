@@ -112,7 +112,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 						for _, testName := range testNameList.([]interface{}) {
 							testName = strings.ReplaceAll(testName.(string), "/", "")
 							dfGroup := tccore.InitDataFlow(nil, flowGroup.(string), false)
-							dfctx, err := dfGroup.GetDeliverStatCtx()
+							dfctx, _, err := dfGroup.GetDeliverStatCtx()
 							if err != nil {
 								tfmContext.Log("Failed to retrieve statistic", err)
 								continue

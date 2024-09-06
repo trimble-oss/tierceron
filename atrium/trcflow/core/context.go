@@ -626,7 +626,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	// Not sure if necessary to copy entire ReportStatistics method
 	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
 		tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
-		dsc, err := df.GetDeliverStatCtx()
+		dsc, _, err := df.GetDeliverStatCtx()
 		if err == nil {
 			df.FinishStatistic("flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, false, dsc)
 		} else {

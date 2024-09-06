@@ -283,14 +283,14 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext, mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, logger *log.Logger, vaultWriteBack bool) {
 	//TODO : Write Statistic to vault
 	dfs.FinishStatisticLog()
-	dsc, err := dfs.GetDeliverStatCtx()
+	dsc, _, err := dfs.GetDeliverStatCtx()
 	if err != nil {
 		logger.Printf("Unable to access deliver statistic context for DeliverStatistic: %v\n", err)
 		return
 	}
 	mod.SectionPath = ""
 	for _, dataFlowStatistic := range dfs.ChildNodes {
-		dfStatDeliveryCtx, deliverStatErr := dataFlowStatistic.GetDeliverStatCtx()
+		dfStatDeliveryCtx, _, deliverStatErr := dataFlowStatistic.GetDeliverStatCtx()
 		if deliverStatErr != nil && dsc.LogFunc != nil {
 			(*dsc.LogFunc)("Error extracting deliver stat ctx", deliverStatErr)
 		}
