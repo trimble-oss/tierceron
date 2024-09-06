@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	tccore "github.com/trimble-oss/tierceron-core/core"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"

@@ -38,7 +38,7 @@ import (
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
-	tccore "github.com/trimble-oss/tierceron-core/core"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 )
 
 type FlowType int64

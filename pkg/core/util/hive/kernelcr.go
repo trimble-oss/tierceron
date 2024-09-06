@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/trimble-oss/tierceron-core/core"
+	"github.com/trimble-oss/tierceron-core/v2/core"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
