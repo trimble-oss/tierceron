@@ -53,7 +53,7 @@ require (
 	github.com/templexxx/xorsimd v0.4.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240823204242-4ba0660f739c // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240827150818-7e3bb234dfed // indirect
 )
 
 require (
@@ -94,6 +94,7 @@ require (
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240827150818-7e3bb234dfed // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )
@@ -122,7 +123,7 @@ require (
 	golang.org/x/term v0.23.0
 	golang.org/x/text v0.17.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
-	google.golang.org/grpc v1.65.0
+	google.golang.org/grpc v1.66.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
@@ -130,3 +131,5 @@ require (
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.24
 
 replace github.com/trimble-oss/tierceron/atrium => ./atrium
+
+// replace github.com/trimble-oss/tierceron-core => ../tierceron-core

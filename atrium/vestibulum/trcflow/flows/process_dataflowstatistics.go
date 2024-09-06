@@ -7,8 +7,11 @@ import (
 	"sync"
 	"time"
 
+	tccore "github.com/trimble-oss/tierceron-core/core"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
+	"github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
@@ -108,9 +111,9 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 					for _, testNameList := range listData.Data {
 						for _, testName := range testNameList.([]interface{}) {
 							testName = strings.ReplaceAll(testName.(string), "/", "")
-							dfGroup := flowcore.InitDataFlow(nil, flowGroup.(string), false)
+							dfGroup := tccore.InitDataFlow(nil, flowGroup.(string), false)
 							if listData != nil {
-								err := dfGroup.RetrieveStatistic(tfContext.GoMod, tenantId.(string), tenantIndexPath, tenantDFSIdPath, flowGroup.(string), testName.(string), tfmContext.DriverConfig.CoreConfig.Log)
+								err := core.RetrieveStatistic(tfContext.GoMod, dfGroup, tenantId.(string), tenantIndexPath, tenantDFSIdPath, flowGroup.(string), testName.(string), tfmContext.DriverConfig.CoreConfig.Log)
 								if err != nil {
 									tfmContext.Log("Failed to retrieve statistic", err)
 								}
@@ -119,7 +122,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 							//Push to table using this object
 							if len(dfGroup.ChildNodes) > 0 {
 								for _, dfstat := range dfGroup.ChildNodes {
-									dfStatMap := dfGroup.StatisticToMap(tfContext.GoMod, dfstat, true)
+									dfStatMap := core.StatisticToMap(tfContext.GoMod, dfGroup, dfstat, true)
 									rows, _ := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticLM(tenantId.(string), dfStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "SELECT", nil, "")
 									//dfgroup to table
 									if len(rows) == 0 {

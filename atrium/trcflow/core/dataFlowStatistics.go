@@ -246,7 +246,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 							}
 
 							dfStatisticNode := tccore.InitDataFlow(nil, flowName, false)
-							tccore.dfStatisticNode.MapStatistic(data, logger)
+							dfStatisticNode.MapStatistic(data, logger)
 							dfStatTypeNode.ChildNodes = append(dfStatTypeNode.ChildNodes, dfStatisticNode)
 						}
 					}
@@ -300,11 +300,11 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 										innerDF.MashupDetailedElement.Name = strings.TrimSuffix(statisticType, "/")
 										//statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
 										newDf := tccore.InitDataFlow(nil, strings.TrimSuffix(statisticName.(string), "/"), false)
-										newDf.RetrieveStatistic(mod, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
+										RetrieveStatistic(mod, newDf, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
 										innerDF.ChildNodes = append(innerDF.ChildNodes, newDf)
 									} else {
 										newDf := tccore.InitDataFlow(nil, strings.TrimSuffix(statisticName.(string), "/"), false)
-										tccore.newDf.RetrieveStatistic(mod, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
+										RetrieveStatistic(mod, newDf, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
 										dfgroup.ChildNodes = append(dfgroup.ChildNodes, newDf)
 									}
 								}
@@ -325,18 +325,22 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 	return &aFleet, nil
 }
 
-func (dfs *tccore.TTDINode) DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext, mod *kv.Modifier, id string, indexPath string, idName string, logger *log.Logger, vaultWriteBack bool) {
+func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext, mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, logger *log.Logger, vaultWriteBack bool) {
 	//TODO : Write Statistic to vault
-	tccore.dfs.FinishStatisticLog()
-	var dsc *tccore.DeliverStatCtx
-	dsc, err := tccore.GetDeliverStatCtx()
+	dfs.FinishStatisticLog()
+	dsc, err := dfs.GetDeliverStatCtx()
 	if err != nil {
 		logger.Printf("Unable to access deliver statistic context for DeliverStatistic: %v\n", err)
 		return
 	}
 	mod.SectionPath = ""
 	for _, dataFlowStatistic := range dfs.ChildNodes {
-		statMap := tccore.FinishStatistic(id, indexPath, idName, logger, vaultWriteBack, dsc)
+		dfStatDeliveryCtx, deliverStatErr := dataFlowStatistic.GetDeliverStatCtx()
+		if deliverStatErr != nil && dsc.LogFunc != nil {
+			(*dsc.LogFunc)("Error extracting deliver stat ctx", deliverStatErr)
+		}
+
+		statMap := dataFlowStatistic.FinishStatistic(id, indexPath, idName, logger, vaultWriteBack, dsc)
 
 		mod.SectionPath = ""
 		if vaultWriteBack {
@@ -344,7 +348,7 @@ func (dfs *tccore.TTDINode) DeliverStatistic(tfmContext *TrcFlowMachineContext, 
 			_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+statMap["flowGroup"].(string)+"/dataFlowName/"+statMap["flowName"].(string)+"/"+statMap["stateCode"].(string), statMap, logger)
 			if writeErr != nil && dsc.LogFunc != nil {
 				// logFunc := dsc.LogFunc.(func(string, error))
-				dsc.LogFunc("Error writing out DataFlowStatistics to vault", writeErr)
+				(*dsc.LogFunc)("Error writing out DataFlowStatistics to vault", writeErr)
 
 				//dfs.LogFunc("Error writing out DataFlowStatistics to vault", writeErr)
 			}
@@ -355,10 +359,10 @@ func (dfs *tccore.TTDINode) DeliverStatistic(tfmContext *TrcFlowMachineContext, 
 					// Write directly even if query reports nothing changed...  We want all statistics to be written
 					// during registrations.
 					mod.SectionPath = ""
-					_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+decodedStatData["FlowGroup"].(string)+"/dataFlowName/"+decodedStatData["FlowName"].(string)+"/"+decodedStatData["StateCode"].(string), statMap, logger)
+					_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+dfStatDeliveryCtx.FlowGroup+"/dataFlowName/"+dfStatDeliveryCtx.FlowName+"/"+dfStatDeliveryCtx.StateCode, statMap, logger)
 					if writeErr != nil && dsc.LogFunc != nil {
 						// logFunc := decodedData["LogFunc"].(func(string, error))
-						dsc.LogFunc("Error writing out DataFlowStatistics to vault", writeErr)
+						(*dsc.LogFunc)("Error writing out DataFlowStatistics to vault", writeErr)
 					}
 				}
 			}
@@ -366,7 +370,7 @@ func (dfs *tccore.TTDINode) DeliverStatistic(tfmContext *TrcFlowMachineContext, 
 	}
 }
 
-func (dfs *tccore.TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
+func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
 	listData, listErr := mod.List("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+flowG+"/dataFlowName/"+flowN, logger)
 	if listErr != nil {
 		return listErr
@@ -410,7 +414,7 @@ func (dfs *tccore.TTDINode) RetrieveStatistic(mod *kv.Modifier, id string, index
 }
 
 // Used for flow
-func (dfs *tccore.TTDINode) StatisticToMap(mod *kv.Modifier, dfst *tccore.TTDINode, enrichLastTested bool) map[string]interface{} {
+func StatisticToMap(mod *kv.Modifier, dfs *tccore.TTDINode, dfst *tccore.TTDINode, enrichLastTested bool) map[string]interface{} {
 	var elapsedTime string
 	statMap := make(map[string]interface{})
 	var decodedstat interface{}
