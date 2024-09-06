@@ -129,6 +129,7 @@ vault secrets enable \
 #refresh carrier token 
 #===============================================================================
 echo "Refreshing carrier..."
+sleep 12
 
 export TRC_KUBE_CONFIG=`cat $KUBE_PATH | base64 --wrap=0`
 VAULT_API_ADDR=VAULT_ADDR
