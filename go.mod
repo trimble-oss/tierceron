@@ -35,7 +35,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
-	github.com/trimble-oss/tierceron-core v0.0.0-20240823174133-24e6eec65804
+	github.com/trimble-oss/tierceron-core/v2 v2.0.1
 	github.com/trimble-oss/tierceron-hat v1.2.1
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20240830181345-715bae00b1fb
 )
@@ -53,7 +53,7 @@ require (
 	github.com/templexxx/xorsimd v0.4.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240823204242-4ba0660f739c // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240827150818-7e3bb234dfed // indirect
 )
 
 require (
@@ -122,7 +122,7 @@ require (
 	golang.org/x/term v0.23.0
 	golang.org/x/text v0.17.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
-	google.golang.org/grpc v1.65.0
+	google.golang.org/grpc v1.66.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
@@ -130,3 +130,5 @@ require (
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.24
 
 replace github.com/trimble-oss/tierceron/atrium => ./atrium
+
+// replace github.com/trimble-oss/tierceron-core => ../tierceron-core

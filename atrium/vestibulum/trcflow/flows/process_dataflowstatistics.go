@@ -7,8 +7,11 @@ import (
 	"sync"
 	"time"
 
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
+	"github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
@@ -108,9 +111,14 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 					for _, testNameList := range listData.Data {
 						for _, testName := range testNameList.([]interface{}) {
 							testName = strings.ReplaceAll(testName.(string), "/", "")
-							dfGroup := flowcore.InitDataFlow(nil, flowGroup.(string), false)
+							dfGroup := tccore.InitDataFlow(nil, flowGroup.(string), false)
+							dfctx, _, err := dfGroup.GetDeliverStatCtx()
+							if err != nil {
+								tfmContext.Log("Failed to retrieve statistic", err)
+								continue
+							}
 							if listData != nil {
-								err := dfGroup.RetrieveStatistic(tfContext.GoMod, tenantId.(string), tenantIndexPath, tenantDFSIdPath, flowGroup.(string), testName.(string), tfmContext.DriverConfig.CoreConfig.Log)
+								err := core.RetrieveStatistic(tfContext.GoMod, dfGroup, tenantId.(string), tenantIndexPath, tenantDFSIdPath, flowGroup.(string), testName.(string), tfmContext.DriverConfig.CoreConfig.Log)
 								if err != nil {
 									tfmContext.Log("Failed to retrieve statistic", err)
 								}
@@ -119,28 +127,32 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 							//Push to table using this object
 							if len(dfGroup.ChildNodes) > 0 {
 								for _, dfstat := range dfGroup.ChildNodes {
-									dfStatMap := dfGroup.StatisticToMap(tfContext.GoMod, dfstat, true)
+									dfStatMap := dfstat.StatisticToMap()
+									core.UpdateLastTestedDate(tfContext.GoMod, dfctx, dfStatMap)
 									rows, _ := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticLM(tenantId.(string), dfStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "SELECT", nil, "")
 									//dfgroup to table
 									if len(rows) == 0 {
 										if strings.Contains(flowGroup.(string), flowGroupName) {
-											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, true), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", nil, "") //true gets ninja tested time inside statisticToMap
+											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", nil, "") //true gets ninja tested time inside statisticToMap
 										} else {
-											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", nil, "")
+											statMap := dfstat.StatisticToMap()
+											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), statMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", nil, "")
 										}
 									} else {
+										statMap := dfstat.StatisticToMap()
 										for _, value := range rows {
 											if coreopts.BuildOptions.CompareLastModified(dfStatMap, dfssql.DataFlowStatisticsSparseArrayToMap(value)) { //If equal-> do nothing
 												continue
 											} else { //If not equal -> update
-												tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticUpdate(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfstat, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
+												tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticUpdate(tenantId.(string), statMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
 											}
 										}
 									}
 								}
 							} else {
 								if len(dfGroup.MashupDetailedElement.Data) > 0 {
-									tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfGroup.StatisticToMap(tfContext.GoMod, dfGroup, false), tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
+									dfgStatMap := dfGroup.StatisticToMap()
+									tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfgStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType(tfContext.Flow.TableName())}, "")
 								}
 							}
 						}

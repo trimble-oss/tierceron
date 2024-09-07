@@ -38,6 +38,7 @@ import (
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 )
 
 type FlowType int64
@@ -581,9 +582,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	// tfContext.DataFlowStatistic["flume"] = "" //Used to be argosid
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
-	var df *TTDINode = nil
+	var df *tccore.TTDINode = nil
 	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
-		df = InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
+		df = tccore.InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
 		if tfContext.FlowState.FlowAlias != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.FlowState.FlowAlias, "Loading", "1", 1, tfmContext.Log)
 		} else {
@@ -625,7 +626,12 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tfContext *TrcFlowContex
 	// Not sure if necessary to copy entire ReportStatistics method
 	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
 		tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
-		df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, false)
+		dsc, _, err := df.GetDeliverStatCtx()
+		if err == nil {
+			df.FinishStatistic("flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, false, dsc)
+		} else {
+			tfmContext.Log("deliver stat ctx extraction error: "+tfContext.Flow.TableName(), err)
+		}
 	}
 
 	//df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, ...)
@@ -1114,7 +1120,7 @@ func WhichLastModified(a interface{}, b interface{}) bool {
 	var timeErr error
 	if lastMA, ok := a.(time.Time); !ok {
 		if lmA, ok := a.(string); ok {
-			lastModifiedA, timeErr = time.Parse(tcopts.RFC_ISO_8601, lmA)
+			lastModifiedA, timeErr = time.Parse(tccore.RFC_ISO_8601, lmA)
 			if timeErr != nil {
 				return false
 			}
@@ -1125,7 +1131,7 @@ func WhichLastModified(a interface{}, b interface{}) bool {
 
 	if lastMB, ok := b.(time.Time); !ok {
 		if lmB, ok := b.(string); ok {
-			lastModifiedB, timeErr = time.Parse(tcopts.RFC_ISO_8601, lmB)
+			lastModifiedB, timeErr = time.Parse(tccore.RFC_ISO_8601, lmB)
 			if timeErr != nil {
 				return false
 			}

@@ -6,7 +6,7 @@ package argosyopts
 import (
 	"log"
 
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -41,11 +41,11 @@ func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
 // * TTDINodes are defined recursively, with each node containing a list of child nodes.
 // * this enabled the data to be rendered 3-dimensionally.
 // The modifier is used to access the secret provider.
-func BuildFleet(mod *kv.Modifier, logger *log.Logger) (*flowcore.TTDINode, error) {
-	return &flowcore.TTDINode{}, nil
+func BuildFleet(mod *kv.Modifier, logger *log.Logger) (*tccore.TTDINode, error) {
+	return &tccore.TTDINode{}, nil
 }
 
 // Unused function - candidate for future deletion
-func GetDataFlowGroups(mod *kv.Modifier, argosy *flowcore.TTDINode) []flowcore.TTDINode {
+func GetDataFlowGroups(mod *kv.Modifier, argosy *tccore.TTDINode) []tccore.TTDINode {
 	return nil
 }

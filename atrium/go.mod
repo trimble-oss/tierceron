@@ -39,6 +39,7 @@ require (
 	github.com/newrelic/go-agent/v3 v3.33.0
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/trimble-oss/tierceron v1.7.2
+	github.com/trimble-oss/tierceron-core/v2 v2.0.1
 	github.com/trimble-oss/tierceron-nute v1.0.1
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
@@ -130,7 +131,6 @@ require (
 	github.com/templexxx/cpu v0.1.0 // indirect
 	github.com/templexxx/xorsimd v0.4.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
-	github.com/trimble-oss/tierceron-core v0.0.0-20240823174133-24e6eec65804 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
@@ -139,10 +139,10 @@ require (
 	go.opentelemetry.io/otel/metric v1.27.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.27.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
-	golang.org/x/oauth2 v0.20.0 // indirect
-	google.golang.org/genproto v0.0.0-20240827150818-7e3bb234dfed // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240823204242-4ba0660f739c // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240823204242-4ba0660f739c // indirect
+	golang.org/x/oauth2 v0.21.0 // indirect
+	google.golang.org/genproto v0.0.0-20240903143218-8af14fe29dc1 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240827150818-7e3bb234dfed // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240827150818-7e3bb234dfed // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/component-helpers v0.26.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect
@@ -250,7 +250,7 @@ require (
 	golang.org/x/text v0.17.0
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
-	google.golang.org/grpc v1.65.0
+	google.golang.org/grpc v1.66.0
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
@@ -263,6 +263,8 @@ require (
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.24
 
 //replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
+
+// replace github.com/trimble-oss/tierceron-core => ../../tierceron-core
 
 replace github.com/trimble-oss/tierceron => ../
 

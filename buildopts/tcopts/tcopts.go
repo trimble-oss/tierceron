@@ -8,8 +8,6 @@ import (
 
 //	"time"
 
-const RFC_ISO_8601 = "2006-01-02 15:04:05 -0700 MST"
-
 // Whether to perform additional processing via the CheckFlowDataIncoming function...
 // This flow logic section is essentially used to help decide whether a row in a table
 // in trcdb has changed or not and requires serialization to the backend secret store.
