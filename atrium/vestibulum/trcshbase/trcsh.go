@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -440,6 +442,46 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			fmt.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
 			logger.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
 			os.Exit(124)
+		}
+
+		if coreopts.BuildOptions.IsKernel() {
+			hostname := os.Getenv("HOSTNAME")
+			id := 0
+
+			if len(hostname) == 0 {
+				logger.Println("Looking up set entry by host")
+				hostOutput, err := os.ReadFile("/etc/hostname")
+
+				if err != nil || len(hostname) == 0 {
+					hostOutput, err := exec.Command("hostname").Output()
+					if err == nil {
+						hostLines := strings.Split(string(hostOutput), "\n")
+						for _, hostLine := range hostLines {
+							hostLine = strings.TrimSpace(hostLine)
+							if len(hostLine) > 0 {
+								hostname = hostLine
+								break
+							}
+						}
+					}
+				} else {
+					hostname = string(hostOutput)
+				}
+			}
+			if matches, _ := regexp.MatchString("trcshk\\-\\d+$", hostname); matches {
+				logger.Println("Stateful set enabled")
+
+				// spectrum-aggregator-snapshot-<pool>
+				hostParts := strings.Split(hostname, "-")
+				id, err = strconv.Atoi(hostParts[1])
+				if err != nil {
+					id = 0
+				}
+				logger.Printf("Starting Stateful trcshk with set entry id: %d\n", id)
+			}
+			if id > 0 {
+				agentEnv = fmt.Sprintf("%s-%d", agentEnv, id)
+			}
 		}
 
 		memprotectopts.MemProtect(nil, &agentToken)
