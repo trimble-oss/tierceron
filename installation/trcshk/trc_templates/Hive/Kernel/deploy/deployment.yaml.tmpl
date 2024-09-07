@@ -1,9 +1,25 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: Service
 metadata:
   name: trcshk
   annotations:
     seccomp.security.alpha.kubernetes.io/trcshk: runtime/default
+  labels:
+    app: trcshk
+spec:
+  clusterIP: None
+  selector:
+    app: trcshk
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trcshk
+  annotations:
+    seccomp.security.alpha.kubernetes.io/trcshk: runtime/default
+  labels:
+    env: dev
+    application_type: service
 
 spec:
   replicas: {{.deploy_REPLICAS}}
@@ -11,6 +27,7 @@ spec:
     matchLabels:
       app: trcshk
       namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+  serviceName: trcshk
   template:
     metadata:
       labels:
@@ -25,7 +42,7 @@ spec:
                 - key: {{.deploy_node_pool}}
                   operator: In
                   values:
-                  - trcshk
+                  - trcshkpool
       containers:
         - name: trcshk
           image: {{.deploy_REGISTRY_URL}}/trcshk:${TAG}
@@ -42,7 +59,12 @@ spec:
             periodSeconds: 15
             timeoutSeconds: 5
           ports:
-            - containerPort: {{.deploy_trcshk_PORT}}
+            - name: healthcheck
+              containerPort: {{.deploy_trcshk_PORT}}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["rm", "/tmp/trcshk.pid" ]
           resources:
             requests:
               memory: "1Gi"
@@ -65,8 +87,7 @@ spec:
             runAsNonRoot: true
             runAsUser: 1575
             capabilities:
-              add:
-                - CAP_IPC_LOCK
+              add: [ "CAP_IPC_LOCK", "NET_ADMIN", "SYS_TIME" ]
       volumes:
         - name: trcshk-data-volume
           emptyDir: {}
@@ -92,7 +113,8 @@ spec:
   type: LoadBalancer
   externalTrafficPolicy: Local
   ports:
-  - port: {{.deploy_trcshk_PORT}}
+  - name: healthcheck
+    port: {{.deploy_trcshk_PORT}}
   selector:
     app: trcshk
     namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}

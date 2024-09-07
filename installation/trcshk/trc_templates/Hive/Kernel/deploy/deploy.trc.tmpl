@@ -10,5 +10,6 @@ kubectl config use-context {{.deploy_CONTEXT}}
 kubectl create configmap trcshk-application-config --namespace={{or .deploy_NAMESPACE "$KUBENAMESPACE"}} --from-file=config.yml --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl apply -f deploy/deployment.yaml --namespace={{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+kubectl apply -f deploy/hpa.yaml --namespace={{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
 
 kubectl rollout restart deployment/pendentive-trcshk -n {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}

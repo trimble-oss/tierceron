@@ -143,6 +143,7 @@ require (
 	google.golang.org/genproto v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240827150818-7e3bb234dfed // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240827150818-7e3bb234dfed // indirect
+	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/component-helpers v0.26.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect

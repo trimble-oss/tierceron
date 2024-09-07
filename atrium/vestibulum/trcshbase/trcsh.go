@@ -329,6 +329,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		ProcessDeploy(nil, trcshDriverConfig, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
 	} else {
 		logger, err := createLogFile()
+
+		if coreopts.BuildOptions.IsKernel() {
+			go deployutil.KernelShutdownWatcher(logger)
+		}
+
 		if err != nil {
 			fmt.Printf("Error initializing log file: %s\n", err)
 		}

@@ -3,6 +3,8 @@ package deployutil
 import (
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -12,7 +14,52 @@ import (
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
+	"gopkg.in/fsnotify.v1"
 )
+
+const (
+	KERNEL_PIDFILE = "/tmp/trcshk.pid"
+)
+
+// Watches for pidfile deletion and exits  Used by kubernetes to manage pods
+func KernelShutdownWatcher(logger *log.Logger) {
+	if _, err := os.Stat(KERNEL_PIDFILE); os.IsNotExist(err) {
+		_, mkErr := os.Create(KERNEL_PIDFILE)
+		if mkErr != nil {
+			logger.Println("Unable to create pidfile.")
+			return
+		}
+	}
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		logger.Printf("Unable to set up watcher: %s\n", err.Error())
+		return
+	}
+	defer watcher.Close()
+
+	// Setting up forever loop
+	go func(l *log.Logger) {
+		for {
+			select {
+			case event := <-watcher.Events:
+				if event.Op&fsnotify.Remove == fsnotify.Remove {
+					os.Exit(0)
+				}
+			case err := <-watcher.Errors:
+				l.Printf("Pidfile watch error: %s.  Shutting down\n", err.Error())
+				os.Exit(0)
+			}
+		}
+	}(logger)
+
+	err = watcher.Add(KERNEL_PIDFILE)
+	if err != nil {
+		logger.Printf("Can't watch pidfile: %s", err.Error())
+		return
+	}
+	keepAliveChan := make(chan bool)
+	keepAliveChan <- true
+}
 
 // Loads a plugin's deploy.trc script directly from vault.
 func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, trcshConfig *capauth.TrcShConfig, pwd string) ([]byte, error) {
