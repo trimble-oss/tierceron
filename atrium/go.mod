@@ -39,8 +39,9 @@ require (
 	github.com/newrelic/go-agent/v3 v3.33.0
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/trimble-oss/tierceron v1.7.2
-	github.com/trimble-oss/tierceron-core/v2 v2.0.1
+	github.com/trimble-oss/tierceron-core/v2 v2.0.3
 	github.com/trimble-oss/tierceron-nute v1.0.1
+	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/cli-runtime v0.26.1
