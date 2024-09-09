@@ -7,21 +7,29 @@ import (
 	"plugin"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
+	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
 var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
 var logger *log.Logger
+var dfstat *core.TTDINode
 
 type PluginHandler struct {
-	IsRunning bool
-	sender    chan int
-	receiver  chan error
-	Services  *[]string
+	IsRunning     bool
+	sender        chan int
+	err_receiver  chan error
+	ttdi_receiver chan *core.TTDINode
+	Services      *[]string
 }
 
 func Init(pluginName string, properties *map[string]interface{}) {
@@ -45,7 +53,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 		}
 	} else {
 		fmt.Println("No logger passed in to plugin service")
-		return //or set log to fmt?
+		return
 	}
 	pluginName := driverConfig.SubSectionValue
 	if len(pluginName) == 0 {
@@ -128,14 +136,20 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 					serviceConfig[path] = &sc
 				}
 			}
+			// Initialize channels
 			pluginHandler.sender = make(chan int)
-			pluginHandler.receiver = make(chan error)
+			pluginHandler.err_receiver = make(chan error)
+			pluginHandler.ttdi_receiver = make(chan *core.TTDINode)
 			chan_map := make(map[string]interface{})
 			chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = pluginHandler.sender
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = pluginHandler.receiver
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]interface{})
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.err_receiver
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ttdi_receiver
 			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
+			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			go pluginHandler.handle_errors(driverConfig)
+			go pluginHandler.handle_dataflowstat(driverConfig, mod, vault)
 			Init(pluginName, &serviceConfig)
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
 			pluginHandler.sender <- core.PLUGIN_EVENT_START
@@ -147,11 +161,41 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 
 func (pluginHandler *PluginHandler) handle_errors(driverConfig *eUtils.DriverConfig) {
 	for {
-		result := <-pluginHandler.receiver
+		result := <-pluginHandler.err_receiver
 		switch {
 		case result != nil:
 			fmt.Println(result)
 			eUtils.LogErrorObject(&driverConfig.CoreConfig, result, false)
+			return
+		}
+	}
+}
+
+func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *eUtils.DriverConfig, mod *kv.Modifier, vault *system.Vault) {
+	tfmContext := &flowcore.TrcFlowMachineContext{
+		Env:                       driverConfig.CoreConfig.Env,
+		GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
+		FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
+	}
+	tfContext := &flowcore.TrcFlowContext{
+		GoMod:    mod,
+		Vault:    vault,
+		FlowLock: &sync.Mutex{},
+	}
+	for {
+		dfstat = <-pluginHandler.ttdi_receiver
+		switch {
+		case dfstat != nil:
+			driverConfig.CoreConfig.Log.Printf("Received dataflow statistic: %s\n", dfstat.Name)
+			tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
+			if len(tenantIndexPath) == 0 || len(tenantDFSIdPath) == 0 {
+				driverConfig.CoreConfig.Log.Println("GetDFSPathName returned an empty index path value.")
+				return
+			}
+			flowcore.DeliverStatistic(tfmContext, tfContext, mod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, driverConfig.CoreConfig.Log, true)
+			driverConfig.CoreConfig.Log.Printf("Delivered dataflow statistic: %s\n", dfstat.Name)
+		case dfstat == nil:
+			driverConfig.CoreConfig.Log.Println("Shutting down dataflow statistic receiver in kernel")
 			return
 		}
 	}
@@ -169,9 +213,11 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *eUtils.Drive
 	}
 	driverConfig.CoreConfig.Log.Printf("Sending stop message to plugin: %s\n", pluginName)
 	pluginHandler.sender <- core.PLUGIN_EVENT_STOP
+	driverConfig.CoreConfig.Log.Printf("Stop message successfully sent to plugin: %s\n", pluginName)
+	pluginHandler.ttdi_receiver <- nil
+	driverConfig.CoreConfig.Log.Printf("Stopped dataflow statistic receiver for: %s\n", pluginName)
 	PluginMods[pluginName] = nil
 	pluginHandler.IsRunning = false
-	driverConfig.CoreConfig.Log.Printf("Stop message successfully sent to plugin: %s\n", pluginName)
 }
 
 func LoadPluginPath(driverConfig *eUtils.DriverConfig) string {
