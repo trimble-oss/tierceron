@@ -332,12 +332,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	} else {
 		logger, err := createLogFile()
 
-		if coreopts.BuildOptions.IsKernel() {
-			go deployutil.KernelShutdownWatcher(logger)
-		}
-
 		if err != nil {
 			fmt.Printf("Error initializing log file: %s\n", err)
+			os.Exit(-1)
+		}
+
+		if coreopts.BuildOptions.IsKernel() {
+			go deployutil.KernelShutdownWatcher(logger)
 		}
 		var agentToken string
 		var agentEnv string
