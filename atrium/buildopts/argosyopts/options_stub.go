@@ -184,7 +184,7 @@ func buildDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]*
 			},
 		}
 		pointer = pointer + 1
-		if pointer == 24 {
+		if pointer == 12 {
 			pointer = 0
 		}
 		stats = append(stats, stat)
@@ -271,7 +271,7 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (*util.TTDINode, error) {
 			[]*util.TTDINode{},
 		},
 	}
-	tempArgosies, collectionIDs, curveIDs := buildArgosies(5, 20, 10, 5, 10)
+	tempArgosies, collectionIDs, curveIDs := buildArgosies(5, 12, 10, 5, 10)
 	for _, argosy := range tempArgosies {
 		Argosys = append(Argosys, argosy)
 	}

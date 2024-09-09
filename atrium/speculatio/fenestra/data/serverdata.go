@@ -38,6 +38,7 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 				err := json.Unmarshal([]byte(stat.Data), &decodedstat)
 				if err != nil {
 					log.Println("Error in decoding data in buildDataFlowStatistics")
+					continue
 				}
 				decodedStatData := decodedstat.(map[string]interface{})
 				timeNanoSeconds := int64(decodedStatData["TimeSplit"].(float64))
