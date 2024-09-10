@@ -49,7 +49,7 @@ read VAULT_ENV_TOKEN
 fi
 
 if [ -z "${PROD_EXT}" ]; then
-    if [[ -z "${SECRET_VAULT__DEV_PLUGIN_TOKEN}" ]]; then
+    if [[ -z "${SECRET_VAULT_DEV_PLUGIN_TOKEN}" ]]; then
     echo "Enter organization vault plugin token for certification(config_token_dev_unrestricted): "
     read SECRET_VAULT_DEV_PLUGIN_TOKEN
     fi
@@ -126,7 +126,7 @@ vault secrets enable \
           plugin
 
 #===============================================================================
-#refresh carrier token 
+#refresh carrier token
 #===============================================================================
 echo "Refreshing carrier..."
 sleep 12
@@ -136,12 +136,12 @@ VAULT_API_ADDR=VAULT_ADDR
 echo $VAULT_ADDR
 
 if [ -z "${PROD_EXT}" ]; then
-    if [[ -z "${SECRET_VAULT_DEV_PLUGIN_TOKEN}" ]]; then
+    if [[ ! -z "${SECRET_VAULT_DEV_PLUGIN_TOKEN}" ]]; then
       vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT__DEV_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
 
     fi
 
-    if [[ -z "${SECRET_VAULT_QA_PLUGIN_TOKEN}" ]]; then
+    if [[ ! -z "${SECRET_VAULT_QA_PLUGIN_TOKEN}" ]]; then
         vault write vaultcarrier/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_QA_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
 
     fi
