@@ -479,10 +479,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 					id = 0
 				}
 				logger.Printf("Starting Stateful trcshk with set entry id: %d\n", id)
+			} else {
+				logger.Printf("Unable to match: %s\n", hostname)
 			}
 			if id > 0 {
 				agentEnv = fmt.Sprintf("%s-%d", agentEnv, id)
 			}
+			logger.Printf("Identified as: %s\n", agentEnv)
 		}
 
 		memprotectopts.MemProtect(nil, &agentToken)
