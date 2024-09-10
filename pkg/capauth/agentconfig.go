@@ -200,14 +200,13 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	defer conn.Close()
 	c := cap.NewCapClient(conn)
 
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-	defer cancel()
-
 	var r *cap.PenseReply
 	retry := 0
 
 	for {
+		// Contact the server and print out its response.
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		defer cancel()
 		_, err := c.Pense(ctx, &cap.PenseRequest{Pense: "", PenseIndex: ""})
 		if err != nil {
 			st, ok := status.FromError(err)
@@ -229,7 +228,9 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	}
 
 	for {
-		r, err = c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
+		penseCtx, penseCancel := context.WithTimeout(context.Background(), time.Second*3)
+		defer penseCancel()
+		r, err = c.Pense(penseCtx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 		if err != nil {
 			st, ok := status.FromError(err)
 
