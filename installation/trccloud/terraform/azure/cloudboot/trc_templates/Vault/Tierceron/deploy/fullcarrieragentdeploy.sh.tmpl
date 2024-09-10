@@ -184,10 +184,8 @@ trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAUL
         certifystatus=$?
     if [ $certifystatus -eq 0 ]; then
         echo "No certification problems encountered."
-        exit $certifystatus
     else
         echo "Unexpected certification error."
-        exit $certifystatus
     fi
 
 echo "Deployed trcsh agent successfully"
