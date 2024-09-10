@@ -7,10 +7,8 @@ import (
 	"plugin"
 	"reflect"
 	"strings"
-	"sync"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
@@ -172,16 +170,16 @@ func (pluginHandler *PluginHandler) handle_errors(driverConfig *eUtils.DriverCon
 }
 
 func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *eUtils.DriverConfig, mod *kv.Modifier, vault *system.Vault) {
-	tfmContext := &flowcore.TrcFlowMachineContext{
-		Env:                       driverConfig.CoreConfig.Env,
-		GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
-		FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
-	}
-	tfContext := &flowcore.TrcFlowContext{
-		GoMod:    mod,
-		Vault:    vault,
-		FlowLock: &sync.Mutex{},
-	}
+	// tfmContext := &flowcore.TrcFlowMachineContext{
+	// 	Env:                       driverConfig.CoreConfig.Env,
+	// 	GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
+	// 	FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
+	// }
+	// tfContext := &flowcore.TrcFlowContext{
+	// 	GoMod:    mod,
+	// 	Vault:    vault,
+	// 	FlowLock: &sync.Mutex{},
+	// }
 	for {
 		dfstat = <-pluginHandler.ttdi_receiver
 		switch {
@@ -192,7 +190,7 @@ func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *eUtils.Dri
 				driverConfig.CoreConfig.Log.Println("GetDFSPathName returned an empty index path value.")
 				return
 			}
-			flowcore.DeliverStatistic(tfmContext, tfContext, mod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, driverConfig.CoreConfig.Log, true)
+			flowcore.DeliverStatistic(nil, nil, mod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, driverConfig.CoreConfig.Log, true)
 			driverConfig.CoreConfig.Log.Printf("Delivered dataflow statistic: %s\n", dfstat.Name)
 		case dfstat == nil:
 			driverConfig.CoreConfig.Log.Println("Shutting down dataflow statistic receiver in kernel")
