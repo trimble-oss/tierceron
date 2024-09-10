@@ -212,8 +212,6 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *eUtils.Drive
 	driverConfig.CoreConfig.Log.Printf("Sending stop message to plugin: %s\n", pluginName)
 	pluginHandler.sender <- core.PLUGIN_EVENT_STOP
 	driverConfig.CoreConfig.Log.Printf("Stop message successfully sent to plugin: %s\n", pluginName)
-	pluginHandler.ttdi_receiver <- nil
-	driverConfig.CoreConfig.Log.Printf("Stopped dataflow statistic receiver for: %s\n", pluginName)
 	PluginMods[pluginName] = nil
 	pluginHandler.IsRunning = false
 }
