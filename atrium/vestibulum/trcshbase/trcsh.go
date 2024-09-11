@@ -1260,7 +1260,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	}
 
 collaboratorReRun:
-	if featherCtx != nil && !coreopts.BuildOptions.IsKernel() {
+	if featherCtx != nil {
 		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 		for {
 			if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
