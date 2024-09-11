@@ -4,7 +4,7 @@ metadata:
   name: trcshk-hpa
 spec:
   minReplicas: 1
-  maxReplicas: 10
+  maxReplicas: {{or .hive_max_replicas "2"}}
   scaleTargetRef:
     apiVersion: apps/v1
     kind: StatefulSet
