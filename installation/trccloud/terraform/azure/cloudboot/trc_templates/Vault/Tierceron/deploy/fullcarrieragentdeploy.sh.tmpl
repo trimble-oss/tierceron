@@ -137,7 +137,7 @@ echo $VAULT_ADDR
 
 if [ -z "${PROD_EXT}" ]; then
     if [[ ! -z "${SECRET_VAULT_DEV_PLUGIN_TOKEN}" ]]; then
-      vault write vaultcarrier/dev token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT__DEV_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
+      vault write vaultcarrier/dev token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_DEV_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
 
     fi
 
