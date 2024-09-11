@@ -1259,7 +1259,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	}
 
 collaboratorReRun:
-	if featherCtx != nil {
+	if featherCtx != nil && content == nil {
 		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 		for {
 			if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
@@ -1269,13 +1269,12 @@ collaboratorReRun:
 			}
 		}
 
-		if content == nil {
-			content, err = deployutil.LoadPluginDeploymentScript(trcshDriverConfig, gTrcshConfig, pwd)
-			if err != nil {
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Failure to load deployment: %s\n", trcshDriverConfig.DriverConfig.DeploymentConfig["trcplugin"])
-				time.Sleep(time.Minute)
-				goto collaboratorReRun
-			}
+		content, err = deployutil.LoadPluginDeploymentScript(trcshDriverConfig, gTrcshConfig, pwd)
+		if err != nil {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Failure to load deployment: %s\n", trcshDriverConfig.DriverConfig.DeploymentConfig["trcplugin"])
+			time.Sleep(time.Minute)
+			content = nil
+			goto collaboratorReRun
 		}
 	}
 
