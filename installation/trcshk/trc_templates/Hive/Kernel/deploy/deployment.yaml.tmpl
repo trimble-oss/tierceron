@@ -1,17 +1,4 @@
 apiVersion: apps/v1
-kind: Service
-metadata:
-  name: trcshk
-  annotations:
-    seccomp.security.alpha.kubernetes.io/trcshk: runtime/default
-  labels:
-    app: trcshk
-spec:
-  clusterIP: None
-  selector:
-    app: trcshk
----
-apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: trcshk
@@ -20,19 +7,16 @@ metadata:
   labels:
     env: dev
     application_type: service
-
 spec:
   replicas: {{.deploy_REPLICAS}}
   selector:
     matchLabels:
       app: trcshk
-      namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
   serviceName: trcshk
   template:
     metadata:
       labels:
         app: trcshk
-        namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
     spec:
       affinity:
         nodeAffinity:
@@ -87,7 +71,7 @@ spec:
             runAsNonRoot: true
             runAsUser: 1575
             capabilities:
-              add: [ "CAP_IPC_LOCK", "NET_ADMIN", "SYS_TIME" ]
+              add: [ "CAP_IPC_LOCK" ]
       volumes:
         - name: trcshk-data-volume
           emptyDir: {}
@@ -104,7 +88,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: trcshk
-  namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
   annotations:
     service.beta.kubernetes.io/azure-load-balancer-ipv4: {{.deploy_LB_IP}}
     service.beta.kubernetes.io/azure-load-balancer-internal: "true"
@@ -117,5 +100,4 @@ spec:
     port: {{.deploy_trcshk_PORT}}
   selector:
     app: trcshk
-    namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
 
