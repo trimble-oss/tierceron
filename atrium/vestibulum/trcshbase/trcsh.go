@@ -68,14 +68,13 @@ func createLogFile() (*log.Logger, error) {
 	var f *os.File
 	var logPrefix string = "[DEPLOY]"
 	if coreopts.BuildOptions.IsKernel() {
-		f = os.Stderr
 		logPrefix = "[trcshk]"
-	} else {
-		var errOpenFile error
-		f, errOpenFile = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-		if errOpenFile != nil {
-			return nil, errOpenFile
-		}
+	}
+
+	var errOpenFile error
+	f, errOpenFile = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	if errOpenFile != nil {
+		return nil, errOpenFile
 	}
 	logger := log.New(f, logPrefix, log.LstdFlags)
 	return logger, nil
