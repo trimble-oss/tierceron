@@ -1,8 +1,10 @@
-apiVersion: autoscaling/v2beta2
+apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: trcshk-hpa
 spec:
+  minReplicas: 1
+  maxReplicas: 10
   scaleTargetRef:
     apiVersion: apps/v1
     kind: StatefulSet
@@ -12,6 +14,6 @@ spec:
   - type: Resource
     resource:
       name: cpu
-      targetAverageUtilization: 80
-  minReplicas: 1
-  maxReplicas: 10
+      target:
+        type: Utilization
+        averageUtilization: 80
