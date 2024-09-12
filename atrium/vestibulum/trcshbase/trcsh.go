@@ -571,15 +571,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				}
 				os.Exit(-1)
 			}
-			//
-			// Zero after use to prevent downstream conflicts or reliance.
-			//
-			if appRoleIDPtr != nil {
-				*appRoleIDPtr = ""
-			}
-			if secretIDPtr != nil {
-				*secretIDPtr = ""
-			}
 		}
 
 		var errAgentLoad error
@@ -630,6 +621,17 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 					fmt.Printf("Error migrating updated role or token: %s\n", err)
 					logger.Printf("Error migrating updated role or token: %s\n", err)
 				}
+			}
+		}
+		if useRole {
+			//
+			// Zero after use to prevent downstream conflicts or reliance.
+			//
+			if appRoleIDPtr != nil {
+				*appRoleIDPtr = ""
+			}
+			if secretIDPtr != nil {
+				*secretIDPtr = ""
 			}
 		}
 
