@@ -623,6 +623,17 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				}
 			}
 		}
+		if useRole {
+			//
+			// Zero after use to prevent downstream conflicts or reliance.
+			//
+			if appRoleIDPtr != nil {
+				*appRoleIDPtr = ""
+			}
+			if secretIDPtr != nil {
+				*secretIDPtr = ""
+			}
+		}
 
 		fmt.Printf("drone trcsh beginning initialization sequence.\n")
 		logger.Printf("drone trcsh beginning initialization sequence.\n")
@@ -915,6 +926,8 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	case "trcconfig":
 		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, token, argsOrig, deployArgLines, configCount)
 		if err != nil {
+			fmt.Println("trcconfig - unexpected failure")
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(err)
 			os.Exit(1)
 		}
 	case "trcplgtool":
@@ -991,6 +1004,8 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 
 		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, *gTrcshConfig.Token, argsOrig, deployArgLines, configCount)
 		if err != nil {
+			fmt.Println("trcplgtool - unexpected failure")
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(err)
 			os.Exit(1)
 		}
 
