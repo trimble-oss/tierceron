@@ -379,10 +379,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				}
 				appRoleIDPtr = &app_sec[0]
 				secretIDPtr = &app_sec[1]
-			} else if token, ok := config["agent_token"].(string); ok {
-				useRole = false
-				agentToken = token
 			} else {
+				useRole = false
 				logger.Println("Error reading config value")
 			}
 			if addr, ok := config["vault_addr"].(string); ok {
@@ -403,20 +401,26 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		} else {
 			agentToken = ""
 			if eUtils.IsWindows() {
-				role, err := wincred.GetGenericCredential("AGENT_ROLE")
-				if err != nil {
-					agentCred, err := wincred.GetGenericCredential("AGENT_TOKEN")
+				agentRole := os.Getenv("AGENT_ROLE")
+				if agentRole == "" || agentRole == "UNSET" {
+					role, err := wincred.GetGenericCredential("AGENT_ROLE")
 					if err != nil {
 						fmt.Println("Error loading authentication from Credential Manager")
 						logger.Println("Error loading authentication from Credential Manager")
-					} else {
-						agentToken = string(agentCred.CredentialBlob)
-						fromWinCred = true
 						useRole = false
+					} else {
+						agentRole := string(role.CredentialBlob)
+						fromWinCred = true
+						app_sec := strings.Split(agentRole, ":")
+						if len(app_sec) != 2 {
+							fmt.Println("invalid agent role used from wincred for drone trcsh agent")
+							logger.Println("invalid agent role used from wincred for drone trcsh agent")
+							os.Exit(124)
+						}
+						appRoleIDPtr = &app_sec[0]
+						secretIDPtr = &app_sec[1]
 					}
 				} else {
-					agentRole := string(role.CredentialBlob)
-					fromWinCred = true
 					app_sec := strings.Split(agentRole, ":")
 					if len(app_sec) != 2 {
 						fmt.Println("invalid agent role used from wincred for drone trcsh agent")
@@ -426,10 +430,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 					appRoleIDPtr = &app_sec[0]
 					secretIDPtr = &app_sec[1]
 				}
+
 			} else {
 				agentRole := os.Getenv("AGENT_ROLE")
 				if agentRole == "" {
-					agentToken = os.Getenv("AGENT_TOKEN")
+					fmt.Println("Error loading authentication from env")
+					logger.Println("Error loading authentication from env")
 					useRole = false
 				} else {
 					app_sec := strings.Split(agentRole, ":")
@@ -464,8 +470,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		if (len(agentToken) == 0 && !useRole) && !eUtils.IsWindows() {
-			fmt.Println("drone trcsh requires AGENT_ROLE or AGENT_TOKEN.")
-			logger.Println("drone trcsh requires AGENT_ROLE or AGENT_TOKEN.")
+			fmt.Println("drone trcsh requires AGENT_ROLE.")
+			logger.Println("drone trcsh requires AGENT_ROLE.")
 			os.Exit(-1)
 		}
 
@@ -568,23 +574,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		var errAgentLoad error
-	ValidateAgent:
 		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, true, logger, dronePtr)
 		if errAgentLoad != nil {
 			// check os.env for another token
-			if eUtils.IsWindows() {
-				if !useRole && agentToken != os.Getenv("AGENT_TOKEN") { // using token instead of role
-					agentToken = os.Getenv("AGENT_TOKEN")
-					fromWinCred = false
-					goto ValidateAgent
-				}
-			} else {
-				fmt.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
-				logger.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
-				os.Exit(124)
-			}
+			fmt.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
+			logger.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
+			os.Exit(124)
 		}
 
 		fmt.Println("Drone trcsh agent bootstrap successful.")
@@ -597,31 +594,32 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				if useRole {
 					cred = wincred.NewGenericCredential("AGENT_ROLE")
 					cred.CredentialBlob = []byte(*appRoleIDPtr + ":" + *secretIDPtr)
+					err := cred.Write()
+					if err != nil {
+						fmt.Printf("Error migrating updated role: %s\n", err)
+						logger.Printf("Error migrating updated role: %s\n", err)
+					} else {
+						//delete os.env token
+						if os.Getenv("AGENT_TOKEN") != "" {
+							command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_TOKEN", "UNSET")
+							_, err := command.CombinedOutput()
+							if err != nil {
+								fmt.Println(err)
+								logger.Println(err)
+							}
+						}
+						if os.Getenv("AGENT_ROLE") != "" {
+							command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_ROLE", "UNSET")
+							_, err := command.CombinedOutput()
+							if err != nil {
+								fmt.Println(err)
+								logger.Println(err)
+							}
+						}
+					}
 				} else {
-					cred := wincred.NewGenericCredential("AGENT_TOKEN")
-					cred.CredentialBlob = []byte(agentToken)
-				}
-				err := cred.Write()
-				if err != nil {
 					fmt.Printf("Error migrating updated role or token: %s\n", err)
 					logger.Printf("Error migrating updated role or token: %s\n", err)
-				}
-			}
-			//delete os.env token
-			if os.Getenv("AGENT_TOKEN") != "" {
-				command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_TOKEN", "UNSET")
-				_, err := command.CombinedOutput()
-				if err != nil {
-					fmt.Println(err)
-					logger.Println(err)
-				}
-			}
-			if os.Getenv("AGENT_ROLE") != "" {
-				command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_ROLE", "UNSET")
-				_, err := command.CombinedOutput()
-				if err != nil {
-					fmt.Println(err)
-					logger.Println(err)
 				}
 			}
 		}
