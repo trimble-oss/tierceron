@@ -73,7 +73,7 @@ func AutoAuth(driverConfig *DriverConfig,
 	var c cert
 	var v *sys.Vault
 
-	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" && appRoleConfig != "deployauth" {
+	if tokenPtr != nil && *tokenPtr != "" && addrPtr != nil && *addrPtr != "" && appRoleConfig != "deployauth" && appRoleConfig != "hivekernel" {
 		// For token based auth, auto auth not
 		return nil
 	}
@@ -144,7 +144,7 @@ func AutoAuth(driverConfig *DriverConfig,
 		var approleID string
 		var dump []byte
 
-		if override || appRoleConfig == "deployauth" {
+		if override || appRoleConfig == "deployauth" || appRoleConfig == "hivekernel" {
 			// Nothing...
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
@@ -226,7 +226,7 @@ func AutoAuth(driverConfig *DriverConfig,
 			}
 
 			dump = []byte(certConfigData)
-		} else if (override && !exists) || appRoleConfig == "deployauth" {
+		} else if (override && !exists) || appRoleConfig == "deployauth" || appRoleConfig == "hivekernel" {
 			if !driverConfig.CoreConfig.IsShell {
 				LogInfo(&driverConfig.CoreConfig, "No approle file exists, continuing without saving config IDs")
 			}
@@ -244,7 +244,7 @@ func AutoAuth(driverConfig *DriverConfig,
 		}
 
 		// Do not save IDs if overriding and no approle file exists
-		if !isProd && (!override || exists) && appRoleConfig != "deployauth" {
+		if !isProd && (!override || exists) && appRoleConfig != "deployauth" && appRoleConfig != "hivekernel" {
 
 			// Create hidden folder
 			if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {
@@ -306,6 +306,10 @@ func AutoAuth(driverConfig *DriverConfig,
 			goto skipswitch
 		case "deployauth":
 			tokenNamePrefix = "vault_token_azuredeploy"
+			goto skipswitch
+		case "hivekernel":
+			tokenNamePrefix = "trcsh_agent"
+			*tokenNamePtr = tokenNamePrefix + "_" + GetEnvBasis(env)
 			goto skipswitch
 		}
 		switch GetEnvBasis(env) {
@@ -384,6 +388,9 @@ func AutoAuth(driverConfig *DriverConfig,
 		case "deployauth":
 			mod.EnvBasis = "azuredeploy"
 			mod.Env = "azuredeploy"
+		case "hivekernel":
+			mod.EnvBasis = "hivekernel"
+			mod.Env = "hivekernel"
 		}
 		LogInfo(&driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)

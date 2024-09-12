@@ -352,6 +352,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		var address string
 		var deploymentsShard string
 		fromWinCred := false
+		useRole := true
 
 		if coreopts.BuildOptions.IsKernel() {
 			// load via new properties and get config values
@@ -369,9 +370,17 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				logger.Println("Error unmarshaling YAML:", err)
 				os.Exit(-1)
 			}
-			if token, ok := config["agent_token"].(string); ok {
-				agentToken = token
+			if role, ok := config["agent_role"].(string); ok {
+				app_sec := strings.Split(role, ":")
+				if len(app_sec) != 2 {
+					fmt.Println("invalid agent role used for drone trcsh agent")
+					logger.Println("invalid agent role used for drone trcsh agent")
+					os.Exit(124)
+				}
+				appRoleIDPtr = &app_sec[0]
+				secretIDPtr = &app_sec[1]
 			} else {
+				useRole = false
 				logger.Println("Error reading config value")
 			}
 			if addr, ok := config["vault_addr"].(string); ok {
@@ -392,16 +401,52 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		} else {
 			agentToken = ""
 			if eUtils.IsWindows() {
-				agentCred, err := wincred.GetGenericCredential("AGENT_TOKEN")
-				if err != nil {
-					fmt.Println("Error loading authentication from Credential Manager")
-					logger.Println("Error loading authentication from Credential Manager")
+				agentRole := os.Getenv("AGENT_ROLE")
+				if agentRole == "" || agentRole == "UNSET" {
+					role, err := wincred.GetGenericCredential("AGENT_ROLE")
+					if err != nil {
+						fmt.Println("Error loading authentication from Credential Manager")
+						logger.Println("Error loading authentication from Credential Manager")
+						useRole = false
+					} else {
+						agentRole := string(role.CredentialBlob)
+						fromWinCred = true
+						app_sec := strings.Split(agentRole, ":")
+						if len(app_sec) != 2 {
+							fmt.Println("invalid agent role used from wincred for drone trcsh agent")
+							logger.Println("invalid agent role used from wincred for drone trcsh agent")
+							os.Exit(124)
+						}
+						appRoleIDPtr = &app_sec[0]
+						secretIDPtr = &app_sec[1]
+					}
 				} else {
-					agentToken = string(agentCred.CredentialBlob)
-					fromWinCred = true
+					app_sec := strings.Split(agentRole, ":")
+					if len(app_sec) != 2 {
+						fmt.Println("invalid agent role used from wincred for drone trcsh agent")
+						logger.Println("invalid agent role used from wincred for drone trcsh agent")
+						os.Exit(124)
+					}
+					appRoleIDPtr = &app_sec[0]
+					secretIDPtr = &app_sec[1]
 				}
+
 			} else {
-				agentToken = os.Getenv("AGENT_TOKEN")
+				agentRole := os.Getenv("AGENT_ROLE")
+				if agentRole == "" {
+					fmt.Println("Error loading authentication from env")
+					logger.Println("Error loading authentication from env")
+					useRole = false
+				} else {
+					app_sec := strings.Split(agentRole, ":")
+					if len(app_sec) != 2 {
+						fmt.Println("invalid agent role used from wincred for drone trcsh agent")
+						logger.Println("invalid agent role used from wincred for drone trcsh agent")
+						os.Exit(124)
+					}
+					appRoleIDPtr = &app_sec[0]
+					secretIDPtr = &app_sec[1]
+				}
 			}
 			agentEnv = os.Getenv("AGENT_ENV")
 			address = os.Getenv("VAULT_ADDR")
@@ -424,9 +469,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			}
 		}
 
-		if len(agentToken) == 0 && !eUtils.IsWindows() {
-			fmt.Println("drone trcsh requires AGENT_TOKEN.")
-			logger.Println("drone trcsh requires AGENT_TOKEN.")
+		if (len(agentToken) == 0 && !useRole) && !eUtils.IsWindows() {
+			fmt.Println("drone trcsh requires AGENT_ROLE.")
+			logger.Println("drone trcsh requires AGENT_ROLE.")
 			os.Exit(-1)
 		}
 
@@ -502,22 +547,41 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		logger.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		// Preload agent synchronization configs...
+		trcshDriverConfig, err := TrcshInitConfig(agentEnv, *regionPtr, "", true, logger)
+		if err != nil {
+			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
+			logger.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
+			os.Exit(124)
+		}
+
+		if useRole {
+			trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress = address
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
+
+			authTokenEnv := agentEnv
+			appRoleConfig := "hivekernel"
+			authTokenName := "vault_token_hivekernel"
+			trcshEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+
+			autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, secretIDPtr, appRoleIDPtr, &agentToken, &authTokenName, &authTokenEnv, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &trcshEnvBasis, appRoleConfig, false)
+			if autoErr != nil || len(agentToken) == 0 || agentToken == "" {
+				fmt.Println("Unable to auth.")
+				if autoErr != nil {
+					fmt.Println(autoErr)
+				}
+				os.Exit(-1)
+			}
+		}
+
 		var errAgentLoad error
-	ValidateAgent:
 		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(address,
 			agentToken,
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, true, logger, dronePtr)
 		if errAgentLoad != nil {
 			// check os.env for another token
-			if agentToken != os.Getenv("AGENT_TOKEN") && eUtils.IsWindows() {
-				agentToken = os.Getenv("AGENT_TOKEN")
-				fromWinCred = false
-				goto ValidateAgent
-			} else {
-				fmt.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
-				logger.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
-				os.Exit(124)
-			}
+			fmt.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
+			logger.Printf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error())
+			os.Exit(124)
 		}
 
 		fmt.Println("Drone trcsh agent bootstrap successful.")
@@ -526,21 +590,36 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		if eUtils.IsWindows() {
 			if !fromWinCred {
 				// migrate token to wincred
-				cred := wincred.NewGenericCredential("AGENT_TOKEN")
-				cred.CredentialBlob = []byte(agentToken)
-				err := cred.Write()
-				if err != nil {
-					fmt.Printf("Error migrating updated token: %s\n", err)
-					logger.Printf("Error migrating updated token: %s\n", err)
-				}
-			}
-			//delete os.env token
-			if os.Getenv("AGENT_TOKEN") != "" {
-				command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_TOKEN", "UNSET")
-				_, err := command.CombinedOutput()
-				if err != nil {
-					fmt.Println(err)
-					logger.Println(err)
+				var cred *wincred.GenericCredential
+				if useRole {
+					cred = wincred.NewGenericCredential("AGENT_ROLE")
+					cred.CredentialBlob = []byte(*appRoleIDPtr + ":" + *secretIDPtr)
+					err := cred.Write()
+					if err != nil {
+						fmt.Printf("Error migrating updated role: %s\n", err)
+						logger.Printf("Error migrating updated role: %s\n", err)
+					} else {
+						//delete os.env token
+						if os.Getenv("AGENT_TOKEN") != "" {
+							command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_TOKEN", "UNSET")
+							_, err := command.CombinedOutput()
+							if err != nil {
+								fmt.Println(err)
+								logger.Println(err)
+							}
+						}
+						if os.Getenv("AGENT_ROLE") != "" {
+							command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_ROLE", "UNSET")
+							_, err := command.CombinedOutput()
+							if err != nil {
+								fmt.Println(err)
+								logger.Println(err)
+							}
+						}
+					}
+				} else {
+					fmt.Printf("Error migrating updated role or token: %s\n", err)
+					logger.Printf("Error migrating updated role or token: %s\n", err)
 				}
 			}
 		}
@@ -548,12 +627,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("drone trcsh beginning initialization sequence.\n")
 		logger.Printf("drone trcsh beginning initialization sequence.\n")
 		// Initialize deployers.
-		trcshDriverConfig, err := TrcshInitConfig(*gAgentConfig.Env, *regionPtr, "", true, logger)
-		if err != nil {
-			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
-			logger.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
-			os.Exit(124)
-		}
 
 		// Validate drone sha path
 		pluginConfig := make(map[string]interface{})
