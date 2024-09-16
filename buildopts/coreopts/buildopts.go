@@ -32,6 +32,8 @@ type OptionsBuilder struct {
 	TapInit                      func()
 	GetMachineID                 func() string
 	IsMessenger                  func() bool
+	GetTrcshBinPath              func() string
+	GetTrcshConfigPath           func() string
 	GetMessengerConfigPath       func() string
 }
 
@@ -62,6 +64,8 @@ func LoadOptions() Option {
 		optionsBuilder.GetMachineID = GetMachineID
 		optionsBuilder.TapInit = TapInit
 		optionsBuilder.IsMessenger = IsMessenger
+		optionsBuilder.GetTrcshBinPath = GetTrcshBinPath
+		optionsBuilder.GetTrcshConfigPath = GetTrcshConfigPath
 		optionsBuilder.GetMessengerConfigPath = GetMessengerConfigPath
 	}
 }

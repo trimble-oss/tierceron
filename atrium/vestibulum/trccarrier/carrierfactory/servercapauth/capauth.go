@@ -27,17 +27,15 @@ type FeatherAuth struct {
 	HandshakeCode string
 }
 
-var trcshaPath string = "/home/azuredeploy/bin/trcsh"
-
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
 
-	certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcsh/Certify")
+	certifyMap, err := mod.ReadData(coreopts.BuildOptions.GetTrcshConfigPath())
 	if err != nil {
 		return false, err
 	}
 
 	if _, ok := certifyMap["trcsha256"]; ok {
-		peerExe, err := os.Open(trcshaPath)
+		peerExe, err := os.Open(coreopts.BuildOptions.GetTrcshBinPath())
 		if err != nil {
 			return false, err
 		}
@@ -59,32 +57,30 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 
 func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (*FeatherAuth, error) {
 
-	certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/trcsh/Certify")
+	certifyMap, err := mod.ReadData(coreopts.BuildOptions.GetTrcshConfigPath())
 	if err != nil {
 		return nil, err
 	}
 
-	if !coreopts.BuildOptions.IsMessenger() {
-		if _, ok := certifyMap["trcsha256"]; ok {
-			logger.Println("Registering cap auth.")
-			go func() {
-				retryCap := 0
-				for retryCap < 5 {
-					//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
-					//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
-					tapMap := map[string]string{"/home/azuredeploy/bin/trcsh": certifyMap["trcsha256"].(string)}
+	if _, ok := certifyMap["trcsha256"]; ok {
+		logger.Println("Registering cap auth.")
+		go func() {
+			retryCap := 0
+			for retryCap < 5 {
+				//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
+				//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
+				tapMap := map[string]string{coreopts.BuildOptions.GetTrcshBinPath(): certifyMap["trcsha256"].(string)}
 
-					err := tap.Tap(tapMap, "azuredeploy", false)
-					if err != nil {
-						logger.Println("Cap failure with error: " + err.Error())
-						retryCap++
-					} else {
-						retryCap = 0
-					}
+				err := tap.Tap(tapMap, "azuredeploy", false)
+				if err != nil {
+					logger.Println("Cap failure with error: " + err.Error())
+					retryCap++
+				} else {
+					retryCap = 0
 				}
-				logger.Println("Mad hat cap failure.")
-			}()
-		}
+			}
+			logger.Println("Mad hat cap failure.")
+		}()
 	}
 
 	if !coreopts.BuildOptions.IsMessenger() && (pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod") {
