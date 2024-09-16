@@ -25,7 +25,6 @@ echo "Organization vault host must begin with https:// "
 exit -1
 fi
 
-
 echo "Is this a prod environment? (Y or N): "
 read PROD_ENV
 
@@ -135,6 +134,8 @@ export TRC_KUBE_CONFIG=`cat $KUBE_PATH | base64 --wrap=0`
 VAULT_API_ADDR=VAULT_ADDR
 echo $VAULT_ADDR
 
+trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=trcshm -sha256=target/trcshm
+
 if [ -z "${PROD_EXT}" ]; then
     if [[ ! -z "${SECRET_VAULT_DEV_PLUGIN_TOKEN}" ]]; then
       vault write trcshm/dev token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_DEV_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
@@ -150,6 +151,13 @@ else
 fi
 
 echo "Deployment and refresh of trcshm successful"
+
+echo "Carrier deployed successful? (Y/n: "
+read DEPLOYED_SUCCESS
+
+if [ "$DEPLOYED_SUCCESS" = 'N' ] || [ "$DEPLOYED_SUCCESS" = 'n' ]; then
+    exit 1
+fi
 
 #================================================================
 #trcsh deployment
