@@ -37,6 +37,12 @@ devplugincarriersha:
 	sha256sum plugins/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > plugins/deploy/target/trc-vault-carrier-plugin.sha256
 devplugincarrier: devplugincarrierbuild devplugincarriersha
 
+trcshmpluginbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -tags "insecure azrcr localbuild trcshm" -o plugins/deploy/target/trcshm github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/carrier
+trcshmpluginsha:
+	sha256sum plugins/deploy/target/trcshm | cut -d' ' -f1 > plugins/deploy/target/trcshm.sha256
+trcshmplugin: trcshmpluginbuild trcshmpluginsha
+
 localdevplugincarrierbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "-w" -tags "salty insecure dockercr localbuild" -o plugins/deploy/target/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/carrier
 localdevplugincarriersha:

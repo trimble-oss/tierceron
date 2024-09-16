@@ -9,6 +9,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/pkg/tls"
 	"github.com/trimble-oss/tierceron/pkg/trcnet"
@@ -63,29 +64,32 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 		return nil, err
 	}
 
-	if _, ok := certifyMap["trcsha256"]; ok {
-		logger.Println("Registering cap auth.")
-		go func() {
-			retryCap := 0
-			for retryCap < 5 {
-				//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
-				//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
-				tapMap := map[string]string{"/home/azuredeploy/bin/trcsh": certifyMap["trcsha256"].(string)}
+	if !coreopts.BuildOptions.IsMessenger() {
+		if _, ok := certifyMap["trcsha256"]; ok {
+			logger.Println("Registering cap auth.")
+			go func() {
+				retryCap := 0
+				for retryCap < 5 {
+					//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
+					//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
+					tapMap := map[string]string{"/home/azuredeploy/bin/trcsh": certifyMap["trcsha256"].(string)}
 
-				err := tap.Tap(tapMap, "azuredeploy", false)
-				if err != nil {
-					logger.Println("Cap failure with error: " + err.Error())
-					retryCap++
-				} else {
-					retryCap = 0
+					err := tap.Tap(tapMap, "azuredeploy", false)
+					if err != nil {
+						logger.Println("Cap failure with error: " + err.Error())
+						retryCap++
+					} else {
+						retryCap = 0
+					}
 				}
-			}
-			logger.Println("Mad hat cap failure.")
-		}()
+				logger.Println("Mad hat cap failure.")
+			}()
+		}
 	}
-	if pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod" {
-		// Feathering not supported in staging/prod at this time.
-		featherMap, _ := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
+
+	if !coreopts.BuildOptions.IsMessenger() && (pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod") {
+		// Feathering not supported in staging/prod non messenger at this time.
+		featherMap, _ := mod.ReadData(coreopts.BuildOptions.GetMessengerConfigPath())
 		if _, ok := featherMap["trcHatSecretsPort"]; ok {
 			featherAuth := &FeatherAuth{EncryptPass: "", EncryptSalt: "", HandshakePort: "", SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: ""}
 			return featherAuth, nil
@@ -96,7 +100,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 	}
 
 	logger.Println("Feathering check.")
-	featherMap, _ := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
+	featherMap, _ := mod.ReadData(coreopts.BuildOptions.GetMessengerConfigPath())
 	// TODO: enable error validation when secrets are stored...
 	// if err != nil {
 	// 	return nil, err

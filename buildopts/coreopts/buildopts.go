@@ -29,7 +29,10 @@ type OptionsBuilder struct {
 	CompareLastModified          func(dfStatMapA map[string]interface{}, dfStatMapB map[string]interface{}) bool
 	PreviousStateCheck           func(currentState int) int
 	IsKernel                     func() bool
+	TapInit                      func()
 	GetMachineID                 func() string
+	IsMessenger                  func() bool
+	GetMessengerConfigPath       func() string
 }
 
 func LoadOptions() Option {
@@ -57,6 +60,9 @@ func LoadOptions() Option {
 		optionsBuilder.PreviousStateCheck = PreviousStateCheck
 		optionsBuilder.IsKernel = IsKernel
 		optionsBuilder.GetMachineID = GetMachineID
+		optionsBuilder.TapInit = TapInit
+		optionsBuilder.IsMessenger = IsMessenger
+		optionsBuilder.GetMessengerConfigPath = GetMessengerConfigPath
 	}
 }
 

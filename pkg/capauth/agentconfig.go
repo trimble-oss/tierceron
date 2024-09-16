@@ -281,7 +281,8 @@ func NewAgentConfig(address string,
 	} else {
 		fmt.Printf(".")
 	}
-	data, readErr := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
+
+	data, readErr := mod.ReadData(coreopts.BuildOptions.GetMessengerConfigPath())
 	defer func(m *helperkv.Modifier, e string) {
 		m.Env = e
 	}(mod, env)
