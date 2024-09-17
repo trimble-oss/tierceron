@@ -303,7 +303,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			if err != nil {
 				eUtils.LogErrorMessage(&carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not set needed capabilities for env: %s and plugin %s error: %s\n", carrierDriverConfig.CoreConfig.Env, pluginName, err.Error()), false)
 			}
-			ipcLockErr := ipcLockCapSet.SetFile(coreopts.BuildOptions.GetVaultInstallRoot() + "/plugins/" + vaultPluginSignature["trcplugin"].(string))
+			ipcLockErr := ipcLockCapSet.SetFile(agentPath)
 			if ipcLockErr != nil {
 				eUtils.LogErrorMessage(&carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not apply needed capabilities for env: %s and plugin %s error: %s\n", carrierDriverConfig.CoreConfig.Env, pluginName, ipcLockErr.Error()), false)
 			}
