@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -346,6 +347,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		if coreopts.BuildOptions.IsKernel() {
 			go deployutil.KernelShutdownWatcher(logger)
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("Recovered with stack trace of" + string(debug.Stack()) + "\n")
+				}
+			}()
 		}
 		var agentToken string
 		var agentEnv string
