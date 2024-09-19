@@ -33,17 +33,8 @@ trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=PluginTool
 ```
 
 # Feathering configuration setup (optional)
-If you want to support trcsh windows deployments, you'll need to set up this section.
-
-```
-trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent -serviceFilter=config -indexFilter=config -novault
-```
-
-... after making edits to the generated seed file (all values can be TODO for local), init it.
-
-```
-trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent
-```
+If you want to support trcsh windows deployments and or trcsh kernel (for hive infrastructure),
+See [installation/trcsh/README.md](../trcsh/README.md)
 
 
 # Building the carrier

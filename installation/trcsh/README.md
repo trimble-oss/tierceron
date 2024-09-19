@@ -36,6 +36,20 @@ trcpub -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent
 ```
 
+# Feathering configuration setup for kernel messaging support (optional)
+If you want to support the trcsh kernel hive infrastructure, you'll need to install Trcshm
+
+```
+trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=Trcshm -serviceFilter=config -indexFilter=config -novault
+```
+
+... after making edits to the generated seed file (all values can be TODO for local), init it.  These must
+be distinct from TrcshAgent for proper functioning.
+
+```
+trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=Trcshm
+```
+
 
 Install the trcshd service (Linux)
 TODO: create install script to run trcsh as a service on linux... or windows...
