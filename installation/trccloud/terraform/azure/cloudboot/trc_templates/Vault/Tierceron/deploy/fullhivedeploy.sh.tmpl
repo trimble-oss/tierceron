@@ -106,11 +106,34 @@ echo "Unregister old trcshm plugin"
 vault plugin deregister trcshm$PROD_EXT
 
 echo "Registering trcshm"
-echo trcshm$PROD_EXT
 
 #===============================================================================
 #trcshm deploy
 #===============================================================================
+
+if [ -z "${PROD_EXT}" ]; then
+    VAULT_ENV="dev"
+    if [[ -z "${SECRET_VAULT_ENV_TOKEN}" ]]; then
+       SECRET_VAULT_ENV_TOKEN=$SECRET_VAULT_DEV_PLUGIN_TOKEN
+    fi
+fi
+
+trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=trcshm -sha256=target/trcshm
+
+certifystatus=$?
+if [ $certifystatus -eq 0 ]; then
+   echo "No certification problems encountered."
+else
+   echo "Unexpected certification error."
+   exit $certifystatus
+fi
+
+echo "Carrier deployed successful? (Y/n): "
+read DEPLOYED_SUCCESS
+
+if [ "$DEPLOYED_SUCCESS" = 'N' ] || [ "$DEPLOYED_SUCCESS" = 'n' ]; then
+    exit 1
+fi
 
 vault plugin register \
           -command=trcshm$PROD_EXT \
@@ -134,8 +157,6 @@ export TRC_KUBE_CONFIG=`cat $KUBE_PATH | base64 --wrap=0`
 VAULT_API_ADDR=VAULT_ADDR
 echo $VAULT_ADDR
 
-trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=trcshm -sha256=target/trcshm
-
 if [ -z "${PROD_EXT}" ]; then
     if [[ ! -z "${SECRET_VAULT_DEV_PLUGIN_TOKEN}" ]]; then
       vault write trcshm/dev token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_DEV_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
@@ -152,15 +173,8 @@ fi
 
 echo "Deployment and refresh of trcshm successful"
 
-echo "Carrier deployed successful? (Y/n: "
-read DEPLOYED_SUCCESS
-
-if [ "$DEPLOYED_SUCCESS" = 'N' ] || [ "$DEPLOYED_SUCCESS" = 'n' ]; then
-    exit 1
-fi
-
 #================================================================
-#trcsh deployment
+#trcshq deployment
 #================================================================
 echo "Deploying trcshq agent"
 TRC_PLUGIN_NAME="trcshq"
@@ -197,4 +211,3 @@ trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAUL
     fi
 
 echo "Deployed trcshq agent successfully"
-
