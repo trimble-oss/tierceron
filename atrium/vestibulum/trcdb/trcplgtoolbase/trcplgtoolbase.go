@@ -18,6 +18,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -715,7 +716,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 			return errors.New(errMessage)
 		}
-		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && coreopts.BuildOptions.IsKernel() {
+		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && kernelopts.BuildOptions.IsKernel() {
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Starting verification of plugin module.")
 			h := sha256.New()
 			pathToSO := hive.LoadPluginPath(&trcshDriverConfigBase.DriverConfig)
@@ -847,14 +848,14 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if *pluginservicestartPtr && coreopts.BuildOptions.IsKernel() {
+	} else if *pluginservicestartPtr && kernelopts.BuildOptions.IsKernel() {
 		if len(pluginHandler) > 0 {
 			pluginHandler[0].PluginserviceStart(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		} else {
 			fmt.Println("No handler provided for plugin service startup.")
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("No handler provided for plugin service startup.")
 		}
-	} else if *pluginservicestopPtr && coreopts.BuildOptions.IsKernel() {
+	} else if *pluginservicestopPtr && kernelopts.BuildOptions.IsKernel() {
 		if len(pluginHandler) > 0 {
 			pluginHandler[0].PluginserviceStop(&trcshDriverConfigBase.DriverConfig)
 		} else {

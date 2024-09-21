@@ -16,6 +16,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	memonly "github.com/trimble-oss/tierceron/buildopts/memonly"
@@ -51,6 +52,7 @@ func main() {
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 	saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
+	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
 	tiercerontls.InitRoot()
 
 	eUtils.InitHeadless(true)

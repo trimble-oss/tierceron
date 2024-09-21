@@ -32,6 +32,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -67,7 +68,7 @@ func createLogFile() (*log.Logger, error) {
 	}
 	var f *os.File
 	var logPrefix string = "[DEPLOY]"
-	if coreopts.BuildOptions.IsKernel() {
+	if kernelopts.BuildOptions.IsKernel() {
 		logPrefix = "[trcshk]"
 	}
 
@@ -238,7 +239,7 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 
 	go captiplib.FeatherCtlEmitter(trcshDriverConfig.FeatherCtx, trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan, deployerEmote, nil)
 	var projServ = ""
-	if len(projectService) > 0 && coreopts.BuildOptions.IsKernel() {
+	if len(projectService) > 0 && kernelopts.BuildOptions.IsKernel() {
 		projServ = *projectService[0]
 	}
 
@@ -279,7 +280,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 	trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 
-	if coreopts.BuildOptions.IsKernel() {
+	if kernelopts.BuildOptions.IsKernel() {
 		dronePtr = new(bool)
 		*dronePtr = true
 	} else {
@@ -344,7 +345,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			os.Exit(-1)
 		}
 
-		if coreopts.BuildOptions.IsKernel() {
+		if kernelopts.BuildOptions.IsKernel() {
 			go deployutil.KernelShutdownWatcher(logger)
 		}
 		var agentToken string
@@ -354,7 +355,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fromWinCred := false
 		useRole := true
 
-		if coreopts.BuildOptions.IsKernel() {
+		if kernelopts.BuildOptions.IsKernel() {
 			// load via new properties and get config values
 			data, err := os.ReadFile("config.yml")
 			if err != nil {
@@ -497,7 +498,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			os.Exit(124)
 		}
 
-		if coreopts.BuildOptions.IsKernel() {
+		if kernelopts.BuildOptions.IsKernel() {
 			hostname := os.Getenv("HOSTNAME")
 			id := 0
 
@@ -646,7 +647,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		pluginConfig["env"] = trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 		if eUtils.IsWindows() {
 			pluginConfig["plugin"] = "trcsh.exe"
-		} else if coreopts.BuildOptions.IsKernel() {
+		} else if kernelopts.BuildOptions.IsKernel() {
 			pluginConfig["plugin"] = "trcshk"
 		} else {
 			pluginConfig["plugin"] = "trcsh"
@@ -667,7 +668,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			os.Exit(124)
 		}
 
-		if coreopts.BuildOptions.IsKernel() && pluginHandler == nil {
+		if kernelopts.BuildOptions.IsKernel() && pluginHandler == nil {
 			pluginHandler = &hive.PluginHandler{
 				IsRunning: false,
 				Services:  &[]string{deploymentsShard},
@@ -1188,13 +1189,13 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		fmt.Println("Session Authorized")
 	}
 
-	if coreopts.IsKernel() || ((len(os.Args) > 1) && len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
+	if kernelopts.BuildOptions.IsKernel() || ((len(os.Args) > 1) && len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
 		// Generate trc code...
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Preload setup")
 		configRoleSlice := strings.Split(*gTrcshConfig.ConfigRole, ":")
 		tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 
-		if coreopts.IsKernel() {
+		if kernelopts.BuildOptions.IsKernel() {
 			pluginMap := map[string]interface{}{"pluginName": deployment}
 
 			var configToken string

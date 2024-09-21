@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -167,7 +168,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 	}
 	deploymentList := []string{}
 	var machineID string
-	if isDrone && !coreopts.BuildOptions.IsKernel() {
+	if isDrone && !kernelopts.BuildOptions.IsKernel() {
 		machineID = coreopts.BuildOptions.GetMachineID()
 		if len(machineID) == 0 {
 			return nil, errors.New("unable to access id of machine")
@@ -215,7 +216,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 						return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
 					}
 				}
-				if coreopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" {
+				if kernelopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" {
 					deploymentList = append(deploymentList, deployment)
 				} else if deploymentConfig["trctype"].(string) == "trcshservice" && len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, deployment)

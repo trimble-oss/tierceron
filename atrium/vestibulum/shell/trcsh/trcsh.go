@@ -10,6 +10,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
@@ -32,6 +33,8 @@ func main() {
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 	saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
+	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
+	//	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions()) -- only needed in trcshm???
 	eUtils.InitHeadless(true)
 
 	tiercerontls.InitRoot()

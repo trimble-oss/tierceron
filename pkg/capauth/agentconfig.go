@@ -18,6 +18,7 @@ import (
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/pkg/tls"
@@ -282,7 +283,7 @@ func NewAgentConfig(address string,
 		fmt.Printf(".")
 	}
 
-	data, readErr := mod.ReadData(coreopts.BuildOptions.GetMessengerConfigPath())
+	data, readErr := mod.ReadData(cursoropts.BuildOptions.GetCursorConfigPath())
 	defer func(m *helperkv.Modifier, e string) {
 		m.Env = e
 	}(mod, env)
