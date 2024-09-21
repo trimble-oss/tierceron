@@ -1,7 +1,7 @@
 //go:build !kernel
 // +build !kernel
 
-package coreopts
+package kernelopts
 
 func IsKernel() bool {
 	return false

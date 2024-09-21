@@ -1,16 +1,16 @@
 //go:build !trcshm
 // +build !trcshm
 
-package coreopts
+package cursoropts
 
 func TapInit() {
 }
 
-func IsMessenger() bool {
+func IsCursor() bool {
 	return false
 }
 
-func GetMessengerConfigPath() string {
+func GetCursorConfigPath() string {
 	return "super-secrets/Restricted/TrcshAgent/config"
 }
 

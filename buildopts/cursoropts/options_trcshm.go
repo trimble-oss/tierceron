@@ -1,7 +1,7 @@
 //go:build trcshm
 // +build trcshm
 
-package coreopts
+package cursoropts
 
 import (
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
@@ -11,12 +11,12 @@ func TapInit() {
 	tap.TapInit("/tmp/trcshm/")
 }
 
-// Pathing for the messenger
-func IsMessenger() bool {
+// Pathing for the cursor (runner)
+func IsCursor() bool {
 	return true
 }
 
-func GetMessengerConfigPath() string {
+func GetCursorConfigPath() string {
 	return "super-secrets/Restricted/Trcshm/config"
 }
 
