@@ -1,5 +1,5 @@
-//go:build trcshm
-// +build trcshm
+//go:build trcshm && !trcshc
+// +build trcshm,!trcshc
 
 package cursoropts
 
@@ -8,12 +8,19 @@ import (
 )
 
 func TapInit() {
-	tap.TapInit("/tmp/trcshm/")
+	tap.TapInit(GetCapPath())
 }
 
-// Pathing for the cursor (runner)
-func IsCursor() bool {
-	return true
+func GetCapPath() string {
+	return "/tmp/trcshm/"
+}
+
+func GetPluginName() string {
+	return "trcshm"
+}
+
+func GetLogPath() string {
+	return "/var/log/trcshm.log"
 }
 
 func GetCursorConfigPath() string {
@@ -26,4 +33,11 @@ func GetTrcshBinPath() string {
 
 func GetTrcshConfigPath() string {
 	return "super-secrets/Index/TrcVault/trcplugin/trcshq/Certify"
+}
+
+func GetCursorFields() map[string]string {
+	return map[string]string{
+		"configrole": "Read only role for specified environment.",
+		"vaddress":   "Vault Url for plugin reference purposes.",
+	}
 }
