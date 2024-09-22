@@ -14,7 +14,7 @@ export VAULT_ADDR
 export VAULT_TOKEN
 
 vault secrets disable vaultcarrier/
-vault secrets list | grep trc-vault-carrier-plugin$PROD_EXT
+vault secrets list | grep trcsh-curator$PROD_EXT
 existingplugin=$?
 if [ $existingplugin -eq 0 ]; then       
     echo "Carrier plugin still mounted elsewhere.  Manual intervention required to clean up before deregistration can proceed."
@@ -22,4 +22,4 @@ if [ $existingplugin -eq 0 ]; then
 else
     echo "All mounts cleared.  Continuing..."
 fi
-vault plugin deregister secret trc-vault-carrier-plugin$PROD_EXT
+vault plugin deregister secret trcsh-curator$PROD_EXT

@@ -31,23 +31,29 @@ $(info GOARCH: $(GOARCH))
 
 $(shell uuidgen > ../buildopts/saltyopts/saltguard.txt)
 
-devplugincarrierbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -ldflags "-w" -tags "salty insecure azrcr localbuild" -o plugins/deploy/target/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/carrier
-devplugincarriersha:
-	sha256sum plugins/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > plugins/deploy/target/trc-vault-carrier-plugin.sha256
-devplugincarrier: devplugincarrierbuild devplugincarriersha
+azrtrcshcuratorbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -ldflags "-w" -tags "salty insecure azrcr localbuild" -o plugins/deploy/target/trcsh-curator github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/carrier
+azrtrcshcuratorsha:
+	sha256sum plugins/deploy/target/trcsh-curator | cut -d' ' -f1 > plugins/deploy/target/trcsh-curator.sha256
+azrtrcshcurator: azrtrcshcuratorbuild azrtrcshcuratorsha
 
-trcshmpluginbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -tags "insecure azrcr localbuild trcshm" -o plugins/deploy/target/trcshm github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/carrier
-trcshmpluginsha:
-	sha256sum plugins/deploy/target/trcshm | cut -d' ' -f1 > plugins/deploy/target/trcshm.sha256
-trcshmplugin: trcshmpluginbuild trcshmpluginsha
+trcshcuratorbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "-w" -tags "salty insecure dockercr localbuild" -o plugins/deploy/target/trcsh-curator github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/carrier
+trcshcuratorsha:
+	sha256sum plugins/deploy/target/trcsh-curator | cut -d' ' -f1 > plugins/deploy/target/trcsh-curator.sha256
+trcshcurator: trcshcuratorbuild trcshcuratorsha
 
-localdevplugincarrierbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "-w" -tags "salty insecure dockercr localbuild" -o plugins/deploy/target/trc-vault-carrier-plugin github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/carrier
-localdevplugincarriersha:
-	sha256sum plugins/deploy/target/trc-vault-carrier-plugin | cut -d' ' -f1 > plugins/deploy/target/trc-vault-carrier-plugin.sha256
-localdevplugincarrier: localdevplugincarrierbuild localdevplugincarriersha
+cursorcbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -tags "salty insecure azrcr localbuild" -o plugins/deploy/target/trcsh-cursor github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/carrier
+cursorcsha:
+	sha256sum plugins/deploy/target/trcsh-cursor | cut -d' ' -f1 > plugins/deploy/target/trcsh-cursor.sha256
+cursorc: cursorcbuild cursorcsha
+
+cursormbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -tags "salty insecure azrcr localbuild trcshm" -o plugins/deploy/target/trcsh-cursor-m github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/carrier
+cursormsha:
+	sha256sum plugins/deploy/target/trcsh-cursor-m | cut -d' ' -f1 > plugins/deploy/target/trcsh-cursor-m.sha256
+cursorm: cursormbuild cursormsha
 
 devplugintrcdbbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "-w" -tags "salty insecure localbuild" -o plugins/deploy/target/trc-vault-plugin github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/trcdb
@@ -82,11 +88,11 @@ trcshellq: trcshellqbuild trcshellqsha
 trcshellwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -buildmode=pie -ldflags "-w" -tags "salty tc windows azrcr memonly" -o plugins/deploy/target/trcsh.exe github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
 
-trcshellkernelbuild:
+trcshkernelbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -ldflags "-w" -tags "salty tc azrcr memonly kernel" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
-trcshellkernelsha:
+trcshkernelsha:
 	sha256sum plugins/deploy/target/trcshk | cut -d' ' -f1 > plugins/deploy/target/trcshk.sha256
-trcshellkernel: trcshellkernelbuild trcshellkernelsha
+trcshkernel: trcshkernelbuild trcshkernelsha
 
 trcshellkernelmbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -ldflags "-w" -tags "salty tc azrcr memonly kernel trcshm" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
@@ -106,6 +112,6 @@ fenestra:
 spiralis:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/spiralis -tags "insecure g3nboot argosystub tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/atrium/speculatio/spiralis
 
-all: certify devplugincarrier devplugintrcdb trcshell trcshellwin fenestra spiralis
+all: certify azrtrcshcurator devplugintrcdb trcshell trcshellwin fenestra spiralis
 
-allq: certify trcshmplugin trcshellq trcshellkernelm
+allq: certify cursorc cursorm trcshellq trcshellkernelm

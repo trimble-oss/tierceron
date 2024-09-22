@@ -17,7 +17,7 @@ See [installation/trcvault/README.md](installation/trcvault/README.md)
 ### Setting up your very first hello world example application
 See hello world section of [installation/trclocal/trchelloworld/README.md](installation/trclocal/trchelloworld/README.md)
 
-### Installing collaborative deployment system (trc-vault-carrier and trcsh)
+### Installing collaborative deployment system (trcsh-curator and trcsh)
 See [installation/trccarrier/README.md](installation/trccarrier/README.md)
 
 See [installation/trcsh/README.md](installation/trcsh/README.md)

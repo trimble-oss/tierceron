@@ -64,12 +64,16 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 
 	if _, ok := certifyMap["trcsha256"]; ok {
 		logger.Println("Registering cap auth.")
+
 		go func() {
 			retryCap := 0
 			for retryCap < 5 {
 				//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
 				//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
-				tapMap := map[string]string{cursoropts.BuildOptions.GetTrcshBinPath(): certifyMap["trcsha256"].(string)}
+				tapMap := map[string]string{
+					cursoropts.BuildOptions.GetTrcshBinPath(): certifyMap["trcsha256"].(string),
+				
+				}
 
 				err := tap.Tap(tapMap, "azuredeploy", false)
 				if err != nil {
@@ -83,7 +87,11 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 		}()
 	}
 
-	if !cursoropts.BuildOptions.IsCursor() && (pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod") {
+	if !cursoropts.BuildOptions.IsCursor() {
+		return nil, nil
+	}
+
+	if pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod" {
 		// Feathering not supported in staging/prod non messenger at this time.
 		featherMap, _ := mod.ReadData(cursoropts.BuildOptions.GetCursorConfigPath())
 		if _, ok := featherMap["trcHatSecretsPort"]; ok {

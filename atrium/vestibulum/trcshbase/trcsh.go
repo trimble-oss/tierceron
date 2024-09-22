@@ -113,16 +113,16 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 	fmt.Println("trcsh env: " + env)
 	fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
 
-	//Check if logfile passed in - if not call create log method that does following below...
-	var logFile *log.Logger
+	//Check if logger passed in - if not call create log method that does following below...
+	var providedLogger *log.Logger
 	var err error
 	if len(logger) == 0 {
-		logFile, err = createLogFile()
+		providedLogger, err = createLogFile()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		logFile = logger[0]
+		providedLogger = logger[0]
 	}
 
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
@@ -134,7 +134,7 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 				EnvBasis:      eUtils.GetEnvBasis(env),
 				Regions:       regions,
 				ExitOnFailure: true,
-				Log:           logFile,
+				Log:           providedLogger,
 			},
 			IsShellSubProcess: false,
 			OutputMemCache:    outputMemCache,
