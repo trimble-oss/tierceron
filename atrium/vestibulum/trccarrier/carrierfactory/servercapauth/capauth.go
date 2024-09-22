@@ -72,7 +72,6 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 				//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
 				tapMap := map[string]string{
 					cursoropts.BuildOptions.GetTrcshBinPath(): certifyMap["trcsha256"].(string),
-				
 				}
 
 				err := tap.Tap(tapMap, "azuredeploy", false)
@@ -85,10 +84,6 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Log
 			}
 			logger.Println("Mad hat cap failure.")
 		}()
-	}
-
-	if !cursoropts.BuildOptions.IsCursor() {
-		return nil, nil
 	}
 
 	if pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod" {
