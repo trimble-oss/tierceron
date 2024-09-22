@@ -10,8 +10,6 @@ import (
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -133,17 +131,6 @@ func main() {
 	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
 	tiercerontls.InitRoot()
 
-	cursorFields := cursoropts.BuildOptions.GetCursorFields()
-	trcshDriverConfig, err := trcshbase.TrcshInitConfig("dev", "", "", true, logger)
-
-	for secretFieldKey, _ := range cursorFields {
-		secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, secretFieldKey)
-		if err != nil {
-			logger.Println("Failed to retrieve wanted key: %s\n", secretFieldKey)
-		}
-		tapMap[secretFieldKey] = secretFieldValue
-	}
-
 	eUtils.InitHeadless(true)
 	logFile := cursoropts.BuildOptions.GetLogPath()
 	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
@@ -159,11 +146,32 @@ func main() {
 	logger.Println("Beginning plugin startup.")
 	buildopts.BuildOptions.SetLogger(logger.Writer())
 
-	e := os.Remove(fmt.Sprintf("%strcsnap.sock", cursoropts.BuildOptions.GetCapPath()))
-	if e != nil {
-		logger.Println("Unable to refresh socket.  Uneccessary.")
+	if os.Getenv(api.PluginMetadataModeEnv) == "true" {
+		logger.Println("Metadata init.")
+	} else {
+		logger.Println("Plugin Init begun.")
+		cursorFields = cursoropts.BuildOptions.GetCursorFields()
+
+		trcshDriverConfig, err := trcshbase.TrcshInitConfig("dev", "", "", true, logger)
+		eUtils.CheckError(&core.CoreConfig{
+			ExitOnFailure: true,
+			Log:           logger,
+		}, err, true)
+
+		for secretFieldKey, _ := range cursorFields {
+			secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, secretFieldKey)
+			if err != nil {
+				logger.Println("Failed to retrieve wanted key: %s\n", secretFieldKey)
+			}
+			tapMap[secretFieldKey] = secretFieldValue
+		}
+
+		e := os.Remove(fmt.Sprintf("%strcsnap.sock", cursoropts.BuildOptions.GetCapPath()))
+		if e != nil {
+			logger.Println("Unable to refresh socket.  Uneccessary.")
+		}
+
 	}
-	carrierfactory.Init(coreopts.BuildOptions.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
@@ -186,7 +194,7 @@ func main() {
 	pluginName := cursoropts.BuildOptions.GetPluginName()
 
 	logger.Print("Starting server...")
-	err = plugin.Serve(&plugin.ServeOpts{
+	err := plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 			// Access backend configuration if needed
 			fmt.Println("Backend configuration:", config)
