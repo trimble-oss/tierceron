@@ -1,5 +1,5 @@
-//go:build !trcshc && !trcshm
-// +build !trcshc,!trcshm
+//go:build !trcshcurator && !trcshcursoraw && !trcshcursork
+// +build !trcshcurator,!trcshcursoraw,!trcshcursork
 
 package cursoropts
 
@@ -17,15 +17,11 @@ func GetLogPath() string {
 	return ""
 }
 
+func GetTrusts() map[string][]string {
+	return map[string][]string{}
+}
+
 func GetCursorConfigPath() string {
-	return ""
-}
-
-func GetTrcshBinPath() string {
-	return ""
-}
-
-func GetTrcshConfigPath() string {
 	return ""
 }
 
