@@ -1,5 +1,5 @@
-//go:build trcshc && !trcshm
-// +build trcshc,!trcshm
+//go:build trcshcurator && !trcshcursoraw && !trcshcursork
+// +build trcshcurator,!trcshcursoraw,!trcshcursork
 
 package cursoropts
 
@@ -12,27 +12,26 @@ func TapInit() {
 }
 
 func GetCapPath() string {
-	return "/tmp/trccarrier/"
+	return "/tmp/trccurator/"
 }
 
 func GetPluginName() string {
-	return "trcshc"
+	return "trcsh-curator"
 }
 
 func GetLogPath() string {
-	return "/var/log/trcshc.log"
+	return "/var/log/trcshcurator.log"
 }
 
 func GetCursorConfigPath() string {
-	return "super-secrets/Restricted/TrcshAgent/config"
+	return "super-secrets/Restricted/TrcshCurator/config"
 }
 
-func GetTrcshBinPath() string {
-	return "/home/azuredeploy/bin/trcsh"
-}
-
-func GetTrcshConfigPath() string {
-	return "super-secrets/Index/TrcVault/trcplugin/trcsh/Certify"
+func GetTrusts() map[string][]string {
+	return map[string][]string{
+		"trcsh-cursor-aw": []string{"trcshaw", "/etc/opt/vault/plugins/trcsh-cursor-aw", "root"}, // original
+		"trcsh-cursor-k":  []string{"trcshk", "/etc/opt/vault/plugins/trcsh-cursor-k", "root"},
+	}
 }
 
 func GetCursorFields() map[string]string {

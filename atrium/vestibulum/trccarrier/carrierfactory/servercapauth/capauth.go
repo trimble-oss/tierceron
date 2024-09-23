@@ -29,64 +29,73 @@ type FeatherAuth struct {
 
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
 
-	certifyMap, err := mod.ReadData(cursoropts.BuildOptions.GetTrcshConfigPath())
-	if err != nil {
-		return false, err
-	}
+	trustsMap := cursoropts.BuildOptions.GetTrusts()
 
-	if _, ok := certifyMap["trcsha256"]; ok {
-		peerExe, err := os.Open(cursoropts.BuildOptions.GetTrcshBinPath())
+	for _, trustData := range trustsMap {
+		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", trustData[0]))
 		if err != nil {
 			return false, err
 		}
-		defer peerExe.Close()
 
-		return true, nil
-		// TODO: Check previous 10 versions?  If any match, then
-		// return ok....
+		if _, ok := certifyMap["trcsha256"]; ok {
+			peerExe, err := os.Open(trustData[1])
+			if err != nil {
+				return false, err
+			}
+			defer peerExe.Close()
 
-		// if _, err := io.Copy(h, peerExe); err != nil {
-		// 	return false, err
-		// }
-		// if certifyMap["trcsha256"].(string) == hex.EncodeToString(h.Sum(nil)) {
-		// 	return true, nil
-		// }
+			return true, nil
+			// TODO: Check previous 10 versions?  If any match, then
+			// return ok....
+
+			// if _, err := io.Copy(h, peerExe); err != nil {
+			// 	return false, err
+			// }
+			// if certifyMap["trcsha256"].(string) == hex.EncodeToString(h.Sum(nil)) {
+			// 	return true, nil
+			// }
+		}
 	}
+
 	return false, errors.New("missing certification")
 }
 
-func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (*FeatherAuth, error) {
+func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, wantsFeathering bool, logger *log.Logger) (*FeatherAuth, error) {
 
-	certifyMap, err := mod.ReadData(cursoropts.BuildOptions.GetTrcshConfigPath())
-	if err != nil {
-		return nil, err
+	trustsMap := cursoropts.BuildOptions.GetTrusts()
+	tapMap := map[string]string{}
+	tapGroup := "azuredeploy"
+	for _, trustData := range trustsMap {
+		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", trustData[0]))
+		if err != nil {
+			logger.Printf("Certification failure on expected plugin: %s\n", trustData[0])
+			continue
+		}
+		if _, ok := certifyMap["trcsha256"]; ok {
+			logger.Println("Registering cap auth.")
+			tapGroup = trustData[2]
+			tapMap[trustData[1]] = certifyMap["trcsha256"].(string)
+		}
 	}
 
-	if _, ok := certifyMap["trcsha256"]; ok {
-		logger.Println("Registering cap auth.")
+	go func() {
+		retryCap := 0
+		for retryCap < 5 {
+			//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
+			//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
 
-		go func() {
-			retryCap := 0
-			for retryCap < 5 {
-				//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
-				//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
-				tapMap := map[string]string{
-					cursoropts.BuildOptions.GetTrcshBinPath(): certifyMap["trcsha256"].(string),
-				}
-
-				err := tap.Tap(tapMap, "azuredeploy", false)
-				if err != nil {
-					logger.Println("Cap failure with error: " + err.Error())
-					retryCap++
-				} else {
-					retryCap = 0
-				}
+			err := tap.Tap(tapMap, tapGroup, false)
+			if err != nil {
+				logger.Println("Cap failure with error: " + err.Error())
+				retryCap++
+			} else {
+				retryCap = 0
 			}
-			logger.Println("Mad hat cap failure.")
-		}()
-	}
+		}
+		logger.Println("Mad hat cap failure.")
+	}()
 
-	if pluginConfig["env"] == "staging" || pluginConfig["env"] == "prod" {
+	if !wantsFeathering {
 		// Feathering not supported in staging/prod non messenger at this time.
 		featherMap, _ := mod.ReadData(cursoropts.BuildOptions.GetCursorConfigPath())
 		if _, ok := featherMap["trcHatSecretsPort"]; ok {

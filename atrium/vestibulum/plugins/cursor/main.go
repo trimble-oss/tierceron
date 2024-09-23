@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -32,6 +31,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/plugin"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"golang.org/x/sys/unix"
 )
 
@@ -62,7 +62,7 @@ func GenerateSchema(fields map[string]string) map[string]*framework.FieldSchema 
 
 var cursorFields map[string]string
 var logger *log.Logger
-var tapMap map[string]*string
+var pluginConfig map[string]interface{}
 
 var createUpdateFunc func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) = func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	pluginName := cursoropts.BuildOptions.GetPluginName()
@@ -73,16 +73,15 @@ var createUpdateFunc func(ctx context.Context, req *logical.Request, data *frame
 		return logical.ErrorResponse("missing path"), nil
 	}
 
-	for secretField, _ := range cursorFields {
-		if secretField, secretFieldOk := data.GetOk(secretField); !secretFieldOk {
-			return nil, errors.New(fmt.Sprintf("%s required", secretField))
-		}
-	}
-
 	// Check that some fields are given
 	if len(req.Data) == 0 {
 		//ctx.Done()
 		return logical.ErrorResponse("missing data fields"), nil
+	}
+
+	tapMap := map[string]*string{}
+	for _, cursor := range cursorFields {
+		tapMap[cursor] = pluginConfig[cursor].(*string)
 	}
 
 	// JSON encode the data
@@ -152,25 +151,30 @@ func main() {
 		logger.Println("Plugin Init begun.")
 		cursorFields = cursoropts.BuildOptions.GetCursorFields()
 
+		// Initialize configs for curator.
 		trcshDriverConfig, err := trcshbase.TrcshInitConfig("dev", "", "", true, logger)
 		eUtils.CheckError(&core.CoreConfig{
 			ExitOnFailure: true,
 			Log:           logger,
 		}, err, true)
 
+		// Get secrets from curator.
 		for secretFieldKey, _ := range cursorFields {
 			secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, secretFieldKey)
 			if err != nil {
 				logger.Println("Failed to retrieve wanted key: %s\n", secretFieldKey)
 			}
-			tapMap[secretFieldKey] = secretFieldValue
+			pluginConfig[secretFieldKey] = secretFieldValue
 		}
 
+		// Clean up tap
 		e := os.Remove(fmt.Sprintf("%strcsnap.sock", cursoropts.BuildOptions.GetCapPath()))
 		if e != nil {
 			logger.Println("Unable to refresh socket.  Uneccessary.")
 		}
 
+		// Establish tap and feather.
+		pluginutil.PluginTapFeatherInit(trcshDriverConfig, pluginConfig)
 	}
 
 	apiClientMeta := api.PluginAPIClientMeta{}

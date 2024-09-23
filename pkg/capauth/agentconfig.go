@@ -40,7 +40,7 @@ type AgentConfigs struct {
 }
 
 type TrcshDriverConfig struct {
-	DriverConfig eUtils.DriverConfig
+	DriverConfig *eUtils.DriverConfig
 	FeatherCtx   *cap.FeatherContext
 	FeatherCtlCb func(*cap.FeatherContext, string) error
 }

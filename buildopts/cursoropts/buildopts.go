@@ -7,8 +7,7 @@ type OptionsBuilder struct {
 	GetCapPath          func() string
 	GetPluginName       func() string
 	GetLogPath          func() string
-	GetTrcshBinPath     func() string
-	GetTrcshConfigPath  func() string
+	GetTrusts           func() map[string][]string
 	GetCursorConfigPath func() string
 	GetCursorFields     func() map[string]string
 }
@@ -19,8 +18,7 @@ func LoadOptions() Option {
 		optionsBuilder.GetCapPath = GetCapPath
 		optionsBuilder.GetLogPath = GetLogPath
 		optionsBuilder.TapInit = TapInit
-		optionsBuilder.GetTrcshBinPath = GetTrcshBinPath
-		optionsBuilder.GetTrcshConfigPath = GetTrcshConfigPath
+		optionsBuilder.GetTrusts = GetTrusts
 		optionsBuilder.GetCursorConfigPath = GetCursorConfigPath
 		optionsBuilder.GetCursorFields = GetCursorFields
 	}
