@@ -3,7 +3,6 @@ package cursoropts
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
-	GetCuratorConfig    func(pluginEnvConfig map[string]interface{}) map[string]interface{}
 	TapInit             func()
 	GetCapPath          func() string
 	GetPluginName       func() string
@@ -15,7 +14,6 @@ type OptionsBuilder struct {
 
 func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
-		optionsBuilder.GetCuratorConfig = GetCuratorConfig
 		optionsBuilder.GetPluginName = GetPluginName
 		optionsBuilder.GetCapPath = GetCapPath
 		optionsBuilder.GetLogPath = GetLogPath
