@@ -22,11 +22,11 @@ func TapInit() {
 }
 
 func GetCapPath() string {
-	return "/tmp/trcshk/"
+	return "/tmp/trcshkaw/"
 }
 
 func GetPluginName() string {
-	return "trcshk"
+	return "trcsh-cursor-k"
 }
 
 func GetLogPath() string {
@@ -34,12 +34,16 @@ func GetLogPath() string {
 }
 
 func GetCursorConfigPath() string {
-	return "super-secrets/Restricted/Trcshm/config"
+	return "super-secrets/Restricted/TrcshCursorK/config"
 }
 
 func GetTrusts() map[string][]string {
 	return map[string][]string{
-		"trcsh-cursor-k": []string{"trcshqk", "/home/azuredeploy/bin/trcshqk", "azuredeploy"},
+		"trcshqk": []string{
+			"trcshqk",                       // Certify pluginName,
+			"/home/azuredeploy/bin/trcshqk", // agent plugin path.
+			"azuredeploy",                   // Group ownership of agent plugin.
+		},
 	}
 }
 

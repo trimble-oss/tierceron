@@ -23,11 +23,11 @@ func TapInit() {
 }
 
 func GetCapPath() string {
-	return "/tmp/trcsh-curator/"
+	return "/tmp/trcshcaw/"
 }
 
 func GetPluginName() string {
-	return "trcsh-curator"
+	return "trcsh-cursor-aw"
 }
 
 func GetLogPath() string {
@@ -35,13 +35,17 @@ func GetLogPath() string {
 }
 
 func GetCursorConfigPath() string {
-	return "super-secrets/Restricted/TrcshAgent/config"
+	return "super-secrets/Restricted/TrcshCurosorAW/config"
 }
 
 func GetTrusts() map[string][]string {
 	// TODO: when we retire carrier and switch to curator, move to trcsh instead of trcsh-curator
 	return map[string][]string{
-		"trcsh-cursor-aw": []string{"trcsh-curator", "/home/azuredeploy/bin/trcsh-curator", "azuredeploy"},
+		"trcshqaw": []string{
+			"trcshqaw",                       // Certify pluginName,
+			"/home/azuredeploy/bin/trcshqaw", // agent plugin path.
+			"azuredeploy",                    // Group ownership of agent plugin.
+		},
 	}
 }
 

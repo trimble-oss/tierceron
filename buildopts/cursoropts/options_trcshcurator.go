@@ -7,7 +7,6 @@ import (
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
 )
 
-
 func TapInit() {
 	tap.TapInit(GetCapPath())
 }
@@ -30,8 +29,16 @@ func GetCursorConfigPath() string {
 
 func GetTrusts() map[string][]string {
 	return map[string][]string{
-		"trcsh-cursor-aw": []string{"trcshaw", "/etc/opt/vault/plugins/trcsh-cursor-aw", "root"}, // original
-		"trcsh-cursor-k":  []string{"trcshk", "/etc/opt/vault/plugins/trcsh-cursor-k", "root"},
+		"trcsh-cursor-aw": []string{
+			"trcsh-cursor-aw",                        // Certify pluginName,
+			"/etc/opt/vault/plugins/trcsh-cursor-aw", // vault plugin path.
+			"root",                                   // Group ownership of vault plugin.
+		}, // original
+		"trcsh-cursor-k": []string{
+			"trcsh-cursor-k",                        // Certify pluginName,
+			"/etc/opt/vault/plugins/trcsh-cursor-k", // vault plugin path.
+			"root",                                  // Group ownership of vault plugin.
+		},
 	}
 }
 

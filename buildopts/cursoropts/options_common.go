@@ -18,7 +18,13 @@ func GetLogPath() string {
 }
 
 func GetTrusts() map[string][]string {
-	return map[string][]string{}
+	return map[string][]string{
+		"trusted_plugin_key": []string{
+			"trusted_plugin_certify_name", // Certify pluginName,
+			"trusted_plugin_path",         // vault plugin path.
+			"trusted_plugin_group",        // Group ownership of vault plugin.
+		},
+	}
 }
 
 func GetCursorConfigPath() string {
