@@ -23,11 +23,11 @@ func TapInit() {
 }
 
 func GetCapPath() string {
-	return "/tmp/trcshqaw/"
+	return "/tmp/trcshcaw/"
 }
 
 func GetPluginName() string {
-	return "trcshqaw"
+	return "trcsh-cursor-aw"
 }
 
 func GetLogPath() string {
@@ -35,20 +35,29 @@ func GetLogPath() string {
 }
 
 func GetCursorConfigPath() string {
-	return "super-secrets/Restricted/TrcshAgent/config"
+	return "super-secrets/Restricted/TrcshCurosorAW/config"
 }
 
 func GetTrusts() map[string][]string {
-	// TODO: when we retire carrier and switch to curator, move to trcsh instead of trcshqaw
+	// TODO: when we retire carrier and switch to curator, move to trcsh instead of trcsh-curator
 	return map[string][]string{
-		"trcsh-cursor-aw": []string{"trcshqaw", "/home/azuredeploy/bin/trcshqaw", "azuredeploy"},
+		"trcshqaw": []string{
+			"trcshqaw",                       // Certify pluginName,
+			"/home/azuredeploy/bin/trcshqaw", // agent plugin path.
+			"azuredeploy",                    // Group ownership of agent plugin.
+		},
 	}
 }
 
 func GetCursorFields() map[string]string {
 	return map[string]string{
+		"pubrole":    "Pub role for specified environment.",
 		"configrole": "Read only role for specified environment.",
 		"kubeconfig": "kube config for specified environment.",
+		"token":      "Token used for specified environment.",
 		"vaddress":   "Vault Url for plugin reference purposes.",
+		"caddress":   "Vault Url for plugin certification purposes.",
+		"ctoken":     "Token for plugin certification purposes.",
+		"plugin":     "Optional plugin name.",
 	}
 }
