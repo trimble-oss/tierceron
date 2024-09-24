@@ -80,7 +80,7 @@ trcshellqwsha:
 trcshellqw: trcshellqwbuild trcshellqwsha
 
 trcshellqkbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqk -ldflags "-w" -tags "salty memonly trcshm" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqk -ldflags "-w" -tags "salty memonly trcshcursoraw" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
 trcshellqksha:
 	sha256sum plugins/deploy/target/trcshqk | cut -d' ' -f1 > plugins/deploy/target/trcshqk.sha256
 trcshellqk: trcshellqkbuild trcshellqksha
@@ -95,7 +95,7 @@ trcshkernelsha:
 trcshkernel: trcshkernelbuild trcshkernelsha
 
 trcshellkernelmbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -ldflags "-w" -tags "salty tc azrcr memonly kernel trcshm" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -ldflags "-w" -tags "salty tc azrcr memonly kernel trcshcursoraw" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
 trcshellkernelmsha:
 	sha256sum plugins/deploy/target/trcshk | cut -d' ' -f1 > plugins/deploy/target/trcshk.sha256
 trcshellkernelm: trcshellkernelmbuild trcshellkernelmsha

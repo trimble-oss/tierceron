@@ -128,6 +128,7 @@ func TapFeatherInit(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, p
 					go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
 					logger.Printf("Cap auth feather init complete for env: %s\n", pluginConfig["env"].(string))
 				}
+				gCapInitted = true
 
 				logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
 				return
