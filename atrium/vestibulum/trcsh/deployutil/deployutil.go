@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -73,7 +74,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			configRoleSlice := strings.Split(*trcshConfig.ConfigRole, ":")
 			tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 			readToken := ""
-			autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &mergedEnvBasis, "config.yml", false)
+			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &mergedEnvBasis, "config.yml", false)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				return nil, autoErr
@@ -108,7 +109,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				var content []byte
 				trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
 				fmt.Printf("Loading deployment script for %s and env %s\n", deployment, mod.Env)
-				contentArray, _, _, err := vcutils.ConfigTemplate(&trcshDriverConfig.DriverConfig, mod, fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string)), true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
+				contentArray, _, _, err := vcutils.ConfigTemplate(trcshDriverConfig.DriverConfig, mod, fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string)), true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
 				if err != nil {
 					eUtils.LogErrorObject(&trcshDriverConfig.DriverConfig.CoreConfig, err, false)
 					return nil, err
@@ -135,7 +136,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.Env
 	readToken := ""
-	autoErr := eUtils.AutoAuth(&trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &mergedEnvBasis, "config.yml", false)
+	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &readToken, &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &mergedEnvBasis, "config.yml", false)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return nil, autoErr
@@ -167,7 +168,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 	}
 	deploymentList := []string{}
 	var machineID string
-	if isDrone && !coreopts.BuildOptions.IsKernel() {
+	if isDrone && !kernelopts.BuildOptions.IsKernel() {
 		machineID = coreopts.BuildOptions.GetMachineID()
 		if len(machineID) == 0 {
 			return nil, errors.New("unable to access id of machine")
@@ -215,7 +216,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 						return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
 					}
 				}
-				if coreopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" {
+				if kernelopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" {
 					deploymentList = append(deploymentList, deployment)
 				} else if deploymentConfig["trctype"].(string) == "trcshservice" && len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, deployment)

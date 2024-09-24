@@ -11,10 +11,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory/servercapauth"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/factory"
 	trcplgtool "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -31,11 +29,6 @@ import (
 func init() {
 	factory.StartPluginSettingEater()
 }
-
-var onceAuth sync.Once
-var gCapInitted bool = false
-
-func IsCapInitted() bool { return gCapInitted }
 
 func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployInitFlow begun.")
@@ -68,36 +61,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		return err
 	}
 
-	if ok, err := servercapauth.ValidateTrcshPathSha(goMod, pluginConfig, logger); ok {
-		// Only start up if trcsh is up to date....
-		onceAuth.Do(func() {
-			if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
-				// Ensure only dev is the cap auth...
-				logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
-				var featherAuth *servercapauth.FeatherAuth = nil
-				if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
-					featherAuth, err = servercapauth.Init(goMod, pluginConfig, logger)
-					if err != nil {
-						eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Skipping cap auth init.", false)
-						return
-					}
-					if featherAuth != nil {
-						pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
-					}
-				}
-
-				servercapauth.Memorize(pluginConfig, logger)
-
-				// Not really clear how cap auth would do this...
-				go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
-
-				logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
-				gCapInitted = true
-			}
-		})
-	} else {
-		eUtils.LogErrorMessage(&driverConfig.CoreConfig, fmt.Sprintf("Mismatched sha256 cap auth for env: %s.  Skipping.", pluginConfig["env"].(string)), false)
-	}
+	pluginutil.TapFeatherInit(driverConfig, goMod, pluginConfig, false, logger)
 
 	logger.Println("PluginDeployInitFlow complete.")
 

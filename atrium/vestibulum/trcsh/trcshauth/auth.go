@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron-hat/cap"
-	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -229,13 +229,8 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 }
 
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
-	certifyPath := coreopts.BuildOptions.GetTrcshConfigPath()
-	var pluginName string
-	if plugin, ok := pluginConfig["plugin"].(string); ok {
-		certifyPath = "super-secrets/Index/TrcVault/trcplugin/" + plugin + "/Certify"
-		pluginName = plugin
-	}
-	certifyMap, err := mod.ReadData(certifyPath)
+	pluginName := cursoropts.BuildOptions.GetPluginName()
+	certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName))
 	if err != nil {
 		fmt.Printf("Error reading data from vault: %s\n", err)
 		logger.Printf("Error reading data from vault: %s\n", err)

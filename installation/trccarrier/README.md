@@ -41,7 +41,7 @@ See [installation/trcsh/README.md](../trcsh/README.md)
 ```
 pushd .
 cd ../../atrium
-make certify devplugincarrier
+make certify cursor
 popd
 ```
 
@@ -55,10 +55,10 @@ chmod 700 deploy/*.sh
 # Deploy the carrier
 ```
 cd deploy
-trcplgtool -env=dev -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -pluginName=trc-vault-carrier-plugin -sha256=target/trc-vault-carrier-plugin -pluginType=agent
+trcplgtool -env=dev -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -pluginName=trcsh-curator -sha256=target/trcsh-curator -pluginType=agent
 
-sudo cp target/trc-vault-carrier-plugin /usr/local/vault/plugins
-sudo setcap cap_ipc_lock=+ep /usr/local/vault/plugins/trc-vault-carrier-plugin
+sudo cp target/trcsh-curator /usr/local/vault/plugins
+sudo setcap cap_ipc_lock=+ep /usr/local/vault/plugins/trcsh-curator
 
 ./deploycarrier.sh
 ```

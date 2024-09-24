@@ -16,6 +16,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	memonly "github.com/trimble-oss/tierceron/buildopts/memonly"
@@ -51,6 +52,7 @@ func main() {
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 	saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
+	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
 	tiercerontls.InitRoot()
 
 	eUtils.InitHeadless(true)
@@ -77,7 +79,7 @@ func main() {
 	if e != nil {
 		logger.Println("Unable to refresh socket.  Uneccessary.")
 	}
-	carrierfactory.Init(coreopts.BuildOptions.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
+	carrierfactory.Init(coreopts.BuildOptions.InitPluginConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()

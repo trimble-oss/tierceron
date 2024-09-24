@@ -95,7 +95,7 @@ export SECRET_VAULT_ENV_TOKEN
 
 echo "Disable old carrier secrets"
 vault secrets disable vaultcarrier/
-vault secrets list | grep trc-vault-carrier-plugin$PROD_EXT
+vault secrets list | grep trcsh-curator$PROD_EXT
 existingplugin=$?
 if [ $existingplugin -eq 0 ]; then
     echo "Carrier plugin still mounted elsewhere.  Manual intervention required to clean up before registration can proceed."
@@ -104,24 +104,24 @@ else
     echo "All mounts cleared.  Continuing..."
 fi
 echo "Unregister old carrier plugin"
-vault plugin deregister trc-vault-carrier-plugin$PROD_EXT
+vault plugin deregister trcsh-curator$PROD_EXT
 
 echo "Registering Carrier"
-echo trc-vault-carrier-plugin$PROD_EXT
+echo trcsh-curator$PROD_EXT
 
 #===============================================================================
 #carrier deploy
 #===============================================================================
 
 vault plugin register \
-          -command=trc-vault-carrier-plugin$PROD_EXT \
-          -sha256=$( cat target/trc-vault-carrier-plugin$PROD_EXT.sha256 ) \
+          -command=trcsh-curator$PROD_EXT \
+          -sha256=$( cat target/trcsh-curator$PROD_EXT.sha256 ) \
           -args=`backendUUID=567` \
-          trc-vault-carrier-plugin$PROD_EXT
+          trcsh-curator$PROD_EXT
 echo "Enabling Carrier secret engine"
 vault secrets enable \
           -path=vaultcarrier \
-          -plugin-name=trc-vault-carrier-plugin$PROD_EXT \
+          -plugin-name=trcsh-curator$PROD_EXT \
           -description="Tierceron Vault Carrier Plugin" \
           plugin
 

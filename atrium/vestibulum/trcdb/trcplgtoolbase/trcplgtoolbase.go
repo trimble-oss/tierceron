@@ -18,6 +18,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -274,7 +275,7 @@ func CommonMain(envDefaultPtr *string,
 		logger = log.New(f, "[INIT]", log.LstdFlags)
 
 		trcshDriverConfigBase = &capauth.TrcshDriverConfig{
-			DriverConfig: eUtils.DriverConfig{
+			DriverConfig: &eUtils.DriverConfig{
 				CoreConfig: core.CoreConfig{
 					ExitOnFailure: true,
 					Insecure:      *insecurePtr,
@@ -292,7 +293,7 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if tokenNamePtr == nil || *tokenNamePtr == "" || tokenPtr == nil || *tokenPtr == "" {
-		autoErr := eUtils.AutoAuth(&trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
+		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
 		if autoErr != nil {
 			eUtils.LogErrorMessage(&trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
@@ -324,7 +325,7 @@ func CommonMain(envDefaultPtr *string,
 	}
 	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	trcshConfig := &capauth.TrcshDriverConfig{
-		DriverConfig: *config,
+		DriverConfig: config,
 	}
 	trcshConfig.FeatherCtlCb = trcshDriverConfigBase.FeatherCtlCb
 	trcshConfig.FeatherCtx = trcshDriverConfigBase.FeatherCtx
@@ -386,7 +387,7 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	// Get existing configs if they exist...
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(&trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.ProcessDeployPluginEnvConfig(map[string]interface{}{}), *defineServicePtr)
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]interface{}{}), *defineServicePtr)
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		return plcErr
@@ -502,7 +503,7 @@ func CommonMain(envDefaultPtr *string,
 
 	if len(*buildImagePtr) > 0 {
 		fmt.Println("Building image using local docker repository...")
-		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
+		err := docker.BuildDockerImage(trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
 		if err != nil {
 			fmt.Println(err.Error())
 			return err
@@ -524,7 +525,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 
 		fmt.Println("Pushing image to registry...")
-		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		err := repository.PushImage(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 		} else {
@@ -611,7 +612,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 
 		if pluginToolConfig["trcsha256"] != nil && len(pluginToolConfig["trcsha256"].(string)) > 0 {
-			err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+			err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if err != nil {
 				fmt.Println("Image download failure.")
 				if trcshDriverConfigBase.FeatherCtx != nil {
@@ -715,10 +716,10 @@ func CommonMain(envDefaultPtr *string,
 			}
 			return errors.New(errMessage)
 		}
-		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && coreopts.BuildOptions.IsKernel() {
+		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && kernelopts.BuildOptions.IsKernel() {
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Starting verification of plugin module.")
 			h := sha256.New()
-			pathToSO := hive.LoadPluginPath(&trcshDriverConfigBase.DriverConfig)
+			pathToSO := hive.LoadPluginPath(trcshDriverConfigBase.DriverConfig)
 			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0666)
 			if err != nil {
 				return err
@@ -741,7 +742,7 @@ func CommonMain(envDefaultPtr *string,
 				if err != nil {
 					return err
 				}
-				hive.LoadPluginMod(&trcshDriverConfigBase.DriverConfig, pathToSO)
+				hive.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
 			}
 		}
 	} else if *certifyImagePtr {
@@ -753,7 +754,7 @@ func CommonMain(envDefaultPtr *string,
 		} else if !certifyInit {
 			// Already certified...
 			fmt.Println("Checking for existing image.")
-			err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+			err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if _, ok := pluginToolConfig["imagesha256"].(string); err != nil || !ok {
 				fmt.Println("Invalid or nonexistent image on download.")
 				if err != nil {
@@ -788,7 +789,7 @@ func CommonMain(envDefaultPtr *string,
 
 				if trcshDriverConfig == nil {
 					trcshDriverConfig = &capauth.TrcshDriverConfig{
-						DriverConfig: eUtils.DriverConfig{
+						DriverConfig: &eUtils.DriverConfig{
 							CoreConfig: core.CoreConfig{
 								ExitOnFailure: true,
 								Insecure:      false,
@@ -847,16 +848,16 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if *pluginservicestartPtr && coreopts.BuildOptions.IsKernel() {
+	} else if *pluginservicestartPtr && kernelopts.BuildOptions.IsKernel() {
 		if len(pluginHandler) > 0 {
-			pluginHandler[0].PluginserviceStart(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+			pluginHandler[0].PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		} else {
 			fmt.Println("No handler provided for plugin service startup.")
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("No handler provided for plugin service startup.")
 		}
-	} else if *pluginservicestopPtr && coreopts.BuildOptions.IsKernel() {
+	} else if *pluginservicestopPtr && kernelopts.BuildOptions.IsKernel() {
 		if len(pluginHandler) > 0 {
-			pluginHandler[0].PluginserviceStop(&trcshDriverConfigBase.DriverConfig)
+			pluginHandler[0].PluginserviceStop(trcshDriverConfigBase.DriverConfig)
 		} else {
 			fmt.Println("No handler provided for plugin service shutdown.")
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("No handler provided for plugin service shutdown.")
@@ -871,7 +872,7 @@ func CommonMain(envDefaultPtr *string,
 			return nil
 		}
 
-		err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			return err
@@ -894,7 +895,7 @@ func CommonMain(envDefaultPtr *string,
 			return nil
 		}
 
-		err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			return err

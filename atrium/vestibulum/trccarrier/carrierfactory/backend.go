@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -670,9 +671,9 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			return nil, errors.New("input data validation error")
 		}
 
-		if !deploy.IsCapInitted() {
+		if !pluginutil.IsCapInitted() {
 			// Keep trying to initialize capauth whenever there is a refresh...
-			tokenEnvMap["pluginName"] = "trc-vault-carrier-plugin"
+			tokenEnvMap["pluginName"] = "trcsh-curator"
 			deployEnvFlowErr := deploy.PluginDeployEnvFlow(tokenEnvMap, logger)
 			if deployEnvFlowErr != nil {
 				return nil, fmt.Errorf("Deploy Env Flow error: %v", deployEnvFlowErr)
