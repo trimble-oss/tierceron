@@ -56,7 +56,7 @@ func main() {
 	carrierfactory.InitLogger(logger)
 	//go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))
 
-	go carrierfactory.Init(cursoropts.BuildOptions.GetCuratorConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
+	go carrierfactory.Init(coreopts.BuildOptions.InitPluginConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "dev"
 	envMap["insecure"] = true
 	envMap["syncOnce"] = &sync.Once{}

@@ -159,7 +159,7 @@ func main() {
 		}, err, true)
 
 		// Get common configs for deployer class of plugin.
-		curatorPluginConfig = cursoropts.BuildOptions.GetCuratorConfig(curatorPluginConfig)
+		curatorPluginConfig = coreopts.BuildOptions.InitPluginConfig(curatorPluginConfig)
 
 		// Get secrets from curator.
 		for secretFieldKey, _ := range cursorFields {

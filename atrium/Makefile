@@ -73,17 +73,17 @@ certify:
 localcertify:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(GOBIN)/trcplgtool -tags "memonly dockercr" github.com/trimble-oss/tierceron/atrium/vestibulum/cmd/trcplgtool
 
-trcshellbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcsh -ldflags "-w" -tags "salty memonly" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
-trcshellsha:
-	sha256sum plugins/deploy/target/trcsh | cut -d' ' -f1 > plugins/deploy/target/trcsh.sha256
-trcshell: trcshellbuild trcshellsha
+trcshellqwbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqw -ldflags "-w" -tags "salty memonly" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
+trcshellqwsha:
+	sha256sum plugins/deploy/target/trcshqw | cut -d' ' -f1 > plugins/deploy/target/trcshqw.sha256
+trcshellqw: trcshellqwbuild trcshellqwsha
 
-trcshellqbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshq -ldflags "-w" -tags "salty memonly trcshm" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
-trcshellqsha:
-	sha256sum plugins/deploy/target/trcshq | cut -d' ' -f1 > plugins/deploy/target/trcshq.sha256
-trcshellq: trcshellqbuild trcshellqsha
+trcshellqkbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqk -ldflags "-w" -tags "salty memonly trcshm" github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
+trcshellqksha:
+	sha256sum plugins/deploy/target/trcshqk | cut -d' ' -f1 > plugins/deploy/target/trcshqk.sha256
+trcshellqk: trcshellqkbuild trcshellqksha
 
 trcshellwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -buildmode=pie -ldflags "-w" -tags "salty tc windows azrcr memonly" -o plugins/deploy/target/trcsh.exe github.com/trimble-oss/tierceron/atrium/vestibulum/shell/trcsh
@@ -112,6 +112,6 @@ fenestra:
 spiralis:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o $(GOBIN)/spiralis -tags "insecure g3nboot argosystub tc" -ldflags="$(LD_FLAGS)" github.com/trimble-oss/tierceron/atrium/speculatio/spiralis
 
-all: certify azrtrcshcurator devplugintrcdb trcshell trcshellwin fenestra spiralis
+all: certify azrtrcshcurator devplugintrcdb trcshellqw trcshellwin fenestra spiralis
 
-allq: certify cursorc cursorm trcshellq trcshellkernelm
+allq: certify cursoraw cursork trcshellqw trcshellqk trcshellkernelm

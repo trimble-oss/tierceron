@@ -7,6 +7,16 @@ import (
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
 )
 
+func GetCuratorConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"env":            "dev",
+		"exitOnFailure":  false,
+		"regions":        []string{"west"},
+		"pluginNameList": []string{""},
+		"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
+		"logNamespace":   "trcshcursork",
+	}
+}
 func TapInit() {
 	tap.TapInit(GetCapPath())
 }
