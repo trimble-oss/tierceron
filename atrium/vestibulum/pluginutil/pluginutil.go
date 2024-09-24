@@ -109,7 +109,6 @@ func TapFeatherInit(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, p
 				// Ensure only dev is the cap auth...
 				logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
 				tap.TapInit(cursoropts.BuildOptions.GetCapPath())
-				servercapauth.Memorize(pluginConfig, logger)
 
 				var featherAuth *servercapauth.FeatherAuth = nil
 				if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
@@ -122,6 +121,7 @@ func TapFeatherInit(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, p
 						pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
 					}
 				}
+				servercapauth.Memorize(pluginConfig, logger)
 
 				if wantsFeathering {
 					// Not really clear how cap auth would do this...
