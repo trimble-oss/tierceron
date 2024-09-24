@@ -23,11 +23,11 @@ func TapInit() {
 }
 
 func GetCapPath() string {
-	return "/tmp/trcshqaw/"
+	return "/tmp/trcsh-curator/"
 }
 
 func GetPluginName() string {
-	return "trcshqaw"
+	return "trcsh-curator"
 }
 
 func GetLogPath() string {
@@ -39,16 +39,21 @@ func GetCursorConfigPath() string {
 }
 
 func GetTrusts() map[string][]string {
-	// TODO: when we retire carrier and switch to curator, move to trcsh instead of trcshqaw
+	// TODO: when we retire carrier and switch to curator, move to trcsh instead of trcsh-curator
 	return map[string][]string{
-		"trcsh-cursor-aw": []string{"trcshqaw", "/home/azuredeploy/bin/trcshqaw", "azuredeploy"},
+		"trcsh-cursor-aw": []string{"trcsh-curator", "/home/azuredeploy/bin/trcsh-curator", "azuredeploy"},
 	}
 }
 
 func GetCursorFields() map[string]string {
 	return map[string]string{
+		"pubrole":    "Pub role for specified environment.",
 		"configrole": "Read only role for specified environment.",
 		"kubeconfig": "kube config for specified environment.",
+		"token":      "Token used for specified environment.",
 		"vaddress":   "Vault Url for plugin reference purposes.",
+		"caddress":   "Vault Url for plugin certification purposes.",
+		"ctoken":     "Token for plugin certification purposes.",
+		"plugin":     "Optional plugin name.",
 	}
 }

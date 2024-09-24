@@ -25,6 +25,9 @@ echo "Organization vault host must begin with https:// "
 exit -1
 fi
 
+echo "Will this be a windows (w) or kernel (k) cursor? (aw or k): "
+read CURSOR_TYPE
+
 echo "Is this a prod environment? (Y or N): "
 read PROD_ENV
 
@@ -89,26 +92,26 @@ export VAULT_TOKEN
 export VAULT_API_ADDR
 export SECRET_VAULT_ENV_TOKEN
 #===============================================================================
-#trcshm undeploy
+#trcsh-cursor-$CURSOR_TYPE undeploy
 #===============================================================================
 
-echo "Disable old trcshm secrets"
-vault secrets disable trcshm/
-vault secrets list | grep trcshm$PROD_EXT
+echo "Disable old trcsh-cursor-$CURSOR_TYPE secrets"
+vault secrets disable trcsh-cursor-$CURSOR_TYPE/
+vault secrets list | grep trcsh-cursor-$CURSOR_TYPE$PROD_EXT
 existingplugin=$?
 if [ $existingplugin -eq 0 ]; then
-    echo "trcshm plugin still mounted elsewhere.  Manual intervention required to clean up before registration can proceed."
+    echo "trcsh-cursor-$CURSOR_TYPE plugin still mounted elsewhere.  Manual intervention required to clean up before registration can proceed."
     exit 1
 else
     echo "All mounts cleared.  Continuing..."
 fi
-echo "Unregister old trcshm plugin"
-vault plugin deregister trcshm$PROD_EXT
+echo "Unregister old trcsh-cursor-$CURSOR_TYPE plugin"
+vault plugin deregister trcsh-cursor-$CURSOR_TYPE$PROD_EXT
 
-echo "Registering trcshm"
+echo "Registering trcsh-cursor-$CURSOR_TYPE"
 
 #===============================================================================
-#trcshm deploy
+#trcsh-cursor-$CURSOR_TYPE deploy
 #===============================================================================
 
 if [ -z "${PROD_EXT}" ]; then
@@ -118,7 +121,7 @@ if [ -z "${PROD_EXT}" ]; then
     fi
 fi
 
-trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=trcshm -sha256=target/trcshm
+trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=trcsh-cursor-$CURSOR_TYPE -sha256=target/trcsh-cursor-$CURSOR_TYPE
 
 certifystatus=$?
 if [ $certifystatus -eq 0 ]; then
@@ -136,21 +139,21 @@ if [ "$DEPLOYED_SUCCESS" = 'N' ] || [ "$DEPLOYED_SUCCESS" = 'n' ]; then
 fi
 
 vault plugin register \
-          -command=trcshm$PROD_EXT \
-          -sha256=$( cat target/trcshm$PROD_EXT.sha256 ) \
+          -command=trcsh-cursor-$CURSOR_TYPE$PROD_EXT \
+          -sha256=$( cat target/trcsh-cursor-$CURSOR_TYPE$PROD_EXT.sha256 ) \
           -args=`backendUUID=567` \
-          trcshm$PROD_EXT
-echo "Enabling trcshm secret engine"
+          trcsh-cursor-$CURSOR_TYPE$PROD_EXT
+echo "Enabling trcsh-cursor-$CURSOR_TYPE secret engine"
 vault secrets enable \
-          -path=trcshm \
-          -plugin-name=trcshm$PROD_EXT \
-          -description="Tierceron Vault trcshm Plugin" \
+          -path=trcsh-cursor-$CURSOR_TYPE \
+          -plugin-name=trcsh-cursor-$CURSOR_TYPE$PROD_EXT \
+          -description="Tierceron Vault trcsh-cursor-$CURSOR_TYPE Plugin" \
           plugin
 
 #===============================================================================
-#refresh trcshm token
+#refresh trcsh-cursor-$CURSOR_TYPE token
 #===============================================================================
-echo "Refreshing trcshm..."
+echo "Refreshing trcsh-cursor-$CURSOR_TYPE..."
 sleep 12
 
 export TRC_KUBE_CONFIG=`cat $KUBE_PATH | base64 --wrap=0`
@@ -159,25 +162,25 @@ echo $VAULT_ADDR
 
 if [ -z "${PROD_EXT}" ]; then
     if [[ ! -z "${SECRET_VAULT_DEV_PLUGIN_TOKEN}" ]]; then
-      vault write trcshm/dev token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_DEV_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
+      vault write trcsh-cursor-$CURSOR_TYPE/dev token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_DEV_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
 
     fi
 
     if [[ ! -z "${SECRET_VAULT_QA_PLUGIN_TOKEN}" ]]; then
-        vault write trcshm/QA token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_QA_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
+        vault write trcsh-cursor-$CURSOR_TYPE/QA token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_QA_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
 
     fi
 else
-    vault write trcshm/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
+    vault write trcsh-cursor-$CURSOR_TYPE/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
 fi
 
-echo "Deployment and refresh of trcshm successful"
+echo "Deployment and refresh of trcsh-cursor-$CURSOR_TYPE successful"
 
 #================================================================
-#trcshq deployment
+#trcshq$CURSOR_TYPE deployment
 #================================================================
-echo "Deploying trcshq agent"
-TRC_PLUGIN_NAME="trcshq"
+echo "Deploying trcshq$CURSOR_TYPE agent"
+TRC_PLUGIN_NAME="trcshq$CURSOR_TYPE"
 
 FILE="target/$TRC_PLUGIN_NAME"
 if [ ! -f "$FILE" ]; then
@@ -210,4 +213,4 @@ trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAUL
         echo "Unexpected certification error."
     fi
 
-echo "Deployed trcshq agent successfully"
+echo "Deployed trcshq$CURSOR_TYPE agent successfully"

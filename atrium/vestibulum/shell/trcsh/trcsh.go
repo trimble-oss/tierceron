@@ -34,7 +34,7 @@ func main() {
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 	saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
 	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
-	//	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions()) -- only needed in trcshm???
+	//	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions()) -- only needed in trcsh-curator???
 	eUtils.InitHeadless(true)
 
 	tiercerontls.InitRoot()

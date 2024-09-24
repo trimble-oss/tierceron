@@ -45,13 +45,8 @@ func GetTrusts() map[string][]string {
 
 func GetCursorFields() map[string]string {
 	return map[string]string{
-		"pubrole":    "Pub role for specified environment.",
 		"configrole": "Read only role for specified environment.",
 		"kubeconfig": "kube config for specified environment.",
-		"token":      "Token used for specified environment.",
 		"vaddress":   "Vault Url for plugin reference purposes.",
-		"caddress":   "Vault Url for plugin certification purposes.",
-		"ctoken":     "Token for plugin certification purposes.",
-		"plugin":     "Optional plugin name.",
 	}
 }
