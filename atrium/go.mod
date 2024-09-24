@@ -257,7 +257,7 @@ require (
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
 
-//replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
+//replace github.com/trimble-oss/tierceron-hat => ../../tierceron-hat
 
 //replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 

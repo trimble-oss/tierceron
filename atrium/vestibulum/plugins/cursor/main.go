@@ -62,7 +62,7 @@ func GenerateSchema(fields map[string]string) map[string]*framework.FieldSchema 
 
 var cursorFields map[string]string
 var logger *log.Logger
-var pluginConfig map[string]interface{}
+var curatorPluginConfig map[string]interface{}
 
 var createUpdateFunc func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) = func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	pluginName := cursoropts.BuildOptions.GetPluginName()
@@ -81,7 +81,7 @@ var createUpdateFunc func(ctx context.Context, req *logical.Request, data *frame
 
 	tapMap := map[string]*string{}
 	for _, cursor := range cursorFields {
-		tapMap[cursor] = pluginConfig[cursor].(*string)
+		tapMap[cursor] = curatorPluginConfig[cursor].(*string)
 	}
 
 	// JSON encode the data
@@ -158,13 +158,16 @@ func main() {
 			Log:           logger,
 		}, err, true)
 
+		// Get common configs for deployer class of plugin.
+		curatorPluginConfig = cursoropts.BuildOptions.GetCuratorConfig(curatorPluginConfig)
+
 		// Get secrets from curator.
 		for secretFieldKey, _ := range cursorFields {
 			secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, secretFieldKey)
 			if err != nil {
 				logger.Println("Failed to retrieve wanted key: %s\n", secretFieldKey)
 			}
-			pluginConfig[secretFieldKey] = secretFieldValue
+			curatorPluginConfig[secretFieldKey] = secretFieldValue
 		}
 
 		// Clean up tap
@@ -174,7 +177,7 @@ func main() {
 		}
 
 		// Establish tap and feather.
-		pluginutil.PluginTapFeatherInit(trcshDriverConfig, pluginConfig)
+		pluginutil.PluginTapFeatherInit(trcshDriverConfig, curatorPluginConfig)
 	}
 
 	apiClientMeta := api.PluginAPIClientMeta{}

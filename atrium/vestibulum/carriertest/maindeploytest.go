@@ -12,6 +12,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
@@ -46,6 +47,7 @@ func main() {
 	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
 	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
 	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
+	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
 
 	//Grabbing configs
 	envMap := buildopts.BuildOptions.GetTestDeployConfig(*tokenPtr)
@@ -54,7 +56,7 @@ func main() {
 	carrierfactory.InitLogger(logger)
 	//go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))
 
-	go carrierfactory.Init(coreopts.BuildOptions.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
+	go carrierfactory.Init(cursoropts.BuildOptions.GetCuratorConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 	envMap["env"] = "dev"
 	envMap["insecure"] = true
 	envMap["syncOnce"] = &sync.Once{}
