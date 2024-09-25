@@ -28,11 +28,11 @@ export VAULT_TOKEN
 export VAULT_API_ADDR
 
 echo "Disable old carrier secrets"
-vault secrets disable vaultcarrier/
+vault secrets disable vaultcurator/
 vault secrets list | grep trcsh-curator$PROD_EXT
 existingplugin=$?
 if [ $existingplugin -eq 0 ]; then       
-    echo "Carrier plugin still mounted elsewhere.  Manual intervention required to clean up before registration can proceed."
+    echo "Curator plugin still mounted elsewhere.  Manual intervention required to clean up before registration can proceed."
     exit 1
 else
     echo "All mounts cleared.  Continuing..."
@@ -50,7 +50,7 @@ fi
 
 
 
-echo "Registering Carrier"
+echo "Registering Curator"
 echo trcsh-curator$PROD_EXT
 
 vault plugin register \
@@ -58,9 +58,9 @@ vault plugin register \
           -sha256=$( cat target/trcsh-curator$PROD_EXT.sha256 ) \
           -args=`backendUUID=567` \
           trcsh-curator$PROD_EXT
-echo "Enabling Carrier secret engine"
+echo "Enabling Curator secret engine"
 vault secrets enable \
-          -path=vaultcarrier \
+          -path=vaultcurator \
           -plugin-name=trcsh-curator$PROD_EXT \
-          -description="Tierceron Vault Carrier Plugin" \
+          -description="Tierceron Vault Curator Plugin" \
           plugin

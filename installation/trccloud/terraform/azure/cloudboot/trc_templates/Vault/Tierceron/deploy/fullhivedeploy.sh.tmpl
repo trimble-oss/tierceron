@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "This script will install and certify a new hive including a trcshq, trcsh-curator-x, and trcshk or trcsh.exe components."
+
 if [[ -z "${AGENT_VAULT_ADDR}" ]]; then
 echo "Enter agent vault host base url: "
 read AGENT_VAULT_ADDR
@@ -25,8 +27,15 @@ echo "Organization vault host must begin with https:// "
 exit -1
 fi
 
-echo "Will this be a windows (w) or kernel (k) cursor? (aw or k): "
+echo "Will this be an traditional aks and windows (aw) or an advanced aks hive kernel (k) cursor? (aw or k): "
 read CURSOR_TYPE
+
+if [ "$CURSOR_TYPE" = 'aw' ] || [ "$CURSOR_TYPE" = 'k' ]; then
+    echo "Preparing to install cursor type $CURSOR_TYPE..."
+else
+    echo "Unspported cursor type $CURSOR_TYPE."
+    exit 1
+fi
 
 echo "Is this a prod environment? (Y or N): "
 read PROD_ENV
@@ -131,7 +140,7 @@ else
    exit $certifystatus
 fi
 
-echo "Carrier deployed successful? (Y/n): "
+echo "Cursor deployed successfully? (Y/n): "
 read DEPLOYED_SUCCESS
 
 if [ "$DEPLOYED_SUCCESS" = 'N' ] || [ "$DEPLOYED_SUCCESS" = 'n' ]; then
@@ -150,36 +159,12 @@ vault secrets enable \
           -description="Tierceron Vault trcsh-cursor-$CURSOR_TYPE Plugin" \
           plugin
 
-#===============================================================================
-#refresh trcsh-cursor-$CURSOR_TYPE token
-#===============================================================================
-echo "Refreshing trcsh-cursor-$CURSOR_TYPE..."
-sleep 12
-
-export TRC_KUBE_CONFIG=`cat $KUBE_PATH | base64 --wrap=0`
-VAULT_API_ADDR=VAULT_ADDR
-echo $VAULT_ADDR
-
-if [ -z "${PROD_EXT}" ]; then
-    if [[ ! -z "${SECRET_VAULT_DEV_PLUGIN_TOKEN}" ]]; then
-      vault write trcsh-cursor-$CURSOR_TYPE/dev token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_DEV_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
-
-    fi
-
-    if [[ ! -z "${SECRET_VAULT_QA_PLUGIN_TOKEN}" ]]; then
-        vault write trcsh-cursor-$CURSOR_TYPE/QA token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_QA_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
-
-    fi
-else
-    vault write trcsh-cursor-$CURSOR_TYPE/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$AGENT_VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN pubrole=$SECRET_VAULT_PUB_ROLE configrole=$SECRET_VAULT_CONFIG_ROLE kubeconfig=$TRC_KUBE_CONFIG
-fi
-
 echo "Deployment and refresh of trcsh-cursor-$CURSOR_TYPE successful"
 
 #================================================================
-#trcshq$CURSOR_TYPE deployment
+#trcshq$CURSOR_TYPE deployment (the hive queen)
 #================================================================
-echo "Deploying trcshq$CURSOR_TYPE agent"
+echo "Preparing trcshq$CURSOR_TYPE for certification"
 TRC_PLUGIN_NAME="trcshq$CURSOR_TYPE"
 
 FILE="target/$TRC_PLUGIN_NAME"
@@ -203,7 +188,7 @@ if [ -z "${PROD_EXT}" ]; then
     fi
 fi
 
-echo "Certifying agent deployment tool plugin..."
+echo "Certifying trcshq$CURSOR_TYPE"
 
 trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_ENV_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=target/$TRC_PLUGIN_NAME -pluginType=agent
         certifystatus=$?
@@ -213,4 +198,72 @@ trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAUL
         echo "Unexpected certification error."
     fi
 
-echo "Deployed trcshq$CURSOR_TYPE agent successfully"
+echo "trcshq$CURSOR_TYPE successfully certified"
+
+if [ "$CURSOR_TYPE" = 'w' ] || [ "$CURSOR_TYPE" = 'aw' ]; then
+    #================================================================
+    #trcsh.exe deployment
+    #================================================================
+    echo "Certifying trcsh.exe worker"
+    TRC_PLUGIN_NAME="trcsh.exe"
+
+    FILE="target/$TRC_PLUGIN_NAME"
+    if [ ! -f "$FILE" ]; then
+        echo "$FILE does not exist."
+        exit 1
+    fi
+
+    FILESHA="target/$TRC_PLUGIN_NAME.sha256"
+    if [ ! -f "$FILESHA" ]; then
+        echo "$FILESHA does not exist."
+        exit 1
+    fi
+
+    FILESHAVAL=$(cat $FILESHA)
+
+    if [ -z "${PROD_EXT}" ]; then
+        VAULT_ENV="dev"
+        vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
+        VAULT_ENV="QA"
+        vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
+        VAULT_ENV="RQA"
+        vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
+        echo "Deployed trcsh.exe agent successfully"
+    else
+        echo "Skipping $TRC_PLUGIN_NAME deployment in prod."
+    fi
+
+    echo "trcsh.exe certified and ready for manual deployment."
+else
+    #================================================================
+    #trcshk deployment
+    #================================================================
+    echo "Certifying trcshk worker"
+    TRC_PLUGIN_NAME="trcshk"
+
+    FILE="target/$TRC_PLUGIN_NAME"
+    if [ ! -f "$FILE" ]; then
+        echo "$FILE does not exist."
+        exit 1
+    fi
+
+    FILESHA="target/$TRC_PLUGIN_NAME.sha256"
+    if [ ! -f "$FILESHA" ]; then
+        echo "$FILESHA does not exist."
+        exit 1
+    fi
+
+    FILESHAVAL=$(cat $FILESHA)
+
+    if [ -z "${PROD_EXT}" ]; then
+        VAULT_ENV="dev"
+        vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
+        VAULT_ENV="QA"
+        vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
+    else
+        vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
+    fi
+
+    echo "trcshk certified and ready for release pipeline deployment"
+
+fi
