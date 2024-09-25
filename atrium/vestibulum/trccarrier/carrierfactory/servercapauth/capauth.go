@@ -28,18 +28,24 @@ type FeatherAuth struct {
 }
 
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
+	logger.Printf("ValidateTrcshPathSha start\n")
 
 	trustsMap := cursoropts.BuildOptions.GetTrusts()
+	logger.Printf("Validating %d trusts\n", len(trustsMap))
 
 	for _, trustData := range trustsMap {
+		logger.Printf("Validating %s\n", trustData[0])
+
 		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", trustData[0]))
 		if err != nil {
+			logger.Printf("ValidateTrcshPathSha complete\n")
 			return false, err
 		}
 
 		if _, ok := certifyMap["trcsha256"]; ok {
 			peerExe, err := os.Open(trustData[1])
 			if err != nil {
+				logger.Printf("ValidateTrcshPathSha complete\n")
 				return false, err
 			}
 			defer peerExe.Close()
@@ -57,6 +63,7 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 		}
 	}
 
+	logger.Printf("ValidateTrcshPathSha complete\n")
 	return false, errors.New("missing certification")
 }
 

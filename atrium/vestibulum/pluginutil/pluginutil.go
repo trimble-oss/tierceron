@@ -101,10 +101,13 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 func TapFeatherInit(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, wantsFeathering bool, logger *log.Logger) error {
 	var err error
 	var ok bool
+	logger.Printf("TapFeatherInit\n")
 
 	if ok, err = servercapauth.ValidateTrcshPathSha(mod, pluginConfig, logger); ok {
 		// Only start up if trcsh is up to date....
 		onceAuth.Do(func() {
+			logger.Printf("Initiating tap.\n")
+
 			if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
 				// Ensure only dev is the cap auth...
 				logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
@@ -131,7 +134,10 @@ func TapFeatherInit(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, p
 				gCapInitted = true
 
 				logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
+				logger.Printf("Tap init complete.\n")
 				return
+			} else {
+				logger.Printf("Tap init complete.\n")
 			}
 		})
 	} else {
@@ -139,5 +145,7 @@ func TapFeatherInit(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, p
 		eUtils.LogErrorMessage(&driverConfig.CoreConfig, err.Error(), false)
 		return err
 	}
+	logger.Printf("TapFeatherInit complete\n")
+
 	return err
 }
