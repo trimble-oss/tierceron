@@ -76,6 +76,8 @@ installation/trcsh/scripts/*.sh
 
 installation/trccarrier/deploy/
 installation/trccarrier/trc_seeds/
+installation/trcsh-curator/deploy/
+installation/trcsh-curator/trc_seeds/
 installation/trcagent/trc_seeds/
 installation/trcagent/setup.cmd
 installation/trcagent/install.sh
