@@ -21,7 +21,7 @@ Deploy trcsh as a server now by running...
 ./deploy/deploy.sh
 ```
 
-# Feathering client and server configuration setup (optional)
+# Feathering client and server configuration setup (optional legacy)
 If you want to support remote trcsh server deployments, you'll need to set up this this additional section.
 This allows trcsh to run both as a client and a server to perform deployments.
 
@@ -36,18 +36,39 @@ trcpub -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent
 ```
 
+# Feathering client and server configuration setup (optional curator)
+If you want to support remote trcsh server deployments, you'll need to set up this this additional section.
+This allows trcsh to run both as a client and a server to perform deployments.
+
+```
+trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCurator -serviceFilter=config -indexFilter=config -novault
+```
+
+... after making edits to the generated seed file (all values can be TODO for local), init it.  Hint, you can use pwgen to generate some good passwords.
+
+```
+trcpub -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR
+trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCurator
+```
+
 # Feathering configuration setup for kernel messaging support (optional)
 If you want to support the trcsh kernel hive infrastructure, you'll need to install Trcshm
 
 ```
-trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=Trcshm -serviceFilter=config -indexFilter=config -novault
+trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorAW -serviceFilter=config -indexFilter=config -novault
+
+trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorK -serviceFilter=config -indexFilter=config -novault
+
 ```
 
 ... after making edits to the generated seed file (all values can be TODO for local), init it.  These must
 be distinct from TrcshAgent for proper functioning.
 
 ```
-trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=Trcshm
+trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorAW
+
+trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorK
+
 ```
 
 
