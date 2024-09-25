@@ -13,7 +13,7 @@ fi
 export VAULT_ADDR
 export VAULT_TOKEN
 
-vault secrets disable vaultcarrier/
+vault secrets disable vaultcurator/
 vault secrets list | grep trcsh-curator$PROD_EXT
 existingplugin=$?
 if [ $existingplugin -eq 0 ]; then       
