@@ -56,13 +56,13 @@ func main() {
 	tiercerontls.InitRoot()
 
 	eUtils.InitHeadless(true)
-	logFile := "/var/log/trcplugincarrier.log"
+	logFile := cursoropts.BuildOptions.GetLogPath()
 	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if logErr != nil {
 		logFile = "./trcplugincarrier.log"
 		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	}
-	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
+	logger := log.New(f, fmt.Sprintf("[%s]", cursoropts.BuildOptions.GetPluginName()), log.LstdFlags)
 	eUtils.CheckError(&core.CoreConfig{
 		ExitOnFailure: true,
 		Log:           logger,
@@ -75,7 +75,7 @@ func main() {
 	buildopts.BuildOptions.SetLogger(logger.Writer())
 	carrierfactory.InitLogger(logger)
 
-	e := os.Remove("/tmp/trccarrier/trcsnap.sock")
+	e := os.Remove(fmt.Sprintf("%s/trcsnap.sock", cursoropts.BuildOptions.GetCapPath()))
 	if e != nil {
 		logger.Println("Unable to refresh socket.  Uneccessary.")
 	}
