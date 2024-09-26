@@ -7,8 +7,10 @@ import (
 	"log"
 	"os"
 
+	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -16,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	memonly "github.com/trimble-oss/tierceron/buildopts/memonly"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
@@ -63,6 +66,9 @@ func GenerateSchema(fields map[string]string) map[string]*framework.FieldSchema 
 var cursorFields map[string]string
 var logger *log.Logger
 var curatorPluginConfig map[string]interface{}
+var environments []string = []string{"dev"}
+var environmentsProd []string = []string{"staging"}
+var KvInitialize func(context.Context, *logical.InitializationRequest) error
 
 var createUpdateFunc func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) = func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	pluginName := cursoropts.BuildOptions.GetPluginName()
@@ -147,37 +153,6 @@ func main() {
 
 	if os.Getenv(api.PluginMetadataModeEnv) == "true" {
 		logger.Println("Metadata init.")
-	} else {
-		logger.Println("Plugin Init begun.")
-		cursorFields = cursoropts.BuildOptions.GetCursorFields()
-
-		// Initialize configs for curator.
-		trcshDriverConfig, err := trcshbase.TrcshInitConfig("dev", "", "", true, logger)
-		eUtils.CheckError(&core.CoreConfig{
-			ExitOnFailure: true,
-			Log:           logger,
-		}, err, true)
-
-		// Get common configs for deployer class of plugin.
-		curatorPluginConfig = coreopts.BuildOptions.InitPluginConfig(curatorPluginConfig)
-
-		// Get secrets from curator.
-		for secretFieldKey, _ := range cursorFields {
-			secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, secretFieldKey)
-			if err != nil {
-				logger.Println("Failed to retrieve wanted key: %s\n", secretFieldKey)
-			}
-			curatorPluginConfig[secretFieldKey] = secretFieldValue
-		}
-
-		// Clean up tap
-		e := os.Remove(fmt.Sprintf("%strcsnap.sock", cursoropts.BuildOptions.GetCapPath()))
-		if e != nil {
-			logger.Println("Unable to refresh socket.  Uneccessary.")
-		}
-
-		// Establish tap and feather.
-		pluginutil.PluginTapFeatherInit(trcshDriverConfig, curatorPluginConfig)
 	}
 
 	apiClientMeta := api.PluginAPIClientMeta{}
@@ -207,6 +182,91 @@ func main() {
 			fmt.Println("Backend configuration:", config)
 
 			bkv, err := kv.Factory(ctx, config)
+			KvInitialize = bkv.(*kv.PassthroughBackend).InitializeFunc
+
+			bkv.(*kv.PassthroughBackend).InitializeFunc = func(ctx context.Context, req *logical.InitializationRequest) error {
+				logger.Println("TrcCursorInitialize init begun.")
+				if memonly.IsMemonly() {
+					logger.Println("Unlocking everything.")
+					memprotectopts.MemUnprotectAll(nil)
+				}
+				queuedEnvironments := environments
+				if prod.IsProd() {
+					queuedEnvironments = environmentsProd
+				}
+
+				trcshDriverConfig, err := trcshbase.TrcshInitConfig("dev", "", "", true, logger)
+				eUtils.CheckError(&core.CoreConfig{
+					ExitOnFailure: true,
+					Log:           logger,
+				}, err, true)
+
+				cursorFields = cursoropts.BuildOptions.GetCursorFields()
+
+				// Get common configs for deployer class of plugin.
+				curatorPluginConfig = coreopts.BuildOptions.InitPluginConfig(curatorPluginConfig)
+
+				// Read in existing vault data from all existing environments on startup...
+				for _, env := range queuedEnvironments {
+					logger.Println("Processing env: " + env)
+					tokenData, sgErr := req.Storage.Get(ctx, env)
+
+					if sgErr != nil || tokenData == nil {
+						if sgErr != nil {
+							logger.Println("Missing configuration data for env: " + env + " error: " + sgErr.Error())
+						} else {
+							logger.Println("Missing configuration data for env: " + env)
+						}
+						continue
+					}
+					tokenMap, ptError := pluginutil.ParseCuratorEnvRecord(tokenData, nil, map[string]interface{}{"env": env}, logger)
+
+					if ptError != nil {
+						logger.Println("Plugin Init begun.")
+
+						// Get secrets from curator.
+						tap.TapInit("/tmp/trccurator/")
+						for secretFieldKey, _ := range cursorFields {
+							secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, secretFieldKey)
+							if err != nil {
+								logger.Println("Failed to retrieve wanted key: %s\n", secretFieldKey)
+							}
+							curatorPluginConfig[secretFieldKey] = secretFieldValue
+						}
+						logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())
+					} else {
+						if _, ok := tokenMap["token"]; ok {
+							logger.Println("Initialize Pushing env: " + env)
+
+							for secretFieldKey, _ := range cursorFields {
+								if tokenValue, ok := tokenMap[secretFieldKey]; ok {
+									curatorPluginConfig[secretFieldKey] = tokenValue
+								}
+							}
+
+							logger.Println("Tokens pulled for env: " + env)
+						}
+					}
+				}
+
+				if KvInitialize != nil {
+					logger.Println("Entering KvInitialize...")
+					return KvInitialize(ctx, req)
+				}
+				cursoropts.BuildOptions.TapInit()
+
+				// Clean up tap
+				e := os.Remove(fmt.Sprintf("%strcsnap.sock", cursoropts.BuildOptions.GetCapPath()))
+				if e != nil {
+					logger.Println("Unable to refresh socket.  Uneccessary.")
+				}
+
+				// Establish tap and feather.
+				pluginutil.PluginTapFeatherInit(trcshDriverConfig, curatorPluginConfig)
+
+				logger.Println("TrcCursorInitialize complete.")
+				return nil
+			}
 
 			bkv.(*kv.PassthroughBackend).Paths = []*framework.Path{
 				{

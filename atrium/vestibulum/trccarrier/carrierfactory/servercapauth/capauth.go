@@ -27,6 +27,7 @@ type FeatherAuth struct {
 	HandshakeCode string
 }
 
+// ValidateTrcshPathSha - if at least one plugin is properly certified, return true.
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
 	logger.Printf("ValidateTrcshPathSha start\n")
 
@@ -38,8 +39,7 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 
 		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", trustData[0]))
 		if err != nil {
-			logger.Printf("ValidateTrcshPathSha complete\n")
-			return false, err
+			continue
 		}
 
 		if _, ok := certifyMap["trcsha256"]; ok {
