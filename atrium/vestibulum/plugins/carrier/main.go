@@ -79,6 +79,8 @@ func main() {
 	if e != nil {
 		logger.Println("Unable to refresh socket.  Uneccessary.")
 	}
+	cursoropts.BuildOptions.TapInit()
+
 	carrierfactory.Init(coreopts.BuildOptions.InitPluginConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}

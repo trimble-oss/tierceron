@@ -182,16 +182,6 @@ func TestInit() {
 func PushEnv(envMap map[string]interface{}) {
 	tokenEnvChan <- envMap
 }
-func ValidateVaddr(vaddr string) error {
-	logger.Println("ValidateVaddr")
-	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
-		if strings.HasPrefix(vaddr, fmt.Sprintf("https://%s", endpoint[0])) {
-			return nil
-		}
-	}
-	logger.Println("Bad address: " + vaddr)
-	return errors.New("Bad address: " + vaddr)
-}
 
 // Cross checks against storage that this is a valid entry
 func confirmInput(ctx context.Context, req *logical.Request, reqData *framework.FieldData, tokenEnvMap map[string]interface{}) (map[string]interface{}, error) {
@@ -293,7 +283,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 		vaddrCheck = v
 	}
 
-	return tokenMap, ValidateVaddr(vaddrCheck)
+	return tokenMap, pluginutil.ValidateVaddr(vaddrCheck, logger)
 }
 
 func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,

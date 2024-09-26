@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory/servercapauth"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -126,11 +129,10 @@ func TapFeatherInit(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, p
 				}
 				servercapauth.Memorize(pluginConfig, logger)
 
-				if wantsFeathering {
-					// Not really clear how cap auth would do this...
-					go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
-					logger.Printf("Cap auth feather init complete for env: %s\n", pluginConfig["env"].(string))
-				}
+				// Not really clear how cap auth would do this...
+				go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+				logger.Printf("Cap auth feather init complete for env: %s\n", pluginConfig["env"].(string))
+
 				gCapInitted = true
 
 				logger.Printf("Cap auth init complete for env: %s\n", pluginConfig["env"].(string))
@@ -148,4 +150,15 @@ func TapFeatherInit(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, p
 	logger.Printf("TapFeatherInit complete\n")
 
 	return err
+}
+
+func ValidateVaddr(vaddr string, logger *log.Logger) error {
+	logger.Println("ValidateVaddr")
+	for _, endpoint := range coreopts.BuildOptions.GetSupportedEndpoints(prod.IsProd()) {
+		if strings.HasPrefix(vaddr, fmt.Sprintf("https://%s", endpoint[0])) {
+			return nil
+		}
+	}
+	logger.Println("Bad address: " + vaddr)
+	return errors.New("Bad address: " + vaddr)
 }
