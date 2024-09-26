@@ -8,8 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
@@ -17,8 +15,6 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
@@ -165,69 +161,4 @@ func ValidateVaddr(vaddr string, logger *log.Logger) error {
 	}
 	logger.Println("Bad address: " + vaddr)
 	return errors.New("Bad address: " + vaddr)
-}
-
-func ParseCuratorEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData, tokenEnvMap map[string]interface{}, logger *log.Logger) (map[string]interface{}, error) {
-	logger.Println("parseCuratorEnvRecord")
-	tokenMap := map[string]interface{}{}
-
-	if tokenEnvMap != nil {
-		tokenMap["env"] = tokenEnvMap["env"]
-	}
-
-	if e != nil {
-		type tokenWrapper struct {
-			Token      string `json:"token,omitempty"`
-			VAddress   string `json:"vaddress,omitempty"`
-			CAddress   string `json:"caddress,omitempty"`
-			CToken     string `json:"ctoken,omitempty"`
-			Pubrole    string `json:"pubrole,omitempty"`
-			Configrole string `json:"configrole,omitempty"`
-			Kubeconfig string `json:"kubeconfig,omitempty"`
-			Plugin     string `json:"plugin,omitempty"`
-		}
-		tokenConfig := tokenWrapper{}
-		decodeErr := e.DecodeJSON(&tokenConfig)
-		if decodeErr != nil {
-			return nil, decodeErr
-		}
-		if memonly.IsMemonly() {
-			memprotectopts.MemProtect(nil, &tokenConfig.VAddress)
-			memprotectopts.MemProtect(nil, &tokenConfig.CAddress)
-			memprotectopts.MemProtect(nil, &tokenConfig.CToken)
-			memprotectopts.MemProtect(nil, &tokenConfig.Token)
-			memprotectopts.MemProtect(nil, &tokenConfig.Pubrole)
-			memprotectopts.MemProtect(nil, &tokenConfig.Configrole)
-			memprotectopts.MemProtect(nil, &tokenConfig.Kubeconfig)
-		}
-		tokenMap["vaddress"] = tokenConfig.VAddress
-		tokenMap["caddress"] = tokenConfig.CAddress
-		tokenMap["ctoken"] = tokenConfig.CToken
-		tokenMap["token"] = tokenConfig.Token
-		tokenMap["pubrole"] = tokenConfig.Pubrole
-		tokenMap["configrole"] = tokenConfig.Configrole
-		tokenMap["kubeconfig"] = tokenConfig.Kubeconfig
-		tokenMap["plugin"] = tokenConfig.Plugin
-	}
-
-	// Update and lock each field that is provided...
-	if reqData != nil {
-		tokenNameSlice := []string{"vaddress", "caddress", "ctoken", "token", "pubrole", "configrole", "kubeconfig"}
-		for _, tokenName := range tokenNameSlice {
-			if token, tokenOk := reqData.GetOk(tokenName); tokenOk && token.(string) != "" {
-				tokenStr := token.(string)
-				if memonly.IsMemonly() {
-					memprotectopts.MemProtect(nil, &tokenStr)
-				}
-				tokenMap[tokenName] = tokenStr
-			}
-		}
-	}
-	logger.Println("parseCuratorEnvRecord complete")
-	vaddrCheck := ""
-	if v, vOk := tokenMap["vaddress"].(string); vOk {
-		vaddrCheck = v
-	}
-
-	return tokenMap, ValidateVaddr(vaddrCheck, logger)
 }
