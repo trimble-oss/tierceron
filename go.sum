@@ -485,8 +485,8 @@ github.com/trimble-oss/go-mysql-server v0.12.0-1.24 h1:+BAKwGK6pfB0X/SN2I0OjzpgL
 github.com/trimble-oss/go-mysql-server v0.12.0-1.24/go.mod h1:e3NwLxC7z2ia55X7jv1yhm6V8j7iBiI3S1v2rRGf264=
 github.com/trimble-oss/tierceron-core/v2 v2.0.3 h1:MS2gJJRkmEQOdQFvpnJl7NC3unqgLdpDNSNUXmD7woM=
 github.com/trimble-oss/tierceron-core/v2 v2.0.3/go.mod h1:8mdjD3H3jIJdy8sJ5EK4MVSc1O90ZDzvNxHBO2SNAi8=
-github.com/trimble-oss/tierceron-hat v1.2.4 h1:x2YrYDoFFZIM93FxelmMwCsF5jTqeOtgwUiMxO1LG18=
-github.com/trimble-oss/tierceron-hat v1.2.4/go.mod h1:f2Gi6K8EUjmgx/pkVw5l4yv67NOXU4mMpGGH1RPGb1o=
+github.com/trimble-oss/tierceron-hat v1.2.5 h1:y3TcwJorL6av7iXVxae2BJBvMHobiNVsx5eBhI28ZlM=
+github.com/trimble-oss/tierceron-hat v1.2.5/go.mod h1:f2Gi6K8EUjmgx/pkVw5l4yv67NOXU4mMpGGH1RPGb1o=
 github.com/trimble-oss/tierceron-nute v1.0.1 h1:Y0oBeKD7Aizj1gzb0gfSPO1KPhvBBPgSS2+dSFRyRn0=
 github.com/trimble-oss/tierceron-nute v1.0.1/go.mod h1:9MKEGmnTDg5LOYJNafX2XER1Y5SQwK4uGH+S74Ooudo=
 github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 h1:pawnUESmxej0xrSStXI91vK9ryLWI4rFVDEJqy+pKHs=

@@ -390,7 +390,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
-	penseEye, capWriteErr := tap.TapWriter(penseSum)
+	penseEye, capWriteErr := tap.TapWriter(cursoropts.BuildOptions.GetCapPath(), penseSum)
 
 	if trcHtSp, trcHSPOk := penseEye["trcHatSecretsPort"]; trcHSPOk {
 		if gTrcHatSecretsPort != trcHtSp {

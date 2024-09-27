@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/plugin"
-	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
@@ -170,7 +169,6 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 						}
 						// Get secrets from curator.
 						logger.Println("Plugin Init begun.")
-						tap.TapInit("/tmp/trccurator/")
 						for secretFieldKey, _ := range cursorFields {
 							secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, secretFieldKey)
 							if err != nil {

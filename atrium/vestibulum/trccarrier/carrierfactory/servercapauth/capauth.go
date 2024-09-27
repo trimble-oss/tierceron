@@ -91,7 +91,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, wantsFeathering
 			//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
 			//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
 
-			err := tap.Tap(tapMap, tapGroup, false)
+			err := tap.Tap(cursoropts.BuildOptions.GetCapPath(), tapMap, tapGroup, false)
 			if err != nil {
 				logger.Println("Cap failure with error: " + err.Error())
 				retryCap++
@@ -178,7 +178,6 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 // Things to make available to trusted agent.
 func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 	logger.Println("Cap server.")
-	tap.TapInit(cursoropts.BuildOptions.GetCapPath())
 
 	creds, credErr := tls.GetServerCredentials(logger)
 	if credErr != nil {
