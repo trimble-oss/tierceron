@@ -10,11 +10,9 @@ import (
 
 	"github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter"
 	"github.com/newrelic/go-agent/v3/newrelic"
-	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory/servercapauth"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
@@ -114,7 +112,6 @@ func TapFeatherInit(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, p
 			if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
 				// Ensure only dev is the cap auth...
 				logger.Printf("Cap auth init for env: %s\n", pluginConfig["env"].(string))
-				tap.TapInit(cursoropts.BuildOptions.GetCapPath())
 
 				var featherAuth *servercapauth.FeatherAuth = nil
 				if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {

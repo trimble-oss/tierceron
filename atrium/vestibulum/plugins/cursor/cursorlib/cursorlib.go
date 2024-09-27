@@ -180,7 +180,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 						for secretFieldKey, _ := range cursorFields {
 							secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, secretFieldKey)
 							if err != nil {
-								logger.Println("Failed to retrieve wanted key: %s\n", secretFieldKey)
+								logger.Printf("Failed to retrieve wanted key: %s\n", secretFieldKey)
 							}
 							curatorPluginConfig[secretFieldKey] = secretFieldValue
 						}

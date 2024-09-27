@@ -178,6 +178,7 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 // Things to make available to trusted agent.
 func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 	logger.Println("Cap server.")
+	tap.TapInit(cursoropts.BuildOptions.GetCapPath())
 
 	creds, credErr := tls.GetServerCredentials(logger)
 	if credErr != nil {
