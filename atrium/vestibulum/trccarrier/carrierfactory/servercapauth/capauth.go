@@ -91,7 +91,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, wantsFeathering
 			//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
 			//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
 
-			err := tap.Tap(tapMap, tapGroup, false)
+			err := tap.Tap(cursoropts.BuildOptions.GetCapPath(), tapMap, tapGroup, false)
 			if err != nil {
 				logger.Println("Cap failure with error: " + err.Error())
 				retryCap++

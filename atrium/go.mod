@@ -24,7 +24,7 @@ require (
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible // indirect
-	github.com/trimble-oss/tierceron-hat v1.2.4
+	github.com/trimble-oss/tierceron-hat v1.2.5
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
 
 )

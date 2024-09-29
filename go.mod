@@ -36,7 +36,7 @@ require (
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-core/v2 v2.0.3
-	github.com/trimble-oss/tierceron-hat v1.2.4
+	github.com/trimble-oss/tierceron-hat v1.2.5
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20240326213127-e85d6193e1c6
 )
 
@@ -131,5 +131,7 @@ require (
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.24
 
 replace github.com/trimble-oss/tierceron/atrium => ./atrium
+
+//replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
 // replace github.com/trimble-oss/tierceron-core => ../tierceron-core

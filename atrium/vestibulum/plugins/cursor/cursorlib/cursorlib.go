@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/plugin"
-	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
@@ -168,30 +167,26 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 						} else {
 							logger.Println("Missing configuration data for env: " + env)
 						}
-						continue
-					}
-					ptError := ParseCursorRecord(tokenData, &curatorPluginConfig, logger)
-
-					if ptError != nil {
-						logger.Println("Plugin Init begun.")
-
 						// Get secrets from curator.
-						tap.TapInit("/tmp/trccurator/")
+						logger.Println("Plugin Init begun.")
 						for secretFieldKey, _ := range cursorFields {
 							secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, secretFieldKey)
 							if err != nil {
-								logger.Println("Failed to retrieve wanted key: %s\n", secretFieldKey)
+								logger.Printf("Failed to retrieve wanted key: %s\n", secretFieldKey)
+								continue
 							}
 							curatorPluginConfig[secretFieldKey] = secretFieldValue
 						}
-						logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())
+					} else {
+						ptError := ParseCursorRecord(tokenData, &curatorPluginConfig, logger)
+
+						if ptError != nil {
+							logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())
+						}
 					}
 				}
+				logger.Println("Plugin confing complete.")
 
-				if KvInitialize != nil {
-					logger.Println("Entering KvInitialize...")
-					return KvInitialize(ctx, req)
-				}
 				cursoropts.BuildOptions.TapInit()
 
 				// Clean up tap
@@ -204,6 +199,12 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 				pluginutil.PluginTapFeatherInit(trcshDriverConfig, curatorPluginConfig)
 
 				logger.Println("TrcCursorInitialize complete.")
+
+				if KvInitialize != nil {
+					logger.Println("Entering KvInitialize...")
+					return KvInitialize(ctx, req)
+				}
+
 				return nil
 			}
 
