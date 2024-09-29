@@ -3,12 +3,7 @@
 
 package cursoropts
 
-import (
-	"github.com/trimble-oss/tierceron-hat/cap/tap"
-)
-
 func TapInit() {
-	tap.TapInit(GetCapPath())
 }
 
 func GetCapPath() string {

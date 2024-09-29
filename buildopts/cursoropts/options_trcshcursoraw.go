@@ -3,10 +3,6 @@
 
 package cursoropts
 
-import (
-	"github.com/trimble-oss/tierceron-hat/cap/tap"
-)
-
 func GetCuratorConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
 	return map[string]interface{}{
 		"env":            "dev",
@@ -19,7 +15,6 @@ func GetCuratorConfig(pluginEnvConfig map[string]interface{}) map[string]interfa
 }
 
 func TapInit() {
-	tap.TapInit(GetCapPath())
 }
 
 func GetCapPath() string {
