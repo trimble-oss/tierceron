@@ -5,7 +5,12 @@ package cursoropts
 
 func TapInit() {
 }
+
 func GetCapPath() string {
+	return ""
+}
+
+func GetCapCuratorPath() string {
 	return ""
 }
 

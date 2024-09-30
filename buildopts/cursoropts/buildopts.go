@@ -5,6 +5,7 @@ type Option func(*OptionsBuilder)
 type OptionsBuilder struct {
 	TapInit             func()
 	GetCapPath          func() string
+	GetCapCuratorPath   func() string
 	GetPluginName       func() string
 	GetLogPath          func() string
 	GetTrusts           func() map[string][]string
@@ -16,6 +17,7 @@ func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
 		optionsBuilder.GetPluginName = GetPluginName
 		optionsBuilder.GetCapPath = GetCapPath
+		optionsBuilder.GetCapCuratorPath = GetCapCuratorPath
 		optionsBuilder.GetLogPath = GetLogPath
 		optionsBuilder.TapInit = TapInit
 		optionsBuilder.GetTrusts = GetTrusts

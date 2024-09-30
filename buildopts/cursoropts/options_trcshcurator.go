@@ -10,6 +10,10 @@ func GetCapPath() string {
 	return "/tmp/trccurator/"
 }
 
+func GetCapCuratorPath() string {
+	return "/tmp/trccurator/"
+}
+
 func GetPluginName() string {
 	return "trcsh-curator"
 }
