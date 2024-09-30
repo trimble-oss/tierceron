@@ -164,12 +164,22 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	if _, ok := pluginConfig["exitOnFailure"]; ok {
 		exitOnFailure = pluginConfig["exitOnFailure"].(bool)
 	}
-
-	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
+	trcdbEnvLogger.Println("InitVaultModForPlugin region init.")
 
 	var regions []string
-	if _, regionsOk := pluginConfig["regions"]; regionsOk {
-		regions = pluginConfig["regions"].([]string)
+	if regionsSlice, regionsOk := pluginConfig["regions"].([]string); regionsOk {
+		regions = regionsSlice
+	}
+
+	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
+	if _, tokenOk := pluginConfig["token"].(string); tokenOk {
+		return nil, nil, nil, errors.New("Missing required token")
+	}
+	if _, vaddressOk := pluginConfig["vaddress"].(string); vaddressOk {
+		return nil, nil, nil, errors.New("Missing required vaddress")
+	}
+	if _, envOk := pluginConfig["env"].(string); envOk {
+		return nil, nil, nil, errors.New("Missing required env")
 	}
 
 	driverConfig := DriverConfig{

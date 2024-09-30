@@ -156,9 +156,11 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 				// Get common configs for deployer class of plugin.
 				curatorPluginConfig = coreopts.BuildOptions.InitPluginConfig(curatorPluginConfig)
 
+				var curatorEnv string = ""
 				// Read in existing vault data from all existing environments on startup...
 				for _, env := range queuedEnvironments {
 					logger.Println("Processing env: " + env)
+					curatorEnv = env
 					tokenData, sgErr := req.Storage.Get(ctx, env)
 
 					if sgErr != nil || tokenData == nil {
@@ -168,8 +170,9 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 							logger.Println("Missing configuration data for env: " + env)
 						}
 						// Get secrets from curator.
-						logger.Println("Plugin Init begun.")
+						logger.Printf("Field loading begun.\n")
 						for secretFieldKey, _ := range cursorFields {
+							logger.Printf("Loading field: %s\n", secretFieldKey)
 							secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapCuratorPath(), secretFieldKey)
 							if err != nil {
 								logger.Printf("Failed to retrieve wanted key: %s\n", secretFieldKey)
@@ -177,6 +180,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 							}
 							curatorPluginConfig[secretFieldKey] = secretFieldValue
 						}
+						logger.Printf("Field loading complete.\n")
 					} else {
 						ptError := ParseCursorRecord(tokenData, &curatorPluginConfig, logger)
 
@@ -185,7 +189,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 						}
 					}
 				}
-				logger.Println("Plugin confing complete.")
+				logger.Println("Plugin config complete.")
 
 				cursoropts.BuildOptions.TapInit()
 
@@ -196,7 +200,10 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 				}
 
 				// Establish tap and feather.
-				pluginutil.PluginTapFeatherInit(trcshDriverConfig, curatorPluginConfig)
+				initErr := pluginutil.PluginTapFeatherInit(trcshDriverConfig, curatorPluginConfig)
+				if initErr != nil {
+					logger.Printf("Missing config for env: %s error: %s\n", curatorEnv, initErr.Error())
+				}
 
 				logger.Println("TrcCursorInitialize complete.")
 
