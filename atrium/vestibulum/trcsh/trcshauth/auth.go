@@ -116,7 +116,7 @@ func TrcshVAddress(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentCo
 		vaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
 	} else {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 0")
-		vaultAddress, err = capauth.PenseQuery(trcshDriverConfig, "caddress")
+		vaultAddress, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
 	}
 	return vaultAddress, err
 }
@@ -146,7 +146,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	} else {
 		if featherCtx == nil {
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 1")
-			trcshConfig.KubeConfig, err = capauth.PenseQuery(trcshDriverConfig, "kubeconfig")
+			trcshConfig.KubeConfig, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "kubeconfig")
 		}
 	}
 
@@ -161,7 +161,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		trcshConfig.VaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
 	} else {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 2")
-		trcshConfig.VaultAddress, err = capauth.PenseQuery(trcshDriverConfig, "caddress")
+		trcshConfig.VaultAddress, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
 	}
 	if err != nil {
 		return trcshConfig, err
@@ -194,7 +194,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		trcshConfig.ConfigRole, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
 	} else {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 3")
-		trcshConfig.ConfigRole, err = capauth.PenseQuery(trcshDriverConfig, "configrole")
+		trcshConfig.ConfigRole, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "configrole")
 	}
 	if err != nil {
 		return trcshConfig, err
@@ -204,7 +204,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 	if featherCtx == nil {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 4")
-		trcshConfig.PubRole, err = capauth.PenseQuery(trcshDriverConfig, "pubrole")
+		trcshConfig.PubRole, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "pubrole")
 		if err != nil {
 			return trcshConfig, err
 		}
@@ -213,7 +213,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 	if featherCtx == nil {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 6")
-		trcshConfig.Token, err = capauth.PenseQuery(trcshDriverConfig, "token")
+		trcshConfig.Token, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "token")
 		if err != nil {
 			return trcshConfig, err
 		}

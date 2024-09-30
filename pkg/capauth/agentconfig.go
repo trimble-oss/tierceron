@@ -385,12 +385,12 @@ func NewAgentConfig(address string,
 	}
 }
 
-func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, error) {
+func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense string) (*string, error) {
 	penseCode := randomString(12 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
-	penseEye, capWriteErr := tap.TapWriter(cursoropts.BuildOptions.GetCapPath(), penseSum)
+	penseEye, capWriteErr := tap.TapWriter(capPath, penseSum)
 
 	if trcHtSp, trcHSPOk := penseEye["trcHatSecretsPort"]; trcHSPOk {
 		if gTrcHatSecretsPort != trcHtSp {
