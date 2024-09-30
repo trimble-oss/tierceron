@@ -185,7 +185,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 						}
 					}
 				}
-				logger.Println("Plugin confing complete.")
+				logger.Println("Plugin config complete.")
 
 				cursoropts.BuildOptions.TapInit()
 

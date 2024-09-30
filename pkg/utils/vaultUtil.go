@@ -168,8 +168,8 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
 
 	var regions []string
-	if _, regionsOk := pluginConfig["regions"]; regionsOk {
-		regions = pluginConfig["regions"].([]string)
+	if regionsSlice, regionsOk := pluginConfig["regions"].([]string); regionsOk {
+		regions = regionsSlice
 	}
 
 	driverConfig := DriverConfig{
