@@ -36,7 +36,7 @@ require (
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-core/v2 v2.0.3
-	github.com/trimble-oss/tierceron-hat v1.2.5
+	github.com/trimble-oss/tierceron-hat v1.2.6
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20240326213127-e85d6193e1c6
 )
 
@@ -53,7 +53,7 @@ require (
 	github.com/templexxx/xorsimd v0.4.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240924160255-9d4c2d233b61 // indirect
 )
 
 require (
@@ -94,7 +94,6 @@ require (
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
-	google.golang.org/genproto v0.0.0-20240924160255-9d4c2d233b61 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )
