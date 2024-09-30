@@ -156,9 +156,11 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 				// Get common configs for deployer class of plugin.
 				curatorPluginConfig = coreopts.BuildOptions.InitPluginConfig(curatorPluginConfig)
 
+				var curatorEnv string = ""
 				// Read in existing vault data from all existing environments on startup...
 				for _, env := range queuedEnvironments {
 					logger.Println("Processing env: " + env)
+					curatorEnv = env
 					tokenData, sgErr := req.Storage.Get(ctx, env)
 
 					if sgErr != nil || tokenData == nil {
@@ -198,7 +200,10 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 				}
 
 				// Establish tap and feather.
-				pluginutil.PluginTapFeatherInit(trcshDriverConfig, curatorPluginConfig)
+				initErr := pluginutil.PluginTapFeatherInit(trcshDriverConfig, curatorPluginConfig)
+				if initErr != nil {
+					logger.Printf("Missing config for env: %s error: %s\n", curatorEnv, initErr.Error())
+				}
 
 				logger.Println("TrcCursorInitialize complete.")
 
