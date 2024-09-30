@@ -164,13 +164,14 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	if _, ok := pluginConfig["exitOnFailure"]; ok {
 		exitOnFailure = pluginConfig["exitOnFailure"].(bool)
 	}
-
-	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
+	trcdbEnvLogger.Println("InitVaultModForPlugin region init.")
 
 	var regions []string
 	if regionsSlice, regionsOk := pluginConfig["regions"].([]string); regionsOk {
 		regions = regionsSlice
 	}
+
+	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
 
 	driverConfig := DriverConfig{
 		CoreConfig: core.CoreConfig{

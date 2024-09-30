@@ -78,8 +78,12 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	//Grabbing configs
 	tempAddr := pluginConfig["vaddress"]
 	tempToken := pluginConfig["token"]
-	pluginConfig["vaddress"] = pluginConfig["caddress"]
-	pluginConfig["token"] = pluginConfig["ctoken"]
+	if cAddr, cAddressOk := pluginConfig["caddress"].(string); cAddressOk && len(cAddr) > 0 {
+		pluginConfig["vaddress"] = cAddr
+	}
+	if cToken, cTokOk := pluginConfig["ctoken"].(string); cTokOk && len(cToken) > 0 {
+		pluginConfig["token"] = cToken
+	}
 
 	trcshDriverConfig.DriverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if vault != nil {
