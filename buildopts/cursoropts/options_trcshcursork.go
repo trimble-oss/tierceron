@@ -20,6 +20,10 @@ func GetCapPath() string {
 	return "/tmp/trcshkaw/"
 }
 
+func GetCapCuratorPath() string {
+	return "/tmp/trccurator/"
+}
+
 func GetPluginName() string {
 	return "trcsh-cursor-k"
 }
