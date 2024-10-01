@@ -77,12 +77,12 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 
 	//Grabbing configs
 	tempAddr := pluginConfig["vaddress"]
-	tempToken := pluginConfig["token"]
+	tempTokenPtr := pluginConfig["tokenptr"]
 	if cAddr, cAddressOk := pluginConfig["caddress"].(string); cAddressOk && len(cAddr) > 0 {
 		pluginConfig["vaddress"] = cAddr
 	}
-	if cToken, cTokOk := pluginConfig["ctoken"].(string); cTokOk && len(cToken) > 0 {
-		pluginConfig["token"] = cToken
+	if cTokenPtr, cTokOk := pluginConfig["ctokenptr"].(*string); cTokOk && eUtils.RefLength(cTokenPtr) > 0 {
+		pluginConfig["tokenptr"] = cTokenPtr
 	}
 
 	trcshDriverConfig.DriverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, trcshDriverConfig.DriverConfig.CoreConfig.Log)
@@ -94,7 +94,7 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 		defer goMod.Release()
 	}
 	pluginConfig["vaddress"] = tempAddr
-	pluginConfig["token"] = tempToken
+	pluginConfig["tokenptr"] = tempTokenPtr
 
 	if err != nil {
 		eUtils.LogErrorMessage(&trcshDriverConfig.DriverConfig.CoreConfig, "Could not access vault.  Failure to start.", true)

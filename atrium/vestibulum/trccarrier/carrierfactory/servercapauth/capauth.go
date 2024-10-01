@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/trimble-oss/tierceron-hat/cap"
@@ -162,13 +163,21 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 		case "trcHatSecretsPort":
 			// Insecure things can be remembered here...
 			logger.Println("EyeRemember: " + key)
-			tap.TapEyeRemember(key, value.(string))
-		case "vaddress", "caddress", "configrole":
-			cap.TapFeather(key, value.(string))
-			fallthrough
-		case "pubrole", "token", "kubeconfig":
+			valuestring := value.(string)
+			tap.TapEyeRemember(key, &valuestring)
+		case "vaddress", "caddress":
+			valuestring := value.(string)
+			cap.TapFeather(key, &valuestring)
 			logger.Println("Memorizing: " + key)
-			cap.TapMemorize(key, value.(string))
+			cap.TapMemorize(key, &valuestring)
+		case "configroleptr":
+			key, _ = strings.CutSuffix(key, "ptr")
+			cap.TapFeather(key, value.(*string))
+			fallthrough
+		case "tokenptr", "kubeconfigptr", "pubroleptr":
+			key, _ = strings.CutSuffix(key, "ptr")
+			logger.Println("Memorizing: " + key)
+			cap.TapMemorize(key, value.(*string))
 		default:
 			logger.Println("Skipping key: " + key)
 		}

@@ -60,7 +60,7 @@ func (s *Server) authUser(config *core.CoreConfig, mod *helperkv.Modifier, opera
 }
 
 func (s *Server) getActiveSessions(config *core.CoreConfig, env string) ([]map[string]interface{}, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func parseURL(config *core.CoreConfig, url string) (string, string, string, stri
 }
 
 func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
 	}

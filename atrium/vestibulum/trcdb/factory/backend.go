@@ -199,9 +199,9 @@ func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
 	}
 	tokenConfig := tokenWrapper{}
 	e.DecodeJSON(&tokenConfig)
-	tokenMap["token"] = tokenConfig.Token
+	tokenMap["tokenptr"] = &tokenConfig.Token
 	tokenMap["caddress"] = tokenConfig.CAddress
-	tokenMap["ctoken"] = tokenConfig.CToken
+	tokenMap["ctokenptr"] = &tokenConfig.CToken
 
 	vaultUrl, err := url.Parse(tokenConfig.VAddress)
 	if err == nil {
@@ -226,8 +226,8 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		return errors.New("missing token")
 	}
 
-	token, tOk := pluginEnvConfig["token"]
-	if !tOk || token.(string) == "" {
+	tokenPtr := eUtils.RefMap(pluginEnvConfig, "tokenptr")
+	if eUtils.RefEquals(tokenPtr, "") {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing token.")
 		return errors.New("missing token")
 	}
@@ -238,8 +238,8 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		return errors.New("missing address")
 	}
 
-	ctoken, cTOk := pluginEnvConfig["ctoken"]
-	if !cTOk || ctoken.(string) == "" {
+	ctokenPtr := eUtils.RefMap(pluginEnvConfig, "ctokenptr")
+	if eUtils.RefEquals(ctokenPtr, "") {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing ctoken.")
 		return errors.New("missing ctoken")
 	}
@@ -318,7 +318,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 		if ptError != nil {
 			logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())
 		} else {
-			if _, ok := tokenMap["token"]; ok {
+			if _, ok := tokenMap["tokenptr"]; ok {
 				tokenMap["env"] = env
 				tokenMap["vaddress"] = vaultHost
 				logger.Println("Initialize Pushing env: " + env)
@@ -400,9 +400,13 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 			logger.Println(mTokenErr.Error())
 			return nil, mTokenErr
 		}
-		tokenEnvMap["token"] = vData["token"]
+		token := vData["token"].(string)
+		memprotectopts.MemProtect(nil, &token)
+		tokenEnvMap["tokenptr"] = &token
 		tokenEnvMap["caddress"] = vData["caddress"]
-		tokenEnvMap["ctoken"] = vData["ctoken"]
+		ctoken := vData["ctoken"].(string)
+		memprotectopts.MemProtect(nil, &ctoken)
+		tokenEnvMap["ctokenptr"] = &ctoken
 
 		logger.Println("Read Pushing env: " + tokenEnvMap["env"].(string))
 		PushEnv(tokenEnvMap)
@@ -426,8 +430,10 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return logical.ErrorResponse("missing path"), nil
 	}
 
-	if token, tokenOk := data.GetOk("token"); tokenOk {
-		tokenEnvMap["token"] = token
+	if t, tokenOk := data.GetOk("token"); tokenOk {
+		token := t.(string)
+		memprotectopts.MemProtect(nil, &token)
+		tokenEnvMap["tokenptr"] = &token
 	} else {
 		return nil, errors.New("Token required.")
 	}
@@ -437,8 +443,10 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	} else {
 		return nil, errors.New("caddress required.")
 	}
-	if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
-		tokenEnvMap["ctoken"] = cToken
+	if ct, tokenOK := data.GetOk("ctoken"); tokenOK {
+		ctoken := ct.(string)
+		memprotectopts.MemProtect(nil, &ctoken)
+		tokenEnvMap["ctokenptr"] = &ctoken
 	} else {
 		return nil, errors.New("ctoken required.")
 	}
@@ -527,8 +535,10 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				return nil, errors.New("Certification Vault Url required.")
 			}
 
-			if cToken, tokenOK := data.GetOk("ctoken"); tokenOK {
-				tokenEnvMap["ctoken"] = cToken
+			if ct, tokenOK := data.GetOk("ctoken"); tokenOK {
+				ctoken := ct.(string)
+				memprotectopts.MemProtect(nil, &ctoken)
+				tokenEnvMap["ctokenptr"] = &ctoken
 			} else {
 				return nil, errors.New("Certification Vault token required.")
 			}
@@ -552,7 +562,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 			pluginConfig["env"] = req.Path
 			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)
-			pluginConfig["token"] = tokenEnvMap["ctoken"].(string)
+			pluginConfig["tokenptr"] = tokenEnvMap["ctokenptr"]
 			pluginConfig["regions"] = []string{hostRegion}
 			carrierDriverConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 			if err != nil {
@@ -594,8 +604,11 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		// Path includes Env and token will only work if it has right permissions.
 		tokenEnvMap["env"] = req.Path
 
-		if token, tokenOk := data.GetOk("token"); tokenOk {
-			tokenEnvMap["token"] = token
+		if t, tokenOk := data.GetOk("token"); tokenOk {
+			token := t.(string)
+			memprotectopts.MemProtect(nil, &token)
+
+			tokenEnvMap["tokenptr"] = &token
 		} else {
 			//ctx.Done()
 			return nil, errors.New("Token required.")

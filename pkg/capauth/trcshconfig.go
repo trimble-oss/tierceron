@@ -1,25 +1,28 @@
 package capauth
 
+import (
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+)
+
 type TrcShConfig struct {
-	Env          string
-	EnvContext   string // Current env context...
-	VaultAddress *string
-	Token        *string // Plugin token for read only access to plugin data
-	ConfigRole   *string
-	PubRole      *string
-	KubeConfig   *string
+	Env             string
+	EnvContext      string // Current env context...
+	VaultAddressPtr *string
+	TokenPtr        *string // Plugin token for read only access to plugin data
+	ConfigRolePtr   *string
+	PubRolePtr      *string
+	KubeConfigPtr   *string
 }
 
 func (trcshConfig *TrcShConfig) IsValid(agentConfigs *AgentConfigs) bool {
 	if agentConfigs == nil {
 		// Driver needs a lot more permissions to run...
-		return trcshConfig.ConfigRole != nil && trcshConfig.PubRole != nil &&
-			trcshConfig.VaultAddress != nil && trcshConfig.KubeConfig != nil &&
-			len(*trcshConfig.ConfigRole) > 0 && len(*trcshConfig.PubRole) > 0 &&
-			len(*trcshConfig.VaultAddress) > 0 && len(*trcshConfig.KubeConfig) > 0
+		return eUtils.RefLength(trcshConfig.ConfigRolePtr) > 0 &&
+			eUtils.RefLength(trcshConfig.PubRolePtr) > 0 &&
+			eUtils.RefLength(trcshConfig.KubeConfigPtr) > 0 &&
+			eUtils.RefLength(trcshConfig.VaultAddressPtr) > 0
 	} else {
 		// Agent
-		return trcshConfig.ConfigRole != nil && trcshConfig.VaultAddress != nil &&
-			len(*trcshConfig.ConfigRole) > 0 && len(*trcshConfig.VaultAddress) > 0
+		return eUtils.RefLength(trcshConfig.ConfigRolePtr) > 0 && eUtils.RefLength(trcshConfig.VaultAddressPtr) > 0
 	}
 }

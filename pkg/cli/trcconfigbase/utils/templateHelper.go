@@ -12,6 +12,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/validator"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -195,7 +196,7 @@ func PopulateTemplate(driverConfig *eUtils.DriverConfig,
 	ok := false
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
-	if driverConfig.CoreConfig.Token != "novault" {
+	if !utils.RefEquals(driverConfig.CoreConfig.TokenPtr, "novault") {
 		cds.Init(&driverConfig.CoreConfig, modifier, secretMode, true, project, nil, service)
 	} else {
 		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.CoreConfig.Env + "/" + driverConfig.CoreConfig.Env + "_seed.yml")

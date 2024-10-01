@@ -193,7 +193,7 @@ func main() {
 
 	flag.Parse()
 
-	s = server.NewServer(*addrPtr, *tokenPtr)
+	s = server.NewServer(addrPtr, tokenPtr)
 	localHost = *localPtr
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
@@ -209,7 +209,7 @@ func main() {
 	status, err := s.GetStatus(context.Background(), nil)
 	eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
 
-	if !status.Sealed && s.VaultToken != "" {
+	if !status.Sealed && !eUtils.RefEquals(s.VaultTokenPtr, "") {
 		s.Log.Println("Vault is unsealed. Initializing GQL")
 		s.InitGQL()
 	}

@@ -172,7 +172,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 		}
 	}
 	versionData := make(map[string]interface{})
-	if driverConfig.CoreConfig.Token != "novault" {
+	if !utils.RefEquals(driverConfig.CoreConfig.TokenPtr, "novault") {
 		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
 			if errValidateEnvironment != nil {
 				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {

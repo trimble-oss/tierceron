@@ -178,7 +178,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 								logger.Printf("Failed to retrieve wanted key: %s\n", secretFieldKey)
 								continue
 							}
-							curatorPluginConfig[secretFieldKey] = secretFieldValue
+							curatorPluginConfig[secretFieldKey] = *secretFieldValue
 						}
 						logger.Printf("Field loading complete.\n")
 					} else {

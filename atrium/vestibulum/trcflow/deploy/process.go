@@ -39,9 +39,9 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 
 	//Grabbing configs
 	tempAddr := pluginConfig["vaddress"]
-	tempToken := pluginConfig["token"]
+	tempTokenPtr := pluginConfig["tokenptr"]
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
-	pluginConfig["token"] = pluginConfig["ctoken"]
+	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
 	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	if vault != nil {
 		defer vault.Close()
@@ -54,7 +54,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 		defer goMod.Release()
 	}
 	pluginConfig["vaddress"] = tempAddr
-	pluginConfig["token"] = tempToken
+	pluginConfig["tokenptr"] = tempTokenPtr
 
 	if err != nil {
 		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
@@ -91,14 +91,15 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	if pluginConfig["caddress"].(string) == "" { //if no certification address found, it will try to certify against itself.
 		return errors.New("could not find certification address")
 	}
-	if pluginConfig["ctoken"].(string) == "" { //if no certification address found, it will try to certify against itself.
+	if eUtils.RefEquals(eUtils.RefMap(pluginConfig, "ctokenptr"), "") { //if no certification address found, it will try to certify against itself.
 		return errors.New("could not find certification token")
 	}
 
-	addrPtr := pluginConfig["vaddress"].(string)
-	tokPtr := pluginConfig["token"].(string)
+	addr := pluginConfig["vaddress"].(string)
+	addrPtr := &addr
+	tokenPtr := eUtils.RefMap(pluginConfig, "tokenptr")
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
-	pluginConfig["token"] = pluginConfig["ctoken"]
+	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
 	carrierDriverConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 	carrierDriverConfig.SubSectionValue = pluginName
 	if err != nil {
@@ -110,8 +111,8 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	defer func(vaddrPtr *string, tPtr *string) {
 		pluginConfig["vaddress"] = *vaddrPtr
-		pluginConfig["token"] = *tPtr
-	}(&addrPtr, &tokPtr)
+		pluginConfig["tokenptr"] = *tPtr
+	}(addrPtr, tokenPtr)
 
 	if ptcErr != nil {
 		eUtils.LogErrorMessage(&carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin load failure: %s", carrierDriverConfig.CoreConfig.Env, ptcErr.Error()), false)

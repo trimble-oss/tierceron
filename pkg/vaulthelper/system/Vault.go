@@ -25,14 +25,14 @@ type Vault struct {
 
 // KeyTokenWrapper Contains the unseal keys and root token
 type KeyTokenWrapper struct {
-	Keys  []string // Base 64 encoded keys
-	Token string   // Root token for the vault
+	Keys     []string // Base 64 encoded keys
+	TokenPtr *string  // Root token for the vault
 }
 
 // NewVault Constructs a new vault at the given address with the given access token
-func NewVault(insecure bool, address string, env string, newVault bool, pingVault bool, scanVault bool, logger *log.Logger) (*Vault, error) {
+func NewVault(insecure bool, addressPtr *string, env string, newVault bool, pingVault bool, scanVault bool, logger *log.Logger) (*Vault, error) {
 	return NewVaultWithNonlocal(insecure,
-		address,
+		addressPtr,
 		env,
 		newVault,
 		pingVault,
@@ -42,23 +42,23 @@ func NewVault(insecure bool, address string, env string, newVault bool, pingVaul
 }
 
 // NewVault Constructs a new vault at the given address with the given access token allowing insecure for non local.
-func NewVaultWithNonlocal(insecure bool, address string, env string, newVault bool, pingVault bool, scanVault bool, allowNonLocal bool, logger *log.Logger) (*Vault, error) {
+func NewVaultWithNonlocal(insecure bool, addressPtr *string, env string, newVault bool, pingVault bool, scanVault bool, allowNonLocal bool, logger *log.Logger) (*Vault, error) {
 	var httpClient *http.Client
 	var err error
 
 	if allowNonLocal {
-		httpClient, err = helperkv.CreateHTTPClientAllowNonLocal(insecure, address, env, scanVault, true)
+		httpClient, err = helperkv.CreateHTTPClientAllowNonLocal(insecure, *addressPtr, env, scanVault, true)
 	} else {
-		httpClient, err = helperkv.CreateHTTPClient(insecure, address, env, scanVault)
+		httpClient, err = helperkv.CreateHTTPClient(insecure, *addressPtr, env, scanVault)
 	}
 
 	if err != nil {
-		logger.Println("Connection to vault couldn't be made - vaultHost: " + address)
+		logger.Println("Connection to vault couldn't be made - vaultHost: " + *addressPtr)
 		return nil, err
 	}
-	client, err := api.NewClient(&api.Config{Address: address, HttpClient: httpClient})
+	client, err := api.NewClient(&api.Config{Address: *addressPtr, HttpClient: httpClient})
 	if err != nil {
-		logger.Println("vaultHost: " + address)
+		logger.Println("vaultHost: " + *addressPtr)
 		return nil, err
 	}
 
@@ -74,7 +74,7 @@ func NewVaultWithNonlocal(insecure bool, address string, env string, newVault bo
 	}
 
 	if !newVault && health.Sealed {
-		return nil, errors.New("Vault is sealed at " + address)
+		return nil, errors.New("Vault is sealed at " + *addressPtr)
 	}
 
 	return &Vault{
@@ -111,13 +111,14 @@ func (v *Vault) RefreshClient() error {
 }
 
 // SetToken Stores the access token for this vault
-func (v *Vault) SetToken(token string) {
-	v.client.SetToken(token)
+func (v *Vault) SetToken(token *string) {
+	v.client.SetToken(*token)
 }
 
 // GetToken Fetches current token from client
-func (v *Vault) GetToken() string {
-	return v.client.Token()
+func (v *Vault) GetToken() *string {
+	token := v.client.Token()
+	return &token
 }
 
 // GetTokenInfo fetches data regarding this token
@@ -344,8 +345,8 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 	fmt.Printf("Root token: %s\n\n", response.RootToken)
 
 	keyToken := KeyTokenWrapper{
-		Keys:  response.KeysB64,
-		Token: response.RootToken}
+		Keys:     response.KeysB64,
+		TokenPtr: &response.RootToken}
 
 	return &keyToken, nil
 }

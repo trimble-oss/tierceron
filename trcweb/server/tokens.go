@@ -49,7 +49,7 @@ func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (st
 // GetVaultTokens takes app role credentials and attempts to fetch names tokens from the vault
 func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.TokensResp, error) {
 	// Create 2 vault connections, one for checking/rolling tokens, the other for accessing the AWS user cubbyhole
-	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
+	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", false, false, false, s.Log)
 	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if v != nil {
 		defer v.Close()
@@ -60,7 +60,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 		return nil, err
 	}
 
-	v.SetToken(s.VaultToken)
+	v.SetToken(s.VaultTokenPtr)
 
 	if len(req.AppRoleID) == 0 || len(req.AppRoleSecretID) == 0 {
 		return nil, fmt.Errorf("need both role ID and secret ID to login through app role")
@@ -73,7 +73,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	}
 
 	// Modifier to access token values granted to bamboo
-	mod, err := helperkv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, true, s.Log)
+	mod, err := helperkv.NewModifier(false, arToken, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
