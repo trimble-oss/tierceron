@@ -137,20 +137,20 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 	configRoleSlice := strings.Split(*trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfigPtr, ":")
 	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.Env
-	readToken := new(string)
-	*readToken = ""
+	readTokenPtr := new(string)
+	*readTokenPtr = ""
 	approle := "config.yml"
-	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], readToken, &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
+	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], readTokenPtr, &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return nil, autoErr
 	}
 	if memonly.IsMemonly() {
 		memprotectopts.MemUnprotectAll(nil)
-		memprotectopts.MemProtect(nil, readToken)
+		memprotectopts.MemProtect(nil, readTokenPtr)
 	}
 
-	mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, readToken, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, readTokenPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}

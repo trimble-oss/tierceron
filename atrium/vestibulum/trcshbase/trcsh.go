@@ -242,8 +242,10 @@ func EnableDeployer(env string, region string, token string, trcPath string, sec
 	if len(projectService) > 0 && kernelopts.BuildOptions.IsKernel() {
 		projServ = *projectService[0]
 	}
+	tokenPtr := new(string)
+	*tokenPtr = ""
 
-	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, "", deployment, trcPath, projServ, secretId, approleId, false, dronePtr)
+	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, tokenPtr, deployment, trcPath, projServ, secretId, approleId, false, dronePtr)
 }
 
 // This is a controller program that can act as any command line utility.
@@ -336,7 +338,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		//Open deploy script and parse it.
-		ProcessDeploy(nil, trcshDriverConfig, "", "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
+		tokenPtr := new(string)
+		*tokenPtr = ""
+		ProcessDeploy(nil, trcshDriverConfig, tokenPtr, "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
 	} else {
 		logger, err := createLogFile()
 
@@ -867,9 +871,9 @@ func roleBasedRunner(
 	ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
 
 	if !isAgentToken {
-		tokenPtr := new(string)
-		*tokenPtr = ""
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = tokenPtr
+		coreConfigTokenPtr := new(string)
+		*coreConfigTokenPtr = ""
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = coreConfigTokenPtr
 	}
 	return err
 }
@@ -1089,7 +1093,7 @@ func processDroneCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 //	Nothing.
 func ProcessDeploy(featherCtx *cap.FeatherContext,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
-	token string,
+	tokenPtr *string,
 	deployment string,
 	trcPath string,
 	projectServicePtr string,
@@ -1101,7 +1105,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	configMemFs := trcshDriverConfig.DriverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
 
 	isAgentToken := false
-	if token != "" {
+	if !eUtils.RefEquals(tokenPtr, "") {
 		isAgentToken = true
 	}
 	pwd, _ := os.Getwd()
@@ -1144,16 +1148,16 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
 
 	trcshEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-	tokenPtr := new(string)
+	deployTokenPtr := new(string)
 	authTokenEnv := "azuredeploy"
 	appRoleConfig := "deployauth"
 	if gAgentConfig != nil && gAgentConfig.AgentToken != nil {
-		tokenPtr = gAgentConfig.AgentToken
+		deployTokenPtr = gAgentConfig.AgentToken
 		appRoleConfig = "none"
 	}
 	authTokenName := "vault_token_azuredeploy"
-	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, secretId, approleId, tokenPtr, &authTokenName, &authTokenEnv, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &trcshEnvBasis, &appRoleConfig, false)
-	if autoErr != nil || tokenPtr == nil || *tokenPtr == "" {
+	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, secretId, approleId, deployTokenPtr, &authTokenName, &authTokenEnv, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &trcshEnvBasis, &appRoleConfig, false)
+	if autoErr != nil || deployTokenPtr == nil || *deployTokenPtr == "" {
 		fmt.Println("Unable to auth.")
 		if autoErr != nil {
 			fmt.Println(autoErr)
@@ -1218,10 +1222,10 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			}
 			if memonly.IsMemonly() {
 				memprotectopts.MemUnprotectAll(nil)
-				memprotectopts.MemProtect(nil, tokenPtr)
+				memprotectopts.MemProtect(nil, deployTokenPtr)
 			}
 
-			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, tokenPtr, mergedVaultAddressPtr, mergedEnvBasis, nil, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, deployTokenPtr, mergedVaultAddressPtr, mergedEnvBasis, nil, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 			if mod != nil {
 				defer mod.Release()
 			}
@@ -1292,7 +1296,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			envConfig = trcshDriverConfig.DriverConfig.CoreConfig.Env
 		}
 
-		configErr := trcconfigbase.CommonMain(&envConfig, mergedVaultAddressPtr, &token, &mergedEnvBasis, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, trcshDriverConfig.DriverConfig)
+		configErr := trcconfigbase.CommonMain(&envConfig, mergedVaultAddressPtr, tokenPtr, &mergedEnvBasis, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, []string{"trcsh"}, trcshDriverConfig.DriverConfig)
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preload Error %s\n", configErr.Error())
@@ -1300,9 +1304,9 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		}
 		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
 		if !isAgentToken {
-			tokenPtr := new(string)
-			*tokenPtr = ""
-			trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = tokenPtr
+			coreConfigTokenPtr := new(string)
+			*coreConfigTokenPtr = ""
+			trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = coreConfigTokenPtr
 		}
 
 		var memFile billy.File
@@ -1334,9 +1338,9 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		}
 
 		if !isAgentToken {
-			tokenPtr := new(string)
-			*tokenPtr = ""
-			trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = tokenPtr
+			coreConfigTokenPtr := new(string)
+			*coreConfigTokenPtr = ""
+			trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = coreConfigTokenPtr
 		}
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" {
 			trcshDriverConfig.DriverConfig.OutputMemCache = false
@@ -1456,7 +1460,7 @@ collaboratorReRun:
 					trcshDriverConfig,
 					control,
 					isAgentToken,
-					tokenPtr,
+					deployTokenPtr,
 					argsOrig,
 					strings.Split(deployLine, " "),
 					&configCount)
@@ -1496,7 +1500,7 @@ collaboratorReRun:
 					trcshDriverConfig,
 					control,
 					isAgentToken,
-					tokenPtr,
+					deployTokenPtr,
 					argsOrig,
 					strings.Split(deployLine, " "),
 					&configCount)

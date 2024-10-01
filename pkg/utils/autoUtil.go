@@ -65,7 +65,7 @@ func AutoAuth(driverConfig *DriverConfig,
 	envPtr *string,
 	addrPtr *string,
 	envCtxPtr *string,
-	appRoleConfig *string,
+	appRoleConfigPtr *string,
 	ping bool) error {
 	// Declare local variables
 	var override bool
@@ -73,7 +73,7 @@ func AutoAuth(driverConfig *DriverConfig,
 	var c cert
 	var v *sys.Vault
 
-	if !RefEquals(tokenPtr, "") && !RefEquals(addrPtr, "") && !RefEquals(appRoleConfig, "deployauth") && !RefEquals(appRoleConfig, "hivekernel") {
+	if !RefEquals(tokenPtr, "") && !RefEquals(addrPtr, "") && !RefEquals(appRoleConfigPtr, "deployauth") && !RefEquals(appRoleConfigPtr, "hivekernel") {
 		// For token based auth, auto auth not
 		return nil
 	}
@@ -92,18 +92,18 @@ func AutoAuth(driverConfig *DriverConfig,
 
 	// If cert file exists obtain secretID and appRoleID
 	driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
-	if RefLength(appRoleConfig) == 0 {
-		appRoleConfig = new(string)
-		*appRoleConfig = "config.yml"
+	if RefLength(appRoleConfigPtr) == 0 {
+		appRoleConfigPtr = new(string)
+		*appRoleConfigPtr = "config.yml"
 	}
 	if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
 		if driverConfig.IsShellSubProcess {
 			return errors.New("required azure deploy approle and secret are missing")
 		}
 		if !isProd {
-			if _, err := os.Stat(userHome + "/.tierceron/" + *appRoleConfig); !os.IsNotExist(err) {
+			if _, err := os.Stat(userHome + "/.tierceron/" + *appRoleConfigPtr); !os.IsNotExist(err) {
 				exists = true
-				_, configErr := c.getConfig(driverConfig.CoreConfig.Log, *appRoleConfig)
+				_, configErr := c.getConfig(driverConfig.CoreConfig.Log, *appRoleConfigPtr)
 				if configErr != nil {
 					return configErr
 				}
@@ -145,7 +145,7 @@ func AutoAuth(driverConfig *DriverConfig,
 		var approleID string
 		var dump []byte
 
-		if override || RefEquals(appRoleConfig, "deployauth") || RefEquals(appRoleConfig, "hivekernel") {
+		if override || RefEquals(appRoleConfigPtr, "deployauth") || RefEquals(appRoleConfigPtr, "hivekernel") {
 			// Nothing...
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
@@ -227,7 +227,7 @@ func AutoAuth(driverConfig *DriverConfig,
 			}
 
 			dump = []byte(certConfigData)
-		} else if (override && !exists) || RefEquals(appRoleConfig, "deployauth") || RefEquals(appRoleConfig, "hivekernel") {
+		} else if (override && !exists) || RefEquals(appRoleConfigPtr, "deployauth") || RefEquals(appRoleConfigPtr, "hivekernel") {
 			if !driverConfig.CoreConfig.IsShell {
 				LogInfo(&driverConfig.CoreConfig, "No approle file exists, continuing without saving config IDs")
 			}
@@ -245,7 +245,7 @@ func AutoAuth(driverConfig *DriverConfig,
 		}
 
 		// Do not save IDs if overriding and no approle file exists
-		if !isProd && (!override || exists) && !RefEquals(appRoleConfig, "deployauth") && !RefEquals(appRoleConfig, "hivekernel") {
+		if !isProd && (!override || exists) && !RefEquals(appRoleConfigPtr, "deployauth") && !RefEquals(appRoleConfigPtr, "hivekernel") {
 
 			// Create hidden folder
 			if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {
@@ -299,7 +299,7 @@ func AutoAuth(driverConfig *DriverConfig,
 		}
 
 		tokenNamePrefix := "config"
-		switch *appRoleConfig {
+		switch *appRoleConfigPtr {
 		case "configpub.yml":
 			tokenNamePrefix = "vault_pub"
 		case "configdeploy.yml":
@@ -379,7 +379,7 @@ func AutoAuth(driverConfig *DriverConfig,
 		}
 		mod.EnvBasis = "bamboo"
 		mod.Env = "bamboo"
-		switch *appRoleConfig {
+		switch *appRoleConfigPtr {
 		case "configpub.yml":
 			mod.EnvBasis = "pub"
 			mod.Env = "pub"
