@@ -256,11 +256,11 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 		}
 		tokenMap["vaddress"] = tokenConfig.VAddress
 		tokenMap["caddress"] = tokenConfig.CAddress
-		tokenMap["ctoken"] = tokenConfig.CToken
-		tokenMap["token"] = tokenConfig.Token
-		tokenMap["pubrole"] = tokenConfig.Pubrole
-		tokenMap["configrole"] = tokenConfig.Configrole
-		tokenMap["kubeconfig"] = tokenConfig.Kubeconfig
+		tokenMap["ctokenptr"] = &tokenConfig.CToken
+		tokenMap["tokenptr"] = &tokenConfig.Token
+		tokenMap["pubroleptr"] = &tokenConfig.Pubrole
+		tokenMap["configroleptr"] = &tokenConfig.Configrole
+		tokenMap["kubeconfigptr"] = &tokenConfig.Kubeconfig
 		tokenMap["plugin"] = tokenConfig.Plugin
 	}
 
@@ -273,7 +273,13 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 				if memonly.IsMemonly() {
 					memprotectopts.MemProtect(nil, &tokenStr)
 				}
-				tokenMap[tokenName] = tokenStr
+				switch tokenName {
+				case "ctoken", "token", "pubrole", "configrole", "kubeconfig":
+					// Map to ctokenptr, tokenptr, configroleptr, etc...
+					tokenMap[fmt.Sprintf("%sptr", tokenName)] = &tokenStr
+				default:
+					tokenMap[tokenName] = tokenStr
+				}
 			}
 		}
 	}
@@ -298,8 +304,8 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		return errors.New("missing token")
 	}
 
-	token, tOk := pluginEnvConfig["token"]
-	if !tOk || token.(string) == "" {
+	tokenPtr := eUtils.RefMap(pluginEnvConfig, "tokenptr")
+	if eUtils.RefEquals(tokenPtr, "") {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing token.")
 		return errors.New("missing token")
 	}
@@ -316,26 +322,26 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		return errors.New("missing certify address")
 	}
 
-	ctoken, aOk := pluginEnvConfig["ctoken"]
-	if !aOk || ctoken.(string) == "" {
+	ctokenptr := eUtils.RefMap(pluginEnvConfig, "ctokenptr")
+	if eUtils.RefEquals(ctokenptr, "") {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing certify token.")
 		return errors.New("missing certify token")
 	}
 
-	pubrole, pOk := pluginEnvConfig["pubrole"]
-	if !pOk || pubrole.(string) == "" {
+	pubroleptr := eUtils.RefMap(pluginEnvConfig, "pubroleptr")
+	if eUtils.RefEquals(pubroleptr, "") {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing pub role.")
 		return errors.New("missing pub role")
 	}
 
-	configrole, rOk := pluginEnvConfig["configrole"]
-	if !rOk || configrole.(string) == "" {
+	configroleptr := eUtils.RefMap(pluginEnvConfig, "configroleptr")
+	if eUtils.RefEquals(configroleptr, "") {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing config role.")
 		return errors.New("missing config role")
 	}
 
-	kubeconfig, rOk := pluginEnvConfig["kubeconfig"]
-	if !rOk || kubeconfig.(string) == "" {
+	kubeconfigptr := eUtils.RefMap(pluginEnvConfig, "kubeconfigptr")
+	if eUtils.RefEquals(kubeconfigptr, "") {
 		logger.Println("Bad configuration data for env: " + env.(string) + ".  Missing kube config.  Kubernetes deployments will fail.")
 	}
 
@@ -348,6 +354,8 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 				}
 			} else if valueString, isValueString := value.(string); isValueString {
 				memprotectopts.MemProtect(nil, &valueString)
+			} else if valuePtrString, isValuePtrString := value.(*string); isValuePtrString {
+				memprotectopts.MemProtect(nil, valuePtrString)
 			} else if _, isBool := value.(bool); isBool {
 				// memprotectopts.MemProtect(nil, &valueString)
 				// TODO: no need to lock bools
@@ -404,7 +412,7 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 		if ptError != nil {
 			logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())
 		} else {
-			if _, ok := tokenMap["token"]; ok {
+			if _, ok := tokenMap["tokenptr"]; ok {
 				tokenMap["env"] = env
 				tokenMap["syncOnce"] = &sync.Once{}
 
@@ -473,8 +481,10 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return logical.ErrorResponse("missing path"), nil
 	}
 
-	if token, tokenOk := data.GetOk("token"); tokenOk {
-		tokenEnvMap["token"] = token
+	if t, tokenOk := data.GetOk("token"); tokenOk {
+		token := t.(string)
+		memprotectopts.MemProtect(nil, &token)
+		tokenEnvMap["tokenptr"] = &token
 	} else {
 		return nil, errors.New("token required")
 	}
@@ -491,8 +501,10 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 		return nil, errors.New("vault Certify Url required")
 	}
 
-	if ctoken, addressOk := data.GetOk("ctoken"); addressOk {
-		tokenEnvMap["ctoken"] = ctoken.(string)
+	if ct, addressOk := data.GetOk("ctoken"); addressOk {
+		ctoken := ct.(string)
+		memprotectopts.MemProtect(nil, &ctoken)
+		tokenEnvMap["ctokenptr"] = &ctoken
 	} else {
 		return nil, errors.New("vault Certify token required")
 	}
@@ -593,7 +605,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 
 			pluginConfig["env"] = req.Path
 			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)
-			pluginConfig["token"] = tokenEnvMap["ctoken"].(string)
+			pluginConfig["tokenptr"] = tokenEnvMap["ctokenptr"]
 			pluginConfig["regions"] = []string{hostRegion}
 			carrierDriverConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
 			if err != nil {

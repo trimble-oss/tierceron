@@ -17,11 +17,11 @@ import (
 )
 
 //export ConfigTemplateLib
-func ConfigTemplateLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
+func ConfigTemplateLib(tokenPtr *string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
 
 	logger.Println("NCLib Version: " + "1.20")
-	mod, err := helperkv.NewModifier(false, token, address, env, nil, true, logger)
+	mod, err := helperkv.NewModifier(false, tokenPtr, &address, env, nil, true, logger)
 	mod.Env = env
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
@@ -48,10 +48,10 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 }
 
 //export ConfigCertLib
-func ConfigCertLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
+func ConfigCertLib(tokenPtr *string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
 	logger.Println("NCLib Version: " + "1.20")
-	mod, err := helperkv.NewModifier(false, token, address, env, nil, true, logger)
+	mod, err := helperkv.NewModifier(false, tokenPtr, &address, env, nil, true, logger)
 	mod.Env = env
 	driverConfig := &eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{

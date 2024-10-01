@@ -292,7 +292,9 @@ func CommonMain(ctx eUtils.ProcessContext,
 		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
 		*envPtr = envVersion[0]
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(driverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
+			appconfigrolePtr := new(string)
+			*appconfigrolePtr = ""
+			autoErr := eUtils.AutoAuth(driverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 
 			if autoErr != nil {
 				fmt.Println("Auth failure: " + autoErr.Error())
@@ -365,13 +367,16 @@ skipDiff:
 		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 			regions = eUtils.GetSupportedProdRegions()
 		}
+		appconfigrolePtr := new(string)
+		*appconfigrolePtr = ""
+
 		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: true,
 				Insecure:      *insecurePtr,
 				Log:           logger,
 			},
-		}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
+		}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 		if autoErr != nil {
 			fmt.Println("Missing auth components.")
 			eUtils.LogErrorMessage(&driverConfig.CoreConfig, autoErr.Error(), true)
@@ -427,13 +432,16 @@ skipDiff:
 				}
 				if !*noVaultPtr && *tokenPtr == "" {
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
+					appconfigrolePtr := new(string)
+					*appconfigrolePtr = ""
+
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
 							ExitOnFailure: true,
 							Insecure:      *insecurePtr,
 							Log:           logger,
 						},
-					}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, envCtxPtr, "", *pingPtr)
+					}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 					if authErr != nil {
 						eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Auth failure: "+authErr.Error(), true)
 					}
@@ -447,22 +455,26 @@ skipDiff:
 			recursivePathBuilder = func(testMod *kv.Modifier, pGen string, dynamicPathParts []string) {
 				if len(dynamicPathParts) == 0 {
 					if !*noVaultPtr && *tokenPtr == "" {
+						appconfigrolePtr := new(string)
+						*appconfigrolePtr = ""
+
 						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 							CoreConfig: core.CoreConfig{
 								ExitOnFailure: true,
 								Insecure:      *insecurePtr,
 								Log:           logger,
 							},
-						}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
+						}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 						if authErr != nil {
 							// Retry once.
+
 							authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 								CoreConfig: core.CoreConfig{
 									ExitOnFailure: true,
 									Insecure:      *insecurePtr,
 									Log:           logger,
 								},
-							}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
+							}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 							if authErr != nil {
 								eUtils.LogAndSafeExit(&driverConfig.CoreConfig, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 							}
@@ -480,8 +492,8 @@ skipDiff:
 						CoreConfig: core.CoreConfig{
 							WantCerts:         *wantCertsPtr,
 							Insecure:          *insecurePtr,
-							Token:             *tokenPtr,
-							VaultAddress:      *addrPtr,
+							TokenPtr:          tokenPtr,
+							VaultAddressPtr:   addrPtr,
 							EnvBasis:          envBasis,
 							Env:               *envPtr,
 							Regions:           regions,
@@ -513,7 +525,7 @@ skipDiff:
 				for i, dynamicPart := range dynamicPathParts {
 					if dynamicPart == "%s" {
 						if testMod == nil {
-							testMod, err = kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, true, logger)
+							testMod, err = kv.NewModifier(*insecurePtr, tokenPtr, addrPtr, baseEnv, regions, true, logger)
 							testMod.Env = baseEnv
 							if err != nil {
 								eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Access to vault failure.", true)
@@ -585,6 +597,9 @@ skipDiff:
 					} else {
 						baseEnv = configCtx.EnvSlice[0]
 					}
+					appconfigrolePtr := new(string)
+					*appconfigrolePtr = ""
+
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
@@ -592,11 +607,11 @@ skipDiff:
 							Insecure:      *insecurePtr,
 							Log:           logger,
 						},
-					}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, envCtxPtr, "", *pingPtr)
+					}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, &baseEnv, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 					if authErr != nil {
 						eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Auth failure: "+authErr.Error(), true)
 					}
-					testMod, err := kv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, baseEnv, regions, true, logger)
+					testMod, err := kv.NewModifier(*insecurePtr, tokenPtr, addrPtr, baseEnv, regions, true, logger)
 					testMod.Env = baseEnv
 					if err != nil {
 						logger.Printf(err.Error())
@@ -715,13 +730,16 @@ skipDiff:
 			for _, section := range sectionSlice {
 				var servicesWanted []string
 				if !*noVaultPtr && *tokenPtr == "" {
+					appconfigrolePtr := new(string)
+					*appconfigrolePtr = ""
+
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
 							ExitOnFailure: true,
 							Insecure:      *insecurePtr,
 							Log:           logger,
 						},
-					}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
+					}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 					if authErr != nil {
 						// Retry once.
 						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
@@ -730,7 +748,7 @@ skipDiff:
 								Insecure:      *insecurePtr,
 								Log:           logger,
 							},
-						}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, "", *pingPtr)
+						}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 						if authErr != nil {
 							eUtils.LogAndSafeExit(&driverConfig.CoreConfig, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 						}
@@ -758,8 +776,8 @@ skipDiff:
 					CoreConfig: core.CoreConfig{
 						WantCerts:         *wantCertsPtr,
 						Insecure:          *insecurePtr,
-						Token:             *tokenPtr,
-						VaultAddress:      *addrPtr,
+						TokenPtr:          tokenPtr,
+						VaultAddressPtr:   addrPtr,
 						Regions:           regions,
 						EnvBasis:          envBasis,
 						Env:               *envPtr,

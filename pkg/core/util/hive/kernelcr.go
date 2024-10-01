@@ -72,8 +72,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 	}
 	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s\n", service)
 	pluginConfig := make(map[string]interface{})
-	pluginConfig["vaddress"] = driverConfig.CoreConfig.VaultAddress
-	pluginConfig["token"] = driverConfig.CoreConfig.Token
+	pluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
+	pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenPtr
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, driverConfig.CoreConfig.Log)

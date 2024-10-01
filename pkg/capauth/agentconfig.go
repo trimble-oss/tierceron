@@ -254,8 +254,8 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	return penseProtect, nil
 }
 
-func NewAgentConfig(address string,
-	agentToken string,
+func NewAgentConfig(addressPtr *string,
+	agentTokenPtr *string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error,
@@ -268,7 +268,7 @@ func NewAgentConfig(address string,
 		fmt.Printf(".")
 	}
 
-	mod, modErr := helperkv.NewModifier(false, agentToken, address, env, nil, true, nil)
+	mod, modErr := helperkv.NewModifier(false, agentTokenPtr, addressPtr, env, nil, true, nil)
 	if modErr != nil {
 		logger.Println("trcsh Failed to bootstrap")
 		os.Exit(-1)
@@ -344,7 +344,7 @@ func NewAgentConfig(address string,
 				&sessionIdentifier,
 				&env,
 				acceptRemoteFunc, interruptedFunc),
-			&agentToken,
+			agentTokenPtr,
 			&hatFeatherHostAddr,
 			new(string),
 			&deployments,
@@ -361,7 +361,7 @@ func NewAgentConfig(address string,
 		}
 
 		var penseError error
-		trcshConfig.ConfigRole, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
+		trcshConfig.ConfigRolePtr, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
 		if penseError != nil {
 			return nil, nil, penseError
 		}
@@ -371,7 +371,7 @@ func NewAgentConfig(address string,
 			fmt.Printf(".")
 		}
 
-		trcshConfig.VaultAddress, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
+		trcshConfig.VaultAddressPtr, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
 		if penseError != nil {
 			return nil, nil, penseError
 		}

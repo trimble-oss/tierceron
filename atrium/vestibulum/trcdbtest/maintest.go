@@ -27,12 +27,14 @@ func main() {
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 	eUtils.CheckError(&core.CoreConfig{ExitOnFailure: true, Log: logger}, err, true)
 
-	pluginConfig := testopts.BuildOptions.GetTestConfig(*tokenPtr, false)
+	pluginConfig := testopts.BuildOptions.GetTestConfig(tokenPtr, false)
 	pluginConfig["address"] = ""
 	pluginConfig["vaddress"] = ""
 	pluginConfig["caddress"] = ""
-	pluginConfig["token"] = ""
-	pluginConfig["ctoken"] = ""
+	pluginConfig["tokenptr"] = tokenPtr
+	ctokenPtr := new(string)
+	*ctokenPtr = ""
+	pluginConfig["ctokenptr"] = ctokenPtr
 	pluginConfig["env"] = "dev"
 	pluginConfig["insecure"] = true
 

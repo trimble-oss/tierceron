@@ -22,13 +22,13 @@ func InitVaultMod(driverConfig *DriverConfig) (*DriverConfig, *helperkv.Modifier
 		return driverConfig, nil, nil, errors.New("invalid nil driverConfig")
 	}
 
-	vault, err := sys.NewVault(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.VaultAddress, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
+	vault, err := sys.NewVault(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.VaultAddressPtr, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
 	if err != nil {
 		LogInfo(&driverConfig.CoreConfig, "Failure to connect to vault..")
 		LogErrorObject(&driverConfig.CoreConfig, err, false)
 		return driverConfig, nil, nil, err
 	}
-	vault.SetToken(driverConfig.CoreConfig.Token)
+	vault.SetToken(driverConfig.CoreConfig.TokenPtr)
 	LogInfo(&driverConfig.CoreConfig, "InitVaultMod - Initializing Modifier")
 	mod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.Env, false)
 	if err != nil {
@@ -172,7 +172,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	}
 
 	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
-	if _, tokenOk := pluginConfig["token"].(string); !tokenOk {
+	if _, tokenOk := pluginConfig["tokenptr"].(*string); !tokenOk {
 		return nil, nil, nil, errors.New("Missing required token")
 	}
 	if _, vaddressOk := pluginConfig["vaddress"].(string); !vaddressOk {
@@ -184,14 +184,14 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 
 	driverConfig := DriverConfig{
 		CoreConfig: core.CoreConfig{
-			WantCerts:     false,
-			Insecure:      !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
-			Token:         pluginConfig["token"].(string),
-			VaultAddress:  pluginConfig["vaddress"].(string),
-			Env:           pluginConfig["env"].(string),
-			Regions:       regions,
-			ExitOnFailure: exitOnFailure,
-			Log:           trcdbEnvLogger,
+			WantCerts:       false,
+			Insecure:        !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
+			TokenPtr:        RefMap(pluginConfig, "tokenptr"),
+			VaultAddressPtr: RefMap(pluginConfig, "vaddress"),
+			Env:             pluginConfig["env"].(string),
+			Regions:         regions,
+			ExitOnFailure:   exitOnFailure,
+			Log:             trcdbEnvLogger,
 		},
 		SecretMode:     true, //  "Only override secret values in templates?"
 		ServicesWanted: []string{},

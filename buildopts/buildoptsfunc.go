@@ -56,13 +56,13 @@ func GetSupportedSourceRegions() []string {
 }
 
 // Test configurations.
-func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
+func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]interface{} {
 	pluginConfig := map[string]interface{}{}
 
 	//env = "dev"
 	pluginConfig["vaddress"] = "TODO"
 	pluginConfig["env"] = "dev"
-	pluginConfig["token"] = token
+	pluginConfig["tokenptr"] = tokenPtr
 	pluginConfig["logNamespace"] = "db"
 
 	pluginConfig["templatePath"] = []string{
@@ -94,11 +94,11 @@ func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
 
 // GetTestDeployConfig - returns a list of templates used in defining tables for Trcdb.
 // Supported attributes include templatePath, connectionPath, certifyPath, env, exitOnFailure, pluginNameList, and logNamespace:
-func GetTestDeployConfig(token string) map[string]interface{} {
+func GetTestDeployConfig(tokenPtr *string) map[string]interface{} {
 	pluginConfig := map[string]interface{}{}
 
 	pluginConfig["env"] = "dev"
-	pluginConfig["token"] = token
+	pluginConfig["tokenptr"] = tokenPtr
 	pluginConfig["regions"] = []string{}
 	pluginConfig["insecure"] = true
 	pluginConfig["exitOnFailure"] = true

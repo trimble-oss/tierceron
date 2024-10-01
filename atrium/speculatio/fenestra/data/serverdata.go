@@ -93,14 +93,18 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	}
 	secretID := ""
 	appRoleID := ""
-	address := ""
-	token := ""
+	addressPtr := new(string)
+	*addressPtr = ""
+	tokenPtr := new(string)
+	*tokenPtr = ""
+	approleconfig := new(string)
+	*approleconfig = ""
 	empty := ""
 
-	autoErr := eUtils.AutoAuth(driverConfig, &secretID, &appRoleID, &token, &empty, envPtr, &address, nil, "", false)
+	autoErr := eUtils.AutoAuth(driverConfig, &secretID, &appRoleID, tokenPtr, &empty, envPtr, addressPtr, nil, approleconfig, false)
 	eUtils.CheckError(&driverConfig.CoreConfig, autoErr, true)
 
-	mod, modErr := helperkv.NewModifier(*insecure, token, address, *envPtr, nil, true, logger)
+	mod, modErr := helperkv.NewModifier(*insecure, tokenPtr, addressPtr, *envPtr, nil, true, logger)
 	mod.Direct = true
 	mod.Env = *envPtr
 	eUtils.CheckError(&driverConfig.CoreConfig, modErr, true)

@@ -7,13 +7,13 @@ type CoreConfig struct {
 	IsShell bool // If tool running in shell.
 
 	// Vault Configurations...
-	Insecure      bool
-	Token         string
-	AppRoleConfig string
-	VaultAddress  string
-	EnvBasis      string // dev,QA, etc....
-	Env           string // dev-1, dev-2, etc...
-	Regions       []string
+	Insecure         bool
+	TokenPtr         *string
+	AppRoleConfigPtr *string
+	VaultAddressPtr  *string
+	EnvBasis         string // dev,QA, etc....
+	Env              string // dev-1, dev-2, etc...
+	Regions          []string
 
 	DynamicPathFilter string // Seeds from a specific path.
 	WantCerts         bool

@@ -16,13 +16,13 @@ func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFl
 	return nil
 }
 
-func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
+func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]interface{} {
 	pluginConfig := map[string]interface{}{}
 
 	//env = "dev"
 	pluginConfig["vaddress"] = "TODO"
 	pluginConfig["env"] = "dev"
-	pluginConfig["token"] = token
+	pluginConfig["tokenptr"] = tokenPtr
 	pluginConfig["logNamespace"] = "db"
 
 	pluginConfig["templatePath"] = []string{

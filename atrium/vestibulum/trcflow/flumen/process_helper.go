@@ -44,7 +44,7 @@ func FlumenProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trc
 
 func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 	tfContext *flowcore.TrcFlowContext,
-	vaultAddress string,
+	vaultAddressPtr *string,
 	identityColumnName string,
 	vaultIndexColumnName string,
 	isInit bool,
@@ -116,7 +116,7 @@ func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
 		}
 
 		eUtils.LogInfo(&tfmContext.DriverConfig.CoreConfig, "Attempting to seed:"+indexPath)
-		seedError := trcvutils.SeedVaultById(tfmContext.DriverConfig, tfContext.GoMod, tfContext.Flow.ServiceName(), vaultAddress, tfmContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
+		seedError := trcvutils.SeedVaultById(tfmContext.DriverConfig, tfContext.GoMod, tfContext.Flow.ServiceName(), vaultAddressPtr, tfmContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
 		if seedError != nil {
 			eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, seedError, false)
 			// Re-inject into changes because it might not be here yet...

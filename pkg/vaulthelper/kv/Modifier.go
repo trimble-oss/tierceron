@@ -93,11 +93,11 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 //
 //	Any errors generated in creating the client
 func NewModifierFromCoreConfig(coreConfig *core.CoreConfig, env string, useCache bool) (*Modifier, error) {
-	return NewModifier(coreConfig.Insecure, coreConfig.Token, coreConfig.VaultAddress, env, coreConfig.Regions, useCache, coreConfig.Log)
+	return NewModifier(coreConfig.Insecure, coreConfig.TokenPtr, coreConfig.VaultAddressPtr, env, coreConfig.Regions, useCache, coreConfig.Log)
 }
 
 // NewModifier Constructs a new modifier struct and connects to the vault
-// @param token 	The access token needed to connect to the vault
+// @param tokenPtr 	The access token needed to connect to the vault
 // @param address	The address of the API endpoint for the server
 // @param env   	The environment currently connecting to.
 // @param regions   Regions we want
@@ -105,10 +105,10 @@ func NewModifierFromCoreConfig(coreConfig *core.CoreConfig, env string, useCache
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 //
 //	Any errors generated in creating the client
-func NewModifier(insecure bool, token string, address string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
+func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
 	if useCache {
-		PruneCache(env, address, 10)
-		checkoutModifier, err := cachedModifierHelper(env, address)
+		PruneCache(env, *addressPtr, 10)
+		checkoutModifier, err := cachedModifierHelper(env, *addressPtr)
 		if err == nil && checkoutModifier != nil {
 			checkoutModifier.Insecure = insecure
 			checkoutModifier.EnvBasis = env
@@ -127,16 +127,17 @@ func NewModifier(insecure bool, token string, address string, env string, region
 		}
 	}
 
-	if len(address) == 0 {
-		address = "http://127.0.0.1:8020" // Default address
+	if addressPtr == nil || len(*addressPtr) == 0 {
+		addressPtr = new(string)
+		*addressPtr = "http://127.0.0.1:8020" // Default address
 	}
-	httpClient, err := CreateHTTPClient(insecure, address, env, false)
+	httpClient, err := CreateHTTPClient(insecure, *addressPtr, env, false)
 	if err != nil {
 		return nil, err
 	}
 	// Create client
 	modClient, err := api.NewClient(&api.Config{
-		Address:    address,
+		Address:    *addressPtr,
 		HttpClient: httpClient,
 	})
 	if err != nil {
@@ -147,7 +148,7 @@ func NewModifier(insecure bool, token string, address string, env string, region
 	}
 
 	// Set access token and path for this modifier
-	modClient.SetToken(token)
+	modClient.SetToken(*tokenPtr)
 
 	// Return the modifier
 	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", EnvBasis: env, Regions: regions, Version: "", Insecure: insecure}

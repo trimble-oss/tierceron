@@ -259,7 +259,7 @@ func CommonMain(envDefaultPtr *string,
 		} else {
 			trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
 		}
-		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfig)
+		appRoleConfigPtr = trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfigPtr
 		*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
 	} else {
 		if *agentdeployPtr {
@@ -293,13 +293,13 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if tokenNamePtr == nil || *tokenNamePtr == "" || tokenPtr == nil || *tokenPtr == "" {
-		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
+		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
 		if autoErr != nil {
 			eUtils.LogErrorMessage(&trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
 		}
-		if len(*tokenPtr) > 0 {
-			trcshDriverConfigBase.DriverConfig.CoreConfig.Token = *tokenPtr
+		if eUtils.RefLength(tokenPtr) > 0 {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.TokenPtr = tokenPtr
 		}
 	}
 	if logger != nil {
@@ -317,7 +317,7 @@ func CommonMain(envDefaultPtr *string,
 	pluginConfig["env"] = *envDefaultPtr
 	pluginConfig["vaddress"] = *addrPtr
 	if tokenPtr != nil {
-		pluginConfig["token"] = *tokenPtr
+		pluginConfig["tokenptr"] = tokenPtr
 	}
 	pluginConfig["ExitOnFailure"] = true
 	if *regionPtr != "" {

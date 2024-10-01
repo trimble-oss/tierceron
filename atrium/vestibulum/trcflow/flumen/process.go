@@ -51,12 +51,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	//Update deployed status & return if
 	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok {
 		tempAddr := pluginConfig["vaddress"]
-		tempToken := pluginConfig["token"]
+		tempTokenPtr := pluginConfig["tokenptr"]
 		if caddress, cOk := pluginConfig["caddress"]; cOk {
 			pluginConfig["vaddress"] = caddress
 		}
-		if cToken, cOk := pluginConfig["ctoken"]; cOk {
-			pluginConfig["token"] = cToken
+		if cTokenPtr, cOk := pluginConfig["ctokenptr"]; cOk {
+			pluginConfig["tokenptr"] = cTokenPtr
 		}
 		pluginConfig["exitOnFailure"] = true
 
@@ -80,7 +80,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			return err
 		}
 		pluginConfig["vaddress"] = tempAddr
-		pluginConfig["token"] = tempToken
+		pluginConfig["tokenptr"] = tempTokenPtr
 		pluginConfig["exitOnFailure"] = false
 	}
 	logger.Println("Deployed status updated.")
@@ -178,15 +178,18 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// 4. Create config for vault for queries to vault.
 	emptySlice := []string{""}
 
+	addr := pluginConfig["vaddress"].(string)
+	addrPtr := &addr
+
 	driverConfigBasis := eUtils.DriverConfig{
 		CoreConfig: core.CoreConfig{
-			Regions:       emptySlice,
-			Token:         pluginConfig["token"].(string),
-			VaultAddress:  pluginConfig["vaddress"].(string),
-			Insecure:      true, // Always local...
-			Env:           pluginConfig["env"].(string),
-			ExitOnFailure: false,
-			Log:           driverConfig.CoreConfig.Log,
+			Regions:         emptySlice,
+			TokenPtr:        eUtils.RefMap(pluginConfig, "tokenptr"),
+			VaultAddressPtr: addrPtr,
+			Insecure:        true, // Always local...
+			Env:             pluginConfig["env"].(string),
+			ExitOnFailure:   false,
+			Log:             driverConfig.CoreConfig.Log,
 		},
 	}
 

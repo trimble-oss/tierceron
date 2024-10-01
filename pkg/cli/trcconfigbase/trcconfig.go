@@ -221,7 +221,7 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
 		}
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		appRoleConfigPtr = &(driverConfigBase.CoreConfig.AppRoleConfig)
+		appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
 		if driverConfigBase.FileFilter != nil {
 			fileFilterPtr = &(driverConfigBase.FileFilter[0])
 		}
@@ -297,7 +297,7 @@ func CommonMain(envDefaultPtr *string,
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
 				if driverConfig != nil {
 					driverConfig.CoreConfig.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)
@@ -409,7 +409,7 @@ func CommonMain(envDefaultPtr *string,
 			*envPtr = envVersion[0]
 			*tokenPtr = ""
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					return errors.New("missing auth components")
@@ -436,16 +436,16 @@ func CommonMain(envDefaultPtr *string,
 
 			driverConfig := eUtils.DriverConfig{
 				CoreConfig: core.CoreConfig{
-					IsShell:       isShell,
-					Insecure:      *insecurePtr,
-					Token:         *tokenPtr,
-					VaultAddress:  *addrPtr,
-					Env:           *envPtr,
-					EnvBasis:      eUtils.GetEnvBasis(*envPtr),
-					Regions:       regions,
-					WantCerts:     *wantCertsPtr,
-					ExitOnFailure: driverConfigBase.CoreConfig.ExitOnFailure,
-					Log:           driverConfigBase.CoreConfig.Log,
+					IsShell:         isShell,
+					Insecure:        *insecurePtr,
+					TokenPtr:        tokenPtr,
+					VaultAddressPtr: addrPtr,
+					Env:             *envPtr,
+					EnvBasis:        eUtils.GetEnvBasis(*envPtr),
+					Regions:         regions,
+					WantCerts:       *wantCertsPtr,
+					ExitOnFailure:   driverConfigBase.CoreConfig.ExitOnFailure,
+					Log:             driverConfigBase.CoreConfig.Log,
 				},
 				IsShellSubProcess: driverConfigBase.IsShellSubProcess,
 				SecretMode:        *secretMode,
@@ -492,16 +492,16 @@ func CommonMain(envDefaultPtr *string,
 		}
 		dConfig := eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
-				IsShell:       isShell,
-				WantCerts:     *wantCertsPtr,
-				Insecure:      *insecurePtr,
-				Token:         *tokenPtr,
-				VaultAddress:  *addrPtr,
-				Env:           *envPtr,
-				EnvBasis:      eUtils.GetEnvBasis(*envPtr),
-				Regions:       regions,
-				ExitOnFailure: driverConfigBase.CoreConfig.ExitOnFailure,
-				Log:           driverConfigBase.CoreConfig.Log,
+				IsShell:         isShell,
+				WantCerts:       *wantCertsPtr,
+				Insecure:        *insecurePtr,
+				TokenPtr:        tokenPtr,
+				VaultAddressPtr: addrPtr,
+				Env:             *envPtr,
+				EnvBasis:        eUtils.GetEnvBasis(*envPtr),
+				Regions:         regions,
+				ExitOnFailure:   driverConfigBase.CoreConfig.ExitOnFailure,
+				Log:             driverConfigBase.CoreConfig.Log,
 			},
 			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
 			SecretMode:        *secretMode,

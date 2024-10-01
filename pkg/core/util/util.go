@@ -164,7 +164,7 @@ func LoadBaseTemplate(driverConfig *eUtils.DriverConfig, templateResult *extract
 	return errSeed
 }
 
-func SeedVaultById(driverConfig *eUtils.DriverConfig, goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
+func SeedVaultById(driverConfig *eUtils.DriverConfig, goMod *helperkv.Modifier, service string, addressPtr *string, tokenPtr *string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
