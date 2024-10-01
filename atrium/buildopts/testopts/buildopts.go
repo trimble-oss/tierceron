@@ -8,7 +8,7 @@ type OptionsBuilder struct {
 	GetAdditionalTestFlows    func() []flowcore.FlowNameType
 	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowNameType
 	ProcessTestFlowController func(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error
-	GetTestConfig             func(token string, wantPluginPaths bool) map[string]interface{}
+	GetTestConfig             func(tokenPtr *string, wantPluginPaths bool) map[string]interface{}
 }
 
 func LoadOptions() Option {
