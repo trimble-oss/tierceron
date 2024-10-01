@@ -111,7 +111,7 @@ func LoadFromKube(kubeConfigBytes []byte, config *core.CoreConfig) (*TrcKubeConf
 }
 
 func InitTrcKubeConfig(trcshConfig *capauth.TrcShConfig, config *core.CoreConfig) (*TrcKubeConfig, error) {
-	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(*trcshConfig.KubeConfig)
+	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(*trcshConfig.KubeConfigPtr)
 	if decodeErr != nil {
 		fmt.Println("Decoding error")
 		eUtils.LogErrorObject(config, decodeErr, false)

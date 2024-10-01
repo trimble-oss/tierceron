@@ -27,7 +27,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	fmt.Println("Initing vault")
 	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
-	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, logger)
+	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", true, false, false, logger)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		eUtils.LogErrorObject(config, err, false)
@@ -48,9 +48,9 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 			Tokens:  nil,
 		}, err
 	}
-	v.SetToken(keyToken.Token)
+	v.SetToken(keyToken.TokenPtr)
 	v.SetShards(keyToken.Keys)
-	s.VaultToken = keyToken.Token
+	s.VaultTokenPtr = keyToken.TokenPtr
 	//check error returned by unseal
 	v.Unseal()
 	if err != nil {
@@ -62,7 +62,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		}, err
 	}
 
-	logger.Printf("Successfully connected to vault at %s\n", s.VaultAddr)
+	logger.Printf("Successfully connected to vault at %s\n", s.VaultAddrPtr)
 
 	// Create engines
 	il.CreateEngines(config, v)
@@ -79,13 +79,13 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		}
 		il.SeedVaultFromData(&eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
-				WantCerts:     true,
-				Insecure:      false,
-				VaultAddress:  s.VaultAddr,
-				Token:         s.VaultToken,
-				Env:           seed.Env,
-				ExitOnFailure: true,
-				Log:           logger,
+				WantCerts:       true,
+				Insecure:        false,
+				VaultAddressPtr: s.VaultAddrPtr,
+				TokenPtr:        s.VaultTokenPtr,
+				Env:             seed.Env,
+				ExitOnFailure:   true,
+				Log:             logger,
 			},
 			ServicesWanted: []string{""}}, "", fBytes)
 	}
@@ -98,7 +98,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		tokenMap[token.Name] = token.Value
 	}
 
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	eUtils.LogErrorObject(config, err, false)
 
 	mod.EnvBasis = "bamboo"
@@ -170,9 +170,9 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	}
 
 	if sToken, ok := tokenMap["webapp"].(string); ok {
-		s.VaultToken = sToken
+		s.VaultTokenPtr = &sToken
 	} else {
-		s.VaultToken = ""
+		s.VaultTokenPtr = eUtils.EmptyStringRef()
 	}
 
 	return &pb.InitResp{
@@ -190,7 +190,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 	}
 	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
+	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return &result, err
@@ -216,7 +216,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 
 // GetStatus requests version info and whether the vault has been initailized
 func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStatus, error) {
-	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", true, false, false, s.Log)
+	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", true, false, false, s.Log)
 	if v != nil {
 		defer v.Close()
 	}
@@ -240,7 +240,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 
 // Unseal passes the unseal key to the vault and tries to unseal the vault
 func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp, error) {
-	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
+	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", false, false, false, s.Log)
 	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)

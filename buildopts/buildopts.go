@@ -12,7 +12,7 @@ type OptionsBuilder struct {
 
 	GetLocalVaultAddr          func() string
 	GetSupportedSourceRegions  func() []string
-	GetTestDeployConfig        func(token string) map[string]interface{}
+	GetTestDeployConfig        func(tokenPtr *string) map[string]interface{}
 	ProcessPluginEnvConfig     func(pluginEnvConfig map[string]interface{}) map[string]interface{}
 	GetExtensionAuthComponents func(config map[string]interface{}) map[string]interface{}
 	GetSyncedTables            func() []string

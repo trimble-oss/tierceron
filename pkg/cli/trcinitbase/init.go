@@ -136,7 +136,7 @@ func CommonMain(envPtr *string,
 	if driverConfig != nil {
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		*appRolePtr = driverConfigBase.CoreConfig.AppRoleConfig
+		appRolePtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"init.log" && os.IsNotExist(err) {
@@ -285,7 +285,7 @@ func CommonMain(envPtr *string,
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRolePtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRolePtr, *pingPtr)
 	eUtils.CheckError(&driverConfigBase.CoreConfig, autoErr, true)
 
 	if memonly.IsMemonly() {
@@ -298,7 +298,7 @@ func CommonMain(envPtr *string,
 	}
 
 	// Create a new vault system connection
-	v, err := sys.NewVaultWithNonlocal(*insecurePtr, *addrPtr, *envPtr, *newPtr, *pingPtr, false, allowNonLocal, driverConfigBase.CoreConfig.Log)
+	v, err := sys.NewVaultWithNonlocal(*insecurePtr, addrPtr, *envPtr, *newPtr, *pingPtr, false, allowNonLocal, driverConfigBase.CoreConfig.Log)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
 			fmt.Printf("Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
@@ -327,7 +327,7 @@ func CommonMain(envPtr *string,
 	}
 
 	if *devPtr || !*newPtr { // Dev server, initialization taken care of, get root token
-		v.SetToken(*tokenPtr)
+		v.SetToken(tokenPtr)
 	} else { // Unseal and grab keys/root token
 		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
 		if err != nil || totalKeyShard > math.MaxInt {
@@ -341,7 +341,7 @@ func CommonMain(envPtr *string,
 		}
 		keyToken, err := v.InitVault(int(totalKeyShard), int(keyThreshold))
 		eUtils.LogErrorObject(&driverConfigBase.CoreConfig, err, true)
-		v.SetToken(keyToken.Token)
+		v.SetToken(keyToken.TokenPtr)
 		v.SetShards(keyToken.Keys)
 		//check error returned by unseal
 		_, _, _, err = v.Unseal()
@@ -461,7 +461,7 @@ func CommonMain(envPtr *string,
 			fmt.Println("Creating new tokens")
 			tokens = il.UploadTokens(&driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFilterPtr, v)
 
-			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
+			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), addrPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 			if mod != nil {
 				defer mod.Release()
 			}
@@ -626,7 +626,7 @@ func CommonMain(envPtr *string,
 
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
-		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), *addrPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
+		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), addrPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -753,7 +753,7 @@ func CommonMain(envPtr *string,
 	// because you first need tokens to do so.  Only seed if !new.
 	if !*newPtr {
 		// Seed the vault with given seed directory
-		mod, _ := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
+		mod, _ := helperkv.NewModifier(*insecurePtr, tokenPtr, addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -834,8 +834,8 @@ func CommonMain(envPtr *string,
 			CoreConfig: core.CoreConfig{
 				DynamicPathFilter: *dynamicPathPtr,
 				Insecure:          *insecurePtr,
-				Token:             v.GetToken(),
-				VaultAddress:      *addrPtr,
+				TokenPtr:          v.GetToken(),
+				VaultAddressPtr:   addrPtr,
 				Env:               *envPtr,
 				EnvBasis:          eUtils.GetEnvBasis(*envPtr),
 				WantCerts:         *uploadCertPtr, // TODO: this was false...

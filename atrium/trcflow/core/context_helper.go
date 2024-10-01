@@ -389,7 +389,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		if !tfContext.ReadOnly {
-			seedError := trcvutils.SeedVaultById(tfmContext.DriverConfig, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.DriverConfig.CoreConfig.VaultAddress, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
+			seedError := trcvutils.SeedVaultById(tfmContext.DriverConfig, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.DriverConfig.CoreConfig.VaultAddressPtr, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
 			if seedError != nil {
 				eUtils.LogErrorObject(&tfmContext.DriverConfig.CoreConfig, seedError, false)
 				// Re-inject into changes because it might not be here yet...

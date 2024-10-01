@@ -85,7 +85,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 			// Bad inputs... use default.
 			driverConfigBase.EndDir = *endDirPtr
 		}
-		appRoleConfigPtr = &driverConfig.CoreConfig.AppRoleConfig
+		appRoleConfigPtr = driverConfig.CoreConfig.AppRoleConfigPtr
 
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
@@ -120,7 +120,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return autoErr
@@ -130,7 +130,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtect(nil, tokenPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(*insecurePtr, tokenPtr, addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}

@@ -138,7 +138,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			os.Exit(1)
 		}
 		kc := base64.StdEncoding.EncodeToString(fileBytes)
-		trcshConfig.KubeConfig = &kc
+		trcshConfig.KubeConfigPtr = &kc
 
 		if len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
 			return trcshConfig, nil
@@ -146,28 +146,28 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	} else {
 		if featherCtx == nil {
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 1")
-			trcshConfig.KubeConfig, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "kubeconfig")
+			trcshConfig.KubeConfigPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "kubeconfig")
 		}
 	}
 
 	if err != nil {
 		return trcshConfig, err
 	}
-	if trcshConfig.KubeConfig != nil {
-		memprotectopts.MemProtect(nil, trcshConfig.KubeConfig)
+	if trcshConfig.KubeConfigPtr != nil {
+		memprotectopts.MemProtect(nil, trcshConfig.KubeConfigPtr)
 	}
 
 	if featherCtx != nil {
-		trcshConfig.VaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
+		trcshConfig.VaultAddressPtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
 	} else {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 2")
-		trcshConfig.VaultAddress, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
+		trcshConfig.VaultAddressPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
 	}
 	if err != nil {
 		return trcshConfig, err
 	}
 
-	memprotectopts.MemProtect(nil, trcshConfig.VaultAddress)
+	memprotectopts.MemProtect(nil, trcshConfig.VaultAddressPtr)
 
 	if err != nil {
 		var addrPort string
@@ -181,43 +181,43 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			return trcshConfig, err
 		}
 		vAddr := fmt.Sprintf("https://127.0.0.1:%s", addrPort)
-		trcshConfig.VaultAddress = &vAddr
+		trcshConfig.VaultAddressPtr = &vAddr
 
 		trcshDriverConfig.DriverConfig.CoreConfig.Env = env
 		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 	}
 
-	trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress = *trcshConfig.VaultAddress
-	memprotectopts.MemProtect(nil, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress)
+	trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr = trcshConfig.VaultAddressPtr
+	memprotectopts.MemProtect(nil, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr)
 
 	if featherCtx != nil {
-		trcshConfig.ConfigRole, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
+		trcshConfig.ConfigRolePtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
 	} else {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 3")
-		trcshConfig.ConfigRole, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "configrole")
+		trcshConfig.ConfigRolePtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "configrole")
 	}
 	if err != nil {
 		return trcshConfig, err
 	}
 
-	memprotectopts.MemProtect(nil, trcshConfig.ConfigRole)
+	memprotectopts.MemProtect(nil, trcshConfig.ConfigRolePtr)
 
 	if featherCtx == nil {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 4")
-		trcshConfig.PubRole, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "pubrole")
+		trcshConfig.PubRolePtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "pubrole")
 		if err != nil {
 			return trcshConfig, err
 		}
-		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
+		memprotectopts.MemProtect(nil, trcshConfig.PubRolePtr)
 	}
 
 	if featherCtx == nil {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 6")
-		trcshConfig.Token, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "token")
+		trcshConfig.TokenPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "token")
 		if err != nil {
 			return trcshConfig, err
 		}
-		memprotectopts.MemProtect(nil, trcshConfig.Token)
+		memprotectopts.MemProtect(nil, trcshConfig.TokenPtr)
 	}
 	if err != nil {
 		return trcshConfig, err
