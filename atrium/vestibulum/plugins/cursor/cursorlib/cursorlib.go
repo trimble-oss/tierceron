@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
@@ -66,6 +67,9 @@ func ParseCursorFields(e *logical.StorageEntry, tokenMap *map[string]interface{}
 				}
 			}
 			if tokenPtr != nil {
+				if (strings.Contains(cursor, "token") || strings.Contains(cursor, "role")) && eUtils.RefLength(tokenPtr) < 5 {
+					logger.Printf("ParseCursorFields length warning on field %s\n", cursor)
+				}
 				if memonly.IsMemonly() {
 					memprotectopts.MemProtect(nil, tokenPtr)
 				}
@@ -132,6 +136,9 @@ func PersistCursorFieldsToVault(ctx context.Context, key string, storage *logica
 	for cursor, cursorAttributes := range cursorFields {
 		if cursorAttributes.KeepSecret {
 			if cursorPtr, ptrOk := curatorPluginConfig[fmt.Sprintf("%sptr", cursor)].(*string); ptrOk {
+				if (strings.Contains(cursor, "token") || strings.Contains(cursor, "role")) && eUtils.RefLength(cursorPtr) < 5 {
+					logger.Printf("PersistToVault length warning on field %s\n", cursor)
+				}
 				tapMap[cursor] = *cursorPtr
 			} else {
 				logger.Printf("PersistToVault missed required coding for field %s\n", cursor)

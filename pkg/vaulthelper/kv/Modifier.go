@@ -147,6 +147,10 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 		return nil, err
 	}
 
+	if len(*tokenPtr) == 0 {
+		return nil, errors.New("invalid token for modifier")
+	}
+
 	// Set access token and path for this modifier
 	modClient.SetToken(*tokenPtr)
 
