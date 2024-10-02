@@ -173,12 +173,15 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 
 	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
 	if _, tokenOk := pluginConfig["tokenptr"].(*string); !tokenOk {
+		trcdbEnvLogger.Println("Missing required token")
 		return nil, nil, nil, errors.New("Missing required token")
 	}
 	if _, vaddressOk := pluginConfig["vaddress"].(string); !vaddressOk {
+		trcdbEnvLogger.Println("Missing required vaddress")
 		return nil, nil, nil, errors.New("Missing required vaddress")
 	}
 	if _, envOk := pluginConfig["env"].(string); !envOk {
+		trcdbEnvLogger.Println("Missing required env")
 		return nil, nil, nil, errors.New("Missing required env")
 	}
 
