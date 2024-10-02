@@ -40,13 +40,14 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 
 		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", trustData[0]))
 		if err != nil {
+			logger.Printf("Validating Certification failure for %s %s\n", trustData[0], err)
 			continue
 		}
 
 		if _, ok := certifyMap["trcsha256"]; ok {
-			peerExe, err := os.Open(fmt.Sprintf("%s/%s", certifyMap["trcdeployroot"].(string), certifyMap["trcplugin"].(string)))
+			peerExe, err := os.Open(trustData[1])
 			if err != nil {
-				logger.Printf("ValidateTrcshPathSha complete\n")
+				logger.Printf("ValidateTrcshPathSha complete with file open error %s\n", err.Error())
 				return false, err
 			}
 			defer peerExe.Close()
@@ -61,10 +62,13 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 			// if certifyMap["trcsha256"].(string) == hex.EncodeToString(h.Sum(nil)) {
 			// 	return true, nil
 			// }
+		} else {
+			logger.Printf("Missing certification trcsha256 for %s\n", trustData[0])
+			continue
 		}
 	}
 
-	logger.Printf("ValidateTrcshPathSha complete\n")
+	logger.Printf("ValidateTrcshPathSha completing with failure\n")
 	return false, errors.New("missing certification")
 }
 
