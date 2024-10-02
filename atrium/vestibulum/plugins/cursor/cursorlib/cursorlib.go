@@ -32,8 +32,8 @@ func InitLogger(l *log.Logger) {
 	logger = l
 }
 
-func ParseCursorRecord(e *logical.StorageEntry, tokenMap *map[string]interface{}, logger *log.Logger) error {
-	logger.Println("ParseCursorRecord")
+func ParseCursorFields(e *logical.StorageEntry, tokenMap *map[string]interface{}, logger *log.Logger) error {
+	logger.Println("ParseCursorFields")
 
 	if e != nil {
 		tokenData := map[string]interface{}{}
@@ -41,19 +41,33 @@ func ParseCursorRecord(e *logical.StorageEntry, tokenMap *map[string]interface{}
 		if decodeErr != nil {
 			return decodeErr
 		}
-		for tokenName, token := range tokenData {
-			tokenStr := token.(string)
-			if memonly.IsMemonly() {
-				memprotectopts.MemProtect(nil, &tokenStr)
+		for cursor, cursorAttributes := range cursorFields {
+			var tokenPtr *string
+			var token string
+			tokenNameKey := cursor
+
+			if cursorAttributes.KeepSecret {
+				if _, ptrOk := tokenData[cursor].(*string); ptrOk {
+					tokenPtr = tokenData[cursor].(*string)
+					tokenNameKey = cursor + "ptr"
+				}
+			} else {
+				if _, ptrOk := tokenData[cursor].(string); ptrOk {
+					token = tokenData[cursor].(string)
+					tokenPtr = &token
+				}
 			}
-			(*tokenMap)[tokenName] = tokenStr
+			if memonly.IsMemonly() {
+				memprotectopts.MemProtect(nil, tokenPtr)
+			}
+			(*tokenMap)[tokenNameKey] = tokenPtr
 		}
 	}
 	if len(*tokenMap) == 0 {
 		return errors.New("No data")
 	}
 
-	logger.Println("ParseCursorRecord complete")
+	logger.Println("ParseCursorFields complete")
 	vaddrCheck := ""
 	if v, vOk := (*tokenMap)["vaddress"].(string); vOk {
 		vaddrCheck = v
@@ -64,7 +78,7 @@ func ParseCursorRecord(e *logical.StorageEntry, tokenMap *map[string]interface{}
 
 var environments []string = []string{"dev"}
 var environmentsProd []string = []string{"staging"}
-var cursorFields map[string]string
+var cursorFields map[string]cursoropts.CursorFieldAttributes
 var KvInitialize func(context.Context, *logical.InitializationRequest) error
 var curatorPluginConfig map[string]interface{}
 
@@ -72,37 +86,15 @@ var createUpdateFunc func(ctx context.Context, req *logical.Request, data *frame
 	pluginName := cursoropts.BuildOptions.GetPluginName()
 	logger.Printf("%s CreateUpdate\n", pluginName)
 
-	key := req.Path //data.Get("path").(string)
-	if key == "" {
-		return logical.ErrorResponse("missing path"), nil
-	}
-
 	// Check that some fields are given
 	if len(req.Data) == 0 {
 		//ctx.Done()
 		return logical.ErrorResponse("missing data fields"), nil
 	}
 
-	tapMap := map[string]*string{}
-	for _, cursor := range cursorFields {
-		tapMap[cursor] = curatorPluginConfig[cursor].(*string)
-	}
-
-	// JSON encode the data
-	buf, err := json.Marshal(tapMap)
-	if err != nil {
-		//ctx.Done()
-		return nil, fmt.Errorf("json encoding failed: %v", err)
-	}
-
-	// Write out a new key
-	entry := &logical.StorageEntry{
-		Key:   key,
-		Value: buf,
-	}
-	if err := req.Storage.Put(ctx, entry); err != nil {
-		//ctx.Done()
-		return nil, fmt.Errorf("failed to write: %v", err)
+	response, err2 := PersistCursorFieldsToVault(ctx, req.Path, &req.Storage, logger)
+	if err2 != nil {
+		return response, err2
 	}
 
 	logger.Printf("%s CreateUpdate complete\n", pluginName)
@@ -114,12 +106,50 @@ var createUpdateFunc func(ctx context.Context, req *logical.Request, data *frame
 	}, nil
 }
 
-func GenerateSchema(fields map[string]string) map[string]*framework.FieldSchema {
+func PersistCursorFieldsToVault(ctx context.Context, key string, storage *logical.Storage, logger *log.Logger) (*logical.Response, error) {
+	logger.Printf("PersistToVault\n")
+	if key == "" {
+		return logical.ErrorResponse("missing path"), nil
+	}
+
+	tapMap := map[string]string{}
+	for cursor, cursorAttributes := range cursorFields {
+		if cursorAttributes.KeepSecret {
+			tapMap[cursor] = *curatorPluginConfig[cursor].(*string)
+		} else {
+			tapMap[cursor] = curatorPluginConfig[cursor].(string)
+		}
+	}
+
+	// JSON encode the data
+	buf, err := json.Marshal(tapMap)
+	if err != nil {
+		//ctx.Done()
+		logger.Printf("PersistToVault encode failure\n")
+		return nil, fmt.Errorf("json encoding failed: %v", err)
+	}
+
+	// Write out a new key
+	entry := &logical.StorageEntry{
+		Key:   key,
+		Value: buf,
+	}
+	if err := (*storage).Put(ctx, entry); err != nil {
+		//ctx.Done()
+		logger.Printf("PersistToVault write failure\n")
+		return nil, fmt.Errorf("failed to write: %v", err)
+	}
+	logger.Printf("PersistToVault complete\n")
+
+	return nil, nil
+}
+
+func GenerateSchema(fields map[string]cursoropts.CursorFieldAttributes) map[string]*framework.FieldSchema {
 	schema := map[string]*framework.FieldSchema{}
 	for key, value := range fields {
 		schema[key] = &framework.FieldSchema{
 			Type:        framework.TypeString,
-			Description: value,
+			Description: value.Description,
 		}
 	}
 	return schema
@@ -171,18 +201,24 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 						}
 						// Get secrets from curator.
 						logger.Printf("Field loading begun.\n")
-						for secretFieldKey, _ := range cursorFields {
-							logger.Printf("Loading field: %s\n", secretFieldKey)
-							secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapCuratorPath(), secretFieldKey)
+						for cursorField, _ := range cursorFields {
+							logger.Printf("Loading field: %s\n", cursorField)
+							secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapCuratorPath(), cursorField)
 							if err != nil {
-								logger.Printf("Failed to retrieve wanted key: %s\n", secretFieldKey)
+								logger.Printf("Failed to retrieve wanted key: %s\n", cursorField)
 								continue
 							}
-							curatorPluginConfig[secretFieldKey] = *secretFieldValue
+							switch cursorField {
+							case "vaddress", "caddress":
+								curatorPluginConfig[cursorField] = *secretFieldValue
+							default:
+								curatorPluginConfig[fmt.Sprintf("%sptr", cursorField)] = secretFieldValue
+							}
 						}
 						logger.Printf("Field loading complete.\n")
+						PersistCursorFieldsToVault(ctx, env, &req.Storage, logger)
 					} else {
-						ptError := ParseCursorRecord(tokenData, &curatorPluginConfig, logger)
+						ptError := ParseCursorFields(tokenData, &curatorPluginConfig, logger)
 
 						if ptError != nil {
 							logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())

@@ -41,15 +41,39 @@ func GetTrusts() map[string][]string {
 	}
 }
 
-func GetCursorFields() map[string]string {
-	return map[string]string{
-		"pubrole":    "Pub role for specified environment.",
-		"configrole": "Read only role for specified environment.",
-		"kubeconfig": "kube config for specified environment.",
-		"token":      "Token used for specified environment.",
-		"vaddress":   "Vault Url for plugin reference purposes.",
-		"caddress":   "Vault Url for plugin certification purposes.",
-		"ctoken":     "Token for plugin certification purposes.",
-		"plugin":     "Optional plugin name.",
+func GetCursorFields() map[string]CursorFieldAttributes {
+	return map[string]CursorFieldAttributes{
+		"pubrole": CursorFieldAttributes{
+			Description: "Pub role for specified environment.",
+			KeepSecret:  true,
+		},
+		"configrole": CursorFieldAttributes{
+			Description: "Read only role for specified environment.",
+			KeepSecret:  true,
+		},
+		"kubeconfig": CursorFieldAttributes{
+			Description: "kube config for specified environment.",
+			KeepSecret:  true,
+		},
+		"token": CursorFieldAttributes{
+			Description: "Token used for specified environment.",
+			KeepSecret:  true,
+		},
+		"vaddress": CursorFieldAttributes{
+			Description: "Vault Url for plugin reference purposes.",
+			KeepSecret:  false,
+		},
+		"caddress": CursorFieldAttributes{
+			Description: "Vault Url for plugin certification purposes.",
+			KeepSecret:  false,
+		},
+		"ctoken": CursorFieldAttributes{
+			Description: "Token for plugin certification purposes.",
+			KeepSecret:  true,
+		},
+		"plugin": CursorFieldAttributes{
+			Description: "Optional plugin name.",
+			KeepSecret:  false,
+		},
 	}
 }

@@ -10,7 +10,7 @@ type OptionsBuilder struct {
 	GetLogPath          func() string
 	GetTrusts           func() map[string][]string
 	GetCursorConfigPath func() string
-	GetCursorFields     func() map[string]string
+	GetCursorFields     func() map[string]CursorFieldAttributes
 }
 
 func LoadOptions() Option {
