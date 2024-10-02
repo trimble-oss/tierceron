@@ -61,6 +61,8 @@ func ParseCursorFields(e *logical.StorageEntry, tokenMap *map[string]interface{}
 				if _, strOk := tokenData[cursor].(string); strOk {
 					token = tokenData[cursor].(string)
 					(*tokenMap)[tokenNameKey] = token
+				} else {
+					logger.Printf("Skipping cursor field: %s\n", cursor)
 				}
 			}
 			if tokenPtr != nil {
@@ -69,7 +71,9 @@ func ParseCursorFields(e *logical.StorageEntry, tokenMap *map[string]interface{}
 				}
 				(*tokenMap)[tokenNameKey] = tokenPtr
 			} else {
-				logger.Printf("Skipping cursor field: %s\n", cursor)
+				if cursorAttributes.KeepSecret {
+					logger.Printf("Skipping cursor field: %s\n", cursor)
+				}
 			}
 		}
 	}
