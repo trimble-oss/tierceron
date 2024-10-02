@@ -50,9 +50,13 @@ func ParseCursorFields(e *logical.StorageEntry, tokenMap *map[string]interface{}
 				if _, ptrOk := tokenData[cursor].(*string); ptrOk {
 					tokenPtr = tokenData[cursor].(*string)
 					tokenNameKey = cursor + "ptr"
+				} else if _, strOk := tokenData[cursor].(string); strOk {
+					token = tokenData[cursor].(string)
+					tokenPtr = &token
+					tokenNameKey = cursor + "ptr"
 				}
 			} else {
-				if _, ptrOk := tokenData[cursor].(string); ptrOk {
+				if _, strOk := tokenData[cursor].(string); strOk {
 					token = tokenData[cursor].(string)
 					tokenPtr = &token
 				}
@@ -109,15 +113,24 @@ var createUpdateFunc func(ctx context.Context, req *logical.Request, data *frame
 func PersistCursorFieldsToVault(ctx context.Context, key string, storage *logical.Storage, logger *log.Logger) (*logical.Response, error) {
 	logger.Printf("PersistToVault\n")
 	if key == "" {
+		logger.Printf("PersistToVault missing path\n")
 		return logical.ErrorResponse("missing path"), nil
 	}
 
 	tapMap := map[string]string{}
 	for cursor, cursorAttributes := range cursorFields {
 		if cursorAttributes.KeepSecret {
-			tapMap[cursor] = *curatorPluginConfig[cursor].(*string)
+			if cursorPtr, ptrOk := curatorPluginConfig[fmt.Sprintf("%sptr", cursor)].(*string); ptrOk {
+				tapMap[cursor] = *cursorPtr
+			} else {
+				logger.Printf("PersistToVault missed required coding for field %s\n", cursor)
+			}
 		} else {
-			tapMap[cursor] = curatorPluginConfig[cursor].(string)
+			if _, strOk := curatorPluginConfig[cursor].(string); strOk {
+				tapMap[cursor] = curatorPluginConfig[cursor].(string)
+			} else {
+				logger.Printf("PersistToVault missed required coding for field %s\n", cursor)
+			}
 		}
 	}
 
