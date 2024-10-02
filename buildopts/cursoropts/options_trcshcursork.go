@@ -46,11 +46,27 @@ func GetTrusts() map[string][]string {
 	}
 }
 
-func GetCursorFields() map[string]string {
-	return map[string]string{
-		"caddress":   "Vault Url for plugin certification purposes.",
-		"ctoken":     "Token for plugin certification purposes.",
-		"vaddress":   "Vault Url for plugin reference purposes.",
-		"configrole": "Read only role for specified environment.",
+func GetCursorFields() map[string]CursorFieldAttributes {
+	return map[string]CursorFieldAttributes{
+		"configrole": CursorFieldAttributes{
+			Description: "Read only role for specified environment.",
+			KeepSecret:  true,
+		},
+		"vaddress": CursorFieldAttributes{
+			Description: "Vault Url for plugin reference purposes.",
+			KeepSecret:  false,
+		},
+		"caddress": CursorFieldAttributes{
+			Description: "Vault Url for plugin certification purposes.",
+			KeepSecret:  false,
+		},
+		"ctoken": CursorFieldAttributes{
+			Description: "Token for plugin certification purposes.",
+			KeepSecret:  true,
+		},
+		"plugin": CursorFieldAttributes{
+			Description: "Optional plugin name.",
+			KeepSecret:  false,
+		},
 	}
 }

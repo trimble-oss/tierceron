@@ -36,6 +36,6 @@ func GetCursorConfigPath() string {
 	return ""
 }
 
-func GetCursorFields() map[string]string {
-	return map[string]string{}
+func GetCursorFields() map[string]CursorFieldAttributes {
+	return map[string]CursorFieldAttributes{}
 }
