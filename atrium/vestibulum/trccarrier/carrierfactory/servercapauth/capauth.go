@@ -44,7 +44,7 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 		}
 
 		if _, ok := certifyMap["trcsha256"]; ok {
-			peerExe, err := os.Open(trustData[1])
+			peerExe, err := os.Open(fmt.Sprintf("%s/%s", certifyMap["trcdeployroot"].(string), certifyMap["trcplugin"].(string)))
 			if err != nil {
 				logger.Printf("ValidateTrcshPathSha complete\n")
 				return false, err
