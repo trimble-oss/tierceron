@@ -39,12 +39,14 @@ func ParseCursorFields(e *logical.StorageEntry, tokenMap *map[string]interface{}
 		tokenData := map[string]interface{}{}
 		decodeErr := e.DecodeJSON(&tokenData)
 		if decodeErr != nil {
+			logger.Printf("ParseCursorFields parse failure: %s\n", decodeErr.Error())
 			return decodeErr
 		}
 		for cursor, cursorAttributes := range cursorFields {
-			var tokenPtr *string
+			var tokenPtr *string = nil
 			var token string
 			tokenNameKey := cursor
+			logger.Printf("Cursor field: %s\n", cursor)
 
 			if cursorAttributes.KeepSecret {
 				if _, ptrOk := tokenData[cursor].(*string); ptrOk {
@@ -61,13 +63,18 @@ func ParseCursorFields(e *logical.StorageEntry, tokenMap *map[string]interface{}
 					tokenPtr = &token
 				}
 			}
-			if memonly.IsMemonly() {
-				memprotectopts.MemProtect(nil, tokenPtr)
+			if tokenPtr != nil {
+				if memonly.IsMemonly() {
+					memprotectopts.MemProtect(nil, tokenPtr)
+				}
+				(*tokenMap)[tokenNameKey] = tokenPtr
+			} else {
+				logger.Printf("Skipping cursor field: %s\n", cursor)
 			}
-			(*tokenMap)[tokenNameKey] = tokenPtr
 		}
 	}
 	if len(*tokenMap) == 0 {
+		logger.Println("ParseCursorFields complete no data")
 		return errors.New("No data")
 	}
 
