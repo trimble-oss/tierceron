@@ -60,7 +60,7 @@ func ParseCursorFields(e *logical.StorageEntry, tokenMap *map[string]interface{}
 			} else {
 				if _, strOk := tokenData[cursor].(string); strOk {
 					token = tokenData[cursor].(string)
-					tokenPtr = &token
+					(*tokenMap)[tokenNameKey] = token
 				}
 			}
 			if tokenPtr != nil {
