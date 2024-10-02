@@ -104,6 +104,10 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 								v2 := strings.Clone(v.(string))
 								memprotectopts.MemProtect(nil, &v2)
 								pluginEnvConfigClone[k] = v2
+							} else if vPtr, okPtrStr := v.(*string); okPtrStr {
+								v2 := strings.Clone(*vPtr)
+								memprotectopts.MemProtect(nil, &v2)
+								pluginEnvConfigClone[k] = &v2
 							} else if _, okBool := v.(bool); okBool {
 								pluginEnvConfigClone[k] = v
 							}
