@@ -172,7 +172,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	}
 
 	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
-	if _, tokenOk := pluginConfig["tokenptr"].(*string); !tokenOk {
+	if tokenPtr, tokenOk := pluginConfig["tokenptr"].(*string); !tokenOk || RefLength(tokenPtr) < 5 {
 		trcdbEnvLogger.Println("Missing required token")
 		return nil, nil, nil, errors.New("Missing required token")
 	}

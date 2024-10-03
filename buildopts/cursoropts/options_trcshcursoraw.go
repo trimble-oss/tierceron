@@ -63,7 +63,7 @@ func GetCursorFields() map[string]CursorFieldAttributes {
 			KeepSecret:  true,
 		},
 		"token": CursorFieldAttributes{
-			Description: "Token used for specified environment.",
+			Description: "The restricted plugin readonly token.",
 			KeepSecret:  true,
 		},
 		"vaddress": CursorFieldAttributes{

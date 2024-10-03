@@ -178,7 +178,7 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 			key, _ = strings.CutSuffix(key, "ptr")
 			cap.TapFeather(key, value.(*string))
 			fallthrough
-		case "tokenptr", "kubeconfigptr", "pubroleptr":
+		case "ctokenptr", "tokenptr", "kubeconfigptr", "pubroleptr":
 			key, _ = strings.CutSuffix(key, "ptr")
 			logger.Println("Memorizing: " + key)
 			cap.TapMemorize(key, value.(*string))
