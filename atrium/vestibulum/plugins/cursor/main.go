@@ -64,6 +64,7 @@ func main() {
 	}, logErr, true)
 
 	cursorlib.InitLogger(logger)
+	logger.Println("Version: 1.0")
 	logger.Println("Beginning plugin startup.")
 	buildopts.BuildOptions.SetLogger(logger.Writer())
 

@@ -32,59 +32,61 @@ func InitLogger(l *log.Logger) {
 	logger = l
 }
 
-func ParseCursorFields(e *logical.StorageEntry, tokenMap *map[string]interface{}, logger *log.Logger) error {
+func ParseCursorFields(e *logical.StorageEntry, cursorSecretData *map[string]interface{}, logger *log.Logger) error {
 	logger.Println("ParseCursorFields")
 
 	if e != nil {
-		tokenData := map[string]interface{}{}
-		decodeErr := e.DecodeJSON(&tokenData)
+		secretData := map[string]interface{}{}
+		decodeErr := e.DecodeJSON(&secretData)
 		if decodeErr != nil {
 			logger.Printf("ParseCursorFields parse failure: %s\n", decodeErr.Error())
 			return decodeErr
 		}
-		for cursor, cursorAttributes := range cursorFields {
-			var tokenPtr *string = nil
-			var token string
-			tokenNameKey := cursor
-			logger.Printf("Cursor field: %s\n", cursor)
+		for cursorField, cursorAttributes := range cursorFields {
+			var secretFieldValue string
+			var secretFieldValuePtr *string = nil
+			tokenNameKey := cursorField
+			logger.Printf("Cursor field: %s\n", cursorField)
 
 			if cursorAttributes.KeepSecret {
-				if _, ptrOk := tokenData[cursor].(*string); ptrOk {
-					tokenPtr = tokenData[cursor].(*string)
-					tokenNameKey = cursor + "ptr"
-				} else if _, strOk := tokenData[cursor].(string); strOk {
-					token = tokenData[cursor].(string)
-					tokenPtr = &token
-					tokenNameKey = cursor + "ptr"
+				if _, ptrOk := secretData[cursorField].(*string); ptrOk {
+					secretFieldValuePtr = secretData[cursorField].(*string)
+					tokenNameKey = cursorField + "ptr"
+				} else if _, strOk := secretData[cursorField].(string); strOk {
+					secretFieldValue = secretData[cursorField].(string)
+					secretFieldValuePtr = &secretFieldValue
+					tokenNameKey = cursorField + "ptr"
 				}
 			} else {
-				if _, strOk := tokenData[cursor].(string); strOk {
-					token = tokenData[cursor].(string)
-					(*tokenMap)[tokenNameKey] = token
+				if _, strOk := secretData[cursorField].(string); strOk {
+					secretFieldValue = secretData[cursorField].(string)
+					(*cursorSecretData)[tokenNameKey] = secretFieldValue
 				} else {
-					logger.Printf("Skipping cursor field: %s\n", cursor)
+					logger.Printf("Skipping cursor field: %s\n", cursorField)
 				}
 			}
-			if tokenPtr != nil {
+			if secretFieldValuePtr != nil {
+				logger.Printf("Parse Cursor field: %s %d\n", cursorField, eUtils.RefLength(secretFieldValuePtr))
+
 				if memonly.IsMemonly() {
-					memprotectopts.MemProtect(nil, tokenPtr)
+					memprotectopts.MemProtect(nil, secretFieldValuePtr)
 				}
-				(*tokenMap)[tokenNameKey] = tokenPtr
+				(*cursorSecretData)[tokenNameKey] = secretFieldValuePtr
 			} else {
 				if cursorAttributes.KeepSecret {
-					logger.Printf("Skipping cursor field: %s\n", cursor)
+					logger.Printf("Skipping cursor field: %s\n", cursorField)
 				}
 			}
 		}
 	}
-	if len(*tokenMap) == 0 {
+	if len(*cursorSecretData) == 0 {
 		logger.Println("ParseCursorFields complete no data")
 		return errors.New("No data")
 	}
 
 	logger.Println("ParseCursorFields complete")
 	vaddrCheck := ""
-	if v, vOk := (*tokenMap)["vaddress"].(string); vOk {
+	if v, vOk := (*cursorSecretData)["vaddress"].(string); vOk {
 		vaddrCheck = v
 	}
 
@@ -226,12 +228,12 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 						// Get secrets from curator.
 						logger.Printf("Field loading begun.\n")
 						for cursorField, _ := range cursorFields {
-							logger.Printf("Loading field: %s\n", cursorField)
 							secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapCuratorPath(), cursorField)
 							if err != nil {
 								logger.Printf("Failed to retrieve wanted key: %s\n", cursorField)
 								continue
 							}
+							logger.Printf("Loading field: %s %d\n", cursorField, eUtils.RefLength(secretFieldValue))
 							switch cursorField {
 							case "vaddress", "caddress":
 								curatorPluginConfig[cursorField] = *secretFieldValue
