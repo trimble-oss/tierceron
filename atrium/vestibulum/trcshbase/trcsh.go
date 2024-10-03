@@ -1020,7 +1020,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 
 		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, gTrcshConfig.TokenPtr, argsOrig, deployArgLines, configCount)
 		if err != nil {
-			fmt.Println("trcplgtool - unexpected failure")
+			fmt.Println("trcplgtool - unexpected failure - agent may be out of memory")
 			fmt.Println("trcplgtool - " + err.Error())
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(err)
 			os.Exit(1)
