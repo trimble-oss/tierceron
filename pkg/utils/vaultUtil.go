@@ -127,7 +127,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	var trcdbEnvLogger *log.Logger
 
 	if _, nameSpaceOk := pluginConfig["logNamespace"]; nameSpaceOk {
-		logPrefix := fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
+		logPrefix := fmt.Sprintf("[trcplugin-%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
 
 		if logger.Prefix() != logPrefix {
 			logFile := fmt.Sprintf("/var/log/trcplugin%s-%s.log", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
