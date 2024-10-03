@@ -60,6 +60,10 @@ func GetCursorFields() map[string]CursorFieldAttributes {
 			Description: "Vault Url for plugin certification purposes.",
 			KeepSecret:  false,
 		},
+		"token": CursorFieldAttributes{
+			Description: "The restricted plugin readonly token.",
+			KeepSecret:  true,
+		},
 		"ctoken": CursorFieldAttributes{
 			Description: "Token for plugin certification purposes.",
 			KeepSecret:  true,
