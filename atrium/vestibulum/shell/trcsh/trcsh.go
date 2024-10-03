@@ -8,6 +8,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
@@ -34,7 +35,7 @@ func main() {
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 	saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
 	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
-	//	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions()) -- only needed in trcsh-curator???
+	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
 	eUtils.InitHeadless(true)
 
 	tiercerontls.InitRoot()
