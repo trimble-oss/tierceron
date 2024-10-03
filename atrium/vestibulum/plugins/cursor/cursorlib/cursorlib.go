@@ -75,13 +75,15 @@ func ParseCursorFields(e *logical.StorageEntry, cursorSecretData *map[string]int
 			} else {
 				if cursorAttributes.KeepSecret {
 					logger.Printf("Skipping cursor field: %s\n", cursorField)
+					// This is kind of critical...
+					return fmt.Errorf("missing required cursor field %s", cursorField)
 				}
 			}
 		}
 	}
 	if len(*cursorSecretData) == 0 {
 		logger.Println("ParseCursorFields complete no data")
-		return errors.New("No data")
+		return errors.New("no data")
 	}
 
 	logger.Println("ParseCursorFields complete")
@@ -213,13 +215,15 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 				curatorPluginConfig = coreopts.BuildOptions.InitPluginConfig(curatorPluginConfig)
 
 				var curatorEnv string = ""
+				forceReload := false
+			recover_bad_configs:
 				// Read in existing vault data from all existing environments on startup...
 				for _, env := range queuedEnvironments {
 					logger.Println("Processing env: " + env)
 					curatorEnv = env
 					tokenData, sgErr := req.Storage.Get(ctx, env)
 
-					if sgErr != nil || tokenData == nil {
+					if sgErr != nil || tokenData == nil || forceReload {
 						if sgErr != nil {
 							logger.Println("Missing configuration data for env: " + env + " error: " + sgErr.Error())
 						} else {
@@ -243,11 +247,14 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 						}
 						logger.Printf("Field loading complete.\n")
 						PersistCursorFieldsToVault(ctx, env, &req.Storage, logger)
+						forceReload = false
 					} else {
 						ptError := ParseCursorFields(tokenData, &curatorPluginConfig, logger)
 
 						if ptError != nil {
 							logger.Println("Bad configuration data for env: " + env + " error: " + ptError.Error())
+							forceReload = true
+							goto recover_bad_configs
 						}
 					}
 				}
