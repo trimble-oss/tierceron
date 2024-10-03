@@ -1,5 +1,5 @@
-//go:build trcshcurator
-// +build trcshcurator
+//go:build trcshcurator && !trcshcursoraw && !trcshcursork
+// +build trcshcurator,!trcshcursoraw,!trcshcursork
 
 package coreopts
 

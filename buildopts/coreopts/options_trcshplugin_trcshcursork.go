@@ -1,5 +1,5 @@
-//go:build !trcshcurator && !trcshcursoraw && !trcshcursork
-// +build !trcshcurator,!trcshcursoraw,!trcshcursork
+//go:build trcshcursork && !trcshcursoraw
+// +build trcshcursork,!trcshcursoraw
 
 package coreopts
 
@@ -24,6 +24,6 @@ func InitPluginConfig(pluginEnvConfig map[string]interface{}) map[string]interfa
 		"regions":        []string{"west"},
 		"pluginNameList": []string{""},
 		"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
-		"logNamespace":   "trcshplugin",
+		"logNamespace":   "cursor-k",
 	}
 }
