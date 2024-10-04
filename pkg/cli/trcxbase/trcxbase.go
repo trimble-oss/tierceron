@@ -293,7 +293,6 @@ func CommonMain(ctx eUtils.ProcessContext,
 		*envPtr = envVersion[0]
 		if !*noVaultPtr {
 			appconfigrolePtr := new(string)
-			*appconfigrolePtr = ""
 			autoErr := eUtils.AutoAuth(driverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 
 			if autoErr != nil {
@@ -368,7 +367,6 @@ skipDiff:
 			regions = eUtils.GetSupportedProdRegions()
 		}
 		appconfigrolePtr := new(string)
-		*appconfigrolePtr = ""
 
 		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 			CoreConfig: core.CoreConfig{
@@ -433,7 +431,6 @@ skipDiff:
 				if !*noVaultPtr && *tokenPtr == "" {
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
 					appconfigrolePtr := new(string)
-					*appconfigrolePtr = ""
 
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{
@@ -456,7 +453,6 @@ skipDiff:
 				if len(dynamicPathParts) == 0 {
 					if !*noVaultPtr && *tokenPtr == "" {
 						appconfigrolePtr := new(string)
-						*appconfigrolePtr = ""
 
 						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 							CoreConfig: core.CoreConfig{
@@ -598,7 +594,6 @@ skipDiff:
 						baseEnv = configCtx.EnvSlice[0]
 					}
 					appconfigrolePtr := new(string)
-					*appconfigrolePtr = ""
 
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
@@ -733,7 +728,6 @@ skipDiff:
 				var servicesWanted []string
 				if !*noVaultPtr && *tokenEnvPtr == "" {
 					appconfigrolePtr := new(string)
-					*appconfigrolePtr = ""
 
 					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
 						CoreConfig: core.CoreConfig{

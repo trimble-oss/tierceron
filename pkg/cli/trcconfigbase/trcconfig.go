@@ -211,6 +211,9 @@ func CommonMain(envDefaultPtr *string,
 	var driverConfigBase *eUtils.DriverConfig
 	if driverConfig != nil {
 		driverConfigBase = driverConfig
+		if driverConfigBase.CoreConfig.TokenPtr == nil {
+			driverConfigBase.CoreConfig.TokenPtr = new(string)
+		}
 		if len(driverConfigBase.EndDir) == 0 || *endDirPtr != ENDDIR_DEFAULT {
 			// Honor inputs if provided...
 			driverConfigBase.EndDir = *endDirPtr
