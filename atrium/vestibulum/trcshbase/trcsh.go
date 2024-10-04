@@ -61,7 +61,7 @@ const (
 	YOU_SHALL_NOT_PASS = "you shall not pass"
 )
 
-func createLogFile() (*log.Logger, error) {
+func CreateLogFile() (*log.Logger, error) {
 	logFile := "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
 	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"deploy.log" {
 		logFile = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
@@ -81,7 +81,7 @@ func createLogFile() (*log.Logger, error) {
 	return logger, nil
 }
 
-func TrcshInitConfig(env string, region string, pathParam string, outputMemCache bool, logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
+func TrcshInitConfig(driverConfigPtr *eUtils.DriverConfig, env string, region string, pathParam string, outputMemCache bool, logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
 	}
@@ -116,13 +116,17 @@ func TrcshInitConfig(env string, region string, pathParam string, outputMemCache
 	//Check if logger passed in - if not call create log method that does following below...
 	var providedLogger *log.Logger
 	var err error
-	if len(logger) == 0 {
-		providedLogger, err = createLogFile()
+	if len(logger) == 0 && driverConfigPtr == nil && driverConfigPtr.CoreConfig.Log == nil {
+		providedLogger, err = CreateLogFile()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		providedLogger = logger[0]
+		if driverConfigPtr != nil && driverConfigPtr.CoreConfig.Log != nil {
+			providedLogger = driverConfigPtr.CoreConfig.Log
+		} else {
+			providedLogger = logger[0]
+		}
 	}
 
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
@@ -198,8 +202,8 @@ func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 }
 
 // EnableDeploy - initializes and starts running deployer for provided deployment and environment.
-func EnableDeployer(env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string, dronePtr *bool, projectService ...*string) {
-	trcshDriverConfig, err := TrcshInitConfig(env, region, "", outputMemCache)
+func EnableDeployer(driverConfigPtr *eUtils.DriverConfig, env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string, dronePtr *bool, projectService ...*string) {
+	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, env, region, "", outputMemCache)
 	if err != nil {
 		fmt.Printf("Initialization setup error: %s\n", err.Error())
 	}
@@ -256,7 +260,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	appRoleIDPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	c *eUtils.DriverConfig) error {
+	driverConfigPtr *eUtils.DriverConfig) error {
 
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
@@ -331,7 +335,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtect(nil, secretIDPtr)
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
 
-		trcshDriverConfig, err := TrcshInitConfig(*envPtr, *regionPtr, pathParam, true)
+		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, *envPtr, *regionPtr, pathParam, true)
 		if err != nil {
 			fmt.Printf("trcsh config setup failure: %s\n", err.Error())
 			os.Exit(124)
@@ -341,7 +345,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		//Open deploy script and parse it.
 		ProcessDeploy(nil, trcshDriverConfig, trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr, "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
 	} else {
-		logger, err := createLogFile()
+		logger, err := CreateLogFile()
 
 		if err != nil {
 			fmt.Printf("Error initializing log file: %s\n", err)
@@ -553,7 +557,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		logger.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		// Preload agent synchronization configs...
-		trcshDriverConfig, err := TrcshInitConfig(agentEnv, *regionPtr, "", true, logger)
+		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, agentEnv, *regionPtr, "", true, logger)
 		if err != nil {
 			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
 			logger.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
@@ -716,7 +720,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		for _, deployment := range deployments {
-			EnableDeployer(*gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, false, deployment, dronePtr, projectServicePtr)
+			EnableDeployer(driverConfigPtr, *gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, false, deployment, dronePtr, projectServicePtr)
 		}
 
 		<-shutdown
