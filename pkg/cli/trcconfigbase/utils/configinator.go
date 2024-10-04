@@ -148,12 +148,12 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 	}*/
 	//Should check if driverConfig is nil here...
 	modCheck, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.EnvBasis, true)
-	modCheck.Env = driverConfig.CoreConfig.Env
-	version := ""
 	if err != nil {
 		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
 		return nil, err
 	}
+	modCheck.Env = driverConfig.CoreConfig.Env
+	version := ""
 	modCheck.VersionFilter = driverConfig.VersionFilter
 
 	//Check if templateInfo is selected for template or values

@@ -78,7 +78,6 @@ func PrintVersion() {
 
 func CommonMain(envDefaultPtr *string,
 	addrPtr *string,
-	tokenPtr *string,
 	envCtxPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
@@ -225,6 +224,21 @@ func CommonMain(envDefaultPtr *string,
 		if driverConfigBase.FileFilter != nil {
 			fileFilterPtr = &(driverConfigBase.FileFilter[0])
 		}
+
+		if driverConfigBase.CoreConfig.Log == nil {
+			f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+			if err != nil {
+				fmt.Println("Error creating log file: " + *logFilePtr)
+				return errors.New("Error creating log file: " + *logFilePtr)
+			}
+			logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
+			driverConfigBase.CoreConfig.Log = logger
+			driverConfigBase.CoreConfig.Insecure = *insecurePtr
+			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
+			driverConfigBase.EndDir = *endDirPtr
+			driverConfigBase.ZeroConfig = *zcPtr
+			driverConfigBase.NoVault = *noVaultPtr
+		}
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
@@ -297,7 +311,7 @@ func CommonMain(envDefaultPtr *string,
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, driverConfigBase.CoreConfig.TokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
 				if driverConfig != nil {
 					driverConfig.CoreConfig.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)
@@ -311,7 +325,7 @@ func CommonMain(envDefaultPtr *string,
 				return nil
 			}
 		} else {
-			*tokenPtr = "novault"
+			*driverConfigBase.CoreConfig.TokenPtr = "novault"
 		}
 
 		if len(envVersion) >= 2 { //Put back env+version together
@@ -407,9 +421,10 @@ func CommonMain(envDefaultPtr *string,
 		for _, env := range configCtx.EnvSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
-			*tokenPtr = ""
+			*driverConfigBase.CoreConfig.TokenPtr = ""
+			tokenEnv := new(string)
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenEnv, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					return errors.New("missing auth components")
@@ -418,7 +433,7 @@ func CommonMain(envDefaultPtr *string,
 					return nil
 				}
 			} else {
-				*tokenPtr = "novault"
+				*tokenEnv = "novault"
 			}
 			if len(envVersion) >= 2 { //Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]
@@ -431,14 +446,14 @@ func CommonMain(envDefaultPtr *string,
 			}
 			if memonly.IsMemonly() {
 				memprotectopts.MemUnprotectAll(nil)
-				memprotectopts.MemProtect(nil, tokenPtr)
+				memprotectopts.MemProtect(nil, tokenEnv)
 			}
 
 			driverConfig := eUtils.DriverConfig{
 				CoreConfig: core.CoreConfig{
 					IsShell:         isShell,
 					Insecure:        *insecurePtr,
-					TokenPtr:        tokenPtr,
+					TokenPtr:        tokenEnv,
 					VaultAddressPtr: addrPtr,
 					Env:             *envPtr,
 					EnvBasis:        eUtils.GetEnvBasis(*envPtr),
@@ -476,7 +491,7 @@ func CommonMain(envDefaultPtr *string,
 	} else {
 		if memonly.IsMemonly() {
 			memprotectopts.MemUnprotectAll(nil)
-			memprotectopts.MemProtect(nil, tokenPtr)
+			memprotectopts.MemProtect(nil, driverConfigBase.CoreConfig.TokenPtr)
 		}
 
 		if *templateInfoPtr {
@@ -495,7 +510,7 @@ func CommonMain(envDefaultPtr *string,
 				IsShell:         isShell,
 				WantCerts:       *wantCertsPtr,
 				Insecure:        *insecurePtr,
-				TokenPtr:        tokenPtr,
+				TokenPtr:        driverConfigBase.CoreConfig.TokenPtr,
 				VaultAddressPtr: addrPtr,
 				Env:             *envPtr,
 				EnvBasis:        eUtils.GetEnvBasis(*envPtr),
