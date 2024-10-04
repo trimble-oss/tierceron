@@ -4,6 +4,7 @@ import (
 	"flag"
 	"testing"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -18,9 +19,15 @@ func TestCommonMain(t *testing.T) {
 	regionPtr := "test region"
 	flagset := &flag.FlagSet{}
 	argLines := []string{"arg1", "arg2"}
-	c := &eUtils.DriverConfig{} // replace with actual DriverConfig
 
-	err := CommonMain(&envPtr, &addrPtr, &tokenPtr, &envCtxPtr, &secretIDPtr, &appRoleIDPtr, &tokenNamePtr, &regionPtr, flagset, argLines, c)
+	driverConfig := eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			TokenPtr:      &tokenPtr,
+			ExitOnFailure: true,
+		},
+	}
+
+	err := CommonMain(&envPtr, &addrPtr, &envCtxPtr, &secretIDPtr, &appRoleIDPtr, &tokenNamePtr, &regionPtr, flagset, argLines, &driverConfig)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
@@ -51,7 +52,18 @@ func main() {
 	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 
-	err := trcshbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, nil)
+	logger, logErr := trcshbase.CreateLogFile()
+	if logErr != nil {
+		os.Exit(1)
+	}
+
+	driverConfig := eUtils.DriverConfig{
+		CoreConfig: core.CoreConfig{
+			Log: logger,
+		},
+	}
+
+	err := trcshbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, &driverConfig)
 	if err != nil {
 		os.Exit(1)
 	}
