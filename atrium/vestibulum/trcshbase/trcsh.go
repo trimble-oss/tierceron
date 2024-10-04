@@ -357,14 +357,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		if kernelopts.BuildOptions.IsKernel() {
 			go deployutil.KernelShutdownWatcher(driverConfigPtr.CoreConfig.Log)
 		}
-		var agentTokenPtr *string
+		var agentTokenPtr *string = new(string)
+		*agentTokenPtr = ""
 		var agentEnv string
 		var addressPtr *string
 		var deploymentsShard string
 		fromWinCred := false
 		useRole := true
-		agentTokenPtr = new(string)
-		*agentTokenPtr = ""
 
 		if kernelopts.BuildOptions.IsKernel() {
 			// load via new properties and get config values
