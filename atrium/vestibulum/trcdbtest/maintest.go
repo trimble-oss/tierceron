@@ -33,7 +33,6 @@ func main() {
 	pluginConfig["caddress"] = ""
 	pluginConfig["tokenptr"] = tokenPtr
 	ctokenPtr := new(string)
-	*ctokenPtr = ""
 	pluginConfig["ctokenptr"] = ctokenPtr
 	pluginConfig["env"] = "dev"
 	pluginConfig["insecure"] = true

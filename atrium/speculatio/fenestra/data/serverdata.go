@@ -94,11 +94,8 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	secretID := ""
 	appRoleID := ""
 	addressPtr := new(string)
-	*addressPtr = ""
 	tokenPtr := new(string)
-	*tokenPtr = ""
 	approleconfig := new(string)
-	*approleconfig = ""
 	empty := ""
 
 	autoErr := eUtils.AutoAuth(driverConfig, &secretID, &appRoleID, tokenPtr, &empty, envPtr, addressPtr, nil, approleconfig, false)

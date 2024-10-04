@@ -247,7 +247,6 @@ func EnableDeployer(driverConfigPtr *eUtils.DriverConfig, env string, region str
 		projServ = *projectService[0]
 	}
 	tokenPtr := new(string)
-	*tokenPtr = ""
 
 	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, tokenPtr, deployment, trcPath, projServ, secretId, approleId, false, dronePtr)
 }
@@ -358,7 +357,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			go deployutil.KernelShutdownWatcher(driverConfigPtr.CoreConfig.Log)
 		}
 		var agentTokenPtr *string = new(string)
-		*agentTokenPtr = ""
 		var agentEnv string
 		var addressPtr *string
 		var deploymentsShard string
@@ -876,7 +874,6 @@ func roleBasedRunner(
 
 	if !isAgentToken {
 		coreConfigTokenPtr := new(string)
-		*coreConfigTokenPtr = ""
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = coreConfigTokenPtr
 	}
 	return err
@@ -920,7 +917,6 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
 		if !isAgentToken {
 			coreConfigTokenPtr := new(string)
-			*coreConfigTokenPtr = ""
 			trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = coreConfigTokenPtr
 		}
 	case "trcpub":
@@ -940,7 +936,6 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
 		if !isAgentToken {
 			coreConfigTokenPtr := new(string)
-			*coreConfigTokenPtr = ""
 			trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = coreConfigTokenPtr
 		}
 	case "trcconfig":
@@ -1313,7 +1308,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		ResetModifier(&trcshDriverConfig.DriverConfig.CoreConfig) //Resetting modifier cache to avoid token conflicts.
 		if !isAgentToken {
 			coreConfigTokenPtr := new(string)
-			*coreConfigTokenPtr = ""
 			trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = coreConfigTokenPtr
 		}
 
@@ -1347,7 +1341,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 
 		if !isAgentToken {
 			coreConfigTokenPtr := new(string)
-			*coreConfigTokenPtr = ""
 			trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = coreConfigTokenPtr
 		}
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" {
