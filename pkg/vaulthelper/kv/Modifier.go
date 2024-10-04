@@ -147,7 +147,7 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 		return nil, err
 	}
 
-	if len(*tokenPtr) == 0 {
+	if len(*tokenPtr) == 0 && !useCache {
 		return nil, errors.New("invalid token for modifier")
 	}
 
