@@ -724,12 +724,14 @@ skipDiff:
 		for _, env := range configCtx.EnvSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
+			tokenEnvPtr := new(string)
+			*tokenEnvPtr = *tokenPtr
 			if secretIDPtr != nil && *secretIDPtr != "" && appRoleIDPtr != nil && *appRoleIDPtr != "" {
-				*tokenPtr = ""
+				*tokenEnvPtr = ""
 			}
 			for _, section := range sectionSlice {
 				var servicesWanted []string
-				if !*noVaultPtr && *tokenPtr == "" {
+				if !*noVaultPtr && *tokenEnvPtr == "" {
 					appconfigrolePtr := new(string)
 					*appconfigrolePtr = ""
 
@@ -739,7 +741,7 @@ skipDiff:
 							Insecure:      *insecurePtr,
 							Log:           logger,
 						},
-					}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
+					}, secretIDPtr, appRoleIDPtr, tokenEnvPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 					if authErr != nil {
 						// Retry once.
 						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
@@ -748,13 +750,13 @@ skipDiff:
 								Insecure:      *insecurePtr,
 								Log:           logger,
 							},
-						}, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
+						}, secretIDPtr, appRoleIDPtr, tokenEnvPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 						if authErr != nil {
 							eUtils.LogAndSafeExit(&driverConfig.CoreConfig, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 						}
 					}
-				} else if *tokenPtr == "" {
-					*tokenPtr = "novault"
+				} else if *tokenEnvPtr == "" {
+					*tokenEnvPtr = "novault"
 				}
 				if len(envVersion) >= 2 { //Put back env+version together
 					*envPtr = envVersion[0] + "_" + envVersion[1]
@@ -776,7 +778,7 @@ skipDiff:
 					CoreConfig: core.CoreConfig{
 						WantCerts:         *wantCertsPtr,
 						Insecure:          *insecurePtr,
-						TokenPtr:          tokenPtr,
+						TokenPtr:          tokenEnvPtr,
 						VaultAddressPtr:   addrPtr,
 						Regions:           regions,
 						EnvBasis:          envBasis,
