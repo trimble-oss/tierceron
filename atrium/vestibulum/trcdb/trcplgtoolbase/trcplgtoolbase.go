@@ -272,7 +272,7 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("unsupported agentdeploy outside trcsh")
 	}
 
-	if tokenNamePtr == nil || *tokenNamePtr == "" {
+	if trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr == nil || *trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr == "" {
 		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
 		if autoErr != nil {
 			eUtils.LogErrorMessage(&trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
@@ -694,7 +694,7 @@ func CommonMain(envDefaultPtr *string,
 		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && kernelopts.BuildOptions.IsKernel() {
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Starting verification of plugin module.")
 			h := sha256.New()
-			pathToSO := hive.LoadPluginPath(trcshDriverConfigBase.DriverConfig)
+			pathToSO := hive.LoadPluginPath(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0666)
 			if err != nil {
 				return err

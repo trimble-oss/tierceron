@@ -216,9 +216,10 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *eUtils.Drive
 	pluginHandler.IsRunning = false
 }
 
-func LoadPluginPath(driverConfig *eUtils.DriverConfig) string {
+func LoadPluginPath(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) string {
+	var deployroot string
 	var service string
-	if s, ok := driverConfig.DeploymentConfig["trcplugin"].(string); ok {
+	if s, ok := pluginToolConfig["trcplugin"].(string); ok {
 		driverConfig.CoreConfig.Log.Printf("Loading plugin path for service: %s\n", s)
 		service = s
 	} else {
@@ -226,7 +227,15 @@ func LoadPluginPath(driverConfig *eUtils.DriverConfig) string {
 		driverConfig.CoreConfig.Log.Println("Unable to stop plugin service.")
 		return ""
 	}
-	pluginPath := "./plugins/" + service + ".so"
+	if d, ok := pluginToolConfig["trcdeployroot"].(string); ok {
+		driverConfig.CoreConfig.Log.Printf("Loading plugin deploy root for service: %s\n", d)
+		deployroot = d
+	} else {
+		fmt.Println("Unable to stop plugin service.")
+		driverConfig.CoreConfig.Log.Println("Unable to stop plugin service.")
+		return ""
+	}
+	pluginPath := fmt.Sprintf("%s/%s%s", deployroot, service, ".so")
 	return pluginPath
 }
 
