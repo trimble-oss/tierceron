@@ -105,7 +105,7 @@ func CommonMain(envDefaultPtr *string,
 	// Cert flags
 	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
 
-	if !trcshDriverConfig.DriverConfig.IsShellSubProcess {
+	if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
@@ -204,7 +204,7 @@ func CommonMain(envDefaultPtr *string,
 	if !*updateAPIMPtr && len(*buildImagePtr) == 0 && !*pushImagePtr {
 		switch *pluginTypePtr {
 		case "vault": // A vault plugin
-			if trcshDriverConfig != nil {
+			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 				// TODO: do we want to support Deployment certifications in the pipeline at some point?
 				// If so this is a config check to remove.
 				fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
@@ -216,7 +216,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 
 		case "agent": // A deployment agent tool.
-			if trcshDriverConfig != nil {
+			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 				// TODO: do we want to support Deployment certifications in the pipeline at some point?
 				// If so this is a config check to remove.
 				fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
@@ -249,7 +249,7 @@ func CommonMain(envDefaultPtr *string,
 	if trcshDriverConfig != nil {
 		trcshDriverConfigBase = trcshDriverConfig
 
-		if !trcshDriverConfigBase.DriverConfig.IsShellSubProcess {
+		if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 			if *agentdeployPtr {
 				fmt.Println("Unsupported agentdeploy outside trcsh")
 				return errors.New("unsupported agentdeploy outside trcsh")
@@ -437,7 +437,7 @@ func CommonMain(envDefaultPtr *string,
 			!*codebundledeployPtr &&
 			!*certifyImagePtr {
 
-			if trcshDriverConfig != nil {
+			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 				fmt.Println("Service definition not supported in trcsh.")
 				os.Exit(-1)
 			}
@@ -729,6 +729,7 @@ func CommonMain(envDefaultPtr *string,
 		} else if !certifyInit {
 			// Already certified...
 			fmt.Println("Checking for existing image.")
+			fmt.Printf("Checking with info %v\n", pluginToolConfig)
 			err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if _, ok := pluginToolConfig["imagesha256"].(string); err != nil || !ok {
 				fmt.Println("Invalid or nonexistent image on download.")
