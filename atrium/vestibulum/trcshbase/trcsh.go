@@ -929,7 +929,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 		if len(*gTrcshConfig.PubRolePtr) == 0 {
-			fmt.Printf("Missing required certification auth components\n")
+			fmt.Printf("Missing required pub auth components\n")
 			os.Exit(125)
 		}
 		pubRoleSlice := strings.Split(*gTrcshConfig.PubRolePtr, ":")
