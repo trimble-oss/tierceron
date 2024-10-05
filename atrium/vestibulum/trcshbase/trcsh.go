@@ -823,7 +823,6 @@ func roleBasedRunner(
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	control string,
 	isAgentToken bool,
-	tokenPtr *string,
 	argsOrig []string,
 	deployArgLines []string,
 	configCount *int) error {
@@ -854,9 +853,8 @@ func roleBasedRunner(
 
 	switch control {
 	case "trcplgtool":
-		tokenConfigPtr := tokenPtr
 		envDefaultPtr = trcshDriverConfig.DriverConfig.CoreConfig.Env
-		err = trcplgtoolbase.CommonMain(&envDefaultPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, tokenConfigPtr, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig, pluginHandler)
+		err = trcplgtoolbase.CommonMain(&envDefaultPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig, pluginHandler)
 	case "trcconfig":
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" ||
 			trcshDriverConfig.DriverConfig.CoreConfig.Env == "itdev" || trcshDriverConfig.DriverConfig.CoreConfig.Env == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.Env == "prod" {
@@ -939,7 +937,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = coreConfigTokenPtr
 		}
 	case "trcconfig":
-		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, tokenPtr, argsOrig, deployArgLines, configCount)
+		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, argsOrig, deployArgLines, configCount)
 		if err != nil {
 			fmt.Println("trcconfig - unexpected failure")
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(err)
@@ -1017,7 +1015,10 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
 		}
 
-		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, gTrcshConfig.TokenPtr, argsOrig, deployArgLines, configCount)
+		tempToken := trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = gTrcshConfig.TokenPtr
+		err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, argsOrig, deployArgLines, configCount)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr = tempToken
 		if err != nil {
 			fmt.Println("trcplgtool - unexpected failure")
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(err)
@@ -1066,12 +1067,11 @@ func processDroneCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	control string,
 	isAgentToken bool,
-	tokenPtr *string,
 	argsOrig []string,
 	deployArgLines []string,
 	configCount *int) error {
 
-	err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, tokenPtr, argsOrig, deployArgLines, configCount)
+	err := roleBasedRunner(region, trcshDriverConfig, control, isAgentToken, argsOrig, deployArgLines, configCount)
 	return err
 }
 
@@ -1461,7 +1461,6 @@ collaboratorReRun:
 					trcshDriverConfig,
 					control,
 					isAgentToken,
-					deployTokenPtr,
 					argsOrig,
 					strings.Split(deployLine, " "),
 					&configCount)

@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,7 +20,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
@@ -34,7 +32,6 @@ import (
 
 func CommonMain(envDefaultPtr *string,
 	addrPtr *string,
-	tokenPtr *string,
 	envCtxPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
@@ -78,7 +75,6 @@ func CommonMain(envDefaultPtr *string,
 	// Common flags...
 	startDirPtr := flagset.String("startDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Template directory")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
-	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
 
 	// defineService flags...
 	deployrootPtr := flagset.String("deployroot", "", "Optional path for deploying services to.")
@@ -109,7 +105,7 @@ func CommonMain(envDefaultPtr *string,
 	// Cert flags
 	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
 
-	if trcshDriverConfig == nil || !trcshDriverConfig.DriverConfig.IsShellSubProcess {
+	if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
@@ -208,7 +204,7 @@ func CommonMain(envDefaultPtr *string,
 	if !*updateAPIMPtr && len(*buildImagePtr) == 0 && !*pushImagePtr {
 		switch *pluginTypePtr {
 		case "vault": // A vault plugin
-			if trcshDriverConfig != nil {
+			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 				// TODO: do we want to support Deployment certifications in the pipeline at some point?
 				// If so this is a config check to remove.
 				fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
@@ -220,7 +216,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 
 		case "agent": // A deployment agent tool.
-			if trcshDriverConfig != nil {
+			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 				// TODO: do we want to support Deployment certifications in the pipeline at some point?
 				// If so this is a config check to remove.
 				fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
@@ -250,61 +246,40 @@ func CommonMain(envDefaultPtr *string,
 
 	var appRoleConfigPtr *string
 	var trcshDriverConfigBase *capauth.TrcshDriverConfig
-	var logger *log.Logger
 	if trcshDriverConfig != nil {
 		trcshDriverConfigBase = trcshDriverConfig
-		logger = trcshDriverConfig.DriverConfig.CoreConfig.Log
-		if *pluginNameAliasPtr != "" {
-			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
-		} else {
+
+		if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
+			if *agentdeployPtr {
+				fmt.Println("Unsupported agentdeploy outside trcsh")
+				return errors.New("unsupported agentdeploy outside trcsh")
+			}
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure = *insecurePtr
+			trcshDriverConfigBase.DriverConfig.StartDir = []string{*startDirPtr}
 			trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
+		} else {
+			if *pluginNameAliasPtr != "" {
+				trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
+			} else {
+				trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
+			}
+			appRoleConfigPtr = trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfigPtr
+			*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
 		}
-		appRoleConfigPtr = trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfigPtr
-		*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
+
 	} else {
-		if *agentdeployPtr {
-			fmt.Println("Unsupported agentdeploy outside trcsh")
-			return errors.New("unsupported agentdeploy outside trcsh")
-		}
-
-		// If logging production directory does not exist and is selected log to local directory
-		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log" {
-			*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "plgtool.log"
-		}
-		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-		logger = log.New(f, "[INIT]", log.LstdFlags)
-
-		trcshDriverConfigBase = &capauth.TrcshDriverConfig{
-			DriverConfig: &eUtils.DriverConfig{
-				CoreConfig: core.CoreConfig{
-					ExitOnFailure: true,
-					Insecure:      *insecurePtr,
-					Log:           logger,
-				},
-				StartDir:        []string{*startDirPtr},
-				SubSectionValue: strings.Split(*pluginNamePtr, ":")[0],
-			},
-		}
-
-		appRoleConfigPtr = new(string)
-		if err != nil {
-			return err
-		}
+		fmt.Println("Unsupported agentdeploy outside trcsh")
+		return errors.New("unsupported agentdeploy outside trcsh")
 	}
 
-	if tokenNamePtr == nil || *tokenNamePtr == "" || tokenPtr == nil || *tokenPtr == "" {
-		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
+	if tokenNamePtr == nil || *tokenNamePtr == "" {
+		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
 		if autoErr != nil {
 			eUtils.LogErrorMessage(&trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
 		}
-		if eUtils.RefLength(tokenPtr) > 0 {
-			trcshDriverConfigBase.DriverConfig.CoreConfig.TokenPtr = tokenPtr
-		}
 	}
-	if logger != nil {
-		logger.Printf("Certify begin gathering certify configs\n")
-	}
+	trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify begin gathering certify configs\n")
 
 	regions := []string{}
 
@@ -316,14 +291,14 @@ func CommonMain(envDefaultPtr *string,
 	}
 	pluginConfig["env"] = *envDefaultPtr
 	pluginConfig["vaddress"] = *addrPtr
-	if tokenPtr != nil {
-		pluginConfig["tokenptr"] = tokenPtr
+	if trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr != nil {
+		pluginConfig["tokenptr"] = trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr
 	}
 	pluginConfig["ExitOnFailure"] = true
 	if *regionPtr != "" {
 		pluginConfig["regions"] = []string{*regionPtr}
 	}
-	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
 	trcshConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: config,
 	}
@@ -335,8 +310,8 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if err != nil {
-		logger.Println("Error: " + err.Error() + " - 1")
-		logger.Println("Failed to init mod for deploy update")
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Error: " + err.Error() + " - 1")
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Failed to init mod for deploy update")
 		return err
 	}
 	config.StartDir = []string{*startDirPtr}
@@ -351,8 +326,8 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 	mod.Env = *envDefaultPtr
-	if logger != nil {
-		logger.Printf("Certify mod initialized\n")
+	if trcshDriverConfig.DriverConfig.CoreConfig.Log != nil {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Certify mod initialized\n")
 	}
 
 	if strings.HasPrefix(*envDefaultPtr, "staging") || strings.HasPrefix(*envDefaultPtr, "prod") || strings.HasPrefix(*envDefaultPtr, "dev") {
@@ -377,7 +352,7 @@ func CommonMain(envDefaultPtr *string,
 		if len(*certPathPtr) > 0 {
 			apimError = trccertmgmtbase.CommonMain(certPathPtr, config, mod)
 		} else {
-			apimError = trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
+			apimError = trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
 		}
 		if apimError != nil {
 			fmt.Println(apimError.Error())
@@ -392,8 +367,8 @@ func CommonMain(envDefaultPtr *string,
 		fmt.Println(plcErr.Error())
 		return plcErr
 	}
-	if logger != nil {
-		logger.Printf("Certify begin activities\n")
+	if *certifyImagePtr {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Certify begin activities\n")
 	}
 
 	if len(*sha256Ptr) > 0 {
@@ -462,7 +437,7 @@ func CommonMain(envDefaultPtr *string,
 			!*codebundledeployPtr &&
 			!*certifyImagePtr {
 
-			if trcshDriverConfig != nil {
+			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 				fmt.Println("Service definition not supported in trcsh.")
 				os.Exit(-1)
 			}
@@ -732,7 +707,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 			if _, err := io.Copy(h, f); err != nil {
 				fmt.Printf("Unable to copy file: %s\n", err)
-				logger.Printf("Unable to copy file: %s\n", err)
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Unable to copy file: %s\n", err)
 				return err
 			}
 			sha := hex.EncodeToString(h.Sum(nil))
@@ -754,6 +729,7 @@ func CommonMain(envDefaultPtr *string,
 		} else if !certifyInit {
 			// Already certified...
 			fmt.Println("Checking for existing image.")
+			fmt.Printf("Checking with info %v\n", pluginToolConfig)
 			err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if _, ok := pluginToolConfig["imagesha256"].(string); err != nil || !ok {
 				fmt.Println("Invalid or nonexistent image on download.")
@@ -774,7 +750,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 			//SHA MATCHES
 			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
-			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
 			if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { //If region is set
@@ -786,19 +762,10 @@ func CommonMain(envDefaultPtr *string,
 					pluginSource = *pluginNamePtr
 				}
 				mod.SubSectionValue = pluginSource
+				trcshDriverConfig.DriverConfig.SubSectionValue = pluginSource
 
-				if trcshDriverConfig == nil {
-					trcshDriverConfig = &capauth.TrcshDriverConfig{
-						DriverConfig: &eUtils.DriverConfig{
-							CoreConfig: core.CoreConfig{
-								ExitOnFailure: true,
-								Insecure:      false,
-								Log:           logger,
-							},
-							StartDir:        []string{""},
-							SubSectionValue: pluginSource,
-						},
-					}
+				if !trcshDriverConfig.DriverConfig.IsShellSubProcess {
+					trcshDriverConfig.DriverConfig.StartDir = []string{""}
 				}
 
 				properties, err := trcvutils.NewProperties(&trcshDriverConfig.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
@@ -807,7 +774,7 @@ func CommonMain(envDefaultPtr *string,
 					return err
 				}
 
-				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", logger)
+				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", trcshDriverConfig.DriverConfig.CoreConfig.Log)
 
 				pluginTarget := pluginToolConfig["trcplugin"].(string)
 				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
@@ -16,6 +17,9 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
+	"github.com/trimble-oss/tierceron/pkg/capauth"
+	"github.com/trimble-oss/tierceron/pkg/core"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // This executable automates the cerification of a plugin docker image.
@@ -46,8 +50,34 @@ func main() {
 	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
+	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
 
-	err := plgtbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, flagset, os.Args, nil)
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log" {
+		*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "plgtool.log"
+	}
+	f, errLog := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if errLog != nil {
+		fmt.Printf("Could not open logfile: %s\n", *logFilePtr)
+		os.Exit(1)
+	}
+
+	logger := log.New(f, "[INIT]", log.LstdFlags)
+
+	trcshDriveConfigPtr := &capauth.TrcshDriverConfig{
+		DriverConfig: &eUtils.DriverConfig{
+			CoreConfig: core.CoreConfig{
+				ExitOnFailure:    true,
+				Insecure:         false,
+				TokenPtr:         tokenPtr,
+				Log:              logger,
+				AppRoleConfigPtr: new(string),
+			},
+			IsShellSubProcess: false,
+			StartDir:          []string{""},
+		},
+	}
+
+	err := plgtbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, flagset, os.Args, trcshDriveConfigPtr)
 	if err != nil {
 		os.Exit(1)
 	}
