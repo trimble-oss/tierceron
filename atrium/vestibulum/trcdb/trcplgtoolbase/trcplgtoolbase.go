@@ -729,7 +729,6 @@ func CommonMain(envDefaultPtr *string,
 		} else if !certifyInit {
 			// Already certified...
 			fmt.Println("Checking for existing image.")
-			fmt.Printf("Checking with info %v\n", pluginToolConfig)
 			err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if _, ok := pluginToolConfig["imagesha256"].(string); err != nil || !ok {
 				fmt.Println("Invalid or nonexistent image on download.")
