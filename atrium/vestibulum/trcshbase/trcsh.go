@@ -905,6 +905,10 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 		trcshDriverConfig.DriverConfig.CoreConfig.WantCerts = true
+		if len(*gTrcshConfig.PubRolePtr) == 0 {
+			fmt.Printf("Missing required certification auth components\n")
+			os.Exit(125)
+		}
 
 		pubRoleSlice := strings.Split(*gTrcshConfig.PubRolePtr, ":")
 		tokenName := "vault_pub_token_" + env
@@ -924,7 +928,10 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfigPtr = approleconfigPtr
 		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
-
+		if len(*gTrcshConfig.PubRolePtr) == 0 {
+			fmt.Printf("Missing required pub auth components\n")
+			os.Exit(125)
+		}
 		pubRoleSlice := strings.Split(*gTrcshConfig.PubRolePtr, ":")
 		tokenName := "vault_pub_token_" + env
 		tokenPub := ""
