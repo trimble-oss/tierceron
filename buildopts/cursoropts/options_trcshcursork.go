@@ -48,6 +48,10 @@ func GetTrusts() map[string][]string {
 
 func GetCursorFields() map[string]CursorFieldAttributes {
 	return map[string]CursorFieldAttributes{
+		"pubrole": cursoropts.CursorFieldAttributes{
+			Description: "Pub role for specified environment.",
+			KeepSecret:  true,
+		},
 		"configrole": CursorFieldAttributes{
 			Description: "Read only role for specified environment.",
 			KeepSecret:  true,
