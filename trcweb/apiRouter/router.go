@@ -198,18 +198,18 @@ func main() {
 	s = server.NewServer(addrPtr, tokenPtr)
 	localHost = *localPtr
 	driverConfig := &config.DriverConfig{
-		CoreConfig: core.CoreConfig{
+		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
 		},
 	}
 
 	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	s.Log.SetOutput(f)
 	memprotectopts.MemProtectInit(nil)
 
 	status, err := s.GetStatus(context.Background(), nil)
-	eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
+	eUtils.LogErrorObject(driverConfig.CoreConfig, err, true)
 
 	if !status.Sealed && !eUtils.RefEquals(s.VaultTokenPtr, "") {
 		s.Log.Println("Vault is unsealed. Initializing GQL")

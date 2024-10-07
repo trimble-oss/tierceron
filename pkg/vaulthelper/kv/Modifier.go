@@ -92,8 +92,10 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 //
 //	Any errors generated in creating the client
-func NewModifierFromCoreConfig(coreConfig *core.CoreConfig, env string, useCache bool) (*Modifier, error) {
-	return NewModifier(coreConfig.Insecure, coreConfig.TokenPtr, coreConfig.VaultAddressPtr, env, coreConfig.Regions, useCache, coreConfig.Log)
+func NewModifierFromCoreConfig(coreConfig *core.CoreConfig, tokenName string, env string, useCache bool) (*Modifier, error) {
+	return NewModifier(coreConfig.Insecure,
+		coreConfig.TokenCache.GetToken(tokenName),
+		coreConfig.VaultAddressPtr, env, coreConfig.Regions, useCache, coreConfig.Log)
 }
 
 // NewModifier Constructs a new modifier struct and connects to the vault
@@ -147,7 +149,7 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 		return nil, err
 	}
 
-	if len(*tokenPtr) == 0 && !useCache {
+	if tokenPtr == nil || len(*tokenPtr) == 0 && !useCache {
 		return nil, errors.New("invalid token for modifier")
 	}
 
@@ -638,7 +640,7 @@ retryQuery:
 	}
 	if err != nil {
 		logger.Printf("Modifier failing after %d retries.\n", retries)
-		logger.Printf(err.Error())
+		logger.Printf("Error: %s\n", err.Error())
 	}
 	return result, err
 }
@@ -735,7 +737,7 @@ func (m *Modifier) GetProjectServicesMap(logger *log.Logger) (map[string][]strin
 	availProjects := projectData.Data["keys"].([]interface{})
 	for _, availProject := range availProjects {
 		serviceData, serviceErr := m.List("templates/"+availProject.(string), logger)
-		if err != nil {
+		if serviceErr != nil {
 			return nil, serviceErr
 		}
 

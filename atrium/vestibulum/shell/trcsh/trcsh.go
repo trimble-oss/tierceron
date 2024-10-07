@@ -59,7 +59,7 @@ func main() {
 	}
 
 	driverConfig := config.DriverConfig{
-		CoreConfig: core.CoreConfig{
+		CoreConfig: &core.CoreConfig{
 			Log: logger,
 		},
 	}

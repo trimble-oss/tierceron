@@ -13,6 +13,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
+	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 // Reads in template files in specified directory
@@ -42,7 +44,13 @@ func main() {
 	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 
-	err := trcsubbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, nil)
+	driverConfig := config.DriverConfig{
+		CoreConfig: &core.CoreConfig{
+			ExitOnFailure: true,
+		},
+	}
+
+	err := trcsubbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, &driverConfig)
 	if err != nil {
 		os.Exit(1)
 	}

@@ -17,12 +17,12 @@ func GenerateSeedsFromVaultToDb(driverConfig *config.DriverConfig) (interface{},
 		err := os.RemoveAll(driverConfig.EndDir + driverConfig.CoreConfig.Env)
 
 		if err != nil {
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 			return nil, err
 		}
 
 		if err1 == nil {
-			eUtils.LogInfo(&driverConfig.CoreConfig, "Seed removed from"+driverConfig.EndDir+driverConfig.CoreConfig.Env)
+			eUtils.LogInfo(driverConfig.CoreConfig, "Seed removed from"+driverConfig.EndDir+driverConfig.CoreConfig.Env)
 		}
 		return nil, nil
 	}
@@ -48,7 +48,7 @@ func GenerateSeedsFromVaultToDb(driverConfig *config.DriverConfig) (interface{},
 	tierceronEngine, err := trcdb.CreateEngine(driverConfig,
 		templatePaths, driverConfig.CoreConfig.Env, driverConfig.VersionFilter[0])
 	if err != nil {
-		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		return nil, err
 	}
 

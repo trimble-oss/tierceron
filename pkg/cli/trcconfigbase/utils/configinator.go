@@ -148,9 +148,11 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		Cyan = ""
 	}*/
 	//Should check if driverConfig is nil here...
-	modCheck, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.EnvBasis, true)
+	tokenName := fmt.Sprintf("config_token_%s", *&driverConfig.CoreConfig.EnvBasis)
+
+	modCheck, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
 	if err != nil {
-		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		return nil, err
 	}
 	modCheck.Env = driverConfig.CoreConfig.Env
@@ -173,36 +175,36 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		}
 	}
 	versionData := make(map[string]interface{})
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenPtr, "novault") {
+	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") {
 		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
 			if errValidateEnvironment != nil {
 				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
 					if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
-						return nil, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Invalid certificate.", 1)
+						return nil, eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Invalid certificate.", 1)
 					}
 				}
 			}
 
 			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "_unrestricted", driverConfig.CoreConfig.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-				return nil, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", driverConfig.CoreConfig.Env, baseDesiredPolicy, desiredPolicy), 1)
+				return nil, eUtils.LogAndSafeExit(driverConfig.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", driverConfig.CoreConfig.Env, baseDesiredPolicy, desiredPolicy), 1)
 			}
 		}
 	}
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {
-		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
 
 	_, _, indexedEnv, _ := helperkv.PreCheckEnvironment(driverConfig.CoreConfig.Env)
 	if indexedEnv {
 		templatePaths, err = eUtils.GetAcceptedTemplatePaths(driverConfig, modCheck, templatePaths)
 		if err != nil {
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		}
 		endPaths, err = eUtils.GetAcceptedTemplatePaths(driverConfig, modCheck, endPaths)
 		if err != nil {
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		}
 	}
 
@@ -212,7 +214,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 	templatePaths, endPaths = FilterPaths(templatePaths, endPaths, driverConfig.ServicesWanted, false)
 
 	if len(templatePaths) == 0 || len(endPaths) == 0 {
-		eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("filtered paths returned empty template or end paths"), false)
+		eUtils.LogErrorObject(driverConfig.CoreConfig, errors.New("filtered paths returned empty template or end paths"), false)
 	}
 
 	for _, templatePath := range templatePaths {
@@ -282,7 +284,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 
 		}
 		if neverPrinted {
-			eUtils.LogInfo(&driverConfig.CoreConfig, "No version data available for this env")
+			eUtils.LogInfo(driverConfig.CoreConfig, "No version data available for this env")
 		}
 		return nil, nil //End of -versions flag
 		/*	we might need this commented code - but seems unnecessary
@@ -326,7 +328,9 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
-			mod, _ := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.EnvBasis, true)
+			tokenName := fmt.Sprintf("config_token_%s", *&driverConfig.CoreConfig.EnvBasis)
+
+			mod, _ := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
 			mod.Env = driverConfig.CoreConfig.Env
 			mod.Version = version
 			//check for template_files directory here
@@ -356,14 +360,14 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 				var certData map[int]string
 				certLoaded := false
 				if templateInfo {
-					data, errTemplateVersion := getTemplateVersionData(&driverConfig.CoreConfig, mod, project, service, endPaths[i])
+					data, errTemplateVersion := getTemplateVersionData(driverConfig.CoreConfig, mod, project, service, endPaths[i])
 					if errTemplateVersion != nil {
 						return errTemplateVersion
 					}
 
 					mutex.Lock()
 					if data == nil {
-						return eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Template version data could not be retrieved", 1)
+						return eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Template version data could not be retrieved", 1)
 					}
 					versionData[endPaths[i]] = data
 					mutex.Unlock()
@@ -374,9 +378,9 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
 							if !driverConfig.CoreConfig.WantCerts || strings.Contains(templatePath, "Common") {
-								eUtils.CheckError(&driverConfig.CoreConfig, ctErr, true)
+								eUtils.CheckError(driverConfig.CoreConfig, ctErr, true)
 							} else {
-								eUtils.LogErrorObject(&driverConfig.CoreConfig, ctErr, false)
+								eUtils.LogErrorObject(driverConfig.CoreConfig, ctErr, false)
 								goto wait
 							}
 						}
@@ -398,16 +402,16 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 						goto wait
 					}
 					if len(certData) == 0 {
-						eUtils.LogInfo(&driverConfig.CoreConfig, "Could not load cert "+endPaths[i])
+						eUtils.LogInfo(driverConfig.CoreConfig, "Could not load cert "+endPaths[i])
 						goto wait
 					}
 					destFile := certData[0]
 					certDestination := driverConfig.EndDir + "/" + destFile
 					writeToFile(driverConfig, certData[1], certDestination)
 					if driverConfig.OutputMemCache {
-						eUtils.LogInfo(&driverConfig.CoreConfig, "certificate pre-processed for "+certDestination)
+						eUtils.LogInfo(driverConfig.CoreConfig, "certificate pre-processed for "+certDestination)
 					} else {
-						eUtils.LogInfo(&driverConfig.CoreConfig, "certificate written to "+certDestination)
+						eUtils.LogInfo(driverConfig.CoreConfig, "certificate written to "+certDestination)
 					}
 					goto wait
 				} else {
@@ -438,7 +442,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 				var certData map[int]string
 				certLoaded := false
 				if templateInfo {
-					data, errTemplateVersion := getTemplateVersionData(&driverConfig.CoreConfig, mod, project, service, endPaths[i])
+					data, errTemplateVersion := getTemplateVersionData(driverConfig.CoreConfig, mod, project, service, endPaths[i])
 					if errTemplateVersion != nil {
 						return errTemplateVersion
 					}
@@ -449,7 +453,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, false)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
-							eUtils.CheckError(&driverConfig.CoreConfig, ctErr, true)
+							eUtils.CheckError(driverConfig.CoreConfig, ctErr, true)
 						}
 					}
 				}
@@ -461,9 +465,9 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 					certDestination := driverConfig.EndDir + "/" + certData[0]
 					writeToFile(driverConfig, certData[1], certDestination)
 					if driverConfig.OutputMemCache {
-						eUtils.LogInfo(&driverConfig.CoreConfig, "certificate pre-processed for "+certDestination)
+						eUtils.LogInfo(driverConfig.CoreConfig, "certificate pre-processed for "+certDestination)
 					} else {
-						eUtils.LogInfo(&driverConfig.CoreConfig, "certificate written to "+certDestination)
+						eUtils.LogInfo(driverConfig.CoreConfig, "certificate written to "+certDestination)
 					}
 					goto wait
 				} else {
@@ -486,9 +490,9 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 					messageBase = "template configured and pre-processed for "
 				}
 				if utils.IsWindows() {
-					eUtils.LogInfo(&driverConfig.CoreConfig, messageBase+endPaths[i])
+					eUtils.LogInfo(driverConfig.CoreConfig, messageBase+endPaths[i])
 				} else {
-					eUtils.LogInfo(&driverConfig.CoreConfig, "\033[0;33m"+messageBase+endPaths[i]+"\033[0m")
+					eUtils.LogInfo(driverConfig.CoreConfig, "\033[0;33m"+messageBase+endPaths[i]+"\033[0m")
 				}
 			}
 
@@ -506,10 +510,10 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		// Keystore is serialized at end.
 		ks, ksErr := validator.StoreKeystore(driverConfig, driverConfig.KeystorePassword)
 		if ksErr != nil {
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, ksErr, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, ksErr, false)
 		}
 		certDestination := driverConfig.EndDir + "/" + driverConfig.WantKeystore
-		eUtils.LogInfo(&driverConfig.CoreConfig, "certificates written to "+certDestination)
+		eUtils.LogInfo(driverConfig.CoreConfig, "certificates written to "+certDestination)
 		writeToFile(driverConfig, string(ks), certDestination)
 	}
 
@@ -532,7 +536,7 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 
 			if !matched || err != nil {
 				fmt.Println("Invalid build tag")
-				eUtils.LogInfo(&driverConfig.CoreConfig, "Invalid build tag was found:"+tag+"- exiting...")
+				eUtils.LogInfo(driverConfig.CoreConfig, "Invalid build tag was found:"+tag+"- exiting...")
 				os.Exit(-1)
 			}
 		}
@@ -552,16 +556,16 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	} else {
 		dirPath := filepath.Dir(path)
 		err := os.MkdirAll(dirPath, os.ModePerm)
-		eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		//create new file
 		newFile, err = os.Create(path)
-		eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		defer newFile.Close()
 		//write to file
 		_, err = newFile.Write(byteData)
-		eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		err = newFile.Sync()
-		eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	}
 }
 

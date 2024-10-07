@@ -86,9 +86,9 @@ func ConfigTemplateRaw(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 
 	var templateEncoded string
 	templateEncoded, err = GetTemplate(driverConfig, mod, emptyFilePath)
-	eUtils.CheckError(&driverConfig.CoreConfig, err, exitOnFailure)
+	eUtils.CheckError(driverConfig.CoreConfig, err, exitOnFailure)
 	templateBytes, decodeErr := base64.StdEncoding.DecodeString(templateEncoded)
-	eUtils.CheckError(&driverConfig.CoreConfig, decodeErr, exitOnFailure)
+	eUtils.CheckError(driverConfig.CoreConfig, decodeErr, exitOnFailure)
 
 	return templateBytes, decodeErr
 }
@@ -133,7 +133,7 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 		template = string(templateBytes)
 	} else {
 		emptyTemplate, err := os.ReadFile(emptyFilePath)
-		eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		template = string(emptyTemplate)
 	}
 	// cert map
@@ -197,27 +197,27 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 	ok := false
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenPtr, "novault") {
-		cds.Init(&driverConfig.CoreConfig, modifier, secretMode, true, project, nil, service)
+	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") {
+		cds.Init(driverConfig.CoreConfig, modifier, secretMode, true, project, nil, service)
 	} else {
 		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.CoreConfig.Env + "/" + driverConfig.CoreConfig.Env + "_seed.yml")
 		if err != nil {
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("unable to open seed file for -novault: "+err.Error()), false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, errors.New("unable to open seed file for -novault: "+err.Error()), false)
 		}
 
 		var rawYaml interface{}
 		err = yaml.Unmarshal(rawFile, &rawYaml)
 		if err != nil {
-			eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, err, 1)
+			eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, 1)
 		}
 
 		seed, seedOk := rawYaml.(map[interface{}]interface{})
 		if !seedOk {
 			if driverConfig.NoVault {
 				driverConfig.CoreConfig.ExitOnFailure = true
-				eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "novault option requires a seed file for trcconfig to function", 1)
+				eUtils.LogAndSafeExit(driverConfig.CoreConfig, "novault option requires a seed file for trcconfig to function", 1)
 			} else {
-				eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
+				eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
 			}
 		}
 		tempMap := make(map[string]interface{}, 0)
@@ -232,7 +232,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 			}
 		}
 		if len(values) == 0 {
-			eUtils.LogAndSafeExit(&driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
+			eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
 		}
 		tempMap[filename] = values
 		values = tempMap
@@ -254,7 +254,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 		t := template.New("template")
 		t, err := t.Parse(emptyTemplate)
 		if err != nil {
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		}
 		var doc bytes.Buffer
 		//configure the template
@@ -263,7 +263,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 
 		_, hasData := values[filename]
 		if !hasData && !driverConfig.CoreConfig.WantCerts {
-			eUtils.LogInfo(&driverConfig.CoreConfig, filename+" does not exist in values. Please check seed files to verify that folder structures are correct.")
+			eUtils.LogInfo(driverConfig.CoreConfig, filename+" does not exist in values. Please check seed files to verify that folder structures are correct.")
 		}
 
 		if len(cds.Regions) > 0 {
@@ -297,21 +297,21 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 				if hasCertDefinition && hasCertSourcePath {
 					if !ok {
 						vaultCertErr := errors.New("No certDestPath in config template section of seed for this service. Unable to generate: " + certDestPath.(string))
-						eUtils.LogErrorMessage(&driverConfig.CoreConfig, vaultCertErr.Error(), false)
+						eUtils.LogErrorMessage(driverConfig.CoreConfig, vaultCertErr.Error(), false)
 						return "", nil, vaultCertErr
 					}
 					certData[0] = certDestPath.(string)
 					data, ok := valueData["certData"]
 					if !ok {
 						vaultCertErr := errors.New("No certData in config template section of seed for this service. Unable to generate: " + certDestPath.(string))
-						eUtils.LogInfo(&driverConfig.CoreConfig, vaultCertErr.Error())
+						eUtils.LogInfo(driverConfig.CoreConfig, vaultCertErr.Error())
 						return "", nil, vaultCertErr
 					}
 					encoded := fmt.Sprintf("%s", data)
 					//Decode cert as it was encoded in trcinit
 					decoded, err := base64.StdEncoding.DecodeString(encoded)
 					if err != nil {
-						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+						eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 					}
 
 					// Add support for jks encoding...
@@ -327,7 +327,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 						// This needs to be wrapped in a jks first.
 						ksErr := validator.AddToKeystore(driverConfig, certSourcePath.(string), []byte(certPassword), certBundleJks.(string), decoded)
 						if ksErr != nil {
-							eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+							eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 							return "", nil, ksErr
 						} else {
 							return "", nil, nil
@@ -354,7 +354,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 		err = t.Execute(&doc, values[filename])
 		str = doc.String()
 		if err != nil {
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		}
 	}
 	return str, certData, nil

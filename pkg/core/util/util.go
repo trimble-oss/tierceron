@@ -147,7 +147,7 @@ func LoadBaseTemplate(driverConfig *config.DriverConfig, templateResult *extract
 	if goMod != nil {
 		cds = new(vcutils.ConfigDataStore)
 		goMod.Version = goMod.Version + "***X-Mode"
-		cds.Init(&driverConfig.CoreConfig, goMod, true, true, project, commonPaths, service) //CommonPaths = "" - empty - not needed for tenant config
+		cds.Init(driverConfig.CoreConfig, goMod, true, true, project, commonPaths, service) //CommonPaths = "" - empty - not needed for tenant config
 	}
 
 	var errSeed error
@@ -224,9 +224,9 @@ func SeedVaultById(driverConfig *config.DriverConfig, goMod *helperkv.Modifier, 
 	sliceValueSection = append(sliceValueSection, templateResult.ValueSection)
 	sliceSecretSection = append(sliceSecretSection, templateResult.SecretSection)
 
-	xutil.CombineSection(&driverConfig.CoreConfig, sliceTemplateSection, maxDepth, templateCombinedSection)
-	xutil.CombineSection(&driverConfig.CoreConfig, sliceValueSection, -1, valueCombinedSection)
-	xutil.CombineSection(&driverConfig.CoreConfig, sliceSecretSection, -1, secretCombinedSection)
+	xutil.CombineSection(driverConfig.CoreConfig, sliceTemplateSection, maxDepth, templateCombinedSection)
+	xutil.CombineSection(driverConfig.CoreConfig, sliceValueSection, -1, valueCombinedSection)
+	xutil.CombineSection(driverConfig.CoreConfig, sliceSecretSection, -1, secretCombinedSection)
 
 	template, errT := yaml.Marshal(templateCombinedSection)
 	value, errV := yaml.Marshal(valueCombinedSection)

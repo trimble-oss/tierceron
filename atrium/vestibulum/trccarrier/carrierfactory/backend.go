@@ -629,7 +629,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			cMod.SectionKey = "/Index/"
 			cMod.SubSectionValue = plugin.(string)
 
-			properties, err := trcvutils.NewProperties(&carrierDriverConfig.CoreConfig, cVault, cMod, cMod.Env, "TrcVault", "Certify")
+			properties, err := trcvutils.NewProperties(carrierDriverConfig.CoreConfig, cVault, cMod, cMod.Env, "TrcVault", "Certify")
 			if err != nil {
 				logger.Println("Error: " + err.Error())
 				return logical.ErrorResponse("Failed to read previous plugin status from vault - 1"), nil

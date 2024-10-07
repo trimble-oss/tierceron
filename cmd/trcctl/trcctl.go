@@ -20,6 +20,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
@@ -105,15 +106,33 @@ func main() {
 		var addrPtr string
 		switch ctl {
 		case "pub":
-			trcpubbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, flagset, os.Args, nil)
+			driverConfig := config.DriverConfig{
+				CoreConfig: &core.CoreConfig{
+					TokenCache:    cache.NewTokenCache(fmt.Sprintf("vault_pub_token_%s", *envPtr), tokenPtr),
+					ExitOnFailure: true,
+				},
+			}
+			trcpubbase.CommonMain(envPtr, &addrPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, flagset, os.Args, &driverConfig)
 		case "sub":
-			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, secretIDPtr, appRoleIDPtr, flagset, os.Args, nil)
+			driverConfig := config.DriverConfig{
+				CoreConfig: &core.CoreConfig{
+					TokenCache:    cache.NewTokenCache(fmt.Sprintf("config_token_%s", *envPtr), tokenPtr),
+					ExitOnFailure: true,
+				},
+			}
+			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, secretIDPtr, appRoleIDPtr, flagset, os.Args, &driverConfig)
 		case "init":
-			trcinitbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, nil, nil, nil, nil, flagset, os.Args, nil)
+			driverConfig := config.DriverConfig{
+				CoreConfig: &core.CoreConfig{
+					TokenCache:    cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", *envPtr), tokenPtr),
+					ExitOnFailure: true,
+				},
+			}
+			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, nil, nil, flagset, os.Args, &driverConfig)
 		case "config":
 			driverConfig := config.DriverConfig{
-				CoreConfig: core.CoreConfig{
-					TokenPtr:      tokenPtr,
+				CoreConfig: &core.CoreConfig{
+					TokenCache:    cache.NewTokenCache(fmt.Sprintf("config_token_%s", *envPtr), tokenPtr),
 					ExitOnFailure: true,
 				},
 			}

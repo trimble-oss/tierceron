@@ -27,15 +27,15 @@ func (t *TrcshMemFs) WriteToMemFile(driverConfig *config.DriverConfig, memCacheL
 		}
 		memFile, err := configMemFs.BillyFs.Create(path)
 		if err != nil {
-			eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+			eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		}
 		memFile.Write(*byteData)
 		memFile.Close()
 		memCacheLocal.Unlock()
-		eUtils.LogInfo(&driverConfig.CoreConfig, "Wrote memfile:"+path)
+		eUtils.LogInfo(driverConfig.CoreConfig, "Wrote memfile:"+path)
 	} else {
 		memCacheLocal.Unlock()
-		eUtils.LogInfo(&driverConfig.CoreConfig, "Unexpected memfile exists:"+path)
-		eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+		eUtils.LogInfo(driverConfig.CoreConfig, "Unexpected memfile exists:"+path)
+		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	}
 }

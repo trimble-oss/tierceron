@@ -41,12 +41,12 @@ func main() {
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 
 	driverConfig := &config.DriverConfig{
-		CoreConfig: core.CoreConfig{
+		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
 			Log:           logger,
 		},
 	}
-	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
 	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
@@ -69,7 +69,7 @@ func main() {
 	for {
 		select {
 		case <-signalChannel:
-			eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Receiving shutdown presumably from vault.", true)
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Receiving shutdown presumably from vault.", true)
 			os.Exit(0)
 		}
 	}

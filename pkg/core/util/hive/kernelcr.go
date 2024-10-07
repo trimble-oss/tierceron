@@ -74,7 +74,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s\n", service)
 	pluginConfig := make(map[string]interface{})
 	pluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
-	pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenPtr
+	pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken("config_token_pluginany")
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, driverConfig.CoreConfig.Log)
@@ -95,7 +95,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				driverConfig.CoreConfig.Log.Printf("Improper formatting of project/service for %s\n", service)
 				return
 			}
-			properties, err := trcvutils.NewProperties(&driverConfig.CoreConfig, vault, mod, mod.Env, projServ[0], projServ[1])
+			properties, err := trcvutils.NewProperties(driverConfig.CoreConfig, vault, mod, mod.Env, projServ[0], projServ[1])
 			if err != nil && !strings.Contains(err.Error(), "no data paths found when initing CDS") {
 				fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 				return
@@ -115,13 +115,13 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				if strings.HasPrefix(path, "Common") {
 					cert_ps := strings.Split(path, "/")
 					if len(cert_ps) != 2 {
-						eUtils.LogErrorObject(&driverConfig.CoreConfig, errors.New("unable to process cert"), false)
+						eUtils.LogErrorObject(driverConfig.CoreConfig, errors.New("unable to process cert"), false)
 					}
 					templatePath := "./trc_templates/" + path
 					driverConfig.CoreConfig.WantCerts = true
 					_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, cert_ps[0], cert_ps[1], true, true)
 					if err != nil {
-						eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+						eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 					}
 					driverConfig.CoreConfig.WantCerts = false
 					serviceConfig[path] = []byte(configuredCert[1])
@@ -164,7 +164,7 @@ func (pluginHandler *PluginHandler) handle_errors(driverConfig *config.DriverCon
 		switch {
 		case result != nil:
 			fmt.Println(result)
-			eUtils.LogErrorObject(&driverConfig.CoreConfig, result, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, result, false)
 			return
 		}
 	}

@@ -82,14 +82,14 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	if cAddr, cAddressOk := pluginConfig["caddress"].(string); cAddressOk && len(cAddr) > 0 {
 		pluginConfig["vaddress"] = cAddr
 	} else {
-		eUtils.LogWarningMessage(&trcshDriverConfig.DriverConfig.CoreConfig, "Unexpectedly caddress not available", false)
+		eUtils.LogWarningMessage(trcshDriverConfig.DriverConfig.CoreConfig, "Unexpectedly caddress not available", false)
 	}
 	if cTokenPtr, cTokOk := pluginConfig["ctokenptr"].(*string); cTokOk && eUtils.RefLength(cTokenPtr) > 0 {
 		pluginConfig["tokenptr"] = cTokenPtr
 	}
 
 	if tokenPtr, tokPtrOk := pluginConfig["tokenptr"].(*string); tokPtrOk && eUtils.RefLength(tokenPtr) < 5 {
-		eUtils.LogWarningMessage(&trcshDriverConfig.DriverConfig.CoreConfig, "WARNING: Unexpectedly token not available", false)
+		eUtils.LogWarningMessage(trcshDriverConfig.DriverConfig.CoreConfig, "WARNING: Unexpectedly token not available", false)
 	}
 
 	trcshDriverConfig.DriverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, trcshDriverConfig.DriverConfig.CoreConfig.Log)
@@ -104,7 +104,7 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	pluginConfig["tokenptr"] = tempTokenPtr
 
 	if err != nil {
-		eUtils.LogErrorMessage(&trcshDriverConfig.DriverConfig.CoreConfig, "Could not access vault.  Failure to start.", true)
+		eUtils.LogErrorMessage(trcshDriverConfig.DriverConfig.CoreConfig, "Could not access vault.  Failure to start.", true)
 		return err
 	}
 	return TapFeatherInit(trcshDriverConfig.DriverConfig, goMod, pluginConfig, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
@@ -128,7 +128,7 @@ func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, p
 				if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
 					featherAuth, err = servercapauth.Init(mod, pluginConfig, wantsFeathering, logger)
 					if err != nil {
-						eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Skipping cap auth init.", false)
+						eUtils.LogErrorMessage(driverConfig.CoreConfig, "Skipping cap auth init.", false)
 						return
 					}
 					if featherAuth != nil {
@@ -152,7 +152,7 @@ func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, p
 		})
 	} else {
 		err := fmt.Errorf("mismatched sha256 cap auth for env: %s  skipping", pluginConfig["env"].(string))
-		eUtils.LogErrorMessage(&driverConfig.CoreConfig, err.Error(), false)
+		eUtils.LogErrorMessage(driverConfig.CoreConfig, err.Error(), false)
 		return err
 	}
 	logger.Printf("TapFeatherInit complete\n")

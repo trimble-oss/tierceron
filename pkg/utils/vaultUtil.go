@@ -10,6 +10,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
@@ -17,29 +18,30 @@ import (
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
-	LogInfo(&driverConfig.CoreConfig, "InitVaultMod begins..")
+	LogInfo(driverConfig.CoreConfig, "InitVaultMod begins..")
 	if driverConfig == nil {
-		LogInfo(&driverConfig.CoreConfig, "InitVaultMod failure.  driverConfig provided is nil")
+		fmt.Println("InitVaultMod failure.  driverConfig provided is nil")
 		return driverConfig, nil, nil, errors.New("invalid nil driverConfig")
 	}
 
 	vault, err := sys.NewVault(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.VaultAddressPtr, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
 	if err != nil {
-		LogInfo(&driverConfig.CoreConfig, "Failure to connect to vault..")
-		LogErrorObject(&driverConfig.CoreConfig, err, false)
+		LogInfo(driverConfig.CoreConfig, "Failure to connect to vault..")
+		LogErrorObject(driverConfig.CoreConfig, err, false)
 		return driverConfig, nil, nil, err
 	}
-	vault.SetToken(driverConfig.CoreConfig.TokenPtr)
-	LogInfo(&driverConfig.CoreConfig, "InitVaultMod - Initializing Modifier")
-	mod, err := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.Env, false)
+	tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
+	vault.SetToken(driverConfig.CoreConfig.TokenCache.GetToken(tokenName))
+	LogInfo(driverConfig.CoreConfig, "InitVaultMod - Initializing Modifier")
+	mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.Env, false)
 	if err != nil {
-		LogErrorObject(&driverConfig.CoreConfig, err, false)
+		LogErrorObject(driverConfig.CoreConfig, err, false)
 		return driverConfig, nil, nil, err
 	}
 	mod.Env = driverConfig.CoreConfig.Env
 	mod.Version = "0"
 	mod.VersionFilter = driverConfig.VersionFilter
-	LogInfo(&driverConfig.CoreConfig, "InitVaultMod complete..")
+	LogInfo(driverConfig.CoreConfig, "InitVaultMod complete..")
 
 	return driverConfig, mod, vault, nil
 }
@@ -175,22 +177,22 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
 	if tokenPtr, tokenOk := pluginConfig["tokenptr"].(*string); !tokenOk || RefLength(tokenPtr) < 5 {
 		trcdbEnvLogger.Println("Missing required token")
-		return nil, nil, nil, errors.New("Missing required token")
+		return nil, nil, nil, errors.New("missing required token")
 	}
 	if _, vaddressOk := pluginConfig["vaddress"].(string); !vaddressOk {
 		trcdbEnvLogger.Println("Missing required vaddress")
-		return nil, nil, nil, errors.New("Missing required vaddress")
+		return nil, nil, nil, errors.New("missing required vaddress")
 	}
 	if _, envOk := pluginConfig["env"].(string); !envOk {
 		trcdbEnvLogger.Println("Missing required env")
-		return nil, nil, nil, errors.New("Missing required env")
+		return nil, nil, nil, errors.New("missing required env")
 	}
 
 	driverConfig := config.DriverConfig{
-		CoreConfig: core.CoreConfig{
+		CoreConfig: &core.CoreConfig{
 			WantCerts:       false,
 			Insecure:        !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
-			TokenPtr:        RefMap(pluginConfig, "tokenptr"),
+			TokenCache:      cache.NewTokenCache("config_token_pluginany", RefMap(pluginConfig, "tokenptr")),
 			VaultAddressPtr: RefMap(pluginConfig, "vaddress"),
 			Env:             pluginConfig["env"].(string),
 			Regions:         regions,

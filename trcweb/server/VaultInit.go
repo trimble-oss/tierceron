@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -78,12 +79,13 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 				Tokens:  nil,
 			}, err
 		}
+
 		il.SeedVaultFromData(&config.DriverConfig{
-			CoreConfig: core.CoreConfig{
+			CoreConfig: &core.CoreConfig{
 				WantCerts:       true,
 				Insecure:        false,
 				VaultAddressPtr: s.VaultAddrPtr,
-				TokenPtr:        s.VaultTokenPtr,
+				TokenCache:      cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", seed.Env), s.VaultTokenPtr),
 				Env:             seed.Env,
 				ExitOnFailure:   true,
 				Log:             logger,

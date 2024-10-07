@@ -74,7 +74,7 @@ func ToSeed(driverConfig *config.DriverConfig, mod *helperkv.Modifier,
 		templateFile, err := os.ReadFile(templatePath)
 		newTemplate = string(templateFile)
 		if err != nil {
-			return nil, nil, nil, 0, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, err.Error(), -1)
+			return nil, nil, nil, 0, eUtils.LogAndSafeExit(driverConfig.CoreConfig, err.Error(), -1)
 		}
 	}
 
@@ -82,7 +82,7 @@ func ToSeed(driverConfig *config.DriverConfig, mod *helperkv.Modifier,
 	t := template.New("template")
 	theTemplate, err := t.Parse(newTemplate)
 	if err != nil {
-		return nil, nil, nil, 0, eUtils.LogAndSafeExit(&driverConfig.CoreConfig, err.Error(), -1)
+		return nil, nil, nil, 0, eUtils.LogAndSafeExit(driverConfig.CoreConfig, err.Error(), -1)
 	}
 	commandList := theTemplate.Tree.Root
 
@@ -93,14 +93,14 @@ func ToSeed(driverConfig *config.DriverConfig, mod *helperkv.Modifier,
 			for _, arg := range fields.Cmds[0].Args {
 				templateParameter := strings.ReplaceAll(arg.String(), "\\\"", "\"")
 				if strings.Contains(templateParameter, "~") {
-					eUtils.LogInfo(&driverConfig.CoreConfig, "Unsupported parameter name character ~: "+templateParameter)
+					eUtils.LogInfo(driverConfig.CoreConfig, "Unsupported parameter name character ~: "+templateParameter)
 					return nil, nil, nil, 0, errors.New("Unsupported parameter name character ~: " + templateParameter)
 				}
 				args = append(args, templateParameter)
 			}
 
 			// Gets the parsed file line
-			errParse := Parse(&driverConfig.CoreConfig, cds,
+			errParse := Parse(driverConfig.CoreConfig, cds,
 				args,
 				pathSlice[len(pathSlice)-2],
 				templatePathSlice,
