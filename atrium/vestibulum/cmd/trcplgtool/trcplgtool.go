@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
+
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	plgtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -19,7 +21,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // This executable automates the cerification of a plugin docker image.
@@ -64,7 +65,7 @@ func main() {
 	logger := log.New(f, "[INIT]", log.LstdFlags)
 
 	trcshDriveConfigPtr := &capauth.TrcshDriverConfig{
-		DriverConfig: &eUtils.DriverConfig{
+		DriverConfig: &config.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure:    true,
 				Insecure:         false,

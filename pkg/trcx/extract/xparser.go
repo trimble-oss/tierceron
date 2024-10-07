@@ -11,6 +11,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -37,7 +38,7 @@ type TemplateResultData struct {
 //
 // Output:
 //   - Parsed string containing the .yml file
-func ToSeed(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier,
+func ToSeed(driverConfig *config.DriverConfig, mod *helperkv.Modifier,
 	cds *vcutils.ConfigDataStore,
 	templatePath string,
 	project string,
@@ -125,7 +126,7 @@ func ToSeed(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier,
 //
 // Output:
 //   - String(s) containing the structure of the template section
-func GetInitialTemplateStructure(driverConfig *eUtils.DriverConfig, templatePathSlice []string) ([]string, int, int) {
+func GetInitialTemplateStructure(driverConfig *config.DriverConfig, templatePathSlice []string) ([]string, int, int) {
 
 	var templateDir int
 	var templateDepth int

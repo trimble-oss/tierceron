@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/validator"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
@@ -40,7 +41,7 @@ type writeCollection struct {
 
 var templateWritten map[string]bool
 
-func GetTemplateParam(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, filePath string, paramWanted string) (string, error) {
+func GetTemplateParam(driverConfig *config.DriverConfig, mod *helperkv.Modifier, filePath string, paramWanted string) (string, error) {
 
 	templateEncoded, err := vcutils.GetTemplate(driverConfig, mod, filePath)
 	if err != nil {
@@ -80,7 +81,7 @@ func GetTemplateParam(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier,
 }
 
 // SeedVault seeds the vault with seed files in the given directory -> only init uses this
-func SeedVault(driverConfig *eUtils.DriverConfig) error {
+func SeedVault(driverConfig *config.DriverConfig) error {
 
 	driverConfig.CoreConfig.Log.SetPrefix("[SEED]")
 	driverConfig.CoreConfig.Log.Printf("Seeding vault from seeds in: %s\n", driverConfig.StartDir[0])
@@ -445,7 +446,7 @@ func SeedVault(driverConfig *eUtils.DriverConfig) error {
 }
 
 // SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
-func SeedVaultFromFile(driverConfig *eUtils.DriverConfig, filepath string) {
+func SeedVaultFromFile(driverConfig *config.DriverConfig, filepath string) {
 	rawFile, err := os.ReadFile(filepath)
 	// Open file
 	eUtils.LogErrorAndSafeExit(&driverConfig.CoreConfig, err, 1)
@@ -463,7 +464,7 @@ func SeedVaultFromFile(driverConfig *eUtils.DriverConfig, filepath string) {
 }
 
 // seedVaultWithCertsFromEntry takes entry from writestack and if it contains a cert, writes it to vault.
-func seedVaultWithCertsFromEntry(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, writeStack *[]writeCollection, entry *writeCollection) {
+func seedVaultWithCertsFromEntry(driverConfig *config.DriverConfig, mod *helperkv.Modifier, writeStack *[]writeCollection, entry *writeCollection) {
 	certPathData, certPathOk := entry.data["certSourcePath"]
 	if !certPathOk {
 		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Missing cert path.", false)
@@ -654,7 +655,7 @@ func seedVaultWithCertsFromEntry(driverConfig *eUtils.DriverConfig, mod *helperk
 }
 
 // SeedVaultFromData takes file bytes and seeds the vault with contained data
-func SeedVaultFromData(driverConfig *eUtils.DriverConfig, filepath string, fData []byte) error {
+func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData []byte) error {
 	driverConfig.CoreConfig.Log.SetPrefix("[SEED]")
 	driverConfig.CoreConfig.Log.Println("=========New File==========")
 	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
@@ -843,7 +844,7 @@ func SeedVaultFromData(driverConfig *eUtils.DriverConfig, filepath string, fData
 }
 
 // WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
-func WriteData(driverConfig *eUtils.DriverConfig, path string, data map[string]interface{}, mod *helperkv.Modifier) *helperkv.Modifier {
+func WriteData(driverConfig *config.DriverConfig, path string, data map[string]interface{}, mod *helperkv.Modifier) *helperkv.Modifier {
 	root := strings.Split(path, "/")[0]
 	if templateWritten == nil {
 		templateWritten = make(map[string]bool)

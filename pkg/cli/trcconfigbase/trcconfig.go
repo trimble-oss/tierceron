@@ -18,12 +18,13 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/google/go-cmp/cmp"
 )
 
-func messenger(configCtx *utils.ConfigContext, inData *string, inPath string) {
-	var data utils.ResultData
+func messenger(configCtx *config.ConfigContext, inData *string, inPath string) {
+	var data config.ResultData
 	data.InData = inData
 	data.InPath = inPath
 	inPathSplit := strings.Split(inPath, "||.")
@@ -51,7 +52,7 @@ skipSwitch:
 	configCtx.ResultChannel <- &data
 }
 
-func receiver(configCtx *utils.ConfigContext) {
+func receiver(configCtx *config.ConfigContext) {
 
 	for data := range configCtx.ResultChannel {
 		if data != nil && data.Done {
@@ -85,16 +86,16 @@ func CommonMain(envDefaultPtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *eUtils.DriverConfig) error {
+	driverConfig *config.DriverConfig) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	STARTDIR_DEFAULT = coreopts.BuildOptions.GetFolderPrefix(nil) + "_templates"
 
-	configCtx := &utils.ConfigContext{
+	configCtx := &config.ConfigContext{
 		ResultMap:     make(map[string]*string),
 		EnvSlice:      make([]string, 0),
-		ResultChannel: make(chan *utils.ResultData, 5),
+		ResultChannel: make(chan *config.ResultData, 5),
 		FileSysIndex:  -1,
 		ConfigWg:      sync.WaitGroup{},
 		Mutex:         &sync.Mutex{},
@@ -208,7 +209,7 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	var appRoleConfigPtr *string
-	var driverConfigBase *eUtils.DriverConfig
+	var driverConfigBase *config.DriverConfig
 	if driverConfig != nil {
 		driverConfigBase = driverConfig
 		if driverConfigBase.CoreConfig.TokenPtr == nil {
@@ -245,7 +246,7 @@ func CommonMain(envDefaultPtr *string,
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
-		driverConfigBase = &eUtils.DriverConfig{
+		driverConfigBase = &config.DriverConfig{
 			CoreConfig: core.CoreConfig{ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
@@ -420,7 +421,7 @@ func CommonMain(envDefaultPtr *string,
 	//channel receiver
 	go receiver(configCtx)
 	if *diffPtr && !driverConfigBase.CoreConfig.IsShell {
-		configSlice := make([]eUtils.DriverConfig, 0, len(configCtx.EnvSlice)-1)
+		configSlice := make([]config.DriverConfig, 0, len(configCtx.EnvSlice)-1)
 		for _, env := range configCtx.EnvSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
@@ -452,7 +453,7 @@ func CommonMain(envDefaultPtr *string,
 				memprotectopts.MemProtect(nil, tokenEnv)
 			}
 
-			driverConfig := eUtils.DriverConfig{
+			driverConfig := config.DriverConfig{
 				CoreConfig: core.CoreConfig{
 					IsShell:         isShell,
 					Insecure:        *insecurePtr,
@@ -483,9 +484,9 @@ func CommonMain(envDefaultPtr *string,
 
 			configSlice = append(configSlice, driverConfig)
 			configCtx.ConfigWg.Add(1)
-			go func(cs *[]eUtils.DriverConfig) {
+			go func(cs *[]config.DriverConfig) {
 				defer configCtx.ConfigWg.Done()
-				eUtils.ConfigControl(nil, configCtx, &(*cs)[len(*cs)-1], vcutils.GenerateConfigsFromVault)
+				config.ConfigControl(nil, configCtx, &(*cs)[len(*cs)-1], vcutils.GenerateConfigsFromVault)
 				if int(configCtx.GetDiffFileCount()) < (*cs)[len(*cs)-1].DiffCounter { //Without this, resultMap may be missing data when diffing.
 					configCtx.SetDiffFileCount((*cs)[len(*cs)-1].DiffCounter) //This counter helps the diff wait for results
 				}
@@ -508,7 +509,7 @@ func CommonMain(envDefaultPtr *string,
 		if len(envVersion) < 2 {
 			*envPtr = envVersion[0] + "_0"
 		}
-		dConfig := eUtils.DriverConfig{
+		dConfig := config.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				IsShell:         isShell,
 				WantCerts:       *wantCertsPtr,
@@ -548,18 +549,18 @@ func CommonMain(envDefaultPtr *string,
 			dConfig.DeploymentConfig = driverConfigBase.DeploymentConfig
 		}
 		configCtx.ConfigWg.Add(1)
-		go func(dc *eUtils.DriverConfig) {
+		go func(dc *config.DriverConfig) {
 			defer configCtx.ConfigWg.Done()
-			eUtils.ConfigControl(nil, configCtx, dc, vcutils.GenerateConfigsFromVault)
+			config.ConfigControl(nil, configCtx, dc, vcutils.GenerateConfigsFromVault)
 		}(&dConfig)
 	}
 	configCtx.ConfigWg.Wait() //Wait for templates
 	if driverConfig == nil {
-		configCtx.ResultChannel <- &eUtils.ResultData{Done: true}
+		configCtx.ResultChannel <- &config.ResultData{Done: true}
 		close(configCtx.ResultChannel)
 	} else if driverConfig.CoreConfig.IsShell {
 		// Just shut down result channel since not really used in shell..
-		configCtx.ResultChannel <- &eUtils.ResultData{Done: true}
+		configCtx.ResultChannel <- &config.ResultData{Done: true}
 		select {
 		case _, ok := <-configCtx.ResultChannel:
 			if ok {

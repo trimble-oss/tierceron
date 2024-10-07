@@ -21,6 +21,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
@@ -131,7 +132,7 @@ type TrcFlowMachineContext struct {
 	FlowControllerInit        bool
 	FlowControllerUpdateLock  sync.Mutex
 	FlowControllerUpdateAlert chan string
-	DriverConfig              *eUtils.DriverConfig
+	DriverConfig              *config.DriverConfig
 	Vault                     *sys.Vault
 	TierceronEngine           *trcengine.TierceronEngine
 	ExtensionAuthData         map[string]interface{}
@@ -892,7 +893,7 @@ func (tfmContext *TrcFlowMachineContext) Log(msg string, err error) {
 }
 
 func (tfmContext *TrcFlowMachineContext) ProcessFlow(
-	driverConfig *eUtils.DriverConfig,
+	driverConfig *config.DriverConfig,
 	tfContext *TrcFlowContext,
 	processFlowController func(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext) error,
 	vaultDatabaseConfig map[string]interface{}, // TODO: actually use this to set up a mysql facade.

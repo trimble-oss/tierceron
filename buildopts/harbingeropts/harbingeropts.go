@@ -21,6 +21,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/insecure"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcutil "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -103,7 +104,7 @@ func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string,
 
 // Used to define a database interface for querying TrcDb.
 // Builds interface for TrcDB
-func BuildInterface(driverConfig *eUtils.DriverConfig, goMod *kv.Modifier, tfmContextInterface interface{}, vaultDatabaseConfig map[string]interface{}, serverListenerInterface interface{}) error {
+func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContextInterface interface{}, vaultDatabaseConfig map[string]interface{}, serverListenerInterface interface{}) error {
 	serverListener := serverListenerInterface.(server.ServerEventListener)
 	tfmContext := tfmContextInterface.(*flowcore.TrcFlowMachineContext)
 	interfaceUrl, parseErr := url.Parse(vaultDatabaseConfig["vaddress"].(string))

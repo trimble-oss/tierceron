@@ -10,12 +10,13 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultMod(driverConfig *DriverConfig) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	LogInfo(&driverConfig.CoreConfig, "InitVaultMod begins..")
 	if driverConfig == nil {
 		LogInfo(&driverConfig.CoreConfig, "InitVaultMod failure.  driverConfig provided is nil")
@@ -43,7 +44,7 @@ func InitVaultMod(driverConfig *DriverConfig) (*DriverConfig, *helperkv.Modifier
 	return driverConfig, mod, vault, nil
 }
 
-func GetAcceptedTemplatePaths(driverConfig *DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
+func GetAcceptedTemplatePaths(driverConfig *config.DriverConfig, modCheck *helperkv.Modifier, templatePaths []string) ([]string, error) {
 	var acceptedTemplatePaths []string
 	var templateName string = coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_templates"
 
@@ -122,7 +123,7 @@ func GetAcceptedTemplatePaths(driverConfig *DriverConfig, modCheck *helperkv.Mod
 var logMap sync.Map = sync.Map{}
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	logger.Println("InitVaultModForPlugin log setup: " + pluginConfig["env"].(string))
 	var trcdbEnvLogger *log.Logger
 
@@ -185,7 +186,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		return nil, nil, nil, errors.New("Missing required env")
 	}
 
-	driverConfig := DriverConfig{
+	driverConfig := config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts:       false,
 			Insecure:        !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...

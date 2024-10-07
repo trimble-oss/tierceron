@@ -14,6 +14,7 @@ import (
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
@@ -44,7 +45,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	reflect.ValueOf(symbol).Call([]reflect.Value{reflect.ValueOf(properties)})
 }
 
-func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) {
+func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) {
 	if driverConfig.CoreConfig.Log != nil {
 		if logger == nil {
 			logger = driverConfig.CoreConfig.Log
@@ -157,7 +158,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *eUtils.Driv
 	}
 }
 
-func (pluginHandler *PluginHandler) handle_errors(driverConfig *eUtils.DriverConfig) {
+func (pluginHandler *PluginHandler) handle_errors(driverConfig *config.DriverConfig) {
 	for {
 		result := <-pluginHandler.err_receiver
 		switch {
@@ -169,7 +170,7 @@ func (pluginHandler *PluginHandler) handle_errors(driverConfig *eUtils.DriverCon
 	}
 }
 
-func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *eUtils.DriverConfig, mod *kv.Modifier, vault *system.Vault) {
+func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *config.DriverConfig, mod *kv.Modifier, vault *system.Vault) {
 	// tfmContext := &flowcore.TrcFlowMachineContext{
 	// 	Env:                       driverConfig.CoreConfig.Env,
 	// 	GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
@@ -199,7 +200,7 @@ func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *eUtils.Dri
 	}
 }
 
-func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *eUtils.DriverConfig) {
+func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *config.DriverConfig) {
 	pluginName := driverConfig.SubSectionValue
 	if len(pluginName) == 0 {
 		driverConfig.CoreConfig.Log.Printf("No plugin name provided to stop plugin service.\n")
@@ -216,7 +217,7 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *eUtils.Drive
 	pluginHandler.IsRunning = false
 }
 
-func LoadPluginPath(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) string {
+func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) string {
 	var deployroot string
 	var service string
 	if s, ok := pluginToolConfig["trcplugin"].(string); ok {
@@ -239,7 +240,7 @@ func LoadPluginPath(driverConfig *eUtils.DriverConfig, pluginToolConfig map[stri
 	return pluginPath
 }
 
-func LoadPluginMod(driverConfig *eUtils.DriverConfig, pluginPath string) {
+func LoadPluginMod(driverConfig *config.DriverConfig, pluginPath string) {
 	pluginM, err := plugin.Open(pluginPath)
 	if err != nil {
 		fmt.Printf("Unable to open plugin module for service: %s\n", pluginPath)

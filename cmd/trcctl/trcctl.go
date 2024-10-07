@@ -21,7 +21,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 const configDir = "/.tierceron/config.yml"
@@ -111,7 +111,7 @@ func main() {
 		case "init":
 			trcinitbase.CommonMain(envPtr, &addrPtr, tokenPtr, &envContext, nil, nil, nil, nil, flagset, os.Args, nil)
 		case "config":
-			driverConfig := eUtils.DriverConfig{
+			driverConfig := config.DriverConfig{
 				CoreConfig: core.CoreConfig{
 					TokenPtr:      tokenPtr,
 					ExitOnFailure: true,

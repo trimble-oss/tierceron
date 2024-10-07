@@ -9,6 +9,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -43,7 +44,7 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 
 var encryptSecret = ""
 
-func SetEncryptionSecret(driverConfig *eUtils.DriverConfig) error {
+func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
 	var encryptionSecretField = "encryptionSecret"
 	if len(driverConfig.Trcxe) > 2 {
 		var input, validateInput string

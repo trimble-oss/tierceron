@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/trimble-oss/tierceron/pkg/core"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 func TestCommonMain(t *testing.T) {
@@ -20,7 +20,7 @@ func TestCommonMain(t *testing.T) {
 	flagset := &flag.FlagSet{}
 	argLines := []string{"arg1", "arg2"}
 
-	driverConfig := eUtils.DriverConfig{
+	driverConfig := config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			TokenPtr:      &tokenPtr,
 			ExitOnFailure: true,

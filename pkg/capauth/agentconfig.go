@@ -22,7 +22,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/pkg/tls"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -40,7 +40,7 @@ type AgentConfigs struct {
 }
 
 type TrcshDriverConfig struct {
-	DriverConfig *eUtils.DriverConfig
+	DriverConfig *config.DriverConfig
 	FeatherCtx   *cap.FeatherContext
 	FeatherCtlCb func(*cap.FeatherContext, string) error
 }
@@ -359,6 +359,14 @@ func NewAgentConfig(addressPtr *string,
 		trcshConfig := &TrcShConfig{Env: trcHatEnv,
 			EnvContext: trcHatEnv,
 		}
+
+		// TODO: Chewbacca -- Local debug
+		// configRole := os.Getenv("CONFIG_ROLE")
+		// vaddress := os.Getenv("VAULT_ADDR")
+		// trcshConfig.ConfigRolePtr = &configRole
+		// trcshConfig.VaultAddressPtr = &vaddress
+		// return agentconfig, trcshConfig, nil
+		// End Chewbacca
 
 		var penseError error
 		trcshConfig.ConfigRolePtr, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/go-git/go-billy/v5"
 )
@@ -15,7 +16,7 @@ type TrcshMemFs struct {
 	BillyFs billy.Filesystem
 }
 
-func (t *TrcshMemFs) WriteToMemFile(driverConfig *eUtils.DriverConfig, memCacheLocal *sync.Mutex, byteData *[]byte, path string) {
+func (t *TrcshMemFs) WriteToMemFile(driverConfig *config.DriverConfig, memCacheLocal *sync.Mutex, byteData *[]byte, path string) {
 
 	configMemFs := driverConfig.MemFs.(*TrcshMemFs)
 

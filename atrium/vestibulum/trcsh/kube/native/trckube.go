@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -194,7 +195,7 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 	return trcKubeDirective
 }
 
-func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *eUtils.DriverConfig) error {
+func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.DriverConfig) error {
 	configFlags := genericclioptions.NewConfigFlags(true).
 		WithDeprecatedPasswordFlag().
 		WithDiscoveryBurst(300).
@@ -362,7 +363,7 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *eUtils.Driver
 }
 
 // KubeApply applies an in memory yaml file to a kubernetes cluster
-func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *eUtils.DriverConfig) error {
+func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.DriverConfig) error {
 	configFlags := genericclioptions.
 		NewConfigFlags(true).
 		WithDeprecatedPasswordFlag()

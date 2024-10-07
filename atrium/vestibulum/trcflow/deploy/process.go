@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 
@@ -33,7 +34,7 @@ func init() {
 func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployInitFlow begun.")
 	var err error
-	var driverConfig *eUtils.DriverConfig
+	var driverConfig *config.DriverConfig
 	var goMod *helperkv.Modifier
 	var vault *sys.Vault
 
@@ -346,7 +347,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 }
 
 // Updated deployed to true for any plugin
-func PluginDeployedUpdate(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, vault *sys.Vault, pluginNameList []string, cPath []string, logger *log.Logger) error {
+func PluginDeployedUpdate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, vault *sys.Vault, pluginNameList []string, cPath []string, logger *log.Logger) error {
 	logger.Println("PluginDeployedUpdate start.")
 
 	hostName, hostNameErr := os.Hostname()

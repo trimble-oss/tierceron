@@ -15,19 +15,20 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"github.com/hashicorp/vault/api"
 )
 
-func messenger(configCtx *eUtils.ConfigContext, inData *string, inPath string) {
-	var data eUtils.ResultData
+func messenger(configCtx *config.ConfigContext, inData *string, inPath string) {
+	var data config.ResultData
 	data.InData = inData
 	data.InPath = inPath
 	configCtx.ResultChannel <- &data
 }
 
-func receiver(configCtx *eUtils.ConfigContext) {
+func receiver(configCtx *config.ConfigContext) {
 	for {
 		select {
 		case data := <-configCtx.ResultChannel:
@@ -42,8 +43,8 @@ func receiver(configCtx *eUtils.ConfigContext) {
 
 // CommonMain This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
-func CommonMain(ctx eUtils.ProcessContext,
-	configDriver eUtils.ConfigDriver,
+func CommonMain(ctx config.ProcessContext,
+	configDriver config.ConfigDriver,
 	envPtr *string,
 	addrPtrIn *string,
 	envCtxPtr *string,
@@ -109,17 +110,17 @@ func CommonMain(ctx eUtils.ProcessContext,
 	}
 
 	flagset.Parse(argLines[1:])
-	configCtx := &eUtils.ConfigContext{
+	configCtx := &config.ConfigContext{
 		ResultMap:            make(map[string]*string),
 		EnvSlice:             make([]string, 0),
 		ProjectSectionsSlice: make([]string, 0),
-		ResultChannel:        make(chan *eUtils.ResultData, 5),
+		ResultChannel:        make(chan *config.ResultData, 5),
 		FileSysIndex:         -1,
 		ConfigWg:             sync.WaitGroup{},
 		Mutex:                &sync.Mutex{},
 	}
 
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			Insecure:      *insecurePtr,
 			ExitOnFailure: true,
@@ -368,7 +369,7 @@ skipDiff:
 		}
 		appconfigrolePtr := new(string)
 
-		autoErr := eUtils.AutoAuth(&eUtils.DriverConfig{
+		autoErr := eUtils.AutoAuth(&config.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: true,
 				Insecure:      *insecurePtr,
@@ -432,7 +433,7 @@ skipDiff:
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
 					appconfigrolePtr := new(string)
 
-					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
+					authErr := eUtils.AutoAuth(&config.DriverConfig{
 						CoreConfig: core.CoreConfig{
 							ExitOnFailure: true,
 							Insecure:      *insecurePtr,
@@ -454,7 +455,7 @@ skipDiff:
 					if !*noVaultPtr && *tokenPtr == "" {
 						appconfigrolePtr := new(string)
 
-						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
+						authErr := eUtils.AutoAuth(&config.DriverConfig{
 							CoreConfig: core.CoreConfig{
 								ExitOnFailure: true,
 								Insecure:      *insecurePtr,
@@ -464,7 +465,7 @@ skipDiff:
 						if authErr != nil {
 							// Retry once.
 
-							authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
+							authErr := eUtils.AutoAuth(&config.DriverConfig{
 								CoreConfig: core.CoreConfig{
 									ExitOnFailure: true,
 									Insecure:      *insecurePtr,
@@ -484,7 +485,7 @@ skipDiff:
 						*envPtr = envVersion[0] + "_0"
 					}
 
-					driverConfig := &eUtils.DriverConfig{
+					driverConfig := &config.DriverConfig{
 						CoreConfig: core.CoreConfig{
 							WantCerts:         *wantCertsPtr,
 							Insecure:          *insecurePtr,
@@ -511,9 +512,9 @@ skipDiff:
 						Trcxr:         *readOnlyPtr,
 					}
 					waitg.Add(1)
-					go func(dc *eUtils.DriverConfig) {
+					go func(dc *config.DriverConfig) {
 						defer waitg.Done()
-						eUtils.ConfigControl(ctx, configCtx, dc, configDriver)
+						config.ConfigControl(ctx, configCtx, dc, configDriver)
 					}(driverConfig)
 					return
 				}
@@ -596,7 +597,7 @@ skipDiff:
 					appconfigrolePtr := new(string)
 
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
-					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
+					authErr := eUtils.AutoAuth(&config.DriverConfig{
 						CoreConfig: core.CoreConfig{
 							ExitOnFailure: true,
 							Insecure:      *insecurePtr,
@@ -729,7 +730,7 @@ skipDiff:
 				if !*noVaultPtr && *tokenEnvPtr == "" {
 					appconfigrolePtr := new(string)
 
-					authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
+					authErr := eUtils.AutoAuth(&config.DriverConfig{
 						CoreConfig: core.CoreConfig{
 							ExitOnFailure: true,
 							Insecure:      *insecurePtr,
@@ -738,7 +739,7 @@ skipDiff:
 					}, secretIDPtr, appRoleIDPtr, tokenEnvPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 					if authErr != nil {
 						// Retry once.
-						authErr := eUtils.AutoAuth(&eUtils.DriverConfig{
+						authErr := eUtils.AutoAuth(&config.DriverConfig{
 							CoreConfig: core.CoreConfig{
 								ExitOnFailure: true,
 								Insecure:      *insecurePtr,
@@ -768,7 +769,7 @@ skipDiff:
 						trcxeList = append(trcxeList, "new")
 					}
 				}
-				driverConfig := &eUtils.DriverConfig{
+				driverConfig := &config.DriverConfig{
 					CoreConfig: core.CoreConfig{
 						WantCerts:         *wantCertsPtr,
 						Insecure:          *insecurePtr,
@@ -803,9 +804,9 @@ skipDiff:
 					Trcxr:           *readOnlyPtr,
 				}
 				waitg.Add(1)
-				go func(dc *eUtils.DriverConfig) {
+				go func(dc *config.DriverConfig) {
 					defer waitg.Done()
-					eUtils.ConfigControl(ctx, configCtx, dc, configDriver)
+					config.ConfigControl(ctx, configCtx, dc, configDriver)
 				}(driverConfig)
 			}
 		}
@@ -815,7 +816,7 @@ skipDiff:
 	close(configCtx.ResultChannel)
 	if *diffPtr { //Diff if needed
 		waitg.Add(1)
-		go func(cctx *eUtils.ConfigContext) {
+		go func(cctx *config.ConfigContext) {
 			defer waitg.Done()
 			retry := 0
 			for {

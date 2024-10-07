@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -139,7 +140,7 @@ func StartPluginSettingEater() {
 }
 
 // Only push to sha256 chan if one is present.  Non blocking otherwise.
-func PushPluginSha(driverConfig *eUtils.DriverConfig, pluginConfig map[string]interface{}, vaultPluginSignature map[string]interface{}) {
+func PushPluginSha(driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, vaultPluginSignature map[string]interface{}) {
 	if _, trcShaChanOk := pluginConfig["trcsha256chan"]; trcShaChanOk {
 		if vaultPluginSignature != nil {
 			pluginConfig["trcsha256"] = vaultPluginSignature["trcsha256"]

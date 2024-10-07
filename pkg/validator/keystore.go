@@ -15,6 +15,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 
@@ -31,7 +32,7 @@ const (
 	rsaPrivateKeyType = "RSA PRIVATE KEY"
 )
 
-func StoreKeystore(driverConfig *eUtils.DriverConfig, trustStorePassword string) ([]byte, error) {
+func StoreKeystore(driverConfig *config.DriverConfig, trustStorePassword string) ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	keystoreWriter := bufio.NewWriter(buffer)
 
@@ -47,7 +48,7 @@ func StoreKeystore(driverConfig *eUtils.DriverConfig, trustStorePassword string)
 	return buffer.Bytes(), nil
 }
 
-func AddToKeystore(driverConfig *eUtils.DriverConfig, alias string, password []byte, certBundleJks string, data []byte) error {
+func AddToKeystore(driverConfig *config.DriverConfig, alias string, password []byte, certBundleJks string, data []byte) error {
 	// TODO: Add support for this format?  golang.org/x/crypto/pkcs12
 
 	if !strings.HasSuffix(driverConfig.WantKeystore, ".jks") && strings.HasSuffix(certBundleJks, ".jks") {

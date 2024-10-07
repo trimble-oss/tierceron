@@ -17,6 +17,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 	"github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
@@ -49,7 +50,7 @@ func CommonMain(envPtr *string,
 	uploadCertPtr *bool,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *eUtils.DriverConfig) {
+	driverConfig *config.DriverConfig) {
 
 	var newPtr *bool = defaultFalse()
 	var seedPtr *string = defaultEmpty()
@@ -132,7 +133,7 @@ func CommonMain(envPtr *string,
 		flagset.Parse(nil)
 	}
 
-	var driverConfigBase *eUtils.DriverConfig
+	var driverConfigBase *config.DriverConfig
 	if driverConfig != nil {
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
@@ -151,7 +152,7 @@ func CommonMain(envPtr *string,
 		logger := log.New(f, "[INIT]", log.LstdFlags)
 		logger.Println("==========Beginning Vault Initialization==========")
 
-		driverConfigBase = &eUtils.DriverConfig{
+		driverConfigBase = &config.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: true,
 				Insecure:      true,
@@ -829,7 +830,7 @@ func CommonMain(envPtr *string,
 
 		}
 
-		dConfig := &eUtils.DriverConfig{
+		dConfig := &config.DriverConfig{
 			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
 			CoreConfig: core.CoreConfig{
 				DynamicPathFilter: *dynamicPathPtr,

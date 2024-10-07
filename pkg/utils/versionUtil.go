@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -42,7 +43,7 @@ func GetEnvBasis(env string) string {
 	}
 }
 
-func GetProjectVersionInfo(driverConfig *DriverConfig, mod *helperkv.Modifier) map[string]map[string]interface{} {
+func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modifier) map[string]map[string]interface{} {
 	versionMetadataMap := make(map[string]map[string]interface{})
 	mod.VersionFilter = driverConfig.VersionFilter
 	var secretMetadataMap map[string]map[string]interface{}
@@ -90,7 +91,7 @@ func GetProjectVersionInfo(driverConfig *DriverConfig, mod *helperkv.Modifier) m
 	return versionMetadataMap
 }
 
-func GetProjectVersions(driverConfig *DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
+func GetProjectVersions(driverConfig *config.DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
 	var versionNumbers []int
 	for valuePath, data := range versionMetadataMap {
 		if len(driverConfig.ServiceFilter) > 0 {
@@ -126,7 +127,7 @@ func GetProjectVersions(driverConfig *DriverConfig, versionMetadataMap map[strin
 	return versionNumbers
 }
 
-func BoundCheck(driverConfig *DriverConfig, versionNumbers []int, version string) {
+func BoundCheck(driverConfig *config.DriverConfig, versionNumbers []int, version string) {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if IsWindows() {
@@ -145,7 +146,7 @@ func BoundCheck(driverConfig *DriverConfig, versionNumbers []int, version string
 	}
 }
 
-func GetProjectServices(driverConfig *DriverConfig, templateFiles []string) ([]string, []string, []string) {
+func GetProjectServices(driverConfig *config.DriverConfig, templateFiles []string) ([]string, []string, []string) {
 	projects := []string{}
 	services := []string{}
 	templateFilesContents := []string{}
@@ -165,7 +166,7 @@ func GetProjectServices(driverConfig *DriverConfig, templateFiles []string) ([]s
 // driverConfig - driver configuration
 // templateFile - full path to template file
 // returns project, service, templatePath
-func GetProjectService(driverConfig *DriverConfig, templateFile string) (string, string, int, string) {
+func GetProjectService(driverConfig *config.DriverConfig, templateFile string) (string, string, int, string) {
 	templateFile = strings.ReplaceAll(strings.ReplaceAll(templateFile, "\\\\", "/"), "\\", "/")
 	splitDir := strings.Split(templateFile, "/")
 	var project, service string
