@@ -10,7 +10,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -29,7 +29,6 @@ func PrintVersion() {
 
 func CommonMain(envPtr *string,
 	addrPtr *string,
-	tokenPtr *string,
 	envCtxPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
@@ -59,6 +58,7 @@ func CommonMain(envPtr *string,
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
 	appRolePtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
+	tokenPtr := flagset.String("token", "", "Vault access token")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 
 	if driverConfig == nil || !driverConfig.IsShellSubProcess {
@@ -68,7 +68,7 @@ func CommonMain(envPtr *string,
 	}
 
 	var driverConfigBase *config.DriverConfig
-	if driverConfig != nil {
+	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
 		appRolePtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
@@ -79,25 +79,33 @@ func CommonMain(envPtr *string,
 		}
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "[INIT]", log.LstdFlags)
-		driverConfigBase = &config.DriverConfig{
-			CoreConfig: core.CoreConfig{
-				ExitOnFailure: true,
-				Insecure:      true,
-				Log:           logger,
-			},
+		driverConfigBase = driverConfig
+		driverConfigBase.CoreConfig.Insecure = false
+		driverConfigBase.CoreConfig.Log = logger
+		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
+			tokenName := fmt.Sprintf("vault_pub_token_%s", *envPtr)
+			tokenNamePtr = &tokenName
 		}
 
-		eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)
+		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+
+		appRolePtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
+		if eUtils.RefLength(appRoleIDPtr) == 0 {
+			appRole := "configpub.yml"
+			appRolePtr = &appRole
+		}
+
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRolePtr, *pingPtr)
-	eUtils.CheckError(&driverConfigBase.CoreConfig, autoErr, true)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRolePtr, *pingPtr)
+	eUtils.CheckError(driverConfigBase.CoreConfig, autoErr, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
 	if driverConfig != nil && driverConfig.CoreConfig.IsShell {
@@ -108,20 +116,20 @@ func CommonMain(envPtr *string,
 		fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, tokenPtr, addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("vault_pub_token_%s", *envPtr)), addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
-	eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)
+	eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	mod.Env = *envPtr
 
-	warn, err := il.UploadTemplateDirectory(&driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
+	warn, err := il.UploadTemplateDirectory(driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)
 		}
 	}
 
-	eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)
-	eUtils.CheckWarnings(&driverConfigBase.CoreConfig, warn, true)
+	eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+	eUtils.CheckWarnings(driverConfigBase.CoreConfig, warn, true)
 }

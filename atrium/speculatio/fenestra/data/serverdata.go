@@ -2,6 +2,7 @@ package data
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"sort"
@@ -86,7 +87,7 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 // Returns an array of mashup detailed elements populated with each Tenant's data and Childnodes
 func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.MashupDetailedElement {
 	driverConfig := &config.DriverConfig{
-		CoreConfig: core.CoreConfig{
+		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
 			Insecure:      *insecure,
 			Log:           logger,
@@ -95,20 +96,19 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	secretID := ""
 	appRoleID := ""
 	addressPtr := new(string)
-	tokenPtr := new(string)
 	approleconfig := new(string)
 	empty := ""
 
-	autoErr := eUtils.AutoAuth(driverConfig, &secretID, &appRoleID, tokenPtr, &empty, envPtr, addressPtr, nil, approleconfig, false)
-	eUtils.CheckError(&driverConfig.CoreConfig, autoErr, true)
+	autoErr := eUtils.AutoAuth(driverConfig, &secretID, &appRoleID, &empty, envPtr, addressPtr, nil, approleconfig, false)
+	eUtils.CheckError(driverConfig.CoreConfig, autoErr, true)
 
-	mod, modErr := helperkv.NewModifier(*insecure, tokenPtr, addressPtr, *envPtr, nil, true, logger)
+	mod, modErr := helperkv.NewModifier(*insecure, driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s_protected", driverConfig.CoreConfig.EnvBasis)), addressPtr, *envPtr, nil, true, logger)
 	mod.Direct = true
 	mod.Env = *envPtr
-	eUtils.CheckError(&driverConfig.CoreConfig, modErr, true)
+	eUtils.CheckError(driverConfig.CoreConfig, modErr, true)
 	logger.Printf("Building fleet.\n")
 	ArgosyFleet, argosyErr := argosyopts.BuildFleet(mod, logger)
-	eUtils.CheckError(&driverConfig.CoreConfig, argosyErr, true)
+	eUtils.CheckError(driverConfig.CoreConfig, argosyErr, true)
 	logger.Printf("Fleet built.\n")
 
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}

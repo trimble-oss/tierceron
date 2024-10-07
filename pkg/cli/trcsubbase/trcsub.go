@@ -11,7 +11,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -39,7 +39,6 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	}
 	var envPtr *string = nil
 
-	exitOnFailure := false
 	if flagset == nil {
 		fmt.Println("Version: " + "1.6")
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
@@ -57,9 +56,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		flagset.String("secretID", "", "Secret for app role ID")
 		flagset.String("appRoleID", "", "Public app role ID")
 	}
-	exitOnFailure = true
 	endDirPtr := flagset.String("endDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
-	tokenPtr := flagset.String("token", "", "Vault access token")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
@@ -67,6 +64,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	projectInfoPtr := flagset.Bool("projectInfo", false, "Lists all project info")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
+	tokenPtr := flagset.String("token", "", "Vault access token")
 
 	flagset.Parse(argLines[1:])
 	if envPtr == nil {
@@ -80,7 +78,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	var driverConfigBase *config.DriverConfig
 	var appRoleConfigPtr *string
 
-	if driverConfig != nil {
+	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
 		if len(driverConfigBase.EndDir) == 0 && len(*endDirPtr) != 0 {
 			// Bad inputs... use default.
@@ -100,14 +98,16 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		logger := log.New(f, "[INIT]", log.LstdFlags)
-		driverConfigBase = &config.DriverConfig{
-			CoreConfig: core.CoreConfig{
-				ExitOnFailure: exitOnFailure,
-				Insecure:      *insecurePtr,
-				Log:           logger,
-			},
-			EndDir: *endDirPtr,
+		driverConfigBase = driverConfig
+		driverConfigBase.CoreConfig.Insecure = *insecurePtr
+		driverConfigBase.CoreConfig.Log = logger
+		driverConfigBase.EndDir = *endDirPtr
+		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
+			tokenName := fmt.Sprintf("config_token_%s", *envPtr)
+			tokenNamePtr = &tokenName
 		}
+		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+
 		appRoleConfigPtr = new(string)
 	}
 
@@ -115,23 +115,19 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(&driverConfigBase.CoreConfig, err, false)
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, false)
 		return err
 	}
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return autoErr
 	}
-	if memonly.IsMemonly() {
-		memprotectopts.MemUnprotectAll(nil)
-		memprotectopts.MemProtect(nil, tokenPtr)
-	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, tokenPtr, addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", *envPtr)), addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
@@ -145,7 +141,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	if *templatePathsPtr != "" {
 		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
-		il.DownloadTemplates(&driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, templatePathsPtr)
+		il.DownloadTemplates(driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, templatePathsPtr)
 	} else if *projectInfoPtr {
 		templateList, err := mod.List("templates/", driverConfigBase.CoreConfig.Log)
 		if err != nil {
@@ -164,7 +160,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	} else {
 		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
-		warn, err := il.DownloadTemplateDirectory(&driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, filterTemplatePtr)
+		warn, err := il.DownloadTemplateDirectory(driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, filterTemplatePtr)
 		if err != nil {
 			fmt.Println(err)
 			driverConfigBase.CoreConfig.Log.Printf("Failure to download: %s", err.Error())
@@ -172,8 +168,8 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 				return err
 			}
 		}
-		eUtils.CheckError(&driverConfigBase.CoreConfig, err, false)
-		eUtils.CheckWarnings(&driverConfigBase.CoreConfig, warn, false)
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, false)
+		eUtils.CheckWarnings(driverConfigBase.CoreConfig, warn, false)
 	}
 	return nil
 }

@@ -59,7 +59,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					return &aFleet, readErr
 				} else {
 					driverConfig := &config.DriverConfig{
-						CoreConfig: core.CoreConfig{
+						CoreConfig: &core.CoreConfig{
 							ExitOnFailure: true,
 							Insecure:      mod.Insecure,
 							Log:           logger,
@@ -71,7 +71,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 						"dbsourceuser":     data["dbuser"],
 						"dbsourcepassword": data["dbpassword"],
 					}
-					dbsourceConn, err := trcdbutil.OpenDirectConnection(&driverConfig.CoreConfig, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
+					dbsourceConn, err := trcdbutil.OpenDirectConnection(driverConfig.CoreConfig, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), sourceDatabaseConnectionMap["dbsourcepassword"].(string))
 
 					if err != nil {
 						log.Println(err)

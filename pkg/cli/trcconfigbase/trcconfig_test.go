@@ -2,9 +2,11 @@ package trcconfigbase
 
 import (
 	"flag"
+	"fmt"
 	"testing"
 
 	"github.com/trimble-oss/tierceron/pkg/core"
+	trcshcache "github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
@@ -21,8 +23,8 @@ func TestCommonMain(t *testing.T) {
 	argLines := []string{"arg1", "arg2"}
 
 	driverConfig := config.DriverConfig{
-		CoreConfig: core.CoreConfig{
-			TokenPtr:      &tokenPtr,
+		CoreConfig: &core.CoreConfig{
+			TokenCache:    trcshcache.NewTokenCache(fmt.Sprintf("config_token_%s", envPtr), &tokenPtr),
 			ExitOnFailure: true,
 		},
 	}

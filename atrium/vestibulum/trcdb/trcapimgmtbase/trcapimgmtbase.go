@@ -23,7 +23,6 @@ import (
 
 func CommonMain(envPtr *string,
 	addrPtr *string,
-	tokenPtr *string,
 	envCtxPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,

@@ -37,15 +37,13 @@ func main() {
 	}
 	envPtr := flagset.String("env", "dev", "Environment to configure")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	tokenPtr := flagset.String("token", "", "Vault access token")
 	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
 	regionPtr := flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
 
 	driverConfig := config.DriverConfig{
-		CoreConfig: core.CoreConfig{
-			TokenPtr:      tokenPtr,
+		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
 		},
 	}

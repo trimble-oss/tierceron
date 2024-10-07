@@ -9,8 +9,6 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -73,15 +71,14 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			// Swapping in project root...
 			configRoleSlice := strings.Split(*trcshConfig.ConfigRolePtr, ":")
 			tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-			readToken := new(string)
 			approle := "config.yml"
-			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], readToken, &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
+			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				return nil, autoErr
 			}
 
-			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, readToken, trcshConfig.VaultAddressPtr, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.Env)), trcshConfig.VaultAddressPtr, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 			if err != nil {
 				fmt.Println("Unable to obtain resources for deployment")
 				return nil, err
@@ -112,7 +109,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				fmt.Printf("Loading deployment script for %s and env %s\n", deployment, mod.Env)
 				contentArray, _, _, err := vcutils.ConfigTemplate(trcshDriverConfig.DriverConfig, mod, fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string)), true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
 				if err != nil {
-					eUtils.LogErrorObject(&trcshDriverConfig.DriverConfig.CoreConfig, err, false)
+					eUtils.LogErrorObject(trcshDriverConfig.DriverConfig.CoreConfig, err, false)
 					return nil, err
 				}
 				content = []byte(contentArray)
@@ -136,19 +133,14 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 	configRoleSlice := strings.Split(*trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfigPtr, ":")
 	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.Env
-	readTokenPtr := new(string)
 	approle := "config.yml"
-	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], readTokenPtr, &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
+	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return nil, autoErr
 	}
-	if memonly.IsMemonly() {
-		memprotectopts.MemUnprotectAll(nil)
-		memprotectopts.MemProtect(nil, readTokenPtr)
-	}
 
-	mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, readTokenPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.Env)), trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}

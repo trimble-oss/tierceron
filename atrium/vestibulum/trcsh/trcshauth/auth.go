@@ -213,11 +213,11 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 	if featherCtx == nil {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 6")
-		trcshConfig.TokenPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "token")
+		tokenPtr, err := capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "token")
 		if err != nil {
 			return trcshConfig, err
 		}
-		memprotectopts.MemProtect(nil, trcshConfig.TokenPtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken("config_token_pluginany", tokenPtr)
 	}
 	if err != nil {
 		return trcshConfig, err

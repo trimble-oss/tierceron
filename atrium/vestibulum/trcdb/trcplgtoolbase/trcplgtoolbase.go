@@ -272,10 +272,10 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("unsupported agentdeploy outside trcsh")
 	}
 
-	if trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr == nil || *trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr == "" {
-		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
+	if eUtils.RefLength(trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)) == 0 {
+		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
 		if autoErr != nil {
-			eUtils.LogErrorMessage(&trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
+			eUtils.LogErrorMessage(trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
 		}
 	}
@@ -291,16 +291,16 @@ func CommonMain(envDefaultPtr *string,
 	}
 	pluginConfig["env"] = *envDefaultPtr
 	pluginConfig["vaddress"] = *addrPtr
-	if trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr != nil {
-		pluginConfig["tokenptr"] = trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr
+	if trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr) != nil {
+		pluginConfig["tokenptr"] = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)
 	}
 	pluginConfig["ExitOnFailure"] = true
 	if *regionPtr != "" {
 		pluginConfig["regions"] = []string{*regionPtr}
 	}
-	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
+	driverConfig, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
 	trcshConfig := &capauth.TrcshDriverConfig{
-		DriverConfig: config,
+		DriverConfig: driverConfig,
 	}
 	trcshConfig.FeatherCtlCb = trcshDriverConfigBase.FeatherCtlCb
 	trcshConfig.FeatherCtx = trcshDriverConfigBase.FeatherCtx
@@ -314,7 +314,7 @@ func CommonMain(envDefaultPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Failed to init mod for deploy update")
 		return err
 	}
-	config.StartDir = []string{*startDirPtr}
+	driverConfig.StartDir = []string{*startDirPtr}
 	if *pluginNameAliasPtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
 	} else if *pluginNamePtr != "" {
@@ -350,9 +350,9 @@ func CommonMain(envDefaultPtr *string,
 	if *updateAPIMPtr {
 		var apimError error
 		if len(*certPathPtr) > 0 {
-			apimError = trccertmgmtbase.CommonMain(certPathPtr, config, mod)
+			apimError = trccertmgmtbase.CommonMain(certPathPtr, driverConfig, mod)
 		} else {
-			apimError = trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, trcshDriverConfig.DriverConfig.CoreConfig.TokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
+			apimError = trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, driverConfig, mod)
 		}
 		if apimError != nil {
 			fmt.Println(apimError.Error())
@@ -767,7 +767,7 @@ func CommonMain(envDefaultPtr *string,
 					trcshDriverConfig.DriverConfig.StartDir = []string{""}
 				}
 
-				properties, err := trcvutils.NewProperties(&trcshDriverConfig.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
+				properties, err := trcvutils.NewProperties(trcshDriverConfig.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
 				if err != nil && !strings.Contains(err.Error(), "no data paths found when initing CDS") {
 					fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 					return err

@@ -22,10 +22,10 @@ import (
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
-func getImageSHA(driverConfig *eUtils.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
+func getImageSHA(driverConfig *config.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]interface{}) error {
 	err := ValidateRepository(driverConfig, pluginToolConfig)
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 }
 
 // Return url to the image to be used for download.
-func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+func GetImageAndShaFromDownload(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	for _, key := range []string{"azureTenantId", "azureClientId", "azureClientSecret", "acrrepository", "trcplugin"} {
 		if _, ok := pluginToolConfig[key].(string); !ok {
 			return errors.New(fmt.Sprintf("missing required Plugintool and plugin configurations %s", key))
@@ -179,7 +179,7 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 }
 
 // Pushes image to docker registry from: "rawImageFile", and "pluginname" in the map pluginToolConfig.
-func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+func PushImage(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	err := ValidateRepository(driverConfig, pluginToolConfig)
 	if err != nil {
 		return err
@@ -248,7 +248,7 @@ func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]in
 	return nil
 }
 
-func pullQualifiedName(dockerCli client.Client, driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}, qualifiedName string) error {
+func pullQualifiedName(dockerCli client.Client, driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}, qualifiedName string) error {
 	authConfig := registry.AuthConfig{
 		Username: pluginToolConfig["azureClientId"].(string),
 		Password: pluginToolConfig["azureClientSecret"].(string),
@@ -279,7 +279,7 @@ func pullQualifiedName(dockerCli client.Client, driverConfig *eUtils.DriverConfi
 	return nil
 }
 
-func pushQualifiedName(dockerCli client.Client, driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}, qualifiedName string) error {
+func pushQualifiedName(dockerCli client.Client, driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}, qualifiedName string) error {
 	authConfig := registry.AuthConfig{
 		Username: pluginToolConfig["azureClientId"].(string),
 		Password: pluginToolConfig["azureClientSecret"].(string),
@@ -324,7 +324,7 @@ func deleteDockerImage(imageName string) error {
 	return err
 }
 
-func ValidateRepository(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+func ValidateRepository(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) error {
 	if val, ok := pluginToolConfig["acrrepository"]; !ok || len(val.(string)) == 0 {
 		driverConfig.CoreConfig.Log.Printf("Acr repository undefined.  Refusing to continue.\n")
 		return errors.New("undefined acr repository")

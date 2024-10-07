@@ -61,7 +61,6 @@ func userHome(logger *log.Logger) (string, error) {
 func AutoAuth(driverConfig *config.DriverConfig,
 	secretIDPtr *string, // Optional if token provided.
 	appRoleIDPtr *string, // Optional if token provided.
-	tokenPtr *string, // Optional if appRole and secret provided.
 	tokenNamePtr *string, // Required if approle and secret provided.
 	envPtr *string,
 	addrPtr *string,
@@ -74,9 +73,16 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	var c cert
 	var v *sys.Vault
 
-	if !RefEquals(tokenPtr, "") && !RefEquals(addrPtr, "") && !RefEquals(appRoleConfigPtr, "deployauth") && !RefEquals(appRoleConfigPtr, "hivekernel") {
+	var tokenPtr *string
+	if RefLength(tokenNamePtr) > 0 {
+		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)
+	}
+	if RefLength(tokenPtr) != 0 && !RefEquals(addrPtr, "") && !RefEquals(appRoleConfigPtr, "deployauth") && !RefEquals(appRoleConfigPtr, "hivekernel") {
 		// For token based auth, auto auth not
 		return nil
+	}
+	if tokenPtr == nil {
+		tokenPtr = new(string)
 	}
 	var err error
 	// Get current user's home directory
@@ -113,9 +119,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 					*addrPtr = c.VaultHost
 				}
 
-				if *tokenPtr == "" {
+				if RefLength(tokenPtr) == 0 {
 					if !override {
-						LogInfo(&driverConfig.CoreConfig, "Obtaining auth credentials.")
+						LogInfo(driverConfig.CoreConfig, "Obtaining auth credentials.")
 						if c.SecretID != "" && secretIDPtr != nil {
 							*secretIDPtr = c.SecretID
 						}
@@ -152,39 +158,33 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
 			if !isProd {
-				LogInfo(&driverConfig.CoreConfig, "No cert file found, please enter config IDs")
+				LogInfo(driverConfig.CoreConfig, "No cert file found, please enter config IDs")
 			} else {
-				LogInfo(&driverConfig.CoreConfig, "Please enter config IDs")
+				LogInfo(driverConfig.CoreConfig, "Please enter config IDs")
 			}
 			if addrPtr != nil && *addrPtr != "" {
-				LogInfo(&driverConfig.CoreConfig, "vaultHost: "+*addrPtr)
+				LogInfo(driverConfig.CoreConfig, "vaultHost: "+*addrPtr)
 				vaultHost = *addrPtr
 			} else {
-				LogInfo(&driverConfig.CoreConfig, "vaultHost: ")
+				LogInfo(driverConfig.CoreConfig, "vaultHost: ")
 				scanner.Scan()
 				vaultHost = scanner.Text()
 			}
 
-			if *tokenPtr == "" {
-				if secretIDPtr != nil && *secretIDPtr != "" {
-					if !isProd {
-						LogInfo(&driverConfig.CoreConfig, "secretID: "+*secretIDPtr)
-					}
+			if RefLength(tokenPtr) == 0 {
+				if RefLength(secretIDPtr) != 0 {
 					secretID = *secretIDPtr
 				} else if secretIDPtr != nil {
-					LogInfo(&driverConfig.CoreConfig, "secretID: ")
+					LogInfo(driverConfig.CoreConfig, "secretID: ")
 					scanner.Scan()
 					secretID = scanner.Text()
 					*secretIDPtr = secretID
 				}
 
-				if appRoleIDPtr != nil && *appRoleIDPtr != "" {
-					if !isProd {
-						LogInfo(&driverConfig.CoreConfig, "approleID: "+*appRoleIDPtr)
-					}
+				if RefLength(appRoleIDPtr) != 0 {
 					approleID = *appRoleIDPtr
 				} else if appRoleIDPtr != nil {
-					LogInfo(&driverConfig.CoreConfig, "approleID: ")
+					LogInfo(driverConfig.CoreConfig, "approleID: ")
 					scanner.Scan()
 					approleID = scanner.Text()
 					*appRoleIDPtr = approleID
@@ -230,10 +230,10 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			dump = []byte(certConfigData)
 		} else if (override && !exists) || RefEquals(appRoleConfigPtr, "deployauth") || RefEquals(appRoleConfigPtr, "hivekernel") {
 			if !driverConfig.CoreConfig.IsShell {
-				LogInfo(&driverConfig.CoreConfig, "No approle file exists, continuing without saving config IDs")
+				LogInfo(driverConfig.CoreConfig, "No approle file exists, continuing without saving config IDs")
 			}
 		} else {
-			LogInfo(&driverConfig.CoreConfig, fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"))
+			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"))
 			certConfigData := "vaultHost: " + vaultHost + "\n"
 			if appRoleIDPtr != nil && secretIDPtr != nil {
 				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
@@ -259,7 +259,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			// Create cert file
 			writeErr := os.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
 			if writeErr != nil {
-				LogInfo(&driverConfig.CoreConfig, fmt.Sprintf("Unable to write file: %v\n", writeErr))
+				LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Unable to write file: %v\n", writeErr))
 			}
 		}
 
@@ -295,7 +295,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	if *secretIDPtr != "" || *appRoleIDPtr != "" || *tokenNamePtr != "" {
 		env, _, _, envErr := helperkv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
-			LogErrorMessage(&driverConfig.CoreConfig, fmt.Sprintf("Environment format error: %v\n", envErr), false)
+			LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Environment format error: %v\n", envErr), false)
 			return envErr
 		}
 
@@ -341,19 +341,19 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	skipswitch:
 		//check that none are empty
 		if *secretIDPtr == "" {
-			return LogAndSafeExit(&driverConfig.CoreConfig, "Missing required secretID", 1)
+			return LogAndSafeExit(driverConfig.CoreConfig, "Missing required secretID", 1)
 		} else if *appRoleIDPtr == "" {
-			return LogAndSafeExit(&driverConfig.CoreConfig, "Missing required appRoleID", 1)
+			return LogAndSafeExit(driverConfig.CoreConfig, "Missing required appRoleID", 1)
 		} else if *tokenNamePtr == "" {
-			return LogAndSafeExit(&driverConfig.CoreConfig, "Missing required tokenName", 1)
+			return LogAndSafeExit(driverConfig.CoreConfig, "Missing required tokenName", 1)
 		} else if *tokenNamePtr == "Invalid environment" {
-			return LogAndSafeExit(&driverConfig.CoreConfig, "Invalid environment:"+*envPtr, 1)
+			return LogAndSafeExit(driverConfig.CoreConfig, "Invalid environment:"+*envPtr, 1)
 		}
 		//check that token matches environment
 		tokenParts := strings.Split(*tokenNamePtr, "_")
 		tokenEnv := tokenParts[len(tokenParts)-1]
 		if GetEnvBasis(env) != tokenEnv {
-			return LogAndSafeExit(&driverConfig.CoreConfig, "Token doesn't match environment", 1)
+			return LogAndSafeExit(driverConfig.CoreConfig, "Token doesn't match environment", 1)
 		}
 	}
 
@@ -394,7 +394,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			mod.EnvBasis = "hivekernel"
 			mod.Env = "hivekernel"
 		}
-		LogInfo(&driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
+		LogInfo(driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
 		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") {
@@ -408,7 +408,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				return err
 			}
 		}
+		driverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 	}
-	LogInfo(&driverConfig.CoreConfig, "Auth credentials obtained.")
+	LogInfo(driverConfig.CoreConfig, "Auth credentials obtained.")
 	return nil
 }

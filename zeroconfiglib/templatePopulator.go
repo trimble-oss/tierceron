@@ -12,36 +12,40 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 import (
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 )
 
 //export ConfigTemplateLib
-func ConfigTemplateLib(tokenPtr *string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
+func ConfigTemplateLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
 
 	logger.Println("NCLib Version: " + "1.20")
-	mod, err := helperkv.NewModifier(false, tokenPtr, &address, env, nil, true, logger)
-	mod.Env = env
 	driverConfig := &config.DriverConfig{
-		CoreConfig: core.CoreConfig{
-			WantCerts: false,
-			Insecure:  false,
-			Log:       logger,
+		CoreConfig: &core.CoreConfig{
+			WantCerts:  false,
+			TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s", env), &token),
+			Insecure:   false,
+			Log:        logger,
 		},
 		ZeroConfig: true,
 		StartDir:   append([]string{}, "trc_templates"),
 	}
 
+	mod, err := helperkv.NewModifier(false, driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", env)), &address, env, nil, true, logger)
+	mod.Env = env
+
 	if err != nil {
-		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
 
 	configuredTemplate, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, service, false, true)
 	if err != nil {
-		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
 
 	mod.Close()
@@ -50,28 +54,29 @@ func ConfigTemplateLib(tokenPtr *string, address string, env string, templatePat
 }
 
 //export ConfigCertLib
-func ConfigCertLib(tokenPtr *string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
+func ConfigCertLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
 	logger.Println("NCLib Version: " + "1.20")
-	mod, err := helperkv.NewModifier(false, tokenPtr, &address, env, nil, true, logger)
+	mod, err := helperkv.NewModifier(false, &token, &address, env, nil, true, logger)
 	mod.Env = env
 	driverConfig := &config.DriverConfig{
-		CoreConfig: core.CoreConfig{
-			WantCerts: true,
-			Insecure:  false,
-			Log:       logger,
+		CoreConfig: &core.CoreConfig{
+			WantCerts:  true,
+			TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s", env), &token),
+			Insecure:   false,
+			Log:        logger,
 		},
 
 		ZeroConfig: true,
 		StartDir:   append([]string{}, "trc_templates"),
 	}
 	if err != nil {
-		eUtils.LogErrorMessage(&driverConfig.CoreConfig, err.Error(), false)
+		eUtils.LogErrorMessage(driverConfig.CoreConfig, err.Error(), false)
 		return C.CString("")
 	}
 	_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, service, true, true)
 	if err != nil {
-		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
 
 	mod.Close()

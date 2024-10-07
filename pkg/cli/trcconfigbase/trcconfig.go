@@ -16,6 +16,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -131,6 +132,7 @@ func CommonMain(envDefaultPtr *string,
 	fileFilterPtr := flagset.String("filter", "", "Filter files for diff")
 	templateInfoPtr := flagset.Bool("templateInfo", false, "Version information about templates")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
+	tokenPtr := flagset.String("token", "", "Vault access token")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
 	var versionInfoPtr *bool
 	var diffPtr *bool
@@ -210,11 +212,8 @@ func CommonMain(envDefaultPtr *string,
 
 	var appRoleConfigPtr *string
 	var driverConfigBase *config.DriverConfig
-	if driverConfig != nil {
+	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
-		if driverConfigBase.CoreConfig.TokenPtr == nil {
-			driverConfigBase.CoreConfig.TokenPtr = new(string)
-		}
 		if len(driverConfigBase.EndDir) == 0 || *endDirPtr != ENDDIR_DEFAULT {
 			// Honor inputs if provided...
 			driverConfigBase.EndDir = *endDirPtr
@@ -247,15 +246,21 @@ func CommonMain(envDefaultPtr *string,
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 		driverConfigBase = &config.DriverConfig{
-			CoreConfig: core.CoreConfig{ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
+			CoreConfig: &core.CoreConfig{ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
 			ZeroConfig: *zcPtr,
 			NoVault:    *noVaultPtr,
 		}
+		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
+			tokenName := fmt.Sprintf("config_token_%s", *envPtr)
+			tokenNamePtr = &tokenName
+		}
+
+		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
 
 		appRoleConfigPtr = new(string)
-		eUtils.CheckError(&driverConfigBase.CoreConfig, err, true)
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
 	//Dont allow these combinations of flags
@@ -315,7 +320,7 @@ func CommonMain(envDefaultPtr *string,
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, driverConfigBase.CoreConfig.TokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
 				if driverConfig != nil {
 					driverConfig.CoreConfig.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)
@@ -329,7 +334,8 @@ func CommonMain(envDefaultPtr *string,
 				return nil
 			}
 		} else {
-			*driverConfigBase.CoreConfig.TokenPtr = "novault"
+			token := "novault"
+			driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
 		}
 
 		if len(envVersion) >= 2 { //Put back env+version together
@@ -425,10 +431,8 @@ func CommonMain(envDefaultPtr *string,
 		for _, env := range configCtx.EnvSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
-			*driverConfigBase.CoreConfig.TokenPtr = ""
-			tokenEnv := new(string)
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenEnv, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					return errors.New("missing auth components")
@@ -437,7 +441,8 @@ func CommonMain(envDefaultPtr *string,
 					return nil
 				}
 			} else {
-				*tokenEnv = "novault"
+				token := "novault"
+				driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
 			}
 			if len(envVersion) >= 2 { //Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]
@@ -448,16 +453,12 @@ func CommonMain(envDefaultPtr *string,
 			} else {
 				*envPtr = envVersion[0] + "_0"
 			}
-			if memonly.IsMemonly() {
-				memprotectopts.MemUnprotectAll(nil)
-				memprotectopts.MemProtect(nil, tokenEnv)
-			}
 
 			driverConfig := config.DriverConfig{
-				CoreConfig: core.CoreConfig{
+				CoreConfig: &core.CoreConfig{
 					IsShell:         isShell,
 					Insecure:        *insecurePtr,
-					TokenPtr:        tokenEnv,
+					TokenCache:      driverConfigBase.CoreConfig.TokenCache,
 					VaultAddressPtr: addrPtr,
 					Env:             *envPtr,
 					EnvBasis:        eUtils.GetEnvBasis(*envPtr),
@@ -493,11 +494,6 @@ func CommonMain(envDefaultPtr *string,
 			}(&configSlice)
 		}
 	} else {
-		if memonly.IsMemonly() {
-			memprotectopts.MemUnprotectAll(nil)
-			memprotectopts.MemProtect(nil, driverConfigBase.CoreConfig.TokenPtr)
-		}
-
 		if *templateInfoPtr {
 			envVersion := strings.Split(*envPtr, "_")
 			*envPtr = envVersion[0] + "_templateInfo"
@@ -510,11 +506,11 @@ func CommonMain(envDefaultPtr *string,
 			*envPtr = envVersion[0] + "_0"
 		}
 		dConfig := config.DriverConfig{
-			CoreConfig: core.CoreConfig{
+			CoreConfig: &core.CoreConfig{
 				IsShell:         isShell,
 				WantCerts:       *wantCertsPtr,
 				Insecure:        *insecurePtr,
-				TokenPtr:        driverConfigBase.CoreConfig.TokenPtr,
+				TokenCache:      driverConfigBase.CoreConfig.TokenCache,
 				VaultAddressPtr: addrPtr,
 				Env:             *envPtr,
 				EnvBasis:        eUtils.GetEnvBasis(*envPtr),

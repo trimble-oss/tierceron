@@ -1,6 +1,10 @@
 package core
 
-import "log"
+import (
+	"log"
+
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
+)
 
 // This structure contains core properties central to Secrets engine access
 type CoreConfig struct {
@@ -8,7 +12,7 @@ type CoreConfig struct {
 
 	// Vault Configurations...
 	Insecure         bool
-	TokenPtr         *string
+	TokenCache       *cache.TokenCache
 	AppRoleConfigPtr *string
 	VaultAddressPtr  *string
 	EnvBasis         string // dev,QA, etc....

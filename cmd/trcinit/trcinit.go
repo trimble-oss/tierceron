@@ -13,6 +13,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	trcinitbase "github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
+	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose
@@ -36,7 +38,12 @@ func main() {
 
 	envPtr := flagset.String("env", "dev", "Environment to be seeded")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	tokenPtr := flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
 	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
-	trcinitbase.CommonMain(envPtr, addrPtr, tokenPtr, nil, nil, nil, nil, uploadCertPtr, flagset, os.Args, nil)
+	driverConfig := config.DriverConfig{
+		CoreConfig: &core.CoreConfig{
+			ExitOnFailure: true,
+		},
+	}
+
+	trcinitbase.CommonMain(envPtr, addrPtr, nil, nil, nil, nil, uploadCertPtr, flagset, os.Args, &driverConfig)
 }

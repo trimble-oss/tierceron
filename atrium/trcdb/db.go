@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -30,7 +31,8 @@ func CreateEngine(driverConfig *config.DriverConfig,
 	te := &engine.TierceronEngine{Database: sqlememory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*engine.TierceronTable{}, Context: sqles.NewEmptyContext(), Config: *driverConfig}
 
 	var goMod *helperkv.Modifier
-	goMod, errModInit := helperkv.NewModifierFromCoreConfig(&driverConfig.CoreConfig, driverConfig.CoreConfig.Env, false)
+	tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
+	goMod, errModInit := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.Env, false)
 	if errModInit != nil {
 		return nil, errModInit
 	}
@@ -46,7 +48,7 @@ func CreateEngine(driverConfig *config.DriverConfig,
 	goMod.Env = ""
 	tempEnterprises, err := goMod.List("values", driverConfig.CoreConfig.Log)
 	if err != nil {
-		eUtils.LogErrorObject(&driverConfig.CoreConfig, err, false)
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		return nil, err
 	}
 	if tempEnterprises != nil {

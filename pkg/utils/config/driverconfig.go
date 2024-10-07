@@ -50,7 +50,7 @@ type MemoryFileSystem interface {
 
 // DriverConfig -- contains many structures necessary for Tierceron tool functionality.
 type DriverConfig struct {
-	CoreConfig core.CoreConfig
+	CoreConfig *core.CoreConfig
 
 	// Process context used by new tool implementations in callbacks.
 	// Tools can attach their own context here for later access in

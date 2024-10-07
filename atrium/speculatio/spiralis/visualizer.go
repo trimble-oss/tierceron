@@ -84,14 +84,14 @@ func main() {
 	} else if *headless && !*custos {
 		data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
 		driverConfig := config.DriverConfig{
-			CoreConfig: core.CoreConfig{
+			CoreConfig: &core.CoreConfig{
 				ExitOnFailure: true,
 				Insecure:      *insecure,
 				Log:           logger,
 			},
 		}
 		ArgosyFleet, argosyErr := argosyopts.BuildFleet(nil, logger)
-		eUtils.CheckError(&driverConfig.CoreConfig, argosyErr, true)
+		eUtils.CheckError(driverConfig.CoreConfig, argosyErr, true)
 
 		dfstatData := map[string]float64{}
 		pointer := 0

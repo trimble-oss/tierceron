@@ -54,13 +54,13 @@ func main() {
 
 	makeVaultReq := &pb.GetValuesReq{}
 	driverConfig := &config.DriverConfig{
-		CoreConfig: core.CoreConfig{
+		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
 		},
 	}
 
 	vault, err := apiClient.GetValues(context.Background(), makeVaultReq)
-	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 
 	driverConfig.CoreConfig.ExitOnFailure = false
 
