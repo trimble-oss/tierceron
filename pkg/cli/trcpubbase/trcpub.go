@@ -13,6 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -35,7 +36,7 @@ func CommonMain(envPtr *string,
 	tokenNamePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *eUtils.DriverConfig) {
+	driverConfig *config.DriverConfig) {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
@@ -66,7 +67,7 @@ func CommonMain(envPtr *string,
 		flagset.Parse(nil)
 	}
 
-	var driverConfigBase *eUtils.DriverConfig
+	var driverConfigBase *config.DriverConfig
 	if driverConfig != nil {
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
@@ -78,7 +79,7 @@ func CommonMain(envPtr *string,
 		}
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "[INIT]", log.LstdFlags)
-		driverConfigBase = &eUtils.DriverConfig{
+		driverConfigBase = &config.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: true,
 				Insecure:      true,

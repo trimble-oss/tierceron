@@ -14,7 +14,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 // This assumes that the vault is completely new, and should only be run for the purpose
@@ -43,7 +43,7 @@ func main() {
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
 
-	driverConfig := eUtils.DriverConfig{
+	driverConfig := config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			TokenPtr:      tokenPtr,
 			ExitOnFailure: true,

@@ -9,6 +9,7 @@ import (
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -84,7 +85,7 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 
 // Returns an array of mashup detailed elements populated with each Tenant's data and Childnodes
 func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.MashupDetailedElement {
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			ExitOnFailure: true,
 			Insecure:      *insecure,

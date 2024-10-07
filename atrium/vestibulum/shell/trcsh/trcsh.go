@@ -20,6 +20,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 // This is a controller program that can act as any command line utility.
@@ -57,7 +58,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	driverConfig := eUtils.DriverConfig{
+	driverConfig := config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			Log: logger,
 		},

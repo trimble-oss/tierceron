@@ -16,13 +16,14 @@ import (
 	xencrypt "github.com/trimble-oss/tierceron/pkg/trcx/xencrypt"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"gopkg.in/yaml.v2"
 )
 
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
-func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string, string, error) {
+func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string, string, error) {
 	var wg sync.WaitGroup
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -191,7 +192,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 	}
 
 	//Receiver for configs
-	go func(dc *eUtils.DriverConfig) {
+	go func(dc *config.DriverConfig) {
 		for {
 			select {
 			case tResult := <-templateResultChan:
@@ -347,7 +348,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(tp string, multiService bool, dc *eUtils.DriverConfig, cPaths []string) {
+		go func(tp string, multiService bool, dc *config.DriverConfig, cPaths []string) {
 			var project, service, env, version, innerProject string
 			var errSeed error
 			project = ""
@@ -541,7 +542,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *eUtils.DriverConfig, template
 }
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVaultRaw(driverConfig *eUtils.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string, error) {
+func GenerateSeedsFromVaultRaw(driverConfig *config.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string, error) {
 	var projectSectionTemp []string //Used for seed file pathing; errors for -novault generation if not empty
 	if len(driverConfig.Trcxe) > 2 {
 		projectSectionTemp = driverConfig.ProjectSections
@@ -614,7 +615,7 @@ func GenerateSeedsFromVaultRaw(driverConfig *eUtils.DriverConfig, fromVault bool
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigContext, driverConfig *eUtils.DriverConfig) (interface{}, error) {
+func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (interface{}, error) {
 	if driverConfig.Clean { //Clean flag in trcx
 		if strings.HasSuffix(driverConfig.CoreConfig.Env, "_0") {
 			envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)

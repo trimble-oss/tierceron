@@ -15,6 +15,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
 	"github.com/trimble-oss/tierceron/atrium/speculatio/spiralis/ttdirender"
@@ -82,7 +83,7 @@ func main() {
 		DetailedElements = libraryElementBundle.DetailedElements
 	} else if *headless && !*custos {
 		data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
-		driverConfig := eUtils.DriverConfig{
+		driverConfig := config.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: true,
 				Insecure:      *insecure,

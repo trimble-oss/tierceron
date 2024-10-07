@@ -3,13 +3,15 @@ package xdbutil
 import (
 	"os"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
+
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // GenerateSeedsFromVaultToDb pulls all data from vault for each template into a database
-func GenerateSeedsFromVaultToDb(driverConfig *eUtils.DriverConfig) (interface{}, error) {
+func GenerateSeedsFromVaultToDb(driverConfig *config.DriverConfig) (interface{}, error) {
 	if driverConfig.Diff { //Clean flag in trcx
 		_, err1 := os.Stat(driverConfig.EndDir + driverConfig.CoreConfig.Env)
 		err := os.RemoveAll(driverConfig.EndDir + driverConfig.CoreConfig.Env)

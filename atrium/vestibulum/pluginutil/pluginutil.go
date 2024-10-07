@@ -15,6 +15,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -31,7 +32,7 @@ func GetPluginCertifyMap(mod *helperkv.Modifier, pluginConfig map[string]interfa
 	return nil, errors.New("missing plugin name for configuration")
 }
 
-func PluginInitNewRelic(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}) {
+func PluginInitNewRelic(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}) {
 	certifyConfig, certifyErr := GetPluginCertifyMap(mod, pluginConfig)
 	if certifyErr == nil {
 		driverConfig.CoreConfig.Log.Printf("Found certification for plugin: %s Env: %s", pluginConfig["pluginName"], pluginConfig["env"])
@@ -109,7 +110,7 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	return TapFeatherInit(trcshDriverConfig.DriverConfig, goMod, pluginConfig, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 }
 
-func TapFeatherInit(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, wantsFeathering bool, logger *log.Logger) error {
+func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, wantsFeathering bool, logger *log.Logger) error {
 	var err error
 	var ok bool
 	logger.Printf("TapFeatherInit\n")

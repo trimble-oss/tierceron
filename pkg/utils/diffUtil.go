@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
+
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -363,7 +365,7 @@ func RemoveDuplicateValues(intSlice []string) []string {
 	return list
 }
 
-func DiffHelper(configCtx *ConfigContext, config bool) {
+func DiffHelper(configCtx *config.ConfigContext, config bool) {
 	fileIndex := 0
 	keys := []string{}
 	configCtx.Mutex.Lock()

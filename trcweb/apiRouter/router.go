@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
+
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -195,7 +197,7 @@ func main() {
 
 	s = server.NewServer(addrPtr, tokenPtr)
 	localHost = *localPtr
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			ExitOnFailure: true,
 		},

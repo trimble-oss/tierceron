@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
+
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
@@ -35,7 +37,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
 	var tfmContext *flowcore.TrcFlowMachineContext
-	var driverConfig *eUtils.DriverConfig
+	var driverConfig *config.DriverConfig
 	var vault *sys.Vault
 	var goMod *helperkv.Modifier
 	var err error
@@ -181,7 +183,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	addr := pluginConfig["vaddress"].(string)
 	addrPtr := &addr
 
-	driverConfigBasis := eUtils.DriverConfig{
+	driverConfigBasis := config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			Regions:         emptySlice,
 			TokenPtr:        eUtils.RefMap(pluginConfig, "tokenptr"),
@@ -328,7 +330,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		controllerInitWG.Add(1)
 		tfmFlumeContext.InitConfigWG.Add(1)
 		flowWG.Add(1)
-		go func(tableFlow flowcore.FlowNameType, tcfContext *flowcore.TrcFlowContext, dc *eUtils.DriverConfig) {
+		go func(tableFlow flowcore.FlowNameType, tcfContext *flowcore.TrcFlowContext, dc *config.DriverConfig) {
 			eUtils.LogInfo(&dc.CoreConfig, "Beginning flow: "+tableFlow.ServiceName())
 			defer flowWG.Done()
 			tcfContext.Flow = tableFlow
@@ -378,7 +380,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	flowMapLock := &sync.Mutex{}
 	for _, table := range driverConfigBasis.VersionFilter {
 		flowWG.Add(1)
-		go func(tableFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
+		go func(tableFlow flowcore.FlowNameType, dc *config.DriverConfig) {
 			eUtils.LogInfo(&dc.CoreConfig, "Beginning data source flow: "+tableFlow.ServiceName())
 			defer flowWG.Done()
 			tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
@@ -420,7 +422,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	for _, enhancement := range flowopts.BuildOptions.GetAdditionalFlows() {
 		flowWG.Add(1)
 
-		go func(enhancementFlow flowcore.FlowNameType, dc *eUtils.DriverConfig) {
+		go func(enhancementFlow flowcore.FlowNameType, dc *config.DriverConfig) {
 			eUtils.LogInfo(&dc.CoreConfig, "Beginning additional flow: "+enhancementFlow.ServiceName())
 			defer flowWG.Done()
 
@@ -453,7 +455,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	if testopts.BuildOptions != nil {
 		for _, test := range testopts.BuildOptions.GetAdditionalTestFlows() {
 			flowWG.Add(1)
-			go func(testFlow flowcore.FlowNameType, dc *eUtils.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
+			go func(testFlow flowcore.FlowNameType, dc *config.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(&dc.CoreConfig, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
 				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}

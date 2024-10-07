@@ -14,10 +14,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2"
 	"github.com/getkin/kin-openapi/openapi2"
 	"github.com/getkin/kin-openapi/openapi2conv"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -30,7 +30,7 @@ func CommonMain(envPtr *string,
 	tokenNamePtr *string,
 	regionPtr *string,
 	startDirPtr *string,
-	driverConfig *eUtils.DriverConfig,
+	driverConfig *config.DriverConfig,
 	mod *kv.Modifier) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)

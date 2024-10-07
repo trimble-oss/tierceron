@@ -55,6 +55,7 @@ atrium/speculatio/spiralis/tls/mashup.*
 atrium/speculatio/fenestra/tls/mashup.*
 atrium/speculatio/spiralis/__debug_bin
 atrium/speculatio/fenestra/__debug_bin
+atrium/vestibulum/pluginutil/__debug*
 
 cmd/shell/deploy/trc_seeds/*
 

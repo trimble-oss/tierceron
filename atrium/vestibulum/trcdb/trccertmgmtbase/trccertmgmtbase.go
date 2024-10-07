@@ -11,15 +11,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2"
 	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
-func CommonMain(certPathPtr *string, driverConfig *eUtils.DriverConfig, mod *kv.Modifier) error {
+func CommonMain(certPathPtr *string, driverConfig *config.DriverConfig, mod *kv.Modifier) error {
 	if len(*certPathPtr) == 0 {
 		return errors.New("certPath flag is empty, expected path to cert")
 	}

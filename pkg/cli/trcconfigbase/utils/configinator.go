@@ -13,6 +13,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/validator"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
@@ -35,7 +36,7 @@ func trimPath(e string, toReplace string) (string, bool) {
 	return e, true
 }
 
-func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error) {
+func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error) {
 	//initialized := false
 	templatePaths := []string{}
 	endPaths := []string{}
@@ -139,7 +140,7 @@ func generatePaths(driverConfig *eUtils.DriverConfig) ([]string, []string, error
 }
 
 // GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigContext, driverConfig *eUtils.DriverConfig) (interface{}, error) {
+func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (interface{}, error) {
 	/*Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if utils.IsWindows() {
@@ -517,7 +518,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 
 var memCacheLock sync.Mutex
 
-func writeToFile(driverConfig *eUtils.DriverConfig, data string, path string) {
+func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	if strings.Contains(data, "${TAG}") {
 		tag := os.Getenv("TRCENV_TAG")
 		if len(tag) > 0 {

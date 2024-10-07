@@ -15,6 +15,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
@@ -134,7 +135,7 @@ func GetJSONFromClientByPost(config *core.CoreConfig, httpClient *http.Client, h
 	return nil, response.StatusCode, fmt.Errorf("http status failure: %d", response.StatusCode)
 }
 
-func LoadBaseTemplate(driverConfig *eUtils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
+func LoadBaseTemplate(driverConfig *config.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
 	templateResult.ValueSection["values"] = map[string]map[string]string{}
 
@@ -164,7 +165,7 @@ func LoadBaseTemplate(driverConfig *eUtils.DriverConfig, templateResult *extract
 	return errSeed
 }
 
-func SeedVaultById(driverConfig *eUtils.DriverConfig, goMod *helperkv.Modifier, service string, addressPtr *string, tokenPtr *string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
+func SeedVaultById(driverConfig *config.DriverConfig, goMod *helperkv.Modifier, service string, addressPtr *string, tokenPtr *string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -260,7 +261,7 @@ func SeedVaultById(driverConfig *eUtils.DriverConfig, goMod *helperkv.Modifier, 
 	return nil
 }
 
-func GetPluginToolConfig(driverConfig *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, defineService bool) (map[string]interface{}, error) {
+func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, defineService bool) (map[string]interface{}, error) {
 	driverConfig.CoreConfig.Log.Println("GetPluginToolConfig begin processing plugins.")
 	//templatePaths
 	indexFound := false

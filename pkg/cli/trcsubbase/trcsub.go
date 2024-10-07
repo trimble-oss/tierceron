@@ -14,6 +14,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -32,7 +33,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	appRoleIDPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *eUtils.DriverConfig) error {
+	driverConfig *config.DriverConfig) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
@@ -76,7 +77,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")
 		return errors.New("must specify either -projectInfo or -templateFilter flag")
 	}
-	var driverConfigBase *eUtils.DriverConfig
+	var driverConfigBase *config.DriverConfig
 	var appRoleConfigPtr *string
 
 	if driverConfig != nil {
@@ -99,7 +100,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		logger := log.New(f, "[INIT]", log.LstdFlags)
-		driverConfigBase = &eUtils.DriverConfig{
+		driverConfigBase = &config.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				ExitOnFailure: exitOnFailure,
 				Insecure:      *insecurePtr,

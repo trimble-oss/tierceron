@@ -10,10 +10,10 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
-func BuildDockerImage(driverConfig *eUtils.DriverConfig, dockerfilePath, imageName string) error {
+func BuildDockerImage(driverConfig *config.DriverConfig, dockerfilePath, imageName string) error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {

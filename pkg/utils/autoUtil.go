@@ -10,6 +10,7 @@ import (
 
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
@@ -57,7 +58,7 @@ func userHome(logger *log.Logger) (string, error) {
 }
 
 // AutoAuth attempts to authenticate a user.
-func AutoAuth(driverConfig *DriverConfig,
+func AutoAuth(driverConfig *config.DriverConfig,
 	secretIDPtr *string, // Optional if token provided.
 	appRoleIDPtr *string, // Optional if token provided.
 	tokenPtr *string, // Optional if appRole and secret provided.

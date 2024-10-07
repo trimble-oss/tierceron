@@ -34,7 +34,7 @@ func GetLogPath() string {
 }
 
 func GetCursorConfigPath() string {
-	return "super-secrets/Restricted/TrcshCurosorAW/config"
+	return "super-secrets/Restricted/TrcshCursorAW/config"
 }
 
 func GetTrusts() map[string][]string {

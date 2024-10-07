@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/trimble-oss/tierceron/pkg/core"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 func TestGeneratePaths_nil(t *testing.T) {
@@ -20,7 +20,7 @@ func TestGeneratePaths_BaseCase(t *testing.T) {
 	// Single starting Dir, ServicesWanted
 	// If this test fails, drone will fail
 	ConfiginatorOsPathSeparator = "/"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -43,7 +43,7 @@ func TestGeneratePaths_BaseCaseWin(t *testing.T) {
 	// Single starting Dir, ServicesWanted
 	// If this test fails, drone will fail
 	ConfiginatorOsPathSeparator = "\\"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -78,7 +78,7 @@ func FuzzBasicTestGeneratePaths_CaseOne(f *testing.F) {
 	ConfiginatorOsPathSeparator = "/"
 	f.Add(5, "hello")
 	f.Fuzz(func(t *testing.T, i int, s string) {
-		driverConfig := &eUtils.DriverConfig{
+		driverConfig := &config.DriverConfig{
 			CoreConfig: core.CoreConfig{
 				WantCerts: false,
 			},
@@ -119,7 +119,7 @@ func FuzzBasicTestGeneratePaths_CaseOne(f *testing.F) {
 func TestGeneratePaths_CaseOne(t *testing.T) {
 	// Multiple invalid starting directories, multiple project/services defined, ServicesWanted specified
 	ConfiginatorOsPathSeparator = "/"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -147,7 +147,7 @@ func TestGeneratePaths_CaseOne(t *testing.T) {
 func TestGeneratePaths_BadProjServ(t *testing.T) {
 	// Multiple invalid starting directories, multiple project/services defined, ServicesWanted specified incorrectly
 	ConfiginatorOsPathSeparator = "/"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -175,7 +175,7 @@ func TestGeneratePaths_BadProjServ(t *testing.T) {
 func TestGeneratePaths_CaseTwo(t *testing.T) {
 	// Multiple starting directories, multiple project/services defined, ServicesWanted specified
 	ConfiginatorOsPathSeparator = "/"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -214,7 +214,7 @@ func TestGeneratePaths_CaseTwo(t *testing.T) {
 func TestGeneratePaths_CaseTwoWin(t *testing.T) {
 	// Multiple starting directories, multiple project/services defined, ServicesWanted specified
 	ConfiginatorOsPathSeparator = "\\"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -253,7 +253,7 @@ func TestGeneratePaths_CaseTwoWin(t *testing.T) {
 func TestGeneratePaths_CaseThree(t *testing.T) {
 	// Multiple starting directories, multiple project/services defined, ServicesWanted specified
 	ConfiginatorOsPathSeparator = "/"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -276,7 +276,7 @@ func TestGeneratePaths_CaseThree(t *testing.T) {
 func TestGeneratePaths_CaseThreeWin(t *testing.T) {
 	// Multiple starting directories, multiple project/services defined, ServicesWanted specified
 	ConfiginatorOsPathSeparator = "\\"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -299,7 +299,7 @@ func TestGeneratePaths_CaseThreeWin(t *testing.T) {
 func TestGeneratePaths_CaseFour(t *testing.T) {
 	// Single starting directory, single project/service defined, ServicesWanted not specified, no scrubbing
 	ConfiginatorOsPathSeparator = "/"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -336,7 +336,7 @@ func TestGeneratePaths_CaseFour(t *testing.T) {
 func TestGeneratePaths_CaseFourWin(t *testing.T) {
 	// Single starting directory, single project/service defined, ServicesWanted not specified, no scrubbing
 	ConfiginatorOsPathSeparator = "\\"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -373,7 +373,7 @@ func TestGeneratePaths_CaseFourWin(t *testing.T) {
 func TestGeneratePaths_CaseFive(t *testing.T) {
 	// Single starting directory, single project/service defined w/out separator, ServicesWanted not specified, no scrubbing
 	ConfiginatorOsPathSeparator = "/"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{},
 		StartDir: []string{
 			"hello/bonjour",
@@ -395,7 +395,7 @@ func TestGeneratePaths_CaseFive(t *testing.T) {
 func TestGeneratePaths_CaseFiveWin(t *testing.T) {
 	// Single starting directory, single project/service defined w/out separator, ServicesWanted not specified, no scrubbing
 	ConfiginatorOsPathSeparator = "\\"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{},
 		StartDir: []string{
 			"hello/bonjour",
@@ -417,7 +417,7 @@ func TestGeneratePaths_CaseFiveWin(t *testing.T) {
 func TestGeneratePaths_CaseSix(t *testing.T) {
 	// Single starting directory, single project/service, ServicesWanted not specified, scrubbing
 	ConfiginatorOsPathSeparator = "/"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -465,7 +465,7 @@ func TestGeneratePaths_CaseSix(t *testing.T) {
 func TestGeneratePaths_CaseSixWin(t *testing.T) {
 	// Single starting directory, single project/service, ServicesWanted not specified, scrubbing
 	ConfiginatorOsPathSeparator = "\\"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -507,7 +507,7 @@ func TestGeneratePaths_CaseSixWin(t *testing.T) {
 func TestGeneratePaths_CaseSeven(t *testing.T) {
 	// Single starting directory, single project/service, ServicesWanted not specified, no scrubbing
 	ConfiginatorOsPathSeparator = "/"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: true,
 		},
@@ -543,7 +543,7 @@ func TestGeneratePaths_CaseSeven(t *testing.T) {
 func TestGeneratePaths_CaseSevenWin(t *testing.T) {
 	// Single starting directory, single project/service, ServicesWanted not specified, no scrubbing
 	ConfiginatorOsPathSeparator = "\\"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: true,
 		},
@@ -579,7 +579,7 @@ func TestGeneratePaths_CaseSevenWin(t *testing.T) {
 func TestGeneratePaths_CaseEightWin(t *testing.T) {
 	// Single starting directory, single project/service, ServicesWanted not specified, scrubbing
 	ConfiginatorOsPathSeparator = "\\"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},
@@ -615,7 +615,7 @@ func TestGeneratePaths_CaseEightWin(t *testing.T) {
 func TestGeneratePaths_CaseNineWin(t *testing.T) {
 	// Single starting directory, single project/service, ServicesWanted not specified, scrubbing
 	ConfiginatorOsPathSeparator = "\\"
-	driverConfig := &eUtils.DriverConfig{
+	driverConfig := &config.DriverConfig{
 		CoreConfig: core.CoreConfig{
 			WantCerts: false,
 		},

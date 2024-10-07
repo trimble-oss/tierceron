@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
+
 	"github.com/trimble-oss/tierceron/atrium/trcdb/engine"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -22,7 +24,7 @@ import (
 var m sync.Mutex
 
 // CreateEngine - creates a Tierceron query engine for query of configurations.
-func CreateEngine(driverConfig *eUtils.DriverConfig,
+func CreateEngine(driverConfig *config.DriverConfig,
 	templatePaths []string, env string, dbname string) (*engine.TierceronEngine, error) {
 
 	te := &engine.TierceronEngine{Database: sqlememory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*engine.TierceronTable{}, Context: sqles.NewEmptyContext(), Config: *driverConfig}
@@ -58,7 +60,7 @@ func CreateEngine(driverConfig *eUtils.DriverConfig,
 			// Load all vault table data into tierceron sql engine.
 			for _, envEnterprise := range envEnterprises {
 				wgEnterprise.Add(1)
-				go func(driverConfig *eUtils.DriverConfig, enterpriseEnv string) {
+				go func(driverConfig *config.DriverConfig, enterpriseEnv string) {
 					defer wgEnterprise.Done()
 					if !strings.Contains(enterpriseEnv, ".") {
 						return
