@@ -62,6 +62,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	secretIDPtr *string, // Optional if token provided.
 	appRoleIDPtr *string, // Optional if token provided.
 	tokenNamePtr *string, // Required if approle and secret provided.
+	tokenProvidedPtr *string,
 	envPtr *string,
 	addrPtr *string,
 	envCtxPtr *string,
@@ -76,6 +77,14 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	var tokenPtr *string
 	if RefLength(tokenNamePtr) > 0 {
 		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)
+		if !driverConfig.CoreConfig.IsShell && tokenProvidedPtr != nil {
+			driverConfig.CoreConfig.TokenCache.CurrentTokenNamePtr = tokenNamePtr
+		}
+	}
+	if tokenPtr == nil && tokenProvidedPtr != nil {
+		tokenPtr = tokenProvidedPtr
+		// Make thebig assumption here.
+		driverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 	}
 	if RefLength(tokenPtr) != 0 && !RefEquals(addrPtr, "") && !RefEquals(appRoleConfigPtr, "deployauth") && !RefEquals(appRoleConfigPtr, "hivekernel") {
 		// For token based auth, auto auth not
@@ -408,6 +417,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				return err
 			}
 		}
+		driverConfig.CoreConfig.TokenCache.CurrentTokenNamePtr = tokenNamePtr
 		driverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 	}
 	LogInfo(driverConfig.CoreConfig, "Auth credentials obtained.")

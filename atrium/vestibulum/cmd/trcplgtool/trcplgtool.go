@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
@@ -47,7 +46,6 @@ func main() {
 	}
 	envPtr := flagset.String("env", "dev", "Environment to configure")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	tokenPtr := flagset.String("token", "", "Vault access token")
 	regionPtr := flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
 	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
@@ -70,7 +68,6 @@ func main() {
 			CoreConfig: &core.CoreConfig{
 				ExitOnFailure:    true,
 				Insecure:         false,
-				TokenCache:       cache.NewTokenCache(fmt.Sprintf("trcsh_agent_%s", *envPtr), tokenPtr),
 				Log:              logger,
 				AppRoleConfigPtr: new(string),
 			},
