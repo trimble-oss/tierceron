@@ -91,7 +91,7 @@ func CommonMain(envPtr *string,
 			tokenNamePtr = &tokenName
 		}
 		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
-		driverConfig.CoreConfig.TokenCache.CurrentTokenNamePtr = tokenNamePtr
+		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
 		if eUtils.RefLength(driverConfigBase.CoreConfig.AppRoleConfigPtr) > 0 {
 			appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr

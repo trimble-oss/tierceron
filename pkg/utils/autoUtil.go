@@ -78,7 +78,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	if RefLength(tokenNamePtr) > 0 {
 		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)
 		if !driverConfig.CoreConfig.IsShell && tokenProvidedPtr != nil {
-			driverConfig.CoreConfig.TokenCache.CurrentTokenNamePtr = tokenNamePtr
+			driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 		}
 	}
 	if tokenPtr == nil && tokenProvidedPtr != nil {
@@ -417,7 +417,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				return err
 			}
 		}
-		driverConfig.CoreConfig.TokenCache.CurrentTokenNamePtr = tokenNamePtr
+		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 		driverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 	}
 	LogInfo(driverConfig.CoreConfig, "Auth credentials obtained.")

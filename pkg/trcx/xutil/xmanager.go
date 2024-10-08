@@ -92,8 +92,8 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	version := envVersion[1]
 
 	var tokenName string
-	if eUtils.RefLength(driverConfig.CoreConfig.TokenCache.CurrentTokenNamePtr) > 0 {
-		tokenName = *driverConfig.CoreConfig.TokenCache.CurrentTokenNamePtr
+	if eUtils.RefLength(driverConfig.CoreConfig.CurrentTokenNamePtr) > 0 {
+		tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
 	} else {
 		tokenName = fmt.Sprintf("config_token_%s", env)
 	}

@@ -31,10 +31,10 @@ func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *hel
 		return driverConfig, nil, nil, err
 	}
 
-	if RefLength(driverConfig.CoreConfig.TokenCache.CurrentTokenNamePtr) == 0 {
+	if RefLength(driverConfig.CoreConfig.CurrentTokenNamePtr) == 0 {
 		return driverConfig, nil, nil, errors.New("missing required token name")
 	}
-	tokenName := *driverConfig.CoreConfig.TokenCache.CurrentTokenNamePtr
+	tokenName := *driverConfig.CoreConfig.CurrentTokenNamePtr
 	tokenPtr := driverConfig.CoreConfig.TokenCache.GetToken(tokenName)
 	if RefLength(tokenPtr) == 0 {
 		return driverConfig, nil, nil, fmt.Errorf("token found nothing in token cache: %s", tokenName)

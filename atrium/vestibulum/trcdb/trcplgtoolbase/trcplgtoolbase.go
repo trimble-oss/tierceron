@@ -134,7 +134,7 @@ func CommonMain(envPtr *string,
 			*tokenNamePtr = fmt.Sprintf("config_token_plugin%s", *envPtr)
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.CurrentTokenNamePtr = tokenNamePtr
+		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	} else {
 		err := flagset.Parse(argLines)
 		if err != nil {

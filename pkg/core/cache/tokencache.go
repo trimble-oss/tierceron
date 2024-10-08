@@ -8,8 +8,7 @@ import (
 )
 
 type TokenCache struct {
-	CurrentTokenNamePtr *string            // Pointer to one of the tokens in the cache...  changes depending on context.
-	cache               map[string]*string // tokenKey, *token
+	cache map[string]*string // tokenKey, *token
 }
 
 func NewTokenCacheEmpty() *TokenCache {
