@@ -39,6 +39,9 @@ func (tc *TokenCache) AddToken(tokenKey string, token *string) error {
 }
 
 func (tc *TokenCache) GetToken(tokenKey string) *string {
+	if tc.cache == nil {
+		return nil
+	}
 	return tc.cache[tokenKey]
 }
 

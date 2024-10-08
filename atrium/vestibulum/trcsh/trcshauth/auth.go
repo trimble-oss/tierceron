@@ -19,6 +19,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -124,6 +125,14 @@ func TrcshVAddress(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentCo
 // Helper function for obtaining auth components.
 func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfigs, trcshDriverConfig *capauth.TrcshDriverConfig) (*capauth.TrcShConfig, error) {
 	trcshConfig := &capauth.TrcShConfig{}
+	if trcshDriverConfig != nil &&
+		trcshDriverConfig.DriverConfig != nil &&
+		trcshDriverConfig.DriverConfig.CoreConfig != nil &&
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache != nil {
+		trcshConfig.TokenCache = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
+	} else {
+		trcshConfig.TokenCache = cache.NewTokenCacheEmpty()
+	}
 	var err error
 
 	if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
