@@ -144,6 +144,7 @@ func CommonMain(envPtr *string,
 		if err != nil {
 			return err
 		}
+		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	}
 
 	if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"] != nil {
