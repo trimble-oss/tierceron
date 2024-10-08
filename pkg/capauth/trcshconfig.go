@@ -16,7 +16,6 @@ type TrcShConfig struct {
 }
 
 func (trcshConfig *TrcShConfig) IsValid(agentConfigs *AgentConfigs) bool {
-	return true
 	if agentConfigs == nil {
 		// Driver needs a lot more permissions to run...
 		return eUtils.RefLength(trcshConfig.ConfigRolePtr) > 0 &&

@@ -149,12 +149,14 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 		return nil, err
 	}
 
-	if tokenPtr == nil || len(*tokenPtr) == 0 && !useCache {
+	if (tokenPtr == nil || len(*tokenPtr) == 0) && !useCache {
 		return nil, errors.New("invalid token for modifier")
 	}
 
 	// Set access token and path for this modifier
-	modClient.SetToken(*tokenPtr)
+	if tokenPtr != nil {
+		modClient.SetToken(*tokenPtr)
+	}
 
 	// Return the modifier
 	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", EnvBasis: env, Regions: regions, Version: "", Insecure: insecure}
