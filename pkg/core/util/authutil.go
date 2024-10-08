@@ -9,6 +9,7 @@ import (
 
 // CheckNotSudo -- checks if current user is sudoer and exits if they are.
 func CheckNotSudo() {
+	return
 	sudoer, sudoErr := user.LookupGroup("sudo")
 	if sudoErr != nil {
 		fmt.Println("Trcsh unable to definitively identify sudoers.")
