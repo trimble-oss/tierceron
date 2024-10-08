@@ -102,6 +102,7 @@ func CommonMain(envDefaultPtr *string,
 		Mutex:         &sync.Mutex{},
 	}
 	var envPtr *string = nil
+	var tokenPtr *string = nil
 
 	if flagset == nil {
 		PrintVersion() // For trcsh
@@ -118,6 +119,8 @@ func CommonMain(envDefaultPtr *string,
 		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
 		flagset.String("appRoleID", "", "Public app role ID")
 		flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
+	} else {
+		tokenPtr = flagset.String("token", "", "Vault access token")
 	}
 	startDirPtr := flagset.String("startDir", STARTDIR_DEFAULT, "Template directory")
 	endDirPtr := flagset.String("endDir", ENDDIR_DEFAULT, "Directory to put configured templates into")
@@ -132,7 +135,6 @@ func CommonMain(envDefaultPtr *string,
 	fileFilterPtr := flagset.String("filter", "", "Filter files for diff")
 	templateInfoPtr := flagset.Bool("templateInfo", false, "Version information about templates")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
-	tokenPtr := flagset.String("token", "", "Vault access token")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
 	var versionInfoPtr *bool
 	var diffPtr *bool
@@ -256,8 +258,8 @@ func CommonMain(envDefaultPtr *string,
 			tokenName := fmt.Sprintf("config_token_%s", *envPtr)
 			tokenNamePtr = &tokenName
 		}
-
 		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
 		appRoleConfigPtr = new(string)
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
@@ -320,7 +322,7 @@ func CommonMain(envDefaultPtr *string,
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
 				if driverConfig != nil {
 					driverConfig.CoreConfig.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)
@@ -432,7 +434,7 @@ func CommonMain(envDefaultPtr *string,
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					return errors.New("missing auth components")

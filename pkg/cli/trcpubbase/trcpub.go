@@ -39,6 +39,7 @@ func CommonMain(envPtr *string,
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
+	var tokenPtr *string = nil
 	if flagset == nil {
 		PrintVersion()
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
@@ -52,13 +53,14 @@ func CommonMain(envPtr *string,
 		flagset.String("secretID", "", "Secret for app role ID")
 		flagset.String("appRoleID", "", "Public app role ID")
 		flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
+	} else {
+		tokenPtr = flagset.String("token", "", "Vault access token")
 	}
 	dirPtr := flagset.String("dir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
-	appRolePtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
-	tokenPtr := flagset.String("token", "", "Vault access token")
+	appRoleConfigPtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 
 	if driverConfig == nil || !driverConfig.IsShellSubProcess {
@@ -71,7 +73,9 @@ func CommonMain(envPtr *string,
 	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		appRolePtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
+		if eUtils.RefLength(driverConfigBase.CoreConfig.AppRoleConfigPtr) > 0 {
+			appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
+		}
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log" {
@@ -86,19 +90,20 @@ func CommonMain(envPtr *string,
 			tokenName := fmt.Sprintf("vault_pub_token_%s", *envPtr)
 			tokenNamePtr = &tokenName
 		}
-
 		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
-		appRolePtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
-		if eUtils.RefLength(appRoleIDPtr) == 0 {
+		if eUtils.RefLength(driverConfigBase.CoreConfig.AppRoleConfigPtr) > 0 {
+			appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
+		} else {
 			appRole := "configpub.yml"
-			appRolePtr = &appRole
+			appRoleConfigPtr = &appRole
 		}
 
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRolePtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 	eUtils.CheckError(driverConfigBase.CoreConfig, autoErr, true)
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {

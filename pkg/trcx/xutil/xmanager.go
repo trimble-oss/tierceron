@@ -91,12 +91,17 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	env := envVersion[0]
 	version := envVersion[1]
 
-	tokenName := fmt.Sprintf("config_token_%s", env)
+	var tokenName string
+	if eUtils.RefLength(driverConfig.CoreConfig.CurrentTokenNamePtr) > 0 {
+		tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
+	} else {
+		tokenName = fmt.Sprintf("config_token_%s", env)
+	}
 	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(tokenName), "novault") {
 		var err error
 		mod, err = helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.TokenCache.GetToken(tokenName), driverConfig.CoreConfig.VaultAddressPtr, env, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
 		if err != nil {
-			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, err, driverConfig.CoreConfig.ExitOnFailure)
 		}
 
 		mod.Env = env

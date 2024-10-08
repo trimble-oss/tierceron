@@ -38,6 +38,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtectInit(nil)
 	}
 	var envPtr *string = nil
+	var tokenPtr *string = nil
 
 	if flagset == nil {
 		fmt.Println("Version: " + "1.6")
@@ -55,6 +56,8 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("secretID", "", "Secret for app role ID")
 		flagset.String("appRoleID", "", "Public app role ID")
+	} else {
+		tokenPtr = flagset.String("token", "", "Vault access token")
 	}
 	endDirPtr := flagset.String("endDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
@@ -64,7 +67,6 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	projectInfoPtr := flagset.Bool("projectInfo", false, "Lists all project info")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
-	tokenPtr := flagset.String("token", "", "Vault access token")
 
 	flagset.Parse(argLines[1:])
 	if envPtr == nil {
@@ -107,6 +109,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 			tokenNamePtr = &tokenName
 		}
 		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
 		appRoleConfigPtr = new(string)
 	}
@@ -121,7 +124,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return autoErr

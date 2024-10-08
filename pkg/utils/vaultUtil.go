@@ -30,8 +30,16 @@ func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *hel
 		LogErrorObject(driverConfig.CoreConfig, err, false)
 		return driverConfig, nil, nil, err
 	}
-	tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
-	vault.SetToken(driverConfig.CoreConfig.TokenCache.GetToken(tokenName))
+
+	if RefLength(driverConfig.CoreConfig.CurrentTokenNamePtr) == 0 {
+		return driverConfig, nil, nil, errors.New("missing required token name")
+	}
+	tokenName := *driverConfig.CoreConfig.CurrentTokenNamePtr
+	tokenPtr := driverConfig.CoreConfig.TokenCache.GetToken(tokenName)
+	if RefLength(tokenPtr) == 0 {
+		return driverConfig, nil, nil, fmt.Errorf("token found nothing in token cache: %s", tokenName)
+	}
+	vault.SetToken(tokenPtr)
 	LogInfo(driverConfig.CoreConfig, "InitVaultMod - Initializing Modifier")
 	mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.Env, false)
 	if err != nil {
@@ -124,9 +132,8 @@ func GetAcceptedTemplatePaths(driverConfig *config.DriverConfig, modCheck *helpe
 
 var logMap sync.Map = sync.Map{}
 
-// Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
-	logger.Println("InitVaultModForPlugin log setup: " + pluginConfig["env"].(string))
+func InitPluginLogs(pluginConfig map[string]interface{}, logger *log.Logger) *log.Logger {
+	logger.Println("InitPluginLogs log setup: " + pluginConfig["env"].(string))
 	var trcdbEnvLogger *log.Logger
 
 	if _, nameSpaceOk := pluginConfig["logNamespace"]; nameSpaceOk {
@@ -162,13 +169,19 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		trcdbEnvLogger = logger
 	}
 
-	trcdbEnvLogger.Println("InitVaultModForPlugin begin..")
+	return trcdbEnvLogger
+}
+
+// Helper to easiliy intialize a vault and a mod all at once.
+func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+	trcdbEnvLogger := InitPluginLogs(pluginConfig, logger)
 	exitOnFailure := false
+
+	trcdbEnvLogger.Println("InitVaultModForPlugin begin..")
 	if _, ok := pluginConfig["exitOnFailure"]; ok {
 		exitOnFailure = pluginConfig["exitOnFailure"].(bool)
 	}
 	trcdbEnvLogger.Println("InitVaultModForPlugin region init.")
-
 	var regions []string
 	if regionsSlice, regionsOk := pluginConfig["regions"].([]string); regionsOk {
 		regions = regionsSlice
@@ -208,4 +221,48 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 	trcdbEnvLogger.Println("InitVaultModForPlugin ends..")
 
 	return InitVaultMod(&driverConfig)
+}
+
+// Helper to easiliy intialize a vault and a mod all at once.
+func InitVaultModForTool(pluginConfig map[string]interface{}, driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+	exitOnFailure := false
+
+	driverConfig.CoreConfig.Log.Println("InitVaultModForTool begin..")
+	if _, ok := pluginConfig["exitOnFailure"]; ok {
+		exitOnFailure = pluginConfig["exitOnFailure"].(bool)
+	}
+
+	driverConfig.CoreConfig.Log.Println("InitVaultModForTool initialize DriverConfig.")
+	if _, vaddressOk := pluginConfig["vaddress"].(string); !vaddressOk {
+		driverConfig.CoreConfig.Log.Println("Missing required vaddress")
+		return nil, nil, nil, errors.New("missing required vaddress")
+	}
+	if _, envOk := pluginConfig["env"].(string); !envOk {
+		driverConfig.CoreConfig.Log.Println("Missing required env")
+		return nil, nil, nil, errors.New("missing required env")
+	}
+
+	driverConfig.CoreConfig.Log.Println("InitVaultModForTool region init.")
+	var regions []string
+	if regionsSlice, regionsOk := pluginConfig["regions"].([]string); regionsOk {
+		regions = regionsSlice
+	}
+
+	driverConfig.CoreConfig.WantCerts = false
+	driverConfig.CoreConfig.Insecure = !exitOnFailure // Plugin has exitOnFailure=false ...  always local, so this is ok...
+	driverConfig.CoreConfig.VaultAddressPtr = RefMap(pluginConfig, "vaddress")
+	driverConfig.CoreConfig.Env = pluginConfig["env"].(string)
+	driverConfig.CoreConfig.EnvBasis = pluginConfig["env"].(string)
+	driverConfig.CoreConfig.Regions = regions
+	driverConfig.CoreConfig.ExitOnFailure = exitOnFailure
+
+	driverConfig.SecretMode = true //  "Only override secret values in templates?"
+	driverConfig.ServicesWanted = []string{}
+	driverConfig.StartDir = append([]string{}, "")
+	driverConfig.EndDir = ""
+	driverConfig.GenAuth = false
+
+	driverConfig.CoreConfig.Log.Println("InitVaultModForTool ends..")
+
+	return InitVaultMod(driverConfig)
 }

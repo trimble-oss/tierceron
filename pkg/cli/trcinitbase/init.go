@@ -283,7 +283,7 @@ func CommonMain(envPtr *string,
 	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, appRolePtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appRolePtr, *pingPtr)
 	eUtils.CheckError(driverConfigBase.CoreConfig, autoErr, true)
 
 	if !*pingPtr && !*newPtr && eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s_unrestricted", *envPtr))) == 0 {

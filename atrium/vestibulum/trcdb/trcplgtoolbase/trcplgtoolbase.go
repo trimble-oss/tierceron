@@ -20,6 +20,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
@@ -30,7 +31,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trccertmgmtbase"
 )
 
-func CommonMain(envDefaultPtr *string,
+func CommonMain(envPtr *string,
 	addrPtr *string,
 	envCtxPtr *string,
 	secretIDPtr *string,
@@ -43,6 +44,7 @@ func CommonMain(envDefaultPtr *string,
 	pluginHandler ...*hive.PluginHandler) error {
 
 	var flagEnvPtr *string
+	var tokenPtr *string
 	// Main functions are as follows:
 	if flagset == nil {
 		fmt.Println("Version: " + "1.05")
@@ -56,6 +58,8 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
 			flagset.PrintDefaults()
 		}
+	} else {
+		tokenPtr = flagset.String("token", "", "Vault access token")
 	}
 	defineServicePtr := flagset.Bool("defineService", false, "Service is defined.")
 	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
@@ -124,6 +128,13 @@ func CommonMain(envDefaultPtr *string,
 			flagset.Usage()
 			return errors.New("invalid input parameters")
 		}
+
+		if eUtils.RefLength(tokenNamePtr) == 0 {
+			tokenNamePtr = new(string)
+			*tokenNamePtr = fmt.Sprintf("config_token_plugin%s", *envPtr)
+		}
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	} else {
 		err := flagset.Parse(argLines)
 		if err != nil {
@@ -272,8 +283,8 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("unsupported agentdeploy outside trcsh")
 	}
 
-	if eUtils.RefLength(trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)) == 0 {
-		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
+	if eUtils.RefLength(trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)) == 0 {
+		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
 		if autoErr != nil {
 			eUtils.LogErrorMessage(trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
@@ -289,16 +300,16 @@ func CommonMain(envDefaultPtr *string,
 		fmt.Println("Error: Could not find plugin config")
 		return errors.New("could not find plugin config")
 	}
-	pluginConfig["env"] = *envDefaultPtr
+	pluginConfig["env"] = *envPtr
 	pluginConfig["vaddress"] = *addrPtr
-	if trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr) != nil {
-		pluginConfig["tokenptr"] = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)
+	if trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr) != nil {
+		pluginConfig["tokenptr"] = trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)
 	}
 	pluginConfig["ExitOnFailure"] = true
 	if *regionPtr != "" {
 		pluginConfig["regions"] = []string{*regionPtr}
 	}
-	driverConfig, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
+	driverConfig, mod, vault, err := eUtils.InitVaultModForTool(pluginConfig, trcshDriverConfigBase.DriverConfig)
 	trcshConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: driverConfig,
 	}
@@ -310,8 +321,8 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if err != nil {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Error: " + err.Error() + " - 1")
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Failed to init mod for deploy update")
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Error: " + err.Error() + " - 1")
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Failed to init mod for deploy update")
 		return err
 	}
 	driverConfig.StartDir = []string{*startDirPtr}
@@ -325,12 +336,12 @@ func CommonMain(envDefaultPtr *string,
 			*pluginNamePtr = subsv
 		}
 	}
-	mod.Env = *envDefaultPtr
-	if trcshDriverConfig.DriverConfig.CoreConfig.Log != nil {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Certify mod initialized\n")
+	mod.Env = *envPtr
+	if trcshDriverConfigBase.DriverConfig.CoreConfig.Log != nil {
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify mod initialized\n")
 	}
 
-	if strings.HasPrefix(*envDefaultPtr, "staging") || strings.HasPrefix(*envDefaultPtr, "prod") || strings.HasPrefix(*envDefaultPtr, "dev") {
+	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
 		if *regionPtr != "" {
 			for _, supportedRegion := range supportedRegions {
@@ -352,7 +363,7 @@ func CommonMain(envDefaultPtr *string,
 		if len(*certPathPtr) > 0 {
 			apimError = trccertmgmtbase.CommonMain(certPathPtr, driverConfig, mod)
 		} else {
-			apimError = trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, driverConfig, mod)
+			apimError = trcapimgmtbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, driverConfig, mod)
 		}
 		if apimError != nil {
 			fmt.Println(apimError.Error())
@@ -368,7 +379,7 @@ func CommonMain(envDefaultPtr *string,
 		return plcErr
 	}
 	if *certifyImagePtr {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Certify begin activities\n")
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify begin activities\n")
 	}
 
 	if len(*sha256Ptr) > 0 {
@@ -437,7 +448,7 @@ func CommonMain(envDefaultPtr *string,
 			!*codebundledeployPtr &&
 			!*certifyImagePtr {
 
-			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
+			if trcshDriverConfigBase.DriverConfig.CoreConfig.IsShell {
 				fmt.Println("Service definition not supported in trcsh.")
 				os.Exit(-1)
 			}
@@ -707,7 +718,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 			if _, err := io.Copy(h, f); err != nil {
 				fmt.Printf("Unable to copy file: %s\n", err)
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Unable to copy file: %s\n", err)
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Unable to copy file: %s\n", err)
 				return err
 			}
 			sha := hex.EncodeToString(h.Sum(nil))
@@ -761,25 +772,25 @@ func CommonMain(envDefaultPtr *string,
 					pluginSource = *pluginNamePtr
 				}
 				mod.SubSectionValue = pluginSource
-				trcshDriverConfig.DriverConfig.SubSectionValue = pluginSource
+				trcshDriverConfigBase.DriverConfig.SubSectionValue = pluginSource
 
-				if !trcshDriverConfig.DriverConfig.IsShellSubProcess {
-					trcshDriverConfig.DriverConfig.StartDir = []string{""}
+				if !trcshDriverConfigBase.DriverConfig.IsShellSubProcess {
+					trcshDriverConfigBase.DriverConfig.StartDir = []string{""}
 				}
 
-				properties, err := trcvutils.NewProperties(trcshDriverConfig.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
+				properties, err := trcvutils.NewProperties(trcshDriverConfigBase.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
 				if err != nil && !strings.Contains(err.Error(), "no data paths found when initing CDS") {
 					fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 					return err
 				}
 
-				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", trcshDriverConfig.DriverConfig.CoreConfig.Log)
+				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
 
 				pluginTarget := pluginToolConfig["trcplugin"].(string)
 				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {
 					pluginTarget = *pluginNamePtr
 				}
-				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), replacedFields, mod, trcshDriverConfig.DriverConfig.CoreConfig.Log, *regionPtr, pluginTarget)
+				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), replacedFields, mod, trcshDriverConfigBase.DriverConfig.CoreConfig.Log, *regionPtr, pluginTarget)
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					return err
