@@ -201,16 +201,18 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		return nil, nil, nil, errors.New("missing required env")
 	}
 
+	currentTokenName := "config_token_pluginany"
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
-			WantCerts:       false,
-			Insecure:        !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
-			TokenCache:      cache.NewTokenCache("config_token_pluginany", RefMap(pluginConfig, "tokenptr")),
-			VaultAddressPtr: RefMap(pluginConfig, "vaddress"),
-			Env:             pluginConfig["env"].(string),
-			Regions:         regions,
-			ExitOnFailure:   exitOnFailure,
-			Log:             trcdbEnvLogger,
+			WantCerts:           false,
+			Insecure:            !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
+			CurrentTokenNamePtr: &currentTokenName,
+			TokenCache:          cache.NewTokenCache(currentTokenName, RefMap(pluginConfig, "tokenptr")),
+			VaultAddressPtr:     RefMap(pluginConfig, "vaddress"),
+			Env:                 pluginConfig["env"].(string),
+			Regions:             regions,
+			ExitOnFailure:       exitOnFailure,
+			Log:                 trcdbEnvLogger,
 		},
 		SecretMode:     true, //  "Only override secret values in templates?"
 		ServicesWanted: []string{},
