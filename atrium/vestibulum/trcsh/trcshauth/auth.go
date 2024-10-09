@@ -226,7 +226,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		if err != nil {
 			return trcshConfig, err
 		}
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken("config_token_pluginany", tokenPtr)
+		trcshConfig.TokenCache.AddToken("config_token_pluginany", tokenPtr)
 	}
 	if err != nil {
 		return trcshConfig, err
