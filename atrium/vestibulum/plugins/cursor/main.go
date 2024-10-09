@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/cursor/cursorlib"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
@@ -31,6 +33,7 @@ import (
 var logger *log.Logger
 
 func main() {
+	executableName := os.Args[0]
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
 		if mLockErr != nil {
@@ -64,8 +67,13 @@ func main() {
 	}, logErr, true)
 
 	cursorlib.InitLogger(logger)
-	logger.Println("Version: 1.0")
+	logger.Println("Version: 1.1")
 	logger.Println("Beginning plugin startup.")
+	if strings.HasSuffix(executableName, "-prod") {
+		logger.Println("Running prod plugin")
+		prod.SetProd(true)
+	}
+
 	buildopts.BuildOptions.SetLogger(logger.Writer())
 
 	if os.Getenv(api.PluginMetadataModeEnv) == "true" {
