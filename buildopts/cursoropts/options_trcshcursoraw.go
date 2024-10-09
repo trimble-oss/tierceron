@@ -32,9 +32,9 @@ func GetPluginName(vaultPlugin bool) string {
 		return "trcsh.exe"
 	} else {
 		if vaultPlugin {
-			return "trcshqaw"
-		} else {
 			return "trcsh-cursor-aw"
+		} else {
+			return "trcshqaw"
 		}
 	}
 }
