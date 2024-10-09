@@ -1139,14 +1139,15 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
 
 	trcshEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+	deployTokenPtr := new(string)
 	authTokenEnv := "azuredeploy"
 	appRoleConfig := "deployauth"
 	if gAgentConfig != nil && gAgentConfig.AgentToken != nil {
+		deployTokenPtr = gAgentConfig.AgentToken
 		appRoleConfig = "none"
 	}
 	authTokenName := "vault_token_azuredeploy"
-	tokenPtr := new(string)
-	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, secretId, approleId, &authTokenName, tokenPtr, &authTokenEnv, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &trcshEnvBasis, &appRoleConfig, false)
+	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, secretId, approleId, &authTokenName, deployTokenPtr, &authTokenEnv, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &trcshEnvBasis, &appRoleConfig, false)
 	if autoErr != nil || eUtils.RefLength(trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken("vault_token_azuredeploy")) == 0 {
 		fmt.Println("Unable to auth.")
 		if autoErr != nil {
