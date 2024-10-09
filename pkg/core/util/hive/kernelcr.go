@@ -71,10 +71,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		driverConfig.CoreConfig.Log.Println("Unable to process plugin service.")
 		return
 	}
+	fmt.Printf("Starting initialization for plugin service: %s Env: %s\n", service, driverConfig.CoreConfig.EnvBasis)
 	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s\n", service)
 	pluginConfig := make(map[string]interface{})
 	pluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
-	currentTokenName := fmt.Sprintf("trcsh_agent_%s", driverConfig.CoreConfig.EnvBasis)
+	currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 	pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
