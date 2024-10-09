@@ -238,8 +238,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 }
 
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
-	return true, nil
-	pluginName := cursoropts.BuildOptions.GetPluginName()
+	pluginName := cursoropts.BuildOptions.GetPluginName(false)
 	certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName))
 	if err != nil {
 		fmt.Printf("Error reading data from vault: %s\n", err)

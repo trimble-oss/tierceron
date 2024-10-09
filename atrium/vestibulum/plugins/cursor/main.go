@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/cursor/cursorlib"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
@@ -31,6 +33,7 @@ import (
 var logger *log.Logger
 
 func main() {
+	executableName := os.Args[0]
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
 		if mLockErr != nil {
@@ -57,15 +60,20 @@ func main() {
 		logFile = "./trccursor.log"
 		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	}
-	logger = log.New(f, fmt.Sprintf("[%s]", cursoropts.BuildOptions.GetPluginName()), log.LstdFlags)
+	logger = log.New(f, fmt.Sprintf("[%s]", cursoropts.BuildOptions.GetPluginName(true)), log.LstdFlags)
 	eUtils.CheckError(&core.CoreConfig{
 		ExitOnFailure: true,
 		Log:           logger,
 	}, logErr, true)
 
 	cursorlib.InitLogger(logger)
-	logger.Println("Version: 1.0")
+	logger.Println("Version: 1.1")
 	logger.Println("Beginning plugin startup.")
+	if strings.HasSuffix(executableName, "-prod") {
+		logger.Println("Running prod plugin")
+		prod.SetProd(true)
+	}
+
 	buildopts.BuildOptions.SetLogger(logger.Writer())
 
 	if os.Getenv(api.PluginMetadataModeEnv) == "true" {
@@ -90,7 +98,7 @@ func main() {
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
-	pluginName := cursoropts.BuildOptions.GetPluginName()
+	pluginName := cursoropts.BuildOptions.GetPluginName(true)
 
 	logger.Print("Starting server...")
 	err := plugin.Serve(cursorlib.GetCursorPluginOpts(pluginName, tlsProviderFunc))

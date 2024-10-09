@@ -14,7 +14,7 @@ func GetCapCuratorPath() string {
 	return ""
 }
 
-func GetPluginName() string {
+func GetPluginName(vaultPlugin bool) string {
 	return ""
 }
 

@@ -102,7 +102,7 @@ var KvInitialize func(context.Context, *logical.InitializationRequest) error
 var curatorPluginConfig map[string]interface{}
 
 var createUpdateFunc func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) = func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	pluginName := cursoropts.BuildOptions.GetPluginName()
+	pluginName := cursoropts.BuildOptions.GetPluginName(true)
 	logger.Printf("%s CreateUpdate\n", pluginName)
 
 	// Check that some fields are given
@@ -203,7 +203,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 					queuedEnvironments = environmentsProd
 				}
 
-				trcshDriverConfig, err := trcshbase.TrcshInitConfig(nil, "dev", "", "", true, logger)
+				trcshDriverConfig, err := trcshbase.TrcshInitConfig(nil, queuedEnvironments[0], "", "", true, logger)
 				eUtils.CheckError(&core.CoreConfig{
 					ExitOnFailure: true,
 					Log:           logger,
