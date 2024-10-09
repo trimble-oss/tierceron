@@ -47,15 +47,16 @@ else
     exit 1
 fi
 
+if [[ -z "${VAULT_ENV}" ]]; then
+    echo "Enter organization/agent environment: "
+    read VAULT_ENV
+fi
+
+
 echo "Is this a prod environment? (Y or N): "
 read PROD_ENV
 
 if [ "$PROD_ENV" = 'Y' ] || [ "$PROD_ENV" = 'y' ]; then
-    if [[ -z "${VAULT_ENV}" ]]; then
-        echo "Enter organization/agent environment: "
-        read VAULT_ENV
-    fi
-
 PROD_EXT=""
     for x in "staging" "prod"; do
         if [ $x = $VAULT_ENV ]; then
@@ -147,9 +148,12 @@ function curatorDeployHive () {
             echo "Unexpected certification error."
             echo "trcshq$CURSOR_TYPE failed certification"
         fi
+}
 
+function certifyWorkers() {
+    CURSOR_TYPE=$1
 
-    if [ "$CURSOR_TYPE" = 'w' ] || [ "$CURSOR_TYPE" = 'aw' ]; then
+    if [ "$CURSOR_TYPE" = 'b' ] || [ "$CURSOR_TYPE" = 'aw' ]; then
         #================================================================
         #trcsh.exe deployment
         #================================================================
@@ -172,18 +176,25 @@ function curatorDeployHive () {
 
         if [ -z "${PROD_EXT}" ]; then
             VAULT_ENV="dev"
-            # vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
+            vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
             VAULT_ENV="QA"
-            # vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
+            vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
+            VAULT_ENV="servicepack"
+            vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
             VAULT_ENV="RQA"
-            # vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
-            echo "Deployed trcsh.exe agent successfully"
+            vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
         else
             echo "Skipping $TRC_PLUGIN_NAME deployment in prod."
         fi
 
         echo "trcsh.exe certified and ready for manual deployment."
-    else
+    fi
+}
+
+function certifyKernelWorker() {
+    CURSOR_TYPE=$1
+
+    if [ "$CURSOR_TYPE" = 'b' ] || [ "$CURSOR_TYPE" = 'k' ]; then
         #================================================================
         #trcshk deployment
         #================================================================
@@ -214,11 +225,10 @@ function curatorDeployHive () {
         fi
 
         echo "trcshk certified and ready for release pipeline deployment"
-
     fi
 }
 
-function deployCursors() {
+function registerCursors() {
     CURSOR_DEPLOY_TYPE=$1
     #================================================================
     #trcsh-cursor-$CURSOR_TYPE deployment (the cursor)
@@ -238,17 +248,30 @@ function deployCursors() {
     echo "Deployment and refresh of trcsh-cursor-$CURSOR_DEPLOY_TYPE successful"
 }
 
-for cursorType in ${CURSOR_TYPES[@]}; do
-  curatorDeployHive $cursorType
-done
+# Deploy curator only for dev and staging
+if [[ "$VAULT_ENV" == "dev" || "$VAULT_ENV" == "staging" ]]; then
+    for cursorType in ${CURSOR_TYPES[@]}; do
+        curatorDeployHive $cursorType
+    done
 
-echo "Hive deployed successfully? trcshqx and trcsh-cursor-x must at least have deployed by this point Y/n: "
-read DEPLOYED_SUCCESS
+    echo "Hive deployed successfully? trcshqx and trcsh-cursor-x must at least have deployed by this point Y/n: "
+    read DEPLOYED_SUCCESS
 
-if [ "$DEPLOYED_SUCCESS" = 'N' ] || [ "$DEPLOYED_SUCCESS" = 'n' ]; then
-    exit 1
+    if [ "$DEPLOYED_SUCCESS" = 'N' ] || [ "$DEPLOYED_SUCCESS" = 'n' ]; then
+        exit 1
+    fi
+fi
+
+# Register cursors only for dev and staging
+if [[ "$VAULT_ENV" == "dev" || "$VAULT_ENV" == "staging" ]]; then
+    for cursorType in ${CURSOR_TYPES[@]}; do
+        registerCursors $cursorType
+    done
 fi
 
 for cursorType in ${CURSOR_TYPES[@]}; do
-  deployCursors $cursorType
+    # Certify Kernel
+    certifyKernelWorker $cursorType
+    # Certify Workers
+    certifyWorkers $cursorType
 done

@@ -3,6 +3,8 @@
 
 package cursoropts
 
+import "github.com/trimble-oss/tierceron/buildopts/kernelopts"
+
 func GetCuratorConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
 	return map[string]interface{}{
 		"env":            "dev",
@@ -26,9 +28,13 @@ func GetCapCuratorPath() string {
 
 func GetPluginName(vaultPlugin bool) string {
 	if vaultPlugin {
-		return "trcshqk"
-	} else {
 		return "trcsh-cursor-k"
+	} else {
+		if kernelopts.BuildOptions.IsKernel() {
+			return "trcshk"
+		} else {
+			return "trcshqk"
+		}
 	}
 }
 
