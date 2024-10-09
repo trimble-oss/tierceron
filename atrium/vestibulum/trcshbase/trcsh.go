@@ -848,7 +848,7 @@ func roleBasedRunner(
 	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 	envDefaultPtr := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 	var err error
-	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Role runner complete: %s\n", control)
+	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Role runner started: %s\n", control)
 
 	switch control {
 	case "trcplgtool":
@@ -869,6 +869,7 @@ func roleBasedRunner(
 		err = trcsubbase.CommonMain(&envDefaultPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], nil, deployArgLines, trcshDriverConfig.DriverConfig)
 	}
 	ResetModifier(trcshDriverConfig.DriverConfig.CoreConfig, tokenName) //Resetting modifier cache to avoid token conflicts.
+	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Role runner complete: %s\n", control)
 
 	return err
 }
@@ -944,7 +945,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		if gAgentConfig == nil {
 
 			var errAgentLoad error
-			if gTrcshConfig == nil || gTrcshConfig.VaultAddressPtr == nil || eUtils.RefLength(gTrcshConfig.TokenCache.GetToken("config_token_pluginany")) == 0 {
+			if gTrcshConfig == nil || !gTrcshConfig.IsValid(gAgentConfig) || eUtils.RefLength(gTrcshConfig.TokenCache.GetToken("config_token_pluginany")) == 0 {
 				// Chewbacca: Consider removing as this should have already
 				// been done earlier in the process.
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Unexpected invalid trcshConfig.  Attempting recovery.")
