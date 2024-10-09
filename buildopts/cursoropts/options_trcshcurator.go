@@ -14,7 +14,7 @@ func GetCapCuratorPath() string {
 	return "/tmp/trccurator/"
 }
 
-func GetPluginName() string {
+func GetPluginName(vaultPlugin bool) string {
 	return "trcsh-curator"
 }
 

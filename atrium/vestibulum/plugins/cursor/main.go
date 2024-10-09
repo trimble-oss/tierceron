@@ -60,7 +60,7 @@ func main() {
 		logFile = "./trccursor.log"
 		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	}
-	logger = log.New(f, fmt.Sprintf("[%s]", cursoropts.BuildOptions.GetPluginName()), log.LstdFlags)
+	logger = log.New(f, fmt.Sprintf("[%s]", cursoropts.BuildOptions.GetPluginName(true)), log.LstdFlags)
 	eUtils.CheckError(&core.CoreConfig{
 		ExitOnFailure: true,
 		Log:           logger,
@@ -98,7 +98,7 @@ func main() {
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
-	pluginName := cursoropts.BuildOptions.GetPluginName()
+	pluginName := cursoropts.BuildOptions.GetPluginName(true)
 
 	logger.Print("Starting server...")
 	err := plugin.Serve(cursorlib.GetCursorPluginOpts(pluginName, tlsProviderFunc))

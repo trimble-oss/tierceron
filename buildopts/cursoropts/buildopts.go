@@ -6,7 +6,7 @@ type OptionsBuilder struct {
 	TapInit             func()
 	GetCapPath          func() string
 	GetCapCuratorPath   func() string
-	GetPluginName       func() string
+	GetPluginName       func(bool) string
 	GetLogPath          func() string
 	GetTrusts           func() map[string][]string
 	GetCursorConfigPath func() string
