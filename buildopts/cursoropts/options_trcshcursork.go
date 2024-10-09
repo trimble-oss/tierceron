@@ -24,8 +24,12 @@ func GetCapCuratorPath() string {
 	return "/tmp/trccurator/"
 }
 
-func GetPluginName() string {
-	return "trcsh-cursor-k"
+func GetPluginName(vaultPlugin bool) string {
+	if vaultPlugin {
+		return "trcshqk"
+	} else {
+		return "trcsh-cursor-k"
+	}
 }
 
 func GetLogPath() string {

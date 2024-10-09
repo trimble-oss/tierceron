@@ -62,7 +62,7 @@ func main() {
 		logFile = "./trcplugincarrier.log"
 		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	}
-	logger := log.New(f, fmt.Sprintf("[%s]", cursoropts.BuildOptions.GetPluginName()), log.LstdFlags)
+	logger := log.New(f, fmt.Sprintf("[%s]", cursoropts.BuildOptions.GetPluginName(true)), log.LstdFlags)
 	eUtils.CheckError(&core.CoreConfig{
 		ExitOnFailure: true,
 		Log:           logger,

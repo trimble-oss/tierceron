@@ -27,11 +27,15 @@ func GetCapCuratorPath() string {
 	return "/tmp/trccurator/"
 }
 
-func GetPluginName() string {
+func GetPluginName(vaultPlugin bool) string {
 	if runtime.GOOS == "windows" {
 		return "trcsh.exe"
 	} else {
-		return "trcsh-cursor-aw"
+		if vaultPlugin {
+			return "trcshqaw"
+		} else {
+			return "trcsh-cursor-aw"
+		}
 	}
 }
 
