@@ -173,7 +173,7 @@ func InitPluginLogs(pluginConfig map[string]interface{}, logger *log.Logger) *lo
 }
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+func InitVaultModForPlugin(pluginConfig map[string]interface{}, currentTokenName string, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	trcdbEnvLogger := InitPluginLogs(pluginConfig, logger)
 	exitOnFailure := false
 
@@ -201,7 +201,6 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, logger *log.Logg
 		return nil, nil, nil, errors.New("missing required env")
 	}
 
-	currentTokenName := "config_token_pluginany"
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			WantCerts:           false,

@@ -43,7 +43,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 	tempTokenPtr := pluginConfig["tokenptr"]
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
-	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, "config_token_pluginany", logger)
 	if vault != nil {
 		defer vault.Close()
 	}
@@ -101,7 +101,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	tokenPtr := eUtils.RefMap(pluginConfig, "tokenptr")
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
-	carrierDriverConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	carrierDriverConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, "config_token_pluginany", logger)
 	carrierDriverConfig.SubSectionValue = pluginName
 	if err != nil {
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
