@@ -3,6 +3,8 @@
 
 package cursoropts
 
+import "runtime"
+
 func GetCuratorConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
 	return map[string]interface{}{
 		"env":            "dev",
@@ -26,7 +28,11 @@ func GetCapCuratorPath() string {
 }
 
 func GetPluginName() string {
-	return "trcsh-cursor-aw"
+	if runtime.GOOS == "windows" {
+		return "trcsh.exe"
+	} else {
+		return "trcsh-cursor-aw"
+	}
 }
 
 func GetLogPath() string {
