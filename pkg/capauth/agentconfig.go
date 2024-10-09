@@ -262,6 +262,10 @@ func NewAgentConfig(addressPtr *string,
 	initNewTrcsh bool,
 	logger *log.Logger,
 	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
+	if agentTokenPtr == nil {
+		logger.Println("trcsh Failed to bootstrap")
+		return nil, nil, errors.New("missing required agent auth")
+	}
 	if logger != nil {
 		logger.Printf(".")
 	} else {
@@ -297,6 +301,11 @@ func NewAgentConfig(addressPtr *string,
 	if readErr != nil {
 		return nil, nil, readErr
 	} else {
+		if logger != nil {
+			logger.Printf(".")
+		} else {
+			fmt.Printf(".")
+		}
 		if data["trcHatEncryptPass"] == nil ||
 			data["trcHatEncryptSalt"] == nil ||
 			data["trcHatHandshakeCode"] == nil ||
