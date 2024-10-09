@@ -652,8 +652,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		// Validate drone sha path
 		pluginConfig := make(map[string]interface{})
 		pluginConfig["vaddress"] = *addressPtr
-		pluginConfig["tokenptr"] = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("trcsh_agent_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis))
+
+		currentTokenName := fmt.Sprintf("trcsh_agent_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
+		pluginConfig["tokenptr"] = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
 		pluginConfig["env"] = trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+
 		if eUtils.IsWindows() {
 			pluginConfig["plugin"] = "trcsh.exe"
 		} else if kernelopts.BuildOptions.IsKernel() {
@@ -662,7 +665,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			pluginConfig["plugin"] = "trcsh"
 		}
 
-		_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, driverConfigPtr.CoreConfig.Log)
+		_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfigPtr.CoreConfig.Log)
 		if err != nil {
 			fmt.Printf("Problem initializing mod: %s\n", err)
 			driverConfigPtr.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
