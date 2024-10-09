@@ -43,7 +43,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var goMod *helperkv.Modifier
 	var err error
 
-	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, "config_token_pluginany", logger)
 	if err != nil {
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
 		return err
@@ -63,7 +63,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 		pluginConfig["exitOnFailure"] = true
 
-		cConfig, cGoMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+		cConfig, cGoMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, "config_token_pluginany", logger)
 		if err != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
 			return err

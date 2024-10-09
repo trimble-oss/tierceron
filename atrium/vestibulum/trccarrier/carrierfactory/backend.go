@@ -611,7 +611,8 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)
 			pluginConfig["tokenptr"] = tokenEnvMap["ctokenptr"]
 			pluginConfig["regions"] = []string{hostRegion}
-			carrierDriverConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+			currentTokenName := "config_token_pluginany"
+			carrierDriverConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, logger)
 			if err != nil {
 				logger.Println("Error: " + err.Error() + " - 1")
 				logger.Println("Failed to init mod for deploy update")
