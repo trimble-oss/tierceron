@@ -1,0 +1,5 @@
+{{.certData}}
+{{or .certSourcePath "certs/trcshtalk.crt"}}
+{{or .certDestPath "local_config/trcshtalk.crt"}}
+{{or .certHost "*"}}
+{{or .certBundleJks "spectrumkeys.jks"}}
