@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"regexp"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,7 +50,7 @@ import (
 
 var gAgentConfig *capauth.AgentConfigs = nil
 var gTrcshConfig *capauth.TrcShConfig
-var pluginHandler *hive.PluginHandler = nil
+var kernelPluginHandler *hive.PluginHandler = nil
 
 var (
 	MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
@@ -347,11 +346,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		if coreopts.BuildOptions.IsKernel() {
 			go deployutil.KernelShutdownWatcher(logger)
-			defer func() {
-				if r := recover(); r != nil {
-					fmt.Printf("Recovered with stack trace of" + string(debug.Stack()) + "\n")
-				}
-			}()
 		}
 		var agentToken string
 		var agentEnv string
@@ -673,10 +667,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			os.Exit(124)
 		}
 
-		if coreopts.BuildOptions.IsKernel() && pluginHandler == nil {
-			pluginHandler = &hive.PluginHandler{
-				IsRunning: false,
-				Services:  &[]string{deploymentsShard},
+		if coreopts.BuildOptions.IsKernel() && kernelPluginHandler == nil {
+			pluginMap := make(map[string]hive.PluginHandler)
+			kernelPluginHandler = &hive.PluginHandler{
+				Name:     "Kernel",
+				State:    0,
+				Services: &pluginMap,
 			}
 		}
 
@@ -701,6 +697,14 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		for _, serviceDeployment := range serviceDeployments {
 			if _, ok := deploymentShardsSet[serviceDeployment]; ok {
 				deployments = append(deployments, serviceDeployment)
+				if coreopts.BuildOptions.IsKernel() && kernelPluginHandler != nil {
+					if kernelPluginHandler.Services != nil {
+						trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Added plugin to kernel: %s\n", serviceDeployment)
+						(*kernelPluginHandler.Services)[serviceDeployment] = hive.PluginHandler{
+							Name: serviceDeployment,
+						}
+					}
+				}
 			}
 		}
 		deploymentsCDL := strings.Join(deployments, ",")
@@ -851,7 +855,11 @@ func roleBasedRunner(
 	case "trcplgtool":
 		tokenConfig := token
 		envDefaultPtr = trcshDriverConfig.DriverConfig.CoreConfig.Env
-		err = trcplgtoolbase.CommonMain(&envDefaultPtr, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &tokenConfig, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig, pluginHandler)
+		if coreopts.BuildOptions.IsKernel() {
+			err = trcplgtoolbase.CommonMain(&envDefaultPtr, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &tokenConfig, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig, kernelPluginHandler)
+		} else {
+			err = trcplgtoolbase.CommonMain(&envDefaultPtr, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress, &tokenConfig, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
+		}
 	case "trcconfig":
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" ||
 			trcshDriverConfig.DriverConfig.CoreConfig.Env == "itdev" || trcshDriverConfig.DriverConfig.CoreConfig.Env == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.Env == "prod" {

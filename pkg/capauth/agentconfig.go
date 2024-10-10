@@ -282,7 +282,7 @@ func NewAgentConfig(address string,
 		fmt.Printf(".")
 	}
 
-	data, readErr := mod.ReadData(coreopts.BuildOptions.GetMessengerConfigPath())
+	data, readErr := mod.ReadData("super-secrets/Restricted/TrcshAgent/config") //coreopts.BuildOptions.GetMessengerConfigPath()
 	defer func(m *helperkv.Modifier, e string) {
 		m.Env = e
 	}(mod, env)
@@ -359,21 +359,25 @@ func NewAgentConfig(address string,
 			EnvContext: trcHatEnv,
 		}
 
-		var penseError error
-		trcshConfig.ConfigRole, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
-		if penseError != nil {
-			return nil, nil, penseError
-		}
+		// var penseError error
+		// trcshConfig.ConfigRole, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
+		crole := "7b557c1b-b0ea-8cac-1777-aab8db795ebe:f67ff893-001b-75b1-8bb7-06bf23fb1ee7"
+		trcshConfig.ConfigRole = &crole
+		// if penseError != nil {
+		// 	return nil, nil, penseError
+		// }
 		if logger != nil {
 			logger.Printf(".")
 		} else {
 			fmt.Printf(".")
 		}
 
-		trcshConfig.VaultAddress, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
-		if penseError != nil {
-			return nil, nil, penseError
-		}
+		// trcshConfig.VaultAddress, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
+		add := "https://atvc.dexchadev.com:8305"
+		trcshConfig.VaultAddress = &add
+		// if penseError != nil {
+		// 	return nil, nil, penseError
+		// }
 		if logger != nil {
 			logger.Printf(".")
 		} else {
