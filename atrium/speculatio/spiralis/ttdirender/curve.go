@@ -214,16 +214,19 @@ func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3n
 				log.Println("Error decoding data in curve renderer getTimeSplits")
 				break
 			}
-			decodedData := decoded.(map[string]interface{})
-			if decodedData["TimeSplit"] != nil {
-				timeNanoSeconds := decodedData["TimeSplit"].(float64)
-				if timeNanoSeconds == 0 && firstTime == 0 {
-					firstTime = 1
-				} else {
-					firstTime = 2
+			if decodedData, ok := decoded.(map[string]interface{}); ok {
+				if decodedData["TimeSplit"] != nil {
+					timeNanoSeconds := decodedData["TimeSplit"].(float64)
+					if timeNanoSeconds == 0 && firstTime == 0 {
+						firstTime = 1
+					} else {
+						firstTime = 2
+					}
+					timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
+					timesplit = append(timesplit, timeSeconds)
 				}
-				timeSeconds := float64(timeNanoSeconds) * math.Pow(10.0, -9.0)
-				timesplit = append(timesplit, timeSeconds)
+			} else {
+				log.Println("Unexpected non-map type after decoding for getTimeSplits")
 			}
 		}
 	}
@@ -388,23 +391,26 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 			if err != nil {
 				log.Println("Error decoding data in curve renderer RenderElement")
 			} else {
-				decodedData := decoded.(map[string]interface{})
-				if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil && decodedData["Average"] != nil {
-					if interfaceQuartiles, ok := decodedData["Quartiles"].([]interface{}); ok {
-						for _, quart := range interfaceQuartiles {
-							if floatQuart, ok := quart.(float64); ok {
-								cr.quartiles = append(cr.quartiles, floatQuart)
+				if decodedData, ok := decoded.(map[string]interface{}); ok {
+					if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil && decodedData["Average"] != nil {
+						if interfaceQuartiles, ok := decodedData["Quartiles"].([]interface{}); ok {
+							for _, quart := range interfaceQuartiles {
+								if floatQuart, ok := quart.(float64); ok {
+									cr.quartiles = append(cr.quartiles, floatQuart)
+								}
 							}
 						}
-					}
 
-					if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
-						cr.maxTime = int(decodedMaxTime)
-					}
+						if decodedMaxTime, ok := decodedData["MaxTime"].(float64); ok {
+							cr.maxTime = int(decodedMaxTime)
+						}
 
-					if decodedavg, ok := decodedData["Average"].(float64); ok {
-						cr.avg = decodedavg
+						if decodedavg, ok := decodedData["Average"].(float64); ok {
+							cr.avg = decodedavg
+						}
 					}
+				} else {
+					log.Println("Unexpected non-map type after decoding for RenderElement")
 				}
 			}
 
