@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
-	pb "github.com/trimble-oss/tierceron/installation/trcshk/trchelloworld/hellosdk" // Update package path as needed
+	pb "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trchelloworld/hellosdk" // Update package path as needed
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
