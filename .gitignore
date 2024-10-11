@@ -73,8 +73,7 @@ installation/trclocal/trchelloworld/deploy/*.trc
 installation/trclocal/trchelloworld/deploy/*.yaml
 installation/trclocal/trchelloworld/deploy/*/*.trc
 
-installation/trcsh/trc_seeds/*
-installation/trcsh/scripts/*.sh
+installation/trcshhive/trcsh-cursor/trc_seeds/*
 
 installation/trccarrier/deploy/
 installation/trccarrier/trc_seeds/
