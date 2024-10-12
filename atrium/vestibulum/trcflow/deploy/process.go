@@ -198,10 +198,10 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	if _, err := os.Stat(agentPath); errors.Is(err, os.ErrNotExist) {
 		pluginDownloadNeeded = true
-		logger.Printf(fmt.Sprintf("Attempting to download new image for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)))
+		logger.Printf("Attempting to download new image for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string))
 	} else {
 		if imageFile, err := os.Open(agentPath); err == nil {
-			logger.Printf(fmt.Sprintf("Found image for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)))
+			logger.Printf("Found image for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string))
 
 			sha256 := sha256.New()
 
@@ -213,17 +213,17 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
 			if filesystemsha256 != vaultPluginSignature["trcsha256"] { //Sha256 from file system matches in vault
 				pluginDownloadNeeded = true
+				logger.Printf("Attempting to download new image for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string))
 			} else {
 				eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("Certified plugin already exists in file system - continuing with vault plugin status update for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)), false)
 			}
 		} else {
-			pluginDownloadNeeded = true
-			logger.Printf(fmt.Sprintf("Attempting to download new image for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)))
+			logger.Printf("Cannup update new image for env: %s and plugin %s Error: %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string), err.Error())
 		}
 	}
 
 	if pluginDownloadNeeded {
-		logger.Printf(fmt.Sprintf("PluginDeployFlow new plugin image found for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, pluginName))
+		logger.Printf("PluginDeployFlow new plugin image found for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, pluginName)
 
 		// 1.c.i. Download new image from ECR.
 		// 1.c.ii. Sha256 of new executable.
@@ -320,7 +320,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		cGoMod.SectionPath = ""
 		_, err = cGoMod.Write(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", writeMap["trcplugin"].(string)), writeMap, carrierDriverConfig.CoreConfig.Log)
 		if err != nil {
-			logger.Printf(fmt.Sprintf("PluginDeployFlow failure: Failed to write plugin state for env: %s and plugin: %s error: %s\n", carrierDriverConfig.CoreConfig.Env, pluginName, err.Error()))
+			logger.Printf("PluginDeployFlow failure: Failed to write plugin state for env: %s and plugin: %s error: %s\n", carrierDriverConfig.CoreConfig.Env, pluginName, err.Error())
 		}
 		if hostName != "" && writeMap["trctype"].(string) == "agent" {
 			overridePath := "overrides/" + hostName + "/" + writeMap["trcplugin"].(string) + "/Certify"
@@ -358,6 +358,11 @@ func PluginDeployedUpdate(driverConfig *config.DriverConfig, mod *helperkv.Modif
 	}
 
 	hostRegion := coreopts.BuildOptions.GetRegion(hostName)
+	if hostRegion == "" {
+		logger.Println("PluginDeployedUpdate self certification not provided on base region deployers")
+		return nil
+	}
+
 	mod.Regions = append(mod.Regions, hostRegion)
 	projects, services, _ := eUtils.GetProjectServices(nil, cPath)
 	for _, pluginName := range pluginNameList {

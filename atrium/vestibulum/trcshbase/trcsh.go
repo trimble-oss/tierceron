@@ -896,7 +896,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			fmt.Printf("trccertinit unsupported in production\n")
 			os.Exit(125) // Running functionality not supported in prod.
 		}
-		tokenName := fmt.Sprintf("vault_pub_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
+		tokenName := fmt.Sprintf("vault_pub_token_%s", env)
 		ResetModifier(trcshDriverConfig.DriverConfig.CoreConfig, tokenName) //Resetting modifier cache to avoid token conflicts.
 		approleconfigPtr := new(string)
 		*approleconfigPtr = "configpub.yml"
