@@ -370,11 +370,11 @@ func NewAgentConfig(addressPtr *string,
 		}
 
 		// TODO: Chewbacca -- Local debug
-		// configRole := os.Getenv("CONFIG_ROLE")
-		// vaddress := os.Getenv("VAULT_ADDR")
-		// trcshConfig.ConfigRolePtr = &configRole
-		// trcshConfig.VaultAddressPtr = &vaddress
-		// return agentconfig, trcshConfig, nil
+		configRole := os.Getenv("CONFIG_ROLE")
+		vaddress := os.Getenv("VAULT_ADDR")
+		trcshConfig.ConfigRolePtr = &configRole
+		trcshConfig.VaultAddressPtr = &vaddress
+		return agentconfig, trcshConfig, nil
 		// End Chewbacca
 
 		var penseError error
