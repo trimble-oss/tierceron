@@ -746,7 +746,7 @@ func CommonMain(envPtr *string,
 	// because you first need tokens to do so.  Only seed if !new.
 	if !*newPtr {
 		// Seed the vault with given seed directory
-		mod, _ := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s_unrestricted", *envPtr)), addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
+		mod, _ := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr), addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
