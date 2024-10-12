@@ -286,7 +286,7 @@ func CommonMain(envPtr *string,
 	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appRolePtr, *pingPtr)
 	eUtils.CheckError(driverConfigBase.CoreConfig, autoErr, true)
 
-	if !*pingPtr && !*newPtr && eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s_unrestricted", *envPtr))) == 0 {
+	if !*pingPtr && !*newPtr && eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr)) == 0 {
 		eUtils.CheckWarning(driverConfigBase.CoreConfig, "Missing auth tokens", true)
 	}
 
@@ -320,7 +320,7 @@ func CommonMain(envPtr *string,
 	}
 
 	if *devPtr || !*newPtr { // Dev server, initialization taken care of, get root token
-		v.SetToken(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s_unrestricted", *envPtr)))
+		v.SetToken(driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr))
 	} else { // Unseal and grab keys/root token
 		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
 		if err != nil || totalKeyShard > math.MaxInt {
