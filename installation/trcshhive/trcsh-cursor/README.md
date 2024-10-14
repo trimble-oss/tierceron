@@ -2,11 +2,10 @@
 You have found the installation folder for trcsh.  This is a trusted tierceron secure shell utilized in the tierceron secure deployment services.  Carrier, working in tandem with trcsh will interact with a docker registry and either virtual machines or a kubernetes cluster in order to securely deploy services.
 
 # Prerequisites
-This assumes the existence of a vault with tokens.  You also must have installed the build dependencies under [GETTING_STARTED.MD](../../GETTING_STARTED.MD#command-line-building-via-makefile). You'll need a root and unrestricted token install the carrier.  You should also have already installed trccarrier and set up some kind of container
-registry.
+This assumes the existence of a vault with tokens.  You also must have installed the build dependencies under [GETTING_STARTED.MD](../../../GETTING_STARTED.MD#command-line-building-via-makefile). You'll need a root and unrestricted token install the curator.  You should also have already installed trcsh-curator and set up some kind of container registry.
 
 # Trcsh server deployer integration
-To bring carrier fully online, you'll also have to install trcsh as a plugin.  Trcsh only runs as a restricted user called azuredeploy so you'll need to make it now.
+To bring curator fully online, you'll also have to install trcsh as a plugin.  Trcsh only runs as a restricted user called azuredeploy so you'll need to make it now.
 
 ```
 sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/azuredeploy azuredeploy
@@ -47,7 +46,7 @@ trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorK -se
 ```
 
 ... after making edits to the generated seed file (all values can be TODO for local), init it.  These must
-be distinct from TrcshAgent for proper functioning.
+be distinct from TrcshCursor for proper functioning.
 
 ```
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorAW

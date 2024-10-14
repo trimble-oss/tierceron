@@ -59,7 +59,7 @@ func main() {
 	logFile := cursoropts.BuildOptions.GetLogPath()
 	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if logErr != nil {
-		logFile = "./trcplugincarrier.log"
+		logFile = "./trcplugincurator.log"
 		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	}
 	logger := log.New(f, fmt.Sprintf("[%s]", cursoropts.BuildOptions.GetPluginName(true)), log.LstdFlags)

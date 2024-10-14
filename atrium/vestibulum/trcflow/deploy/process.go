@@ -133,6 +133,12 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		return nil
 	}
 
+	if _, ok := vaultPluginSignature["trcsha256"].(string); !ok {
+		// TODO: maybe delete plugin if it exists since there was no entry in vault...
+		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin status load failure - incomplete certification entry found.  Missing trcsha256.", carrierDriverConfig.CoreConfig.Env), false)
+		return nil
+	}
+
 	//Checks if this instance of carrier is allowed to deploy that certain plugin.
 	if instanceList, ok := vaultPluginSignature["instances"].(string); !ok {
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s Plugin has no valid instances: %s", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)), false)
@@ -215,7 +221,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				pluginDownloadNeeded = true
 				logger.Printf("Attempting to download new image for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string))
 			} else {
-				eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("Certified plugin already exists in file system - continuing with vault plugin status update for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)), false)
+				eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("Certified plugin already exists on file system - continuing with vault plugin status update for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)), false)
 			}
 		} else {
 			logger.Printf("Cannup update new image for env: %s and plugin %s Error: %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string), err.Error())
