@@ -27,7 +27,7 @@ export VAULT_ADDR
 export VAULT_TOKEN
 export VAULT_API_ADDR
 
-echo "Disable old carrier secrets"
+echo "Disable old curator secrets"
 vault secrets disable vaultcurator/
 vault secrets list | grep trcsh-curator$PROD_EXT
 existingplugin=$?
@@ -37,12 +37,12 @@ if [ $existingplugin -eq 0 ]; then
 else
     echo "All mounts cleared.  Continuing..."
 fi
-echo "Unregister old carrier plugin"
+echo "Unregister old curator plugin"
 vault plugin deregister trcsh-curator$PROD_EXT
 
 if [ "$VAULT_PLUGIN_DIR" ]
 then
-echo "Copying new carrier plugin"
+echo "Copying new curator plugin"
 cp target/trcsh-curator$PROD_EXT $VAULT_PLUGIN_DIR
 chmod 700 $VAULT_PLUGIN_DIR/trcsh-curator$PROD_EXT
 sudo setcap cap_ipc_lock=+ep $VAULT_PLUGIN_DIR/trcsh-curator$PROD_EXT
