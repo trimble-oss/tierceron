@@ -417,8 +417,6 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 
 	if capWriteErr != nil || gTrcHatSecretsPort == "" {
 		fmt.Println("Code 54 failure...  Possible deploy components mismatch..")
-		// 2023-06-30T01:29:21.7020686Z read unix @->/tmp/trccarrier/trcsnap.sock: read: connection reset by peer
-		//		os.Exit(-1) // restarting carrier will rebuild necessary resources...
 		return new(string), errors.New("tap writer error")
 	}
 

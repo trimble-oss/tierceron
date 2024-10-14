@@ -37,7 +37,7 @@ From the root of the tierceron project, run the following commands.
 ```
 cd atrium
 make devplugintrcdb
-cd ../installation/trccarrier/deploy
+cd ../installation/trcshhive/trcsh-curator/deploy
 ./deploy.sh (for trc-vault-plugin)
 ```
 

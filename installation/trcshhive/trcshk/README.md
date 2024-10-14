@@ -1,5 +1,5 @@
 # Introduction 
-You have found the installation folder for trcsh kernel templates and secrets.  These secrets are required for running trcsh.exe as a windows service or trcshk as a linux daemon running in collaboration with the carrier to perform deployments on a different machine.
+You have found the installation folder for trcsh kernel templates and secrets.  These secrets are required for running trcsh.exe as a windows service or trcshk as a linux daemon running in collaboration with the curator to perform deployments on a different machine.
 
 # Prerequisites
 This assumes the existence of a vault with tokens.  You'll need a root or unrestricted token to initialize data from here on out.  If you're a security purist, you'll already have deleted the root token at this point and will just operate with the unrestricted dev token for the steps below.
@@ -8,7 +8,7 @@ Agent *requires* trcsh to be set up prior to use.  Trcsh running on the server c
 # Agent installation
 ```
 trcpub -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport>
-trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcshAgent -serviceFilter=config -indexFilter=config -addr=$VAULT_ADDR -novault
+trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcshCursorAW -serviceFilter=config -indexFilter=config -addr=$VAULT_ADDR -novault
 
 ```
 
@@ -16,12 +16,12 @@ trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcshAgent -serviceFilter=config -
 At this point you want to edit all seed variables in preparation for publish.
 
 ```
-trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshAgent
+trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorAW
 ```
 
 
 # Trcsh client integration
-To bring deployments fully online, you'll need to install the trcsh script executable on each virtual machine you'd like to perform deployments under.  The following creates a dedicated trcshk user for performing deployments.  A trcshk daemon or service will run and wait for deployment commands initiated by the carrier.
+To bring deployments fully online, you'll need to install the trcsh script executable on each virtual machine you'd like to perform deployments under.  The following creates a dedicated trcshk user for performing deployments.  A trcshk daemon or service will run and wait for deployment commands initiated by the curator.
 
 ```
 sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/trcshk trcshk
@@ -29,7 +29,7 @@ sudo mkdir -p /home/trcshk/bin
 sudo chmod 1750 /home/trcshk/bin
 sudo chown root:trcshk /home/trcshk/bin
 
-cp ../trccarrier/deploy/target/trcsh /home/trcshk/bin
+cp ../trcsh-curator/deploy/target/trcsh /home/trcshk/bin
 sudo chown root:trcshk /home/trcshk/bin/trcsh
 sudo setcap cap_ipc_lock=+ep /home/trcshk/bin/trcsh
 
