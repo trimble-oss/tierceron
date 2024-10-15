@@ -41,7 +41,7 @@ func CommonMain(envPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
-	pluginHandler ...*hive.PluginHandler) error {
+	mainPluginHandler ...*hive.PluginHandler) error {
 
 	var flagEnvPtr *string
 	var tokenPtr *string
@@ -145,6 +145,23 @@ func CommonMain(envPtr *string,
 			return err
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
+	}
+
+	var pluginHandler *hive.PluginHandler = nil
+	var kernelPluginHandler *hive.PluginHandler = nil
+	if kernelopts.BuildOptions.IsKernel() {
+		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
+			kernelPluginHandler = mainPluginHandler[0]
+			if pH, ok := (*kernelPluginHandler.Services)[*pluginNamePtr]; ok {
+				pluginHandler = pH //does this mean changes to pluginHandler = changes to kernelPluginHandler.Services[plugin]?
+			} else {
+				fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
+			}
+		} else {
+			fmt.Printf("No handlers provided for plugin service to startup: %s\n", *pluginNamePtr)
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("No handlers provided for plugin service to startup: %s\n", *pluginNamePtr)
+		}
 	}
 
 	if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"] != nil {
@@ -729,7 +746,20 @@ func CommonMain(envPtr *string,
 				if err != nil {
 					return err
 				}
-				hive.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+				if pluginHandler != nil {
+					if pluginHandler.State == 2 && sha == pluginHandler.Id { //make sure this won't break...not set yet
+						trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Tried to redeploy same failed plugin: %s\n", *pluginNamePtr)
+						// do we want to remove from available services???
+					} else {
+						pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+						pluginHandler.State = 0
+						pluginHandler.Id = sha
+						// (*kernelPluginHandler.Services)[pluginHandler.Name] = pluginHandler
+					}
+				} else {
+					fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
+					trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
+				}
 			}
 		}
 	} else if *certifyImagePtr {
@@ -827,18 +857,18 @@ func CommonMain(envPtr *string,
 			return err
 		}
 	} else if *pluginservicestartPtr && kernelopts.BuildOptions.IsKernel() {
-		if len(pluginHandler) > 0 {
-			pluginHandler[0].PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		if pluginHandler != nil && pluginHandler.State != 2 && kernelPluginHandler != nil {
+			pluginHandler.PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig, kernelPluginHandler)
 		} else {
-			fmt.Println("No handler provided for plugin service startup.")
-			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("No handler provided for plugin service startup.")
+			fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 		}
 	} else if *pluginservicestopPtr && kernelopts.BuildOptions.IsKernel() {
-		if len(pluginHandler) > 0 {
-			pluginHandler[0].PluginserviceStop(trcshDriverConfigBase.DriverConfig)
+		if pluginHandler != nil && pluginHandler.State != 2 {
+			pluginHandler.PluginserviceStop(trcshDriverConfigBase.DriverConfig)
 		} else {
-			fmt.Println("No handler provided for plugin service shutdown.")
-			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("No handler provided for plugin service shutdown.")
+			fmt.Printf("Handler not initialized for plugin to shutdown: %s\n", *pluginNamePtr)
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to shutdown: %s\n", *pluginNamePtr)
 		}
 	}
 	//Checks if image has been copied & deployed

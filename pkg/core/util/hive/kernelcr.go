@@ -6,11 +6,13 @@ import (
 	"log"
 	"plugin"
 	"reflect"
+	"runtime/debug"
 	"strings"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -19,33 +21,34 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
-var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
+// var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
 var logger *log.Logger
 var dfstat *core.TTDINode
 
 type PluginHandler struct {
-	IsRunning     bool
-	sender        chan int
-	err_receiver  chan error
-	ttdi_receiver chan *core.TTDINode
-	Services      *[]string
+	Name          string //service
+	State         int    //0 - initialized, 1 - running, 2 - failed
+	Id            string //sha256 of plugin
+	ConfigContext *core.ConfigContext
+	Services      *map[string]*PluginHandler
+	PluginMod     *plugin.Plugin
 }
 
-func Init(pluginName string, properties *map[string]interface{}) {
-	if PluginMods == nil || PluginMods[pluginName] == nil {
+func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
+	if pluginHandler.PluginMod == nil || pluginHandler.Name == "" {
 		logger.Println("No plugin module set for initializing plugin service.")
 		return
 	}
-	symbol, err := PluginMods[pluginName].Lookup("Init")
+	symbol, err := pluginHandler.PluginMod.Lookup("Init")
 	if err != nil {
 		fmt.Println(err)
 		logger.Printf("Unable to lookup plugin export: %s\n", err)
 	}
-	logger.Printf("Initializing plugin module for %s\n", pluginName)
+	logger.Printf("Initializing plugin module for %s\n", pluginHandler.Name)
 	reflect.ValueOf(symbol).Call([]reflect.Value{reflect.ValueOf(properties)})
 }
 
-func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) {
+func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}, kernelPluginHandler *PluginHandler) {
 	if driverConfig.CoreConfig.Log != nil {
 		if logger == nil {
 			logger = driverConfig.CoreConfig.Log
@@ -54,13 +57,19 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		fmt.Println("No logger passed in to plugin service")
 		return
 	}
-	pluginName := driverConfig.SubSectionValue
-	if len(pluginName) == 0 {
+	if kernelopts.BuildOptions.IsKernel() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("Recovered with stack trace of" + string(debug.Stack()) + "\n")
+			}
+		}()
+	}
+	if pluginHandler.Name == "" {
 		driverConfig.CoreConfig.Log.Println("No plugin name specified to start plugin service.")
 		return
 	}
-	if PluginMods == nil || PluginMods[pluginName] == nil {
-		driverConfig.CoreConfig.Log.Printf("No plugin module initialized to start plugin service: %s\n", pluginName)
+	if pluginHandler.PluginMod == nil {
+		driverConfig.CoreConfig.Log.Printf("No plugin module initialized to start plugin service: %s\n", pluginHandler.Name)
 		return
 	}
 	var service string
@@ -102,7 +111,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 				return
 			}
-			getConfigPaths, err := PluginMods[pluginName].Lookup("GetConfigPaths")
+			getConfigPaths, err := pluginHandler.PluginMod.Lookup("GetConfigPaths")
 			if err != nil {
 				driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
 				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
@@ -138,31 +147,78 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 			}
 			// Initialize channels
-			pluginHandler.sender = make(chan int)
-			pluginHandler.err_receiver = make(chan error)
-			pluginHandler.ttdi_receiver = make(chan *core.TTDINode)
+			sender := make(chan int)
+			pluginHandler.ConfigContext.CmdSender = &sender
+			msg_sender := make(chan *core.ChatMsg)
+			pluginHandler.ConfigContext.ChatSender = &msg_sender
+
+			err_receiver := make(chan error)
+			pluginHandler.ConfigContext.ErrorChan = &err_receiver
+			ttdi_receiver := make(chan *core.TTDINode)
+			pluginHandler.ConfigContext.DfsChan = &ttdi_receiver
+			status_receiver := make(chan int)
+			pluginHandler.ConfigContext.CmdReceiver = &status_receiver
+
+			if kernelPluginHandler == nil || kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiver == nil {
+				fmt.Printf("Unable to access configuration data for %s\n", service)
+				driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+				return
+			}
+
+			// if kernelPluginHandler.Services != nil { //is this necessary
+			// 	(*kernelPluginHandler.Services)[pluginHandler.Name] = pluginHandler
+			// }
+
 			chan_map := make(map[string]interface{})
-			chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = pluginHandler.sender
+
+			chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]interface{})
+			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSender
+			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSender
+
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]interface{})
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.err_receiver
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ttdi_receiver
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.STATUS_CHANNEL] = pluginHandler.ConfigContext.CmdReceiver
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = kernelPluginHandler.ConfigContext.ChatReceiver
 			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			go pluginHandler.handle_errors(driverConfig)
 			go pluginHandler.handle_dataflowstat(driverConfig, mod, vault)
-			Init(pluginName, &serviceConfig)
+			go pluginHandler.receiver(driverConfig)
+			pluginHandler.Init(&serviceConfig)
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
-			pluginHandler.sender <- core.PLUGIN_EVENT_START
-			pluginHandler.IsRunning = true
+			*pluginHandler.ConfigContext.CmdSender <- core.PLUGIN_EVENT_START
 			driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
+		}
+	}
+}
+
+func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) {
+	for {
+		event := <-*pluginHandler.ConfigContext.CmdReceiver
+		switch {
+		case event == core.PLUGIN_EVENT_START:
+			pluginHandler.State = 1
+			driverConfig.CoreConfig.Log.Printf("Kernel finished starting plugin: %s\n", pluginHandler.Name)
+		case event == core.PLUGIN_EVENT_STOP:
+			driverConfig.CoreConfig.Log.Printf("Kernel finished stopping plugin: %s\n", pluginHandler.Name)
+			pluginHandler.State = 0
+			*pluginHandler.ConfigContext.ErrorChan <- errors.New(pluginHandler.Name + " shutting down")
+			*pluginHandler.ConfigContext.DfsChan <- nil
+			pluginHandler.PluginMod = nil
+			return
+		case event == core.PLUGIN_EVENT_STATUS:
+			//TODO
+		default:
+			//TODO
 		}
 	}
 }
 
 func (pluginHandler *PluginHandler) handle_errors(driverConfig *config.DriverConfig) {
 	for {
-		result := <-pluginHandler.err_receiver
+		result := <-*pluginHandler.ConfigContext.ErrorChan
 		switch {
 		case result != nil:
 			fmt.Println(result)
@@ -184,7 +240,7 @@ func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *config.Dri
 	// 	FlowLock: &sync.Mutex{},
 	// }
 	for {
-		dfstat = <-pluginHandler.ttdi_receiver
+		dfstat = <-*pluginHandler.ConfigContext.DfsChan
 		switch {
 		case dfstat != nil:
 			driverConfig.CoreConfig.Log.Printf("Received dataflow statistic: %s\n", dfstat.Name)
@@ -203,20 +259,25 @@ func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *config.Dri
 }
 
 func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *config.DriverConfig) {
-	pluginName := driverConfig.SubSectionValue
+	if kernelopts.BuildOptions.IsKernel() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("Recovered with stack trace of" + string(debug.Stack()) + "\n")
+			}
+		}()
+	}
+	pluginName := pluginHandler.Name
 	if len(pluginName) == 0 {
 		driverConfig.CoreConfig.Log.Printf("No plugin name provided to stop plugin service.\n")
 		return
 	}
-	if PluginMods == nil || PluginMods[pluginName] == nil {
+	if pluginHandler.PluginMod == nil {
 		driverConfig.CoreConfig.Log.Printf("No plugin mod initialized or set for %s to stop plugin\n", pluginName)
 		return
 	}
 	driverConfig.CoreConfig.Log.Printf("Sending stop message to plugin: %s\n", pluginName)
-	pluginHandler.sender <- core.PLUGIN_EVENT_STOP
+	*pluginHandler.ConfigContext.CmdSender <- core.PLUGIN_EVENT_STOP
 	driverConfig.CoreConfig.Log.Printf("Stop message successfully sent to plugin: %s\n", pluginName)
-	PluginMods[pluginName] = nil
-	pluginHandler.IsRunning = false
 }
 
 func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) string {
@@ -242,20 +303,50 @@ func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[stri
 	return pluginPath
 }
 
-func LoadPluginMod(driverConfig *config.DriverConfig, pluginPath string) {
+func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverConfig, pluginPath string) {
 	pluginM, err := plugin.Open(pluginPath)
 	if err != nil {
 		fmt.Printf("Unable to open plugin module for service: %s\n", pluginPath)
 		driverConfig.CoreConfig.Log.Printf("Unable to open plugin module for service: %s\n", pluginPath)
 		return
 	}
-	pluginName := driverConfig.SubSectionValue
+	pluginName := pluginHandler.Name
 	if len(pluginName) > 0 {
 		driverConfig.CoreConfig.Log.Printf("Successfully opened plugin module for %s\n", pluginName)
-		PluginMods[pluginName] = pluginM
+		// PluginMods[pluginName] = pluginM
+		pluginHandler.PluginMod = pluginM
 	} else {
 		fmt.Println("Unable to load plugin module because missing plugin name")
 		driverConfig.CoreConfig.Log.Println("Unable to load plugin module because missing plugin name")
 		return
+	}
+}
+
+func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfig) {
+	if pluginHandler.Name != "Kernel" {
+		driverConfig.CoreConfig.Log.Printf("Chat handling not supported for plugin: %s\n", pluginHandler.Name)
+	}
+	for {
+		msg := <-*pluginHandler.ConfigContext.ChatReceiver
+		if msg.Name == "SHUTDOWN" {
+			driverConfig.CoreConfig.Log.Println("Shutting down chat receiver.")
+			return
+		}
+		for _, q := range msg.Query {
+			if plugin, ok := (*pluginHandler.Services)[q]; ok {
+				if plugin.State != 1 {
+					driverConfig.CoreConfig.Log.Println("Unable to send message. %s service is not running.\n", plugin.Name)
+					continue
+				}
+				*plugin.ConfigContext.ChatSender <- msg
+			} else if msg.Name != nil {
+				if plugin, ok := (*pluginHandler.Services)[msg.Name]; ok {
+					msg.Response = "Service unavailable"
+					*plugin.ConfigContext.ChatSender <- msg //update msg with error response
+				}
+			} else {
+				driverConfig.CoreConfig.Log.Println("Unable to interpret message.")
+			}
+		}
 	}
 }
