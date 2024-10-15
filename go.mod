@@ -36,7 +36,7 @@ require (
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-core/v2 v2.0.5
-	github.com/trimble-oss/tierceron-hat v1.2.7
+	github.com/trimble-oss/tierceron-hat v1.2.8
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20240326213127-e85d6193e1c6
 )
 
