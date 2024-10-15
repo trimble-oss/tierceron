@@ -21,6 +21,7 @@ import (
 	"github.com/danieljoos/wincred"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
@@ -734,7 +735,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler != nil {
-			msg_receiver := make(chan *core.ChatMsg)
+			msg_receiver := make(chan *tccore.ChatMsg)
 			kernelPluginHandler.ConfigContext.ChatReceiver = &msg_receiver
 			go kernelPluginHandler.Handle_Chat(trcshDriverConfig.DriverConfig)
 		}

@@ -328,20 +328,20 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 	}
 	for {
 		msg := <-*pluginHandler.ConfigContext.ChatReceiver
-		if msg.Name == "SHUTDOWN" {
+		if *msg.Name == "SHUTDOWN" {
 			driverConfig.CoreConfig.Log.Println("Shutting down chat receiver.")
 			return
 		}
-		for _, q := range msg.Query {
+		for _, q := range *msg.Query {
 			if plugin, ok := (*pluginHandler.Services)[q]; ok {
 				if plugin.State != 1 {
-					driverConfig.CoreConfig.Log.Println("Unable to send message. %s service is not running.\n", plugin.Name)
+					driverConfig.CoreConfig.Log.Printf("Unable to send message. %s service is not running.\n", plugin.Name)
 					continue
 				}
 				*plugin.ConfigContext.ChatSender <- msg
 			} else if msg.Name != nil {
-				if plugin, ok := (*pluginHandler.Services)[msg.Name]; ok {
-					msg.Response = "Service unavailable"
+				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
+					*msg.Response = "Service unavailable"
 					*plugin.ConfigContext.ChatSender <- msg //update msg with error response
 				}
 			} else {
