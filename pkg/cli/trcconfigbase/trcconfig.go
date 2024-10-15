@@ -324,7 +324,7 @@ func CommonMain(envDefaultPtr *string,
 		if !*noVaultPtr {
 			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 			if autoErr != nil {
-				if driverConfig != nil {
+				if isShell {
 					driverConfig.CoreConfig.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)
 				} else {
 					driverConfigBase.CoreConfig.Log.Printf("auth error: %s", autoErr)
