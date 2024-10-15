@@ -1,13 +1,13 @@
 # Introduction 
-You have found the installation folder for trc carrier.  This is a trusted vault
+You have found the installation folder for trc curator.  This is a trusted vault
 plugin utilized in the tierceron secure deployment services.  Carrier, working
 in tandem with trcsh will interact with a docker registry and either virtual machines or a kubernetes cluster in order to securely deploy services.
 
 # Prerequisites
-This assumes the existence of a vault with tokens.  You also must have installed the build dependencies under [GETTING_STARTED.MD](../../GETTING_STARTED.MD#command-line-building-via-makefile). You'll need a root and unrestricted token install the carrier.
+This assumes the existence of a vault with tokens.  You also must have installed the build dependencies under [GETTING_STARTED.MD](../../../GETTING_STARTED.MD#command-line-building-via-makefile). You'll need a root and unrestricted token install the curator.
 
 # Container registry configuration setup
-Trcsh utilizes trccarrier and vault managed secrets in order to access a container registry (running in AWS, Azure, or locally) to perform it's deployment responsibilities.  Set up the container configuration secrets with the following command.
+Trcsh utilizes cursor and vault managed secrets in order to access a container registry (running in AWS, Azure, or locally) to perform it's deployment responsibilities.  Set up the container configuration secrets with the following command.
 
 Choose one of the 3 following to set up a container registry flavor of your choice...
 
@@ -37,10 +37,10 @@ If you want to support trcsh windows deployments and or trcsh kernel (for hive i
 See [installation/trcsh/README.md](../trcsh/README.md)
 
 
-# Building the carrier
+# Building the curator
 ```
 pushd .
-cd ../../atrium
+cd ../../../atrium
 make certify cursor
 popd
 ```
@@ -52,7 +52,7 @@ trcconfig -env=dev -startDir=trc_templates/TrcVault/Carrier
 chmod 700 deploy/*.sh
 ```
 
-# Deploy the carrier
+# Deploy the curator
 ```
 cd deploy
 trcplgtool -env=dev -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -pluginName=trcsh-curator -sha256=target/trcsh-curator -pluginType=agent
@@ -60,11 +60,11 @@ trcplgtool -env=dev -certify -addr=$VAULT_ADDR -token=$VAULT_TOKEN -pluginName=t
 sudo cp target/trcsh-curator /usr/local/vault/plugins
 sudo setcap cap_ipc_lock=+ep /usr/local/vault/plugins/trcsh-curator
 
-./deploycarrier.sh
+./deploycurator.sh
 ```
 
 # Trcsh server deployer integration (optional)
-To bring carrier fully online, you'll also have to install trcsh as a plugin.  Trcsh only runs as a restricted user called azuredeploy so you'll need to make it now.
+To bring curator fully online, you'll also have to install trcsh as a plugin.  Trcsh only runs as a restricted user called azuredeploy so you'll need to make it now.
 
 ```
 sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/azuredeploy azuredeploy
@@ -74,7 +74,7 @@ sudo chown root:azuredeploy /home/azuredeploy/bin
 
 ./deploy.sh
 
-./refreshcarriertoken.sh
+./refreshcuratortoken.sh
 ```
 
 # Docker registry setup (local development only)

@@ -4,7 +4,7 @@ echo "Enter plugin name: "
 read TRC_PLUGIN_NAME
 
 if [ "$TRC_PLUGIN_NAME" = 'trcsh-curator' ] ; then
-    echo "Use refreshcarriertoken to refresh carrier tokens."
+    echo "Use refreshcuratortoken to refresh curator tokens."
     exit 1
 fi
 
