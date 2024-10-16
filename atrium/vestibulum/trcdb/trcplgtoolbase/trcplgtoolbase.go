@@ -340,7 +340,17 @@ func CommonMain(envPtr *string,
 
 	var pluginHandler *hive.PluginHandler = nil
 	var kernelPluginHandler *hive.PluginHandler = nil
-	*pluginNamePtr = trcshDriverConfig.DriverConfig.DeploymentConfig["trcplugin"].(string) //might not need...
+	if *pluginNamePtr == "" {
+		if deploy_plugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+			if dep, k := deploy_plugin.(string); k {
+				*pluginNamePtr = dep
+			} else {
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unexpected type for plugin name.")
+			}
+		} else {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unable to set plugin name.")
+		}
+	}
 	if kernelopts.BuildOptions.IsKernel() {
 		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
 			kernelPluginHandler = mainPluginHandler[0]
@@ -850,12 +860,12 @@ func CommonMain(envPtr *string,
 		}
 	} else if *pluginservicestartPtr && kernelopts.BuildOptions.IsKernel() {
 		if pluginHandler != nil && pluginHandler.State != 2 && kernelPluginHandler != nil {
-			if kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiver == nil {
+			if kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiverChan == nil {
 				fmt.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
 				driverConfig.CoreConfig.Log.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
 			} else {
 				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Starting plugin service: %s\n", *pluginNamePtr)
-				pluginHandler.PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig, kernelPluginHandler.ConfigContext.ChatReceiver)
+				pluginHandler.PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig, kernelPluginHandler.ConfigContext.ChatReceiverChan)
 			}
 		} else {
 			fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)

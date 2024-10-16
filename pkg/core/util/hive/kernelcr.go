@@ -187,16 +187,16 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 			// Initialize channels
 			sender := make(chan int)
-			pluginHandler.ConfigContext.CmdSender = &sender
+			pluginHandler.ConfigContext.CmdSenderChan = &sender
 			msg_sender := make(chan *core.ChatMsg)
-			pluginHandler.ConfigContext.ChatSender = &msg_sender
+			pluginHandler.ConfigContext.ChatSenderChan = &msg_sender
 
 			err_receiver := make(chan error)
 			pluginHandler.ConfigContext.ErrorChan = &err_receiver
 			ttdi_receiver := make(chan *core.TTDINode)
 			pluginHandler.ConfigContext.DfsChan = &ttdi_receiver
 			status_receiver := make(chan int)
-			pluginHandler.ConfigContext.CmdReceiver = &status_receiver
+			pluginHandler.ConfigContext.CmdReceiverChan = &status_receiver
 
 			if chatReceiverChan == nil {
 				fmt.Printf("Unable to access configuration data for %s\n", service)
@@ -207,13 +207,13 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			chan_map := make(map[string]interface{})
 
 			chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]interface{})
-			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSender
-			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSender
+			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSenderChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSenderChan
 
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]interface{})
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiver
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = chatReceiverChan
 			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
@@ -223,7 +223,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			go pluginHandler.receiver(driverConfig)
 			pluginHandler.Init(&serviceConfig)
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
-			*pluginHandler.ConfigContext.CmdSender <- core.PLUGIN_EVENT_START
+			*pluginHandler.ConfigContext.CmdSenderChan <- core.PLUGIN_EVENT_START
 			driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 		}
 	}
@@ -231,7 +231,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) {
 	for {
-		event := <-*pluginHandler.ConfigContext.CmdReceiver
+		event := <-*pluginHandler.ConfigContext.CmdReceiverChan
 		switch {
 		case event == core.PLUGIN_EVENT_START:
 			pluginHandler.State = 1
@@ -311,7 +311,7 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *config.Drive
 		return
 	}
 	driverConfig.CoreConfig.Log.Printf("Sending stop message to plugin: %s\n", pluginName)
-	*pluginHandler.ConfigContext.CmdSender <- core.PLUGIN_EVENT_STOP
+	*pluginHandler.ConfigContext.CmdSenderChan <- core.PLUGIN_EVENT_STOP
 	driverConfig.CoreConfig.Log.Printf("Stop message successfully sent to plugin: %s\n", pluginName)
 }
 
@@ -343,6 +343,7 @@ func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverCon
 	if err != nil {
 		fmt.Printf("Unable to open plugin module for service: %s\n", pluginPath)
 		driverConfig.CoreConfig.Log.Printf("Unable to open plugin module for service: %s\n", pluginPath)
+		pluginHandler.State = 2
 		return
 	}
 	pluginName := pluginHandler.Name
@@ -362,35 +363,33 @@ func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverCon
 func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfig) {
 	if pluginHandler == nil || (*pluginHandler).Name != "Kernel" || len(*pluginHandler.Services) == 0 {
 		driverConfig.CoreConfig.Log.Printf("Chat handling not supported for plugin: %s\n", pluginHandler.Name)
+		return
 	}
-	if pluginHandler.ConfigContext.ChatReceiver == nil {
+	if pluginHandler.ConfigContext.ChatReceiverChan == nil {
 		msg_receiver := make(chan *core.ChatMsg)
-		pluginHandler.ConfigContext.ChatReceiver = &msg_receiver
+		pluginHandler.ConfigContext.ChatReceiverChan = &msg_receiver
 		pluginHandler.State = 1
 	}
 	for {
-		msg := <-*pluginHandler.ConfigContext.ChatReceiver
+		msg := <-*pluginHandler.ConfigContext.ChatReceiverChan
 		if *msg.Name == "SHUTDOWN" {
 			driverConfig.CoreConfig.Log.Println("Shutting down chat receiver.")
+			//TODO: Loop through plugin services and send shutdown messages - chat plugin not needed to shutdown
 			return
 		}
 		for _, q := range *msg.Query {
-			if plugin, ok := (*pluginHandler.Services)[q]; ok {
-				if plugin.State != 1 {
-					driverConfig.CoreConfig.Log.Printf("Unable to send message. %s service is not running.\n", plugin.Name)
-					continue
-				}
+			if plugin, ok := (*pluginHandler.Services)[q]; ok && plugin.State == 1 {
 				new_msg := &core.ChatMsg{
-					Name:   &q,
-					ChatId: msg.ChatId,
-					Query:  &[]string{*msg.Name},
+					Name:  &q,
+					Query: &[]string{*msg.Name},
 				}
-				*plugin.ConfigContext.ChatSender <- new_msg
+				*plugin.ConfigContext.ChatSenderChan <- new_msg
 			} else if msg.Name != nil {
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
 					*msg.Response = "Service unavailable"
-					*plugin.ConfigContext.ChatSender <- msg //update msg with error response
+					*plugin.ConfigContext.ChatSenderChan <- msg //update msg with error response
 				}
+				continue
 			} else {
 				driverConfig.CoreConfig.Log.Println("Unable to interpret message.")
 			}
