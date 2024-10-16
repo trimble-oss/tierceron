@@ -34,6 +34,45 @@ type PluginHandler struct {
 	PluginMod     *plugin.Plugin
 }
 
+func InitKernel() *PluginHandler {
+	pluginMap := make(map[string]*PluginHandler)
+	return &PluginHandler{
+		Name:          "Kernel",
+		State:         0,
+		Services:      &pluginMap,
+		ConfigContext: &core.ConfigContext{}, //NEEDED CHANGE
+	}
+}
+
+func (pH *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig) {
+	if pH == nil || pH.Name != "Kernel" {
+		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to add kernel service.")
+		return
+	}
+	if pH.Services != nil {
+		driverConfig.CoreConfig.Log.Printf("Added plugin to kernel: %s\n", service)
+		(*pH.Services)[service] = &PluginHandler{
+			Name:          service,
+			ConfigContext: &core.ConfigContext{}, //NEEDED CHANGE
+		}
+	}
+}
+
+func (pH *PluginHandler) GetPluginHandler(service string, driverConfig *config.DriverConfig) *PluginHandler {
+	if pH != nil && pH.Services != nil {
+		if pH, ok := (*pH.Services)[service]; ok {
+			return pH //does this mean changes to pluginHandler = changes to kernelPluginHandler.Services[plugin]?
+		} else {
+			fmt.Printf("Handler not initialized for plugin to start: %s\n", service)
+			driverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", service)
+		}
+	} else {
+		fmt.Printf("No handlers provided for plugin service to startup: %s\n", service)
+		driverConfig.CoreConfig.Log.Printf("No handlers provided for plugin service to startup: %s\n", service)
+	}
+	return nil
+}
+
 func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
 	if pluginHandler.PluginMod == nil || pluginHandler.Name == "" {
 		logger.Println("No plugin module set for initializing plugin service.")
@@ -48,7 +87,7 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
 	reflect.ValueOf(symbol).Call([]reflect.Value{reflect.ValueOf(properties)})
 }
 
-func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}, kernelPluginHandler *PluginHandler) {
+func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}, chatReceiverChan *chan *core.ChatMsg) {
 	if driverConfig.CoreConfig.Log != nil {
 		if logger == nil {
 			logger = driverConfig.CoreConfig.Log
@@ -159,15 +198,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			status_receiver := make(chan int)
 			pluginHandler.ConfigContext.CmdReceiver = &status_receiver
 
-			if kernelPluginHandler == nil || kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiver == nil {
+			if chatReceiverChan == nil {
 				fmt.Printf("Unable to access configuration data for %s\n", service)
 				driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
 				return
 			}
-
-			// if kernelPluginHandler.Services != nil { //is this necessary
-			// 	(*kernelPluginHandler.Services)[pluginHandler.Name] = pluginHandler
-			// }
 
 			chan_map := make(map[string]interface{})
 
@@ -179,7 +214,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiver
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = kernelPluginHandler.ConfigContext.ChatReceiver
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = chatReceiverChan
 			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
@@ -315,16 +350,23 @@ func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverCon
 		driverConfig.CoreConfig.Log.Printf("Successfully opened plugin module for %s\n", pluginName)
 		// PluginMods[pluginName] = pluginM
 		pluginHandler.PluginMod = pluginM
+		pluginHandler.State = 0
 	} else {
 		fmt.Println("Unable to load plugin module because missing plugin name")
 		driverConfig.CoreConfig.Log.Println("Unable to load plugin module because missing plugin name")
+		pluginHandler.State = 2
 		return
 	}
 }
 
 func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfig) {
-	if pluginHandler.Name != "Kernel" {
+	if pluginHandler == nil || (*pluginHandler).Name != "Kernel" || len(*pluginHandler.Services) == 0 {
 		driverConfig.CoreConfig.Log.Printf("Chat handling not supported for plugin: %s\n", pluginHandler.Name)
+	}
+	if pluginHandler.ConfigContext.ChatReceiver == nil {
+		msg_receiver := make(chan *core.ChatMsg)
+		pluginHandler.ConfigContext.ChatReceiver = &msg_receiver
+		pluginHandler.State = 1
 	}
 	for {
 		msg := <-*pluginHandler.ConfigContext.ChatReceiver
@@ -338,7 +380,12 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 					driverConfig.CoreConfig.Log.Printf("Unable to send message. %s service is not running.\n", plugin.Name)
 					continue
 				}
-				*plugin.ConfigContext.ChatSender <- msg
+				new_msg := &core.ChatMsg{
+					Name:   &q,
+					ChatId: msg.ChatId,
+					Query:  &[]string{*msg.Name},
+				}
+				*plugin.ConfigContext.ChatSender <- new_msg
 			} else if msg.Name != nil {
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
 					*msg.Response = "Service unavailable"

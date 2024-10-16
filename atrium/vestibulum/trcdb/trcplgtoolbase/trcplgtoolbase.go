@@ -147,23 +147,6 @@ func CommonMain(envPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	}
 
-	var pluginHandler *hive.PluginHandler = nil
-	var kernelPluginHandler *hive.PluginHandler = nil
-	if kernelopts.BuildOptions.IsKernel() {
-		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
-			kernelPluginHandler = mainPluginHandler[0]
-			if pH, ok := (*kernelPluginHandler.Services)[*pluginNamePtr]; ok {
-				pluginHandler = pH //does this mean changes to pluginHandler = changes to kernelPluginHandler.Services[plugin]?
-			} else {
-				fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
-			}
-		} else {
-			fmt.Printf("No handlers provided for plugin service to startup: %s\n", *pluginNamePtr)
-			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("No handlers provided for plugin service to startup: %s\n", *pluginNamePtr)
-		}
-	}
-
 	if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"] != nil {
 		// Prefer internal definition of alias
 		*pluginNameAliasPtr = trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"].(string)
@@ -354,6 +337,17 @@ func CommonMain(envPtr *string,
 			*pluginNamePtr = subsv
 		}
 	}
+
+	var pluginHandler *hive.PluginHandler = nil
+	var kernelPluginHandler *hive.PluginHandler = nil
+	*pluginNamePtr = trcshDriverConfig.DriverConfig.DeploymentConfig["trcplugin"].(string) //might not need...
+	if kernelopts.BuildOptions.IsKernel() {
+		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
+			kernelPluginHandler = mainPluginHandler[0]
+			pluginHandler = kernelPluginHandler.GetPluginHandler(*pluginNamePtr, trcshDriverConfigBase.DriverConfig)
+		}
+	}
+
 	mod.Env = *envPtr
 	if trcshDriverConfigBase.DriverConfig.CoreConfig.Log != nil {
 		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify mod initialized\n")
@@ -752,9 +746,7 @@ func CommonMain(envPtr *string,
 						// do we want to remove from available services???
 					} else {
 						pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
-						pluginHandler.State = 0
 						pluginHandler.Id = sha
-						// (*kernelPluginHandler.Services)[pluginHandler.Name] = pluginHandler
 					}
 				} else {
 					fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
@@ -858,7 +850,13 @@ func CommonMain(envPtr *string,
 		}
 	} else if *pluginservicestartPtr && kernelopts.BuildOptions.IsKernel() {
 		if pluginHandler != nil && pluginHandler.State != 2 && kernelPluginHandler != nil {
-			pluginHandler.PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig, kernelPluginHandler)
+			if kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiver == nil {
+				fmt.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
+				driverConfig.CoreConfig.Log.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
+			} else {
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Starting plugin service: %s\n", *pluginNamePtr)
+				pluginHandler.PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig, kernelPluginHandler.ConfigContext.ChatReceiver)
+			}
 		} else {
 			fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)

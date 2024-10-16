@@ -682,12 +682,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler == nil {
-			pluginMap := make(map[string]*hive.PluginHandler)
-			kernelPluginHandler = &hive.PluginHandler{
-				Name:     "Kernel",
-				State:    0,
-				Services: &pluginMap,
-			}
+			kernelPluginHandler = hive.InitKernel()
 		}
 
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Completed bootstrapping and continuing to initialize services.")
@@ -712,14 +707,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			if _, ok := deploymentShardsSet[serviceDeployment]; ok {
 				deployments = append(deployments, serviceDeployment)
 				if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler != nil {
-					if kernelPluginHandler.Services != nil {
-						trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Added plugin to kernel: %s\n", serviceDeployment)
-						(*kernelPluginHandler.Services)[serviceDeployment] = &hive.PluginHandler{
-							Name: serviceDeployment,
+					kernelPluginHandler.AddKernelPlugin(serviceDeployment, trcshDriverConfig.DriverConfig)
 						}
-					}
-				}
-
 			}
 		}
 		deploymentsCDL := strings.Join(deployments, ",")
@@ -735,9 +724,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler != nil {
-			msg_receiver := make(chan *tccore.ChatMsg)
-			kernelPluginHandler.ConfigContext.ChatReceiver = &msg_receiver
-			go kernelPluginHandler.Handle_Chat(trcshDriverConfig.DriverConfig)
+			go func(kpH *hive.PluginHandler, dc *config.DriverConfig) {
+				kpH.Handle_Chat(dc)
+			}(kernelPluginHandler, trcshDriverConfig.DriverConfig)
 		}
 
 		for _, deployment := range deployments {
