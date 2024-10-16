@@ -40,7 +40,7 @@ func InitKernel() *PluginHandler {
 		Name:          "Kernel",
 		State:         0,
 		Services:      &pluginMap,
-		ConfigContext: &core.ConfigContext{}, //NEEDED CHANGE
+		ConfigContext: &core.ConfigContext{},
 	}
 }
 
@@ -53,15 +53,15 @@ func (pH *PluginHandler) AddKernelPlugin(service string, driverConfig *config.Dr
 		driverConfig.CoreConfig.Log.Printf("Added plugin to kernel: %s\n", service)
 		(*pH.Services)[service] = &PluginHandler{
 			Name:          service,
-			ConfigContext: &core.ConfigContext{}, //NEEDED CHANGE
+			ConfigContext: &core.ConfigContext{},
 		}
 	}
 }
 
 func (pH *PluginHandler) GetPluginHandler(service string, driverConfig *config.DriverConfig) *PluginHandler {
 	if pH != nil && pH.Services != nil {
-		if pH, ok := (*pH.Services)[service]; ok {
-			return pH //does this mean changes to pluginHandler = changes to kernelPluginHandler.Services[plugin]?
+		if plugin, ok := (*pH.Services)[service]; ok {
+			return plugin
 		} else {
 			fmt.Printf("Handler not initialized for plugin to start: %s\n", service)
 			driverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", service)
