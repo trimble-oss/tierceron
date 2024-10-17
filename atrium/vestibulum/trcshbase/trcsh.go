@@ -551,8 +551,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		if kernelopts.BuildOptions.IsKernel() && !eUtils.IsWindows() {
-			env_basis := eUtils.GetEnvBasis(agentEnv)
-			agentEnv = env_basis
+			agentEnv = eUtils.GetEnvBasis(agentEnv)
 			fmt.Printf("Using environment %s for kernel.\n", agentEnv)
 		}
 
