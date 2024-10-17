@@ -21,7 +21,6 @@ import (
 	"github.com/danieljoos/wincred"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
-	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
@@ -708,7 +707,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				deployments = append(deployments, serviceDeployment)
 				if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler != nil {
 					kernelPluginHandler.AddKernelPlugin(serviceDeployment, trcshDriverConfig.DriverConfig)
-						}
+				}
 			}
 		}
 		deploymentsCDL := strings.Join(deployments, ",")
