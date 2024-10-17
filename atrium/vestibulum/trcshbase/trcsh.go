@@ -21,6 +21,7 @@ import (
 	"github.com/danieljoos/wincred"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
@@ -53,7 +54,7 @@ import (
 
 var gAgentConfig *capauth.AgentConfigs = nil
 var gTrcshConfig *capauth.TrcShConfig
-var pluginHandler *hive.PluginHandler = nil
+var kernelPluginHandler *hive.PluginHandler = nil
 
 var (
 	MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
@@ -680,11 +681,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			os.Exit(124)
 		}
 
-		if kernelopts.BuildOptions.IsKernel() && pluginHandler == nil {
-			pluginHandler = &hive.PluginHandler{
-				IsRunning: false,
-				Services:  &[]string{deploymentsShard},
-			}
+		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler == nil {
+			kernelPluginHandler = hive.InitKernel()
 		}
 
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Completed bootstrapping and continuing to initialize services.")
@@ -708,6 +706,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		for _, serviceDeployment := range serviceDeployments {
 			if _, ok := deploymentShardsSet[serviceDeployment]; ok {
 				deployments = append(deployments, serviceDeployment)
+				if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler != nil {
+					kernelPluginHandler.AddKernelPlugin(serviceDeployment, trcshDriverConfig.DriverConfig)
+						}
 			}
 		}
 		deploymentsCDL := strings.Join(deployments, ",")
@@ -720,6 +721,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("No valid deployments for trcshell, entering hibernate mode.")
 			hibernate := make(chan bool)
 			hibernate <- true
+		}
+
+		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler != nil {
+			go func(kpH *hive.PluginHandler, dc *config.DriverConfig) {
+				kpH.Handle_Chat(dc)
+			}(kernelPluginHandler, trcshDriverConfig.DriverConfig)
 		}
 
 		for _, deployment := range deployments {
@@ -857,7 +864,11 @@ func roleBasedRunner(
 	case "trcplgtool":
 		envDefaultPtr = trcshDriverConfig.DriverConfig.CoreConfig.Env
 		tokenName = "config_token_pluginany"
-		err = trcplgtoolbase.CommonMain(&envDefaultPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig, pluginHandler)
+		if kernelopts.BuildOptions.IsKernel() {
+			err = trcplgtoolbase.CommonMain(&envDefaultPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig, kernelPluginHandler)
+		} else {
+			err = trcplgtoolbase.CommonMain(&envDefaultPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
+		}
 	case "trcconfig":
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" ||
 			trcshDriverConfig.DriverConfig.CoreConfig.Env == "itdev" || trcshDriverConfig.DriverConfig.CoreConfig.Env == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.Env == "prod" {
