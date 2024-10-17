@@ -374,7 +374,13 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 		msg := <-*pluginHandler.ConfigContext.ChatReceiverChan
 		if *msg.Name == "SHUTDOWN" {
 			driverConfig.CoreConfig.Log.Println("Shutting down chat receiver.")
-			//TODO: Loop through plugin services and send shutdown messages - chat plugin not needed to shutdown
+			for _, p := range *pluginHandler.Services {
+				if p.ConfigContext.ChatSenderChan != nil && *msg.Query != nil && len(*msg.Query) > 0 && (*msg.Query)[0] == p.Name {
+					*p.ConfigContext.ChatSenderChan <- &core.ChatMsg{
+						Name: msg.Name,
+					}
+				}
+			}
 			return
 		}
 		for _, q := range *msg.Query {
