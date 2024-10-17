@@ -550,6 +550,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			driverConfigPtr.CoreConfig.Log.Printf("Identified as: %s\n", agentEnv)
 		}
 
+		if kernelopts.BuildOptions.IsKernel() && !eUtils.IsWindows() {
+			env_basis := eUtils.GetEnvBasis(agentEnv)
+			agentEnv = env_basis
+			fmt.Printf("Using environment %s for kernel.\n", agentEnv)
+		}
+
 		memprotectopts.MemProtect(nil, addressPtr)
 		shutdown := make(chan bool)
 
