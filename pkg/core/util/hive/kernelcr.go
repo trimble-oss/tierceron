@@ -389,11 +389,14 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 			driverConfig.CoreConfig.Log.Println("Kernel processing chat query.")
 			fmt.Println("Kernel processing chat query.")
 			if plugin, ok := (*pluginHandler.Services)[q]; ok && plugin.State == 1 {
-				driverConfig.CoreConfig.Log.Println("Sending query to service.")
-				fmt.Println("Sending query to service.")
+				driverConfig.CoreConfig.Log.Printf("Sending query to service: %s.\n", plugin.Name)
+				fmt.Printf("Sending query to service: %s.\n", plugin.Name)
 				new_msg := &core.ChatMsg{
 					Name:  &q,
 					Query: &[]string{*msg.Name},
+				}
+				if msg.Response != nil && (*msg).Response != nil {
+					new_msg.Response = (*msg).Response
 				}
 				*plugin.ConfigContext.ChatSenderChan <- new_msg
 			} else if msg.Name != nil {
