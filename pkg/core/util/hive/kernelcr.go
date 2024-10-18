@@ -406,7 +406,8 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				fmt.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
-					*msg.Response = "Service unavailable"
+					response := "Service unavailable"
+					msg.Response = &response
 					*plugin.ConfigContext.ChatSenderChan <- msg //update msg with error response
 				}
 				continue
