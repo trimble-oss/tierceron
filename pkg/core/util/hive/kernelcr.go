@@ -398,6 +398,9 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				if msg.Response != nil && (*msg).Response != nil {
 					new_msg.Response = (*msg).Response
 				}
+				if msg.ChatId != nil && (*msg).ChatId != nil {
+					new_msg.ChatId = (*msg).ChatId
+				}
 				*plugin.ConfigContext.ChatSenderChan <- new_msg
 			} else if msg.Name != nil {
 				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
