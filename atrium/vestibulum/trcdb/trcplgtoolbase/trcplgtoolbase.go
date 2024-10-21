@@ -19,6 +19,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
@@ -659,61 +660,61 @@ func CommonMain(envPtr *string,
 			}
 			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
 
-			fmt.Printf("Deploying image to: %s\n", deployPath)
-
-			if _, err = os.Stat(deployRoot); err != nil && !os.IsPermission(err) {
-				err = os.MkdirAll(deployRoot, 0644)
-				if err != nil && !os.IsPermission(err) {
-					fmt.Println(err.Error())
-					fmt.Println("Could not prepare needed directory for deployment.")
-					return err
+			if !pluginopts.BuildOptions.IsPluginHardwired() {
+				fmt.Printf("Deploying image to: %s\n", deployPath)
+				if _, err = os.Stat(deployRoot); err != nil && !os.IsPermission(err) {
+					err = os.MkdirAll(deployRoot, 0644)
+					if err != nil && !os.IsPermission(err) {
+						fmt.Println(err.Error())
+						fmt.Println("Could not prepare needed directory for deployment.")
+						return err
+					}
 				}
-			}
-			if rif, ok := pluginToolConfig["rawImageFile"]; ok {
-				err = os.WriteFile(deployPath, rif.([]byte), 0644)
-				if err != nil {
-					fmt.Println(err.Error())
-					fmt.Println("Image write failure.")
-					return err
+				if rif, ok := pluginToolConfig["rawImageFile"]; ok {
+					err = os.WriteFile(deployPath, rif.([]byte), 0644)
+					if err != nil {
+						fmt.Println(err.Error())
+						fmt.Println("Image write failure.")
+						return err
+					}
 				}
-			}
 
-			if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
-				// TODO: provide archival of existing directory.
-				if ok, errList := trcvutils.UncompressZipFile(deployPath); !ok {
-					fmt.Printf("Uncompressing zip file in place failed. %v\n", errList)
-					return errList[0]
+				if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
+					// TODO: provide archival of existing directory.
+					if ok, errList := trcvutils.UncompressZipFile(deployPath); !ok {
+						fmt.Printf("Uncompressing zip file in place failed. %v\n", errList)
+						return errList[0]
+					} else {
+						os.Remove(deployPath)
+					}
 				} else {
-					os.Remove(deployPath)
-				}
-			} else {
-				if strings.HasSuffix(deployPath, ".war") {
-					explodedWarPath := strings.TrimSuffix(deployPath, ".war")
-					fmt.Printf("Checking exploded war path: %s\n", explodedWarPath)
-					if _, err := os.Stat(explodedWarPath); err == nil {
-						if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
-							archiveDirPath := filepath.Join(deployRoot, "archive")
-							fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
-							err := os.MkdirAll(archiveDirPath, 0700)
-							if err == nil {
-								currentTime := time.Now()
-								formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
-								archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), "archive", formattedTime)
-								fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
-								err := os.MkdirAll(archiveRoot, 0700)
+					if strings.HasSuffix(deployPath, ".war") {
+						explodedWarPath := strings.TrimSuffix(deployPath, ".war")
+						fmt.Printf("Checking exploded war path: %s\n", explodedWarPath)
+						if _, err := os.Stat(explodedWarPath); err == nil {
+							if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+								archiveDirPath := filepath.Join(deployRoot, "archive")
+								fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
+								err := os.MkdirAll(archiveDirPath, 0700)
 								if err == nil {
-									archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
-									archivePath = strings.TrimSuffix(archivePath, ".war")
-									fmt.Printf("Archiving: %s to %s\n", explodedWarPath, archivePath)
-									os.Rename(explodedWarPath, archivePath)
+									currentTime := time.Now()
+									formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
+									archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), "archive", formattedTime)
+									fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
+									err := os.MkdirAll(archiveRoot, 0700)
+									if err == nil {
+										archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
+										archivePath = strings.TrimSuffix(archivePath, ".war")
+										fmt.Printf("Archiving: %s to %s\n", explodedWarPath, archivePath)
+										os.Rename(explodedWarPath, archivePath)
+									}
 								}
 							}
 						}
 					}
 				}
+				fmt.Printf("Image deployed to: %s\n", deployPath)
 			}
-
-			fmt.Printf("Image deployed to: %s\n", deployPath)
 		} else {
 			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
 			if trcshDriverConfigBase.FeatherCtx != nil {
@@ -744,7 +745,7 @@ func CommonMain(envPtr *string,
 				return err
 			}
 			sha := hex.EncodeToString(h.Sum(nil))
-			if ptcsha256.(string) == sha {
+			if !pluginopts.BuildOptions.IsPluginHardwired() && (ptcsha256.(string) == sha) {
 				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Verified plugin module sha.")
 				err = memprotectopts.UnsetChattr(f)
 				if err != nil {
