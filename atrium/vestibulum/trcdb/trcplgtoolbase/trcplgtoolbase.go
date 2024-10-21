@@ -41,7 +41,7 @@ func CommonMain(envPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
-	pluginHandler ...*hive.PluginHandler) error {
+	mainPluginHandler ...*hive.PluginHandler) error {
 
 	var flagEnvPtr *string
 	var tokenPtr *string
@@ -337,6 +337,27 @@ func CommonMain(envPtr *string,
 			*pluginNamePtr = subsv
 		}
 	}
+
+	var pluginHandler *hive.PluginHandler = nil
+	var kernelPluginHandler *hive.PluginHandler = nil
+	if *pluginNamePtr == "" {
+		if deploy_plugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+			if dep, k := deploy_plugin.(string); k {
+				*pluginNamePtr = dep
+			} else {
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unexpected type for plugin name.")
+			}
+		} else {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unable to set plugin name.")
+		}
+	}
+	if kernelopts.BuildOptions.IsKernel() {
+		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
+			kernelPluginHandler = mainPluginHandler[0]
+			pluginHandler = kernelPluginHandler.GetPluginHandler(*pluginNamePtr, trcshDriverConfigBase.DriverConfig)
+		}
+	}
+
 	mod.Env = *envPtr
 	if trcshDriverConfigBase.DriverConfig.CoreConfig.Log != nil {
 		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify mod initialized\n")
@@ -729,7 +750,18 @@ func CommonMain(envPtr *string,
 				if err != nil {
 					return err
 				}
-				hive.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+				if pluginHandler != nil {
+					if pluginHandler.State == 2 && sha == pluginHandler.Id { //make sure this won't break...not set yet
+						trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Tried to redeploy same failed plugin: %s\n", *pluginNamePtr)
+						// do we want to remove from available services???
+					} else {
+						pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+						pluginHandler.Id = sha
+					}
+				} else {
+					fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
+					trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
+				}
 			}
 		}
 	} else if *certifyImagePtr {
@@ -827,18 +859,24 @@ func CommonMain(envPtr *string,
 			return err
 		}
 	} else if *pluginservicestartPtr && kernelopts.BuildOptions.IsKernel() {
-		if len(pluginHandler) > 0 {
-			pluginHandler[0].PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		if pluginHandler != nil && pluginHandler.State != 2 && kernelPluginHandler != nil {
+			if kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiverChan == nil {
+				fmt.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
+				driverConfig.CoreConfig.Log.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
+			} else {
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Starting plugin service: %s\n", *pluginNamePtr)
+				pluginHandler.PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig, kernelPluginHandler.ConfigContext.ChatReceiverChan)
+			}
 		} else {
-			fmt.Println("No handler provided for plugin service startup.")
-			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("No handler provided for plugin service startup.")
+			fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 		}
 	} else if *pluginservicestopPtr && kernelopts.BuildOptions.IsKernel() {
-		if len(pluginHandler) > 0 {
-			pluginHandler[0].PluginserviceStop(trcshDriverConfigBase.DriverConfig)
+		if pluginHandler != nil && pluginHandler.State != 2 {
+			pluginHandler.PluginserviceStop(trcshDriverConfigBase.DriverConfig)
 		} else {
-			fmt.Println("No handler provided for plugin service shutdown.")
-			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("No handler provided for plugin service shutdown.")
+			fmt.Printf("Handler not initialized for plugin to shutdown: %s\n", *pluginNamePtr)
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to shutdown: %s\n", *pluginNamePtr)
 		}
 	}
 	//Checks if image has been copied & deployed
