@@ -4,7 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,39 +15,126 @@ import (
 	"log"
 	"net"
 	"os"
+	"slices"
 	"strconv"
-	"strings"
 
 	"gopkg.in/yaml.v2"
 
-	pb "github.com/trimble-oss/tierceron/installation/trclocal/trcshtalk/trcshtalksdk" // Update package path as needed
+	pb "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trcshtalk/trcshtalksdk"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
-type server struct {
-	pb.UnimplementedGreeterServer
+type trcshtalkServiceServer struct {
+	pb.UnimplementedTrcshTalkServiceServer
 }
 
-var configContext *ConfigContext
+var configContext *tccore.ConfigContext
 var grpcServer *grpc.Server
-var err_sender chan error
-var ttdi_sender chan *tccore.TTDINode
 var dfstat *tccore.TTDINode
-var argosId string
 
-func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	log.Printf("Received: %v", in.GetName())
-	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
+// Runs diagnostic services for each Diagnostic within the DiagnosticRequest.
+// Returns DiagnosticResponse, forwarding the MessageId of the DiagnosticRequest,
+// and providing the results of the diagnostics ran.
+func (s *trcshtalkServiceServer) RunDiagnostics(ctx context.Context, req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
+
+	// TODO: Implement diagnostics plugin
+	// if req.Diagnostics contains 0, run all
+	// else run each
+	cmds := req.GetDiagnostics()
+	queries := []string{}
+	tenant_test := req.GetTenantId() + ":"
+	if slices.Contains(cmds, pb.Diagnostics_ALL) {
+		// run all
+		//set queries to all cmds
+		fmt.Println("Running all queries.")
+		queries = append(queries, "healthcheck")
+	} else {
+		for _, q := range cmds {
+			if q == pb.Diagnostics_HEALTH_CHECK {
+				// set name to plugin...
+				fmt.Println("Running healthcheck diagnostic.")
+				queries = append(queries, "healthcheck")
+				// plugin_tests := req.GetData()
+				// for i, test := range plugin_tests {
+				// 	if i == 0 {
+				// 		tenant_test = fmt.Sprintf("%s%s", tenant_test, test)
+				// 	} else {
+				// 		tenant_test = fmt.Sprintf("%s,%s", tenant_test, test)
+				// 	}
+				// }
+				plugin_tests := req.GetPluginQueries()
+				for i, rq := range plugin_tests {
+					test := pb.PluginQuery_name[int32(rq)]
+					if i == 0 {
+						tenant_test = fmt.Sprintf("%s%s", tenant_test, test)
+					} else {
+						tenant_test = fmt.Sprintf("%s,%s", tenant_test, test)
+					}
+				}
+			}
+		}
+	}
+	name := "trcshtalk"
+	*configContext.ChatSenderChan <- &tccore.ChatMsg{
+		ChatId: &tenant_test,
+		Name:   &name,
+		Query:  &queries,
+	}
+	// Placeholder code
+	results := ""
+	finished_queries := make(map[string]string)
+	fmt.Printf("Sent queries to kernel: %d\n", len(queries))
+	for {
+		event := <-*configContext.ChatReceiverChan
+		fmt.Println("TrcshTalk received message from kernel.")
+		switch {
+		case len(finished_queries) == len(queries):
+			// send results to google chat
+			fmt.Println("Formatting responses from kernel.")
+			for _, v := range finished_queries {
+				results = results + v + " "
+			}
+			fmt.Printf("Sending response to chat from kernel: %s", results)
+			return &pb.DiagnosticResponse{
+				MessageId: req.MessageId,
+				Results:   results,
+			}, nil
+		default:
+			fmt.Printf("Received response from query: %s\n", *(*event).Query)
+			if len(*(*event).Query) == 1 && event.Response != nil && (*event).Response != nil {
+				fmt.Printf("Processing response from query: %s\n", *(*event).Query)
+				finished_queries[(*event.Query)[0]] = *((*event).Response)
+			}
+			if len(finished_queries) == len(queries) {
+				// send results to google chat
+				fmt.Println("Formatting responses.")
+				for _, v := range finished_queries {
+					results = results + v + " "
+				}
+				fmt.Printf("Sending response to chat: %s", results)
+				return &pb.DiagnosticResponse{
+					MessageId: req.MessageId,
+					Results:   results,
+				}, nil
+			}
+		}
+	}
+	// res := &pb.DiagnosticResponse{
+	// 	MessageId: req.MessageId,
+	// 	Results:   "gRPCS client/server successful. Diagnostic service not yet implemented.",
+	// }
+	// // End placeholder code
+
+	// return res, nil
 }
 
 const (
-	TRCSHTALK_CERT = "Common/PluginCertTrcshTalk.crt.mf.tmpl"
-	TRCSHTALK_KEY  = "Common/PluginCertTrcshTalkKey.key.mf.tmpl"
+	TRCSHTALK_CERT = "Common/PluginCertHiveK.crt.mf.tmpl"
+	TRCSHTALK_KEY  = "Common/PluginCertHiveKkey.key.mf.tmpl"
+	MASHUP_CERT    = "Common/MashupCert.crt.mf.tmpl"
 	COMMON_PATH    = "config"
 )
 
@@ -53,6 +143,7 @@ func GetConfigPaths() []string {
 		COMMON_PATH,
 		TRCSHTALK_CERT,
 		TRCSHTALK_KEY,
+		MASHUP_CERT,
 	}
 }
 
@@ -75,7 +166,7 @@ func init() {
 }
 
 func send_dfstat() {
-	if ttdi_sender == nil || configContext == nil || dfstat == nil {
+	if configContext.DfsChan == nil || configContext == nil || dfstat == nil {
 		fmt.Println("Dataflow Statistic channel not initialized properly for trcshtalk.")
 		return
 	}
@@ -85,14 +176,14 @@ func send_dfstat() {
 		send_err(err)
 		return
 	}
-	dfstat.Name = argosId
+	dfstat.Name = configContext.ArgosId
 	dfstat.FinishStatistic("", "", "", configContext.Log, true, dfsctx)
 	configContext.Log.Printf("Sending dataflow statistic to kernel: %s\n", dfstat.Name)
-	ttdi_sender <- dfstat
+	*configContext.DfsChan <- dfstat
 }
 
 func send_err(err error) {
-	if err_sender == nil || configContext == nil {
+	if configContext.ErrorChan == nil || configContext == nil {
 		fmt.Println("Failure to send error message, error channel not initialized properly for trcshtalk.")
 		return
 	}
@@ -110,14 +201,14 @@ func send_err(err error) {
 			func(msg string, err error) {
 				configContext.Log.Println(msg, err)
 			})
-		dfstat.Name = argosId
+		dfstat.Name = configContext.ArgosId
 		dfstat.FinishStatistic("", "", "", configContext.Log, true, dfsctx)
 		configContext.Log.Printf("Sending failed dataflow statistic to kernel: %s\n", dfstat.Name)
 		go func(sender chan *tccore.TTDINode, dfs *tccore.TTDINode) {
 			sender <- dfs
-		}(ttdi_sender, dfstat)
+		}(*configContext.DfsChan, dfstat)
 	}
-	err_sender <- err
+	*configContext.ErrorChan <- err
 }
 
 func receiver(receive_chan chan int) {
@@ -157,12 +248,171 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 	return lis, grpcServer, nil
 }
 
-type ConfigContext struct {
-	Config *map[string]interface{}
-	Start  func()
-	Cert   []byte
-	Key    []byte
-	Log    *log.Logger
+var mashupCertBytes []byte
+
+func InitCertBytes(cert []byte) {
+	mashupCertBytes = cert
+}
+
+func subdirInterceptor(subdir string) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		// Modify the method name to include the subdirectory
+		method = subdir + "/" + method
+
+		// Call the original invoker with the modified method name
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
+}
+
+func getTrcshTalkRequest(serverName string, port int, diagReq *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
+	if mashupCertBytes == nil {
+		log.Printf("Cert not initialized.")
+		return nil, errors.New("cert initialization failure")
+	}
+	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
+	mashupClientCert, err := x509.ParseCertificate(mashupBlock.Bytes)
+	if err != nil {
+		log.Printf("failed to serve: %v", err)
+		return nil, err
+	}
+
+	mashupCertPool := x509.NewCertPool()
+	mashupCertPool.AddCert(mashupClientCert)
+	clientDialOptions := grpc.WithDefaultCallOptions( /* grpc.MaxCallRecvMsgSize(maxMessageLength), grpc.MaxCallSendMsgSize(maxMessageLength)*/ )
+
+	conn, err := grpc.Dial(serverName+":"+strconv.Itoa(int(port)),
+		clientDialOptions,
+		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: "", RootCAs: mashupCertPool, InsecureSkipVerify: true})),
+		grpc.WithUnaryInterceptor(subdirInterceptor("/grpc")))
+
+	if err != nil {
+		log.Printf("getReport: fail to dial: %v", err)
+		return nil, err
+	}
+	defer conn.Close()
+	client := pb.NewDiagnosticServiceClient(conn)
+
+	diagRes, err := client.RunDiagnostics(context.Background(), diagReq)
+	if err != nil {
+		log.Printf("getReport: bad response: %v", err)
+		return &pb.DiagnosticResponse{
+			MessageId: diagReq.GetMessageId(),
+			Results:   "Unable to obtain report from Hive.",
+		}, err
+	}
+	log.Printf("getReport: success, response returned: %s", diagRes.Results)
+	return diagRes, nil
+}
+
+func StartTrashTalking(serverName string, port int) {
+	for {
+		response, err := getTrcshTalkRequest(serverName, port, &pb.DiagnosticRequest{})
+		if err != nil {
+			fmt.Printf("Error sending response: %d\n", err.Error())
+			continue
+		}
+		queryData := response.GetResults()
+		request := &pb.DiagnosticRequest{}
+
+		err = json.Unmarshal([]byte(queryData), &queryData)
+		if err != nil {
+			fmt.Printf("Error sending response: %d\n", err.Error())
+			continue
+		}
+
+		talkBackResponse := TrcshTalkBack(request)
+		requestResponse := &pb.DiagnosticRequest{MessageId: request.MessageId}
+		requestResponse.Data[0] = talkBackResponse.Results
+		_, err = getTrcshTalkRequest(serverName, port, requestResponse)
+		if err != nil {
+			fmt.Printf("Error sending response: %d\n", err.Error())
+			continue
+		}
+	}
+}
+
+// The new endpoint kind of.
+func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
+	cmds := req.GetDiagnostics()
+	queries := []string{}
+	tenant_test := req.GetTenantId() + ":"
+	if slices.Contains(cmds, pb.Diagnostics_ALL) {
+		// run all
+		//set queries to all cmds
+		fmt.Println("Running all queries.")
+		queries = append(queries, "healthcheck")
+	} else {
+		for _, q := range cmds {
+			if q == pb.Diagnostics_HEALTH_CHECK {
+				// set name to plugin..
+				fmt.Println("Running healthcheck diagnostic.")
+				queries = append(queries, "healthcheck")
+				plugin_tests := req.GetPluginQueries()
+				// plugin_tests := req.GetData()
+				// for i, test := range plugin_tests {
+				// 	if i == 0 {
+				// 		tenant_test = fmt.Sprintf("%s%s", tenant_test, test)
+				// 	} else {
+				// 		tenant_test = fmt.Sprintf("%s,%s", tenant_test, test)
+				// 	}
+				// }
+				for i, rq := range plugin_tests {
+					test := pb.PluginQuery_name[int32(rq)]
+					if i == 0 {
+						tenant_test = fmt.Sprintf("%s%s", tenant_test, test)
+					} else {
+						tenant_test = fmt.Sprintf("%s,%s", tenant_test, test)
+					}
+				}
+			}
+		}
+	}
+	name := "trcshtalk"
+
+	*configContext.ChatSenderChan <- &tccore.ChatMsg{
+		Name:   &name,
+		ChatId: &tenant_test,
+		Query:  &queries,
+	}
+	// Placeholder code
+	results := ""
+	finished_queries := make(map[string]string)
+	fmt.Printf("Sent queries to kernel: %d\n", len(queries))
+	for {
+		event := <-*configContext.ChatReceiverChan
+		fmt.Println("TrcshTalk received message from kernel.")
+		switch {
+		case len(finished_queries) == len(queries):
+			// send results to google chat
+			fmt.Println("Formatting responses.")
+			for _, v := range finished_queries {
+				results = results + v + " "
+			}
+			fmt.Printf("Sending response to chat: %s", results)
+			return &pb.DiagnosticResponse{
+				MessageId: req.MessageId,
+				Results:   results,
+			}
+		default:
+			fmt.Printf("Received response from query: %s\n", *(*event).Query)
+			if len(*(*event).Query) == 1 && event.Response != nil && (*event).Response != nil {
+				fmt.Printf("Processing response from query: %s\n", *(*event).Query)
+				finished_queries[(*event.Query)[0]] = *((*event).Response)
+			}
+			if len(finished_queries) == len(queries) {
+				// send results to google chat
+				fmt.Println("Formatting responses.")
+				for _, v := range finished_queries {
+					results = results + v + " "
+				}
+				fmt.Printf("Sending response to chat: %s", results)
+				return &pb.DiagnosticResponse{
+					MessageId: req.MessageId,
+					Results:   results,
+				}
+			}
+		}
+	}
 }
 
 func start() {
@@ -182,38 +432,22 @@ func start() {
 				send_err(err)
 				return
 			}
-		}
-		fmt.Printf("Server listening on :%d\n", trcshtalkPort)
-		lis, gServer, err := InitServer(trcshtalkPort, configContext.Cert, configContext.Key)
-		if err != nil {
-			configContext.Log.Printf("Failed to start server: %v", err)
-			send_err(err)
-			return
-		}
-		configContext.Log.Println("Starting server")
 
-		grpcServer = gServer
-		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
-		pb.RegisterGreeterServer(grpcServer, &server{})
-		// reflection.Register(grpcServer)
-		log.Printf("server listening at %v", lis.Addr())
-		go func(l net.Listener) {
-			if err := grpcServer.Serve(l); err != nil {
-				configContext.Log.Println("Failed to serve:", err)
+			if mashupCert, ok := (*configContext.ConfigCerts)[MASHUP_CERT]; ok {
+				InitCertBytes(mashupCert)
+			} else {
+				err = errors.New("Missing mashup cert")
+				configContext.Log.Printf("Missing mashup cert\n")
 				send_err(err)
 				return
 			}
-		}(lis)
-		dfstat = tccore.InitDataFlow(nil, argosId, false)
-		dfstat.UpdateDataFlowStatistic("System",
-			"TrcshTalk",
-			"Start up",
-			"1",
-			1,
-			func(msg string, err error) {
-				configContext.Log.Println(msg, err)
-			})
-		send_dfstat()
+
+			if serverNameInterface, ok := (*configContext.Config)["grpc_server_name"]; ok {
+				if serverName, ok := serverNameInterface.(string); ok {
+					go StartTrashTalking(serverName, trcshtalkPort)
+				}
+			}
+		}
 	} else {
 		configContext.Log.Println("Missing config: gprc_server_port")
 		send_err(errors.New("missing config: gprc_server_port"))
@@ -234,124 +468,46 @@ func stop() {
 	configContext.Log.Println("Stopped server for trcshtalk.")
 	dfstat.UpdateDataFlowStatistic("System", "trcshtalk", "Shutdown", "0", 1, nil)
 	send_dfstat()
-	if err_sender != nil {
-		err_sender <- errors.New("trcshtalk shutting down")
-	}
-	ttdi_sender <- nil
+	*configContext.CmdSenderChan <- tccore.PLUGIN_EVENT_STOP
 	configContext = nil
 	grpcServer = nil
-	err_sender = nil
-	ttdi_sender = nil
 	dfstat = nil
 }
 
+func chat_receiver(rec_chan chan *tccore.ChatMsg) {
+	//not needed for trcshtalk
+}
+
 func Init(properties *map[string]interface{}) {
-	if properties == nil {
-		fmt.Println("Missing initialization components")
-		return
-	}
-	var logger *log.Logger
-	if _, ok := (*properties)["log"].(*log.Logger); ok {
-		logger = (*properties)["log"].(*log.Logger)
+	var err error
+	configContext, err = tccore.Init(properties,
+		TRCSHTALK_CERT,
+		TRCSHTALK_KEY,
+		COMMON_PATH,
+		"trcshtalk",
+		start,
+		receiver,
+		chat_receiver,
+	)
+
+	// Also add mashup manually.
+	if cert, ok := (*properties)[MASHUP_CERT]; ok {
+		certbytes := cert.([]byte)
+		(*configContext.ConfigCerts)[MASHUP_CERT] = certbytes
+		fmt.Println("Attached mashup cert")
 	} else {
-		fmt.Println("Missing log from kernel for trcshtalk.")
-		return
+		fmt.Println("Failed to attach mashup cert")
 	}
 
-	var env string
-	if e, ok := (*properties)["env"].(string); ok {
-		env = e
-	} else {
-		fmt.Println("Missing env from kernel for trcshtalk")
-		logger.Println("Missing env from kernel for trcshtalk")
-		return
-	}
-
-	if len(argosId) == 0 {
-		splitEnv := strings.Split(env, "-")
-		if len(splitEnv) == 2 {
-			argosId = "trcshk-" + splitEnv[1]
+	if err != nil {
+		if configContext != nil {
+			configContext.Log.Println("Failure to initialize trcshtalk.")
+			fmt.Println(err.Error())
 		} else {
-			argosId = "trcshk"
+			fmt.Println(err.Error())
 		}
 	}
-	logger.Printf("Starting initialization for dataflow: %s\n", argosId)
-	var certbytes []byte
-	var keybytes []byte
-	var config_properties *map[string]interface{}
-	if cert, ok := (*properties)[TRCSHTALK_CERT]; ok {
-		certbytes = cert.([]byte)
-	} else {
-		fmt.Println("Missing cert for trcshtalk.")
-		logger.Println("Missing cert for trcshtalk.")
-		return
-	}
-	if key, ok := (*properties)[TRCSHTALK_KEY]; ok {
-		keybytes = key.([]byte)
-	} else {
-		fmt.Println("Missing key for trcshtalk.")
-		logger.Println("Missing key for trcshtalk.")
-		return
-	}
-	if common, ok := (*properties)[COMMON_PATH]; ok {
-		config_properties = common.(*map[string]interface{})
-	} else {
-		fmt.Println("Missing common config components for trcshtalk.")
-		logger.Println("Missing common config components for trcshtalk.")
-		return
-	}
 
-	configContext = &ConfigContext{
-		Config: config_properties,
-		Start:  start,
-		Cert:   certbytes,
-		Key:    keybytes,
-		Log:    logger,
-	}
-
-	if channels, ok := (*properties)[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY]; ok {
-		if chans, ok := channels.(map[string]interface{}); ok {
-			if rchan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_IN]; ok {
-				if rc, ok := rchan.(chan int); ok && rc != nil {
-					configContext.Log.Println("Receiver initialized for trcshtalk.")
-					go receiver(rc)
-				} else {
-					configContext.Log.Println("Unsupported receiving channel passed into trcshtalk")
-					return
-				}
-			} else {
-				configContext.Log.Println("No receiving channel passed into trcshtalk")
-				return
-			}
-			if schan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_OUT]; ok {
-				if sc_map, ok := schan.(map[string]interface{}); ok {
-					if dfstat_chan, ok := sc_map[tccore.DATA_FLOW_STAT_CHANNEL].(chan *tccore.TTDINode); ok {
-						configContext.Log.Println("Dataflow statistics channel initialized for trcshtalk.")
-						ttdi_sender = dfstat_chan
-					} else {
-						configContext.Log.Println("Unsupported dataflow statistics channel passed into trcshtalk")
-						return
-					}
-					if err_chan, ok := sc_map[tccore.ERROR_CHANNEL].(chan error); ok {
-						configContext.Log.Println("Error channel initialized for trcshtalk.")
-						err_sender = err_chan
-					} else {
-						configContext.Log.Println("Unsupported error sending channel passed into trcshtalk")
-						return
-					}
-				} else {
-					configContext.Log.Println("Unsupported sending channel passed into trcshtalk")
-					return
-				}
-			} else {
-				configContext.Log.Println("No sending channel passed into trcshtalk")
-				return
-			}
-		} else {
-			configContext.Log.Println("No channels passed into trcshtalk")
-			return
-		}
-	}
 	configContext.Log.Println("Successfully initialized trcshtalk.")
 }
 
@@ -385,12 +541,12 @@ func main() {
 	}
 	config[COMMON_PATH] = &configCommon
 
-	trcshtalkCertBytes, err := os.ReadFile("./local_config/trcshtalk.crt")
+	trcshtalkCertBytes, err := os.ReadFile("./local_config/hive.crt")
 	if err != nil {
 		log.Printf("Couldn't load cert: %v", err)
 	}
 
-	trcshtalkKeyBytes, err := os.ReadFile("./local_config/trcshtalkkey.key")
+	trcshtalkKeyBytes, err := os.ReadFile("./local_config/hivekey.key")
 	if err != nil {
 		log.Printf("Couldn't load key: %v", err)
 	}
