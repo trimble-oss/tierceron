@@ -1,9 +1,9 @@
-module github.com/trimble-oss/tieceron/installation/trcshhive/trchelloworld
+module github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trchelloworld
 
 go 1.23.2
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.0.4 // indirect
+	github.com/trimble-oss/tierceron-core/v2 v2.0.9 // indirect
 	github.com/trimble-oss/tierceron-nute v1.0.1 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect

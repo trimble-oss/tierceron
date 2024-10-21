@@ -1,5 +1,7 @@
 github.com/trimble-oss/tierceron-core/v2 v2.0.4 h1:T63jRNIis6TxueAp/f1ACb9IP4id1BP+1XyQP3dtA/A=
 github.com/trimble-oss/tierceron-core/v2 v2.0.4/go.mod h1:8mdjD3H3jIJdy8sJ5EK4MVSc1O90ZDzvNxHBO2SNAi8=
+github.com/trimble-oss/tierceron-core/v2 v2.0.9 h1:BjFLV/kYhEXiLGz5Clts1nsvSzYplqoM8ojU4OeyOv4=
+github.com/trimble-oss/tierceron-core/v2 v2.0.9/go.mod h1:8mdjD3H3jIJdy8sJ5EK4MVSc1O90ZDzvNxHBO2SNAi8=
 github.com/trimble-oss/tierceron-nute v1.0.1 h1:Y0oBeKD7Aizj1gzb0gfSPO1KPhvBBPgSS2+dSFRyRn0=
 github.com/trimble-oss/tierceron-nute v1.0.1/go.mod h1:9MKEGmnTDg5LOYJNafX2XER1Y5SQwK4uGH+S74Ooudo=
 golang.org/x/net v0.28.0 h1:a9JDOJc5GMUJ0+UDqmLT86WiEy7iWyIhz8gz8E4e5hE=
