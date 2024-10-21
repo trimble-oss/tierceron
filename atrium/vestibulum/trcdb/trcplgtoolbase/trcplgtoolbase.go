@@ -745,7 +745,7 @@ func CommonMain(envPtr *string,
 				return err
 			}
 			sha := hex.EncodeToString(h.Sum(nil))
-			if !pluginopts.BuildOptions.IsPluginHardwired() && (ptcsha256.(string) == sha) {
+			if pluginopts.BuildOptions.IsPluginHardwired() || (ptcsha256.(string) == sha) {
 				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Verified plugin module sha.")
 				err = memprotectopts.UnsetChattr(f)
 				if err != nil {
