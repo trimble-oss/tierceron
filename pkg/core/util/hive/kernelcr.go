@@ -75,11 +75,16 @@ func (pH *PluginHandler) GetPluginHandler(service string, driverConfig *config.D
 }
 
 func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
-	if pluginHandler.PluginMod == nil || pluginHandler.Name == "" {
-		logger.Println("No plugin module set for initializing plugin service.")
+	if pluginHandler.Name == "" {
+		logger.Println("No plugin name set for initializing plugin service.")
 		return
 	}
+
 	if !pluginopts.BuildOptions.IsPluginHardwired() {
+		if pluginHandler.PluginMod == nil {
+			logger.Println("No plugin module set for initializing plugin service.")
+			return
+		}
 		symbol, err := pluginHandler.PluginMod.Lookup("Init")
 		if err != nil {
 			fmt.Println(err)
@@ -112,7 +117,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		driverConfig.CoreConfig.Log.Println("No plugin name specified to start plugin service.")
 		return
 	}
-	if pluginHandler.PluginMod == nil {
+	if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod == nil {
 		driverConfig.CoreConfig.Log.Printf("No plugin module initialized to start plugin service: %s\n", pluginHandler.Name)
 		return
 	}
