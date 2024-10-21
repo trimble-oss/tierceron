@@ -1,17 +1,34 @@
 syntax = "proto3";
 
-option go_package = "github.com/trimble-oss/tierceron/installation/trclocal/trchelloworld/hellosdk";
+option go_package = "github.com/trimble-oss/tierceron/installation/trcshk/trcshtalk/trcshtalk";
 
 package trcshtalksdk;
 
-service Greeter {
-  rpc SayHello (HelloRequest) returns (HelloReply) {}
+service TrcshTalkService {
+    rpc RunDiagnostics(DiagnosticRequest) returns (DiagnosticResponse);
 }
 
-message HelloRequest {
-  string name = 1;
+message DiagnosticRequest {
+    string message_id = 1;
+    repeated Diagnostics diagnostics = 2;
+    string tenant_id = 3;
+    repeated string data = 4;
+    repeated PluginQuery queries = 5;
 }
 
-message HelloReply {
-  string message = 1;
+message DiagnosticResponse {
+    string message_id = 1;
+    string results = 2;
+}
+
+enum Diagnostics {
+    // if a diagnostic deprecates, comment it out
+    // if adding a diagnostic, append to the end incrementing integer
+    ALL = 0; // Default
+    HEALTH_CHECK = 1;
+    // future plugins
+}
+
+enum PluginQuery {
+    ACTIVE_COUNT = 0;
 }

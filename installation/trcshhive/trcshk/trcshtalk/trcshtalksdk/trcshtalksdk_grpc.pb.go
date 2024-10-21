@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: trcshtalksdk/trcshtalksdk.proto
 
-package hellosdk
+package trcshtalk
 
 import (
 	context "context"
@@ -19,101 +19,101 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Greeter_SayHello_FullMethodName = "/trcshtalksdk.Greeter/SayHello"
+	TrcshTalkService_RunDiagnostics_FullMethodName = "/trcshtalksdk.TrcshTalkService/RunDiagnostics"
 )
 
-// GreeterClient is the client API for Greeter service.
+// TrcshTalkServiceClient is the client API for TrcshTalkService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type GreeterClient interface {
-	SayHello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error)
+type TrcshTalkServiceClient interface {
+	RunDiagnostics(ctx context.Context, in *DiagnosticRequest, opts ...grpc.CallOption) (*DiagnosticResponse, error)
 }
 
-type greeterClient struct {
+type trcshTalkServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewGreeterClient(cc grpc.ClientConnInterface) GreeterClient {
-	return &greeterClient{cc}
+func NewTrcshTalkServiceClient(cc grpc.ClientConnInterface) TrcshTalkServiceClient {
+	return &trcshTalkServiceClient{cc}
 }
 
-func (c *greeterClient) SayHello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error) {
+func (c *trcshTalkServiceClient) RunDiagnostics(ctx context.Context, in *DiagnosticRequest, opts ...grpc.CallOption) (*DiagnosticResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(HelloReply)
-	err := c.cc.Invoke(ctx, Greeter_SayHello_FullMethodName, in, out, cOpts...)
+	out := new(DiagnosticResponse)
+	err := c.cc.Invoke(ctx, TrcshTalkService_RunDiagnostics_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// GreeterServer is the server API for Greeter service.
-// All implementations must embed UnimplementedGreeterServer
+// TrcshTalkServiceServer is the server API for TrcshTalkService service.
+// All implementations must embed UnimplementedTrcshTalkServiceServer
 // for forward compatibility.
-type GreeterServer interface {
-	SayHello(context.Context, *HelloRequest) (*HelloReply, error)
-	mustEmbedUnimplementedGreeterServer()
+type TrcshTalkServiceServer interface {
+	RunDiagnostics(context.Context, *DiagnosticRequest) (*DiagnosticResponse, error)
+	mustEmbedUnimplementedTrcshTalkServiceServer()
 }
 
-// UnimplementedGreeterServer must be embedded to have
+// UnimplementedTrcshTalkServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedGreeterServer struct{}
+type UnimplementedTrcshTalkServiceServer struct{}
 
-func (UnimplementedGreeterServer) SayHello(context.Context, *HelloRequest) (*HelloReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SayHello not implemented")
+func (UnimplementedTrcshTalkServiceServer) RunDiagnostics(context.Context, *DiagnosticRequest) (*DiagnosticResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunDiagnostics not implemented")
 }
-func (UnimplementedGreeterServer) mustEmbedUnimplementedGreeterServer() {}
-func (UnimplementedGreeterServer) testEmbeddedByValue()                 {}
+func (UnimplementedTrcshTalkServiceServer) mustEmbedUnimplementedTrcshTalkServiceServer() {}
+func (UnimplementedTrcshTalkServiceServer) testEmbeddedByValue()                          {}
 
-// UnsafeGreeterServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to GreeterServer will
+// UnsafeTrcshTalkServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to TrcshTalkServiceServer will
 // result in compilation errors.
-type UnsafeGreeterServer interface {
-	mustEmbedUnimplementedGreeterServer()
+type UnsafeTrcshTalkServiceServer interface {
+	mustEmbedUnimplementedTrcshTalkServiceServer()
 }
 
-func RegisterGreeterServer(s grpc.ServiceRegistrar, srv GreeterServer) {
-	// If the following call pancis, it indicates UnimplementedGreeterServer was
+func RegisterTrcshTalkServiceServer(s grpc.ServiceRegistrar, srv TrcshTalkServiceServer) {
+	// If the following call pancis, it indicates UnimplementedTrcshTalkServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&Greeter_ServiceDesc, srv)
+	s.RegisterService(&TrcshTalkService_ServiceDesc, srv)
 }
 
-func _Greeter_SayHello_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HelloRequest)
+func _TrcshTalkService_RunDiagnostics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DiagnosticRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GreeterServer).SayHello(ctx, in)
+		return srv.(TrcshTalkServiceServer).RunDiagnostics(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Greeter_SayHello_FullMethodName,
+		FullMethod: TrcshTalkService_RunDiagnostics_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GreeterServer).SayHello(ctx, req.(*HelloRequest))
+		return srv.(TrcshTalkServiceServer).RunDiagnostics(ctx, req.(*DiagnosticRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Greeter_ServiceDesc is the grpc.ServiceDesc for Greeter service.
+// TrcshTalkService_ServiceDesc is the grpc.ServiceDesc for TrcshTalkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Greeter_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "trcshtalksdk.Greeter",
-	HandlerType: (*GreeterServer)(nil),
+var TrcshTalkService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "trcshtalksdk.TrcshTalkService",
+	HandlerType: (*TrcshTalkServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SayHello",
-			Handler:    _Greeter_SayHello_Handler,
+			MethodName: "RunDiagnostics",
+			Handler:    _TrcshTalkService_RunDiagnostics_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

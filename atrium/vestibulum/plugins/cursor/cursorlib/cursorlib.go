@@ -273,6 +273,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 				if initErr != nil {
 					logger.Printf("Missing config for env: %s error: %s\n", curatorEnv, initErr.Error())
 				}
+				// TrcshStats init goes here...
 
 				logger.Println("TrcCursorInitialize complete.")
 
