@@ -13,6 +13,7 @@ import (
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
+	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -78,13 +79,17 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
 		logger.Println("No plugin module set for initializing plugin service.")
 		return
 	}
-	symbol, err := pluginHandler.PluginMod.Lookup("Init")
-	if err != nil {
-		fmt.Println(err)
-		logger.Printf("Unable to lookup plugin export: %s\n", err)
+	if !pluginopts.BuildOptions.IsPluginHardwired() {
+		symbol, err := pluginHandler.PluginMod.Lookup("Init")
+		if err != nil {
+			fmt.Println(err)
+			logger.Printf("Unable to lookup plugin export: %s\n", err)
+		}
+		logger.Printf("Initializing plugin module for %s\n", pluginHandler.Name)
+		reflect.ValueOf(symbol).Call([]reflect.Value{reflect.ValueOf(properties)})
+	} else {
+		pluginopts.BuildOptions.Init(pluginHandler.Name, properties)
 	}
-	logger.Printf("Initializing plugin module for %s\n", pluginHandler.Name)
-	reflect.ValueOf(symbol).Call([]reflect.Value{reflect.ValueOf(properties)})
 }
 
 func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}, chatReceiverChan *chan *core.ChatMsg) {
@@ -150,16 +155,23 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 				return
 			}
-			getConfigPaths, err := pluginHandler.PluginMod.Lookup("GetConfigPaths")
-			if err != nil {
-				driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
-				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
-				fmt.Printf("Unable to access config for %s\n", service)
-				fmt.Printf("Returned with %v\n", err)
-				return
+
+			var paths []string
+			if !pluginopts.BuildOptions.IsPluginHardwired() {
+				getConfigPaths, err := pluginHandler.PluginMod.Lookup("GetConfigPaths")
+				if err != nil {
+					driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
+					driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
+					fmt.Printf("Unable to access config for %s\n", service)
+					fmt.Printf("Returned with %v\n", err)
+					return
+				}
+				pluginConfigPaths := getConfigPaths.(func() []string)
+				paths = pluginConfigPaths()
+			} else {
+				paths = pluginopts.BuildOptions.GetConfigPaths(pluginHandler.Name)
 			}
-			pluginConfigPaths := getConfigPaths.(func() []string)
-			paths := pluginConfigPaths()
+
 			serviceConfig := make(map[string]interface{})
 			for _, path := range paths {
 				if strings.HasPrefix(path, "Common") {
@@ -339,12 +351,18 @@ func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[stri
 }
 
 func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverConfig, pluginPath string) {
-	pluginM, err := plugin.Open(pluginPath)
-	if err != nil {
-		fmt.Printf("Unable to open plugin module for service: %s\n", pluginPath)
-		driverConfig.CoreConfig.Log.Printf("Unable to open plugin module for service: %s\n", pluginPath)
-		pluginHandler.State = 2
-		return
+	fmt.Printf("Loading plugin: %s\n", pluginPath)
+
+	var pluginM *plugin.Plugin
+	if !pluginopts.BuildOptions.IsPluginHardwired() {
+		pM, err := plugin.Open(pluginPath)
+		if err != nil {
+			fmt.Printf("Unable to open plugin module for service: %s\n", pluginPath)
+			driverConfig.CoreConfig.Log.Printf("Unable to open plugin module for service: %s\n", pluginPath)
+			pluginHandler.State = 2
+			return
+		}
+		pluginM = pM
 	}
 	pluginName := pluginHandler.Name
 	if len(pluginName) > 0 {
