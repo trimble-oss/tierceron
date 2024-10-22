@@ -397,7 +397,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 		msg := <-*pluginHandler.ConfigContext.ChatReceiverChan
 		driverConfig.CoreConfig.Log.Println("Kernel received message from chat.")
 		fmt.Println("Kernel received message from chat.")
-		if *msg.Name == "SHUTDOWN" {
+		if eUtils.RefEquals(msg.Name, "SHUTDOWN") {
 			driverConfig.CoreConfig.Log.Println("Shutting down chat receiver.")
 			for _, p := range *pluginHandler.Services {
 				if p.ConfigContext.ChatSenderChan != nil && *msg.Query != nil && len(*msg.Query) > 0 && (*msg.Query)[0] == p.Name {
@@ -416,16 +416,19 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				fmt.Printf("Sending query to service: %s.\n", plugin.Name)
 				new_msg := &core.ChatMsg{
 					Name:  &q,
-					Query: &[]string{*msg.Name},
+					Query: &[]string{},
 				}
-				if msg.Response != nil && (*msg).Response != nil {
+				if eUtils.RefLength(msg.Name) > 0 {
+					*new_msg.Query = append(*new_msg.Query, *msg.Name)
+				}
+				if eUtils.RefLength(msg.Response) > 0 && eUtils.RefLength((*msg).Response) > 0 {
 					new_msg.Response = (*msg).Response
 				}
-				if msg.ChatId != nil && (*msg).ChatId != nil {
+				if eUtils.RefLength(msg.ChatId) > 0 && eUtils.RefLength((*msg).ChatId) > 0 {
 					new_msg.ChatId = (*msg).ChatId
 				}
 				*plugin.ConfigContext.ChatSenderChan <- new_msg
-			} else if msg.Name != nil {
+			} else if eUtils.RefLength(msg.Name) > 0 {
 				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				fmt.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
