@@ -420,6 +420,9 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				}
 				if eUtils.RefLength(msg.Name) > 0 {
 					*new_msg.Query = append(*new_msg.Query, *msg.Name)
+				} else {
+					fmt.Printf("Warning, self identification through Name is required for all messages. Dropping query...\n")
+					return
 				}
 				if eUtils.RefLength(msg.Response) > 0 && eUtils.RefLength((*msg).Response) > 0 {
 					new_msg.Response = (*msg).Response
