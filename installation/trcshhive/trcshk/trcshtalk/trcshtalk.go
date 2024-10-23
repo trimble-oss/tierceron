@@ -132,17 +132,15 @@ func (s *trcshtalkServiceServer) RunDiagnostics(ctx context.Context, req *pb.Dia
 }
 
 const (
-	TRCSHTALK_CERT = "Common/PluginCertHiveK.crt.mf.tmpl"
-	TRCSHTALK_KEY  = "Common/PluginCertHiveKkey.key.mf.tmpl"
-	MASHUP_CERT    = "Common/MashupCert.crt.mf.tmpl"
-	COMMON_PATH    = "config"
+	MASHUP_CERT = "Common/MashupCert.crt.mf.tmpl"
+	COMMON_PATH = "config"
 )
 
 func GetConfigPaths() []string {
 	return []string{
 		COMMON_PATH,
-		TRCSHTALK_CERT,
-		TRCSHTALK_KEY,
+		tccore.TRCSHHIVEK_CERT,
+		tccore.TRCSHHIVEK_KEY,
 		MASHUP_CERT,
 	}
 }
@@ -481,8 +479,8 @@ func chat_receiver(rec_chan chan *tccore.ChatMsg) {
 func Init(properties *map[string]interface{}) {
 	var err error
 	configContext, err = tccore.Init(properties,
-		TRCSHTALK_CERT,
-		TRCSHTALK_KEY,
+		tccore.TRCSHHIVEK_CERT,
+		tccore.TRCSHHIVEK_KEY,
 		COMMON_PATH,
 		"trcshtalk",
 		start,
@@ -550,8 +548,8 @@ func main() {
 	if err != nil {
 		log.Printf("Couldn't load key: %v", err)
 	}
-	config[TRCSHTALK_CERT] = trcshtalkCertBytes
-	config[TRCSHTALK_KEY] = trcshtalkKeyBytes
+	config[tccore.TRCSHHIVEK_CERT] = trcshtalkCertBytes
+	config[tccore.TRCSHHIVEK_KEY] = trcshtalkKeyBytes
 
 	Init(&config)
 	configContext.Start()

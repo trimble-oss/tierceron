@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/trimble-oss/tierceron/installation/trcshk/trcshtalk/trcshtalk";
+option go_package = "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trcshtalk/trcshtalksdk";
 
 package trcshtalksdk;
 
