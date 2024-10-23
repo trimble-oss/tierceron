@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	hcore "github.com/trimble-oss/tieceron/installation/trcshhive/trcshk/trchelloworld/hcore"
+	hcore "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trchelloworld/hcore"
 	// Update package path as needed
 )
 

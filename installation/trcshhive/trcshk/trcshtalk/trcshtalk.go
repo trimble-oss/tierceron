@@ -65,7 +65,7 @@ func (s *trcshtalkServiceServer) RunDiagnostics(ctx context.Context, req *pb.Dia
 				// 		tenant_test = fmt.Sprintf("%s,%s", tenant_test, test)
 				// 	}
 				// }
-				plugin_tests := req.GetPluginQueries()
+				plugin_tests := req.GetQueries()
 				for i, rq := range plugin_tests {
 					test := pb.PluginQuery_name[int32(rq)]
 					if i == 0 {
@@ -288,7 +288,7 @@ func getTrcshTalkRequest(serverName string, port int, diagReq *pb.DiagnosticRequ
 		return nil, err
 	}
 	defer conn.Close()
-	client := pb.NewDiagnosticServiceClient(conn)
+	client := pb.NewTrcshTalkServiceClient(conn)
 
 	diagRes, err := client.RunDiagnostics(context.Background(), diagReq)
 	if err != nil {
@@ -345,7 +345,7 @@ func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
 				// set name to plugin..
 				fmt.Println("Running healthcheck diagnostic.")
 				queries = append(queries, "healthcheck")
-				plugin_tests := req.GetPluginQueries()
+				plugin_tests := req.GetQueries()
 				// plugin_tests := req.GetData()
 				// for i, test := range plugin_tests {
 				// 	if i == 0 {
