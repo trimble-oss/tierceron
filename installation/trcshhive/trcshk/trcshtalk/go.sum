@@ -1,7 +1,7 @@
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/trimble-oss/tierceron-core/v2 v2.0.9 h1:BjFLV/kYhEXiLGz5Clts1nsvSzYplqoM8ojU4OeyOv4=
-github.com/trimble-oss/tierceron-core/v2 v2.0.9/go.mod h1:8mdjD3H3jIJdy8sJ5EK4MVSc1O90ZDzvNxHBO2SNAi8=
+github.com/trimble-oss/tierceron-core/v2 v2.0.10 h1:0bFZZutavwIoMdWsPw0eZJAIzRvrOCxFY6xghH7TfqI=
+github.com/trimble-oss/tierceron-core/v2 v2.0.10/go.mod h1:8mdjD3H3jIJdy8sJ5EK4MVSc1O90ZDzvNxHBO2SNAi8=
 github.com/trimble-oss/tierceron-nute v1.0.1 h1:Y0oBeKD7Aizj1gzb0gfSPO1KPhvBBPgSS2+dSFRyRn0=
 github.com/trimble-oss/tierceron-nute v1.0.1/go.mod h1:9MKEGmnTDg5LOYJNafX2XER1Y5SQwK4uGH+S74Ooudo=
 golang.org/x/net v0.29.0 h1:5ORfpBpCs4HzDYoodCDBbwHzdR5UrLBZ3sOnUJmFoHo=
