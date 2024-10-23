@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: trcshtalksdk/trcshtalksdk.proto
 
-package trcshtalk
+package trcshtalksdk
 
 import (
 	context "context"
