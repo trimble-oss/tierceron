@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/trimble-oss/tierceron/installation/trclocal/trchelloworld/hellosdk";
+option go_package = "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trchelloworld/hellosdk";
 
 package hellosdk;
 
