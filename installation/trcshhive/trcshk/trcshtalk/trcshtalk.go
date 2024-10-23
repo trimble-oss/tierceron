@@ -65,7 +65,7 @@ func (s *trcshtalkServiceServer) RunDiagnostics(ctx context.Context, req *pb.Dia
 				// 		tenant_test = fmt.Sprintf("%s,%s", tenant_test, test)
 				// 	}
 				// }
-				plugin_tests := req.GetPluginQueries()
+				plugin_tests := req.GetQueries()
 				for i, rq := range plugin_tests {
 					test := pb.PluginQuery_name[int32(rq)]
 					if i == 0 {
