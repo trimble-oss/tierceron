@@ -147,7 +147,7 @@ func (v *Vault) RenewSelf(increment int) error {
 }
 
 // GetOrRevokeTokensInScope()
-func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenExpiration bool, logger *log.Logger) error {
+func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFileFiltersSet map[string]bool, tokenExpiration bool, logger *log.Logger) error {
 	var tokenPath = dir
 	var tokenPolicies = []string{}
 
@@ -160,10 +160,20 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 		if f.IsDir() {
 			continue
 		}
-		if tokenFilter != "" && !strings.HasPrefix(f.Name(), tokenFilter) {
-			// Token doesn't match filter...  Skipping.
-			continue
+		if len(tokenFileFiltersSet) > 0 {
+			found := false
+
+			for tokenFilter, _ := range tokenFileFiltersSet {
+				if strings.HasPrefix(f.Name(), tokenFilter) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
 		}
+
 		var file, err = os.OpenFile(tokenPath+string(os.PathSeparator)+f.Name(), os.O_RDWR, 0644)
 		if file != nil {
 			defer file.Close()
@@ -177,6 +187,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 		yaml.Unmarshal(byteValue, &token)
 		tokenPolicies = append(tokenPolicies, token.Policies...)
 	}
+
 	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
 	response, err := v.client.RawRequest(r)
 
