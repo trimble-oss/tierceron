@@ -26,68 +26,52 @@ import (
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
-var GlobalStats *cmap.ConcurrentMap[string, interface{}]
+var GlobalStats *cmap.ConcurrentMap[string, string]
+
+var globalToken *string
 
 type statServiceServer struct {
 	pb.UnimplementedStatServiceServer
 }
 
 func (s *statServiceServer) GetStats(ctx context.Context, req *pb.GetStatRequest) (*pb.GetStatResponse, error) {
+	token := req.GetToken()
+	if token != *globalToken {
+		logger.Println("Unauthorized attempt to access statistics.")
+		return &pb.GetStatResponse{
+			Results: "",
+		}, errors.New("unauthorized to access statistic server")
+	}
 	key := req.GetKey()
 	value, ok := (*GlobalStats).Get(key)
-	formatted_val := fmt.Sprintf("%v", value)
 	if !ok {
 		return &pb.GetStatResponse{
-			Results:  "",
-			DataType: "",
+			Results: "",
 		}, nil
 	}
-	data_type := fmt.Sprintf("%T", value)
 	return &pb.GetStatResponse{
-		Results:  formatted_val,
-		DataType: data_type,
+		Results: value,
 	}, nil
 }
 
 func (s *statServiceServer) SetStats(ctx context.Context, req *pb.SetStatRequest) (*pb.SetStatResponse, error) {
+	token := req.GetToken()
+	if token != *globalToken {
+		logger.Println("Unauthorized attempt to set statistics.")
+		return &pb.SetStatResponse{
+			Success: false,
+		}, errors.New("unauthorized to set statistics in server")
+	}
 	key := req.GetKey()
 	value := req.GetValue()
-	data_type := req.GetDataType()
-	if data_type == "int" {
-		if data, ok := strconv.Atoi(value); ok != nil {
-			(*GlobalStats).Set(key, data)
-			return &pb.SetStatResponse{
-				Success: true,
-			}, nil
-		} else {
-			return &pb.SetStatResponse{
-				Success: false,
-			}, errors.New("incorrect data type and value specified")
-		}
-	} else if data_type == "string" {
-		(*GlobalStats).Set(key, value)
-		return &pb.SetStatResponse{
-			Success: true,
-		}, nil
-	} else if data_type == "float64" {
-		if data, ok := strconv.ParseFloat(value, 64); ok != nil {
-			(*GlobalStats).Set(key, data)
-			return &pb.SetStatResponse{
-				Success: true,
-			}, nil
-		} else {
-			return &pb.SetStatResponse{
-				Success: false,
-			}, errors.New("incorrect data type and value specified")
-		}
-	}
+	(*GlobalStats).Set(key, value)
 	return &pb.SetStatResponse{
-		Success: false,
-	}, errors.New("unexpected data type specified")
+		Success: true,
+	}, nil
 }
 
 func InitStats() {
-	ccmap := cmap.New[interface{}]()
+	ccmap := cmap.New[string]()
 	GlobalStats = &ccmap
 }
 
@@ -153,6 +137,13 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 	certifyMap, err := goMod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName))
 	if err != nil {
 		logger.Printf("Validating Certification failure for %s %s\n", pluginName, err)
+		return err
+	}
+
+	if t, ok := certifyMap["trcstatstoken"].(string); ok {
+		globalToken = &t
+	} else {
+		logger.Printf("No valid token found for trcstats server.\n")
 		return err
 	}
 
