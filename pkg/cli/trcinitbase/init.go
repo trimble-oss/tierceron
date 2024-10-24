@@ -64,6 +64,7 @@ func CommonMain(envPtr *string,
 	var updateRole *bool = defaultFalse()
 	var updatePolicy *bool = defaultFalse()
 	var initNamespace *bool = defaultFalse()
+	var doTidyPtr *bool = defaultFalse()
 	var insecurePtr *bool = defaultFalse()
 	var keyShardPtr *string = defaultEmpty()
 	var unsealShardPtr *string = defaultEmpty()
@@ -101,6 +102,7 @@ func CommonMain(envPtr *string,
 		updateRole = flagset.Bool("updateRole", false, "Update security role")
 		updatePolicy = flagset.Bool("updatePolicy", false, "Update security policy")
 		initNamespace = flagset.Bool("initns", false, "Init namespace (tokens, policy, and role)")
+		doTidyPtr = flagset.Bool("tidy", false, "Clean up (tidy) expired tokens")
 		insecurePtr = flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 		keyShardPtr = flagset.String("totalKeys", "5", "Total number of key shards to make")
 		unsealShardPtr = flagset.String("unsealKeys", "3", "Number of key shards needed to unseal")
@@ -438,7 +440,11 @@ func CommonMain(envPtr *string,
 		}
 
 		if (*rotateTokens || *tokenExpiration) && (*roleFileFilterPtr == "" || len(tokenFileFiltersSet) != 0) {
-			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, tokenFileFiltersSet, *tokenExpiration, driverConfigBase.CoreConfig.Log)
+			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs,
+				tokenFileFiltersSet,
+				*tokenExpiration,
+				*doTidyPtr,
+				driverConfigBase.CoreConfig.Log)
 			if getOrRevokeError != nil {
 				fmt.Println("Token revocation or access failure.  Cannot continue.")
 				os.Exit(-1)

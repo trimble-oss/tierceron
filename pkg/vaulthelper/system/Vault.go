@@ -147,7 +147,11 @@ func (v *Vault) RenewSelf(increment int) error {
 }
 
 // GetOrRevokeTokensInScope()
-func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFileFiltersSet map[string]bool, tokenExpiration bool, logger *log.Logger) error {
+func (v *Vault) GetOrRevokeTokensInScope(dir string,
+	tokenFileFiltersSet map[string]bool,
+	tokenExpiration bool,
+	doTidy bool,
+	logger *log.Logger) error {
 	var tokenPath = dir
 	var tokenPolicies = []string{}
 
@@ -290,7 +294,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFileFiltersSet map[str
 				}
 			}
 
-			if !tokenExpiration {
+			if !tokenExpiration && (doTidy || len(tokenFileFiltersSet) == 0) {
 				b := v.client.NewRequest("POST", "/v1/auth/token/tidy")
 				response, err := v.client.RawRequest(b)
 				if response != nil && response.Body != nil {
