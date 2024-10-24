@@ -64,10 +64,11 @@ func CommonMain(envPtr *string,
 	var updateRole *bool = defaultFalse()
 	var updatePolicy *bool = defaultFalse()
 	var initNamespace *bool = defaultFalse()
+	var doTidyPtr *bool = defaultFalse()
 	var insecurePtr *bool = defaultFalse()
 	var keyShardPtr *string = defaultEmpty()
 	var unsealShardPtr *string = defaultEmpty()
-	var tokenFileFilterPtr *string = defaultEmpty()
+	var tokenFileFilterSlicePtr *string = defaultEmpty()
 	var roleFileFilterPtr *string = defaultEmpty()
 	var dynamicPathPtr *string = defaultEmpty()
 	var nestPtr *bool = defaultFalse()
@@ -101,10 +102,11 @@ func CommonMain(envPtr *string,
 		updateRole = flagset.Bool("updateRole", false, "Update security role")
 		updatePolicy = flagset.Bool("updatePolicy", false, "Update security policy")
 		initNamespace = flagset.Bool("initns", false, "Init namespace (tokens, policy, and role)")
+		doTidyPtr = flagset.Bool("tidy", false, "Clean up (tidy) expired tokens")
 		insecurePtr = flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 		keyShardPtr = flagset.String("totalKeys", "5", "Total number of key shards to make")
 		unsealShardPtr = flagset.String("unsealKeys", "3", "Number of key shards needed to unseal")
-		tokenFileFilterPtr = flagset.String("filter", "", "Filter files for token rotation.")
+		tokenFileFilterSlicePtr = flagset.String("filter", "", "Filter files for token rotation.  Comma delimited.")
 		roleFileFilterPtr = flagset.String("approle", "", "Filter files for approle rotation.")
 		dynamicPathPtr = flagset.String("dynamicPath", "", "Seed a specific directory in vault.")
 		nestPtr = flagset.Bool("nest", false, "Seed a specific directory in vault.")
@@ -158,6 +160,14 @@ func CommonMain(envPtr *string,
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
 			tokenName := fmt.Sprintf("config_token_%s_unrestricted", *envPtr)
 			tokenNamePtr = &tokenName
+		} else if eUtils.RefLength(tokenPtr) == 0 {
+			fmt.Println("-token cannot be empty.")
+			os.Exit(1)
+		}
+
+		if strings.ContainsAny(*tokenPtr, " \t\n\r") {
+			fmt.Println("Invalid -token contains whitespace")
+			os.Exit(1)
 		}
 
 		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
@@ -309,6 +319,15 @@ func CommonMain(envPtr *string,
 		}
 		os.Exit(0)
 	}
+	// Set up token file filters if there are any.
+	var tokenFileFiltersSet map[string]bool = make(map[string]bool)
+	if eUtils.RefLength(tokenFileFilterSlicePtr) > 0 {
+		tokenFileFilters := strings.Split(*tokenFileFilterSlicePtr, ",")
+		tokenFileFiltersSet = make(map[string]bool, len(tokenFileFilters))
+		for _, tokenFileFilter := range tokenFileFilters {
+			tokenFileFiltersSet[tokenFileFilter] = true
+		}
+	}
 
 	eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, true)
 
@@ -382,7 +401,7 @@ func CommonMain(envPtr *string,
 
 			// Upload tokens from the given token directory
 			fmt.Println("Creating tokens")
-			tokens := il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFilterPtr, v)
+			tokens := il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFiltersSet, v)
 			if len(tokens) > 0 {
 				driverConfigBase.CoreConfig.Log.Println(*namespaceVariable + " tokens successfully created.")
 			} else {
@@ -393,7 +412,6 @@ func CommonMain(envPtr *string,
 			fmt.Println("initns or rotateTokens required with the namespace paramater.")
 			os.Exit(0)
 		}
-
 	}
 
 	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration || *updateRole) {
@@ -404,16 +422,29 @@ func CommonMain(envPtr *string,
 			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
 		} else {
 			if *rotateTokens {
-				if *tokenFileFilterPtr == "" {
+				if len(tokenFileFiltersSet) == 0 {
 					fmt.Println("Rotating tokens.")
 				} else {
-					fmt.Println("Adding token: " + *tokenFileFilterPtr)
+					fmt.Print("Adding tokens: ")
+					first := true
+					for tokenFilter, _ := range tokenFileFiltersSet {
+						if !first {
+							fmt.Print(", ")
+							first = false
+						}
+						fmt.Print(tokenFilter)
+					}
+					fmt.Println()
 				}
 			}
 		}
 
-		if (*rotateTokens || *tokenExpiration) && (*roleFileFilterPtr == "" || *tokenFileFilterPtr != "") {
-			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs, *tokenFileFilterPtr, *tokenExpiration, driverConfigBase.CoreConfig.Log)
+		if (*rotateTokens || *tokenExpiration) && (*roleFileFilterPtr == "" || len(tokenFileFiltersSet) != 0) {
+			getOrRevokeError := v.GetOrRevokeTokensInScope(namespaceTokenConfigs,
+				tokenFileFiltersSet,
+				*tokenExpiration,
+				*doTidyPtr,
+				driverConfigBase.CoreConfig.Log)
 			if getOrRevokeError != nil {
 				fmt.Println("Token revocation or access failure.  Cannot continue.")
 				os.Exit(-1)
@@ -452,7 +483,7 @@ func CommonMain(envPtr *string,
 			var tokens []*apinator.InitResp_Token
 			// Create new tokens.
 			fmt.Println("Creating new tokens")
-			tokens = il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFilterPtr, v)
+			tokens = il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFiltersSet, v)
 
 			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), addrPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 			if mod != nil {
@@ -481,10 +512,15 @@ func CommonMain(envPtr *string,
 			} else {
 				for _, approleFile := range approleFiles {
 					if len(approleFilters) > 0 {
+						matched := false
 						for _, roleFilter := range approleFilters {
-							if approleFile != roleFilter {
-								continue
+							if approleFile == roleFilter {
+								matched = true
+								break
 							}
+						}
+						if !matched {
+							continue
 						}
 					}
 					tokenMap := map[string]interface{}{}
@@ -517,18 +553,28 @@ func CommonMain(envPtr *string,
 						continue
 					}
 
-					if *tokenFileFilterPtr != "" && *tokenFileFilterPtr != "*" {
+					if len(tokenFileFiltersSet) > 0 && tokenFileFiltersSet["*"] == false {
 						// Filter out tokens that
-						if found, ok := tokenPerms[*tokenFileFilterPtr].(bool); !ok && !found {
-							fmt.Println("Skipping " + mod.EnvBasis + " as there is no token permission for this approle.")
-							continue
+						for tokenFilter, _ := range tokenFileFiltersSet {
+							if found, ok := tokenPerms[tokenFilter].(bool); !ok && !found {
+								fmt.Println("Skipping " + mod.EnvBasis + " as there is no token permission for this approle.")
+								continue
+							}
 						}
 					}
 
 					existingTokens, err := mod.ReadData("super-secrets/tokens")
+					hasAllFilteredTokens := true
 					if err != nil {
 						// TODO: consider scenarios...
 					} else {
+						// Check the filtering...
+						for tokenFilter, _ := range tokenFileFiltersSet {
+							if _, ok := existingTokens[tokenFilter].(string); !ok {
+								hasAllFilteredTokens = false
+								break
+							}
+						}
 						// We have names of tokens that were referenced in old role.  Ok to delete the role now.
 						//
 						// Merge token data.
@@ -555,7 +601,7 @@ func CommonMain(envPtr *string,
 						}
 					}
 
-					if *roleFileFilterPtr != "" && *tokenFileFilterPtr == "" {
+					if *roleFileFilterPtr != "" && hasAllFilteredTokens {
 						//
 						// Wipe existing role.
 						// Recreate the role.
@@ -643,7 +689,7 @@ func CommonMain(envPtr *string,
 		// Upload policies from the given policy directory
 		il.UploadPolicies(driverConfigBase.CoreConfig, namespacePolicyConfigs, v, false)
 		// Upload tokens from the given token directory
-		tokens := il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFilterPtr, v)
+		tokens := il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFiltersSet, v)
 		if !*prodPtr {
 			tokenMap := map[string]interface{}{}
 			for _, token := range tokens {
