@@ -57,6 +57,7 @@ atrium/speculatio/spiralis/__debug_bin
 atrium/speculatio/fenestra/__debug_bin
 atrium/vestibulum/pluginutil/__debug*
 atrium/vestibulum/pluginutil/pluginutil_test.go
+pkg/core/util/cert/certutil_test.go
 
 cmd/shell/deploy/trc_seeds/*
 

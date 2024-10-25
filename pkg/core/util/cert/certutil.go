@@ -15,9 +15,10 @@ func LoadCertComponent(driverConfig *config.DriverConfig, goMod *helperkv.Modifi
 	if len(cert_ps) != 2 {
 		return nil, errors.New("unable to process cert")
 	}
+	certBasis := strings.Split(cert_ps[1], ".")
 	templatePath := "./trc_templates/" + certPath
 	driverConfig.CoreConfig.WantCerts = true
-	_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, goMod, templatePath, true, cert_ps[0], cert_ps[1], true, true)
+	_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, goMod, templatePath, true, cert_ps[0], certBasis[0], true, true)
 	if err != nil {
 		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		return nil, err
