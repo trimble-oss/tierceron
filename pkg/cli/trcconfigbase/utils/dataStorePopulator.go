@@ -483,12 +483,19 @@ func GetPathsFromProject(config *core.CoreConfig, mod *helperkv.Modifier, projec
 					}
 
 				} else {
-					mod.ProjectIndex = []string{project.(string)}
-					path := "templates/" + project.(string)
-					paths, pathErr = getPaths(config, mod, path, paths, false)
-					//don't add on to paths until you're sure it's an END path
-					if pathErr != nil {
-						return nil, pathErr
+					if config.WantCerts && len(services) == 1 {
+						for _, service := range services {
+							mod.ProjectIndex = []string{project.(string)}
+							paths = []string{"templates/" + project.(string) + service}
+						}
+					} else {
+						mod.ProjectIndex = []string{project.(string)}
+						path := "templates/" + project.(string)
+						paths, pathErr = getPaths(config, mod, path, paths, false)
+						//don't add on to paths until you're sure it's an END path
+						if pathErr != nil {
+							return nil, pathErr
+						}
 					}
 				}
 			}
