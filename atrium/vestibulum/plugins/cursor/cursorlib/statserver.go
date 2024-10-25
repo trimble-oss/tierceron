@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"sync"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
@@ -31,6 +32,8 @@ import (
 var GlobalStats *cmap.ConcurrentMap[string, string]
 
 var globalToken *string
+
+var m sync.Mutex
 
 type statServiceServer struct {
 	pb.UnimplementedStatServiceServer
@@ -56,18 +59,167 @@ func (s *statServiceServer) GetStats(ctx context.Context, req *pb.GetStatRequest
 	}, nil
 }
 
-func (s *statServiceServer) SetStats(ctx context.Context, req *pb.SetStatRequest) (*pb.SetStatResponse, error) {
+func (s *statServiceServer) SetStats(ctx context.Context, req *pb.UpdateStatRequest) (*pb.UpdateStatResponse, error) {
 	token := req.GetToken()
 	if token != *globalToken {
 		logger.Println("Unauthorized attempt to set statistics.")
-		return &pb.SetStatResponse{
+		return &pb.UpdateStatResponse{
 			Success: false,
 		}, errors.New("unauthorized to set statistics in server")
 	}
 	key := req.GetKey()
 	value := req.GetValue()
 	(*GlobalStats).Set(key, value)
-	return &pb.SetStatResponse{
+	return &pb.UpdateStatResponse{
+		Success: true,
+	}, nil
+}
+
+func (s *statServiceServer) IncrementStats(ctx context.Context, req *pb.UpdateStatRequest) (*pb.UpdateStatResponse, error) {
+	token := req.GetToken()
+	if token != *globalToken {
+		logger.Println("Unauthorized attempt to set statistics.")
+		return &pb.UpdateStatResponse{
+			Success: false,
+		}, errors.New("unauthorized to set statistics in server")
+	}
+	m.Lock()
+	data_type := req.GetDatatype()
+	key := req.GetKey()
+	value := req.GetValue()
+	prev_value, ok := (*GlobalStats).Get(key)
+	var err error
+	var total_value string
+	if data_type == "int" {
+		total := 0
+		if ok {
+			total, err = strconv.Atoi(prev_value)
+			if err != nil {
+				logger.Printf("error converting stats for incrementing int value: %v\n", err)
+				return &pb.UpdateStatResponse{
+					Success: false,
+				}, errors.New("error converting stats for incrementing int value")
+			}
+		}
+		toAdd := 0
+		if v, err := strconv.Atoi(value); err == nil {
+			toAdd = v
+		} else {
+			logger.Println("Different type of value passed in than specified.")
+			return &pb.UpdateStatResponse{
+				Success: false,
+			}, errors.New("different type of value passed in than specified")
+		}
+		total = total + toAdd
+		total_value = strconv.Itoa(total)
+	} else if data_type == "float64" {
+		var prev float64 = 0
+		if ok {
+			prev, err = strconv.ParseFloat(prev_value, 64)
+			if err != nil {
+				logger.Printf("error converting stats for incrementing float value: %v", err)
+				return &pb.UpdateStatResponse{
+					Success: false,
+				}, errors.New("error converting stats for incrementing float value")
+			}
+		}
+		var toAdd float64 = 0
+		if t, err := strconv.ParseFloat(value, 64); err == nil {
+			toAdd = t
+		} else {
+			logger.Println("Different type of value passed in than specified.")
+			return &pb.UpdateStatResponse{
+				Success: false,
+			}, errors.New("different type of value passed in than specified")
+		}
+		total_value = fmt.Sprintf("%v", prev+toAdd)
+	} else {
+		logger.Println("Unsupported data type for statistics server.")
+		return &pb.UpdateStatResponse{
+			Success: false,
+		}, errors.New("unsupported data type for statistics server")
+	}
+
+	(*GlobalStats).Set(key, total_value)
+	m.Unlock()
+	return &pb.UpdateStatResponse{
+		Success: true,
+	}, nil
+}
+
+func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateStatRequest) (*pb.UpdateStatResponse, error) {
+	token := req.GetToken()
+	if token != *globalToken {
+		logger.Println("Unauthorized attempt to update max statistics.")
+		return &pb.UpdateStatResponse{
+			Success: false,
+		}, errors.New("unauthorized to update max statistics in server")
+	}
+	m.Lock()
+	data_type := req.GetDatatype()
+	key := req.GetKey()
+	value := req.GetValue()
+	prev_value, ok := (*GlobalStats).Get(key)
+	var err error
+	var max_value string
+	if data_type == "int" {
+		old_val := 0
+		if ok {
+			old_val, err = strconv.Atoi(prev_value)
+			if err != nil {
+				logger.Printf("error converting stats for updating max int value: %v", err)
+				return &pb.UpdateStatResponse{
+					Success: false,
+				}, errors.New("error converting stats for updating max int value")
+			}
+		}
+		new_val := 0
+		if v, err := strconv.Atoi(value); err == nil {
+			new_val = v
+		} else {
+			logger.Println("Different type of value passed in than specified.")
+			return &pb.UpdateStatResponse{
+				Success: false,
+			}, errors.New("different type of value passed in than specified")
+		}
+		if new_val > old_val {
+			old_val = new_val
+		}
+		max_value = strconv.Itoa(old_val)
+	} else if data_type == "float64" {
+		var prev float64 = 0
+		if ok {
+			prev, err = strconv.ParseFloat(prev_value, 64)
+			if err != nil {
+				logger.Printf("error converting stats for updating max float value: %v", err)
+				return &pb.UpdateStatResponse{
+					Success: false,
+				}, errors.New("error converting stats for updating max float value")
+			}
+		}
+		var new_val float64 = 0
+		if t, err := strconv.ParseFloat(value, 64); err == nil {
+			new_val = t
+		} else {
+			logger.Println("Different type of value passed in than specified.")
+			return &pb.UpdateStatResponse{
+				Success: false,
+			}, errors.New("different type of value passed in than specified")
+		}
+		if new_val > prev {
+			prev = new_val
+		}
+		max_value = fmt.Sprintf("%v", prev)
+	} else {
+		logger.Println("Unsupported data type for updating max in statistics server.")
+		return &pb.UpdateStatResponse{
+			Success: false,
+		}, errors.New("unsupported data type for updating max in statistics server")
+	}
+
+	(*GlobalStats).Set(key, max_value)
+	m.Unlock()
+	return &pb.UpdateStatResponse{
 		Success: true,
 	}, nil
 }

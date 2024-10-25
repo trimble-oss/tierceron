@@ -40,7 +40,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.7.2
-	github.com/trimble-oss/tierceron-core/v2 v2.0.11
+	github.com/trimble-oss/tierceron-core/v2 v2.0.12
 	github.com/trimble-oss/tierceron-nute v1.0.2
 	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.26.1
