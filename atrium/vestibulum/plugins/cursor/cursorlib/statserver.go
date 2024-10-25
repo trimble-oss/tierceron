@@ -269,7 +269,7 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 	if tokenPtr, tokPtrOk := pluginConfig["tokenptr"].(*string); tokPtrOk && eUtils.RefLength(tokenPtr) < 5 {
 		eUtils.LogWarningMessage(trcshDriverConfig.DriverConfig.CoreConfig, "WARNING: Unexpectedly token not available", false)
 	}
-	trcshDriverConfig.DriverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, "", trcshDriverConfig.DriverConfig.CoreConfig.Log)
+	trcshDriverConfig.DriverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, "config_token_pluginany", trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if vault != nil {
 		defer vault.Close()
 	}
