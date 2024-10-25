@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"strconv"
+
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
 
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -160,16 +162,23 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 			}
 		}
 		fmt.Printf("Server listening on :%d\n", trcstatsport)
-		//load certs differently in future....
-		statCert, err := os.ReadFile("./local_config/stat.crt") //need full path if debugging locally
+		statCert, err := certutil.LoadCertComponent(trcshDriverConfig.DriverConfig,
+			goMod,
+			tccore.TRCSHHIVEK_CERT)
+
 		if err != nil {
 			log.Printf("Couldn't load cert: %v", err)
+			return err
 		}
+		statKey, err := certutil.LoadCertComponent(trcshDriverConfig.DriverConfig,
+			goMod,
+			tccore.TRCSHHIVEK_KEY)
 
-		statKey, err := os.ReadFile("./local_config/statkey.key")
 		if err != nil {
 			log.Printf("Couldn't load key: %v", err)
+			return err
 		}
+
 		lis, gServer, err := InitServer(trcstatsport,
 			statCert,
 			statKey)
