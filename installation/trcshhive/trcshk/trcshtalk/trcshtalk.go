@@ -65,7 +65,7 @@ func (s *trcshtalkServiceServer) RunDiagnostics(ctx context.Context, req *pb.Dia
 				// 		tenant_test = fmt.Sprintf("%s,%s", tenant_test, test)
 				// 	}
 				// }
-				plugin_tests := req.GetPluginQueries()
+				plugin_tests := req.GetQueries()
 				for i, rq := range plugin_tests {
 					test := pb.PluginQuery_name[int32(rq)]
 					if i == 0 {
@@ -132,17 +132,15 @@ func (s *trcshtalkServiceServer) RunDiagnostics(ctx context.Context, req *pb.Dia
 }
 
 const (
-	TRCSHTALK_CERT = "Common/PluginCertHiveK.crt.mf.tmpl"
-	TRCSHTALK_KEY  = "Common/PluginCertHiveKkey.key.mf.tmpl"
-	MASHUP_CERT    = "Common/MashupCert.crt.mf.tmpl"
-	COMMON_PATH    = "config"
+	MASHUP_CERT = "Common/MashupCert.crt.mf.tmpl"
+	COMMON_PATH = "config"
 )
 
 func GetConfigPaths() []string {
 	return []string{
 		COMMON_PATH,
-		TRCSHTALK_CERT,
-		TRCSHTALK_KEY,
+		tccore.TRCSHHIVEK_CERT,
+		tccore.TRCSHHIVEK_KEY,
 		MASHUP_CERT,
 	}
 }
@@ -290,7 +288,7 @@ func getTrcshTalkRequest(serverName string, port int, diagReq *pb.DiagnosticRequ
 		return nil, err
 	}
 	defer conn.Close()
-	client := pb.NewDiagnosticServiceClient(conn)
+	client := pb.NewTrcshTalkServiceClient(conn)
 
 	diagRes, err := client.RunDiagnostics(context.Background(), diagReq)
 	if err != nil {
@@ -347,7 +345,7 @@ func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
 				// set name to plugin..
 				fmt.Println("Running healthcheck diagnostic.")
 				queries = append(queries, "healthcheck")
-				plugin_tests := req.GetPluginQueries()
+				plugin_tests := req.GetQueries()
 				// plugin_tests := req.GetData()
 				// for i, test := range plugin_tests {
 				// 	if i == 0 {
@@ -481,8 +479,8 @@ func chat_receiver(rec_chan chan *tccore.ChatMsg) {
 func Init(properties *map[string]interface{}) {
 	var err error
 	configContext, err = tccore.Init(properties,
-		TRCSHTALK_CERT,
-		TRCSHTALK_KEY,
+		tccore.TRCSHHIVEK_CERT,
+		tccore.TRCSHHIVEK_KEY,
 		COMMON_PATH,
 		"trcshtalk",
 		start,
@@ -550,8 +548,8 @@ func main() {
 	if err != nil {
 		log.Printf("Couldn't load key: %v", err)
 	}
-	config[TRCSHTALK_CERT] = trcshtalkCertBytes
-	config[TRCSHTALK_KEY] = trcshtalkKeyBytes
+	config[tccore.TRCSHHIVEK_CERT] = trcshtalkCertBytes
+	config[tccore.TRCSHHIVEK_KEY] = trcshtalkKeyBytes
 
 	Init(&config)
 	configContext.Start()
