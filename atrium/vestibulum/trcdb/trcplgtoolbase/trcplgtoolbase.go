@@ -87,6 +87,7 @@ func CommonMain(envPtr *string,
 	pathParamPtr := flagset.String("pathParam", "", "Optional path placeholder replacement to use in managing service.")
 	codeBundlePtr := flagset.String("codeBundle", "", "Code bundle to deploy.")
 	expandTargetPtr := flagset.Bool("expandTarget", false, "Used to unzip files at deploy path")
+	trcbootstrapPtr := flagset.String("trcbootstrap", "/deploy/deploy.trc", "Used to unzip files at deploy path")
 
 	// Common plugin flags...
 	pluginNamePtr := flagset.String("pluginName", "", "Used to certify vault plugin")
@@ -453,6 +454,7 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
 	pluginToolConfig["buildImagePtr"] = *buildImagePtr
 	pluginToolConfig["pushAliasPtr"] = *pushAliasPtr
+	pluginToolConfig["trcbootstrapPtr"] = trcbootstrapPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		if *defineServicePtr {
@@ -460,6 +462,9 @@ func CommonMain(envPtr *string,
 		}
 		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok && len(pluginToolConfig["serviceNamePtr"].(string)) > 0 {
 			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
+		}
+		if _, ok := pluginToolConfig["trcbootstrapPtr"].(string); ok && len(pluginToolConfig["trcbootstrapPtr"].(string)) > 0 {
+			pluginToolConfig["trcbootstrap"] = pluginToolConfig["trcbootstrapPtr"].(string)
 		}
 		if *certifyImagePtr {
 			certifyInit = true
@@ -570,6 +575,10 @@ func CommonMain(envPtr *string,
 		if _, ok := pluginToolConfig["trcprojectservice"]; ok {
 			writeMap["trcprojectservice"] = pluginToolConfig["trcprojectservice"]
 		}
+		if _, ok := pluginToolConfig["trcbootstrap"]; ok {
+			writeMap["trcbootstrap"] = pluginToolConfig["trcbootstrap"]
+		}
+
 		if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
 			writeMap["trcpathparam"] = pluginToolConfig["trcpathparam"]
 		}
@@ -966,6 +975,10 @@ func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string
 	}
 	if newRelicLicenseKey, keyOK := pluginToolConfig["newrelicLicenseKey"].(string); newRelicLicenseKey != "" && keyOK && pluginTypePtr == "vault" { //optional if not found.
 		writeMap["newrelic_license_key"] = newRelicLicenseKey
+	}
+
+	if trcbootstrap, ok := pluginToolConfig["trcbootstrap"].(string); ok {
+		writeMap["trcbootstrap"] = trcbootstrap
 	}
 
 	writeMap["copied"] = false
