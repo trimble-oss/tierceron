@@ -41,7 +41,7 @@ type statServiceServer struct {
 
 func (s *statServiceServer) GetStats(ctx context.Context, req *pb.GetStatRequest) (*pb.GetStatResponse, error) {
 	token := req.GetToken()
-	if token != *globalToken {
+	if !eUtils.RefEquals(globalToken, token) {
 		logger.Println("Unauthorized attempt to access statistics.")
 		return &pb.GetStatResponse{
 			Results: "",
@@ -61,7 +61,7 @@ func (s *statServiceServer) GetStats(ctx context.Context, req *pb.GetStatRequest
 
 func (s *statServiceServer) SetStats(ctx context.Context, req *pb.UpdateStatRequest) (*pb.UpdateStatResponse, error) {
 	token := req.GetToken()
-	if token != *globalToken {
+	if !eUtils.RefEquals(globalToken, token) {
 		logger.Println("Unauthorized attempt to set statistics.")
 		return &pb.UpdateStatResponse{
 			Success: false,
@@ -77,7 +77,7 @@ func (s *statServiceServer) SetStats(ctx context.Context, req *pb.UpdateStatRequ
 
 func (s *statServiceServer) IncrementStats(ctx context.Context, req *pb.UpdateStatRequest) (*pb.UpdateStatResponse, error) {
 	token := req.GetToken()
-	if token != *globalToken {
+	if !eUtils.RefEquals(globalToken, token) {
 		logger.Println("Unauthorized attempt to set statistics.")
 		return &pb.UpdateStatResponse{
 			Success: false,
@@ -149,7 +149,7 @@ func (s *statServiceServer) IncrementStats(ctx context.Context, req *pb.UpdateSt
 
 func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateStatRequest) (*pb.UpdateStatResponse, error) {
 	token := req.GetToken()
-	if token != *globalToken {
+	if !eUtils.RefEquals(globalToken, token) {
 		logger.Println("Unauthorized attempt to update max statistics.")
 		return &pb.UpdateStatResponse{
 			Success: false,
@@ -330,6 +330,9 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 			log.Printf("Couldn't load key: %v", err)
 			return err
 		}
+
+		// Initialize the stats.
+		InitStats()
 
 		lis, gServer, err := InitServer(trcstatsport,
 			statCert,
