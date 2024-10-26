@@ -37,7 +37,7 @@ require (
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-core/v2 v2.0.12
 	github.com/trimble-oss/tierceron-hat v1.2.8
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20240326213127-e85d6193e1c6
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20241026005912-1e7cf8ca720c
 )
 
 require (
@@ -53,7 +53,7 @@ require (
 	github.com/templexxx/xorsimd v0.4.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240930140551-af27646dc61f // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38 // indirect
 )
 
 require (
@@ -121,7 +121,7 @@ require (
 	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/term v0.24.0
 	golang.org/x/text v0.19.0 // indirect
-	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
+	golang.org/x/time v0.6.0 // indirect
 	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.35.1
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
