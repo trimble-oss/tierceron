@@ -14,8 +14,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
-	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
+	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -180,18 +180,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig := make(map[string]interface{})
 			for _, path := range paths {
 				if strings.HasPrefix(path, "Common") {
-					cert_ps := strings.Split(path, "/")
-					if len(cert_ps) != 2 {
-						eUtils.LogErrorObject(driverConfig.CoreConfig, errors.New("unable to process cert"), false)
-					}
-					templatePath := "./trc_templates/" + path
-					driverConfig.CoreConfig.WantCerts = true
-					_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, cert_ps[0], cert_ps[1], true, true)
+					configuredCert, err := certutil.LoadCertComponent(driverConfig,
+						mod,
+						path)
+
 					if err != nil {
 						eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 					}
 					driverConfig.CoreConfig.WantCerts = false
-					serviceConfig[path] = []byte(configuredCert[1])
+					serviceConfig[path] = configuredCert
 				} else {
 					sc, ok := properties.GetConfigValues(projServ[1], path)
 					if !ok {
