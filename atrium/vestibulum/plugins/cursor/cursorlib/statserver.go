@@ -84,6 +84,7 @@ func (s *statServiceServer) IncrementStats(ctx context.Context, req *pb.UpdateSt
 		}, errors.New("unauthorized to set statistics in server")
 	}
 	m.Lock()
+	defer m.Unlock()
 	data_type := req.GetDatatype()
 	key := req.GetKey()
 	value := req.GetValue()
@@ -141,7 +142,6 @@ func (s *statServiceServer) IncrementStats(ctx context.Context, req *pb.UpdateSt
 	}
 
 	(*GlobalStats).Set(key, total_value)
-	m.Unlock()
 	return &pb.UpdateStatResponse{
 		Success: true,
 	}, nil
@@ -156,6 +156,7 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 		}, errors.New("unauthorized to update max statistics in server")
 	}
 	m.Lock()
+	defer m.Unlock()
 	data_type := req.GetDatatype()
 	key := req.GetKey()
 	value := req.GetValue()
@@ -218,7 +219,6 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 	}
 
 	(*GlobalStats).Set(key, max_value)
-	m.Unlock()
 	return &pb.UpdateStatResponse{
 		Success: true,
 	}, nil
