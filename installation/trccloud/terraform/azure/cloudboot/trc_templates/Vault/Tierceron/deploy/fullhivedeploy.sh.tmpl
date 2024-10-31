@@ -31,10 +31,7 @@ else
 echo "Organization vault host must begin with https:// "
 fi
 
-if [[ -z "${SECRET_VAULT_TOKEN}" ]]; then
-echo "Enter organization root token: "
-read SECRET_VAULT_TOKEN
-fi
+
 
 echo "Will this be a (aw - traditional aks and windows), (k - advanced aks hive kernel), or (b - both) cursor? (aw, k, or b): "
 read CURSOR_TYPE_IN
@@ -68,6 +65,13 @@ PROD_EXT=""
            PROD_EXT="-prod"
         fi
     done
+
+    if [[ -z "${SECRET_VAULT_TOKEN}" ]]; then
+        echo "Enter organization root token: "
+        read SECRET_VAULT_TOKEN
+    fi
+else
+    SECRET_VAULT_TOKEN=$VAULT_TOKEN
 fi
 
 VAULT_TOKEN=$AGENT_VAULT_TOKEN
