@@ -192,11 +192,11 @@ function certifyWorkers() {
             vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
             VAULT_ENV="RQA"
             vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
+            echo "trcsh.exe certified and ready for manual deployment."
         else
             echo "Skipping $TRC_PLUGIN_NAME deployment in prod."
         fi
 
-        echo "trcsh.exe certified and ready for manual deployment."
     fi
 }
 
