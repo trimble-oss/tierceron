@@ -112,7 +112,7 @@ function curatorDeployHive () {
         VAULT_ENV="dev"
     fi
 
-    trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_TOKEN -pluginName=trcsh-cursor-$CURSOR_TYPE -sha256=target/trcsh-cursor-$CURSOR_TYPE
+    trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_TOKEN -pluginName=trcsh-cursor-$CURSOR_TYPE$PROD_EXT -sha256=target/trcsh-cursor-$CURSOR_TYPE$PROD_EXT
 
     certifystatus=$?
     if [ $certifystatus -eq 0 ]; then
@@ -126,7 +126,7 @@ function curatorDeployHive () {
     #trcshq$CURSOR_TYPE deployment (the hive queen)
     #================================================================
     echo "Preparing trcshq$CURSOR_TYPE for certification"
-    TRC_PLUGIN_NAME="trcshq$CURSOR_TYPE"
+    TRC_PLUGIN_NAME="trcshq$CURSOR_TYPE$PROD_EXT"
 
     FILE="target/$TRC_PLUGIN_NAME"
     if [ ! -f "$FILE" ]; then
@@ -134,7 +134,7 @@ function curatorDeployHive () {
         exit 1
     fi
 
-    FILESHA="target/$TRC_PLUGIN_NAME.sha256"
+    FILESHA="target/$TRC_PLUGIN_NAME$PROD_EXT.sha256"
     if [ ! -f "$FILESHA" ]; then
         echo "$FILESHA does not exist."
         exit 1
