@@ -126,7 +126,7 @@ function curatorDeployHive () {
     #trcshq$CURSOR_TYPE deployment (the hive queen)
     #================================================================
     echo "Preparing trcshq$CURSOR_TYPE for certification"
-    TRC_PLUGIN_NAME="trcshq$CURSOR_TYPE$PROD_EXT"
+    TRC_PLUGIN_NAME="trcshq$CURSOR_TYPE"
 
     FILE="target/$TRC_PLUGIN_NAME"
     if [ ! -f "$FILE" ]; then
@@ -134,7 +134,7 @@ function curatorDeployHive () {
         exit 1
     fi
 
-    FILESHA="target/$TRC_PLUGIN_NAME$PROD_EXT.sha256"
+    FILESHA="target/$TRC_PLUGIN_NAME.sha256"
     if [ ! -f "$FILESHA" ]; then
         echo "$FILESHA does not exist."
         exit 1
