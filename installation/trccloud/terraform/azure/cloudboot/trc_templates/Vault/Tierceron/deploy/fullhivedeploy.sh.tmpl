@@ -31,6 +31,11 @@ else
 echo "Organization vault host must begin with https:// "
 fi
 
+if [[ -z "${SECRET_VAULT_TOKEN}" ]]; then
+echo "Enter organization root token: "
+read SECRET_VAULT_TOKEN
+fi
+
 echo "Will this be a (aw - traditional aks and windows), (k - advanced aks hive kernel), or (b - both) cursor? (aw, k, or b): "
 read CURSOR_TYPE_IN
 
@@ -103,7 +108,7 @@ function curatorDeployHive () {
         VAULT_ENV="dev"
     fi
 
-    trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$VAULT_TOKEN -pluginName=trcsh-cursor-$CURSOR_TYPE -sha256=target/trcsh-cursor-$CURSOR_TYPE
+    trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_TOKEN -pluginName=trcsh-cursor-$CURSOR_TYPE -sha256=target/trcsh-cursor-$CURSOR_TYPE
 
     certifystatus=$?
     if [ $certifystatus -eq 0 ]; then
@@ -139,7 +144,7 @@ function curatorDeployHive () {
 
     echo "Certifying trcshq$CURSOR_TYPE"
 
-    trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$VAULT_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=target/$TRC_PLUGIN_NAME -pluginType=agent
+    trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=target/$TRC_PLUGIN_NAME -pluginType=agent
             certifystatus=$?
         if [ $certifystatus -eq 0 ]; then
             echo "No certification problems encountered."
