@@ -65,20 +65,21 @@ const (
 )
 
 func CreateLogFile() (*log.Logger, error) {
-	logFile := "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"deploy.log" {
-		logFile = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
-	}
 	var f *os.File
 	var logPrefix string = "[DEPLOY]"
 	if kernelopts.BuildOptions.IsKernel() {
 		logPrefix = "[trcshk]"
-	}
-
-	var errOpenFile error
-	f, errOpenFile = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-	if errOpenFile != nil {
-		return nil, errOpenFile
+		f = os.Stdout
+	} else {
+		logFile := "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
+		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"deploy.log" {
+			logFile = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
+		}
+		var errOpenFile error
+		f, errOpenFile = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+		if errOpenFile != nil {
+			return nil, errOpenFile
+		}
 	}
 	logger := log.New(f, logPrefix, log.LstdFlags)
 	return logger, nil

@@ -64,11 +64,9 @@ func (pH *PluginHandler) GetPluginHandler(service string, driverConfig *config.D
 		if plugin, ok := (*pH.Services)[service]; ok {
 			return plugin
 		} else {
-			fmt.Printf("Handler not initialized for plugin to start: %s\n", service)
 			driverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", service)
 		}
 	} else {
-		fmt.Printf("No handlers provided for plugin service to startup: %s\n", service)
 		driverConfig.CoreConfig.Log.Printf("No handlers provided for plugin service to startup: %s\n", service)
 	}
 	return nil
@@ -87,7 +85,6 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
 		}
 		symbol, err := pluginHandler.PluginMod.Lookup("Init")
 		if err != nil {
-			fmt.Println(err)
 			logger.Printf("Unable to lookup plugin export: %s\n", err)
 		}
 		logger.Printf("Initializing plugin module for %s\n", pluginHandler.Name)
@@ -125,12 +122,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	if s, ok := driverConfig.DeploymentConfig["trcplugin"].(string); ok {
 		service = s
 	} else {
-		fmt.Println("Unable to process plugin service.")
 		driverConfig.CoreConfig.Log.Println("Unable to process plugin service.")
 		return
 	}
-	fmt.Printf("Starting initialization for plugin service: %s Env: %s\n", service, driverConfig.CoreConfig.EnvBasis)
-	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s\n", service)
+	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s Env: %s\n", service, driverConfig.CoreConfig.EnvBasis)
 	pluginConfig := make(map[string]interface{})
 	pluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
 	currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
@@ -139,7 +134,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfig.CoreConfig.Log)
 	if err != nil {
-		fmt.Printf("Problem initializing mod: %s\n", err)
 		driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
 		return
 	}
@@ -151,13 +145,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		if projserv, k := pluginprojserv.(string); k {
 			projServ := strings.Split(projserv, "/")
 			if len(projServ) != 2 {
-				fmt.Printf("Improper formatting of project/service for %s\n", service)
 				driverConfig.CoreConfig.Log.Printf("Improper formatting of project/service for %s\n", service)
 				return
 			}
 			properties, err := trcvutils.NewProperties(driverConfig.CoreConfig, vault, mod, mod.Env, projServ[0], projServ[1])
 			if err != nil && !strings.Contains(err.Error(), "no data paths found when initing CDS") {
-				fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
+				driverConfig.CoreConfig.Log.Println("Couldn't create properties for regioned certify:" + err.Error())
 				return
 			}
 
@@ -167,8 +160,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				if err != nil {
 					driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
 					driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
-					fmt.Printf("Unable to access config for %s\n", service)
-					fmt.Printf("Returned with %v\n", err)
 					return
 				}
 				pluginConfigPaths := getConfigPaths.(func() []string)
@@ -192,7 +183,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				} else {
 					sc, ok := properties.GetConfigValues(projServ[1], path)
 					if !ok {
-						fmt.Printf("Unable to access configuration data for %s\n", service)
 						driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
 						return
 					}
@@ -213,7 +203,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			pluginHandler.ConfigContext.CmdReceiverChan = &status_receiver
 
 			if chatReceiverChan == nil {
-				fmt.Printf("Unable to access configuration data for %s\n", service)
 				driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
 				return
 			}
@@ -270,7 +259,6 @@ func (pluginHandler *PluginHandler) handle_errors(driverConfig *config.DriverCon
 		result := <-*pluginHandler.ConfigContext.ErrorChan
 		switch {
 		case result != nil:
-			fmt.Println(result)
 			eUtils.LogErrorObject(driverConfig.CoreConfig, result, false)
 			return
 		}
@@ -336,7 +324,6 @@ func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[stri
 		driverConfig.CoreConfig.Log.Printf("Loading plugin path for service: %s\n", s)
 		service = s
 	} else {
-		fmt.Println("Unable to stop plugin service.")
 		driverConfig.CoreConfig.Log.Println("Unable to stop plugin service.")
 		return ""
 	}
@@ -344,7 +331,6 @@ func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[stri
 		driverConfig.CoreConfig.Log.Printf("Loading plugin deploy root for service: %s\n", d)
 		deployroot = d
 	} else {
-		fmt.Println("Unable to stop plugin service.")
 		driverConfig.CoreConfig.Log.Println("Unable to stop plugin service.")
 		return ""
 	}
@@ -353,13 +339,12 @@ func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[stri
 }
 
 func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverConfig, pluginPath string) {
-	fmt.Printf("Loading plugin: %s\n", pluginPath)
+	driverConfig.CoreConfig.Log.Printf("Loading plugin: %s\n", pluginPath)
 
 	var pluginM *plugin.Plugin
 	if !pluginopts.BuildOptions.IsPluginHardwired() {
 		pM, err := plugin.Open(pluginPath)
 		if err != nil {
-			fmt.Printf("Unable to open plugin module for service: %s\n", pluginPath)
 			driverConfig.CoreConfig.Log.Printf("Unable to open plugin module for service: %s\n", pluginPath)
 			pluginHandler.State = 2
 			return
@@ -373,7 +358,6 @@ func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverCon
 		pluginHandler.PluginMod = pluginM
 		pluginHandler.State = 0
 	} else {
-		fmt.Println("Unable to load plugin module because missing plugin name")
 		driverConfig.CoreConfig.Log.Println("Unable to load plugin module because missing plugin name")
 		pluginHandler.State = 2
 		return
@@ -393,7 +377,6 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 	for {
 		msg := <-*pluginHandler.ConfigContext.ChatReceiverChan
 		driverConfig.CoreConfig.Log.Println("Kernel received message from chat.")
-		fmt.Println("Kernel received message from chat.")
 		if eUtils.RefEquals(msg.Name, "SHUTDOWN") {
 			driverConfig.CoreConfig.Log.Println("Shutting down chat receiver.")
 			for _, p := range *pluginHandler.Services {
@@ -407,10 +390,8 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 		}
 		for _, q := range *msg.Query {
 			driverConfig.CoreConfig.Log.Println("Kernel processing chat query.")
-			fmt.Println("Kernel processing chat query.")
 			if plugin, ok := (*pluginHandler.Services)[q]; ok && plugin.State == 1 {
 				driverConfig.CoreConfig.Log.Printf("Sending query to service: %s.\n", plugin.Name)
-				fmt.Printf("Sending query to service: %s.\n", plugin.Name)
 				new_msg := &core.ChatMsg{
 					Name:  &q,
 					Query: &[]string{},
@@ -418,7 +399,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				if eUtils.RefLength(msg.Name) > 0 {
 					*new_msg.Query = append(*new_msg.Query, *msg.Name)
 				} else {
-					fmt.Printf("Warning, self identification through Name is required for all messages. Dropping query...\n")
+					driverConfig.CoreConfig.Log.Printf("Warning, self identification through Name is required for all messages. Dropping query...\n")
 					return
 				}
 				if eUtils.RefLength(msg.Response) > 0 && eUtils.RefLength((*msg).Response) > 0 {
@@ -430,7 +411,6 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				*plugin.ConfigContext.ChatSenderChan <- new_msg
 			} else if eUtils.RefLength(msg.Name) > 0 {
 				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
-				fmt.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
 					responseError := "Service unavailable"
 					msg.Response = &responseError
@@ -439,7 +419,6 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				continue
 			} else {
 				driverConfig.CoreConfig.Log.Println("Unable to interpret message.")
-				fmt.Println("Unable to interpret message.")
 			}
 		}
 	}
