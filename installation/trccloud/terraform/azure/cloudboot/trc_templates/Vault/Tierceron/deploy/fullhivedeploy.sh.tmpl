@@ -88,21 +88,21 @@ function curatorDeployHive () {
     #trcsh-cursor-$CURSOR_TYPE undeploy
     #===============================================================================
 
-    echo "Disable old trcsh-cursor-$CURSOR_TYPE secrets"
+    echo "Disable old trcsh-cursor-$CURSOR_TYPE$PROD_EXT secrets"
     vault plugin deregister trcsh-cursor-$CURSOR_TYPE$PROD_EXT
-    vault secrets disable trcsh-cursor-$CURSOR_TYPE/
+    vault secrets disable trcsh-cursor-$CURSOR_TYPE$PROD_EXT/
     vault secrets list | grep trcsh-cursor-$CURSOR_TYPE$PROD_EXT
     existingplugin=$?
     if [ $existingplugin -eq 0 ]; then
-        echo "trcsh-cursor-$CURSOR_TYPE plugin still mounted elsewhere.  Manual intervention required to clean up before registration can proceed."
+        echo "trcsh-cursor-$CURSOR_TYPE$PROD_EXT plugin still mounted elsewhere.  Manual intervention required to clean up before registration can proceed."
         exit 1
     else
         echo "All mounts cleared.  Continuing..."
     fi
-    echo "Unregister old trcsh-cursor-$CURSOR_TYPE plugin"
+    echo "Unregister old trcsh-cursor-$CURSOR_TYPE$PROD_EXT plugin"
     vault plugin deregister trcsh-cursor-$CURSOR_TYPE$PROD_EXT
 
-    echo "Registering trcsh-cursor-$CURSOR_TYPE"
+    echo "Registering trcsh-cursor-$CURSOR_TYPE$PROD_EXT"
 
     #===============================================================================
     #trcsh-cursor-$CURSOR_TYPE deploy
@@ -240,21 +240,21 @@ function certifyKernelWorker() {
 function registerCursors() {
     CURSOR_DEPLOY_TYPE=$1
     #================================================================
-    #trcsh-cursor-$CURSOR_TYPE deployment (the cursor)
+    #trcsh-cursor-$CURSOR_TYPE$PROD_EXT deployment (the cursor)
     #================================================================
     vault plugin register \
             -command=trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT \
             -sha256=$( cat target/trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT.sha256 ) \
             -args=`backendUUID=567` \
             trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT
-    echo "Enabling trcsh-cursor-$CURSOR_DEPLOY_TYPE secret engine"
+    echo "Enabling trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT secret engine"
     vault secrets enable \
-            -path=trcsh-cursor-$CURSOR_DEPLOY_TYPE \
+            -path=trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT \
             -plugin-name=trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT \
-            -description="Tierceron Vault trcsh-cursor-$CURSOR_DEPLOY_TYPE Plugin" \
+            -description="Tierceron Vault trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT Plugin" \
             plugin
 
-    echo "Deployment and refresh of trcsh-cursor-$CURSOR_DEPLOY_TYPE successful"
+    echo "Deployment and refresh of trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT successful"
 }
 
 # Deploy curator only for dev and staging
