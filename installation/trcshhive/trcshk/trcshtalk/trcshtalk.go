@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"flag"
@@ -14,17 +14,23 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"slices"
 	"strconv"
-
-	"gopkg.in/yaml.v2"
-
-	pb "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trcshtalk/trcshtalksdk"
+	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	pb "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trcshtalk/trcshtalksdk"
+	"golang.org/x/exp/rand"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"gopkg.in/yaml.v2"
 )
 
 type trcshtalkServiceServer struct {
@@ -97,7 +103,7 @@ func (s *trcshtalkServiceServer) RunDiagnostics(ctx context.Context, req *pb.Dia
 			for _, v := range finished_queries {
 				results = results + v + " "
 			}
-			fmt.Printf("Sending response to chat from kernel: %s", results)
+			configContext.Log.Printf("Sending response to chat from kernel: %s\n", results)
 			return &pb.DiagnosticResponse{
 				MessageId: req.MessageId,
 				Results:   results,
@@ -136,6 +142,8 @@ const (
 	COMMON_PATH = "config"
 )
 
+func GetConfigContext() *tccore.ConfigContext { return configContext }
+
 func GetConfigPaths() []string {
 	return []string{
 		COMMON_PATH,
@@ -143,6 +151,52 @@ func GetConfigPaths() []string {
 		tccore.TRCSHHIVEK_KEY,
 		MASHUP_CERT,
 	}
+}
+
+func Init(properties *map[string]interface{}) {
+	var err error
+	configContext, err = tccore.Init(properties,
+		tccore.TRCSHHIVEK_CERT,
+		tccore.TRCSHHIVEK_KEY,
+		COMMON_PATH,
+		"trcshtalk",
+		start,
+		receiver,
+		chat_receiver,
+	)
+	if err != nil {
+		if configContext != nil {
+			configContext.Log.Println("Some trouble initializing trcshtalk.")
+			fmt.Println(err.Error())
+		} else {
+			fmt.Println(err.Error())
+			return
+		}
+	}
+
+	// Change logging context
+	configContext.Log = log.New(configContext.Log.Writer(), "[trcshtalk]", log.LstdFlags)
+
+	// Also add mashup manually.
+	if cert, ok := (*properties)[MASHUP_CERT]; ok {
+		certbytes := cert.([]byte)
+		(*configContext.ConfigCerts)[MASHUP_CERT] = certbytes
+		configContext.Log.Println("Attached mashup cert")
+	} else {
+		configContext.Log.Println("Failed to attach mashup cert")
+	}
+
+	if err != nil {
+		if configContext != nil {
+			configContext.Log.Println("Failure to initialize trcshtalk.")
+			configContext.Log.Println(err.Error())
+		} else {
+			configContext.Log.Println(err.Error())
+		}
+	}
+
+	configContext.Log.Println("Successfully initialized trcshtalk.")
+
 }
 
 func init() {
@@ -177,7 +231,10 @@ func send_dfstat() {
 	dfstat.Name = configContext.ArgosId
 	dfstat.FinishStatistic("", "", "", configContext.Log, true, dfsctx)
 	configContext.Log.Printf("Sending dataflow statistic to kernel: %s\n", dfstat.Name)
-	*configContext.DfsChan <- dfstat
+	dfstatClone := *dfstat
+	go func(dsc *tccore.TTDINode) {
+		*configContext.DfsChan <- dsc
+	}(&dfstatClone)
 }
 
 func send_err(err error) {
@@ -255,76 +312,172 @@ func InitCertBytes(cert []byte) {
 func subdirInterceptor(subdir string) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		// Modify the method name to include the subdirectory
-		method = subdir + "/" + method
+		method = subdir + method
 
 		// Call the original invoker with the modified method name
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 }
 
-func getTrcshTalkRequest(serverName string, port int, diagReq *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
-	if mashupCertBytes == nil {
-		log.Printf("Cert not initialized.")
-		return nil, errors.New("cert initialization failure")
-	}
-	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
-	mashupClientCert, err := x509.ParseCertificate(mashupBlock.Bytes)
-	if err != nil {
-		log.Printf("failed to serve: %v", err)
-		return nil, err
-	}
-
-	mashupCertPool := x509.NewCertPool()
-	mashupCertPool.AddCert(mashupClientCert)
-	clientDialOptions := grpc.WithDefaultCallOptions( /* grpc.MaxCallRecvMsgSize(maxMessageLength), grpc.MaxCallSendMsgSize(maxMessageLength)*/ )
-
-	conn, err := grpc.Dial(serverName+":"+strconv.Itoa(int(port)),
-		clientDialOptions,
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: "", RootCAs: mashupCertPool, InsecureSkipVerify: true})),
-		grpc.WithUnaryInterceptor(subdirInterceptor("/grpc")))
-
-	if err != nil {
-		log.Printf("getReport: fail to dial: %v", err)
-		return nil, err
-	}
-	defer conn.Close()
-	client := pb.NewTrcshTalkServiceClient(conn)
-
-	diagRes, err := client.RunDiagnostics(context.Background(), diagReq)
-	if err != nil {
-		log.Printf("getReport: bad response: %v", err)
-		return &pb.DiagnosticResponse{
-			MessageId: diagReq.GetMessageId(),
-			Results:   "Unable to obtain report from Hive.",
-		}, err
-	}
-	log.Printf("getReport: success, response returned: %s", diagRes.Results)
-	return diagRes, nil
+func GenMsgId(env string) string {
+	rand.Seed(uint64(time.Now().UnixNano()))
+	randomNumber := rand.Intn(10000000) // Generate a number between 0 and 10000000
+	return fmt.Sprintf("%s:%d", env, randomNumber)
 }
 
-func StartTrashTalking(serverName string, port int) {
-	for {
-		response, err := getTrcshTalkRequest(serverName, port, &pb.DiagnosticRequest{})
+func getTrcshTalkRequest(serverName string, port int, ttbToken *string, isRemote bool, diagReq *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
+	diagReq.MessageId = GenMsgId(configContext.Env)
+
+	if isRemote {
+		configContext.Log.Printf("TrcshTalking remote\n")
+		retryCount := 0
+		// Make a post request... json serialize and send it...
+		requestBytes, err := protojson.Marshal(diagReq)
 		if err != nil {
-			fmt.Printf("Error sending response: %d\n", err.Error())
+			configContext.Log.Printf("Error marshalling request: %s.  Undeliverable request/reponse.\n", err.Error())
+			return nil, err
+		}
+		req, err := http.NewRequest("POST", fmt.Sprintf("https://%s/grpc", serverName), bytes.NewBuffer(requestBytes))
+		if err != nil {
+			configContext.Log.Printf("Post failure.  Unrecoverable.\n")
+			return nil, err
+		}
+
+		// Set the Content-Type header to application/json
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", *ttbToken)
+
+	retrypostgrpc:
+		// Send the request using http.DefaultClient
+		client := &http.Client{
+			Timeout: time.Minute,
+		}
+		configContext.Log.Printf("TrcshTalk posting request\n")
+		resp, err := client.Do(req)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			configContext.Log.Printf("Post grpc failure.\n")
+
+			// May time out...
+			if retryCount < 5 {
+				time.Sleep(time.Second * 3)
+				configContext.Log.Printf("Post failure.  Trying again.\n")
+				retryCount = retryCount + 1
+				goto retrypostgrpc
+			} else {
+				return nil, err
+			}
+		}
+		configContext.Log.Printf("TrcshTalk got response for request\n")
+		defer resp.Body.Close()
+
+		diagRes := &pb.DiagnosticResponse{}
+
+		// Read and print the response
+		respData, err := io.ReadAll(resp.Body)
+		if err != nil {
+			configContext.Log.Printf("Error reading post grpc response: %s\n", err.Error())
+			if retryCount < 5 {
+				time.Sleep(time.Second * 3)
+				configContext.Log.Printf("Post failure.  Trying again.\n")
+				retryCount = retryCount + 1
+				goto retrypostgrpc
+			} else {
+				return nil, err
+			}
+		}
+		err = protojson.Unmarshal(respData, diagRes)
+		if err != nil {
+			configContext.Log.Printf("Error unmarshalling post grpc response: %s\n", err.Error())
+			if retryCount < 5 {
+				time.Sleep(time.Second * 3)
+				configContext.Log.Printf("Post failure.  Trying again.\n")
+				retryCount = retryCount + 1
+				goto retrypostgrpc
+			} else {
+				return nil, err
+			}
+		}
+
+		configContext.Log.Printf("getTrcshTalkRequest: success, response returned: %s\n", diagRes.Results)
+
+		return diagRes, nil
+	} else {
+		configContext.Log.Printf("TrcshTalking in hardwired\n")
+		if mashupCertBytes == nil {
+			configContext.Log.Printf("Cert not initialized.\n")
+			return nil, errors.New("cert initialization failure")
+		}
+		mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
+		mashupClientCert, err := x509.ParseCertificate(mashupBlock.Bytes)
+		if err != nil {
+			configContext.Log.Printf("failed to serve: %v\n", err)
+			return nil, err
+		}
+
+		mashupCertPool := x509.NewCertPool()
+		mashupCertPool.AddCert(mashupClientCert)
+		clientDialOptions := grpc.WithDefaultCallOptions( /* grpc.MaxCallRecvMsgSize(maxMessageLength), grpc.MaxCallSendMsgSize(maxMessageLength)*/ )
+		conn, err := grpc.Dial(serverName+":"+strconv.Itoa(int(port)),
+			clientDialOptions,
+			grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: serverName, RootCAs: mashupCertPool, InsecureSkipVerify: true})),
+			/*grpc.WithUnaryInterceptor(subdirInterceptor(subdir))*/)
+
+		if err != nil {
+			log.Printf("getTrcshTalkRequest: fail to dial: %v", err)
+			return nil, err
+		}
+		defer conn.Close()
+		client := pb.NewTrcshTalkServiceClient(conn)
+
+		diagRes, err := client.RunDiagnostics(context.Background(), diagReq)
+		if err != nil {
+			log.Printf("getTrcshTalkRequest: bad response: %v", err)
+			return nil, err
+		}
+		log.Printf("getTrcshTalkRequest: success, response returned: %s", diagRes.Results)
+		return diagRes, nil
+	}
+}
+
+func StartTrashTalking(remoteServerName string, port int, ttbToken *string, isRemote bool) {
+	for {
+		log.Printf("Trash talking...\n")
+		response, err := getTrcshTalkRequest(remoteServerName, port, ttbToken, isRemote, &pb.DiagnosticRequest{})
+		if err != nil {
+			log.Printf("Error sending response: %s\n", err.Error())
+
+			if s, ok := status.FromError(err); ok {
+				if s.Code() == codes.Unavailable {
+					time.Sleep(10 * time.Second)
+				}
+			}
 			continue
 		}
 		queryData := response.GetResults()
 		request := &pb.DiagnosticRequest{}
 
-		err = json.Unmarshal([]byte(queryData), &queryData)
+		err = protojson.Unmarshal([]byte(queryData), request)
 		if err != nil {
-			fmt.Printf("Error sending response: %d\n", err.Error())
+			fmt.Printf("Error sending response: %s\n", err.Error())
 			continue
 		}
 
+		retryCount := 0
 		talkBackResponse := TrcshTalkBack(request)
-		requestResponse := &pb.DiagnosticRequest{MessageId: request.MessageId}
+		requestResponse := &pb.DiagnosticRequest{MessageId: request.MessageId, Data: []string{"None"}}
 		requestResponse.Data[0] = talkBackResponse.Results
-		_, err = getTrcshTalkRequest(serverName, port, requestResponse)
+	retrytalkback:
+		_, err = getTrcshTalkRequest(remoteServerName, port, ttbToken, isRemote, requestResponse)
 		if err != nil {
-			fmt.Printf("Error sending response: %d\n", err.Error())
-			continue
+			log.Printf("Error sending response: %s\n", err.Error())
+			if retryCount < 5 {
+				time.Sleep(time.Second * 3)
+				log.Printf("Trying again...\n")
+				retryCount = retryCount + 1
+				goto retrytalkback
+			} else {
+				continue
+			}
 		}
 	}
 }
@@ -337,13 +490,13 @@ func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
 	if slices.Contains(cmds, pb.Diagnostics_ALL) {
 		// run all
 		//set queries to all cmds
-		fmt.Println("Running all queries.")
+		log.Println("Running all queries.")
 		queries = append(queries, "healthcheck")
 	} else {
 		for _, q := range cmds {
 			if q == pb.Diagnostics_HEALTH_CHECK {
-				// set name to plugin..
-				fmt.Println("Running healthcheck diagnostic.")
+				// set name to plugin...
+				log.Println("Running healthcheck diagnostic.")
 				queries = append(queries, "healthcheck")
 				plugin_tests := req.GetQueries()
 				// plugin_tests := req.GetData()
@@ -386,7 +539,7 @@ func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
 			for _, v := range finished_queries {
 				results = results + v + " "
 			}
-			fmt.Printf("Sending response to chat: %s", results)
+			configContext.Log.Printf("Sending response to chat: %s\n", results)
 			return &pb.DiagnosticResponse{
 				MessageId: req.MessageId,
 				Results:   results,
@@ -403,7 +556,7 @@ func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
 				for _, v := range finished_queries {
 					results = results + v + " "
 				}
-				fmt.Printf("Sending response to chat: %s", results)
+				fmt.Printf("Sending response to chat: %s\n", results)
 				return &pb.DiagnosticResponse{
 					MessageId: req.MessageId,
 					Results:   results,
@@ -418,33 +571,113 @@ func start() {
 		fmt.Println("no config context initialized for trcshtalk")
 		return
 	}
+	isRemote := true
 	if portInterface, ok := (*configContext.Config)["grpc_server_port"]; ok {
 		var trcshtalkPort int
+		var server_mode string = "standard"
 		if port, ok := portInterface.(int); ok {
 			trcshtalkPort = port
 		} else {
 			var err error
 			trcshtalkPort, err = strconv.Atoi(portInterface.(string))
 			if err != nil {
-				configContext.Log.Printf("Failed to process server port: %v", err)
+				fmt.Printf("Failed to process server port: %v\n", err)
 				send_err(err)
 				return
 			}
+		}
 
-			if mashupCert, ok := (*configContext.ConfigCerts)[MASHUP_CERT]; ok {
-				InitCertBytes(mashupCert)
+		if modeInterface, ok := (*configContext.Config)["server_mode"]; ok {
+			if m, ok := modeInterface.(string); ok {
+				server_mode = m
+			}
+		}
+
+		if server_mode == "trcshtalkback" || server_mode == "talkback-kernel-plugin" || server_mode == "both" {
+			var ok bool
+			var clientCert []byte
+
+			if server_mode == "talkback-kernel-plugin" {
+				isRemote = false
+				clientCert, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]
 			} else {
-				err = errors.New("Missing mashup cert")
-				configContext.Log.Printf("Missing mashup cert\n")
-				send_err(err)
-				return
+				clientCert, ok = (*configContext.ConfigCerts)[MASHUP_CERT]
 			}
+			var trcshtalkbackPort int
 
-			if serverNameInterface, ok := (*configContext.Config)["grpc_server_name"]; ok {
-				if serverName, ok := serverNameInterface.(string); ok {
-					go StartTrashTalking(serverName, trcshtalkPort)
+			if !isRemote {
+				if portInterface, ok := (*configContext.Config)["grpc_server_remote_port"]; ok {
+					if port, ok := portInterface.(int); ok {
+						trcshtalkbackPort = port
+					} else {
+						var err error
+						trcshtalkbackPort, err = strconv.Atoi(portInterface.(string))
+						if err != nil {
+							configContext.Log.Printf("Failed to process server port: %v\n", err)
+							send_err(err)
+							return
+						}
+					}
 				}
 			}
+
+			if ok {
+				InitCertBytes(clientCert)
+			} else {
+				err := errors.New("missing mashup cert")
+				fmt.Printf("Missing mashup cert\n")
+				send_err(err)
+				return
+			}
+			if serverNameInterface, ok := (*configContext.Config)["grpc_server_remote_name"]; ok {
+				if remoteServerName, ok := serverNameInterface.(string); ok {
+					if ttbTokenInterface, ok := (*configContext.Config)["ttb_token"]; ok {
+						if ttbToken, ok := ttbTokenInterface.(string); ok {
+							go func(ttbt *string, cmd_send_chan *chan int) {
+								*cmd_send_chan <- tccore.PLUGIN_EVENT_START
+								StartTrashTalking(remoteServerName, trcshtalkbackPort, ttbt, isRemote)
+							}(&ttbToken, configContext.CmdSenderChan)
+						}
+					}
+				}
+			}
+		}
+
+		if server_mode == "standard" || server_mode == "both" {
+			fmt.Printf("Server listening on :%d\n", trcshtalkPort)
+			lis, gServer, err := InitServer(trcshtalkPort,
+				(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT],
+				(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
+			if err != nil {
+				fmt.Printf("Failed to start server: %v\n", err)
+				send_err(err)
+				return
+			}
+			fmt.Println("Starting server")
+
+			grpcServer = gServer
+			grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
+			pb.RegisterTrcshTalkServiceServer(grpcServer, &trcshtalkServiceServer{})
+			// reflection.Register(grpcServer)
+			configContext.Log.Printf("server listening at %v\n", lis.Addr())
+			go func(l net.Listener, cmd_send_chan *chan int) {
+				*cmd_send_chan <- tccore.PLUGIN_EVENT_START
+				if err := grpcServer.Serve(l); err != nil {
+					fmt.Println("Failed to serve:", err)
+					send_err(err)
+					return
+				}
+			}(lis, configContext.CmdSenderChan)
+			dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
+			dfstat.UpdateDataFlowStatistic("System",
+				"TrcshTalk",
+				"Start up",
+				"1",
+				1,
+				func(msg string, err error) {
+					configContext.Log.Println(msg, err)
+				})
+			send_dfstat()
 		}
 	} else {
 		configContext.Log.Println("Missing config: gprc_server_port")
@@ -460,9 +693,8 @@ func stop() {
 	}
 	configContext.Log.Println("Trcshtalk received shutdown message from kernel.")
 	configContext.Log.Println("Stopping server")
-	fmt.Println("Stopping server")
 	grpcServer.Stop()
-	fmt.Println("Stopped server")
+	configContext.Log.Println("Stopped server")
 	configContext.Log.Println("Stopped server for trcshtalk.")
 	dfstat.UpdateDataFlowStatistic("System", "trcshtalk", "Shutdown", "0", 1, nil)
 	send_dfstat()
@@ -474,39 +706,6 @@ func stop() {
 
 func chat_receiver(rec_chan chan *tccore.ChatMsg) {
 	//not needed for trcshtalk
-}
-
-func Init(properties *map[string]interface{}) {
-	var err error
-	configContext, err = tccore.Init(properties,
-		tccore.TRCSHHIVEK_CERT,
-		tccore.TRCSHHIVEK_KEY,
-		COMMON_PATH,
-		"trcshtalk",
-		start,
-		receiver,
-		chat_receiver,
-	)
-
-	// Also add mashup manually.
-	if cert, ok := (*properties)[MASHUP_CERT]; ok {
-		certbytes := cert.([]byte)
-		(*configContext.ConfigCerts)[MASHUP_CERT] = certbytes
-		fmt.Println("Attached mashup cert")
-	} else {
-		fmt.Println("Failed to attach mashup cert")
-	}
-
-	if err != nil {
-		if configContext != nil {
-			configContext.Log.Println("Failure to initialize trcshtalk.")
-			fmt.Println(err.Error())
-		} else {
-			fmt.Println(err.Error())
-		}
-	}
-
-	configContext.Log.Println("Successfully initialized trcshtalk.")
 }
 
 func main() {
