@@ -64,7 +64,8 @@ func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modi
 	for key, value := range secretMetadataMap {
 		foundService := false
 		for _, service := range mod.VersionFilter {
-			if strings.HasSuffix(key, service) {
+			keyNoExt := strings.Split(key, ".")
+			if strings.HasSuffix(keyNoExt[0], service) {
 				foundService = true
 				foundKey = key
 				break

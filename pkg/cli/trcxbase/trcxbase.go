@@ -141,7 +141,7 @@ func CommonMain(ctx config.ProcessContext,
 	logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"x]", log.LstdFlags)
 	driverConfigBase.CoreConfig.Log = logger
 
-	envBasis := *envPtr
+	envBasis := eUtils.GetEnvBasis(*envPtr)
 
 	Yellow := "\033[33m"
 	Reset := "\033[0m"
@@ -389,8 +389,7 @@ skipDiff:
 			env = configCtx.EnvSlice[0]
 		}
 	}
-
-	if len(configCtx.EnvSlice) == 1 && (eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", env))) == 0) && !*noVaultPtr {
+	if len(configCtx.EnvSlice) == 1 && (eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(env)))) == 0) && !*noVaultPtr {
 		fmt.Printf("Missing required auth token for env: %s\n", env)
 		os.Exit(1)
 	}
