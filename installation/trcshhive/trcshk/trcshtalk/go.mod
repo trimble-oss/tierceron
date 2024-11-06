@@ -4,6 +4,7 @@ go 1.21.12
 
 require (
 	github.com/trimble-oss/tierceron-core/v2 v2.0.10
+	golang.org/x/exp v0.0.0-20210722180016-6781d3edade3
 	google.golang.org/grpc v1.67.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/yaml.v2 v2.4.0
