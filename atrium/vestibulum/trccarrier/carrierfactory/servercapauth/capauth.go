@@ -110,9 +110,11 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, wantsFeathering
 	if !wantsFeathering {
 		// Feathering not supported in staging/prod non messenger at this time.
 		featherMap, _ := mod.ReadData(cursoropts.BuildOptions.GetCursorConfigPath())
-		if _, ok := featherMap["trcHatSecretsPort"]; ok {
+		if _, ok := featherMap["trcHatSecretsPort"].(string); ok {
 			featherAuth := &FeatherAuth{EncryptPass: "", EncryptSalt: "", HandshakePort: "", SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: ""}
 			return featherAuth, nil
+		} else {
+			logger.Println("Invalid format non string trcHatSecretsPort")
 		}
 
 		logger.Println("Mad hat cap failure port init.")
