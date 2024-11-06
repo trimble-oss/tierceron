@@ -62,9 +62,9 @@ func LoginToLocal() (string, error) {
 		}
 		httpsClient.CloseIdleConnections()
 
-		if err != nil {
-			return "", err
-		}
+		// if err != nil {
+		// 	return "", err
+		// }
 
 		if false /* resp.Success */ {
 			break

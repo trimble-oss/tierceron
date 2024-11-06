@@ -18,11 +18,11 @@ import (
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
-	LogInfo(driverConfig.CoreConfig, "InitVaultMod begins..")
 	if driverConfig == nil {
 		fmt.Println("InitVaultMod failure.  driverConfig provided is nil")
 		return driverConfig, nil, nil, errors.New("invalid nil driverConfig")
 	}
+	LogInfo(driverConfig.CoreConfig, "InitVaultMod begins..")
 
 	vault, err := sys.NewVault(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.VaultAddressPtr, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
 	if err != nil {

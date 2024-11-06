@@ -83,7 +83,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, wantsFeathering
 			logger.Printf("Certification failure on expected plugin: %s\n", trustData[0])
 			continue
 		}
-		if _, ok := certifyMap["trcsha256"]; ok {
+		if _, ok := certifyMap["trcsha256"].(string); ok {
 			logger.Println("Registering cap auth.")
 			tapGroup = trustData[2]
 			tapMap[trustData[1]] = certifyMap["trcsha256"].(string)

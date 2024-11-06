@@ -231,7 +231,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 						}
 						// Get secrets from curator.
 						logger.Printf("Field loading begun.\n")
-						for cursorField, _ := range cursorFields {
+						for cursorField := range cursorFields {
 							secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapCuratorPath(), cursorField)
 							if err != nil {
 								logger.Printf("Failed to retrieve wanted key: %s\n", cursorField)
@@ -305,7 +305,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 			}
 
 			if err != nil {
-				logger.Print("%s had an error: %v", pluginName, err.Error())
+				logger.Printf("%s had an error: %v", pluginName, err.Error())
 			}
 
 			return bkv, err
