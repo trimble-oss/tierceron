@@ -487,8 +487,8 @@ github.com/trimble-oss/tierceron-core/v2 v2.0.12 h1:8kKvaiVuhV3ywnMyIiMcf4vEulWO
 github.com/trimble-oss/tierceron-core/v2 v2.0.12/go.mod h1:8mdjD3H3jIJdy8sJ5EK4MVSc1O90ZDzvNxHBO2SNAi8=
 github.com/trimble-oss/tierceron-hat v1.2.8 h1:8ybcFIMvyAEAiQ64mBD0F/X5vVkqj1vK5GJ+gncRLcE=
 github.com/trimble-oss/tierceron-hat v1.2.8/go.mod h1:f2Gi6K8EUjmgx/pkVw5l4yv67NOXU4mMpGGH1RPGb1o=
-github.com/trimble-oss/tierceron-nute v1.0.2 h1:aqp111XxpwowdLM1+fUB1pv76OzLuXrgBHIJREhMbFo=
-github.com/trimble-oss/tierceron-nute v1.0.2/go.mod h1:5BrKtjBq2Cw06NRLHdTlpNiEt+lwSCWfJPY73MR3Ma0=
+github.com/trimble-oss/tierceron-nute v1.0.5 h1:kt54CbwwGy1iTbMumyah4itV9DHWIUbnGPq0N7aHJV4=
+github.com/trimble-oss/tierceron-nute v1.0.5/go.mod h1:rR8p0dtJIAbV1UEay6Rhakd6OY2IGiL93geVVqiOdEA=
 github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 h1:pawnUESmxej0xrSStXI91vK9ryLWI4rFVDEJqy+pKHs=
 github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103/go.mod h1:pS2vkiPDNCOggDomTxvPTLucBOB/PdeOQWzLIHHjvu0=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
@@ -674,10 +674,11 @@ google.golang.org/genproto v0.0.0-20190307195333-5fe7a883aa19/go.mod h1:VzzqZJRn
 google.golang.org/genproto v0.0.0-20190425155659-357c62f0e4bb/go.mod h1:VzzqZJRnGkLBvHegQrXjBqPurQTc5/KpmUdxsrq26oE=
 google.golang.org/genproto v0.0.0-20190530194941-fb225487d101/go.mod h1:z3L6/3dTEVtUr6QSP8miRzeRqwQOioJ9I66odjN4I7s=
 google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55/go.mod h1:DMBHOl98Agz4BDEuKkezgsaosCRResVns1a3J2ZsMNc=
+google.golang.org/genproto v0.0.0-20241104194629-dd2ea8efbc28 h1:KJjNNclfpIkVqrZlTWcgOOaVQ00LdBnoEaRfkUx760s=
 google.golang.org/genproto/googleapis/api v0.0.0-20241021214115-324edc3d5d38 h1:2oV8dfuIkM1Ti7DwXc0BJfnwr9csz4TDXI9EmiI+Rbw=
 google.golang.org/genproto/googleapis/api v0.0.0-20241021214115-324edc3d5d38/go.mod h1:vuAjtvlwkDKF6L1GQ0SokiRLCGFfeBUXWr/aFFkHACc=
-google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38 h1:zciRKQ4kBpFgpfC5QQCVtnnNAcLIqweL7plyZRQHVpI=
-google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38/go.mod h1:GX3210XPVPUjJbTUbvwI8f2IpZDMZuPJWDzDuebbviI=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20241104194629-dd2ea8efbc28 h1:XVhgTWWV3kGQlwJHR3upFWZeTsei6Oks1apkZSeonIE=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20241104194629-dd2ea8efbc28/go.mod h1:GX3210XPVPUjJbTUbvwI8f2IpZDMZuPJWDzDuebbviI=
 google.golang.org/grpc v1.14.0/go.mod h1:yo6s7OP7yaDglbqo1J04qKzAhqBH6lvTonzMVmEdcZw=
 google.golang.org/grpc v1.17.0/go.mod h1:6QZJwpn2B+Zp71q/5VxRsJ6NXXVCE5NRUHRo+f3cWCs=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
