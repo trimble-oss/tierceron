@@ -43,6 +43,7 @@ func main() {
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
+	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
@@ -50,7 +51,7 @@ func main() {
 		},
 	}
 
-	err := trcsubbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, &driverConfig)
+	err := trcsubbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, flagset, os.Args, &driverConfig)
 	if err != nil {
 		os.Exit(1)
 	}
