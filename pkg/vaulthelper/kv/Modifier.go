@@ -799,7 +799,8 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 			if certPath != "" {
 				foundService := false
 				for _, service := range mod.VersionFilter {
-					if strings.HasSuffix(certPath, service) && !foundService {
+					certPathNoExt := strings.Split(certPath, ".")
+					if strings.HasSuffix(certPathNoExt[0], service) && !foundService {
 						foundService = true
 					}
 				}
@@ -814,6 +815,9 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 
 		certPaths = filteredCertPaths
 		for _, certPath := range certPaths {
+			certPath = strings.Replace(certPath, "/Common/", "/", 1)
+			certPathParts := strings.Split(certPath, ".")
+			certPath = certPathParts[0]
 			if _, ok := versionDataMap[certPath]; !ok {
 				metadataValue, err := mod.ReadVersionMetadata(certPath, logger)
 				if err != nil {
