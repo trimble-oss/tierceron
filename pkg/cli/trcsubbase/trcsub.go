@@ -31,6 +31,7 @@ func PrintVersion() {
 func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
+	tokenNamePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	driverConfig *config.DriverConfig) error {
@@ -56,11 +57,11 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("secretID", "", "Secret for app role ID")
 		flagset.String("appRoleID", "", "Public app role ID")
+		flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
 	}
 	endDirPtr := flagset.String("endDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
-	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
@@ -105,7 +106,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		driverConfigBase.CoreConfig.Log = logger
 		driverConfigBase.EndDir = *endDirPtr
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
-			tokenName := fmt.Sprintf("config_token_%s", *envPtr)
+			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 			tokenNamePtr = &tokenName
 		}
 		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
