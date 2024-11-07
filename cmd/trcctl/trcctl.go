@@ -22,6 +22,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
@@ -106,33 +107,45 @@ func main() {
 		var addrPtr string
 		switch ctl {
 		case "pub":
+			if eUtils.RefLength(tokenNamePtr) == 0 {
+				*tokenNamePtr = fmt.Sprintf("vault_pub_token_%s", eUtils.GetEnvBasis(*envPtr))
+			}
 			driverConfig := config.DriverConfig{
 				CoreConfig: &core.CoreConfig{
-					TokenCache:    cache.NewTokenCache(fmt.Sprintf("vault_pub_token_%s", *envPtr), tokenPtr),
+					TokenCache:    cache.NewTokenCache(*tokenNamePtr, tokenPtr),
 					ExitOnFailure: true,
 				},
 			}
 			trcpubbase.CommonMain(envPtr, &addrPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, flagset, os.Args, &driverConfig)
 		case "sub":
+			if eUtils.RefLength(tokenNamePtr) == 0 {
+				*tokenNamePtr = fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
+			}
 			driverConfig := config.DriverConfig{
 				CoreConfig: &core.CoreConfig{
-					TokenCache:    cache.NewTokenCache(fmt.Sprintf("config_token_%s", *envPtr), tokenPtr),
+					TokenCache:    cache.NewTokenCache(*tokenNamePtr, tokenPtr),
 					ExitOnFailure: true,
 				},
 			}
-			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, secretIDPtr, appRoleIDPtr, flagset, os.Args, &driverConfig)
+			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, secretIDPtr, appRoleIDPtr, tokenNamePtr, flagset, os.Args, &driverConfig)
 		case "init":
+			if eUtils.RefLength(tokenNamePtr) == 0 {
+				*tokenNamePtr = fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
+			}
 			driverConfig := config.DriverConfig{
 				CoreConfig: &core.CoreConfig{
-					TokenCache:    cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", *envPtr), tokenPtr),
+					TokenCache:    cache.NewTokenCache(*tokenNamePtr, tokenPtr),
 					ExitOnFailure: true,
 				},
 			}
 			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, nil, nil, flagset, os.Args, &driverConfig)
 		case "config":
+			if eUtils.RefLength(tokenNamePtr) == 0 {
+				*tokenNamePtr = fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
+			}
 			driverConfig := config.DriverConfig{
 				CoreConfig: &core.CoreConfig{
-					TokenCache:    cache.NewTokenCache(fmt.Sprintf("config_token_%s", *envPtr), tokenPtr),
+					TokenCache:    cache.NewTokenCache(*tokenNamePtr, tokenPtr),
 					ExitOnFailure: true,
 				},
 			}
