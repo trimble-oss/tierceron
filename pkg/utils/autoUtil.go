@@ -309,9 +309,10 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 
 		tokenNamePrefix := "config"
-		if driverConfig.CoreConfig.IsShell && RefLength(tokenNamePtr) > 0 && *tokenNamePtr != "pluginany" {
-			goto skipswitch
-		}
+		// The next two lines break trcplgtool codebundledeploy...
+		// if driverConfig.CoreConfig.IsShell && RefLength(tokenNamePtr) > 0 && *tokenNamePtr != "pluginany" {
+		// 	goto skipswitch
+		// }
 		switch *appRoleConfigPtr {
 		case "configpub.yml":
 			tokenNamePrefix = "vault_pub"
