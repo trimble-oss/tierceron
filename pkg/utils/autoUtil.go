@@ -309,6 +309,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 
 		tokenNamePrefix := "config"
+		// The next two lines break trcplgtool codebundledeploy...
 		// if driverConfig.CoreConfig.IsShell && RefLength(tokenNamePtr) > 0 && *tokenNamePtr != "pluginany" {
 		// 	goto skipswitch
 		// }
