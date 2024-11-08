@@ -846,6 +846,9 @@ func CommonMain(envPtr *string,
 			} else { //Non region certify
 				writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
 				if readErr != nil {
+					if trcshDriverConfig.DriverConfig.CoreConfig.TokenCache != nil {
+						trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.Clear()
+					}
 					fmt.Println(readErr)
 					return err
 				}

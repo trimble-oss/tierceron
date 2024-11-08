@@ -243,19 +243,21 @@ func InitVaultModForTool(pluginConfig map[string]interface{}, driverConfig *conf
 		return nil, nil, nil, errors.New("missing required env")
 	}
 
-	driverConfig.CoreConfig.Log.Println("InitVaultModForTool region init.")
-	var regions []string
-	if regionsSlice, regionsOk := pluginConfig["regions"].([]string); regionsOk {
-		regions = regionsSlice
-	}
+	if !driverConfig.CoreConfig.IsShell {
+		driverConfig.CoreConfig.Log.Println("InitVaultModForTool region init.")
+		var regions []string
+		if regionsSlice, regionsOk := pluginConfig["regions"].([]string); regionsOk {
+			regions = regionsSlice
+		}
 
-	driverConfig.CoreConfig.WantCerts = false
-	driverConfig.CoreConfig.Insecure = !exitOnFailure // Plugin has exitOnFailure=false ...  always local, so this is ok...
-	driverConfig.CoreConfig.VaultAddressPtr = RefMap(pluginConfig, "vaddress")
-	driverConfig.CoreConfig.Env = pluginConfig["env"].(string)
-	driverConfig.CoreConfig.EnvBasis = pluginConfig["env"].(string)
-	driverConfig.CoreConfig.Regions = regions
-	driverConfig.CoreConfig.ExitOnFailure = exitOnFailure
+		driverConfig.CoreConfig.WantCerts = false
+		driverConfig.CoreConfig.Insecure = !exitOnFailure // Plugin has exitOnFailure=false ...  always local, so this is ok...
+		driverConfig.CoreConfig.VaultAddressPtr = RefMap(pluginConfig, "vaddress")
+		driverConfig.CoreConfig.Env = pluginConfig["env"].(string)
+		driverConfig.CoreConfig.EnvBasis = GetEnvBasis(pluginConfig["env"].(string))
+		driverConfig.CoreConfig.Regions = regions
+		driverConfig.CoreConfig.ExitOnFailure = exitOnFailure
+	}
 
 	driverConfig.SecretMode = true //  "Only override secret values in templates?"
 	driverConfig.ServicesWanted = []string{}

@@ -69,6 +69,9 @@ func GetTemplate(driverConfig *config.DriverConfig, modifier *helperkv.Modifier,
 
 	data, err := modifier.ReadData(path)
 	if err != nil {
+		if driverConfig.CoreConfig.TokenCache != nil {
+			driverConfig.CoreConfig.TokenCache.Clear()
+		}
 		return "", err
 	}
 	if data == nil {
