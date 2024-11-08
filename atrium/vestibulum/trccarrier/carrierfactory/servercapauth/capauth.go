@@ -14,7 +14,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/tls"
-	"github.com/trimble-oss/tierceron/pkg/trcnet"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
 )
@@ -203,11 +202,7 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 
 	logger.Println("Cap creds.")
 
-	localip, err := trcnet.LocalIp()
-	if err != nil {
-		logger.Printf("Couldn't load ip: %v\n", err)
-		return err
-	}
+	netIpAddr := capauth.LoopBackAddr()
 
 	if featherAuth != nil && (len(featherAuth.EncryptPass) > 0 || len(featherAuth.SecretsPort) > 0) {
 		cap.TapInitCodeSaltGuard(saltyopts.BuildOptions.GetSaltyGuardian)
@@ -215,9 +210,16 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 
 	if featherAuth != nil && len(featherAuth.EncryptPass) > 0 {
 		logger.Println("Feathering server.")
+		var err error
+		netIpAddr, err = capauth.TrcNetAddr()
+		if err != nil {
+			logger.Printf("Couldn't load ip: %v\n", err)
+			return err
+		}
+
 		go cap.Feather(featherAuth.EncryptPass,
 			featherAuth.EncryptSalt,
-			fmt.Sprintf("%s:%s", localip, featherAuth.HandshakePort),
+			fmt.Sprintf("%s:%s", netIpAddr, featherAuth.HandshakePort),
 			featherAuth.HandshakeCode,
 			func(int, string) bool {
 				return true
@@ -230,8 +232,7 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 
 	if featherAuth != nil && len(featherAuth.SecretsPort) > 0 {
 		logger.Println("Tapping server.")
-		loopIp := capauth.LoopBackAddr()
-		cap.TapServer(fmt.Sprintf("%s:%s", loopIp, featherAuth.SecretsPort), grpc.Creds(creds))
+		cap.TapServer(fmt.Sprintf("%s:%s", netIpAddr, featherAuth.SecretsPort), grpc.Creds(creds))
 		logger.Println("Server tapped.")
 	} else {
 		logger.Println("Missing optional detailed feather configuration.  trcsh virtual machine based service deployments will be disabled.")
