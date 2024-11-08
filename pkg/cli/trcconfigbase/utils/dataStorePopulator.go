@@ -90,6 +90,7 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 		secrets, err := mod.ReadData(path)
 		if err != nil {
 			if config.TokenCache != nil {
+				mod.EmptyCache()
 				config.TokenCache.Clear()
 			}
 			return err

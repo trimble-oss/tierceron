@@ -847,6 +847,7 @@ func CommonMain(envPtr *string,
 				writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
 				if readErr != nil {
 					if trcshDriverConfig.DriverConfig.CoreConfig.TokenCache != nil {
+						mod.EmptyCache()
 						trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.Clear()
 					}
 					fmt.Println(readErr)

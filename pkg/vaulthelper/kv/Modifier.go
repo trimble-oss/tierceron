@@ -233,6 +233,27 @@ func cleanCacheHelper(env string, addr string, limit uint64) {
 	modifierCachLock.Unlock()
 }
 
+func (m *Modifier) EmptyCache() {
+	modifierCachLock.Lock()
+	for _, modCacheEntry := range modifierCache {
+	cacheempty:
+		for {
+			if modCacheEntry.modCount > 0 {
+				select {
+				case mod := <-modCacheEntry.modifierChan:
+					mod.Close()
+					atomic.AddUint64(&modCacheEntry.modCount, ^uint64(0))
+				default:
+					break cacheempty
+				}
+			} else {
+				break cacheempty
+			}
+		}
+	}
+	modifierCachLock.Unlock()
+}
+
 func PruneCache(env string, addr string, limit uint64) {
 	if modifierCache != nil && modifierCache[fmt.Sprintf("%s+%s", env, addr)] != nil {
 		if modifierCache[fmt.Sprintf("%s+%s", env, addr)].modCount > limit {

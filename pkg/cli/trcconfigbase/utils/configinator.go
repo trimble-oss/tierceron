@@ -393,6 +393,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 								}
 							} else {
 								if driverConfig.CoreConfig.TokenCache != nil {
+									mod.EmptyCache()
 									driverConfig.CoreConfig.TokenCache.Clear()
 								}
 							}
