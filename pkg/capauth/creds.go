@@ -12,32 +12,36 @@ func LoopBackAddr() string {
 	return "127.0.0.1"
 }
 
-func LocalAddr(env string) (string, error) {
-	localIP, err := trcnet.LocalIp()
-	if err != nil {
-		return "", err
-	}
-	addrs, hostErr := net.LookupAddr(localIP)
+func IsValidIP(ipaddr string) (bool, error) {
+	addrs, hostErr := net.LookupAddr(ipaddr)
 	if hostErr != nil {
-		return "", hostErr
+		return false, nil
 	}
-	localHost := ""
+	trimmedAddr := ""
 	if len(addrs) > 0 {
 		if len(addrs) > 20 {
-			return "", errors.New("unsupported hosts")
+			return false, errors.New("unsupported hosts")
 		}
 		for _, addr := range addrs {
-			localHost = strings.TrimRight(addr, ".")
-			if validErr := ValidateVhost(localHost, "", false); validErr != nil {
-				localHost = ""
+			trimmedAddr = strings.TrimRight(addr, ".")
+			if validErr := ValidateVhost(trimmedAddr, "", false); validErr != nil {
+				trimmedAddr = ""
 				continue
 			} else {
 				break
 			}
 		}
 	} else {
-		return "", errors.New("invalid host")
+		return false, nil
+	}
+	return true, nil
+}
+
+func TrcNetAddr() (string, error) {
+	netIP, err := trcnet.NetIpAddr(IsValidIP)
+	if err != nil {
+		return "", err
 	}
 
-	return localHost, nil
+	return netIP, nil
 }
