@@ -309,7 +309,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 
 		tokenNamePrefix := "config"
-		if driverConfig.CoreConfig.IsShell && RefLength(tokenNamePtr) > 0 && tokenNamePtr != "pluginany" {
+		if driverConfig.CoreConfig.IsShell && RefLength(tokenNamePtr) > 0 && *tokenNamePtr != "pluginany" {
 			goto skipswitch
 		}
 		switch *appRoleConfigPtr {
