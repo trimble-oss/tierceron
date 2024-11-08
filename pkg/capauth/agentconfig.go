@@ -183,7 +183,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	penseSum := hex.EncodeToString(penseArray[:])
 	penseSum = penseSum + saltyopts.BuildOptions.GetSaltyGuardian()
 
-	creds, credErr := tls.GetTransportCredentials(agentconfig.Drone)
+	creds, credErr := tls.GetTransportCredentials(false, agentconfig.Drone)
 
 	if credErr != nil {
 		return nil, credErr
@@ -420,19 +420,14 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 		return new(string), errors.New("tap writer error")
 	}
 
-	// TODO: add domain if it's missing because that might actually happen...  Pull the domain from
-	// vaddress in config..  that should always be the same...
-
-	creds, err := tls.GetTransportCredentials()
+	creds, err := tls.GetTransportCredentials(true)
 	if err != nil {
 		return nil, err
 	}
 	dialOptions := grpc.WithTransportCredentials(creds)
 
-	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
-	if localHostErr != nil {
-		return nil, localHostErr
-	}
+	localHost := LoopBackAddr()
+
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localHost, gTrcHatSecretsPort), dialOptions)
 	if err != nil {
 		return new(string), err
@@ -443,14 +438,6 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-
-	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
-	if localHostConfirmErr != nil {
-		return nil, localHostConfirmErr
-	}
-	if localHost != localHostConfirm {
-		return nil, errors.New("host selection flux - cannot continue")
-	}
 
 	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 	if penseErr != nil {
