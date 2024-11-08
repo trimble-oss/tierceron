@@ -171,6 +171,11 @@ func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
 			logger.Println("EyeRemember: " + key)
 			valuestring := value.(string)
 			tap.TapEyeRemember(key, &valuestring)
+		case "trcHatWantsFeathering":
+			// Insecure things can be remembered here...
+			logger.Println("EyeRemember: " + key)
+			valuestring := value.(string)
+			tap.TapEyeRemember(key, &valuestring)
 		case "vaddress", "caddress":
 			valuestring := value.(string)
 			cap.TapFeather(key, &valuestring)
