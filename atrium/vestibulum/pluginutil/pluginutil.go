@@ -133,7 +133,7 @@ func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, p
 					if featherAuth != nil {
 						pluginConfig["trcHatSecretsPort"] = featherAuth.SecretsPort
 					}
-					if wantsFeathering {
+					if wantsFeathering && len(featherAuth.EncryptPass) > 0 {
 						pluginConfig["trcHatWantsFeathering"] = "true"
 					}
 				}

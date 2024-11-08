@@ -153,7 +153,14 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, wantsFeathering
 			featherAuth := &FeatherAuth{EncryptPass: featherMap["trcHatEncryptPass"].(string), EncryptSalt: featherMap["trcHatEncryptSalt"].(string), HandshakePort: featherMap["trcHatHandshakePort"].(string), SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: featherMap["trcHatHandshakeCode"].(string)}
 			return featherAuth, nil
 		} else {
-			logger.Println("Feathering skipped.  Misconfigured.")
+			logger.Println("Feathering skipped.  Not available.")
+			if _, ok := featherMap["trcHatSecretsPort"].(string); ok {
+				featherAuth := &FeatherAuth{EncryptPass: "", EncryptSalt: "", HandshakePort: "", SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: ""}
+				return featherAuth, nil
+			} else {
+				logger.Println("Invalid format non string trcHatSecretsPort")
+			}
+
 		}
 
 	} else {
