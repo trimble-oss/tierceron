@@ -209,10 +209,14 @@ func PreviousStateCheck(currentState int) int {
 	}
 }
 
+func IsValidIP(ipaddr string) (bool, error) {
+	return true, nil
+}
+
 func GetMachineID() string {
-	localip, err := trcnet.LocalIp()
+	netIP, err := trcnet.NetIpAddr(IsValidIP)
 	if err != nil {
 		return ""
 	}
-	return localip
+	return netIP
 }
