@@ -415,6 +415,13 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 		}
 	}
 
+	wantsFeathering := false
+	if trcHtWf, trcHWFOk := penseEye["trcHatWantsFeathering"]; trcHWFOk {
+		if trcHtWf == "true" {
+			wantsFeathering = true
+		}
+	}
+
 	if capWriteErr != nil || gTrcHatSecretsPort == "" {
 		fmt.Println("Code 54 failure...  Possible deploy components mismatch..")
 		return new(string), errors.New("tap writer error")
@@ -426,9 +433,16 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 	}
 	dialOptions := grpc.WithTransportCredentials(creds)
 
-	localHost := LoopBackAddr()
+	capHatIpAddr := LoopBackAddr()
+	if wantsFeathering {
+		capHatIpAddr, err = TrcNetAddr()
+		if err != nil {
+			fmt.Println("Code 55 failure...  Possible deploy components mismatch..")
+			return new(string), errors.New("tap writer error")
+		}
+	}
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localHost, gTrcHatSecretsPort), dialOptions)
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", capHatIpAddr, gTrcHatSecretsPort), dialOptions)
 	if err != nil {
 		return new(string), err
 	}
